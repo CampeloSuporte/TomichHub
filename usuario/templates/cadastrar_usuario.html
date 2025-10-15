@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+
+   <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <!-- Table Section -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h4 class="mb-0">Usuários</h4>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                                    <i class="fas fa-plus me-2"></i> Cadastrar usuário
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table custom-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>username</th>
+                                            <th>email</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for usuarios in usuario%}
+                                        <tr>
+                                            <td>{{usuarios.id}}</td>
+                                            <td>{{usuarios.username}}</td>
+                                            <td>{{usuarios.email}}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+ <!-- Modal de Cadastro -->
+<div class="modal fade" id="cadastroModal" tabindex="-1" aria-labelledby="cadastroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cadastroModalLabel">Cadastro Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cadastroForm" method="post" action="{% url 'cadastrar_usuario' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Digite seu username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Digite seu Email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password1" class="form-label">Senha</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Digite sua senha" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i> Cancelar
+                </button>
+                <button type="submit" form="cadastroForm" class="btn btn-register">
+                    <i class="fas fa-save me-2"></i> Cadastrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+
+    <script src="{% static 'js/main.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if messages %}
+        {% for message in messages %}
+            setTimeout(function() {
+                {% if message.tags == 'success' %}
+                    showSuccess('OPERAÇÃO CONCLUÍDA', '{{ message|escapejs }}', 5000);
+                {% elif message.tags == 'error' %}
+                    showError('ERRO', '{{ message|escapejs }}', 6000);
+                {% elif message.tags == 'warning' %}
+                    showWarning('ATENÇÃO', '{{ message|escapejs }}', 6000);
+                {% elif message.tags == 'info' %}
+                    showInfo('INFORMAÇÃO', '{{ message|escapejs }}', 5000);
+                {% else %}
+                    showInfo('NOTIFICAÇÃO', '{{ message|escapejs }}', 5000);
+                {% endif %}
+            }, 300);
+        {% endfor %}
+    {% endif %}
+});
+</script>
+
+{% endblock %}

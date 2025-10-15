@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConexaCRM - Painel de Servidor</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{% static 'css/style.css'%}" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="top-bar">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-4">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <strong>TOMICH CRM</strong>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog me-1"></i> Chamados
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{%url 'cadastrar_cliente'%}">Abrir chamado</a></li>
+                        <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">Listar</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/configuracoes/">Configurações Gerais</a></li>
+                    </ul>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-chart-bar me-1"></i> Relatórios
+                    </button>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog me-1"></i> Sistema
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'cadastrar_usuario'%}">Usuários</a></li>
+                        <li><a class="dropdown-item" href="{%url 'cadastrar_cliente'%}">Clientes</a></li>
+                        <!--<li><a class="dropdown-item" href="/permissoes/">Permissões</a></li>-->
+                         <!--<li><a class="dropdown-item" href="/logs/">Logs do Sistema</a></li>-->
+                        <li><a class="dropdown-item" href="{%url 'listar_funcoes'%}">Função de equipamento</a></li>
+                        <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">Modelos de equipamento</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                         <!--<li><a class="dropdown-item" href="/configuracoes/">Configurações Gerais</a></li>-->
+                    </ul>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <input type="text" class="form-control form-control-sm" placeholder="Buscar Cliente" style="width: 250px;">
+                <button class="btn btn-sm btn-light"><i class="fas fa-search"></i></button>
+                <button class="btn btn-sm btn-light"><i class="fas fa-star"></i></button>
+                <button class="btn btn-sm btn-light"><i class="fas fa-bell"></i></button>
+                <button class="btn btn-sm btn-light"><i class="fas fa-user"></i></button>
+            </div>
+        </div>
+    </nav>
+
+        {% block content %}
+        {% endblock %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.querySelectorAll('.dropdown').forEach(function(dropdown) {
+        dropdown.addEventListener('mouseenter', function() {
+            const menu = dropdown.querySelector('.dropdown-menu');
+            const bsDropdown = new bootstrap.Dropdown(dropdown.querySelector('[data-bs-toggle="dropdown"]'));
+            bsDropdown.show();
+        });
+        dropdown.addEventListener('mouseleave', function() {
+            const menu = dropdown.querySelector('.dropdown-menu');
+            const bsDropdown = bootstrap.Dropdown.getInstance(dropdown.querySelector('[data-bs-toggle="dropdown"]'));
+            bsDropdown.hide();
+        });
+        });
+    </script>
+</body>
+</html>

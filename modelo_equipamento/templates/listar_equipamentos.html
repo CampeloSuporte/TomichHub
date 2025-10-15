@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+
+ 
+    <!-- Main Content -->
+<div class="main-content">
+  <div class="container-fluid">
+    <!-- Table Section -->
+    <div class="row mt-5">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h4 class="mb-0">Modelos de Equipamentos</h4>
+              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                <i class="fas fa-plus me-2"></i> Nova Função
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table custom-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Fabricante</th>
+                    <th>Descrição</th>
+                    <th>ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for modelo in modelos %}
+                    <tr>
+                    <td>{{ modelo.id }}</td>
+                    <td>{{ modelo.nome }}</td>
+                    <td>{{ modelo.fabricante }}</td>
+                    <td>{{ modelo.descricao }}</td>
+                    <td>
+                       <button 
+                            class="icon-btn btn-sm btn-editar" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#editarModal"
+                            data-id="{{ modelo.id }}"
+                            data-nome="{{ modelo.nome }}"
+                            data-fabricante="{{ modelo.fabricante }}"
+                            data-descricao="{{ modelo.descricao }}"
+                            >
+                            <i class="fas fa-edit"></i>
+                        </button>
+                       <!-- <button 
+                            class="icon-btn btn-sm btn-deletar" 
+                            data-id="{{ modelo.id }}" 
+                            data-nome="{{ modelo.nome }}"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#deletarModal"
+                            >
+                            <i class="fas fa-trash"></i>
+                        </button>-->
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div> <!-- fim table-responsive -->
+          </div> <!-- fim card-body -->
+        </div> <!-- fim card -->
+      </div> <!-- fim col-12 -->
+    </div> <!-- fim row -->
+  </div> <!-- fim container-fluid -->
+</div> <!-- fim main-content -->
+
+    <!-- Modal de Cadastro -->
+    <div class="modal fade" id="cadastroModal" tabindex="-1" aria-labelledby="cadastroModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cadastroModalLabel">Cadastro de Função</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="cadastroForm" method="post" action="{% url 'cadastrar_modelo' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite a descrição da função..." required>
+                        </div>
+                              <div class="mb-3">
+                            <label for="descricao" class="form-label">Fabricante</label>
+                            <input type="text" class="form-control" id="fabricante" name="fabricante" placeholder="Digite a descrição da função..." required>
+                        </div>
+                              <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <input type="text" class="form-control" id="descricao" name="descricao" placeholder="Digite a descrição da função..." required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" form="cadastroForm" class="btn btn-register">
+                        <i class="fas fa-save me-2"></i> Cadastrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Modal de Edição -->
+<div class="modal fade" id="editarModal" tabindex="-1" aria-labelledby="editarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      
+      <div class="modal-header">
+        <h5 class="modal-title" id="editarModalLabel">Editar Função</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="editarForm" method="post" action="{% url 'editar_modelo' %}">
+          {% csrf_token %}
+          <!-- ID oculto -->
+          <input type="hidden" id="editar_id" name="id">
+
+          <div class="mb-3">
+            <label for="editar_nome" class="form-label">Nome</label>
+            <input type="text" class="form-control" id="editar_nome" name="nome" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="editar_fabricante" class="form-label">Fabricante</label>
+            <input type="text" class="form-control" id="editar_fabricante" name="fabricante" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="editar_descricao" class="form-label">Descrição</label>
+            <input type="text" class="form-control" id="editar_descricao" name="descricao" required>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+          <i class="fas fa-times me-2"></i> Cancelar
+        </button>
+        <button type="submit" form="editarForm" class="btn btn-primary">
+          <i class="fas fa-save me-2"></i> Salvar Alterações
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal de Exclusão -->
+<div class="modal fade" id="deletarModal" tabindex="-1" aria-labelledby="deletarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="deletarModalLabel">Excluir Modelo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir o modelo <strong id="deletar_nome"></strong>?</p>
+        <form id="deletarForm" method="post" action="{% url 'deletar_modelo' %}">
+          {% csrf_token %}
+          <input type="hidden" name="id" id="deletar_id">
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+          <i class="fas fa-times me-2"></i> Cancelar
+        </button>
+        <button type="submit" form="deletarForm" class="btn btn-danger">
+          <i class="fas fa-trash me-2"></i> Excluir
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if messages %}
+        {% for message in messages %}
+            setTimeout(function() {
+                {% if message.tags == 'success' %}
+                    showSuccess('OPERAÇÃO CONCLUÍDA', '{{ message|escapejs }}', 5000);
+                {% elif message.tags == 'error' %}
+                    showError('ERRO', '{{ message|escapejs }}', 6000);
+                {% elif message.tags == 'warning' %}
+                    showWarning('ATENÇÃO', '{{ message|escapejs }}', 6000);
+                {% elif message.tags == 'info' %}
+                    showInfo('INFORMAÇÃO', '{{ message|escapejs }}', 5000);
+                {% else %}
+                    showInfo('NOTIFICAÇÃO', '{{ message|escapejs }}', 5000);
+                {% endif %}
+            }, 300);
+        {% endfor %}
+    {% endif %}
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+  const editarModal = document.getElementById('editarModal');
+
+  // Escuta quando o modal vai abrir
+  editarModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+
+    if (!button) return; // segurança
+
+    // Lê os atributos do botão
+    const id = button.getAttribute('data-id');
+    const nome = button.getAttribute('data-nome');
+    const fabricante = button.getAttribute('data-fabricante');
+    const descricao = button.getAttribute('data-descricao');
+
+    console.log("DEBUG ->", {id, nome, fabricante, descricao}); // <--- VER LOG NO CONSOLE
+
+    // Preenche os campos
+    document.getElementById('editar_id').value = id || '';
+    document.getElementById('editar_nome').value = nome || '';
+    document.getElementById('editar_fabricante').value = fabricante || '';
+    document.getElementById('editar_descricao').value = descricao || '';
+  });
+});
+
+
+document.addEventListener('DOMContentLoaded', function () {
+  const deletarModal = document.getElementById('deletarModal');
+
+  deletarModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const id = button.getAttribute('data-id');
+    const nome = button.getAttribute('data-nome');
+
+    document.getElementById('deletar_id').value = id;
+    document.getElementById('deletar_nome').textContent = nome;
+  });
+});
+
+</script>
+
+{% endblock %}

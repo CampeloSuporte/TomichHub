@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+
+   <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <!-- Table Section -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-header-container mb-4">
+                                <h4 class="mb-0">Usuários</h4>
+                                <div class="search-container-center">
+                                    <input type="text" id="searchInput" class="form-control search-input" placeholder="Pesquisar clientes...">
+                                    <i class="fas fa-search search-icon"></i>
+                                </div>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                                    <i class="fas fa-plus me-2"></i> Cadastrar usuário
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                            <table class="table custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nome da Empresa</th>
+                                        <th>CNPJ</th>
+                                        <th>Email</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cliente in clientes %}
+                                    <tr class="table-row-selectable" data-cliente-id="{{cliente.id}}">
+                                        <td>{{cliente.id}}</td>
+                                        <td>{{cliente.nome_empresa}}</td>
+                                        <td>{{cliente.cnpj}}</td>
+                                        <td>{{cliente.email}}</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}})" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn-action btn-delete" onclick="confirmarDelete({{cliente.id}})" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal de Cadastro -->
+<div class="modal fade" id="cadastroModal" tabindex="-1" aria-labelledby="cadastroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cadastroModalLabel">Cadastro de Empresa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cadastroForm" method="post" action="{% url 'cadastrar_cliente' %}">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="nome_empresa" class="form-label">Nome da Empresa</label>
+                            <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" placeholder="Digite o nome da empresa" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="cnpj" class="form-label">CNPJ</label>
+                            <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-2 mb-3">
+                            <label for="cep" class="form-label">CEP</label>
+                            <input type="text" class="form-control" id="cep" name="cep" placeholder="00000-000" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="endereco" class="form-label">Endereço</label>
+                            <input type="text" class="form-control" id="endereco" name="endereco" placeholder="Digite o endereço completo" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="endereco" class="form-label">Estado</label>
+                            <input type="text" class="form-control" id="estado" name="estado" placeholder="Digite seu estado" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cidade" class="form-label">Cidade</label>
+                        <input type="text" class="form-control" id="cidade" name="cidade" placeholder="Digite a cidade" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="telefone" class="form-label">Telefone</label>
+                            <input type="tel" class="form-control" id="telefone" name="telefone" placeholder="(00) 00000-0000" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Digite o email" required>
+                        </div>
+                    </div>
+
+                       <div class="mb-3">
+                            <label for="usuario" class="form-label">Usuário</label>
+                            <div class="custom-dropdown-wrapper">
+                                <!-- Campo hidden que será enviado no formulário com o ID -->
+                                <input 
+                                    type="hidden" 
+                                    id="usuario" 
+                                    name="usuario" 
+                                    required
+                                >
+                                <!-- Campo de busca visual (não será enviado) -->
+                                <input 
+                                    type="text" 
+                                    class="custom-dropdown-input" 
+                                    id="usuario_search" 
+                                    placeholder="Pesquisar ou selecionar usuário"
+                                    autocomplete="off"
+                                >
+                                <span class="dropdown-icon">▼</span>
+                                <div class="custom-dropdown-menu" id="dropdownMenu"></div>
+                            </div>
+                            <small class="form-text text-muted">Digite para pesquisar ou selecione um usuário existente</small>
+                        </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" form="cadastroForm" class="btn btn-register">
+                        <i class="fas fa-save me-2"></i> Cadastrar
+                    </button>
+                </div>
+        </div>
+    </div>
+</div>
+
+
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // Função de pesquisa de clientes
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('.custom-table tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Seleção de linhas da tabela
+    document.querySelectorAll('.table-row-selectable').forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Não seleciona se clicou em um botão de ação
+            if (e.target.closest('.btn-action')) {
+                return;
+            }
+            
+            // Remove seleção anterior
+            document.querySelectorAll('.table-row-selectable').forEach(r => {
+                r.classList.remove('selected');
+            });
+            
+            // Adiciona seleção na linha clicada
+            this.classList.add('selected');
+            
+            // Pega o ID do cliente
+            const clienteId = this.dataset.clienteId;
+            console.log('Cliente selecionado:', clienteId);
+            
+            // REDIRECIONA PARA A URL DO CLIENTE
+            // Substitua 'nome_da_url' pelo nome da sua URL do Django
+            // Exemplo: window.location.href = `/clientes/${clienteId}/detalhes/`;
+            window.location.href = `/clientes/listar/?id=${clienteId}`;
+        });
+    });
+
+    // Máscara para CNPJ
+    document.getElementById('cnpj').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 14) {
+            value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            value = value.replace(/(\d{4})(\d)/, '$1-$2');
+            e.target.value = value;
+        }
+    });
+
+    // Máscara para Telefone
+    document.getElementById('telefone').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/^(\d{2})(\d)/, '($1) $2');
+            value = value.replace(/(\d{5})(\d)/, '$1-$2');
+            e.target.value = value;
+        }
+    });
+ // Dados dos usuários vindos do Django
+    const usuarios = [
+        {% for u in usuario %}
+        { id: {{ u.id }}, username: '{{ u.username }}' }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const inputSearch = document.getElementById('usuario_search');
+    const inputId = document.getElementById('usuario'); // Campo hidden que envia o ID
+    const dropdownMenu = document.getElementById('dropdownMenu');
+
+    function renderDropdown(filteredUsers) {
+        dropdownMenu.innerHTML = '';
+        
+        if (filteredUsers.length === 0) {
+            dropdownMenu.innerHTML = '<div class="no-results">Nenhum usuário encontrado</div>';
+            dropdownMenu.classList.add('show');
+            return;
+        }
+
+        filteredUsers.forEach(user => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-custom';
+            item.innerHTML = `
+                <span class="user-id">${user.id}</span>
+                <span class="user-name">${user.username}</span>
+            `;
+            item.dataset.userId = user.id;
+            item.dataset.username = user.username;
+            item.addEventListener('click', () => selectUser(user));
+            dropdownMenu.appendChild(item);
+        });
+
+        dropdownMenu.classList.add('show');
+    }
+
+    function selectUser(user) {
+        // Armazena apenas o ID no campo hidden (esse será enviado no formulário)
+        inputId.value = user.id;
+        // Mostra o nome no campo de busca (apenas visual)
+        inputSearch.value = user.username;
+        dropdownMenu.classList.remove('show');
+        
+        console.log('ID que será enviado:', user.id); // Para debug
+    }
+
+    inputSearch.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        
+        if (searchTerm.length === 0) {
+            dropdownMenu.classList.remove('show');
+            inputId.value = ''; // Limpa o ID se o campo for limpo
+            return;
+        }
+
+        const filtered = usuarios.filter(user => 
+            user.username.toLowerCase().includes(searchTerm) ||
+            user.id.toString().includes(searchTerm)
+        );
+
+        renderDropdown(filtered);
+    });
+
+    inputSearch.addEventListener('focus', () => {
+        if (inputSearch.value.length === 0) {
+            renderDropdown(usuarios);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.custom-dropdown-wrapper')) {
+            dropdownMenu.classList.remove('show');
+        }
+    });
+
+    // Navegação por teclado
+    inputSearch.addEventListener('keydown', (e) => {
+        const items = dropdownMenu.querySelectorAll('.dropdown-item-custom');
+        const currentIndex = Array.from(items).findIndex(item => 
+            item.classList.contains('selected')
+        );
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (items.length > 0) {
+                items.forEach(item => item.classList.remove('selected'));
+                const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+                items[nextIndex].classList.add('selected');
+                items[nextIndex].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (items.length > 0) {
+                items.forEach(item => item.classList.remove('selected'));
+                const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+                items[prevIndex].classList.add('selected');
+                items[prevIndex].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const selectedItem = dropdownMenu.querySelector('.dropdown-item-custom.selected');
+            if (selectedItem) {
+                const userId = parseInt(selectedItem.dataset.userId);
+                const username = selectedItem.dataset.username;
+                selectUser({ id: userId, username: username });
+            }
+        } else if (e.key === 'Escape') {
+            dropdownMenu.classList.remove('show');
+        }
+    });
+
+    // Máscaras existentes (CNPJ e Telefone)
+    document.getElementById('cnpj').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 14) {
+            value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            value = value.replace(/(\d{4})(\d)/, '$1-$2');
+            e.target.value = value;
+        }
+    });
+
+    document.getElementById('telefone').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/^(\d{2})(\d)/, '($1) $2');
+            value = value.replace(/(\d{5})(\d)/, '$1-$2');
+            e.target.value = value;
+        }
+    });
+    </script>
+
+{% endblock %}
