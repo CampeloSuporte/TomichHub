@@ -61,7 +61,16 @@
                 <button class="btn btn-sm btn-light"><i class="fas fa-search"></i></button>
                 <button class="btn btn-sm btn-light"><i class="fas fa-star"></i></button>
                 <button class="btn btn-sm btn-light"><i class="fas fa-bell"></i></button>
-                <button class="btn btn-sm btn-light"><i class="fas fa-user"></i></button>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'trocar_senha' %}"><i class="fas fa-key me-2"></i>Trocar Senha</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt me-2"></i>Deslogar</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>

@@ -3,7 +3,8 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from  django.contrib.auth import authenticate,login as auth_login
 from django.contrib.auth.decorators import login_required
-
+from django.contrib.auth import logout as auth_logout
+from django.contrib.auth import update_session_auth_hash
 
 @login_required(login_url='login')
 def cadastrar_usuario(request):
@@ -74,3 +75,44 @@ def login(request):
         else:
             messages.error(request, "Usuário ou senha inválidos.")
             return redirect('login')
+
+@login_required(login_url='login')
+def logout(request):
+    auth_logout(request)
+    messages.success(request, "Você foi deslogado com sucesso.")
+    return redirect('login')
+
+
+@login_required(login_url='login')
+def trocar_senha(request):
+    if request.method == 'GET':
+        return render(request, 'trocar_senha.html')
+    else:
+        senha_atual = request.POST.get('senha_atual')
+        nova_senha = request.POST.get('nova_senha')
+        confirmar_senha = request.POST.get('confirmar_senha')
+        
+        # Verifica se a senha atual está correta
+        if not request.user.check_password(senha_atual):
+            messages.error(request, "Senha atual incorreta.")
+            return redirect('trocar_senha')
+        
+        # Verifica se as senhas coincidem
+        if nova_senha != confirmar_senha:
+            messages.error(request, "As senhas não coincidem.")
+            return redirect('trocar_senha')
+        
+        # Verifica se a senha tem no mínimo 6 caracteres
+        if len(nova_senha) < 6:
+            messages.error(request, "A senha deve ter no mínimo 6 caracteres.")
+            return redirect('trocar_senha')
+        
+        # Atualiza a senha
+        request.user.set_password(nova_senha)
+        request.user.save()
+        
+        # Mantém o usuário logado após trocar a senha
+        update_session_auth_hash(request, request.user)
+        
+        messages.success(request, "Senha alterada com sucesso!")
+        return redirect('cadastrar_usuario')

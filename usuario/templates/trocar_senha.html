@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body p-4">
+                        <h4 class="mb-4">Trocar Senha</h4>
+                        
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <form method="POST">
+                            {% csrf_token %}
+                            
+                            <div class="form-group-modal mb-3">
+                                <label for="senha_atual">
+                                    <span class="label-prefix">&gt;</span> Senha Atual
+                                </label>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="senha_atual" 
+                                       name="senha_atual" 
+                                       placeholder="Digite sua senha atual"
+                                       required>
+                            </div>
+                            
+                            <div class="form-group-modal mb-3">
+                                <label for="nova_senha">
+                                    <span class="label-prefix">&gt;</span> Nova Senha
+                                </label>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="nova_senha" 
+                                       name="nova_senha" 
+                                       placeholder="Digite a nova senha (mín. 6 caracteres)"
+                                       required>
+                            </div>
+                            
+                            <div class="form-group-modal mb-4">
+                                <label for="confirmar_senha">
+                                    <span class="label-prefix">&gt;</span> Confirmar Nova Senha
+                                </label>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="confirmar_senha" 
+                                       name="confirmar_senha" 
+                                       placeholder="Confirme a nova senha"
+                                       required>
+                            </div>
+                            
+                            <div class="terminal-status mb-4">
+                                <span class="status-indicator"></span>
+                                <span class="status-text">Sistema aguardando confirmação...</span>
+                            </div>
+                            
+                            <div class="d-flex gap-3">
+                                <button type="submit" class="btn-register flex-fill">
+                                    <i class="fas fa-check me-2"></i>Alterar Senha
+                                </button>
+                                <a href="{% url 'cadastrar_usuario' %}" class="btn-cancel flex-fill text-center">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
