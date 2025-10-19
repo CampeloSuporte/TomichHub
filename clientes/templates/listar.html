@@ -1,47 +1,48 @@
 {% extends "base.html" %}
 {% load static %}
 {% block content %}
- <!-- Main Content -->
-    <div class="main-content">
-        <div class="container-fluid">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="mb-0">{{ cliente.nome_empresa}} CPNJ:{{ cliente.cnpj}}</h4>
-                <button class="btn btn-outline-primary btn-sm">Editar</button>
-            </div>
+<!-- Main Content -->
+<div class="main-content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0">{{ cliente.nome_empresa}} CNPJ:{{ cliente.cnpj}}</h4>
+            <button class="btn btn-outline-primary btn-sm">Editar</button>
+        </div>
 
-            <!-- Main Tabs -->
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item">
-                    <a class="nav-link active" href="#">Acessos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Extrato</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Backups</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">VPN</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Topologia</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Tuneis SSH</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Documentos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Credenciais</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Chamados</a>
-                </li>
-            </ul>
+        <!-- Main Tabs -->
+        <ul class="nav nav-tabs mb-4" id="mainTabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" onclick="trocarAba(event, 'acessos')">Acessos</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'extrato')">Extrato</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'backups')">Backups</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'vpn')">VPN</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'topologia')">Topologia</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'tuneis')">Tuneis SSH</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'documentos')">Documentos</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'credenciais')">Credenciais</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'chamados')">Chamados</a>
+            </li>
+        </ul>
 
-            <!-- Action Buttons -->
+        <!-- ABA ACESSOS -->
+        <div id="tab-acessos" class="tab-content-main" style="display: block;">
             <div class="d-flex justify-content-end gap-2 mb-3">
                 <button class="btn btn-sm btn-outline-secondary">
                     <i class="fas fa-filter me-1"></i> Filtrar Acessos
@@ -56,279 +57,473 @@
 
             {% regroup acessos by funcao as acessos_por_funcao %}
 
-            <!-- Abas de Função -->
             <ul class="nav server-tabs mb-4" id="funcaoTabs">
                 {% for grupo in acessos_por_funcao %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if forloop.first %}active{% endif %}" 
-                           href="#" 
-                           data-funcao="{{ grupo.grouper }}"
-                           onclick="mostrarFuncao(event, '{{ grupo.grouper }}')">
-                            {{ grupo.grouper }}
-                        </a>
-                    </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if forloop.first %}active{% endif %}" href="#" 
+                       onclick="mostrarFuncao(event, '{{ grupo.grouper }}')">
+                        {{ grupo.grouper }}
+                    </a>
+                </li>
                 {% endfor %}
             </ul>
 
-            <!-- Conteúdo dos Acessos por Função -->
             {% for grupo in acessos_por_funcao %}
-                <div class="funcao-content" id="funcao-{{ grupo.grouper }}" style="{% if not forloop.first %}display: none;{% endif %}">
-                    <div class="row">
-                        {% for acesso in grupo.list %}
-                            <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <div class="server-header flex-column align-items-start">
-                                            <div class="d-flex align-items-center justify-content-between w-100 mb-3">
-                                                <h5 class="mb-0">{{ acesso.tipo }}</h5>
-                                            </div>
-                                            <div class="d-flex gap-2 flex-wrap">
-                                                <button class="icon-btn btn-sm"><i class="fas fa-trash"></i></button>
-                                                <button class="icon-btn btn-sm"><i class="fas fa-link"></i></button>
-                                                <button class="icon-btn btn-sm"><i class="fas fa-code"></i></button>
-                                                <button class="icon-btn btn-sm"><i class="fas fa-file"></i></button>
-                                                <button class="icon-btn btn-sm"><i class="fas fa-edit"></i></button>
-                                            </div>
-                                        </div>
-
-                                        <ul class="nav nav-tabs mb-3">
-                                            <li class="nav-item">
-                                                <a class="nav-link active" href="#">Padrão</a>
-                                            </li>
-                                            <li class="nav-item">
-                                                <a class="nav-link" href="#"><i class="fas fa-plus"></i></a>
-                                            </li>
-                                        </ul>
-
-                                        <div class="info-row">
-                                            <span class="info-label">Modelo</span>
-                                            <span class="info-value">{{ acesso.modelo }}</span>
-                                        </div>
-                                         <div class="info-row">
-                                            <span class="info-label">Vlan Gerencia</span>
-                                            <span class="info-value">{{ acesso.vlan }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">Host Name</span>
-                                            <span class="info-value">{{ acesso.host }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">HostName v6</span>
-                                            <span class="info-value">{{ acesso.host_ipv6 }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">Porta</span>
-                                            <span class="info-value">{{ acesso.porta }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">Protocolo</span>
-                                            <span class="info-value">{{ acesso.protocolo }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">Usuário</span>
-                                            <span class="info-value">{{ acesso.usuario }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">Senha</span>
-                                            <span class="info-value">{{ acesso.senha }}</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <span class="info-label">Senha Root</span>
-                                            <span class="info-value">{{ acesso.senha_adm }}</span>
-                                        </div>
-                                        <div class="mt-4">
-                                            <button class="btn btn-access mb-2">
-                                                <i class="fas fa-sign-in-alt me-2"></i> Acessar
+            <div class="funcao-content" id="funcao-{{ grupo.grouper }}" 
+                 style="{% if not forloop.first %}display: none;{% endif %}">
+                <div class="row">
+                    {% for acesso in grupo.list %}
+                    <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="server-header flex-column align-items-start">
+                                    <div class="d-flex align-items-center justify-content-between w-100 mb-3">
+                                        <h5 class="mb-0">{{ acesso.tipo }}</h5>
+                                    </div>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <form method="POST" action="{% url 'deletar_acesso' acesso.id %}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('Tem certeza que deseja excluir: {{ acesso.tipo }}?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="icon-btn btn-sm" title="Excluir">
+                                                <i class="fas fa-trash"></i>
                                             </button>
-                                            <button class="btn btn-backup">
-                                                <i class="fas fa-sync-alt me-2"></i> Backup
-                                            </button>
-                                        </div>
+                                        </form>
+                                        <button class="icon-btn btn-sm"><i class="fas fa-link"></i></button>
+                                        <button class="icon-btn btn-sm"><i class="fas fa-code"></i></button>
+                                        <button class="icon-btn btn-sm"><i class="fas fa-file"></i></button>
+                                        <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                     </div>
                                 </div>
+                                <ul class="nav nav-tabs mb-3">
+                                    <li class="nav-item"><a class="nav-link active" href="#">Padrão</a></li>
+                                    <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-plus"></i></a></li>
+                                </ul>
+                                <div class="info-row">
+                                    <span class="info-label">Modelo</span>
+                                    <span class="info-value">{{ acesso.modelo }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Vlan Gerencia</span>
+                                    <span class="info-value">{{ acesso.vlan }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Host Name</span>
+                                    <span class="info-value">{{ acesso.host }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">HostName v6</span>
+                                    <span class="info-value">{{ acesso.host_ipv6 }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Porta</span>
+                                    <span class="info-value">{{ acesso.porta }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Protocolo</span>
+                                    <span class="info-value">{{ acesso.protocolo }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Usuário</span>
+                                    <span class="info-value">{{ acesso.usuario }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Senha</span>
+                                    <span class="info-value">{{ acesso.senha }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Senha Root</span>
+                                    <span class="info-value">{{ acesso.senha_adm }}</span>
+                                </div>
+                                <div class="mt-4">
+                                    <button class="btn btn-access mb-2">
+                                        <i class="fas fa-sign-in-alt me-2"></i> Acessar
+                                    </button>
+                                    <button class="btn btn-backup">
+                                        <i class="fas fa-sync-alt me-2"></i> Backup
+                                    </button>
+                                </div>
                             </div>
-                        {% endfor %}
+                        </div>
                     </div>
+                    {% endfor %}
                 </div>
-            {% empty %}
-                <div class="col-12 text-center mt-4">
-                    <div class="alert alert-warning" role="alert">
-                        Nenhum acesso cadastrado.
-                    </div>
-                </div>
-            {% endfor %}
-
-        </div> <!-- container-fluid -->
-    </div> <!-- main-content -->
-
-    <!-- Modal de Cadastro de Acesso -->
-    <div id="modalAcesso" class="modal-overlay" style="display: none;">
-        <div class="modal-acesso">
-            <div class="modal-header-acesso">
-                <h2 class="modal-title">
-                    <span class="terminal-prefix">&gt;</span> Novo Acesso
-                </h2>
-                <button class="btn-close-modal" onclick="fecharModalAcesso()">
-                    <i class="fas fa-times"></i>
-                </button>
             </div>
+            {% empty %}
+            <div class="col-12 text-center mt-4">
+                <div class="alert alert-warning">Nenhum acesso cadastrado.</div>
+            </div>
+            {% endfor %}
+        </div>
 
-            <div class="modal-body-acesso">
-                <form id="formNovoAcesso" method="POST" action="{% url 'cadastrar_acesso' %}">
-                    {% csrf_token %}
+        <!-- OUTRAS ABAS -->
+        <div id="tab-extrato" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Extrato de Movimentações</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-download me-1"></i> Exportar</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-file-invoice-dollar" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Conteúdo do extrato será exibido aqui</p>
+                </div>
+            </div></div>
+        </div>
+
+        <div id="tab-backups" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Gerenciamento de Backups</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Novo Backup</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-database" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Lista de backups será exibida aqui</p>
+                </div>
+            </div></div>
+        </div>
+
+        <div id="tab-vpn" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Configurações VPN</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Adicionar VPN</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-shield-alt" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Configurações de VPN serão exibidas aqui</p>
+                </div>
+            </div></div>
+        </div>
+
+        <div id="tab-topologia" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Topologia de Rede</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-edit me-1"></i> Editar</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-project-diagram" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Diagrama de topologia será exibido aqui</p>
+                </div>
+            </div></div>
+        </div>
+
+        <div id="tab-tuneis" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Tuneis SSH</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Novo Tunel</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-network-wired" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Tuneis SSH serão listados aqui</p>
+                </div>
+            </div></div>
+        </div>
+
+        <!-- ABA DOCUMENTOS -->
+        <div id="tab-documentos" class="tab-content-main" style="display: none;">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">Documentos</h5>
+                        <button class="btn btn-sm btn-primary" onclick="abrirModalUpload()">
+                            <i class="fas fa-upload me-1"></i> Upload
+                        </button>
+                    </div>
                     
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <input type="hidden" name="cliente" value="{{ cliente.id }}">
-                                <label><span class="label-prefix">//</span> Descrição</label>
-                                <input type="text" name="tipo" placeholder="Descrição do host" required>
-                            </div>
-                        </div>
-                            <!-- Substitua esta parte do template -->
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group-modal">
-                                        <label><span class="label-prefix">//</span> Função</label>
-                                        <div class="custom-search-select">
-                                            <input 
-                                                type="text" 
-                                                class="search-select-input" 
-                                                id="funcao_input"
-                                                name="funcao_input"
-                                                placeholder="Digite para buscar..."
-                                                autocomplete="off"
-                                                oninput="filterOptions('funcao')"
-                                                required
-                                            >
-                                            <input type="hidden" id="funcao" name="funcao">
-                                            <div class="search-select-dropdown" id="funcao-dropdown">
-                                                {% for funcao in funcao_equipamentos %}
-                                                    <div class="search-select-option" data-value="{{ funcao.id }}" data-text="{{ funcao.descricao }}">
-                                                        {{ funcao.descricao }}
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
+                    {% if documentos %}
+                    <div class="table-responsive">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome do Arquivo</th>
+                                    <th>Data Upload</th>
+                                    <th>Tamanho</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documentos %}
+                                <tr>
+                                    <td>{{ doc.nome }}</td>
+                                    <td>{{ doc.data_upload|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ doc.arquivo.size|filesizeformat }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{{ doc.arquivo.url }}" target="_blank" class="btn-action btn-view" title="Visualizar">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ doc.arquivo.url }}" download class="btn-action btn-download" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <form method="POST" action="{% url 'deletar_documento' doc.id %}" 
+                                                  style="display: inline;" 
+                                                  onsubmit="return confirm('Tem certeza que deseja excluir: {{ doc.nome }}?')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-action btn-delete" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="form-group-modal">
-                                        <label><span class="label-prefix">//</span> Modelo</label>
-                                        <div class="custom-search-select">
-                                            <input 
-                                                type="text" 
-                                                class="search-select-input" 
-                                                id="modelo_input"
-                                                name="modelo_input"
-                                                placeholder="Digite para buscar..."
-                                                autocomplete="off"
-                                                oninput="filterOptions('modelo')"
-                                                required
-                                            >
-                                            <input type="hidden" id="modelo" name="modelo">
-                                            <div class="search-select-dropdown" id="modelo-dropdown">
-                                                {% for modelo in modelos %}
-                                                    <div class="search-select-option" data-value="{{ modelo.id }}" data-text="{{ modelo.nome }}">
-                                                        {{ modelo.nome }}
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Hostname</label>
-                                <input type="text" name="hostname" placeholder="Ex: sw-core-01" required>
-                            </div>
-                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-
-                    <div class="form-group-modal">
-                        <label><span class="label-prefix">//</span> Hostname IPv6</label>
-                        <input type="text" name="hostname_ipv6" placeholder="Ex: 2001:db8::1">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Protocolo</label>
-                                <select name="protocolo" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="SSH">SSH</option>
-                                    <option value="Telnet">Telnet</option>
-                                    <option value="HTTP">HTTP</option>
-                                    <option value="HTTPS">HTTPS</option>
-                                    <option value="RDP">RDP</option>
-                                    <option value="VNC">VNC</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Porta</label>
-                                <input type="number" name="porta" placeholder="Ex: 22" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Usuário</label>
-                                <input type="text" name="usuario" placeholder="Ex: admin" required>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Senha</label>
-                                <input type="password" name="senha" placeholder="••••••••" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group-modal">
-                            <label><span class="label-prefix">//</span> Senha Admin</label>
-                            <input type="password" name="senha_adm" placeholder="••••••••">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group-modal">
-                            <label><span class="label-prefix">//</span> Vlan gerencia</label>
-                            <input type="text" name="vlan" placeholder="ex: 101">
-                        </div>
-                    </div>
-                    </div>
-                    <div class="terminal-status">
-                        <span class="status-indicator"></span>
-                        <span class="status-text">Sistema online</span>
-                    </div>
-
-                    <div class="modal-footer-acesso">
-                        <button type="button" class="btn-cancel-modal" onclick="fecharModalAcesso()">
-                            <i class="fas fa-times me-2"></i> Cancelar
-                        </button>
-                        <button type="submit" class="btn-submit-modal">
-                            <i class="fas fa-save me-2"></i> Cadastrar
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-folder-open" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Nenhum documento encontrado</p>
+                        <button class="btn btn-primary mt-3" onclick="abrirModalUpload()">
+                            <i class="fas fa-upload me-2"></i> Enviar Primeiro Documento
                         </button>
                     </div>
-                </form>
+                    {% endif %}
+                </div>
             </div>
         </div>
+
+        <div id="tab-credenciais" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Credenciais</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Adicionar</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-key" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Credenciais serão exibidas aqui</p>
+                </div>
+            </div></div>
+        </div>
+
+        <div id="tab-chamados" class="tab-content-main" style="display: none;">
+            <div class="card"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Chamados</h5>
+                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Novo Chamado</button>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-ticket-alt" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Lista de chamados será exibida aqui</p>
+                </div>
+            </div></div>
+        </div>
+
     </div>
+</div>
 
-
+{% include 'modal_acessos.html'%}
 <script src="{% static 'js/main.js' %}"></script>
-
+<script src="{% static 'js/listar_acesso.js' %}"></script>
 <script>
+function trocarAba(event, nomeAba) {
+    event.preventDefault();
+    document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
+    document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
+    document.getElementById('tab-' + nomeAba).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+function abrirModalEditarAcesso(acessoId) {
+    fetch(`/clientes/acessos/buscar/${acessoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit_acesso_id').value = data.id;
+            document.getElementById('edit_tipo').value = data.tipo;
+            document.getElementById('edit_hostname').value = data.host;
+            document.getElementById('edit_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('edit_protocolo').value = data.protocolo;
+            document.getElementById('edit_porta').value = data.porta;
+            document.getElementById('edit_usuario').value = data.usuario;
+            document.getElementById('edit_senha').value = data.senha;
+            document.getElementById('edit_senha_adm').value = data.senha_adm || '';
+            document.getElementById('edit_vlan').value = data.vlan || '';
+            document.getElementById('edit_funcao').value = data.funcao_id;
+            document.getElementById('edit_funcao_input').value = data.funcao_nome;
+            document.getElementById('edit_modelo').value = data.modelo_id;
+            document.getElementById('edit_modelo_input').value = data.modelo_nome;
+            document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;
+            document.getElementById('modalEditarAcesso').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar os dados do acesso.', 5000);
+        });
+}
+
+function fecharModalEditarAcesso() {
+    document.getElementById('modalEditarAcesso').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function filterOptions(fieldName) {
+    const input = document.getElementById(`${fieldName}_input`);
+    const dropdown = document.getElementById(`${fieldName}-dropdown`);
+    const hiddenInput = document.getElementById(fieldName);
+    const filter = input.value.toUpperCase();
+    const options = dropdown.getElementsByClassName('search-select-option');
+    let hasVisibleOption = false;
+    
+    for (let i = 0; i < options.length; i++) {
+        const txtValue = options[i].textContent || options[i].innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            options[i].classList.add('visible');
+            hasVisibleOption = true;
+        } else {
+            options[i].classList.remove('visible');
+        }
+    }
+    
+    if (hasVisibleOption && input.value !== '') {
+        dropdown.classList.add('show');
+    } else {
+        dropdown.classList.remove('show');
+    }
+    
+    for (let i = 0; i < options.length; i++) {
+        options[i].onclick = function() {
+            input.value = this.getAttribute('data-text');
+            hiddenInput.value = this.getAttribute('data-value');
+            dropdown.classList.remove('show');
+        };
+    }
+}
+
+// ============================================
+// FUNÇÕES DO MODAL DE UPLOAD
+// ============================================
+
+function abrirModalUpload() {
+    document.getElementById('modalUploadDocumento').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalUpload() {
+    document.getElementById('modalUploadDocumento').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    limparFormularioUpload();
+}
+
+function limparFormularioUpload() {
+    document.getElementById('formUploadDocumento').reset();
+    document.getElementById('uploadArea').style.display = 'flex';
+    document.getElementById('filePreview').style.display = 'none';
+}
+
+function mostrarPreviewArquivo(file) {
+    document.getElementById('uploadArea').style.display = 'none';
+    document.getElementById('filePreview').style.display = 'block';
+    
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatarTamanho(file.size);
+    
+    // Atualizar ícone baseado no tipo
+    const fileIcon = document.querySelector('.file-icon');
+    const extension = file.name.split('.').pop().toLowerCase();
+    
+    if (['pdf'].includes(extension)) {
+        fileIcon.className = 'fas fa-file-pdf file-icon';
+    } else if (['doc', 'docx'].includes(extension)) {
+        fileIcon.className = 'fas fa-file-word file-icon';
+    } else if (['xls', 'xlsx'].includes(extension)) {
+        fileIcon.className = 'fas fa-file-excel file-icon';
+    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
+        fileIcon.className = 'fas fa-file-image file-icon';
+    } else if (['zip', 'rar', '7z'].includes(extension)) {
+        fileIcon.className = 'fas fa-file-archive file-icon';
+    } else {
+        fileIcon.className = 'fas fa-file file-icon';
+    }
+}
+
+function removerArquivo() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadArea').style.display = 'flex';
+    document.getElementById('filePreview').style.display = 'none';
+}
+
+function formatarTamanho(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('.search-select-dropdown');
+    const inputs = document.querySelectorAll('.search-select-input');
+    let clickedInside = false;
+    
+    inputs.forEach(input => {
+        if (input.contains(event.target)) clickedInside = true;
+    });
+    
+    dropdowns.forEach(dropdown => {
+        if (dropdown.contains(event.target)) clickedInside = true;
+    });
+    
+    if (!clickedInside) {
+        dropdowns.forEach(dropdown => dropdown.classList.remove('show'));
+    }
+    
+    // Fechar modais ao clicar fora
+    const modalUpload = document.getElementById('modalUploadDocumento');
+    if (event.target === modalUpload) {
+        fecharModalUpload();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Upload Area - Click e Drag & Drop
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (uploadArea && fileInput) {
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                mostrarPreviewArquivo(files[0]);
+            }
+        });
+
+        // Change do input
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                mostrarPreviewArquivo(e.target.files[0]);
+            }
+        });
+    }
+    
+    // Mensagens do Django
     {% if messages %}
         {% for message in messages %}
             setTimeout(function() {
@@ -348,5 +543,4 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 });
 </script>
-
 {% endblock content %}

@@ -25,6 +25,7 @@
                                             <th>ID</th>
                                             <th>username</th>
                                             <th>email</th>
+                                            <th>ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -33,6 +34,13 @@
                                             <td>{{usuarios.id}}</td>
                                             <td>{{usuarios.username}}</td>
                                             <td>{{usuarios.email}}</td>
+                                            <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}')" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -82,7 +90,46 @@
     </div>
 </div>
 
-
+<!-- Modal de Edição -->
+<div class="modal fade" id="edicaoModal" tabindex="-1" aria-labelledby="edicaoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="edicaoModalLabel">Editar Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edicaoForm" method="post" action="{% url 'editar_usuario' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_id" name="id">
+                    
+                    <div class="mb-3">
+                        <label for="edit_username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="edit_username" name="username" placeholder="Digite o username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="edit_email" name="email" placeholder="Digite o Email" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_password" class="form-label">Nova Senha (deixe em branco para manter)</label>
+                        <input type="password" class="form-control" id="edit_password" name="password" placeholder="Digite a nova senha (opcional)">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i> Cancelar
+                </button>
+                <button type="submit" form="edicaoForm" class="btn btn-register">
+                    <i class="fas fa-save me-2"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
@@ -109,6 +156,20 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endfor %}
     {% endif %}
 });
+</script>
+
+<script>
+function editarUsuario(id, username, email) {
+    // Preenche os campos do modal com os dados do usuário
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_password').value = ''; // Limpa o campo de senha
+    
+    // Abre o modal
+    const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));
+    modal.show();
+}
 </script>
 
 {% endblock %}

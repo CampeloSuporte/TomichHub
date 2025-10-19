@@ -1824,3 +1824,196 @@ h4::before {
         min-width: auto;
     }
 }
+
+/* ====================================
+   SISTEMA DE ABAS PRINCIPAIS
+   ==================================== */
+
+.tab-content-main {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tab-content-main .card h5 {
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 800;
+}
+
+.tab-content-main .card h5::before {
+    content: '> ';
+    color: var(--accent-cyan);
+    margin-right: 5px;
+}
+
+.tab-content-main .text-center i {
+    animation: pulse-icon 3s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.05);
+    }
+}
+
+
+
+/* Estilos adicionais para o Upload */
+.upload-area {
+    border: 2px dashed rgba(0, 255, 136, 0.3);
+    border-radius: 8px;
+    padding: 50px 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(0, 26, 13, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.upload-area:hover,
+.upload-area.drag-over {
+    border-color: var(--primary-green);
+    background: rgba(0, 255, 136, 0.05);
+    box-shadow: 0 0 20px var(--glow-green);
+}
+
+.upload-icon {
+    font-size: 64px;
+    color: var(--primary-green);
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover .upload-icon {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.upload-text {
+    font-family: 'Courier New', monospace;
+}
+
+.upload-title {
+    color: var(--primary-green);
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.upload-subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Preview do Arquivo */
+.file-preview {
+    background: rgba(0, 26, 13, 0.3);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.file-icon {
+    font-size: 36px;
+    color: var(--accent-cyan);
+}
+
+.file-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.file-name {
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    word-break: break-all;
+}
+
+.file-size {
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.btn-remove-file {
+    background: rgba(255, 59, 48, 0.1);
+    border: 1px solid var(--error-red);
+    color: var(--error-red);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-remove-file:hover {
+    background: rgba(255, 59, 48, 0.2);
+    transform: rotate(90deg);
+}
+
+.upload-progress {
+    margin-top: 15px;
+    height: 6px;
+    background: rgba(0, 26, 13, 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--primary-green);
+    box-shadow: 0 0 10px var(--glow-green);
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* Botões de Ação na Tabela */
+.btn-view:hover {
+    background: rgba(0, 217, 255, 0.1);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 15px var(--glow-cyan);
+}
+
+.btn-download:hover {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+    box-shadow: 0 0 15px var(--glow-green);
+}

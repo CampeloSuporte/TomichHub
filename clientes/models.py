@@ -35,7 +35,7 @@ class Acesso(models.Model):
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='acessos')
     funcao = models.ForeignKey('funcao_equipamento.Funcao_equipamento', on_delete=models.SET_NULL, null=True, blank=True)
     modelo = models.ForeignKey('modelo_equipamento.Modelo_equipamento', on_delete=models.SET_NULL, null=True, blank=True)
-    tipo = models.CharField(max_length=250, unique=True, null=False, blank=False) 
+    tipo = models.CharField(max_length=250, null=False, blank=False) 
     host = models.GenericIPAddressField()
     host_ipv6 = models.GenericIPAddressField(null=True, blank=True)
     porta = models.PositiveIntegerField()
@@ -50,6 +50,17 @@ class Acesso(models.Model):
 
     def __str__(self):
         return f"{self.tipo} - {self.host}:{self.porta} ({self.cliente.nome_empresa})"
+
+
+
+class Documento(models.Model):
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='documentos')
+    nome = models.CharField(max_length=255)
+    arquivo = models.FileField(upload_to='documentos/')
+    data_upload = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
 
 
 
