@@ -430,3 +430,544 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
+
+// chamados.js - Sistema de Gerenciamento de Chamados
+
+// Variável global para armazenar o chamado atual
+let chamadoAtual = null;
+
+// ============================================
+// FUNÇÕES DE CARREGAMENTO
+// ============================================
+
+/**
+ * Carregar chamados do cliente
+ */
+function carregarChamados() {
+    const clienteId = document.querySelector('[name="cliente"]')?.value;
+    
+    if (!clienteId) {
+        console.error('ID do cliente não encontrado');
+        return;
+    }
+    
+    fetch(`/clientes/chamados/listar/?id=${clienteId}`)
+        .then(response => response.json())
+        .then(data => {
+            renderizarChamados(data.chamados);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar chamados:', error);
+            document.getElementById('listaChamados').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Erro ao carregar chamados</p>
+                    <button class="btn btn-primary mt-3" onclick="carregarChamados()">
+                        <i class="fas fa-sync-alt me-2"></i> Tentar Novamente
+                    </button>
+                </div>
+            `;
+        });
+}
+
+/**
+ * Renderizar lista de chamados
+ */
+function renderizarChamados(chamados) {
+    const container = document.getElementById('listaChamados');
+    
+    if (!chamados || chamados.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-ticket-alt" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                <p class="mt-3 text-muted">Nenhum chamado cadastrado</p>
+                <button class="btn btn-primary mt-3" onclick="abrirModalCadastrarChamado()">
+                    <i class="fas fa-plus me-2"></i> Criar Primeiro Chamado
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    chamados.forEach(chamado => {
+        const prioridadeClass = chamado.prioridade.toLowerCase().replace(' ', '-');
+        const statusClass = chamado.status.toLowerCase().replace(' ', '-');
+        
+        html += `
+            <div class="chamado-card ${prioridadeClass}" onclick="abrirModalVisualizarChamado(${chamado.id})">
+                <div class="chamado-header">
+                    <div>
+                        <div class="chamado-numero">#${chamado.id}</div>
+                        <div class="chamado-titulo">${escapeHtml(chamado.titulo)}</div>
+                    </div>
+                    <div class="chamado-badges">
+                        <span class="badge-custom badge-prioridade ${prioridadeClass}">${chamado.prioridade}</span>
+                        <span class="badge-custom badge-status ${statusClass}">${chamado.status}</span>
+                    </div>
+                </div>
+                
+                <div class="chamado-info">
+                    <div class="chamado-info-item">
+                        <span class="chamado-info-label">Categoria</span>
+                        <span class="chamado-info-value">${chamado.categoria || 'Não definida'}</span>
+                    </div>
+                    <div class="chamado-info-item">
+                        <span class="chamado-info-label">Departamento</span>
+                        <span class="chamado-info-value">${chamado.departamento}</span>
+                    </div>
+                    <div class="chamado-info-item">
+                        <span class="chamado-info-label">Responsável</span>
+                        <span class="chamado-info-value">${chamado.responsavel}</span>
+                    </div>
+                    <div class="chamado-info-item">
+                        <span class="chamado-info-label">Data</span>
+                        <span class="chamado-info-value">${chamado.data_criacao}</span>
+                    </div>
+                    <div class="chamado-info-item">
+                        <span class="chamado-info-label">Comentários</span>
+                        <span class="chamado-info-value">
+                            <i class="fas fa-comments"></i> ${chamado.total_comentarios}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="chamado-actions" onclick="event.stopPropagation()">
+                    <button class="btn-action-chamado" onclick="abrirModalVisualizarChamado(${chamado.id})">
+                        <i class="fas fa-eye me-1"></i> Visualizar
+                    </button>
+                    <form method="POST" action="/clientes/chamados/deletar/${chamado.id}/" style="display: inline;" 
+                          onsubmit="return confirm('Tem certeza que deseja excluir o chamado #${chamado.id}?')">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+                        <button type="submit" class="btn-action-chamado btn-delete-chamado">
+                            <i class="fas fa-trash me-1"></i> Excluir
+                        </button>
+                    </form>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// ============================================
+// MODAL CADASTRAR CHAMADO
+// ============================================
+
+function abrirModalCadastrarChamado() {
+    document.getElementById('modalCadastrarChamado').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalCadastrarChamado() {
+    document.getElementById('modalCadastrarChamado').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('formCadastrarChamado').reset();
+    document.getElementById('categoria').value = '';
+    document.getElementById('categoria_input').value = '';
+    document.getElementById('responsavel').value = '';
+    document.getElementById('responsavel_input').value = '';
+}
+
+// ============================================
+// MODAL ADICIONAR CATEGORIA
+// ============================================
+
+function abrirModalAdicionarCategoria() {
+    document.getElementById('modalAdicionarCategoria').style.display = 'flex';
+}
+
+function fecharModalAdicionarCategoria() {
+    document.getElementById('modalAdicionarCategoria').style.display = 'none';
+    document.getElementById('nova_categoria_nome').value = '';
+    document.getElementById('nova_categoria_descricao').value = '';
+}
+
+function salvarNovaCategoria() {
+    const nome = document.getElementById('nova_categoria_nome').value.trim();
+    const descricao = document.getElementById('nova_categoria_descricao').value.trim();
+    
+    if (!nome) {
+        showError('ERRO', 'Digite o nome da categoria', 3000);
+        return;
+    }
+    
+    fetch('/clientes/categorias/cadastrar/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `nome=${encodeURIComponent(nome)}&descricao=${encodeURIComponent(descricao)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showError('ERRO', data.error, 4000);
+        } else {
+            showSuccess('SUCESSO', data.message, 3000);
+            fecharModalAdicionarCategoria();
+            // Adicionar a categoria ao campo de seleção
+            document.getElementById('categoria').value = data.id;
+            document.getElementById('categoria_input').value = data.nome;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showError('ERRO', 'Erro ao cadastrar categoria', 3000);
+    });
+}
+
+// ============================================
+// BUSCA DE CATEGORIAS
+// ============================================
+
+function buscarCategorias(query, prefix = '') {
+    const inputId = prefix ? `${prefix}_categoria_input` : 'categoria_input';
+    const dropdownId = prefix ? `${prefix}_categoria-dropdown` : 'categoria-dropdown';
+    const hiddenId = prefix ? `${prefix}_categoria` : 'categoria';
+    
+    const dropdown = document.getElementById(dropdownId);
+    
+    if (query.length < 1) {
+        dropdown.classList.remove('show');
+        return;
+    }
+    
+    fetch(`/clientes/categorias/buscar/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            let html = '';
+            
+            if (data.results.length === 0) {
+                html = '<div class="no-results">Nenhuma categoria encontrada</div>';
+            } else {
+                data.results.forEach(cat => {
+                    html += `
+                        <div class="search-select-option visible" 
+                             data-value="${cat.id}" 
+                             data-text="${escapeHtml(cat.nome)}"
+                             onclick="selecionarOpcao('${prefix ? prefix + '_' : ''}categoria', ${cat.id}, '${escapeHtml(cat.nome)}')">
+                            ${escapeHtml(cat.nome)}
+                        </div>
+                    `;
+                });
+            }
+            
+            dropdown.innerHTML = html;
+            dropdown.classList.add('show');
+        })
+        .catch(error => console.error('Erro:', error));
+}
+
+// ============================================
+// BUSCA DE USUÁRIOS
+// ============================================
+
+function buscarUsuarios(query, prefix = '') {
+    const dropdownId = prefix ? `${prefix}_responsavel-dropdown` : 'responsavel-dropdown';
+    const dropdown = document.getElementById(dropdownId);
+    
+    if (query.length < 2) {
+        dropdown.classList.remove('show');
+        return;
+    }
+    
+    fetch(`/clientes/usuarios/buscar/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            let html = '';
+            
+            if (data.results.length === 0) {
+                html = '<div class="no-results">Nenhum usuário encontrado</div>';
+            } else {
+                data.results.forEach(user => {
+                    html += `
+                        <div class="search-select-option visible" 
+                             data-value="${user.id}" 
+                             data-text="${escapeHtml(user.nome)}"
+                             onclick="selecionarOpcao('${prefix ? prefix + '_' : ''}responsavel', ${user.id}, '${escapeHtml(user.nome)}')">
+                            <strong>${escapeHtml(user.nome)}</strong> 
+                            <small style="color: var(--text-muted);">(@${escapeHtml(user.username)})</small>
+                        </div>
+                    `;
+                });
+            }
+            
+            dropdown.innerHTML = html;
+            dropdown.classList.add('show');
+        })
+        .catch(error => console.error('Erro:', error));
+}
+
+function selecionarOpcao(campo, valor, texto) {
+    document.getElementById(campo).value = valor;
+    document.getElementById(campo + '_input').value = texto;
+    document.getElementById(campo + '-dropdown').classList.remove('show');
+}
+
+// ============================================
+// MODAL VISUALIZAR/EDITAR CHAMADO
+// ============================================
+
+function abrirModalVisualizarChamado(chamadoId) {
+    fetch(`/clientes/chamados/buscar/${chamadoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            chamadoAtual = data;
+            
+            document.getElementById('view_chamado_id').value = data.id;
+            document.getElementById('view_chamado_numero').textContent = data.id;
+            document.getElementById('view_titulo').value = data.titulo;
+            document.getElementById('view_descricao').value = data.descricao;
+            document.getElementById('view_status').value = data.status;
+            document.getElementById('view_prioridade').value = data.prioridade;
+            document.getElementById('view_departamento').value = data.departamento;
+            document.getElementById('view_cliente').textContent = data.cliente_nome;
+            document.getElementById('view_data_criacao').textContent = data.data_criacao;
+            
+            document.getElementById('view_categoria').value = data.categoria_id || '';
+            document.getElementById('view_categoria_input').value = data.categoria_nome || '';
+            document.getElementById('view_responsavel').value = data.responsavel_id || '';
+            document.getElementById('view_responsavel_input').value = data.responsavel_nome || '';
+            
+            // Renderizar comentários
+            renderizarComentarios(data.comentarios);
+            document.getElementById('badge_comentarios').textContent = data.comentarios.length;
+            
+            document.getElementById('modalVisualizarChamado').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Voltar para aba de detalhes
+            document.querySelectorAll('#modalVisualizarChamado .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector('#modalVisualizarChamado .nav-link').classList.add('active');
+            document.getElementById('aba-detalhes').style.display = 'block';
+            document.getElementById('aba-comentarios').style.display = 'none';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar o chamado', 3000);
+        });
+}
+
+function fecharModalVisualizarChamado() {
+    document.getElementById('modalVisualizarChamado').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('novo_comentario').value = '';
+    document.getElementById('comentario_interno').checked = false;
+    chamadoAtual = null;
+}
+
+function renderizarComentarios(comentarios) {
+    const container = document.getElementById('lista-comentarios');
+    
+    if (comentarios.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-comments" style="font-size: 48px; color: var(--text-muted); opacity: 0.3;"></i>
+                <p class="mt-3 text-muted" style="font-size: 13px;">Nenhum comentário ainda</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    comentarios.forEach(com => {
+        html += `
+            <div class="comentario-item ${com.is_internal ? 'interno' : ''}">
+                <div class="comentario-header">
+                    <span class="comentario-autor">
+                        ${escapeHtml(com.usuario)}
+                        ${com.is_internal ? '<span class="badge-interno">Interno</span>' : ''}
+                    </span>
+                    <span class="comentario-data">${com.data}</span>
+                </div>
+                <div class="comentario-texto">${escapeHtml(com.comentario)}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function salvarEdicaoChamado() {
+    if (!chamadoAtual) return;
+    
+    const form = document.getElementById('formEditarChamado');
+    const formData = new FormData(form);
+    
+    // Adicionar campos hidden
+    formData.append('titulo', document.getElementById('view_titulo').value);
+    formData.append('descricao', document.getElementById('view_descricao').value);
+    formData.append('status', document.getElementById('view_status').value);
+    formData.append('prioridade', document.getElementById('view_prioridade').value);
+    formData.append('departamento', document.getElementById('view_departamento').value);
+    formData.append('categoria', document.getElementById('view_categoria').value);
+    formData.append('responsavel', document.getElementById('view_responsavel').value);
+    
+    fetch(`/clientes/chamados/editar/${chamadoAtual.id}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (response.redirected) {
+            showSuccess('SUCESSO', 'Chamado atualizado com sucesso!', 3000);
+            fecharModalVisualizarChamado();
+            carregarChamados();
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showError('ERRO', 'Erro ao salvar alterações', 3000);
+    });
+}
+
+function adicionarComentario() {
+    if (!chamadoAtual) return;
+    
+    const comentario = document.getElementById('novo_comentario').value.trim();
+    const isInternal = document.getElementById('comentario_interno').checked;
+    
+    if (!comentario) {
+        showError('ERRO', 'Digite um comentário', 3000);
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('comentario', comentario);
+    formData.append('is_internal', isInternal);
+    
+    fetch(`/clientes/chamados/${chamadoAtual.id}/comentario/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            showSuccess('SUCESSO', 'Comentário adicionado', 3000);
+            document.getElementById('novo_comentario').value = '';
+            document.getElementById('comentario_interno').checked = false;
+            // Recarregar o chamado para atualizar os comentários
+            abrirModalVisualizarChamado(chamadoAtual.id);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showError('ERRO', 'Erro ao adicionar comentário', 3000);
+    });
+}
+
+function trocarAbaModal(event, aba) {
+    event.preventDefault();
+    
+    // Esconder todas as abas
+    document.getElementById('aba-detalhes').style.display = 'none';
+    document.getElementById('aba-comentarios').style.display = 'none';
+    
+    // Remover classe active de todos os links
+    event.target.closest('.nav-tabs').querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    // Mostrar aba selecionada
+    document.getElementById('aba-' + aba).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Observer para detectar quando a aba de chamados é aberta
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            const tabChamados = document.getElementById('tab-chamados');
+            if (tabChamados && tabChamados.style.display === 'block') {
+                carregarChamados();
+            }
+        });
+    });
+    
+    const tabChamados = document.getElementById('tab-chamados');
+    if (tabChamados) {
+        observer.observe(tabChamados, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+    }
+    
+    // Fechar dropdowns ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.custom-search-select')) {
+            document.querySelectorAll('.search-select-dropdown').forEach(d => {
+                d.classList.remove('show');
+            });
+        }
+        
+        // Fechar modais ao clicar no overlay
+        const modalCadastrar = document.getElementById('modalCadastrarChamado');
+        if (e.target === modalCadastrar) {
+            fecharModalCadastrarChamado();
+        }
+        
+        const modalCategoria = document.getElementById('modalAdicionarCategoria');
+        if (e.target === modalCategoria) {
+            fecharModalAdicionarCategoria();
+        }
+        
+        const modalVisualizar = document.getElementById('modalVisualizarChamado');
+        if (e.target === modalVisualizar) {
+            fecharModalVisualizarChamado();
+        }
+    });
+    
+    // ESC fecha modais
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            fecharModalCadastrarChamado();
+            fecharModalAdicionarCategoria();
+            fecharModalVisualizarChamado();
+        }
+    });
+});

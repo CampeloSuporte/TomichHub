@@ -22,4 +22,22 @@ urlpatterns = [
     # URLs Topologia
     path('topologia/upload/', views.upload_topologia, name='upload_topologia'),
     path('topologia/deletar/<int:topologia_id>/', views.deletar_topologia, name='deletar_topologia'),
+
+    # ... suas URLs existentes ...
+    
+    # Categorias
+    path('categorias/cadastrar/', views.cadastrar_categoria, name='cadastrar_categoria'),
+    path('categorias/buscar/', views.buscar_categorias, name='buscar_categorias'),
+    
+    # Chamados
+    path('chamados/listar/', views.listar_chamados_cliente, name='listar_chamados_cliente'),
+    path('chamados/cadastrar/', views.cadastrar_chamado, name='cadastrar_chamado'),
+    path('chamados/buscar/<int:chamado_id>/', views.buscar_chamado, name='buscar_chamado'),
+    path('chamados/editar/<int:chamado_id>/', views.editar_chamado, name='editar_chamado'),
+    path('chamados/deletar/<int:chamado_id>/', views.deletar_chamado, name='deletar_chamado'),
+    path('chamados/<int:chamado_id>/comentario/', views.adicionar_comentario, name='adicionar_comentario'),
+    
+    # Buscas
+    path('usuarios/buscar/', views.buscar_usuarios, name='buscar_usuarios'),
+    path('clientes/buscar-chamado/', views.buscar_clientes_chamado, name='buscar_clientes_chamado'),
 ]

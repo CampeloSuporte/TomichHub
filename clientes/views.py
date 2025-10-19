@@ -6,7 +6,7 @@ from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado
 
 
 @login_required(login_url='login')
@@ -470,3 +470,272 @@ def editar_vpn(request, vpn_id):
             return redirect(f"{reverse('listar_clientes')}?id={vpn.cliente.id}")
     
     return redirect('listar_clientes')
+
+
+
+
+    # ========================================
+# VIEWS PARA CATEGORIAS
+# ========================================
+
+@login_required(login_url='login')
+def cadastrar_categoria(request):
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        descricao = request.POST.get('descricao', '')
+
+        if Categoria.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({'error': 'Categoria já existe'}, status=400)
+
+        categoria = Categoria.objects.create(
+            nome=nome,
+            descricao=descricao
+        )
+        
+        return JsonResponse({
+            'id': categoria.id,
+            'nome': categoria.nome,
+            'message': 'Categoria cadastrada com sucesso!'
+        })
+    
+    return JsonResponse({'error': 'Método não permitido'}, status=405)
+
+
+@login_required(login_url='login')
+def buscar_categorias(request):
+    query = request.GET.get('q', '')
+    categorias = Categoria.objects.filter(nome__icontains=query)[:10]
+    
+    results = [{'id': cat.id, 'nome': cat.nome} for cat in categorias]
+    return JsonResponse({'results': results})
+
+
+# ========================================
+# VIEWS PARA CHAMADOS
+# ========================================
+
+@login_required(login_url='login')
+def listar_chamados_cliente(request):
+    cliente_id = request.GET.get('id')
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    
+    chamados = Chamado.objects.filter(cliente=cliente).select_related(
+        'categoria', 'responsavel', 'criado_por'
+    ).prefetch_related('comentarios')
+    
+    return JsonResponse({
+        'chamados': [{
+            'id': chamado.id,
+            'titulo': chamado.titulo,
+            'categoria': chamado.categoria.nome if chamado.categoria else '',
+            'prioridade': chamado.get_prioridade_display(),
+            'status': chamado.get_status_display(),
+            'departamento': chamado.get_departamento_display(),
+            'responsavel': chamado.responsavel.get_full_name() or chamado.responsavel.username if chamado.responsavel else 'Não atribuído',
+            'data_criacao': chamado.data_criacao.strftime('%d/%m/%Y %H:%M'),
+            'total_comentarios': chamado.comentarios.count()
+        } for chamado in chamados]
+    })
+
+
+@login_required(login_url='login')
+def cadastrar_chamado(request):
+    if request.method == 'POST':
+        try:
+            cliente_id = request.POST.get('cliente')
+            categoria_id = request.POST.get('categoria')
+            prioridade = request.POST.get('prioridade')
+            departamento = request.POST.get('departamento')
+            responsavel_id = request.POST.get('responsavel')
+            titulo = request.POST.get('titulo')
+            descricao = request.POST.get('descricao')
+            comentario_inicial = request.POST.get('comentario', '')
+
+            # Validações
+            if not all([cliente_id, prioridade, departamento, titulo, descricao]):
+                messages.error(request, 'Preencha todos os campos obrigatórios.')
+                return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+            # Criar chamado
+            chamado = Chamado.objects.create(
+                cliente_id=cliente_id,
+                categoria_id=categoria_id if categoria_id else None,
+                prioridade=prioridade,
+                departamento=departamento,
+                responsavel_id=responsavel_id if responsavel_id else None,
+                criado_por=request.user,
+                titulo=titulo,
+                descricao=descricao
+            )
+
+            # Adicionar comentário inicial se houver
+            if comentario_inicial:
+                ComentarioChamado.objects.create(
+                    chamado=chamado,
+                    usuario=request.user,
+                    comentario=comentario_inicial
+                )
+
+            messages.success(request, f'Chamado #{chamado.id} cadastrado com sucesso!')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+        except Exception as e:
+            messages.error(request, f'Erro ao cadastrar chamado: {str(e)}')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def buscar_chamado(request, chamado_id):
+    try:
+        chamado = Chamado.objects.select_related(
+            'categoria', 'cliente', 'responsavel', 'criado_por'
+        ).prefetch_related('comentarios__usuario').get(id=chamado_id)
+        
+        data = {
+            'id': chamado.id,
+            'titulo': chamado.titulo,
+            'descricao': chamado.descricao,
+            'categoria_id': chamado.categoria.id if chamado.categoria else '',
+            'categoria_nome': chamado.categoria.nome if chamado.categoria else '',
+            'prioridade': chamado.prioridade,
+            'departamento': chamado.departamento,
+            'status': chamado.status,
+            'responsavel_id': chamado.responsavel.id if chamado.responsavel else '',
+            'responsavel_nome': chamado.responsavel.get_full_name() or chamado.responsavel.username if chamado.responsavel else '',
+            'cliente_id': chamado.cliente.id,
+            'cliente_nome': chamado.cliente.nome_empresa,
+            'data_criacao': chamado.data_criacao.strftime('%d/%m/%Y %H:%M'),
+            'comentarios': [{
+                'id': comentario.id,
+                'usuario': comentario.usuario.get_full_name() or comentario.usuario.username,
+                'comentario': comentario.comentario,
+                'data': comentario.data_criacao.strftime('%d/%m/%Y %H:%M'),
+                'is_internal': comentario.is_internal
+            } for comentario in chamado.comentarios.all()]
+        }
+        
+        return JsonResponse(data)
+        
+    except Chamado.DoesNotExist:
+        return JsonResponse({'error': 'Chamado não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def editar_chamado(request, chamado_id):
+    if request.method == 'POST':
+        try:
+            chamado = get_object_or_404(Chamado, id=chamado_id)
+            
+            chamado.titulo = request.POST.get('titulo')
+            chamado.descricao = request.POST.get('descricao')
+            chamado.prioridade = request.POST.get('prioridade')
+            chamado.departamento = request.POST.get('departamento')
+            chamado.status = request.POST.get('status')
+            
+            categoria_id = request.POST.get('categoria')
+            chamado.categoria_id = categoria_id if categoria_id else None
+            
+            responsavel_id = request.POST.get('responsavel')
+            chamado.responsavel_id = responsavel_id if responsavel_id else None
+            
+            chamado.save()
+            
+            # Adicionar comentário de atualização se houver
+            comentario_novo = request.POST.get('comentario_novo')
+            if comentario_novo:
+                ComentarioChamado.objects.create(
+                    chamado=chamado,
+                    usuario=request.user,
+                    comentario=comentario_novo
+                )
+            
+            messages.success(request, f'Chamado #{chamado.id} atualizado com sucesso!')
+            return redirect(f"{reverse('listar_clientes')}?id={chamado.cliente.id}")
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao editar chamado: {str(e)}')
+            return redirect('listar_clientes')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def deletar_chamado(request, chamado_id):
+    if request.method == 'POST':
+        chamado = get_object_or_404(Chamado, id=chamado_id)
+        cliente_id = chamado.cliente.id
+        chamado_numero = chamado.id
+        
+        chamado.delete()
+        
+        messages.success(request, f'Chamado #{chamado_numero} excluído com sucesso!')
+        return redirect(f"{reverse('listar_clientes')}?id={cliente_id}")
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def adicionar_comentario(request, chamado_id):
+    if request.method == 'POST':
+        try:
+            chamado = get_object_or_404(Chamado, id=chamado_id)
+            comentario_texto = request.POST.get('comentario')
+            is_internal = request.POST.get('is_internal') == 'true'
+            
+            if comentario_texto:
+                ComentarioChamado.objects.create(
+                    chamado=chamado,
+                    usuario=request.user,
+                    comentario=comentario_texto,
+                    is_internal=is_internal
+                )
+                messages.success(request, 'Comentário adicionado com sucesso!')
+            else:
+                messages.error(request, 'O comentário não pode estar vazio.')
+                
+            return redirect(f"{reverse('listar_clientes')}?id={chamado.cliente.id}")
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao adicionar comentário: {str(e)}')
+            return redirect('listar_clientes')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def buscar_usuarios(request):
+    query = request.GET.get('q', '')
+    usuarios = User.objects.filter(
+        models.Q(username__icontains=query) |
+        models.Q(first_name__icontains=query) |
+        models.Q(last_name__icontains=query)
+    )[:10]
+    
+    results = [{
+        'id': user.id,
+        'nome': user.get_full_name() or user.username,
+        'username': user.username
+    } for user in usuarios]
+    
+    return JsonResponse({'results': results})
+
+
+@login_required(login_url='login')
+def buscar_clientes_chamado(request):
+    query = request.GET.get('q', '')
+    clientes = Cliente.objects.filter(
+        models.Q(nome_empresa__icontains=query) |
+        models.Q(cnpj__icontains=query)
+    )[:10]
+    
+    results = [{
+        'id': cliente.id,
+        'nome': cliente.nome_empresa,
+        'cnpj': cliente.cnpj
+    } for cliente in clientes]
+    
+    return JsonResponse({'results': results})

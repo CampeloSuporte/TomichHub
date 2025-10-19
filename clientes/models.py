@@ -84,3 +84,87 @@ class ImagemTopologia(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+
+# Adicione estas classes ao final do seu models.py existente
+
+class Categoria(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    descricao = models.TextField(blank=True, null=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
+
+    class Meta:
+        verbose_name = 'Categoria'
+        verbose_name_plural = 'Categorias'
+        ordering = ['nome']
+
+
+class Chamado(models.Model):
+    class PrioridadeChoices(models.TextChoices):
+        BAIXA = 'BAIXA', 'Baixa'
+        NORMAL = 'NORMAL', 'Normal'
+        ALTA = 'ALTA', 'Alta'
+        URGENTE = 'URGENTE', 'Urgente'
+
+    class DepartamentoChoices(models.TextChoices):
+        SUPORTE_REDES = 'SUPORTE_REDES', 'Suporte de Redes'
+        SERVIDORES = 'SERVIDORES', 'Servidores'
+        MONITORAMENTO = 'MONITORAMENTO', 'Monitoramento'
+
+    class StatusChoices(models.TextChoices):
+        ABERTO = 'ABERTO', 'Aberto'
+        EM_ANDAMENTO = 'EM_ANDAMENTO', 'Em Andamento'
+        AGUARDANDO = 'AGUARDANDO', 'Aguardando'
+        RESOLVIDO = 'RESOLVIDO', 'Resolvido'
+        FECHADO = 'FECHADO', 'Fechado'
+
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='chamados')
+    categoria = models.ForeignKey('Categoria', on_delete=models.SET_NULL, null=True, related_name='chamados')
+    prioridade = models.CharField(
+        max_length=20,
+        choices=PrioridadeChoices.choices,
+        default=PrioridadeChoices.NORMAL
+    )
+    departamento = models.CharField(
+        max_length=30,
+        choices=DepartamentoChoices.choices
+    )
+    responsavel = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='chamados_responsavel')
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='chamados_criados')
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField()
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.ABERTO
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"#{self.id} - {self.titulo} - {self.cliente.nome_empresa}"
+
+    class Meta:
+        verbose_name = 'Chamado'
+        verbose_name_plural = 'Chamados'
+        ordering = ['-data_criacao']
+
+
+class ComentarioChamado(models.Model):
+    chamado = models.ForeignKey('Chamado', on_delete=models.CASCADE, related_name='comentarios')
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    comentario = models.TextField()
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    is_internal = models.BooleanField(default=False)  # Para comentários internos
+
+    def __str__(self):
+        return f"Comentário de {self.usuario} em {self.chamado}"
+
+    class Meta:
+        verbose_name = 'Comentário'
+        verbose_name_plural = 'Comentários'
+        ordering = ['data_criacao']
