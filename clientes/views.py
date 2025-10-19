@@ -1,14 +1,13 @@
 from django.shortcuts import render,redirect, get_object_or_404
-from . models import Cliente
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from . models import Acesso
 from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Documento
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia
+
 
 @login_required(login_url='login')
 def listar_clientes(request):
@@ -27,8 +26,12 @@ def listar_clientes(request):
     else:
         acessos = cliente.acessos.all()
 
-    # ✅ ADICIONE ESTA LINHA - Busca os documentos do cliente
+    # Busca os documentos do cliente
     documentos = Documento.objects.filter(cliente=cliente).order_by('-data_upload')
+    
+    # ✅ ADICIONE ESTAS LINHAS - Busca arquivos VPN e Topologias
+    arquivos_vpn = ArquivoVPN.objects.filter(cliente=cliente).order_by('-data_upload')
+    imagens_topologia = ImagemTopologia.objects.filter(cliente=cliente).order_by('-data_upload')
 
     return render(request, 'listar.html', {
         'cliente': cliente,
@@ -37,9 +40,10 @@ def listar_clientes(request):
         'funcao_selecionada': funcao_selecionada,
         'modelos': modelos,
         'funcao_equipamentos': funcao_equipamentos,
-        'documentos': documentos,  # ✅ ADICIONE ESTA LINHA
+        'documentos': documentos,
+        'arquivos_vpn': arquivos_vpn,  # ✅ ADICIONE ESTA LINHA
+        'imagens_topologia': imagens_topologia,  # ✅ ADICIONE ESTA LINHA
     })
-
 
 @login_required(login_url='login')
 def cadastrar_cliente(request):
@@ -333,3 +337,136 @@ def deletar_documento(request, documento_id):
     documento.delete()
     messages.success(request, f'Documento "{documento.nome}" excluído com sucesso!')
     return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+
+    # ========================================
+# VIEWS PARA VPN
+# ========================================
+
+@login_required(login_url='login')
+def upload_vpn(request):
+    if request.method == 'POST':
+        cliente_id = request.POST.get('cliente')
+        arquivo = request.FILES.get('arquivo')
+        nome = arquivo.name if arquivo else None
+        usuario = request.POST.get('usuario')
+        senha = request.POST.get('senha')
+        private_key = request.POST.get('private_key')
+
+        if not arquivo:
+            messages.error(request, "Nenhum arquivo selecionado.")
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+        ArquivoVPN.objects.create(
+            cliente_id=cliente_id,
+            nome=nome,
+            arquivo=arquivo,
+            usuario=usuario,
+            senha=senha,
+            private_key=private_key
+        )
+        messages.success(request, f'Arquivo VPN "{nome}" enviado com sucesso!')
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+    else:
+        return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def deletar_vpn(request, vpn_id):
+    vpn = get_object_or_404(ArquivoVPN, id=vpn_id)
+    cliente_id = vpn.cliente.id
+
+    # Deleta o arquivo do disco também
+    if vpn.arquivo and vpn.arquivo.storage.exists(vpn.arquivo.name):
+        vpn.arquivo.delete(save=False)
+
+    vpn.delete()
+    messages.success(request, f'Arquivo VPN "{vpn.nome}" excluído com sucesso!')
+    return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+
+# ========================================
+# VIEWS PARA TOPOLOGIA
+# ========================================
+
+@login_required(login_url='login')
+def upload_topologia(request):
+    if request.method == 'POST':
+        cliente_id = request.POST.get('cliente')
+        imagem = request.FILES.get('imagem')
+        nome = imagem.name if imagem else None
+
+        if not imagem:
+            messages.error(request, "Nenhuma imagem selecionada.")
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+        # Validar se é uma imagem
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
+        if not any(nome.lower().endswith(ext) for ext in valid_extensions):
+            messages.error(request, "Apenas imagens são permitidas (JPG, PNG, GIF, SVG, WEBP).")
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+        ImagemTopologia.objects.create(
+            cliente_id=cliente_id,
+            nome=nome,
+            imagem=imagem
+        )
+        messages.success(request, f'Imagem de topologia "{nome}" enviada com sucesso!')
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+    else:
+        return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def deletar_topologia(request, topologia_id):
+    topologia = get_object_or_404(ImagemTopologia, id=topologia_id)
+    cliente_id = topologia.cliente.id
+
+    # Deleta a imagem do disco também
+    if topologia.imagem and topologia.imagem.storage.exists(topologia.imagem.name):
+        topologia.imagem.delete(save=False)
+
+    topologia.delete()
+    messages.success(request, f'Imagem de topologia "{topologia.nome}" excluída com sucesso!')
+    return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+@login_required(login_url='login')
+def buscar_vpn(request, vpn_id):
+    try:
+        vpn = ArquivoVPN.objects.get(id=vpn_id)
+        
+        data = {
+            'id': vpn.id,
+            'nome': vpn.nome,
+            'usuario': vpn.usuario or '',
+            'senha': vpn.senha or '',
+            'private_key': vpn.private_key or '',
+        }
+        
+        return JsonResponse(data)
+        
+    except ArquivoVPN.DoesNotExist:
+        return JsonResponse({'error': 'VPN não encontrada'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def editar_vpn(request, vpn_id):
+    if request.method == 'POST':
+        try:
+            vpn = get_object_or_404(ArquivoVPN, id=vpn_id)
+            
+            vpn.usuario = request.POST.get('usuario')
+            vpn.senha = request.POST.get('senha')
+            vpn.private_key = request.POST.get('private_key')
+            
+            vpn.save()
+            
+            messages.success(request, 'Configuração VPN atualizada com sucesso!')
+            return redirect(f"{reverse('listar_clientes')}?id={vpn.cliente.id}")
+        except Exception as e:
+            messages.error(request, f'Erro ao editar VPN: {str(e)}')
+            return redirect(f"{reverse('listar_clientes')}?id={vpn.cliente.id}")
+    
+    return redirect('listar_clientes')

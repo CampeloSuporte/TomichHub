@@ -184,31 +184,213 @@
                 </div>
             </div></div>
         </div>
-
+        <!-- ABA VPN -->
         <div id="tab-vpn" class="tab-content-main" style="display: none;">
-            <div class="card"><div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="mb-0">Configurações VPN</h5>
-                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Adicionar VPN</button>
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">Configurações VPN</h5>
+                        <button class="btn btn-sm btn-primary" onclick="abrirModalUploadVPN()">
+                            <i class="fas fa-upload me-1"></i> Adicionar VPN
+                        </button>
+                    </div>
+                    
+                    {% if arquivos_vpn %}
+                    <div class="row">
+                        {% for vpn in arquivos_vpn %}
+                        <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="server-header flex-column align-items-start">
+                                        <div class="d-flex align-items-center justify-content-between w-100 mb-3">
+                                            <h5 class="mb-0">{{ vpn.nome }}</h5>
+                                        </div>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <a href="{{ vpn.arquivo.url }}" target="_blank" class="icon-btn btn-sm" title="Visualizar">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ vpn.arquivo.url }}" download class="icon-btn btn-sm" title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <button class="icon-btn btn-sm" onclick="abrirModalEditarVPN({{ vpn.id }})" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" action="{% url 'deletar_vpn' vpn.id %}" 
+                                                style="display: inline;" 
+                                                onsubmit="return confirm('Tem certeza que deseja excluir: {{ vpn.nome }}?')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="icon-btn btn-sm" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="info-row">
+                                        <span class="info-label">Arquivo</span>
+                                        <span class="info-value">{{ vpn.arquivo.size|filesizeformat }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Data Upload</span>
+                                        <span class="info-value">{{ vpn.data_upload|date:"d/m/Y H:i" }}</span>
+                                    </div>
+                                    {% if vpn.usuario %}
+                                    <div class="info-row">
+                                        <span class="info-label">Usuário</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ vpn.usuario }}')">{{ vpn.usuario }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if vpn.senha %}
+                                    <div class="info-row">
+                                        <span class="info-label">Senha</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ vpn.senha }}')">{{ vpn.senha }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if vpn.private_key %}
+                                    <div class="info-row">
+                                        <span class="info-label">Private Key</span>
+                                        <span class="info-value">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="visualizarPrivateKey('{{ vpn.private_key|escapejs }}', '{{ vpn.nome|escapejs }}')">
+                                                <i class="fas fa-key me-1"></i> Ver Chave
+                                            </button>
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="mt-4">
+                                        <a href="{{ vpn.arquivo.url }}" download class="btn btn-access mb-2">
+                                            <i class="fas fa-download me-2"></i> Download Config
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shield-alt" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Nenhuma configuração VPN encontrada</p>
+                        <button class="btn btn-primary mt-3" onclick="abrirModalUploadVPN()">
+                            <i class="fas fa-upload me-2"></i> Adicionar Primeira VPN
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="text-center py-5">
-                    <i class="fas fa-shield-alt" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
-                    <p class="mt-3 text-muted">Configurações de VPN serão exibidas aqui</p>
-                </div>
-            </div></div>
+            </div>
         </div>
 
+        <!-- ABA TOPOLOGIA -->
         <div id="tab-topologia" class="tab-content-main" style="display: none;">
-            <div class="card"><div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="mb-0">Topologia de Rede</h5>
-                    <button class="btn btn-sm btn-primary"><i class="fas fa-edit me-1"></i> Editar</button>
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">Topologia de Rede</h5>
+                        <button class="btn btn-sm btn-primary" onclick="abrirModalUploadTopologia()">
+                            <i class="fas fa-upload me-1"></i> Upload Imagem
+                        </button>
+                    </div>
+                    
+                    {% if imagens_topologia %}
+                    <div class="row">
+                        {% for topologia in imagens_topologia %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body p-0">
+                                    <div class="topologia-image-container">
+                                        <img src="{{ topologia.imagem.url }}" 
+                                            alt="{{ topologia.nome }}" 
+                                            class="topologia-image"
+                                            onclick="visualizarImagemGrande('{{ topologia.imagem.url }}', '{{ topologia.nome }}')">
+                                        <div class="topologia-overlay">
+                                            <button class="btn-action-overlay" 
+                                                    onclick="visualizarImagemGrande('{{ topologia.imagem.url }}', '{{ topologia.nome }}')" 
+                                                    title="Visualizar">
+                                                <i class="fas fa-search-plus"></i>
+                                            </button>
+                                            <a href="{{ topologia.imagem.url }}" 
+                                            download 
+                                            class="btn-action-overlay" 
+                                            title="Download">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <form method="POST" 
+                                                action="{% url 'deletar_topologia' topologia.id %}" 
+                                                style="display: inline;" 
+                                                onsubmit="return confirm('Tem certeza que deseja excluir: {{ topologia.nome }}?')">
+                                                {% csrf_token %}
+                                                <button type="submit" 
+                                                        class="btn-action-overlay btn-delete-overlay" 
+                                                        title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <div class="p-3">
+                                        <p class="mb-1" style="color: var(--primary-green); font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700;">
+                                            {{ topologia.nome }}
+                                        </p>
+                                        <p class="mb-0" style="color: var(--text-muted); font-family: 'Courier New', monospace; font-size: 11px;">
+                                            {{ topologia.data_upload|date:"d/m/Y H:i" }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-project-diagram" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Nenhuma topologia encontrada</p>
+                        <button class="btn btn-primary mt-3" onclick="abrirModalUploadTopologia()">
+                            <i class="fas fa-upload me-2"></i> Enviar Primeira Topologia
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="text-center py-5">
-                    <i class="fas fa-project-diagram" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
-                    <p class="mt-3 text-muted">Diagrama de topologia será exibido aqui</p>
+            </div>
+        </div>
+
+        <!-- MODAL VISUALIZAR IMAGEM GRANDE -->
+        <div id="modalVisualizarImagem" class="modal-overlay" style="display: none;" onclick="fecharModalImagem()">
+            <div class="modal-imagem-grande">
+                <button class="btn-close-modal-imagem" onclick="fecharModalImagem()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <img id="imagemGrande" src="" alt="" class="imagem-visualizacao">
+                <p id="nomeImagemGrande" class="nome-imagem-visualizacao"></p>
+            </div>
+        </div>
+
+        <!-- MODAL VISUALIZAR PRIVATE KEY -->
+        <div id="modalPrivateKey" class="modal-overlay" style="display: none;">
+            <div class="modal-acesso" style="max-width: 700px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Private Key - <span id="nomeVPNKey"></span></h2>
+                    <button class="btn-close-modal" onclick="fecharModalPrivateKey()">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-            </div></div>
+                <div class="modal-body-acesso">
+                    <div class="private-key-container">
+                        <pre id="privateKeyContent" class="private-key-content"></pre>
+                    </div>
+                    <div class="terminal-status">
+                        <span class="status-indicator"></span>
+                        <span class="status-text">Chave privada criptografada</span>
+                    </div>
+                    <div class="modal-footer-acesso">
+                        <button type="button" class="btn-cancel-modal" onclick="fecharModalPrivateKey()">
+                            <i class="fas fa-times me-2"></i> Fechar
+                        </button>
+                        <button type="button" class="btn-submit-modal" onclick="copiarPrivateKey()">
+                            <i class="fas fa-copy me-2"></i> Copiar Chave
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="tab-tuneis" class="tab-content-main" style="display: none;">

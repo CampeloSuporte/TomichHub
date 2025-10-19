@@ -61,8 +61,26 @@ class Documento(models.Model):
 
     def __str__(self):
         return self.nome
+    
+
+class ArquivoVPN(models.Model):
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='arquivos_vpn')
+    nome = models.CharField(max_length=255)
+    arquivo = models.FileField(upload_to='vpn/')
+    usuario = models.CharField(max_length=100, blank=True, null=True)
+    senha = models.CharField(max_length=100, blank=True, null=True)
+    private_key = models.TextField(blank=True, null=True)  # Para chaves longas
+    data_upload = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
 
 
+class ImagemTopologia(models.Model):
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='imagens_topologia')
+    nome = models.CharField(max_length=255)
+    imagem = models.ImageField(upload_to='topologia/')
+    data_upload = models.DateTimeField(auto_now_add=True)
 
-
-
+    def __str__(self):
+        return self.nome

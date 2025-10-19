@@ -326,3 +326,219 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL UPLOAD VPN -->
+<div id="modalUploadVPN" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 700px;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Adicionar Configuração VPN</h2>
+            <button class="btn-close-modal" onclick="fecharModalUploadVPN()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso">
+            <form method="POST" action="{% url 'upload_vpn' %}" enctype="multipart/form-data" id="formUploadVPN">
+                {% csrf_token %}
+                <input type="hidden" name="cliente" value="{{ cliente.id }}">
+                
+                <!-- Área de Upload -->
+                <div class="upload-area" id="uploadAreaVPN">
+                    <input type="file" name="arquivo" id="fileInputVPN" accept=".ovpn,.conf,.key,.crt,.pem" required style="display: none;">
+                    <div class="upload-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="upload-text">
+                        <p class="upload-title">Clique ou arraste o arquivo VPN aqui</p>
+                        <p class="upload-subtitle">Formatos: .ovpn, .conf, .key, .crt, .pem</p>
+                    </div>
+                </div>
+
+                <!-- Preview do Arquivo -->
+                <div class="file-preview" id="filePreviewVPN" style="display: none;">
+                    <div class="file-info">
+                        <i class="fas fa-file-alt file-icon"></i>
+                        <div class="file-details">
+                            <span class="file-name" id="fileNameVPN"></span>
+                            <span class="file-size" id="fileSizeVPN"></span>
+                        </div>
+                        <button type="button" class="btn-remove-file" onclick="removerArquivoVPN()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Campos de Credenciais -->
+                <div class="credentials-section mt-4">
+                    <h6 style="color: var(--accent-cyan); font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 12px; margin-bottom: 20px; letter-spacing: 1px;">
+                        <i class="fas fa-key me-2"></i> Credenciais (Opcional)
+                    </h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-modal">
+                                <label><span class="label-prefix">//</span> Usuário</label>
+                                <input type="text" name="usuario" placeholder="Ex: vpnuser">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-modal">
+                                <label><span class="label-prefix">//</span> Senha</label>
+                                <input type="password" name="senha" placeholder="••••••••">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-modal">
+                        <label><span class="label-prefix">//</span> Private Key</label>
+                        <textarea name="private_key" 
+                                  rows="6" 
+                                  placeholder="Cole aqui a chave privada (se necessário)"
+                                  style="width: 100%; background: rgba(22, 27, 34, 0.9); border: 1px solid var(--border); color: var(--primary-green); font-family: 'Courier New', monospace; padding: 12px; font-size: 12px; border-radius: 4px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+
+                <div class="terminal-status">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Sistema online - Pronto para configuração VPN</span>
+                </div>
+
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalUploadVPN()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-save me-2"></i> Salvar Configuração
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EDITAR VPN -->
+<div id="modalEditarVPN" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 700px;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Editar Configuração VPN</h2>
+            <button class="btn-close-modal" onclick="fecharModalEditarVPN()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso">
+            <form id="formEditarVPN" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="vpn_id" id="edit_vpn_id">
+                
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">//</span> Nome do Arquivo</label>
+                    <input type="text" name="nome" id="edit_nome_vpn" disabled style="opacity: 0.6;">
+                    <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 5px;">
+                        Para alterar o arquivo, exclua e crie uma nova configuração
+                    </small>
+                </div>
+
+                <div class="credentials-section mt-4">
+                    <h6 style="color: var(--accent-cyan); font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 12px; margin-bottom: 20px; letter-spacing: 1px;">
+                        <i class="fas fa-key me-2"></i> Credenciais
+                    </h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-modal">
+                                <label><span class="label-prefix">//</span> Usuário</label>
+                                <input type="text" name="usuario" id="edit_usuario_vpn" placeholder="Ex: vpnuser">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-modal">
+                                <label><span class="label-prefix">//</span> Senha</label>
+                                <input type="password" name="senha" id="edit_senha_vpn" placeholder="••••••••">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-modal">
+                        <label><span class="label-prefix">//</span> Private Key</label>
+                        <textarea name="private_key" 
+                                  id="edit_private_key_vpn"
+                                  rows="6" 
+                                  placeholder="Cole aqui a chave privada"
+                                  style="width: 100%; background: rgba(22, 27, 34, 0.9); border: 1px solid var(--border); color: var(--primary-green); font-family: 'Courier New', monospace; padding: 12px; font-size: 12px; border-radius: 4px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+
+                <div class="terminal-status">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Sistema online</span>
+                </div>
+
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalEditarVPN()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-save me-2"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL UPLOAD TOPOLOGIA -->
+<div id="modalUploadTopologia" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 600px;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Upload Imagem Topologia</h2>
+            <button class="btn-close-modal" onclick="fecharModalUploadTopologia()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso">
+            <form method="POST" action="{% url 'upload_topologia' %}" enctype="multipart/form-data" id="formUploadTopologia">
+                {% csrf_token %}
+                <input type="hidden" name="cliente" value="{{ cliente.id }}">
+                
+                <!-- Área de Upload -->
+                <div class="upload-area" id="uploadAreaTopologia">
+                    <input type="file" name="imagem" id="fileInputTopologia" accept="image/*" required style="display: none;">
+                    <div class="upload-icon">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <div class="upload-text">
+                        <p class="upload-title">Clique ou arraste a imagem aqui</p>
+                        <p class="upload-subtitle">Formatos: JPG, PNG, GIF, SVG, WEBP</p>
+                    </div>
+                </div>
+
+                <!-- Preview da Imagem -->
+                <div class="image-preview-container" id="imagePreviewTopologia" style="display: none;">
+                    <div class="image-preview-wrapper">
+                        <img id="previewImageTopologia" src="" alt="Preview" class="preview-image">
+                        <button type="button" class="btn-remove-file btn-remove-image" onclick="removerArquivoTopologia()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="file-details mt-3">
+                        <span class="file-name" id="fileNameTopologia"></span>
+                        <span class="file-size" id="fileSizeTopologia"></span>
+                    </div>
+                </div>
+
+                <div class="terminal-status">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Sistema online - Pronto para upload de imagem</span>
+                </div>
+
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalUploadTopologia()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-upload me-2"></i> Enviar Imagem
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
