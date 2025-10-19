@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'funcao_equipamento',
     'modelo_equipamento',
     'usuario',
+    'home'
 ]
 
 MIDDLEWARE = [

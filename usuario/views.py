@@ -71,7 +71,7 @@ def login(request):
         if user is not None:
             auth_login(request, user)
             messages.success(request, "Login realizado com sucesso.")
-            return redirect('cadastrar_usuario')
+            return redirect('quadro_geral')
         else:
             messages.error(request, "Usuário ou senha inválidos.")
             return redirect('login')

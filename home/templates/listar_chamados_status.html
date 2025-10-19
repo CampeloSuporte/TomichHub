@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        
+        <!-- Header com título e botão voltar -->
+        <div class="row mb-4">
+            <div class="col-12 d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Chamados - {{ status_display }}</h4>
+                <a href="{% url 'quadro_geral' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Card com estatística -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon 
+                            {% if status == 'ABERTO' %}aberto
+                            {% elif status == 'EM_ANDAMENTO' %}andamento
+                            {% elif status == 'AGUARDANDO' %}aguardando
+                            {% elif status == 'RESOLVIDO' %}resolvido
+                            {% elif status == 'FECHADO' %}fechado
+                            {% endif %}">
+                            <i class="fas 
+                                {% if status == 'ABERTO' %}fa-folder-open
+                                {% elif status == 'EM_ANDAMENTO' %}fa-sync-alt
+                                {% elif status == 'AGUARDANDO' %}fa-clock
+                                {% elif status == 'RESOLVIDO' %}fa-check-circle
+                                {% elif status == 'FECHADO' %}fa-check-double
+                                {% endif %}"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ total }}</h3>
+                            <p>{{ status_display }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Chamados -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-4">Lista Completa</h5>
+                        
+                        {% if chamados %}
+                            <div class="chamados-lista">
+                                {% for chamado in chamados %}
+                                    <div class="chamado-card {% if chamado.prioridade == 'URGENTE' %}urgente{% elif chamado.prioridade == 'ALTA' %}alta{% endif %}">
+                                        <div class="chamado-header">
+                                            <div>
+                                                <span class="chamado-numero">#{{ chamado.id }}</span>
+                                                <h6 class="chamado-titulo">{{ chamado.titulo }}</h6>
+                                            </div>
+                                            <div class="chamado-badges">
+                                                <span class="badge-prioridade {{ chamado.prioridade|lower }}">
+                                                    {{ chamado.get_prioridade_display }}
+                                                </span>
+                                                <span class="badge-status {{ chamado.status|lower }}">
+                                                    {{ chamado.get_status_display }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="chamado-descricao">
+                                            {{ chamado.descricao|truncatewords:30 }}
+                                        </div>
+                                        
+                                        <div class="chamado-info">
+                                            <div class="chamado-info-item">
+                                                <span class="chamado-info-label">Cliente</span>
+                                                <span class="chamado-info-value">{{ chamado.cliente.nome_empresa }}</span>
+                                            </div>
+                                            <div class="chamado-info-item">
+                                                <span class="chamado-info-label">Categoria</span>
+                                                <span class="chamado-info-value">{{ chamado.categoria.nome|default:"Sem categoria" }}</span>
+                                            </div>
+                                            <div class="chamado-info-item">
+                                                <span class="chamado-info-label">Departamento</span>
+                                                <span class="chamado-info-value">{{ chamado.get_departamento_display }}</span>
+                                            </div>
+                                            <div class="chamado-info-item">
+                                                <span class="chamado-info-label">Responsável</span>
+                                                <span class="chamado-info-value">
+                                                    {% if chamado.responsavel %}
+                                                        {{ chamado.responsavel.get_full_name|default:chamado.responsavel.username }}
+                                                    {% else %}
+                                                        Não atribuído
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                            <div class="chamado-info-item">
+                                                <span class="chamado-info-label">Criado em</span>
+                                                <span class="chamado-info-value">{{ chamado.data_criacao|date:"d/m/Y H:i" }}</span>
+                                            </div>
+                                            <div class="chamado-info-item">
+                                                <span class="chamado-info-label">Comentários</span>
+                                                <span class="chamado-info-value">
+                                                    <i class="fas fa-comments"></i> {{ chamado.comentarios.count }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="chamado-actions">
+                                            <a href="{% url 'listar_clientes' %}?id={{ chamado.cliente.id }}" 
+                                               class="btn-action-chamado">
+                                                <i class="fas fa-eye me-1"></i> Ver Detalhes
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-inbox" style="font-size: 64px; color: var(--text-muted); opacity: 0.3;"></i>
+                                <p class="mt-3" style="color: var(--text-muted);">
+                                    Nenhum chamado encontrado com o status "{{ status_display }}"
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

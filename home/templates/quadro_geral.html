@@ -1,0 +1,367 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        
+        <!-- Header do Dashboard -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="mb-0">Dashboard - Visão Geral</h4>
+            </div>
+        </div>
+        <!-- Cards de Estatísticas -->
+        <div class="row mb-4">
+            <!-- Total de Chamados -->
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon total">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ total_chamados }}</h3>
+                            <p>Total Hoje</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abertos -->
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'listar_chamados_status' 'ABERTO' %}" class="card-link">
+                    <div class="card stat-card clickable">
+                        <div class="card-body">
+                            <div class="stat-icon aberto">
+                                <i class="fas fa-folder-open"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>{{ chamados_abertos }}</h3>
+                                <p>Abertos Hoje</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Em Andamento -->
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'listar_chamados_status' 'EM_ANDAMENTO' %}" class="card-link">
+                    <div class="card stat-card clickable">
+                        <div class="card-body">
+                            <div class="stat-icon andamento">
+                                <i class="fas fa-sync-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>{{ chamados_em_andamento }}</h3>
+                                <p>Em Andamento Hoje</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Aguardando -->
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'listar_chamados_status' 'AGUARDANDO' %}" class="card-link">
+                    <div class="card stat-card clickable">
+                        <div class="card-body">
+                            <div class="stat-icon aguardando">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>{{ chamados_aguardando }}</h3>
+                                <p>Aguardando Hoje</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Segunda linha de cards -->
+        <div class="row mb-4">
+            <!-- Resolvidos -->
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'listar_chamados_status' 'RESOLVIDO' %}" class="card-link">
+                    <div class="card stat-card clickable">
+                        <div class="card-body">
+                            <div class="stat-icon resolvido">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>{{ chamados_resolvidos }}</h3>
+                                <p>Resolvidos Hoje</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Fechados -->
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'listar_chamados_status' 'FECHADO' %}" class="card-link">
+                    <div class="card stat-card clickable">
+                        <div class="card-body">
+                            <div class="stat-icon fechado">
+                                <i class="fas fa-check-double"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>{{ chamados_fechados }}</h3>
+                                <p>Fechados Hoje</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Urgentes -->
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon urgente">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ urgentes }}</h3>
+                            <p>Urgentes Hoje</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alta Prioridade -->
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon alta">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ alta_prioridade }}</h3>
+                            <p>Alta Prioridade Hoje</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico e Departamentos -->
+        <div class="row mb-4">
+            <!-- Gráfico -->
+            <div class="col-lg-8 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-4">Chamados - Últimos 30 Dias</h5>
+                        <canvas id="graficoChart" style="max-height: 350px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribuição por Departamento -->
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-4">Por Departamento</h5>
+                        <div class="departamento-list">
+                            {% for dept in por_departamento %}
+                                <div class="departamento-item">
+                                    <div class="dept-info">
+                                        <span class="dept-name">{{ dept.departamento }}</span>
+                                        <span class="dept-count">{{ dept.total }}</span>
+                                    </div>
+                                    <div class="dept-bar">
+                                        <div class="dept-progress" style="width: {% widthratio dept.total total_chamados 100 %}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Clientes e Chamados Recentes -->
+        <div class="row">
+            <!-- Top 5 Clientes -->
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-4">Top 5 Clientes</h5>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Chamados</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cliente in top_clientes %}
+                                        <tr>
+                                            <td>{{ cliente.nome_empresa|truncatechars:25 }}</td>
+                                            <td>{{ cliente.total_chamados }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="2" class="text-center" style="color: var(--text-muted);">
+                                                Nenhum cliente encontrado
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chamados Recentes -->
+            <div class="col-lg-8 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-4">Chamados Recentes</h5>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Cliente</th>
+                                        <th>Título</th>
+                                        <th>Prioridade</th>
+                                        <th>Status</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for chamado in chamados_recentes %}
+                                        <tr>
+                                            <td>#{{ chamado.id }}</td>
+                                            <td>{{ chamado.cliente.nome_empresa|truncatechars:20 }}</td>
+                                            <td>{{ chamado.titulo|truncatechars:30 }}</td>
+                                            <td>
+                                                <span class="badge-prioridade {{ chamado.prioridade|lower }}">
+                                                    {{ chamado.get_prioridade_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge-status {{ chamado.status|lower }}">
+                                                    {{ chamado.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center" style="color: var(--text-muted);">
+                                                Nenhum chamado encontrado
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+<script>
+    // Dados do gráfico
+    const graficoLabels = [
+        {% for item in grafico_dados %}
+            '{{ item.data }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const graficoData = [
+        {% for item in grafico_dados %}
+            {{ item.quantidade }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Configuração do gráfico
+    const ctx = document.getElementById('graficoChart');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: graficoLabels,
+            datasets: [{
+                label: 'Chamados Criados',
+                data: graficoData,
+                borderColor: '#00ff88',
+                backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#00ff88',
+                pointBorderColor: '#000',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#0a0a0a',
+                    titleColor: '#00ff88',
+                    bodyColor: '#e6edf3',
+                    borderColor: '#00ff88',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return 'Chamados: ' + context.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#8b949e',
+                        font: {
+                            family: "'Courier New', monospace",
+                            size: 11
+                        },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(0, 255, 136, 0.1)',
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#8b949e',
+                        font: {
+                            family: "'Courier New', monospace",
+                            size: 10
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

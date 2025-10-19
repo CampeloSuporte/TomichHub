@@ -2682,3 +2682,291 @@ h4::before {
     cursor: pointer;
     user-select: none;
 }
+
+
+/* ====================================
+   DASHBOARD - QUADRO GERAL
+   ==================================== */
+
+.stat-card {
+    background: #0a0a0a;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    min-height: 120px;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 25px var(--glow-green);
+    border-color: var(--primary-green);
+}
+
+.stat-card .card-body {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+}
+
+.stat-icon.total {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--primary-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.stat-icon.aberto {
+    background: rgba(0, 217, 255, 0.15);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+}
+
+.stat-icon.andamento {
+    background: rgba(0, 217, 255, 0.15);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+}
+
+.stat-icon.aguardando {
+    background: rgba(255, 149, 0, 0.15);
+    color: var(--warning-orange);
+    box-shadow: 0 0 15px rgba(255, 149, 0, 0.3);
+}
+
+.stat-icon.resolvido {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--terminal-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.stat-icon.fechado {
+    background: rgba(139, 148, 158, 0.15);
+    color: var(--text-muted);
+    box-shadow: 0 0 15px rgba(139, 148, 158, 0.3);
+}
+
+.stat-icon.urgente {
+    background: rgba(255, 59, 48, 0.15);
+    color: var(--error-red);
+    box-shadow: 0 0 15px rgba(255, 59, 48, 0.3);
+    animation: pulse-urgent 2s ease-in-out infinite;
+}
+
+@keyframes pulse-urgent {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 59, 48, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(255, 59, 48, 0.6);
+    }
+}
+
+.stat-icon.alta {
+    background: rgba(255, 149, 0, 0.15);
+    color: var(--warning-orange);
+    box-shadow: 0 0 15px rgba(255, 149, 0, 0.3);
+}
+
+/* ✅ CORRIGIDO - Estilos do texto dentro dos cards */
+.stat-info h3 {
+    color: var(--primary-green) !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 32px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    text-shadow: 0 0 15px var(--glow-green) !important;
+    line-height: 1 !important;
+}
+
+.stat-info h3::before {
+    content: none !important;
+}
+
+.stat-info p {
+    color: var(--text-light) !important; /* ✅ Mudou de text-muted para text-light */
+    font-family: 'Courier New', monospace !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    margin: 5px 0 0 0 !important;
+    font-weight: 600 !important;
+}
+
+/* Departamentos */
+.departamento-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.departamento-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dept-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dept-name {
+    color: var(--primary-green) !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+}
+
+.dept-count {
+    color: var(--accent-cyan) !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 5px var(--glow-cyan) !important;
+}
+
+.dept-bar {
+    height: 8px;
+    background: rgba(0, 26, 13, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dept-progress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-green), var(--accent-cyan));
+    box-shadow: 0 0 10px var(--glow-green);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+/* Badges customizados */
+.badge-prioridade,
+.badge-status {
+    padding: 4px 10px !important;
+    border-radius: 3px !important;
+    font-size: 10px !important;
+    font-family: 'Courier New', monospace !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: inline-block !important;
+}
+
+.badge-status.aberto {
+    background: rgba(0, 217, 255, 0.1) !important;
+    color: var(--accent-cyan) !important;
+    border: 1px solid var(--accent-cyan);
+}
+
+.badge-status.em_andamento {
+    background: rgba(0, 217, 255, 0.1) !important;
+    color: var(--accent-cyan) !important;
+    border: 1px solid var(--accent-cyan);
+}
+
+.badge-status.aguardando {
+    background: rgba(255, 149, 0, 0.1) !important;
+    color: var(--warning-orange) !important;
+    border: 1px solid var(--warning-orange);
+}
+
+.badge-status.resolvido {
+    background: rgba(0, 255, 136, 0.2) !important;
+    color: var(--terminal-green) !important;
+    border: 1px solid var(--terminal-green);
+}
+
+.badge-status.fechado {
+    background: rgba(139, 148, 158, 0.1) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--text-muted);
+}
+
+/* ✅ Card h5 titles */
+.card h5 {
+    color: var(--primary-green) !important;
+    font-family: 'Courier New', monospace !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+    font-weight: 800 !important;
+    font-size: 14px !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .stat-card .card-body {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .stat-info h3 {
+        font-size: 28px !important;
+    }
+}
+
+/* Cards clicáveis */
+.card-link {
+    text-decoration: none;
+    display: block;
+}
+
+.stat-card.clickable {
+    cursor: pointer;
+    position: relative;
+}
+
+.stat-card.clickable::after {
+    content: '\f054'; /* Font Awesome arrow right */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    color: var(--primary-green);
+    font-size: 12px;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.stat-card.clickable:hover::after {
+    opacity: 1;
+    right: 10px;
+}
+
+.stat-card.clickable:hover {
+    transform: translateY(-5px) translateX(3px);
+    box-shadow: 0 0 30px var(--glow-green);
+    border-color: var(--primary-green);
+}
+
+/* Descrição do chamado */
+.chamado-descricao {
+    color: var(--text-light);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 15px 0;
+    padding: 10px 0;
+    border-top: 1px solid rgba(0, 255, 136, 0.1);
+}
+
+/* Lista de chamados na página de status */
+.chamados-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
