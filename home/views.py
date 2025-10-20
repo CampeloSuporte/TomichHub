@@ -13,20 +13,15 @@ def quadro_geral(request):
     inicio_dia = datetime.combine(hoje, datetime.min.time())
     fim_dia = datetime.combine(hoje, datetime.max.time())
     
-    # Estatísticas do dia
+    # Estatísticas do dia para alguns campos
     total_chamados_hoje = Chamado.objects.filter(data_criacao__range=(inicio_dia, fim_dia)).count()
-    chamados_abertos_hoje = Chamado.objects.filter(
-        data_criacao__range=(inicio_dia, fim_dia),
-        status='ABERTO'
-    ).count()
-    chamados_em_andamento_hoje = Chamado.objects.filter(
-        data_criacao__range=(inicio_dia, fim_dia),
-        status='EM_ANDAMENTO'
-    ).count()
-    chamados_aguardando_hoje = Chamado.objects.filter(
-        data_criacao__range=(inicio_dia, fim_dia),
-        status='AGUARDANDO'
-    ).count()
+    
+    # ✅ ALTERADO: Esses três contam TODOS os chamados, não apenas do dia
+    chamados_abertos = Chamado.objects.filter(status='ABERTO').count()
+    chamados_em_andamento = Chamado.objects.filter(status='EM_ANDAMENTO').count()
+    chamados_aguardando = Chamado.objects.filter(status='AGUARDANDO').count()
+    
+    # Esses continuam sendo apenas do dia
     chamados_resolvidos_hoje = Chamado.objects.filter(
         data_criacao__range=(inicio_dia, fim_dia),
         status='RESOLVIDO'
@@ -50,7 +45,7 @@ def quadro_geral(request):
     # Chamados dos últimos 30 dias (para o gráfico)
     data_limite = datetime.now() - timedelta(days=30)
     
-    # Dados para o gráfico - últimos 30 dias
+    # Dados para o gráfico - Últimos 30 dias
     grafico_dados = []
     for i in range(29, -1, -1):
         data = datetime.now() - timedelta(days=i)
@@ -67,7 +62,7 @@ def quadro_geral(request):
             'quantidade': count
         })
     
-    # Chamados recentes (últimos 10)
+    # Chamados recentes (Últimos 10)
     chamados_recentes = Chamado.objects.select_related(
         'cliente', 'categoria', 'responsavel'
     ).order_by('-data_criacao')[:10]
@@ -87,9 +82,9 @@ def quadro_geral(request):
     
     context = {
         'total_chamados': total_chamados_hoje,
-        'chamados_abertos': chamados_abertos_hoje,
-        'chamados_em_andamento': chamados_em_andamento_hoje,
-        'chamados_aguardando': chamados_aguardando_hoje,
+        'chamados_abertos': chamados_abertos,  # ✅ ALTERADO
+        'chamados_em_andamento': chamados_em_andamento,  # ✅ ALTERADO
+        'chamados_aguardando': chamados_aguardando,  # ✅ ALTERADO
         'chamados_resolvidos': chamados_resolvidos_hoje,
         'chamados_fechados': chamados_fechados_hoje,
         'urgentes': urgentes_hoje,

@@ -28,7 +28,7 @@
                 </div>
             </div>
 
-            <!-- Abertos -->
+            <!-- Abertos - TODOS -->
             <div class="col-md-3 mb-3">
                 <a href="{% url 'listar_chamados_status' 'ABERTO' %}" class="card-link">
                     <div class="card stat-card clickable">
@@ -38,14 +38,14 @@
                             </div>
                             <div class="stat-info">
                                 <h3>{{ chamados_abertos }}</h3>
-                                <p>Abertos Hoje</p>
+                                <p>Abertos</p>
                             </div>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <!-- Em Andamento -->
+            <!-- Em Andamento - TODOS -->
             <div class="col-md-3 mb-3">
                 <a href="{% url 'listar_chamados_status' 'EM_ANDAMENTO' %}" class="card-link">
                     <div class="card stat-card clickable">
@@ -55,14 +55,14 @@
                             </div>
                             <div class="stat-info">
                                 <h3>{{ chamados_em_andamento }}</h3>
-                                <p>Em Andamento Hoje</p>
+                                <p>Em Andamento</p>
                             </div>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <!-- Aguardando -->
+            <!-- Aguardando - TODOS -->
             <div class="col-md-3 mb-3">
                 <a href="{% url 'listar_chamados_status' 'AGUARDANDO' %}" class="card-link">
                     <div class="card stat-card clickable">
@@ -72,7 +72,7 @@
                             </div>
                             <div class="stat-info">
                                 <h3>{{ chamados_aguardando }}</h3>
-                                <p>Aguardando Hoje</p>
+                                <p>Aguardando</p>
                             </div>
                         </div>
                     </div>
@@ -172,7 +172,7 @@
                                         <span class="dept-count">{{ dept.total }}</span>
                                     </div>
                                     <div class="dept-bar">
-                                        <div class="dept-progress" style="width: {% widthratio dept.total total_chamados 100 %}%"></div>
+                                        <div class="dept-progress" style="width: {% widthratio dept.total total_chamados_geral 100 %}%"></div>
                                     </div>
                                 </div>
                             {% endfor %}

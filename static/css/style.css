@@ -2970,3 +2970,33 @@ h4::before {
     flex-direction: column;
     gap: 20px;
 }
+
+
+.info-value.copyable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.info-value.copyable:hover {
+    color: var(--primary-green);
+    background: rgba(0, 255, 136, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.info-value.copyable:hover::after {
+    content: '📋 Clique para copiar';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    background: var(--primary-green);
+    color: #000;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    font-weight: 700;
+}
