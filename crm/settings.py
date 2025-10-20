@@ -20,7 +20,7 @@ SECRET_KEY = 'django-insecure-)41v!4g-#@=9-&-fa*=g%t0ex-$%2srvjg#-lzyvx+%y9ei#ja
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -116,9 +116,12 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
 # Pasta onde o Django vai procurar arquivos estáticos no modo dev
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, 'staticfiles'),
 ]
 
 # Default primary key field type
