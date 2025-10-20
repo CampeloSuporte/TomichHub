@@ -3000,3 +3000,141 @@ h4::before {
     white-space: nowrap;
     font-weight: 700;
 }
+
+/* ============================================
+   MODAL DE INSTRUÇÕES DE ACESSO
+   ============================================ */
+
+.info-acesso {
+    background: rgba(0, 255, 136, 0.05);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.comandos-container {
+    margin-bottom: 20px;
+}
+
+.comando-item {
+    background: #0a0a0a;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.comando-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.comando-titulo {
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.btn-copiar-comando {
+    background: transparent;
+    border: 1px solid var(--primary-green);
+    color: var(--primary-green);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-copiar-comando:hover {
+    background: var(--primary-green);
+    color: #000;
+}
+
+.comando-texto {
+    background: #000;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 10px 0;
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+}
+
+.comando-descricao {
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    margin: 0;
+    margin-top: 5px;
+}
+
+.aviso-seguranca {
+    background: rgba(255, 165, 0, 0.1);
+    border-left: 3px solid orange;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    color: orange;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.links-uteis {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.links-uteis h6 {
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.link-util {
+    display: inline-block;
+    color: var(--accent-cyan);
+    text-decoration: none;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    margin-right: 15px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.link-util:hover {
+    color: var(--primary-green);
+    text-decoration: underline;
+}
+
+.link-util i {
+    font-size: 10px;
+    margin-left: 5px;
+}
+
+/* Animação para o modal */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+#modalInstrucoesAcesso .modal-acesso {
+    animation: modalFadeIn 0.3s ease;
+}

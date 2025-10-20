@@ -739,3 +739,6 @@ def buscar_clientes_chamado(request):
     } for cliente in clientes]
     
     return JsonResponse({'results': results})
+
+
+    

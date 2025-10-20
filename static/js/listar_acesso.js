@@ -1,3 +1,5 @@
+
+
 // Abrir modal de edição
 function abrirModalEditarAcesso(acessoId) {
     fetch(`/clientes/buscar/${acessoId}/`)
@@ -436,7 +438,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // chamados.js - Sistema de Gerenciamento de Chamados
 
 // Variável global para armazenar o chamado atual
-let chamadoAtual = null;
 
 // ============================================
 // FUNÇÕES DE CARREGAMENTO

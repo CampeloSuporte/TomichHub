@@ -118,7 +118,7 @@
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Host Name</span>
-                                    <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host }}')">{{ acesso.host }}</span>
+                                    <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host_ipv6 }}')">{{ acesso.host }}</span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">HostName v6</span>
@@ -144,14 +144,16 @@
                                     <span class="info-label">Senha Root</span>
                                     <span class="info-value copyable" onclick="copiarTexto('{{ acesso.senha_adm }}')">{{ acesso.senha_adm }}</span>
                                 </div>
-                                <div class="mt-4">
-                                    <button class="btn btn-access mb-2">
-                                        <i class="fas fa-sign-in-alt me-2"></i> Acessar
-                                    </button>
-                                    <button class="btn btn-backup">
-                                        <i class="fas fa-sync-alt me-2"></i> Backup
-                                    </button>
-                                </div>
+                             <div class="mt-4">
+                            <button class="btn btn-access mb-2" 
+                                    onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}')">
+                                <i class="fas fa-sign-in-alt me-2"></i> Acessar
+                            </button>
+                            <button class="btn btn-backup" 
+                                    onclick="copiarDadosConexao('{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', '{{ acesso.protocolo }}')">
+                                <i class="fas fa-copy me-2"></i> Copiar Dados
+                            </button>
+                        </div>
                             </div>
                         </div>
                     </div>
@@ -1214,5 +1216,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+</script>
+
+
+<script>
+// ============================================
+// FUNÇÃO PARA ACESSAR EQUIPAMENTOS
+// ============================================
+
+function acessarEquipamento(protocolo, host, porta, usuario, senha) {
+    console.log('Tentando acessar:', protocolo, host, porta);
+    
+    let urlAcesso = '';
+    
+    switch(protocolo.toLowerCase()) {
+        case 'ssh':
+            urlAcesso = `ssh://${usuario}@${host}:${porta}`;
+            break;
+        case 'telnet':
+            urlAcesso = `telnet://${host}:${porta}`;
+            break;
+        case 'http':
+            urlAcesso = `http://${host}:${porta}`;
+            break;
+        case 'https':
+            urlAcesso = `https://${host}:${porta}`;
+            break;
+        case 'ftp':
+            urlAcesso = `ftp://${usuario}:${senha}@${host}:${porta}`;
+            break;
+        case 'sftp':
+            urlAcesso = `sftp://${usuario}@${host}:${porta}`;
+            break;
+        case 'rdp':
+            urlAcesso = `rdp://${host}:${porta}`;
+            break;
+        case 'vnc':
+            urlAcesso = `vnc://${host}:${porta}`;
+            break;
+        default:
+            // Para protocolos não suportados, mostrar dados
+            const dados = `Protocolo: ${protocolo}\nHost: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}`;
+            showInfo('DADOS DE CONEXÃO', dados, 10000);
+            return;
+    }
+    
+    console.log('URL gerada:', urlAcesso);
+    
+    // Tentar abrir em nova aba
+    try {
+        window.open(urlAcesso, '_blank');
+        showSuccess('SUCESSO', `Conectando via ${protocolo.toUpperCase()}...`, 3000);
+    } catch (error) {
+        console.error('Erro ao abrir URL:', error);
+        showError('ERRO', 'Não foi possível iniciar a conexão. Verifique se há um aplicativo adequado instalado.', 5000);
+    }
+}
+
+// Função para copiar dados de conexão
+function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
+    const texto = `Host: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}\nProtocolo: ${protocolo}`;
+    
+    navigator.clipboard.writeText(texto).then(() => {
+        showSuccess('SUCESSO', 'Dados copiados para a área de transferência!', 3000);
+    }).catch(err => {
+        // Fallback para navegadores mais antigos
+        const textArea = document.createElement('textarea');
+        textArea.value = texto;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showSuccess('SUCESSO', 'Dados copiados para a área de transferência!', 3000);
+    });
+}
 </script>
 {% endblock content %}
