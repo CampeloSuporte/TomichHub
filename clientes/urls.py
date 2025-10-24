@@ -40,5 +40,16 @@ urlpatterns = [
     # Buscas
     path('usuarios/buscar/', views.buscar_usuarios, name='buscar_usuarios'),
     path('clientes/buscar-chamado/', views.buscar_clientes_chamado, name='buscar_clientes_chamado'),
+
+
+    # URLs para Servidores Proxy
+    path('proxies/listar/', views.listar_proxies, name='listar_proxies'),
+    path('proxies/cadastrar/', views.cadastrar_proxy, name='cadastrar_proxy'),
+    path('proxies/buscar/<int:proxy_id>/', views.buscar_proxy, name='buscar_proxy'),
+    path('proxies/editar/<int:proxy_id>/', views.editar_proxy, name='editar_proxy'),
+    path('proxies/deletar/<int:proxy_id>/', views.deletar_proxy, name='deletar_proxy'),
+    path('proxies/testar/<int:proxy_id>/', views.testar_proxy, name='testar_proxy'),
+    path('proxies/toggle/<int:proxy_id>/', views.toggle_proxy_status, name='toggle_proxy_status'),
+    
     
 ]
