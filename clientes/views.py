@@ -110,11 +110,32 @@ def cadastrar_acesso(request):
         senha = request.POST.get('senha')
         senha_adm = request.POST.get('senha_adm')
         vlan = request.POST.get('vlan')
+        winbox = request.POST.get('winbox')
+
+        # ✅ Tratar VLAN vazia ou inválida
+        if vlan == '' or vlan is None:
+            vlan = None
+        else:
+            try:
+                vlan = int(vlan)
+            except ValueError:
+                vlan = None  # evita erro se o usuário digitar algo não numérico
+
+        # ✅ Tratar WINBOX vazio ou inválido
+        if winbox == '' or winbox is None:
+            winbox = None
+        else:
+            try:
+                winbox = int(winbox)
+            except ValueError:
+                winbox = None  # evita erro se o usuário digitar algo não numérico
+
         # 🧠 Verifica se já existe um Acesso com o mesmo tipo para o mesmo cliente
         if Acesso.objects.filter(tipo=tipo, cliente_id=cliente_id).exists():
             messages.error(request, f'O tipo "{tipo}" já está cadastrado para este cliente.')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        # Se não existir, cria normalmente
+
+        # ✅ Cria o registro normalmente
         acesso = Acesso(
             cliente_id=cliente_id,
             funcao_id=funcao_id,
@@ -127,14 +148,17 @@ def cadastrar_acesso(request):
             usuario=usuario,
             senha=senha,
             senha_adm=senha_adm,
-            vlan=vlan
+            vlan=vlan,
+            winbox=winbox
         )
         acesso.save()
+
         messages.success(request, 'Acesso cadastrado com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
     
     else:
         return redirect('cadastrar_cliente')
+
 
 
 def editar_cliente(request):
@@ -236,6 +260,7 @@ def buscar_acesso(request, acesso_id):
             'senha': acesso.senha,
             'senha_adm': acesso.senha_adm or '',
             'vlan': acesso.vlan or '',
+            'winbox': acesso.winbox or '',
             
             # Corrigindo os campos que podem ser None
             'funcao_id': acesso.funcao.id if acesso.funcao and hasattr(acesso.funcao, 'id') else '',
@@ -262,7 +287,8 @@ def editar_acesso(request, acesso_id):
     if request.method == 'POST':
         try:
             acesso = get_object_or_404(Acesso, id=acesso_id)
-            
+
+            # Atualiza campos diretos
             acesso.tipo = request.POST.get('tipo')
             acesso.host = request.POST.get('hostname')
             acesso.host_ipv6 = request.POST.get('hostname_ipv6')
@@ -271,22 +297,50 @@ def editar_acesso(request, acesso_id):
             acesso.usuario = request.POST.get('usuario')
             acesso.senha = request.POST.get('senha')
             acesso.senha_adm = request.POST.get('senha_adm')
-            acesso.vlan = request.POST.get('vlan')
-            
+
+            # ✅ Tratar WINBOX vazio ou inválido
+            winbox = request.POST.get('winbox')
+            if winbox == '' or winbox is None:
+                acesso.winbox = None
+            else:
+                try:
+                    acesso.winbox = int(winbox)
+                except ValueError:
+                    acesso.winbox = None  # evita erro se o campo não for numérico
+
+            # ✅ Tratar VLAN vazia ou inválida
+            vlan = request.POST.get('vlan')
+            if vlan == '' or vlan is None:
+                acesso.vlan = None
+            else:
+                try:
+                    acesso.vlan = int(vlan)
+                except ValueError:
+                    acesso.vlan = None  # evita erro se o campo não for numérico
+
+            # ✅ Atualizar função e modelo apenas se enviados
             funcao_id = request.POST.get('funcao')
             modelo_id = request.POST.get('modelo')
-            
-            acesso.funcao = get_object_or_404(Funcao_equipamento, id=funcao_id)
-            acesso.modelo = get_object_or_404(Modelo_equipamento, id=modelo_id)
-            
+
+            if funcao_id:
+                acesso.funcao = get_object_or_404(Funcao_equipamento, id=funcao_id)
+            else:
+                acesso.funcao = None
+
+            if modelo_id:
+                acesso.modelo = get_object_or_404(Modelo_equipamento, id=modelo_id)
+            else:
+                acesso.modelo = None
+
             acesso.save()
-            
+
             messages.success(request, 'Acesso atualizado com sucesso!')
             return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente.id}")
+
         except Exception as e:
             messages.error(request, f'Erro ao editar acesso: {str(e)}')
             return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente.id}")
-    
+
     return redirect('listar_clientes')
 
 

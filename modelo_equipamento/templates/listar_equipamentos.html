@@ -77,7 +77,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="cadastroModalLabel">Cadastro de Função</h5>
+                    <h5 class="modal-title" id="cadastroModalLabel">Cadastro Modelo de equipamentos</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -85,11 +85,11 @@
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="descricao" class="form-label">Nome</label>
-                            <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite a descrição da função..." required>
+                            <input type="text" class="form-control" id="nome" name="nome" placeholder="Ex: Huawei s6730..." required>
                         </div>
                               <div class="mb-3">
                             <label for="descricao" class="form-label">Fabricante</label>
-                            <input type="text" class="form-control" id="fabricante" name="fabricante" placeholder="Digite a descrição da função..." required>
+                            <input type="text" class="form-control" id="fabricante" name="fabricante" placeholder="Digite o fabricante" required>
                         </div>
                               <div class="mb-3">
                             <label for="descricao" class="form-label">Descrição</label>

@@ -267,10 +267,28 @@
 
 
 
-    <!-- Bootstrap JS -->
+     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- ============================================= -->
+    <!-- VARIÁVEL GLOBAL DE USUÁRIOS (deve vir ANTES) -->
+    <!-- ============================================= -->
+    <script>
+        // Garante que a lista de usuários seja visível para todos os scripts
+        const usuarios = [
+            {% for u in usuario %}
+            { id: {{ u.id }}, username: '{{ u.username }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+    </script>
+
+    <!-- Seu script que usa a variável usuarios -->
     <script src="{% static 'js/cadastrar_cliente.js' %}"></script>
+
+    <!-- ============================================= -->
+    <!-- SISTEMA DE MENSAGENS -->
+    <!-- ============================================= -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             {% if messages %}
@@ -293,111 +311,325 @@
         });
     </script>
     
+    <!-- ============================================= -->
+    <!-- SISTEMA DE DROPDOWNS E MÁSCARAS -->
+    <!-- ============================================= -->
+     <!-- Sistema de Dropdown de Usuários e Máscaras -->
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ============================================
+        // DADOS DOS USUÁRIOS
+        // ============================================
+        const usuarios = [
+            {% for u in usuario %}
+            { id: {{ u.id }}, username: '{{ u.username }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
 
-
-
-
-
- // Dados dos usuários vindos do Django
-    const usuarios = [
-        {% for u in usuario %}
-        { id: {{ u.id }}, username: '{{ u.username }}' }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    const inputSearch = document.getElementById('usuario_search');
-    const inputId = document.getElementById('usuario'); // Campo hidden que envia o ID
-    const dropdownMenu = document.getElementById('dropdownMenu');
-
-    function renderDropdown(filteredUsers) {
-        dropdownMenu.innerHTML = '';
+        // ============================================
+        // MODAL DE CADASTRO - DROPDOWN DE USUÁRIO
+        // ============================================
         
-        if (filteredUsers.length === 0) {
-            dropdownMenu.innerHTML = '<div class="no-results">Nenhum usuário encontrado</div>';
-            dropdownMenu.classList.add('show');
-            return;
+        const inputSearch = document.getElementById('usuario_search');
+        const inputId = document.getElementById('usuario');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+
+        if (inputSearch && dropdownMenu && inputId) {
+            // Renderizar dropdown
+            function renderDropdown(filteredUsers) {
+                dropdownMenu.innerHTML = '';
+                
+                if (filteredUsers.length === 0) {
+                    dropdownMenu.innerHTML = '<div class="no-results">Nenhum usuário encontrado</div>';
+                    dropdownMenu.classList.add('show');
+                    return;
+                }
+
+                filteredUsers.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item-custom';
+                    item.innerHTML = `
+                        <span class="user-id">${user.id}</span>
+                        <span class="user-name">${user.username}</span>
+                    `;
+                    item.dataset.userId = user.id;
+                    item.dataset.username = user.username;
+                    item.addEventListener('click', () => selectUser(user));
+                    dropdownMenu.appendChild(item);
+                });
+
+                dropdownMenu.classList.add('show');
+            }
+
+            // Selecionar usuário
+            function selectUser(user) {
+                inputId.value = user.id;
+                inputSearch.value = user.username;
+                dropdownMenu.classList.remove('show');
+                console.log('Usuário selecionado:', user.id, user.username);
+            }
+
+            // Input - filtrar ao digitar
+            inputSearch.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                if (searchTerm.length === 0) {
+                    dropdownMenu.classList.remove('show');
+                    inputId.value = '';
+                    return;
+                }
+
+                const filtered = usuarios.filter(user => 
+                    user.username.toLowerCase().includes(searchTerm) ||
+                    user.id.toString().includes(searchTerm)
+                );
+
+                renderDropdown(filtered);
+            });
+
+            // Focus - mostrar todos se vazio
+            inputSearch.addEventListener('focus', () => {
+                if (inputSearch.value.length === 0) {
+                    renderDropdown(usuarios);
+                }
+            });
+
+            // Navegação por teclado
+            inputSearch.addEventListener('keydown', (e) => {
+                const items = dropdownMenu.querySelectorAll('.dropdown-item-custom');
+                const currentIndex = Array.from(items).findIndex(item => 
+                    item.classList.contains('selected')
+                );
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        items.forEach(item => item.classList.remove('selected'));
+                        const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+                        items[nextIndex].classList.add('selected');
+                        items[nextIndex].scrollIntoView({ block: 'nearest' });
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        items.forEach(item => item.classList.remove('selected'));
+                        const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+                        items[prevIndex].classList.add('selected');
+                        items[prevIndex].scrollIntoView({ block: 'nearest' });
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedItem = dropdownMenu.querySelector('.dropdown-item-custom.selected');
+                    if (selectedItem) {
+                        const userId = parseInt(selectedItem.dataset.userId);
+                        const username = selectedItem.dataset.username;
+                        selectUser({ id: userId, username: username });
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdownMenu.classList.remove('show');
+                }
+            });
         }
 
-        filteredUsers.forEach(user => {
-            const item = document.createElement('div');
-            item.className = 'dropdown-item-custom';
-            item.innerHTML = `
-                <span class="user-id">${user.id}</span>
-                <span class="user-name">${user.username}</span>
-            `;
-            item.dataset.userId = user.id;
-            item.dataset.username = user.username;
-            item.addEventListener('click', () => selectUser(user));
-            dropdownMenu.appendChild(item);
+        // ============================================
+        // MODAL DE EDIÇÃO - DROPDOWN DE USUÁRIO
+        // ============================================
+        
+        const editInputSearch = document.getElementById('edit_usuario_search');
+        const editInputId = document.getElementById('edit_usuario');
+        const editDropdownMenu = document.getElementById('editDropdownMenu');
+
+        if (editInputSearch && editDropdownMenu && editInputId) {
+            // Renderizar dropdown de edição
+            function renderEditDropdown(filteredUsers) {
+                editDropdownMenu.innerHTML = '';
+                
+                if (filteredUsers.length === 0) {
+                    editDropdownMenu.innerHTML = '<div class="no-results">Nenhum usuário encontrado</div>';
+                    editDropdownMenu.classList.add('show');
+                    return;
+                }
+
+                filteredUsers.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item-custom';
+                    item.innerHTML = `
+                        <span class="user-id">${user.id}</span>
+                        <span class="user-name">${user.username}</span>
+                    `;
+                    item.dataset.userId = user.id;
+                    item.dataset.username = user.username;
+                    item.addEventListener('click', () => selectEditUser(user));
+                    editDropdownMenu.appendChild(item);
+                });
+
+                editDropdownMenu.classList.add('show');
+            }
+
+            // Selecionar usuário no modal de edição
+            function selectEditUser(user) {
+                editInputId.value = user.id;
+                editInputSearch.value = user.username;
+                editDropdownMenu.classList.remove('show');
+                console.log('Usuário de edição selecionado:', user.id, user.username);
+            }
+
+            // Input - filtrar ao digitar
+            editInputSearch.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                if (searchTerm.length === 0) {
+                    editDropdownMenu.classList.remove('show');
+                    editInputId.value = '';
+                    return;
+                }
+
+                const filtered = usuarios.filter(user => 
+                    user.username.toLowerCase().includes(searchTerm) ||
+                    user.id.toString().includes(searchTerm)
+                );
+
+                renderEditDropdown(filtered);
+            });
+
+            // Focus - mostrar todos se vazio
+            editInputSearch.addEventListener('focus', () => {
+                if (editInputSearch.value.length === 0) {
+                    renderEditDropdown(usuarios);
+                }
+            });
+
+            // Navegação por teclado no modal de edição
+            editInputSearch.addEventListener('keydown', (e) => {
+                const items = editDropdownMenu.querySelectorAll('.dropdown-item-custom');
+                const currentIndex = Array.from(items).findIndex(item => 
+                    item.classList.contains('selected')
+                );
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        items.forEach(item => item.classList.remove('selected'));
+                        const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+                        items[nextIndex].classList.add('selected');
+                        items[nextIndex].scrollIntoView({ block: 'nearest' });
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        items.forEach(item => item.classList.remove('selected'));
+                        const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+                        items[prevIndex].classList.add('selected');
+                        items[prevIndex].scrollIntoView({ block: 'nearest' });
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedItem = editDropdownMenu.querySelector('.dropdown-item-custom.selected');
+                    if (selectedItem) {
+                        const userId = parseInt(selectedItem.dataset.userId);
+                        const username = selectedItem.dataset.username;
+                        selectEditUser({ id: userId, username: username });
+                    }
+                } else if (e.key === 'Escape') {
+                    editDropdownMenu.classList.remove('show');
+                }
+            });
+        }
+
+        // ============================================
+        // FECHAR DROPDOWNS AO CLICAR FORA
+        // ============================================
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-dropdown-wrapper')) {
+                if (dropdownMenu) dropdownMenu.classList.remove('show');
+                if (editDropdownMenu) editDropdownMenu.classList.remove('show');
+            }
         });
 
-        dropdownMenu.classList.add('show');
-    }
-
-  
-    // Navegação por teclado
-    inputSearch.addEventListener('keydown', (e) => {
-        const items = dropdownMenu.querySelectorAll('.dropdown-item-custom');
-        const currentIndex = Array.from(items).findIndex(item => 
-            item.classList.contains('selected')
-        );
-
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (items.length > 0) {
-                items.forEach(item => item.classList.remove('selected'));
-                const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-                items[nextIndex].classList.add('selected');
-                items[nextIndex].scrollIntoView({ block: 'nearest' });
-            }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (items.length > 0) {
-                items.forEach(item => item.classList.remove('selected'));
-                const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-                items[prevIndex].classList.add('selected');
-                items[prevIndex].scrollIntoView({ block: 'nearest' });
-            }
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            const selectedItem = dropdownMenu.querySelector('.dropdown-item-custom.selected');
-            if (selectedItem) {
-                const userId = parseInt(selectedItem.dataset.userId);
-                const username = selectedItem.dataset.username;
-                selectUser({ id: userId, username: username });
-            }
-        } else if (e.key === 'Escape') {
-            dropdownMenu.classList.remove('show');
+        // ============================================
+        // MÁSCARAS DE INPUT
+        // ============================================
+        
+        // Máscara CNPJ - Modal de Cadastro
+        const cnpjInput = document.getElementById('cnpj');
+        if (cnpjInput) {
+            cnpjInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 14) {
+                    value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+                    value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                    value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                    value = value.replace(/(\d{4})(\d)/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
         }
-    });
 
-    // Máscaras existentes (CNPJ e Telefone)
-    document.getElementById('cnpj').addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 14) {
-            value = value.replace(/^(\d{2})(\d)/, '$1.$2');
-            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
-            value = value.replace(/(\d{4})(\d)/, '$1-$2');
-            e.target.value = value;
+        // Máscara CNPJ - Modal de Edição
+        const editCnpjInput = document.getElementById('edit_cnpj');
+        if (editCnpjInput) {
+            editCnpjInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 14) {
+                    value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+                    value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                    value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                    value = value.replace(/(\d{4})(\d)/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
         }
-    });
 
-    document.getElementById('telefone').addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 11) {
-            value = value.replace(/^(\d{2})(\d)/, '($1) $2');
-            value = value.replace(/(\d{5})(\d)/, '$1-$2');
-            e.target.value = value;
+        // Máscara Telefone - Modal de Cadastro
+        const telefoneInput = document.getElementById('telefone');
+        if (telefoneInput) {
+            telefoneInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 11) {
+                    value = value.replace(/^(\d{2})(\d)/, '($1) $2');
+                    value = value.replace(/(\d{5})(\d)/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
+        }
+
+        // Máscara Telefone - Modal de Edição
+        const editTelefoneInput = document.getElementById('edit_telefone');
+        if (editTelefoneInput) {
+            editTelefoneInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 11) {
+                    value = value.replace(/^(\d{2})(\d)/, '($1) $2');
+                    value = value.replace(/(\d{5})(\d)/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
+        }
+
+        // Máscara CEP - Modal de Cadastro
+        const cepInput = document.getElementById('cep');
+        if (cepInput) {
+            cepInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 8) {
+                    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
+        }
+
+        // Máscara CEP - Modal de Edição
+        const editCepInput = document.getElementById('edit_cep');
+        if (editCepInput) {
+            editCepInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 8) {
+                    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
         }
     });
     </script>
-
-    <script>
-
-
-
-</script>
-
 {% endblock %}

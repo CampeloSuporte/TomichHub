@@ -11,3 +11,4 @@ class AcessoAdmin(admin.ModelAdmin):
     list_display = ('tipo', 'host', 'porta', 'protocolo', 'cliente')
     list_filter = ('tipo', 'protocolo')
     search_fields = ('host', 'cliente__nome_empresa')
+

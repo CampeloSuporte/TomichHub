@@ -97,8 +97,11 @@
                                             </button>
                                         </form>
                                         <button class="icon-btn btn-sm"><i class="fas fa-link"></i></button>
-                                        <button class="icon-btn btn-sm"><i class="fas fa-code"></i></button>
-                                        <button class="icon-btn btn-sm"><i class="fas fa-file"></i></button>
+                                        <button class="icon-btn btn-sm" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-code"></i></button>
+
+                                        <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
+                                            <i class="fas fa-file"></i>
+                                        </button>
                                         <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -117,7 +120,7 @@
                                     <span class="info-value copyable" onclick="copiarTexto('{{ acesso.vlan }}')">{{ acesso.vlan }}</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="info-label">Host Name</span>
+                                    <span class="info-label">HostName</span>
                                     <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host_ipv6 }}')">{{ acesso.host }}</span>
                                 </div>
                                 <div class="info-row">
@@ -126,11 +129,19 @@
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Porta</span>
-                                    <span class="info-value copyable" onclick="copiarTexto('{{ acesso.porta }}')">{{ acesso.porta }}</span>
+                                    <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host }}')">{{ acesso.porta }}</span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Protocolo</span>
                                     <span class="info-value">{{ acesso.protocolo }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">winbox</span>
+                                    <span class="info-value">
+                                        <a class="nav-link" href="winbox://{{ acesso.hostname }}:{{ acesso.winbox }}">
+                                            {{ acesso.winbox }}
+                                        </a>
+                                    </span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Usuário</span>
@@ -146,7 +157,7 @@
                                 </div>
                              <div class="mt-4">
                             <button class="btn btn-access mb-2" 
-                                    onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}')">
+                                    onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')">
                                 <i class="fas fa-sign-in-alt me-2"></i> Acessar
                             </button>
                             <button class="btn btn-backup" 
@@ -596,6 +607,79 @@ function filterOptions(fieldName) {
         };
     }
 }
+
+
+
+function AbrirmodalDuplicarAcesso(acessoId) {
+    fetch(`/clientes/acessos/buscar/${acessoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            // Preencher os campos do modal de DUPLICAR com prefixo "dup_"
+            document.getElementById('dup_tipo').value = data.tipo + ' (Cópia)';
+            document.getElementById('dup_hostname').value = data.host;
+            document.getElementById('dup_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('dup_protocolo').value = data.protocolo;
+            document.getElementById('dup_porta').value = data.porta;
+            document.getElementById('dup_winbox').value = data.winbox || '';
+            document.getElementById('dup_usuario').value = data.usuario;
+            document.getElementById('dup_senha').value = data.senha;
+            document.getElementById('dup_senha_adm').value = data.senha_adm || '';
+            document.getElementById('dup_vlan').value = data.vlan || '';
+            
+            // Preencher os campos de função e modelo
+            document.getElementById('dup_funcao').value = data.funcao_id;
+            document.getElementById('dup_funcao_input').value = data.funcao_nome;
+            document.getElementById('dup_modelo').value = data.modelo_id;
+            document.getElementById('dup_modelo_input').value = data.modelo_nome;
+            
+            // Abrir o modal de duplicar
+            document.getElementById('modalDuplicarAcesso').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar os dados do acesso.', 5000);
+        });
+}
+
+function fecharModalDuplicarAcesso() {
+    document.getElementById('modalDuplicarAcesso').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function filterOptions(fieldName) {
+    const input = document.getElementById(`${fieldName}_input`);
+    const dropdown = document.getElementById(`${fieldName}-dropdown`);
+    const hiddenInput = document.getElementById(fieldName);
+    const filter = input.value.toUpperCase();
+    const options = dropdown.getElementsByClassName('search-select-option');
+    let hasVisibleOption = false;
+    
+    for (let i = 0; i < options.length; i++) {
+        const txtValue = options[i].textContent || options[i].innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            options[i].classList.add('visible');
+            hasVisibleOption = true;
+        } else {
+            options[i].classList.remove('visible');
+        }
+    }
+    
+    if (hasVisibleOption && input.value !== '') {
+        dropdown.classList.add('show');
+    } else {
+        dropdown.classList.remove('show');
+    }
+    
+    for (let i = 0; i < options.length; i++) {
+        options[i].onclick = function() {
+            input.value = this.getAttribute('data-text');
+            hiddenInput.value = this.getAttribute('data-value');
+            dropdown.classList.remove('show');
+        };
+    }
+}
+
 
 // ============================================
 // FUNÇÕES DO MODAL DE UPLOAD
@@ -1223,16 +1307,22 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================
 // FUNÇÃO PARA ACESSAR EQUIPAMENTOS
 // ============================================
+// ============================================
+// FUNÇÃO PARA ACESSAR EQUIPAMENTOS
+// ============================================
 
-function acessarEquipamento(protocolo, host, porta, usuario, senha) {
-    console.log('Tentando acessar:', protocolo, host, porta);
+function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, tipo) {
+    console.log('Tentando acessar:', protocolo, host, porta, acessoId, tipo);
+    
+    // ✅ SE FOR SSH, ABRIR TERMINAL INTEGRADO
+    if (protocolo.toLowerCase() === 'ssh') {
+        abrirTerminalSSH(acessoId, host, porta, tipo);
+        return;
+    }
     
     let urlAcesso = '';
     
     switch(protocolo.toLowerCase()) {
-        case 'ssh':
-            urlAcesso = `ssh://${usuario}@${host}:${porta}`;
-            break;
         case 'telnet':
             urlAcesso = `telnet://${host}:${porta}`;
             break;
@@ -1291,4 +1381,5 @@ function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
     });
 }
 </script>
+{% include 'modal_ssh_terminal.html' %}
 {% endblock content %}

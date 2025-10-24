@@ -40,4 +40,5 @@ urlpatterns = [
     # Buscas
     path('usuarios/buscar/', views.buscar_usuarios, name='buscar_usuarios'),
     path('clientes/buscar-chamado/', views.buscar_clientes_chamado, name='buscar_clientes_chamado'),
+    
 ]

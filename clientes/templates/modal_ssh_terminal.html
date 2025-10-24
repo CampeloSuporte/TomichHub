@@ -1,0 +1,474 @@
+<!-- Modal Terminal SSH -->
+<div id="modalSSHTerminal" class="modal-overlay" style="display: none;">
+    <div class="modal-ssh-terminal">
+        <div class="modal-header-ssh">
+            <div class="terminal-info">
+                <h2 class="modal-title-ssh">
+                    <span class="terminal-prefix">&gt;</span> Terminal SSH
+                    <span id="ssh_connection_info" class="connection-info"></span>
+                </h2>
+                <div class="connection-status">
+                    <span class="status-dot" id="ssh_status_dot"></span>
+                    <span id="ssh_status_text">Desconectado</span>
+                </div>
+            </div>
+            <button class="btn-close-modal-ssh" onclick="fecharTerminalSSH()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-ssh">
+            <div id="ssh_terminal"></div>
+        </div>
+        <div class="modal-footer-ssh">
+            <button type="button" class="btn-action-ssh btn-reconnect" onclick="reconectarSSH()" id="btn_reconnect">
+                <i class="fas fa-sync-alt me-2"></i> Reconectar
+            </button>
+            <button type="button" class="btn-action-ssh btn-clear" onclick="limparTerminal()">
+                <i class="fas fa-eraser me-2"></i> Limpar
+            </button>
+            <button type="button" class="btn-action-ssh btn-disconnect" onclick="fecharTerminalSSH()">
+                <i class="fas fa-power-off me-2"></i> Desconectar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Adicione os scripts necessários no final do body -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+
+<style>
+/* Estilos para o Modal SSH Terminal */
+.modal-ssh-terminal {
+    background: #0a0a0a;
+    border: 2px solid var(--primary-green);
+    border-radius: 8px;
+    width: 95%;
+    max-width: 1200px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 30px var(--glow-green);
+    animation: slideIn 0.4s ease;
+}
+
+.modal-header-ssh {
+    padding: 15px 25px;
+    border-bottom: 2px solid var(--primary-green);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 26, 13, 0.8);
+}
+
+.terminal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.modal-title-ssh {
+    font-family: 'Courier New', monospace;
+    color: var(--primary-green);
+    font-size: 16px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.connection-info {
+    font-size: 12px;
+    color: var(--accent-cyan);
+    margin-left: 10px;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.status-dot.connected {
+    background: var(--primary-green);
+    box-shadow: 0 0 10px var(--glow-green);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.status-dot.error {
+    background: var(--error-red);
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.5);
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.btn-close-modal-ssh {
+    background: transparent;
+    border: 1px solid var(--primary-green);
+    color: var(--primary-green);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-close-modal-ssh:hover {
+    background: var(--primary-green);
+    color: #000;
+    transform: rotate(90deg);
+}
+
+.modal-body-ssh {
+    flex: 1;
+    padding: 0;
+    background: #000;
+    overflow: hidden;
+}
+
+#ssh_terminal {
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+}
+
+.modal-footer-ssh {
+    padding: 15px 25px;
+    border-top: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-action-ssh {
+    background: rgba(22, 27, 34, 0.9);
+    border: 1px solid var(--border);
+    color: var(--text-light);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.btn-action-ssh:hover {
+    transform: translateY(-2px);
+}
+
+.btn-reconnect:hover {
+    background: rgba(0, 217, 255, 0.1);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 15px var(--glow-cyan);
+}
+
+.btn-clear:hover {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+    box-shadow: 0 0 15px var(--glow-green);
+}
+
+.btn-disconnect:hover {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: var(--error-red);
+    color: var(--error-red);
+    box-shadow: 0 0 15px rgba(255, 59, 48, 0.3);
+}
+
+/* Customização do xterm */
+.xterm {
+    font-family: 'Courier New', monospace !important;
+    font-size: 14px !important;
+    padding: 10px;
+}
+
+.xterm-viewport {
+    background: #000 !important;
+}
+
+.xterm-screen {
+    background: #000 !important;
+}
+
+@media (max-width: 768px) {
+    .modal-ssh-terminal {
+        width: 100%;
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    .modal-footer-ssh {
+        flex-wrap: wrap;
+    }
+    
+    .btn-action-ssh {
+        flex: 1;
+        min-width: 120px;
+    }
+}
+</style>
+
+<script>
+// Variáveis globais para o terminal SSH
+let sshTerminal = null;
+let sshSocket = null;
+let sshFitAddon = null;
+let currentAcessoId = null;
+
+// Função para abrir o terminal SSH
+function abrirTerminalSSH(acessoId, host, porta, tipo) {
+    currentAcessoId = acessoId;
+    
+    // Mostrar modal
+    document.getElementById('modalSSHTerminal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Atualizar informações de conexão
+    document.getElementById('ssh_connection_info').textContent = `${tipo} - ${host}:${porta}`;
+    
+    // Inicializar terminal se não existir
+    if (!sshTerminal) {
+        inicializarTerminal();
+    }
+    
+    // Conectar SSH
+    setTimeout(() => {
+        conectarSSH(acessoId);
+    }, 300);
+}
+
+// Inicializar o terminal xterm
+function inicializarTerminal() {
+    const terminalElement = document.getElementById('ssh_terminal');
+    
+    // Criar instância do terminal
+    sshTerminal = new Terminal({
+        cursorBlink: true,
+        cursorStyle: 'block',
+        fontSize: 14,
+        fontFamily: '"Courier New", Courier, monospace',
+        theme: {
+            background: '#000000',
+            foreground: '#00ff88',
+            cursor: '#00ff88',
+            cursorAccent: '#000000',
+            black: '#000000',
+            red: '#ff3b30',
+            green: '#00ff88',
+            yellow: '#ff9500',
+            blue: '#00d9ff',
+            magenta: '#ff00ff',
+            cyan: '#00d9ff',
+            white: '#e6edf3',
+            brightBlack: '#8b949e',
+            brightRed: '#ff3b30',
+            brightGreen: '#39ff14',
+            brightYellow: '#ff9500',
+            brightBlue: '#00d9ff',
+            brightMagenta: '#ff00ff',
+            brightCyan: '#00d9ff',
+            brightWhite: '#ffffff'
+        },
+        allowTransparency: true,
+        scrollback: 1000
+    });
+    
+    // Addon para ajustar tamanho
+    sshFitAddon = new FitAddon.FitAddon();
+    sshTerminal.loadAddon(sshFitAddon);
+    
+    // Abrir terminal no elemento
+    sshTerminal.open(terminalElement);
+    
+    // Ajustar tamanho
+    setTimeout(() => {
+        sshFitAddon.fit();
+    }, 100);
+    
+    // Redimensionar quando a janela mudar
+    window.addEventListener('resize', () => {
+        if (sshTerminal) {
+            sshFitAddon.fit();
+        }
+    });
+    
+    // Mensagem de boas-vindas
+    sshTerminal.writeln('\x1b[1;32m╔═══════════════════════════════════════════════════════╗\x1b[0m');
+    sshTerminal.writeln('\x1b[1;32m║           CONEXA CRM - Terminal SSH v1.0              ║\x1b[0m');
+    sshTerminal.writeln('\x1b[1;32m╚═══════════════════════════════════════════════════════╝\x1b[0m');
+    sshTerminal.writeln('');
+}
+
+// Conectar ao servidor SSH via WebSocket
+function conectarSSH(acessoId) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
+    
+    // Atualizar status
+    atualizarStatusConexao('Conectando...', 'connecting');
+    
+    try {
+        sshSocket = new WebSocket(wsUrl);
+        
+        sshSocket.onopen = function() {
+            console.log('WebSocket conectado');
+            
+            // Enviar comando para conectar SSH
+            sshSocket.send(JSON.stringify({
+                action: 'connect',
+                acesso_id: acessoId
+            }));
+        };
+        
+        sshSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'connected') {
+                atualizarStatusConexao('Conectado', 'connected');
+                sshTerminal.writeln('\x1b[1;36m' + data.message + '\x1b[0m');
+                sshTerminal.writeln('');
+                
+                // Configurar input do terminal
+                configurarInputTerminal();
+            } else if (data.type === 'output') {
+                sshTerminal.write(data.data);
+            } else if (data.type === 'error') {
+                atualizarStatusConexao('Erro', 'error');
+                sshTerminal.writeln('\x1b[1;31mERRO: ' + data.message + '\x1b[0m');
+                showError('ERRO SSH', data.message, 5000);
+            }
+        };
+        
+        sshSocket.onerror = function(error) {
+            console.error('Erro WebSocket:', error);
+            atualizarStatusConexao('Erro', 'error');
+            sshTerminal.writeln('\x1b[1;31mERRO: Falha na conexão WebSocket\x1b[0m');
+            showError('ERRO', 'Falha na conexão WebSocket', 5000);
+        };
+        
+        sshSocket.onclose = function() {
+            console.log('WebSocket desconectado');
+            atualizarStatusConexao('Desconectado', 'disconnected');
+            sshTerminal.writeln('\x1b[1;33m\nConexão encerrada.\x1b[0m');
+        };
+        
+    } catch (error) {
+        console.error('Erro ao criar WebSocket:', error);
+        atualizarStatusConexao('Erro', 'error');
+        showError('ERRO', 'Erro ao criar conexão: ' + error.message, 5000);
+    }
+}
+
+// Configurar input do terminal
+function configurarInputTerminal() {
+    let currentLine = '';
+    
+    sshTerminal.onData(data => {
+        if (!sshSocket || sshSocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        // Enviar dados para o servidor SSH
+        sshSocket.send(JSON.stringify({
+            action: 'command',
+            command: data
+        }));
+    });
+}
+
+// Atualizar status da conexão
+function atualizarStatusConexao(texto, status) {
+    const statusDot = document.getElementById('ssh_status_dot');
+    const statusText = document.getElementById('ssh_status_text');
+    
+    statusText.textContent = texto;
+    statusDot.className = 'status-dot';
+    
+    if (status === 'connected') {
+        statusDot.classList.add('connected');
+    } else if (status === 'error') {
+        statusDot.classList.add('error');
+    }
+}
+
+// Reconectar SSH
+function reconectarSSH() {
+    if (sshSocket) {
+        sshSocket.close();
+    }
+    
+    if (sshTerminal) {
+        sshTerminal.clear();
+    }
+    
+    if (currentAcessoId) {
+        conectarSSH(currentAcessoId);
+    }
+}
+
+// Limpar terminal
+function limparTerminal() {
+    if (sshTerminal) {
+        sshTerminal.clear();
+    }
+}
+
+// Fechar terminal SSH
+function fecharTerminalSSH() {
+    if (sshSocket) {
+        sshSocket.close();
+        sshSocket = null;
+    }
+    
+    if (sshTerminal) {
+        sshTerminal.clear();
+    }
+    
+    document.getElementById('modalSSHTerminal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    
+    atualizarStatusConexao('Desconectado', 'disconnected');
+    currentAcessoId = null;
+}
+
+// Fechar ao clicar no overlay
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('modalSSHTerminal');
+    if (e.target === modal) {
+        if (confirm('Deseja realmente desconectar?')) {
+            fecharTerminalSSH();
+        }
+    }
+});
+
+// ESC fecha o terminal (com confirmação)
+document.addEventListener('keydown', function(e) {
+    const modal = document.getElementById('modalSSHTerminal');
+    if (e.key === 'Escape' && modal.style.display === 'flex') {
+        if (confirm('Deseja realmente desconectar?')) {
+            fecharTerminalSSH();
+        }
+    }
+});
+</script>

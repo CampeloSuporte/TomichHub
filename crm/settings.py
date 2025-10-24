@@ -36,7 +36,8 @@ INSTALLED_APPS = [
     'funcao_equipamento',
     'modelo_equipamento',
     'usuario',
-    'home'
+    'home',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -74,8 +75,12 @@ WSGI_APPLICATION = 'crm.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'crm_db',
+        'USER': 'crm_user',
+        'PASSWORD': '63675@ht',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -128,3 +133,13 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Adicione no final do arquivo
+ASGI_APPLICATION = 'crm.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}

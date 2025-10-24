@@ -66,7 +66,7 @@
                     <input type="text" name="hostname_ipv6" placeholder="Ex: 2001:db8::1">
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Protocolo</label>
                             <select name="protocolo" required>
@@ -80,10 +80,16 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Porta</label>
                             <input type="number" name="porta" placeholder="Ex: 22" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> winbox</label>
+                            <input type="number" name="winbox" placeholder="Ex: 9291" >
                         </div>
                     </div>
                 </div>
@@ -200,7 +206,7 @@
                     <input type="text" name="hostname_ipv6" id="edit_hostname_ipv6">
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Protocolo</label>
                             <select name="protocolo" id="edit_protocolo" required>
@@ -214,10 +220,16 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Porta</label>
                             <input type="number" name="porta" id="edit_porta" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> winbox</label>
+                            <input type="number" name="winbox" id="winbox" placeholder="Ex: 9291">
                         </div>
                     </div>
                 </div>
@@ -265,6 +277,148 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL DUPLICAR ACESSO -->
+<div id="modalDuplicarAcesso" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Duplicar Acesso</h2>
+            <button class="btn-close-modal" onclick="fecharModalDuplicarAcesso()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body-acesso">
+           <form method="POST" action="{% url 'cadastrar_acesso' %}">
+                {% csrf_token %}
+                <input type="hidden" name="cliente" value="{{ cliente.id }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Descrição</label>
+                            <input type="text" name="tipo" id="dup_tipo" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Função</label>
+                            <div class="custom-search-select">
+                                <input type="text" class="search-select-input" id="dup_funcao_input" 
+                                       placeholder="Digite para buscar..." autocomplete="off" 
+                                       oninput="filterOptions('dup_funcao')" required>
+                                <input type="hidden" id="dup_funcao" name="funcao">
+                                <div class="search-select-dropdown" id="dup_funcao-dropdown">
+                                    {% for funcao in funcao_equipamentos %}
+                                    <div class="search-select-option" data-value="{{ funcao.id }}" data-text="{{ funcao.descricao }}">
+                                        {{ funcao.descricao }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Modelo</label>
+                            <div class="custom-search-select">
+                                <input type="text" class="search-select-input" id="dup_modelo_input" 
+                                       placeholder="Digite para buscar..." autocomplete="off" 
+                                       oninput="filterOptions('dup_modelo')" required>
+                                <input type="hidden" id="dup_modelo" name="modelo">
+                                <div class="search-select-dropdown" id="dup_modelo-dropdown">
+                                    {% for modelo in modelos %}
+                                    <div class="search-select-option" data-value="{{ modelo.id }}" data-text="{{ modelo.nome }}">
+                                        {{ modelo.nome }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Hostname</label>
+                            <input type="text" name="hostname" id="dup_hostname" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">//</span> Hostname IPv6</label>
+                    <input type="text" name="hostname_ipv6" id="dup_hostname_ipv6">
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Protocolo</label>
+                            <select name="protocolo" id="dup_protocolo" required>
+                                <option value="">Selecione...</option>
+                                <option value="SSH">SSH</option>
+                                <option value="Telnet">Telnet</option>
+                                <option value="HTTP">HTTP</option>
+                                <option value="HTTPS">HTTPS</option>
+                                <option value="RDP">RDP</option>
+                                <option value="VNC">VNC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Porta</label>
+                            <input type="number" name="porta" id="dup_porta" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> winbox</label>
+                            <input type="number" name="winbox" id="dup_winbox" placeholder="Ex: 9291">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Usuário</label>
+                            <input type="text" name="usuario" id="dup_usuario" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Senha</label>
+                            <input type="password" name="senha" id="dup_senha" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Senha Admin</label>
+                            <input type="password" name="senha_adm" id="dup_senha_adm">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">//</span> Vlan gerencia</label>
+                            <input type="text" name="vlan" id="dup_vlan">
+                        </div>
+                    </div>
+                </div>
+                <div class="terminal-status">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Sistema online</span>
+                </div>
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalDuplicarAcesso()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-save me-2"></i> Cadastrar Cópia
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
 
 <!-- MODAL UPLOAD DE DOCUMENTO -->
 <div id="modalUploadDocumento" class="modal-overlay" style="display: none;">
