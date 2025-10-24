@@ -11,7 +11,7 @@ class SSHConsumer(WebsocketConsumer):
         self.accept()
         self.ssh_client = None
         self.channel = None
-        self.proxy_client = None  # Cliente SSH do proxy
+        self.proxy_client = None
         
     def disconnect(self, close_code):
         if self.channel:
@@ -33,6 +33,7 @@ class SSHConsumer(WebsocketConsumer):
                 # Verificar se é IP privado
                 if self.is_private_ip(acesso.host):
                     self.connect_ssh_via_proxy(
+                        acesso=acesso,  # ✅ MUDANÇA: Passar objeto acesso completo
                         host=acesso.host,
                         port=int(acesso.porta),
                         username=acesso.usuario,
@@ -67,15 +68,18 @@ class SSHConsumer(WebsocketConsumer):
             ip = ipaddress.ip_address(host)
             return ip.is_private
         except ValueError:
-            # Se não for um IP válido, assume que é público (pode ser hostname)
             return False
     
-    def get_active_proxy(self):
-        """Retorna um proxy ativo disponível"""
+    def get_active_proxy(self, cliente):
+        """✅ MUDANÇA: Retorna um proxy ativo do cliente específico"""
         try:
-            proxy = ProxyServer.objects.filter(ativo=True).first()
+            proxy = ProxyServer.objects.filter(
+                cliente=cliente,
+                ativo=True
+            ).first()
+            
             if not proxy:
-                raise Exception("Nenhum servidor proxy ativo disponível")
+                raise Exception(f"Nenhum servidor proxy ativo disponível para o cliente {cliente.nome_empresa}")
             return proxy
         except Exception as e:
             raise Exception(f"Erro ao buscar proxy: {str(e)}")
@@ -122,11 +126,11 @@ class SSHConsumer(WebsocketConsumer):
                 'message': f'Erro ao conectar: {str(e)}'
             }))
     
-    def connect_ssh_via_proxy(self, host, port, username, password):
-        """Conexão SSH via proxy (IP privado)"""
+    def connect_ssh_via_proxy(self, acesso, host, port, username, password):
+        """✅ MUDANÇA: Conexão SSH via proxy do cliente"""
         try:
-            # Buscar proxy ativo
-            proxy = self.get_active_proxy()
+            # Buscar proxy ativo do cliente
+            proxy = self.get_active_proxy(acesso.cliente)
             
             self.send(text_data=json.dumps({
                 'type': 'info',
@@ -166,7 +170,7 @@ class SSHConsumer(WebsocketConsumer):
                 port=port,
                 username=username,
                 password=password,
-                sock=proxy_channel,  # Usar o canal do proxy como socket
+                sock=proxy_channel,
                 timeout=10,
                 look_for_keys=False,
                 allow_agent=False
@@ -195,7 +199,6 @@ class SSHConsumer(WebsocketConsumer):
                 'message': f'Erro ao conectar via proxy: {str(e)}'
             }))
             
-            # Limpar conexões em caso de erro
             if self.proxy_client:
                 self.proxy_client.close()
             if self.ssh_client:

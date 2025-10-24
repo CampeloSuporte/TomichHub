@@ -43,7 +43,7 @@ urlpatterns = [
 
 
     # URLs para Servidores Proxy
-    path('proxies/listar/', views.listar_proxies, name='listar_proxies'),
+     # URLs para Túneis SSH (Proxies) - vinculados ao cliente
     path('proxies/cadastrar/', views.cadastrar_proxy, name='cadastrar_proxy'),
     path('proxies/buscar/<int:proxy_id>/', views.buscar_proxy, name='buscar_proxy'),
     path('proxies/editar/<int:proxy_id>/', views.editar_proxy, name='editar_proxy'),

@@ -30,9 +30,12 @@ def listar_clientes(request):
     # Busca os documentos do cliente
     documentos = Documento.objects.filter(cliente=cliente).order_by('-data_upload')
     
-    # ✅ ADICIONE ESTAS LINHAS - Busca arquivos VPN e Topologias
+    # Busca arquivos VPN e Topologias
     arquivos_vpn = ArquivoVPN.objects.filter(cliente=cliente).order_by('-data_upload')
     imagens_topologia = ImagemTopologia.objects.filter(cliente=cliente).order_by('-data_upload')
+    
+    # ✅ NOVO: Buscar proxies (túneis SSH) do cliente
+    proxies = ProxyServer.objects.filter(cliente=cliente).order_by('-ativo', 'nome')
 
     return render(request, 'listar.html', {
         'cliente': cliente,
@@ -42,8 +45,9 @@ def listar_clientes(request):
         'modelos': modelos,
         'funcao_equipamentos': funcao_equipamentos,
         'documentos': documentos,
-        'arquivos_vpn': arquivos_vpn,  # ✅ ADICIONE ESTA LINHA
-        'imagens_topologia': imagens_topologia,  # ✅ ADICIONE ESTA LINHA
+        'arquivos_vpn': arquivos_vpn,
+        'imagens_topologia': imagens_topologia,
+        'proxies': proxies,  # ✅ ADICIONAR ESTA LINHA
     })
 
 @login_required(login_url='login')
@@ -796,23 +800,15 @@ def buscar_clientes_chamado(request):
     return JsonResponse({'results': results})
 
 
-
-
 # ========================================
-# VIEWS PARA GERENCIAR SERVIDORES PROXY
+# VIEWS PARA GERENCIAR SERVIDORES PROXY (POR CLIENTE)
 # ========================================
-
-@login_required(login_url='login')
-def listar_proxies(request):
-    """Lista todos os servidores proxy cadastrados"""
-    proxies = ProxyServer.objects.all().order_by('-ativo', 'nome')
-    return render(request, 'listar_proxies.html', {'proxies': proxies})
-
 
 @login_required(login_url='login')
 def cadastrar_proxy(request):
-    """Cadastra um novo servidor proxy"""
+    """Cadastra um novo servidor proxy para um cliente"""
     if request.method == 'POST':
+        cliente_id = request.POST.get('cliente')
         nome = request.POST.get('nome')
         host = request.POST.get('host')
         porta = request.POST.get('porta', 22)
@@ -821,13 +817,14 @@ def cadastrar_proxy(request):
         ativo = request.POST.get('ativo') == 'on'
         
         # Validações básicas
-        if not all([nome, host, porta, usuario, senha]):
+        if not all([cliente_id, nome, host, porta, usuario, senha]):
             messages.error(request, 'Preencha todos os campos obrigatórios.')
-            return redirect('listar_proxies')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
         
         # Criar proxy
         try:
             ProxyServer.objects.create(
+                cliente_id=cliente_id,
                 nome=nome,
                 host=host,
                 porta=int(porta),
@@ -835,13 +832,13 @@ def cadastrar_proxy(request):
                 senha=senha,
                 ativo=ativo
             )
-            messages.success(request, f'Proxy "{nome}" cadastrado com sucesso!')
+            messages.success(request, f'Túnel SSH "{nome}" cadastrado com sucesso!')
         except Exception as e:
-            messages.error(request, f'Erro ao cadastrar proxy: {str(e)}')
+            messages.error(request, f'Erro ao cadastrar túnel: {str(e)}')
         
-        return redirect('listar_proxies')
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
     
-    return redirect('listar_proxies')
+    return redirect('listar_clientes')
 
 
 @login_required(login_url='login')
@@ -864,7 +861,7 @@ def buscar_proxy(request, proxy_id):
         return JsonResponse(data)
         
     except ProxyServer.DoesNotExist:
-        return JsonResponse({'error': 'Proxy não encontrado'}, status=404)
+        return JsonResponse({'error': 'Túnel SSH não encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -885,14 +882,14 @@ def editar_proxy(request, proxy_id):
             
             proxy.save()
             
-            messages.success(request, f'Proxy "{proxy.nome}" atualizado com sucesso!')
-            return redirect('listar_proxies')
+            messages.success(request, f'Túnel SSH "{proxy.nome}" atualizado com sucesso!')
+            return redirect(reverse('listar_clientes') + f'?id={proxy.cliente.id}')
             
         except Exception as e:
-            messages.error(request, f'Erro ao editar proxy: {str(e)}')
-            return redirect('listar_proxies')
+            messages.error(request, f'Erro ao editar túnel: {str(e)}')
+            return redirect('listar_clientes')
     
-    return redirect('listar_proxies')
+    return redirect('listar_clientes')
 
 
 @login_required(login_url='login')
@@ -900,14 +897,15 @@ def deletar_proxy(request, proxy_id):
     """Deleta um servidor proxy"""
     if request.method == 'POST':
         proxy = get_object_or_404(ProxyServer, id=proxy_id)
+        cliente_id = proxy.cliente.id
         nome = proxy.nome
         
         proxy.delete()
         
-        messages.success(request, f'Proxy "{nome}" excluído com sucesso!')
-        return redirect('listar_proxies')
+        messages.success(request, f'Túnel SSH "{nome}" excluído com sucesso!')
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
     
-    return redirect('listar_proxies')
+    return redirect('listar_clientes')
 
 
 @login_required(login_url='login')
@@ -936,7 +934,7 @@ def testar_proxy(request, proxy_id):
         
         return JsonResponse({
             'success': True,
-            'message': f'✓ Conexão com proxy "{proxy.nome}" bem-sucedida!'
+            'message': f'✓ Conexão com túnel "{proxy.nome}" bem-sucedida!'
         })
         
     except paramiko.AuthenticationException:
@@ -964,10 +962,10 @@ def toggle_proxy_status(request, proxy_id):
         return JsonResponse({
             'success': True,
             'ativo': proxy.ativo,
-            'message': f'Proxy "{proxy.nome}" {status_texto} com sucesso!'
+            'message': f'Túnel SSH "{proxy.nome}" {status_texto} com sucesso!'
         })
         
     except ProxyServer.DoesNotExist:
-        return JsonResponse({'error': 'Proxy não encontrado'}, status=404)
+        return JsonResponse({'error': 'Túnel SSH não encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

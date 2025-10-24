@@ -183,3 +183,26 @@ class ProxyServer(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+
+class ProxyServer(models.Model):
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='proxies')
+    nome = models.CharField(max_length=100)
+    host = models.CharField(max_length=255)
+    porta = models.IntegerField(default=22)
+    usuario = models.CharField(max_length=100)
+    senha = models.CharField(max_length=100)
+    ativo = models.BooleanField(default=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nome} - {self.cliente.nome_empresa}"
+    
+    class Meta:
+        verbose_name = 'Servidor Proxy'
+        verbose_name_plural = 'Servidores Proxy'
+        ordering = ['-ativo', 'nome']
+
+
+
