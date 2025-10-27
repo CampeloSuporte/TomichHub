@@ -39,7 +39,7 @@ class Acesso(models.Model):
     host = models.CharField(max_length=255)
     host_ipv6 = models.GenericIPAddressField(null=True, blank=True)
     winbox = models.IntegerField(null=True, blank=True)
-    porta = models.PositiveIntegerField()
+    porta = models.PositiveIntegerField(null=True, blank=True)
     protocolo = models.CharField(
         max_length=10,
         choices=ProtocoloChoices.choices

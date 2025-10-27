@@ -30,11 +30,11 @@
             <li class="nav-item">
                 <a class="nav-link" href="#" onclick="trocarAba(event, 'topologia')">Topologia</a>
             </li>
-            <!--
+            
             <li class="nav-item">
                 <a class="nav-link" href="#" onclick="trocarAba(event, 'tuneis')">Tuneis SSH</a>
             </li>
-            -->
+            
             <li class="nav-item">
                 <a class="nav-link" href="#" onclick="trocarAba(event, 'documentos')">Documentos</a>
             </li>
@@ -97,8 +97,11 @@
                                             </button>
                                         </form>
                                         <button class="icon-btn btn-sm"><i class="fas fa-link"></i></button>
-                                        <button class="icon-btn btn-sm"><i class="fas fa-code"></i></button>
-                                        <button class="icon-btn btn-sm"><i class="fas fa-file"></i></button>
+                                        <button class="icon-btn btn-sm" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-code"></i></button>
+
+                                        <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
+                                            <i class="fas fa-file"></i>
+                                        </button>
                                         <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -117,7 +120,7 @@
                                     <span class="info-value copyable" onclick="copiarTexto('{{ acesso.vlan }}')">{{ acesso.vlan }}</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="info-label">Host Name</span>
+                                    <span class="info-label">HostName</span>
                                     <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host_ipv6 }}')">{{ acesso.host }}</span>
                                 </div>
                                 <div class="info-row">
@@ -126,11 +129,19 @@
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Porta</span>
-                                    <span class="info-value copyable" onclick="copiarTexto('{{ acesso.porta }}')">{{ acesso.porta }}</span>
+                                    <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host }}')">{{ acesso.porta }}</span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Protocolo</span>
                                     <span class="info-value">{{ acesso.protocolo }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">winbox</span>
+                                    <span class="info-value">
+                                        <a class="nav-link" href="winbox://{{ acesso.hostname }}:{{ acesso.winbox }}">
+                                            {{ acesso.winbox }}
+                                        </a>
+                                    </span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Usuário</span>
@@ -403,18 +414,253 @@
             </div>
         </div>
 
+        <!-- ABA TUNEIS -->
         <div id="tab-tuneis" class="tab-content-main" style="display: none;">
-            <div class="card"><div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="mb-0">Tuneis SSH</h5>
-                    <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> Novo Tunel</button>
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">Túneis SSH (Servidores Proxy)</h5>
+                        <button class="btn btn-sm btn-primary" onclick="abrirModalCadastrarTunel()">
+                            <i class="fas fa-plus me-1"></i> Adicionar Túnel
+                        </button>
+                    </div>
+                    
+                    <div class="alert" style="background: rgba(0, 217, 255, 0.1); border-left: 3px solid var(--accent-cyan); color: var(--text-light); margin-bottom: 20px;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Túneis SSH:</strong> Configure servidores proxy para acessar equipamentos em redes privadas. 
+                        Quando você tentar conectar a um IP privado, o sistema usará automaticamente o túnel ativo deste cliente.
+                    </div>
+                    
+                    {% if proxies %}
+                    <div class="row">
+                        {% for proxy in proxies %}
+                        <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="server-header flex-column align-items-start">
+                                        <div class="d-flex align-items-center justify-content-between w-100 mb-3">
+                                            <h5 class="mb-0">{{ proxy.nome }}</h5>
+                                            <div class="status-badge {% if proxy.ativo %}status-online{% else %}status-offline{% endif %}">
+                                                {% if proxy.ativo %}
+                                                    <i class="fas fa-circle me-1"></i> Ativo
+                                                {% else %}
+                                                    <i class="fas fa-circle me-1"></i> Inativo
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <button class="icon-btn btn-sm" onclick="testarTunel({{ proxy.id }})" title="Testar Conexão">
+                                                <i class="fas fa-plug"></i>
+                                            </button>
+                                            <button class="icon-btn btn-sm" onclick="toggleTunelStatus({{ proxy.id }})" title="{% if proxy.ativo %}Desativar{% else %}Ativar{% endif %}">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                            <button class="icon-btn btn-sm" onclick="abrirModalEditarTunel({{ proxy.id }})" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" action="{% url 'deletar_proxy' proxy.id %}" 
+                                                style="display: inline;" 
+                                                onsubmit="return confirm('Tem certeza que deseja excluir o túnel: {{ proxy.nome }}?')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="icon-btn btn-sm" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-row">
+                                        <span class="info-label">Host</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ proxy.host }}')">{{ proxy.host }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Porta</span>
+                                        <span class="info-value">{{ proxy.porta }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Usuário</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ proxy.usuario }}')">{{ proxy.usuario }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Senha</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ proxy.senha }}')">{{ proxy.senha }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Cadastrado em</span>
+                                        <span class="info-value">{{ proxy.data_criacao|date:"d/m/Y H:i" }}</span>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button class="btn btn-access mb-2" onclick="testarTunel({{ proxy.id }})">
+                                            <i class="fas fa-plug me-2"></i> Testar Conexão
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-network-wired" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Nenhum túnel SSH cadastrado</p>
+                        <button class="btn btn-primary mt-3" onclick="abrirModalCadastrarTunel()">
+                            <i class="fas fa-plus me-2"></i> Adicionar Primeiro Túnel
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="text-center py-5">
-                    <i class="fas fa-network-wired" style="font-size: 64px; color: var(--primary-green); opacity: 0.3;"></i>
-                    <p class="mt-3 text-muted">Tuneis SSH serão listados aqui</p>
-                </div>
-            </div></div>
+            </div>
         </div>
+
+<!-- Modal Cadastrar Túnel SSH - VERSÃO CORRIGIDA -->
+<div id="modalCadastrarTunel" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Cadastrar Túnel SSH</h2>
+            <button class="btn-close-modal" onclick="fecharModalCadastrarTunel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso">
+            <form id="formCadastrarTunel" method="POST" action="{% url 'cadastrar_proxy' %}">
+                {% csrf_token %}
+                <input type="hidden" name="cliente" value="{{ cliente.id }}">
+                
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">&gt;</span> Nome do Túnel</label>
+                    <input type="text" name="nome" class="form-control" placeholder="Ex: Proxy Datacenter 1" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Host/IP do Servidor Proxy</label>
+                            <input type="text" name="host" class="form-control" placeholder="Ex: 200.100.50.25" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Porta</label>
+                            <input type="number" name="porta" class="form-control" value="22" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Usuário</label>
+                            <input type="text" name="usuario" class="form-control" placeholder="root" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Senha</label>
+                            <input type="password" name="senha" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-modal">
+                    <div class="form-check">
+                        <input type="checkbox" name="ativo" class="form-check-input" id="ativo_tunel" checked>
+                        <label class="form-check-label" for="ativo_tunel">
+                            Ativar túnel imediatamente
+                        </label>
+                    </div>
+                </div>
+
+                <div class="terminal-status">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Túnel SSH para acesso a redes privadas</span>
+                </div>
+
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalCadastrarTunel()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-save me-2"></i> Cadastrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Túnel SSH -->
+<div id="modalEditarProxy" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Editar Túnel SSH</h2>
+            <button class="btn-close-modal" onclick="fecharModalEditarTunel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso">
+            <form id="formEditarProxy" method="POST" action="">
+                {% csrf_token %}
+                
+                <input type="hidden" id="edit_proxy_id" name="id">
+                
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">&gt;</span> Nome do Túnel</label>
+                    <input type="text" id="edit_nome" name="nome" class="form-control" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Host/IP</label>
+                            <input type="text" id="edit_host" name="host" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Porta</label>
+                            <input type="number" id="edit_porta" name="porta" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Usuário</label>
+                            <input type="text" id="edit_usuario" name="usuario" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Senha</label>
+                            <input type="password" id="edit_senha" name="senha" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-modal">
+                    <div class="form-check">
+                        <input type="checkbox" name="ativo" class="form-check-input" id="edit_ativo">
+                        <label class="form-check-label" for="edit_ativo">
+                            Túnel ativo
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalEditarTunel()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-save me-2"></i> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
         <!-- ABA DOCUMENTOS -->
         <div id="tab-documentos" class="tab-content-main" style="display: none;">
@@ -535,22 +781,29 @@ function abrirModalEditarAcesso(acessoId) {
     fetch(`/clientes/acessos/buscar/${acessoId}/`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('edit_acesso_id').value = data.id;
-            document.getElementById('edit_tipo').value = data.tipo;
-            document.getElementById('edit_hostname').value = data.host;
-            document.getElementById('edit_hostname_ipv6').value = data.host_ipv6 || '';
-            document.getElementById('edit_protocolo').value = data.protocolo;
-            document.getElementById('edit_porta').value = data.porta;
-            document.getElementById('edit_usuario').value = data.usuario;
-            document.getElementById('edit_senha').value = data.senha;
-            document.getElementById('edit_senha_adm').value = data.senha_adm || '';
-            document.getElementById('edit_vlan').value = data.vlan || '';
-            document.getElementById('edit_funcao').value = data.funcao_id;
-            document.getElementById('edit_funcao_input').value = data.funcao_nome;
-            document.getElementById('edit_modelo').value = data.modelo_id;
-            document.getElementById('edit_modelo_input').value = data.modelo_nome;
+            // Preenche todos os campos com os dados retornados
+           document.getElementById('dup_tipo').value = data.tipo;
+            document.getElementById('dup_hostname').value = data.host;
+            document.getElementById('dup_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('dup_protocolo').value = data.protocolo;
+            document.getElementById('dup_porta').value = data.porta;
+            document.getElementById('dup_winbox').value = data.winbox || '';
+            document.getElementById('dup_usuario').value = data.usuario;
+            document.getElementById('dup_senha').value = data.senha;
+            document.getElementById('dup_senha_adm').value = data.senha_adm || '';
+            document.getElementById('dup_vlan').value = data.vlan || '';
+            
+            // Preencher os campos de função e modelo
+            document.getElementById('dup_funcao').value = data.funcao_id;
+            document.getElementById('dup_funcao_input').value = data.funcao_nome;
+            document.getElementById('dup_modelo').value = data.modelo_id;
+            document.getElementById('dup_modelo_input').value = data.modelo_nome;
+
+            // Define o action do form corretamente
             document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;
-            document.getElementById('modalEditarAcesso').style.display = 'flex';
+
+            // Exibe o modal (ID corrigido)
+            document.getElementById('modalEditar1Acesso').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         })
         .catch(error => {
@@ -596,6 +849,79 @@ function filterOptions(fieldName) {
         };
     }
 }
+
+
+
+function AbrirmodalDuplicarAcesso(acessoId) {
+    fetch(`/clientes/acessos/buscar/${acessoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            // Preencher os campos do modal de DUPLICAR com prefixo "dup_"
+            document.getElementById('dup_tipo').value = data.tipo + ' (Cópia)';
+            document.getElementById('dup_hostname').value = data.host;
+            document.getElementById('dup_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('dup_protocolo').value = data.protocolo;
+            document.getElementById('dup_porta').value = data.porta;
+            document.getElementById('dup_winbox').value = data.winbox || '';
+            document.getElementById('dup_usuario').value = data.usuario;
+            document.getElementById('dup_senha').value = data.senha;
+            document.getElementById('dup_senha_adm').value = data.senha_adm || '';
+            document.getElementById('dup_vlan').value = data.vlan || '';
+            
+            // Preencher os campos de função e modelo
+            document.getElementById('dup_funcao').value = data.funcao_id;
+            document.getElementById('dup_funcao_input').value = data.funcao_nome;
+            document.getElementById('dup_modelo').value = data.modelo_id;
+            document.getElementById('dup_modelo_input').value = data.modelo_nome;
+            
+            // Abrir o modal de duplicar
+            document.getElementById('modalDuplicarAcesso').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar os dados do acesso.', 5000);
+        });
+}
+
+function fecharModalDuplicarAcesso() {
+    document.getElementById('modalDuplicarAcesso').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function filterOptions(fieldName) {
+    const input = document.getElementById(`${fieldName}_input`);
+    const dropdown = document.getElementById(`${fieldName}-dropdown`);
+    const hiddenInput = document.getElementById(fieldName);
+    const filter = input.value.toUpperCase();
+    const options = dropdown.getElementsByClassName('search-select-option');
+    let hasVisibleOption = false;
+    
+    for (let i = 0; i < options.length; i++) {
+        const txtValue = options[i].textContent || options[i].innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            options[i].classList.add('visible');
+            hasVisibleOption = true;
+        } else {
+            options[i].classList.remove('visible');
+        }
+    }
+    
+    if (hasVisibleOption && input.value !== '') {
+        dropdown.classList.add('show');
+    } else {
+        dropdown.classList.remove('show');
+    }
+    
+    for (let i = 0; i < options.length; i++) {
+        options[i].onclick = function() {
+            input.value = this.getAttribute('data-text');
+            hiddenInput.value = this.getAttribute('data-value');
+            dropdown.classList.remove('show');
+        };
+    }
+}
+
 
 // ============================================
 // FUNÇÕES DO MODAL DE UPLOAD
@@ -1220,9 +1546,88 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script>
+
 // ============================================
 // FUNÇÃO PARA ACESSAR EQUIPAMENTOS
 // ============================================
+
+// ============================================
+// FUNÇÕES PARA TÚNEIS SSH (para a aba Túneis)
+// ============================================
+
+function abrirModalCadastrarTunel() {
+    document.getElementById('modalCadastrarTunel').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalCadastrarTunel() {
+    document.getElementById('modalCadastrarTunel').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('formCadastrarTunel').reset();
+}
+
+function abrirModalEditarTunel(proxyId) {
+    fetch(`/clientes/proxies/buscar/${proxyId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit_proxy_id').value = data.id;
+            document.getElementById('edit_nome').value = data.nome;
+            document.getElementById('edit_host').value = data.host;
+            document.getElementById('edit_porta').value = data.porta;
+            document.getElementById('edit_usuario').value = data.usuario;
+            document.getElementById('edit_senha').value = data.senha;
+            document.getElementById('edit_ativo').checked = data.ativo;
+            
+            document.getElementById('formEditarProxy').action = `/clientes/proxies/editar/${proxyId}/`;
+            document.getElementById('modalEditarProxy').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar os dados do túnel.', 5000);
+        });
+}
+
+function fecharModalEditarTunel() {
+    document.getElementById('modalEditarProxy').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function testarTunel(proxyId) {
+    showInfo('TESTANDO', 'Testando conexão com o túnel SSH...', 3000);
+    
+    fetch(`/clientes/proxies/testar/${proxyId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('CONEXÃO OK', data.message, 5000);
+            } else {
+                showError('ERRO', data.message, 5000);
+            }
+        })
+        .catch(error => {
+            showError('ERRO', 'Erro ao testar conexão com o túnel.', 5000);
+        });
+}
+
+function toggleTunelStatus(proxyId) {
+    fetch(`/clientes/proxies/toggle/${proxyId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('STATUS ATUALIZADO', data.message, 3000);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showError('ERRO', data.error, 5000);
+            }
+        })
+        .catch(error => {
+            showError('ERRO', 'Erro ao alterar status do túnel.', 5000);
+        });
+}
+
 // ============================================
 // FUNÇÃO PARA ACESSAR EQUIPAMENTOS
 // ============================================
@@ -1261,7 +1666,6 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
             urlAcesso = `vnc://${host}:${porta}`;
             break;
         default:
-            // Para protocolos não suportados, mostrar dados
             const dados = `Protocolo: ${protocolo}\nHost: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}`;
             showInfo('DADOS DE CONEXÃO', dados, 10000);
             return;
@@ -1269,7 +1673,6 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
     
     console.log('URL gerada:', urlAcesso);
     
-    // Tentar abrir em nova aba
     try {
         window.open(urlAcesso, '_blank');
         showSuccess('SUCESSO', `Conectando via ${protocolo.toUpperCase()}...`, 3000);
@@ -1278,6 +1681,256 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         showError('ERRO', 'Não foi possível iniciar a conexão. Verifique se há um aplicativo adequado instalado.', 5000);
     }
 }
+
+// ============================================
+// FUNÇÃO PARA ABRIR TERMINAL SSH
+// ============================================
+
+function abrirTerminalSSH(acessoId, host, porta, tipo) {
+    console.log('🔥 Abrindo terminal SSH para:', acessoId, host, porta, tipo);
+    
+    // Verificar se o modal existe
+    const modal = document.getElementById('modalSSHTerminal');
+    if (!modal) {
+        console.error('❌ Modal SSH Terminal não encontrado!');
+        showError('ERRO', 'Modal de terminal SSH não está disponível', 5000);
+        return;
+    }
+    
+    // Definir informações do acesso no modal
+    const sshHostInfo = document.getElementById('ssh-host-info');
+    const sshAcessoId = document.getElementById('ssh-acesso-id');
+    const terminalOutput = document.getElementById('terminal-output');
+    
+    if (sshHostInfo) {
+        sshHostInfo.textContent = `${tipo} - ${host}:${porta}`;
+    }
+    
+    if (sshAcessoId) {
+        sshAcessoId.value = acessoId;
+    }
+    
+    // Limpar terminal anterior
+    if (terminalOutput) {
+        terminalOutput.innerHTML = '<div class="terminal-welcome">🔌 Conectando ao servidor SSH...</div>';
+    }
+    
+    // Abrir o modal
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    console.log('✅ Modal aberto com sucesso!');
+    
+    // Focar no input do terminal
+    setTimeout(() => {
+        const terminalInput = document.getElementById('terminal-input');
+        if (terminalInput) {
+            terminalInput.focus();
+        }
+    }, 300);
+    
+    // Iniciar conexão WebSocket
+    iniciarConexaoSSH(acessoId);
+}
+
+function fecharTerminalSSH() {
+    const modal = document.getElementById('modalSSHTerminal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Fechar conexão WebSocket se existir
+    if (window.sshWebSocket && window.sshWebSocket.readyState === WebSocket.OPEN) {
+        window.sshWebSocket.close();
+    }
+    
+    // Limpar terminal
+    const terminalOutput = document.getElementById('terminal-output');
+    if (terminalOutput) {
+        terminalOutput.innerHTML = '';
+    }
+}
+
+let sshWebSocket = null;
+
+function iniciarConexaoSSH(acessoId) {
+    console.log('📡 Iniciando conexão SSH para acesso ID:', acessoId);
+    
+    // Fechar conexão anterior se existir
+    if (sshWebSocket && sshWebSocket.readyState === WebSocket.OPEN) {
+        console.log('⚠️ Fechando conexão anterior...');
+        sshWebSocket.close();
+    }
+    
+    // Determinar protocolo WebSocket (ws ou wss)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
+    
+    console.log('🔗 URL WebSocket:', wsUrl);
+    
+    try {
+        sshWebSocket = new WebSocket(wsUrl);
+        
+        sshWebSocket.onopen = function(e) {
+            console.log('✅ WebSocket conectado com sucesso!');
+            adicionarSaidaTerminal('Sistema: WebSocket conectado\n', 'info');
+            
+            // Enviar comando de conexão
+            const payload = {
+                action: 'connect',
+                acesso_id: acessoId
+            };
+            console.log('📤 Enviando comando de conexão:', payload);
+            sshWebSocket.send(JSON.stringify(payload));
+        };
+        
+        sshWebSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log('📨 Mensagem recebida:', data);
+            
+            switch(data.type) {
+                case 'connected':
+                    adicionarSaidaTerminal(data.message + '\n', 'success');
+                    break;
+                case 'output':
+                    adicionarSaidaTerminal(data.data, 'output');
+                    break;
+                case 'error':
+                    adicionarSaidaTerminal('ERRO: ' + data.message + '\n', 'error');
+                    break;
+                case 'info':
+                    adicionarSaidaTerminal('INFO: ' + data.message + '\n', 'info');
+                    break;
+            }
+        };
+        
+        sshWebSocket.onerror = function(error) {
+            console.error('❌ Erro WebSocket:', error);
+            adicionarSaidaTerminal('ERRO: Falha na conexão WebSocket\n', 'error');
+        };
+        
+        sshWebSocket.onclose = function(event) {
+            console.log('🔌 WebSocket fechado:', event);
+            if (event.wasClean) {
+                adicionarSaidaTerminal('Sistema: Conexão encerrada\n', 'info');
+            } else {
+                adicionarSaidaTerminal('ERRO: Conexão perdida\n', 'error');
+            }
+        };
+        
+        window.sshWebSocket = sshWebSocket;
+        
+    } catch (error) {
+        console.error('❌ Erro ao criar WebSocket:', error);
+        adicionarSaidaTerminal('ERRO: Não foi possível estabelecer conexão\n', 'error');
+    }
+}
+
+function adicionarSaidaTerminal(texto, tipo = 'output') {
+    const terminalOutput = document.getElementById('terminal-output');
+    if (!terminalOutput) {
+        console.error('❌ Elemento terminal-output não encontrado!');
+        return;
+    }
+    
+    const linha = document.createElement('div');
+    linha.className = `terminal-line terminal-${tipo}`;
+    linha.textContent = texto;
+    
+    terminalOutput.appendChild(linha);
+    
+    // Auto-scroll para o final
+    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+function enviarComandoSSH(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    
+    const input = document.getElementById('terminal-input');
+    if (!input) return;
+    
+    const comando = input.value;
+    
+    if (!comando.trim()) return;
+    
+    // Adicionar comando ao terminal
+    adicionarSaidaTerminal('$ ' + comando + '\n', 'input');
+    
+    // Enviar comando via WebSocket
+    if (sshWebSocket && sshWebSocket.readyState === WebSocket.OPEN) {
+        sshWebSocket.send(JSON.stringify({
+            action: 'command',
+            command: comando + '\n'
+        }));
+    } else {
+        adicionarSaidaTerminal('ERRO: Não há conexão ativa\n', 'error');
+    }
+    
+    // Limpar input
+    input.value = '';
+}
+
+function limparTerminal() {
+    const terminalOutput = document.getElementById('terminal-output');
+    if (terminalOutput) {
+        terminalOutput.innerHTML = '<div class="terminal-welcome">Terminal limpo</div>';
+    }
+}
+
+// Função para copiar dados de conexão
+function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
+    const texto = `Host: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}\nProtocolo: ${protocolo}`;
+    
+    navigator.clipboard.writeText(texto).then(() => {
+        showSuccess('SUCESSO', 'Dados copiados para a área de transferência!', 3000);
+    }).catch(err => {
+        const textArea = document.createElement('textarea');
+        textArea.value = texto;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showSuccess('SUCESSO', 'Dados copiados para a área de transferência!', 3000);
+    });
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Carregando listeners do terminal SSH...');
+    
+    // Verificar se o modal existe
+    const modal = document.getElementById('modalSSHTerminal');
+    if (modal) {
+        console.log('✅ Modal SSH Terminal encontrado!');
+        
+        // Fechar modal ao clicar no overlay
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                fecharTerminalSSH();
+            }
+        });
+    } else {
+        console.error('❌ Modal SSH Terminal NÃO encontrado!');
+    }
+    
+    // ESC fecha o modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('modalSSHTerminal');
+            if (modal && modal.style.display === 'flex') {
+                fecharTerminalSSH();
+            }
+        }
+    });
+    
+    console.log('✅ Listeners carregados com sucesso!');
+});
 
 // Função para copiar dados de conexão
 function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
@@ -1296,6 +1949,10 @@ function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
         showSuccess('SUCESSO', 'Dados copiados para a área de transferência!', 3000);
     });
 }
+
+
+
+
 </script>
 {% include 'modal_ssh_terminal.html' %}
 {% endblock content %}

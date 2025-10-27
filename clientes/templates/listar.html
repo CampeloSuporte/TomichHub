@@ -781,22 +781,29 @@ function abrirModalEditarAcesso(acessoId) {
     fetch(`/clientes/acessos/buscar/${acessoId}/`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('edit_acesso_id').value = data.id;
-            document.getElementById('edit_tipo').value = data.tipo;
-            document.getElementById('edit_hostname').value = data.host;
-            document.getElementById('edit_hostname_ipv6').value = data.host_ipv6 || '';
-            document.getElementById('edit_protocolo').value = data.protocolo;
-            document.getElementById('edit_porta').value = data.porta;
-            document.getElementById('edit_usuario').value = data.usuario;
-            document.getElementById('edit_senha').value = data.senha;
-            document.getElementById('edit_senha_adm').value = data.senha_adm || '';
-            document.getElementById('edit_vlan').value = data.vlan || '';
-            document.getElementById('edit_funcao').value = data.funcao_id;
-            document.getElementById('edit_funcao_input').value = data.funcao_nome;
-            document.getElementById('edit_modelo').value = data.modelo_id;
-            document.getElementById('edit_modelo_input').value = data.modelo_nome;
+            // Preenche todos os campos com os dados retornados
+           document.getElementById('dup_tipo').value = data.tipo;
+            document.getElementById('dup_hostname').value = data.host;
+            document.getElementById('dup_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('dup_protocolo').value = data.protocolo;
+            document.getElementById('dup_porta').value = data.porta;
+            document.getElementById('dup_winbox').value = data.winbox || '';
+            document.getElementById('dup_usuario').value = data.usuario;
+            document.getElementById('dup_senha').value = data.senha;
+            document.getElementById('dup_senha_adm').value = data.senha_adm || '';
+            document.getElementById('dup_vlan').value = data.vlan || '';
+            
+            // Preencher os campos de função e modelo
+            document.getElementById('dup_funcao').value = data.funcao_id;
+            document.getElementById('dup_funcao_input').value = data.funcao_nome;
+            document.getElementById('dup_modelo').value = data.modelo_id;
+            document.getElementById('dup_modelo_input').value = data.modelo_nome;
+
+            // Define o action do form corretamente
             document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;
-            document.getElementById('modalEditarAcesso').style.display = 'flex';
+
+            // Exibe o modal (ID corrigido)
+            document.getElementById('modalEditar1Acesso').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         })
         .catch(error => {
