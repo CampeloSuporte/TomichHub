@@ -440,13 +440,13 @@
                                     <div class="server-header flex-column align-items-start">
                                         <div class="d-flex align-items-center justify-content-between w-100 mb-3">
                                             <h5 class="mb-0">{{ proxy.nome }}</h5>
-                                            <div class="status-badge {% if proxy.ativo %}status-online{% else %}status-offline{% endif %}">
-                                                {% if proxy.ativo %}
-                                                    <i class="fas fa-circle me-1"></i> Ativo
-                                                {% else %}
-                                                    <i class="fas fa-circle me-1"></i> Inativo
-                                                {% endif %}
-                                            </div>
+                                         <div class="status-badge-switch {% if proxy.ativo %}status-online{% else %}status-offline{% endif %}">
+                                            {% if proxy.ativo %}
+                                                Ativo
+                                            {% else %}
+                                                Inativo
+                                            {% endif %}
+                                        </div>
                                         </div>
                                         
                                         <div class="d-flex gap-2 flex-wrap">
@@ -775,6 +775,9 @@ function trocarAba(event, nomeAba) {
     document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
     document.getElementById('tab-' + nomeAba).style.display = 'block';
     event.target.classList.add('active');
+    
+    // ✅ NOVA LINHA: Sempre salvar a aba atual
+    sessionStorage.setItem('abaAtiva', nomeAba);
 }
 
 function abrirModalEditarAcesso(acessoId) {
@@ -1610,7 +1613,13 @@ function testarTunel(proxyId) {
         });
 }
 
+// ============================================
+// TÚNEIS SSH
+// ============================================
+
 function toggleTunelStatus(proxyId) {
+    sessionStorage.setItem('abaAtiva', 'tuneis');
+    
     fetch(`/clientes/proxies/toggle/${proxyId}/`)
         .then(response => response.json())
         .then(data => {
@@ -1628,6 +1637,130 @@ function toggleTunelStatus(proxyId) {
         });
 }
 
+// ============================================
+// CHAMADOS
+// ============================================
+
+function salvarEdicaoChamado() {
+    if (!chamadoAtual) return;
+    
+    sessionStorage.setItem('abaAtiva', 'chamados');
+    
+    const form = document.getElementById('formEditarChamado');
+    const formData = new FormData(form);
+    
+    formData.append('titulo', document.getElementById('view_titulo').value);
+    formData.append('descricao', document.getElementById('view_descricao').value);
+    formData.append('status', document.getElementById('view_status').value);
+    formData.append('prioridade', document.getElementById('view_prioridade').value);
+    formData.append('departamento', document.getElementById('view_departamento').value);
+    formData.append('categoria', document.getElementById('view_categoria').value);
+    formData.append('responsavel', document.getElementById('view_responsavel').value);
+    
+    fetch(`/clientes/chamados/editar/${chamadoAtual.id}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (response.redirected) {
+            showSuccess('SUCESSO', 'Chamado atualizado com sucesso!', 3000);
+            fecharModalVisualizarChamado();
+            carregarChamados();
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showError('ERRO', 'Erro ao salvar alterações', 3000);
+    });
+}
+
+function adicionarComentario() {
+    if (!chamadoAtual) return;
+    
+    sessionStorage.setItem('abaAtiva', 'chamados');
+    
+    const comentario = document.getElementById('novo_comentario').value.trim();
+    const isInternal = document.getElementById('comentario_interno').checked;
+    
+    if (!comentario) {
+        showError('ERRO', 'Digite um comentário', 3000);
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('comentario', comentario);
+    formData.append('is_internal', isInternal);
+    
+    fetch(`/clientes/chamados/${chamadoAtual.id}/comentario/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            showSuccess('SUCESSO', 'Comentário adicionado', 3000);
+            document.getElementById('novo_comentario').value = '';
+            document.getElementById('comentario_interno').checked = false;
+            abrirModalVisualizarChamado(chamadoAtual.id);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showError('ERRO', 'Erro ao adicionar comentário', 3000);
+    });
+}
+
+// ============================================
+// VPN
+// ============================================
+
+function abrirModalEditarVPN(vpnId) {
+    sessionStorage.setItem('abaAtiva', 'vpn');
+    
+    fetch(`/clientes/vpn/buscar/${vpnId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit_vpn_id').value = data.id;
+            document.getElementById('edit_nome_vpn').value = data.nome;
+            document.getElementById('edit_usuario_vpn').value = data.usuario || '';
+            document.getElementById('edit_senha_vpn').value = data.senha || '';
+            document.getElementById('edit_private_key_vpn').value = data.private_key || '';
+            
+            document.getElementById('formEditarVPN').action = `/clientes/vpn/editar/${vpnId}/`;
+            
+            document.getElementById('modalEditarVPN').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Não foi possível carregar os dados da VPN.');
+        });
+}
+
+// ============================================
+// TOPOLOGIA
+// ============================================
+
+function abrirModalUploadTopologia() {
+    sessionStorage.setItem('abaAtiva', 'topologia');
+    document.getElementById('modalUploadTopologia').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// ============================================
+// DOCUMENTOS
+// ============================================
+
+function abrirModalUpload() {
+    sessionStorage.setItem('abaAtiva', 'documentos');
+    document.getElementById('modalUploadDocumento').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
 // ============================================
 // FUNÇÃO PARA ACESSAR EQUIPAMENTOS
 // ============================================
@@ -1900,36 +2033,98 @@ function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
 // ============================================
 // EVENT LISTENERS
 // ============================================
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Carregando listeners do terminal SSH...');
     
-    // Verificar se o modal existe
-    const modal = document.getElementById('modalSSHTerminal');
-    if (modal) {
-        console.log('✅ Modal SSH Terminal encontrado!');
+    // ✅ RESTAURAR ABA APÓS RELOAD
+    const abaAtiva = sessionStorage.getItem('abaAtiva');
+    if (abaAtiva) {
+        console.log('🔄 Restaurando aba:', abaAtiva);
         
-        // Fechar modal ao clicar no overlay
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                fecharTerminalSSH();
-            }
-        });
-    } else {
-        console.error('❌ Modal SSH Terminal NÃO encontrado!');
+        // Esconder todas as abas
+        document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
+        document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
+        
+        // Mostrar a aba salva
+        const tabElement = document.getElementById('tab-' + abaAtiva);
+        const linkElement = document.querySelector(`#mainTabs a[onclick*="${abaAtiva}"]`);
+        
+        if (tabElement) {
+            tabElement.style.display = 'block';
+            console.log('✅ Aba restaurada:', abaAtiva);
+        }
+        if (linkElement) {
+            linkElement.classList.add('active');
+        }
+        
+        // Limpar sessionStorage
+        sessionStorage.removeItem('abaAtiva');
+        
+        // Se for aba de chamados, carregar os chamados
+        if (abaAtiva === 'chamados') {
+            setTimeout(() => {
+                carregarChamados();
+            }, 300);
+        }
     }
     
-    // ESC fecha o modal
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const modal = document.getElementById('modalSSHTerminal');
-            if (modal && modal.style.display === 'flex') {
-                fecharTerminalSSH();
-            }
-        }
+    // ✅ ADICIONAR EVENTOS NOS FORMS DE DELETE
+    
+    // Acessos
+    document.querySelectorAll('form[action*="/deletar_acesso/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'acessos');
+        });
     });
     
-    console.log('✅ Listeners carregados com sucesso!');
+    // VPN
+    document.querySelectorAll('form[action*="/deletar_vpn/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'vpn');
+        });
+    });
+    
+    document.querySelectorAll('form[action*="/vpn/editar/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'vpn');
+        });
+    });
+    
+    // Topologia
+    document.querySelectorAll('form[action*="/deletar_topologia/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'topologia');
+        });
+    });
+    
+    // Documentos
+    document.querySelectorAll('form[action*="/deletar_documento/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'documentos');
+        });
+    });
+    
+    // Túneis
+    document.querySelectorAll('form[action*="/deletar_proxy/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'tuneis');
+        });
+    });
+    
+    document.querySelectorAll('form[action*="/proxies/editar/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'tuneis');
+        });
+    });
+    
+    // Chamados
+    document.querySelectorAll('form[action*="/chamados/deletar/"]').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('abaAtiva', 'chamados');
+        });
+    });
+    
+    // ... resto do código existente do DOMContentLoaded continua aqui ...
+    // (Upload Area, Observer, etc.)
 });
 
 // Função para copiar dados de conexão

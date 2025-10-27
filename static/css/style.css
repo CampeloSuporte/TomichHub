@@ -3138,3 +3138,362 @@ h4::before {
 #modalInstrucoesAcesso .modal-acesso {
     animation: modalFadeIn 0.3s ease;
 }
+
+
+/* ====================================
+   FORÇA VISIBILIDADE DOS INPUTS DE EDIÇÃO
+   ==================================== */
+
+#modalEditarAcesso input,
+#modalEditarAcesso select,
+#modalEditarAcesso textarea {
+    color: #6db88f !important;
+    background: #0a1f14 !important;
+    padding: 12px 14px !important;
+    font-size: 14px !important;
+    border: 1px solid #1a3d2e !important;
+}
+
+#modalEditarAcesso input:focus,
+#modalEditarAcesso select:focus,
+#modalEditarAcesso textarea:focus {
+    color: #00ff88 !important;
+    background: #0f2419 !important;
+    border-color: #00ff41 !important;
+}
+
+#modalEditarAcesso input::placeholder {
+    color: #3d6655 !important;
+    opacity: 1 !important;
+}
+
+/* Garantir que inputs específicos também sejam visíveis */
+#edit_porta,
+#edit_usuario,
+#edit_senha,
+#edit_vlan,
+#edit_winbox,
+#edit_senha_adm {
+    color: #6db88f !important;
+    background: #0a1f14 !important;
+    padding: 12px 14px !important;
+}
+
+
+/* ====================================
+   CORREÇÃO DEFINITIVA - MODAL EDITAR
+   ==================================== */
+
+#modalEditarAcesso input[type="text"],
+#modalEditarAcesso input[type="number"],
+#modalEditarAcesso input[type="password"],
+#modalEditarAcesso select {
+    width: 100%;
+    padding: 12px 14px !important;
+    background: #0a1f14 !important;
+    border: 1px solid #1a3d2e !important;
+    border-radius: 4px;
+    color: #6db88f !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 0.9em !important;
+    transition: all 0.2s;
+}
+
+#modalEditarAcesso input[type="text"]:focus,
+#modalEditarAcesso input[type="number"]:focus,
+#modalEditarAcesso input[type="password"]:focus,
+#modalEditarAcesso select:focus {
+    outline: none;
+    border-color: #00ff41 !important;
+    background: #0f2419 !important;
+    color: #6db88f !important;
+}
+
+
+/* ============================================
+   BADGES DE STATUS - DESIGN MELHORADO
+   ============================================ */
+
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+/* Status Online (Ativo) */
+.status-badge.status-online {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--primary-green);
+    border: 1px solid var(--primary-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.status-badge.status-online i {
+    color: var(--primary-green);
+    font-size: 8px;
+    animation: pulse-online 2s ease-in-out infinite;
+}
+
+@keyframes pulse-online {
+    0%, 100% {
+        opacity: 1;
+        text-shadow: 0 0 8px var(--primary-green);
+    }
+    50% {
+        opacity: 0.6;
+        text-shadow: 0 0 4px var(--primary-green);
+    }
+}
+
+/* Status Offline (Inativo) */
+.status-badge.status-offline {
+    background: rgba(139, 148, 158, 0.1);
+    color: var(--text-muted);
+    border: 1px solid rgba(139, 148, 158, 0.3);
+}
+
+.status-badge.status-offline i {
+    color: var(--text-muted);
+    font-size: 8px;
+    opacity: 0.5;
+}
+
+/* Hover Effects */
+.status-badge.status-online:hover {
+    background: rgba(0, 255, 136, 0.25);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+    transform: translateY(-1px);
+}
+
+.status-badge.status-offline:hover {
+    background: rgba(139, 148, 158, 0.15);
+    border-color: rgba(139, 148, 158, 0.5);
+    transform: translateY(-1px);
+}
+
+/* ============================================
+   ALTERNATIVA 1 - COM SWITCH STYLE
+   ============================================ */
+
+.status-badge-switch {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.status-badge-switch.status-online {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 255, 136, 0.1));
+    color: var(--primary-green);
+    border: 2px solid var(--primary-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3), inset 0 0 10px rgba(0, 255, 136, 0.1);
+}
+
+.status-badge-switch.status-online::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: var(--primary-green);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--primary-green);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px var(--primary-green);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 15px var(--primary-green);
+    }
+}
+
+.status-badge-switch.status-offline {
+    background: rgba(22, 27, 34, 0.8);
+    color: var(--text-muted);
+    border: 2px solid rgba(139, 148, 158, 0.3);
+}
+
+.status-badge-switch.status-offline::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    opacity: 0.3;
+}
+
+/* ============================================
+   ALTERNATIVA 2 - ESTILO NEON
+   ============================================ */
+
+.status-badge-neon {
+    padding: 8px 16px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-badge-neon.status-online {
+    background: #000;
+    color: var(--primary-green);
+    border: 2px solid var(--primary-green);
+    text-shadow: 0 0 10px var(--primary-green);
+    box-shadow: 
+        0 0 5px var(--primary-green),
+        0 0 10px var(--primary-green),
+        inset 0 0 10px rgba(0, 255, 136, 0.1);
+}
+
+.status-badge-neon.status-online::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
+    animation: scan-line 3s linear infinite;
+}
+
+@keyframes scan-line {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.status-badge-neon.status-online .status-icon {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-green);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--primary-green);
+    animation: blink-fast 1.5s ease-in-out infinite;
+}
+
+@keyframes blink-fast {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.status-badge-neon.status-offline {
+    background: #000;
+    color: #555;
+    border: 2px solid #333;
+    text-shadow: none;
+    box-shadow: none;
+}
+
+.status-badge-neon.status-offline .status-icon {
+    width: 8px;
+    height: 8px;
+    background: #555;
+    border-radius: 50%;
+    opacity: 0.3;
+}
+
+/* ============================================
+   ALTERNATIVA 3 - MINIMALISTA MODERNO
+   ============================================ */
+
+.status-badge-minimal {
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+.status-badge-minimal.status-online {
+    background: transparent;
+    color: var(--primary-green);
+    border-left: 3px solid var(--primary-green);
+    padding-left: 10px;
+}
+
+.status-badge-minimal.status-online .status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--primary-green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--primary-green);
+    animation: pulse-minimal 2s ease-in-out infinite;
+}
+
+@keyframes pulse-minimal {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.3);
+    }
+}
+
+.status-badge-minimal.status-offline {
+    background: transparent;
+    color: var(--text-muted);
+    border-left: 3px solid rgba(139, 148, 158, 0.3);
+    padding-left: 10px;
+}
+
+.status-badge-minimal.status-offline .status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    opacity: 0.3;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .status-badge,
+    .status-badge-switch,
+    .status-badge-neon,
+    .status-badge-minimal {
+        font-size: 10px;
+        padding: 5px 10px;
+        gap: 6px;
+    }
+}
