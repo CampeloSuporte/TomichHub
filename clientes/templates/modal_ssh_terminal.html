@@ -20,6 +20,9 @@
             <div id="ssh_terminal"></div>
         </div>
         <div class="modal-footer-ssh">
+            <button type="button" class="btn-action-ssh btn-toggle-color" onclick="toggleColorizacao()">
+                <i class="fas fa-palette me-2"></i> Toggle Cores
+            </button>
             <button type="button" class="btn-action-ssh btn-reconnect" onclick="reconectarSSH()" id="btn_reconnect">
                 <i class="fas fa-sync-alt me-2"></i> Reconectar
             </button>
@@ -227,6 +230,19 @@
         min-width: 120px;
     }
 }
+
+.btn-toggle-color {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: var(--primary-green);
+}
+
+.btn-toggle-color:hover {
+    background: rgba(0, 255, 136, 0.2);
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+    box-shadow: 0 0 15px var(--glow-green);
+}
+
 </style>
 
 <script>
@@ -235,6 +251,16 @@ let sshTerminal = null;
 let sshSocket = null;
 let sshFitAddon = null;
 let currentAcessoId = null;
+
+
+function toggleColorizacao() {
+    colorizacaoAtiva = !colorizacaoAtiva;
+    
+    const statusText = colorizacaoAtiva ? 'ATIVADA' : 'DESATIVADA';
+    const cor = colorizacaoAtiva ? '\x1b[1;32m' : '\x1b[1;31m';
+    
+    sshTerminal.writeln(`\n${cor}Colorização ${statusText}\x1b[0m\n`);
+}
 
 // Função para abrir o terminal SSH
 function abrirTerminalSSH(acessoId, host, porta, tipo) {
@@ -273,21 +299,22 @@ function inicializarTerminal() {
             foreground: '#00ff88',
             cursor: '#00ff88',
             cursorAccent: '#000000',
+            selection: 'rgba(0, 255, 136, 0.3)',
             black: '#000000',
             red: '#ff3b30',
             green: '#00ff88',
-            yellow: '#ff9500',
+            yellow: '#ffcc00',
             blue: '#00d9ff',
             magenta: '#ff00ff',
             cyan: '#00d9ff',
             white: '#e6edf3',
             brightBlack: '#8b949e',
-            brightRed: '#ff3b30',
+            brightRed: '#ff6b60',
             brightGreen: '#39ff14',
-            brightYellow: '#ff9500',
-            brightBlue: '#00d9ff',
-            brightMagenta: '#ff00ff',
-            brightCyan: '#00d9ff',
+            brightYellow: '#ffff00',
+            brightBlue: '#66d9ff',
+            brightMagenta: '#ff66ff',
+            brightCyan: '#66ffff',
             brightWhite: '#ffffff'
         },
         allowTransparency: true,
@@ -320,7 +347,112 @@ function inicializarTerminal() {
     sshTerminal.writeln('');
 }
 
-// Conectar ao servidor SSH via WebSocket
+// Buffer para acumular output fragmentado
+let outputBuffer = '';
+let bufferTimeout = null;
+let colorizacaoAtiva = true;
+
+// ============================================
+// FUNÇÃO DE COLORIZAÇÃO AUTOMÁTICA
+// ============================================
+
+function colorizarTextoSSH(texto) {
+    if (!texto) return texto;
+    
+    let resultado = texto;
+    
+    // 1. Interfaces de rede (Ge, GigabitEthernet, FastEthernet, etc)
+    resultado = resultado.replace(/(\b(?:Ge|GE|GigabitEthernet|FastEthernet|Fe|TenGigabitEthernet|Te)\d+\/\d+(?:\/\d+)?(?:\.\d+)?)\b/gi, 
+        '\x1b[1;36m$1\x1b[0m'); // Cyan brilhante
+    
+    // 2. VLANs
+    resultado = resultado.replace(/(\bVlan\d+|\bvlan\d+)/gi, 
+        '\x1b[1;35m$1\x1b[0m'); // Magenta brilhante
+    
+    // 3. Loopback/Tunnel
+    resultado = resultado.replace(/(\b(?:Loopback|loopback|Tunnel|tunnel)\d+)/gi, 
+        '\x1b[1;34m$1\x1b[0m'); // Azul brilhante
+    
+    // 4. Interfaces genéricas (eth, wlan, en)
+    resultado = resultado.replace(/(\b(?:eth|wlan|en|wl)\d+)/gi, 
+        '\x1b[0;36m$1\x1b[0m'); // Cyan normal
+    
+    // 5. Endereços IPv4
+    resultado = resultado.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g, 
+        '\x1b[1;33m$1\x1b[0m'); // Amarelo brilhante
+    
+    // 6. Máscara de rede (/30, /24, etc)
+    resultado = resultado.replace(/\/(\d{1,2})\b/g, 
+        '\x1b[0;33m/$1\x1b[0m'); // Amarelo normal
+    
+    // 7. Status UP (e variações)
+    resultado = resultado.replace(/\b(up|UP|enabled|ENABLED|active|ACTIVE|connected|CONNECTED|online|ONLINE)\b/g, 
+        '\x1b[1;32m$1\x1b[0m'); // Verde brilhante
+    
+    // 8. Status DOWN (e variações)
+    resultado = resultado.replace(/\b(down|DOWN|disabled|DISABLED|inactive|INACTIVE|disconnected|DISCONNECTED|offline|OFFLINE)\b/g, 
+        '\x1b[1;31m$1\x1b[0m'); // Vermelho brilhante
+    
+    // 9. ERROR/FAILED
+    resultado = resultado.replace(/\b(error|ERROR|failed|FAILED|failure|FAILURE|critical|CRITICAL)\b/g, 
+        '\x1b[1;91m$1\x1b[0m'); // Vermelho muito brilhante
+    
+    // 10. WARNING
+    resultado = resultado.replace(/\b(warning|WARNING|warn|WARN|degraded|DEGRADED)\b/g, 
+        '\x1b[1;93m$1\x1b[0m'); // Amarelo muito brilhante
+    
+    // 11. OK/SUCCESS
+    resultado = resultado.replace(/\b(ok|OK|success|SUCCESS|successful|SUCCESSFUL|healthy|HEALTHY)\b/g, 
+        '\x1b[1;92m$1\x1b[0m'); // Verde muito brilhante
+    
+    // 12. Porcentagens com cor baseada no valor
+    resultado = resultado.replace(/\b(\d+)%/g, (match, num) => {
+        const valor = parseInt(num);
+        if (valor >= 80) {
+            return `\x1b[1;31m${num}%\x1b[0m`; // Vermelho se >= 80%
+        } else if (valor >= 50) {
+            return `\x1b[1;33m${num}%\x1b[0m`; // Amarelo se >= 50%
+        } else {
+            return `\x1b[1;32m${num}%\x1b[0m`; // Verde se < 50%
+        }
+    });
+    
+    // 13. Bandwidth (100Mb, 1Gb, etc)
+    resultado = resultado.replace(/\b(\d+\s*[KMG]b(?:ps)?)\b/gi, 
+        '\x1b[0;96m$1\x1b[0m'); // Cyan claro
+    
+    // 14. Protocolos de roteamento
+    resultado = resultado.replace(/\b(BGP|OSPF|EIGRP|RIP|ISIS|STATIC|RIPng|OSPFv3)\b/g, 
+        '\x1b[1;95m$1\x1b[0m'); // Magenta brilhante
+    
+    // 15. Protocolos Layer 2
+    resultado = resultado.replace(/\b(STP|RSTP|MSTP|LACP|VTP|CDP|LLDP|ARP)\b/g, 
+        '\x1b[1;95m$1\x1b[0m'); // Magenta brilhante
+    
+    // 16. Serviços
+    resultado = resultado.replace(/\b(SSH|TELNET|HTTP|HTTPS|FTP|SFTP|TFTP|SNMP|NTP|DNS|DHCP)\b/g, 
+        '\x1b[1;95m$1\x1b[0m'); // Magenta brilhante
+    
+    // 17. MAC Address
+    resultado = resultado.replace(/\b([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})\b/g, 
+        '\x1b[0;96m$&\x1b[0m'); // Cyan claro
+    
+    // 18. VPN
+    resultado = resultado.replace(/\b(VPN|vpn|IPSec|ipsec|L2TP|l2tp)\b/g, 
+        '\x1b[1;34m$1\x1b[0m'); // Azul brilhante
+    
+    // 19. Bytes/Packets
+    resultado = resultado.replace(/\b(\d+\s*(?:bytes?|packets?|frames?))\b/gi, 
+        '\x1b[0;37m$1\x1b[0m'); // Branco normal
+    
+    // 20. Números entre parênteses (100M), (10G), etc
+    resultado = resultado.replace(/\((\d+[KMG]?)\)/g, 
+        '\x1b[0;33m($1)\x1b[0m'); // Amarelo normal
+    
+    return resultado;
+}
+
+// Conectar ao servidor SSH via WebSocket com colorização
 function conectarSSH(acessoId) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
@@ -352,7 +484,9 @@ function conectarSSH(acessoId) {
                 // Configurar input do terminal
                 configurarInputTerminal();
             } else if (data.type === 'output') {
-                sshTerminal.write(data.data);
+                // ✅ APLICAR COLORIZAÇÃO AUTOMÁTICA
+                const textoColorido = colorizacaoAtiva ? colorizarTextoSSH(data.data) : data.data;
+                sshTerminal.write(textoColorido);
             } else if (data.type === 'error') {
                 atualizarStatusConexao('Erro', 'error');
                 sshTerminal.writeln('\x1b[1;31mERRO: ' + data.message + '\x1b[0m');
@@ -379,7 +513,6 @@ function conectarSSH(acessoId) {
         showError('ERRO', 'Erro ao criar conexão: ' + error.message, 5000);
     }
 }
-
 // Configurar input do terminal
 function configurarInputTerminal() {
     let currentLine = '';
