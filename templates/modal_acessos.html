@@ -139,11 +139,11 @@
 </div>
 
 <!-- MODAL EDITAR ACESSO -->
-<div id="modalEditar1Acesso" class="modal-overlay" style="display: none;">
+<div id="modalEditarAcesso" class="modal-overlay" style="display: none;">
     <div class="modal-acesso">
         <div class="modal-header-acesso">
-            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Duplicar Acesso</h2>
-            <button class="btn-close-modal" onclick="fecharModalDuplicarAcesso()"><i class="fas fa-times"></i></button>
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Editar Acesso</h2>
+            <button class="btn-close-modal" onclick="fecharModalEditarAcesso()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body-acesso">
            <form id="formEditarAcesso" method="POST">
@@ -153,18 +153,18 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Descrição</label>
-                            <input type="text" name="tipo" id="dup_tipo" required>
+                            <input type="text" name="tipo" id="dup1_tipo" required>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Função</label>
                             <div class="custom-search-select">
-                                <input type="text" class="search-select-input" id="dup_funcao_input" 
+                                <input type="text" class="search-select-input" id="dup1_funcao_input" 
                                        placeholder="Digite para buscar..." autocomplete="off" 
-                                       oninput="filterOptions('dup_funcao')" required>
-                                <input type="hidden" id="dup_funcao" name="funcao">
-                                <div class="search-select-dropdown" id="dup_funcao-dropdown">
+                                       oninput="filterOptions('dup1_funcao')" required>
+                                <input type="hidden" id="dup1_funcao" name="funcao">
+                                <div class="search-select-dropdown" id="dup1_funcao-dropdown">
                                     {% for funcao in funcao_equipamentos %}
                                     <div class="search-select-option" data-value="{{ funcao.id }}" data-text="{{ funcao.descricao }}">
                                         {{ funcao.descricao }}
@@ -180,11 +180,11 @@
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Modelo</label>
                             <div class="custom-search-select">
-                                <input type="text" class="search-select-input" id="dup_modelo_input" 
+                                <input type="text" class="search-select-input" id="dup1_modelo_input" 
                                        placeholder="Digite para buscar..." autocomplete="off" 
-                                       oninput="filterOptions('dup_modelo')" required>
-                                <input type="hidden" id="dup_modelo" name="modelo">
-                                <div class="search-select-dropdown" id="dup_modelo-dropdown">
+                                       oninput="filterOptions('dup1_modelo')" required>
+                                <input type="hidden" id="dup1_modelo" name="modelo">
+                                <div class="search-select-dropdown" id="dup1_modelo-dropdown">
                                     {% for modelo in modelos %}
                                     <div class="search-select-option" data-value="{{ modelo.id }}" data-text="{{ modelo.nome }}">
                                         {{ modelo.nome }}
@@ -197,19 +197,19 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Hostname</label>
-                            <input type="text" name="hostname" id="dup_hostname" required>
+                            <input type="text" name="hostname" id="dup1_hostname" required>
                         </div>
                     </div>
                 </div>
                 <div class="form-group-modal">
                     <label><span class="label-prefix">//</span> Hostname IPv6</label>
-                    <input type="text" name="hostname_ipv6" id="dup_hostname_ipv6">
+                    <input type="text" name="hostname_ipv6" id="dup1_hostname_ipv6">
                 </div>
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Protocolo</label>
-                            <select name="protocolo" id="dup_protocolo" required>
+                            <select name="protocolo" id="dup1_protocolo" required>
                                 <option value="">Selecione...</option>
                                 <option value="SSH">SSH</option>
                                 <option value="Telnet">Telnet</option>
@@ -223,13 +223,13 @@
                     <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Porta</label>
-                            <input type="number" name="porta" id="dup_porta" required>
+                            <input type="number" name="porta" id="dup1_porta" required>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> winbox</label>
-                            <input type="number" name="winbox" id="dup_winbox" placeholder="Ex: 9291">
+                            <input type="number" name="winbox" id="dup1_winbox" placeholder="Ex: 9291">
                         </div>
                     </div>
                 </div>
@@ -237,13 +237,13 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Usuário</label>
-                            <input type="text" name="usuario" id="dup_usuario" required>
+                            <input type="text" name="usuario" id="dup1_usuario" required>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha</label>
-                            <input type="password" name="senha" id="dup_senha" required>
+                            <input type="password" name="senha" id="dup1_senha" required>
                         </div>
                     </div>
                 </div>
@@ -251,13 +251,13 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha Admin</label>
-                            <input type="password" name="senha_adm" id="dup_senha_adm">
+                            <input type="password" name="senha_adm" id="dup1_senha_adm">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Vlan gerencia</label>
-                            <input type="text" name="vlan" id="dup_vlan">
+                            <input type="text" name="vlan" id="dup1_vlan">
                         </div>
                     </div>
                 </div>
@@ -266,7 +266,7 @@
                     <span class="status-text">Sistema online</span>
                 </div>
                 <div class="modal-footer-acesso">
-                    <button type="button" class="btn-cancel-modal" onclick="fecharModalDuplicarAcesso()">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalEditarAcesso()">
                         <i class="fas fa-times me-2"></i> Cancelar
                     </button>
                     <button type="submit" class="btn-submit-modal">
