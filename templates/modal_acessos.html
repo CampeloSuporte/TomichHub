@@ -868,13 +868,12 @@
         </div>
     </div>
 </div>
-
 <!-- ========================================
-     MODAL VISUALIZAR/EDITAR CHAMADO
+     MODAL VISUALIZAR/EDITAR CHAMADO - AJUSTADO
      ======================================== -->
 
 <div id="modalVisualizarChamado" class="modal-overlay" style="display: none;">
-    <div class="modal-acesso" style="max-width: 900px;">
+    <div class="modal-acesso" style="max-width: 1200px; max-height: 90vh;">
         <div class="modal-header-acesso">
             <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Chamado #<span id="view_chamado_numero"></span></h2>
             <button class="btn-close-modal" onclick="fecharModalVisualizarChamado()">
@@ -886,147 +885,148 @@
             <input type="hidden" id="view_chamado_id">
             
             <div class="modal-body-acesso">
-                <!-- Abas de Detalhes e Comentários -->
-                <ul class="nav nav-tabs mb-4" style="border-bottom: 2px solid var(--border);">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="trocarAbaModal(event, 'detalhes')">Detalhes</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="trocarAbaModal(event, 'comentarios')">
-                            Comentários <span id="badge_comentarios" class="badge bg-primary ms-1">0</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Aba Detalhes -->
-                <div id="aba-detalhes" style="display: block;">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Título</label>
-                                <input type="text" name="titulo" id="view_titulo" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Status</label>
-                                <select name="status" id="view_status" class="form-control">
-                                    <option value="ABERTO">Aberto</option>
-                                    <option value="EM_ANDAMENTO">Em Andamento</option>
-                                    <option value="AGUARDANDO">Aguardando</option>
-                                    <option value="RESOLVIDO">Resolvido</option>
-                                    <option value="FECHADO">Fechado</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Prioridade</label>
-                                <select name="prioridade" id="view_prioridade" class="form-control">
-                                    <option value="BAIXA">Baixa</option>
-                                    <option value="NORMAL">Normal</option>
-                                    <option value="ALTA">Alta</option>
-                                    <option value="URGENTE">Urgente</option>
-                                </select>
-                            </div>
+                <!-- Layout em duas colunas: Detalhes (60%) e Comentários (40%) -->
+                <div class="chamado-layout-container">
+                    
+                    <!-- COLUNA ESQUERDA - Detalhes -->
+                    <div class="chamado-detalhes-column">
+                        <div class="section-title">
+                            <span class="label-prefix">//</span> Detalhes do Chamado
                         </div>
 
-                        <div class="col-md-4">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Departamento</label>
-                                <select name="departamento" id="view_departamento" class="form-control">
-                                    <option value="SUPORTE_REDES">Suporte de Redes</option>
-                                    <option value="SERVIDORES">Servidores</option>
-                                    <option value="MONITORAMENTO">Monitoramento</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Categoria</label>
-                                <div class="custom-search-select">
-                                    <input type="hidden" name="categoria" id="view_categoria">
-                                    <input type="text" 
-                                           id="view_categoria_input" 
-                                           class="search-select-input" 
-                                           placeholder="Digite para buscar categoria..."
-                                           onkeyup="buscarCategorias(this.value, 'view')"
-                                           autocomplete="off">
-                                    <div id="view_categoria-dropdown" class="search-select-dropdown"></div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Título</label>
+                                    <input type="text" name="titulo" id="view_titulo" class="form-control">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Responsável</label>
-                                <div class="custom-search-select">
-                                    <input type="hidden" name="responsavel" id="view_responsavel">
-                                    <input type="text" 
-                                           id="view_responsavel_input" 
-                                           class="search-select-input" 
-                                           placeholder="Digite para buscar usuário..."
-                                           onkeyup="buscarUsuarios(this.value, 'view')"
-                                           autocomplete="off">
-                                    <div id="view_responsavel-dropdown" class="search-select-dropdown"></div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Status</label>
+                                    <select name="status" id="view_status" class="form-control">
+                                        <option value="ABERTO">Aberto</option>
+                                        <option value="EM_ANDAMENTO">Em Andamento</option>
+                                        <option value="AGUARDANDO">Aguardando</option>
+                                        <option value="RESOLVIDO">Resolvido</option>
+                                        <option value="FECHADO">Fechado</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Prioridade</label>
+                                    <select name="prioridade" id="view_prioridade" class="form-control">
+                                        <option value="BAIXA">Baixa</option>
+                                        <option value="NORMAL">Normal</option>
+                                        <option value="ALTA">Alta</option>
+                                        <option value="URGENTE">Urgente</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Departamento</label>
+                                    <select name="departamento" id="view_departamento" class="form-control">
+                                        <option value="SUPORTE_REDES">Suporte de Redes</option>
+                                        <option value="SERVIDORES">Servidores</option>
+                                        <option value="MONITORAMENTO">Monitoramento</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Categoria</label>
+                                    <div class="custom-search-select">
+                                        <input type="hidden" name="categoria" id="view_categoria">
+                                        <input type="text" 
+                                               id="view_categoria_input" 
+                                               class="search-select-input" 
+                                               placeholder="Digite para buscar categoria..."
+                                               onkeyup="buscarCategorias(this.value, 'view')"
+                                               autocomplete="off">
+                                        <div id="view_categoria-dropdown" class="search-select-dropdown"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Responsável</label>
+                                    <div class="custom-search-select">
+                                        <input type="hidden" name="responsavel" id="view_responsavel">
+                                        <input type="text" 
+                                               id="view_responsavel_input" 
+                                               class="search-select-input" 
+                                               placeholder="Digite para buscar usuário..."
+                                               onkeyup="buscarUsuarios(this.value, 'view')"
+                                               autocomplete="off">
+                                        <div id="view_responsavel-dropdown" class="search-select-dropdown"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">//</span> Descrição</label>
+                                    <textarea name="descricao" id="view_descricao" class="form-control" rows="5"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-row">
+                                    <span class="info-label">Cliente</span>
+                                    <span class="info-value" id="view_cliente"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-row">
+                                    <span class="info-label">Data Criação</span>
+                                    <span class="info-value" id="view_data_criacao"></span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12">
+                    <!-- COLUNA DIREITA - Comentários -->
+                    <div class="chamado-comentarios-column">
+                        <div class="section-title">
+                            <span class="label-prefix">//</span> Comentários
+                            <span id="badge_comentarios" class="badge bg-primary ms-2">0</span>
+                        </div>
+
+                        <div id="lista-comentarios" class="comentarios-container-modal">
+                            <!-- Comentários serão carregados aqui -->
+                        </div>
+
+                        <div class="adicionar-comentario-container-modal">
                             <div class="form-group-modal">
-                                <label><span class="label-prefix">//</span> Descrição</label>
-                                <textarea name="descricao" id="view_descricao" class="form-control" rows="5"></textarea>
+                                <label><span class="label-prefix">//</span> Adicionar Comentário</label>
+                                <textarea name="comentario_novo" id="novo_comentario" class="form-control" rows="3" placeholder="Digite seu comentário..."></textarea>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="info-row">
-                                <span class="info-label">Cliente</span>
-                                <span class="info-value" id="view_cliente"></span>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="comentario_interno" name="is_internal">
+                                    <label class="form-check-label" for="comentario_interno" style="color: var(--text-muted); font-size: 12px;">
+                                        Comentário interno
+                                    </label>
+                                </div>
+                                <button type="button" class="btn-submit-modal-small" onclick="adicionarComentario()">
+                                    <i class="fas fa-paper-plane me-2"></i> Enviar
+                                </button>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-row">
-                                <span class="info-label">Data Criação</span>
-                                <span class="info-value" id="view_data_criacao"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Aba Comentários -->
-                <div id="aba-comentarios" style="display: none;">
-                    <div id="lista-comentarios" class="comentarios-container">
-                        <!-- Comentários serão carregados aqui -->
-                    </div>
-
-                    <div class="adicionar-comentario-container">
-                        <div class="form-group-modal">
-                            <label><span class="label-prefix">//</span> Adicionar Comentário</label>
-                            <textarea name="comentario_novo" id="novo_comentario" class="form-control" rows="3" placeholder="Digite seu comentário..."></textarea>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="comentario_interno" name="is_internal">
-                                <label class="form-check-label" for="comentario_interno" style="color: var(--text-muted); font-size: 12px;">
-                                    Comentário interno (não visível para o cliente)
-                                </label>
-                            </div>
-                            <button type="button" class="btn-submit-modal" onclick="adicionarComentario()">
-                                <i class="fas fa-paper-plane me-2"></i> Enviar
-                            </button>
                         </div>
                     </div>
                 </div>

@@ -3497,3 +3497,31 @@ h4::before {
         gap: 6px;
     }
 }
+
+/* Grid com 2 colunas iguais */
+.chamado-layout-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 50% cada */
+  gap: 25px;
+  max-height: calc(90vh - 300px);
+}
+
+/* Coluna esquerda com scroll */
+.chamado-detalhes-column {
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Coluna direita com linha separadora */
+.chamado-comentarios-column {
+  overflow-y: auto;
+  border-left: 2px solid rgba(0, 255, 136, 0.2);
+  padding-left: 20px;
+}
+
+/* Responsividade - uma coluna em telas menores */
+@media (max-width: 1024px) {
+  .chamado-layout-container {
+    grid-template-columns: 1fr;
+  }
+} 

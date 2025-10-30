@@ -1458,22 +1458,7 @@ function adicionarComentario() {
     });
 }
 
-function trocarAbaModal(event, aba) {
-    event.preventDefault();
-    
-    // Esconder todas as abas
-    document.getElementById('aba-detalhes').style.display = 'none';
-    document.getElementById('aba-comentarios').style.display = 'none';
-    
-    // Remover classe active de todos os links
-    event.target.closest('.nav-tabs').querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    // Mostrar aba selecionada
-    document.getElementById('aba-' + aba).style.display = 'block';
-    event.target.classList.add('active');
-}
+
 
 // Função auxiliar para pegar o CSRF token
 function getCookie(name) {
