@@ -8,34 +8,66 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado
 from .models import ProxyServer
+from .decorators import (
+    cliente_login_required, 
+    admin_required, 
+    cliente_or_admin_required,
+    cliente_can_view_cliente
+)
 
 
 @login_required(login_url='login')
+@cliente_can_view_cliente  # ✅ NOVO: Validar se cliente pode ver este cliente
 def listar_clientes(request):
+    """
+    View que lista acessos e dados do cliente.
+    - Clientes podem ver APENAS seus próprios dados
+    - Admins podem ver qualquer cliente
+    """
     id_cliente = request.GET.get('id')
-    cliente = Cliente.objects.get(id=id_cliente)
+    
+    if not id_cliente:
+        messages.error(request, 'Cliente não especificado.')
+        return redirect('quadro_geral')
+    
+    cliente = get_object_or_404(Cliente, id=id_cliente)
+    
+    # ✅ VALIDAÇÃO: Verificar permissão
+    if not request.user.is_staff and not request.user.is_superuser:
+        # Se é cliente, verificar se é o próprio cliente
+        try:
+            cliente_auth = Cliente.objects.get(usuario=request.user)
+            if cliente_auth.id != cliente.id:
+                messages.error(request, 'Você não possui permissão para visualizar este cliente.')
+                return redirect('quadro_geral')
+        except Cliente.DoesNotExist:
+            messages.error(request, 'Você não é um cliente válido.')
+            return redirect('login')
+    
+    # Restante do código existente...
     funcao_selecionada = request.GET.get('funcao')
     modelos = Modelo_equipamento.objects.all()
     funcao_equipamentos = Funcao_equipamento.objects.all()
 
-    # todas as funções disponíveis
     funcoes = cliente.acessos.values_list('funcao', flat=True).distinct()
 
-    # se uma função foi escolhida, filtra os acessos
     if funcao_selecionada:
         acessos = cliente.acessos.filter(funcao=funcao_selecionada)
     else:
         acessos = cliente.acessos.all()
 
-    # Busca os documentos do cliente
     documentos = Documento.objects.filter(cliente=cliente).order_by('-data_upload')
-    
-    # Busca arquivos VPN e Topologias
     arquivos_vpn = ArquivoVPN.objects.filter(cliente=cliente).order_by('-data_upload')
     imagens_topologia = ImagemTopologia.objects.filter(cliente=cliente).order_by('-data_upload')
-    
-    # ✅ NOVO: Buscar proxies (túneis SSH) do cliente
     proxies = ProxyServer.objects.filter(cliente=cliente).order_by('-ativo', 'nome')
+
+    # ✅ NOVO: Adicionar flag de tipo de usuário ao contexto
+    is_cliente = False
+    try:
+        if Cliente.objects.get(usuario=request.user).id == cliente.id:
+            is_cliente = True
+    except:
+        pass
 
     return render(request, 'listar.html', {
         'cliente': cliente,
@@ -47,7 +79,8 @@ def listar_clientes(request):
         'documentos': documentos,
         'arquivos_vpn': arquivos_vpn,
         'imagens_topologia': imagens_topologia,
-        'proxies': proxies,  # ✅ ADICIONAR ESTA LINHA
+        'proxies': proxies,
+        'is_cliente': is_cliente,  # ✅ NOVO: Flag para identificar cliente
     })
 
 @login_required(login_url='login')
@@ -244,15 +277,19 @@ def deletar_cliente(request):
 
 
 
-# views.py
+@login_required(login_url='login')
 def buscar_acesso(request, acesso_id):
+    """
+    Validar se cliente pode acessar este acesso
+    """
     try:
         acesso = Acesso.objects.get(id=acesso_id)
         
-        # DEBUG - verifique o que está None
-        print(f"DEBUG - Acesso: {acesso}")
-        print(f"DEBUG - Funcao: {acesso.funcao}")
-        print(f"DEBUG - Modelo: {acesso.modelo}")
+        # ✅ Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if acesso.cliente.id != cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
         
         data = {
             'id': acesso.id,
@@ -266,25 +303,18 @@ def buscar_acesso(request, acesso_id):
             'senha_adm': acesso.senha_adm or '',
             'vlan': acesso.vlan or '',
             'winbox': acesso.winbox or '',
-            
-            # Corrigindo os campos que podem ser None
             'funcao_id': acesso.funcao.id if acesso.funcao and hasattr(acesso.funcao, 'id') else '',
             'funcao_nome': acesso.funcao.descricao if acesso.funcao and hasattr(acesso.funcao, 'descricao') else '',
-            
             'modelo_id': acesso.modelo.id if acesso.modelo and hasattr(acesso.modelo, 'id') else '',
             'modelo_nome': acesso.modelo.nome if acesso.modelo and hasattr(acesso.modelo, 'nome') else '',
         }
         
-        print(f"DEBUG - Data enviada: {data}")
         return JsonResponse(data)
         
     except Acesso.DoesNotExist:
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
     except Exception as e:
-        print(f"ERRO: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
-
-
         
 
 @login_required(login_url='login')
@@ -569,13 +599,19 @@ def buscar_categorias(request):
     return JsonResponse({'results': results})
 
 
-# ========================================
-# VIEWS PARA CHAMADOS
-# ========================================
-
 @login_required(login_url='login')
 def listar_chamados_cliente(request):
+    """
+    Cliente só pode listar seus próprios chamados
+    """
     cliente_id = request.GET.get('id')
+    
+    # ✅ Verificar permissão
+    if not request.user.is_staff and not request.user.is_superuser:
+        cliente = Cliente.objects.get(usuario=request.user)
+        if str(cliente.id) != str(cliente_id):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    
     cliente = get_object_or_404(Cliente, id=cliente_id)
     
     chamados = Chamado.objects.filter(cliente=cliente).select_related(
@@ -595,6 +631,7 @@ def listar_chamados_cliente(request):
             'total_comentarios': chamado.comentarios.count()
         } for chamado in chamados]
     })
+
 
 
 @login_required(login_url='login')

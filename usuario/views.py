@@ -5,10 +5,10 @@ from  django.contrib.auth import authenticate,login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
+from clientes.models import Cliente
 
 @login_required(login_url='login')
 def cadastrar_usuario(request):
-
         if request.method == 'GET':
             usuario = User.objects.all()
             return render(request, 'cadastrar_usuario.html', {'usuario': usuario})
@@ -16,13 +16,23 @@ def cadastrar_usuario(request):
             username = request.POST.get('username')
             email = request.POST.get('email')
             password = request.POST.get('password')
+            is_staff = request.POST.get('is_staff') == 'on'  # ✅ NOVO: Receber flag de staff
 
             if User.objects.filter(username=username).exists():
                 messages.error(request, "Nome de usuário já existe.")
                 return redirect('cadastrar_usuario')
-            user = User.objects.create_user(username=username, email=email, password=password)
+            
+            # ✅ NOVO: Criar usuário com flag de staff
+            user = User.objects.create_user(
+                username=username, 
+                email=email, 
+                password=password,
+                is_staff=is_staff  # Define se é administrador ou cliente
+            )
             user.save()
-            messages.error(request, "usuário cadastrado com sucesso.")
+            
+            tipo_usuario = "Administrador" if is_staff else "Cliente"
+            messages.success(request, f"Usuário '{username}' cadastrado com sucesso como {tipo_usuario}.")
             return redirect('cadastrar_usuario')
 
 
@@ -35,6 +45,7 @@ def editar_usuario(request):
         username = request.POST.get('username')
         email = request.POST.get('email')
         nova_senha = request.POST.get('password')
+        is_staff = request.POST.get('is_staff') == 'on'  # ✅ NOVO: Receber flag de staff
         
         # Verifica se username já existe em outro usuário
         if User.objects.filter(username=username).exclude(id=usuario_id).exists():
@@ -49,32 +60,86 @@ def editar_usuario(request):
         # Atualiza os dados
         usuario.username = username
         usuario.email = email
+        usuario.is_staff = is_staff  # ✅ NOVO: Atualizar flag de staff
         
         # Atualiza a senha apenas se foi fornecida
         if nova_senha and nova_senha.strip():
             usuario.set_password(nova_senha)
         
         usuario.save()
-        messages.success(request, 'Usuário atualizado com sucesso!')
+        
+        tipo_usuario = "Administrador" if is_staff else "Cliente"
+        messages.success(request, f'Usuário atualizado com sucesso como {tipo_usuario}!')
         return redirect('cadastrar_usuario')
     
     messages.error(request, 'Método não permitido.')
     return redirect('cadastrar_usuario')
 
 def login(request):
+    """
+    View de login com redirecionamento automático para cliente ou admin.
+    ✅ CORRIGIDO: Agora usa is_staff para determinar o tipo de usuário
+    """
     if request.method == 'GET':
-     return render(request, 'login.html')
+        # Se já está logado, redireciona para o dashboard apropriado
+        if request.user.is_authenticated:
+            return redirect_user_by_role(request.user)
+        
+        return render(request, 'login.html')
+    
     else:
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
+        
         if user is not None:
             auth_login(request, user)
-            messages.success(request, "Login realizado com sucesso.")
-            return redirect('quadro_geral')
+            
+            tipo_usuario = "Administrador" if user.is_staff else "Cliente"
+            messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
+            
+            # Redirecionar baseado no tipo de usuário
+            return redirect_user_by_role(user)
         else:
             messages.error(request, "Usuário ou senha inválidos.")
             return redirect('login')
+
+
+def redirect_user_by_role(user):
+    """
+    Função auxiliar que redireciona o usuário baseado em seu papel.
+    ✅ CORRIGIDO: Usa is_staff em vez de is_superuser/is_staff
+    
+    Admin/Staff (is_staff=True) -> Quadro Geral
+    Cliente (is_staff=False) -> Página de Acessos do Cliente
+    """
+    # Se é admin ou staff (is_staff=True)
+    if user.is_staff or user.is_superuser:
+        return redirect('quadro_geral')
+    
+    # Se é cliente (is_staff=False), buscar seu ID e redirecionar para acessos
+    try:
+        cliente = Cliente.objects.get(usuario=user)
+        return redirect(f'/clientes/listar/?id={cliente.id}')
+    except Cliente.DoesNotExist:
+        # Se não é admin nem cliente, vai para login
+        messages.error(None, 'Sua conta não possui acesso ao sistema.')
+        return redirect('login')
+
+
+@login_required(login_url='login')
+def quadro_geral(request):
+    """
+    View do quadro geral - apenas para administradores
+    ✅ CORRIGIDO: Verifica is_staff em vez de is_superuser/is_staff
+    """
+    # Verificar se é admin
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, 'Você não possui permissão para acessar esta página.')
+        return redirect('login')
+    
+    # Restante do código do quadro geral...
+    return render(request, 'quadro_geral.html')
 
 @login_required(login_url='login')
 def logout(request):

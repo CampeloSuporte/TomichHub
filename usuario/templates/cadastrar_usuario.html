@@ -13,9 +13,9 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h4 class="mb-0">Usuários</h4>
+                                <h4 class="mb-0">Usuários do Sistema</h4>
                                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
-                                    <i class="fas fa-plus me-2"></i> Cadastrar usuário
+                                    <i class="fas fa-plus me-2"></i> Cadastrar Usuário
                                 </button>
                             </div>
                             <div class="table-responsive">
@@ -23,9 +23,10 @@
                                     <thead>
                                         <tr>
                                             <th>ID</th>
-                                            <th>username</th>
-                                            <th>email</th>
-                                            <th>ações</th>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Tipo</th>
+                                            <th>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -35,8 +36,19 @@
                                             <td>{{usuarios.username}}</td>
                                             <td>{{usuarios.email}}</td>
                                             <td>
+                                                {% if usuarios.is_staff %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-shield-alt me-1"></i> Administrador
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-user me-1"></i> Cliente
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}')" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}', {{usuarios.is_staff|lower}})" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                             </div>
@@ -58,7 +70,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="cadastroModalLabel">Cadastro Usuário</h5>
+                <h5 class="modal-title" id="cadastroModalLabel">Cadastro de Usuário</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -66,15 +78,35 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" placeholder="Digite seu username" required>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Digite um username único" required>
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="Digite seu Email" required>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Digite o email" required>
                     </div>
                     <div class="mb-3">
-                        <label for="password1" class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Digite sua senha" required>
+                        <label for="password" class="form-label">Senha</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Digite a senha" required>
+                    </div>
+
+                    <!-- ✅ NOVO: Campo para escolher se é Staff (Admin) -->
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Usuário</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_staff" name="is_staff">
+                            <label class="form-check-label" for="is_staff">
+                                <strong>Administrador (Staff)</strong>
+                                <small class="d-block text-muted">Marque se este usuário é um administrador do sistema</small>
+                            </label>
+                        </div>
+                        <div class="alert alert-info mt-2" style="font-size: 12px;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Tipos:</strong>
+                            <ul style="margin: 5px 0 0 20px;">
+                                <li><strong>Administrador:</strong> Acesso total ao sistema</li>
+                                <li><strong>Cliente:</strong> Acesso apenas aos seus próprios dados</li>
+                            </ul>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -117,6 +149,18 @@
                         <label for="edit_password" class="form-label">Nova Senha (deixe em branco para manter)</label>
                         <input type="password" class="form-control" id="edit_password" name="password" placeholder="Digite a nova senha (opcional)">
                     </div>
+
+                    <!-- ✅ NOVO: Campo para editar tipo de usuário -->
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Usuário</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit_is_staff" name="is_staff">
+                            <label class="form-check-label" for="edit_is_staff">
+                                <strong>Administrador (Staff)</strong>
+                                <small class="d-block text-muted">Marque se este usuário é um administrador do sistema</small>
+                            </label>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -132,7 +176,6 @@
 </div>
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-
 
     <script src="{% static 'js/main.js' %}"></script>
 
@@ -159,12 +202,15 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
-function editarUsuario(id, username, email) {
+function editarUsuario(id, username, email, isStaff) {
+    // ✅ NOVO: Receber e atualizar a flag is_staff
+    
     // Preenche os campos do modal com os dados do usuário
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_username').value = username;
     document.getElementById('edit_email').value = email;
     document.getElementById('edit_password').value = ''; // Limpa o campo de senha
+    document.getElementById('edit_is_staff').checked = isStaff; // ✅ NOVO: Atualizar checkbox
     
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));
