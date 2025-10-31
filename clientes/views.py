@@ -8,6 +8,7 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado
 from .models import ProxyServer
+from .decorators import admin_required, cliente_login_required
 from .decorators import (
     cliente_login_required, 
     admin_required, 
@@ -84,6 +85,7 @@ def listar_clientes(request):
     })
 
 @login_required(login_url='login')
+@admin_required  # ← ADICIONAR ESTA LINHA
 def cadastrar_cliente(request):
     if request.method == 'GET':
         clientes = Cliente.objects.all()
@@ -198,7 +200,8 @@ def cadastrar_acesso(request):
         return redirect('cadastrar_cliente')
 
 
-
+@login_required(login_url='login')
+@admin_required  # ← ADICIONAR ESTA LINHA
 def editar_cliente(request):
     if request.method == 'POST':
         cliente = get_object_or_404(Cliente, id=request.POST.get('id'))
@@ -259,6 +262,7 @@ def editar_cliente(request):
 
 
 @login_required(login_url='login')
+@admin_required  # ← ADICIONAR ESTA LINHA
 def deletar_cliente(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('id')
@@ -1006,3 +1010,37 @@ def toggle_proxy_status(request, proxy_id):
         return JsonResponse({'error': 'Túnel SSH não encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def cliente_dashboard(request):
+    """
+    Dashboard exclusivo para clientes
+    - Ferramentas de rede
+    - Chamados abertos
+    - Link para acessos
+    """
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    # Se for admin, redireciona para o dashboard do admin
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('quadro_geral')
+    
+    # Buscar cliente vinculado
+    try:
+        cliente = Cliente.objects.get(usuario=request.user)
+    except Cliente.DoesNotExist:
+        messages.error(request, 'Você não está vinculado a um cliente.')
+        return redirect('login')
+    
+    # Buscar chamados abertos do cliente
+    chamados_abertos = Chamado.objects.filter(
+        cliente=cliente,
+        status__in=['aberto', 'em_andamento']
+    ).order_by('-data_criacao')[:5]
+    
+    return render(request, 'cliente_dashboard.html', {
+        'cliente': cliente,
+        'chamados_abertos': chamados_abertos,
+    })

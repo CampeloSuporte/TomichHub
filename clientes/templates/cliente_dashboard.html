@@ -1,0 +1,235 @@
+{% extends "base_clientes.html" %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="mb-2">{{ cliente.nome_empresa }}</h2>
+            </div>
+            <div style="background: rgba(0, 255, 136, 0.2); color: #00ff88; padding: 12px 20px; border-radius: 6px; border: 1px solid #00ff88; font-weight: bold;">
+                👤 CLIENTE
+            </div>
+        </div>
+
+        <!-- Grid de Ferramentas -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h3 class="mb-4">
+                    <i class="fas fa-tools me-2" style="color: var(--primary-green);"></i> 
+                    Ferramentas de Rede
+                </h3>
+            </div>
+
+            <!-- Calculadora IP -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <button class="tool-card" onclick="abrirFerramentaIframe('https://tomich.com.br/calculadora-ip', 'Calculadora IP')">
+                    <div class="tool-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <div class="tool-info">
+                        <h5>Calculadora IP</h5>
+                        <p>Calcule sub-redes e máscaras</p>
+                    </div>
+                    <div class="tool-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Teste de Portas -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <button class="tool-card" onclick="abrirFerramentaIframe('https://tomich.com.br/teste-portas', 'Teste de Portas')">
+                    <div class="tool-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="tool-info">
+                        <h5>Teste de Portas</h5>
+                        <p>Verifique portas abertas</p>
+                    </div>
+                    <div class="tool-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Traceroute -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <button class="tool-card" onclick="abrirFerramentaIframe('https://tomich.com.br/traceroute', 'Traceroute')">
+                    <div class="tool-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <div class="tool-info">
+                        <h5>Traceroute</h5>
+                        <p>Rastreie a rota de pacotes</p>
+                    </div>
+                    <div class="tool-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Ping -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <button class="tool-card" onclick="abrirFerramentaIframe('https://tomich.com.br/ping', 'Ping')">
+                    <div class="tool-icon">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                    <div class="tool-info">
+                        <h5>Ping</h5>
+                        <p>Teste conectividade de rede</p>
+                    </div>
+                    <div class="tool-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- MTR -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <button class="tool-card" onclick="abrirFerramentaIframe('https://tomich.com.br/mtr', 'MTR')">
+                    <div class="tool-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="tool-info">
+                        <h5>MTR</h5>
+                        <p>Análise de rotas de rede</p>
+                    </div>
+                    <div class="tool-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Teste de Qualidade de Rede -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <button class="tool-card" onclick="abrirFerramentaIframe('https://tomich.com.br/network-quality', 'Teste de Qualidade')">
+                    <div class="tool-icon">
+                        <i class="fas fa-signal"></i>
+                    </div>
+                    <div class="tool-info">
+                        <h5>Teste de Qualidade</h5>
+                        <p>Avalie latência e jitter</p>
+                    </div>
+                    <div class="tool-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Linha Divisória -->
+        <hr style="border-color: rgba(0, 255, 136, 0.2); margin: 3rem 0;">
+        <!-- Botão para Acessos -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <button class="btn btn-lg btn-primary" onclick="irParaAcessos()" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold;">
+                    <i class="fas fa-key me-2"></i> Ir para Acessos e Configurações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Ferramentas -->
+<div id="modalFerramentaIframe" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="background: #0a0e27; border: 1px solid #00ff88;">
+            <div class="modal-header" style="border-bottom: 1px solid #00ff88;">
+                <h5 class="modal-title" id="modalFerramenta" style="color: #00ff88;">
+                    <i class="fas fa-external-link-alt me-2"></i>
+                    <span id="ferramenta-nome">Ferramenta</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0) invert(1);"></button>
+            </div>
+            <div class="modal-body p-0" style="height: 700px;">
+                <iframe id="ferramenta-iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #00ff88;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a id="ferramenta-link" href="" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt me-2"></i> Abrir em Nova Aba
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.tool-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 217, 255, 0.05));
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+}
+
+.tool-card:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 217, 255, 0.15));
+    border-color: rgba(0, 255, 136, 0.5);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 255, 136, 0.2);
+}
+
+.tool-icon {
+    font-size: 40px;
+    color: var(--primary-green);
+    min-width: 60px;
+    text-align: center;
+}
+
+.tool-info {
+    flex: 1;
+}
+
+.tool-info h5 {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-light);
+    font-size: 16px;
+}
+
+.tool-info p {
+    margin: 5px 0 0 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.tool-arrow {
+    font-size: 24px;
+    color: var(--accent-cyan);
+    opacity: 0.5;
+    transition: all 0.3s ease;
+}
+
+.tool-card:hover .tool-arrow {
+    opacity: 1;
+    transform: translateX(5px);
+}
+</style>
+
+<script>
+function abrirFerramentaIframe(url, nome) {
+    document.getElementById('ferramenta-nome').textContent = nome;
+    document.getElementById('ferramenta-iframe').src = url;
+    document.getElementById('ferramenta-link').href = url;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalFerramentaIframe'));
+    modal.show();
+}
+
+function irParaAcessos() {
+    window.location.href = 'https://crm.tomich.com.br/clientes/listar/?id={{ cliente.id }}';
+}
+</script>
+
+{% endblock %}

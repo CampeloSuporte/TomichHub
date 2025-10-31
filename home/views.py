@@ -4,9 +4,10 @@ from django.db.models import Count, Q
 from datetime import datetime, timedelta
 from clientes.models import Chamado, Cliente
 from django.contrib.auth.models import User
-
+from clientes.decorators import admin_required 
 
 @login_required(login_url='login')
+@admin_required 
 def quadro_geral(request):
     # ✅ DADOS DO DIA ATUAL
     hoje = datetime.now().date()
@@ -101,6 +102,7 @@ def quadro_geral(request):
 
 
 @login_required(login_url='login')
+@admin_required 
 def listar_chamados_por_status(request, status):
     """Lista chamados filtrados por status"""
     chamados = Chamado.objects.filter(status=status).select_related(

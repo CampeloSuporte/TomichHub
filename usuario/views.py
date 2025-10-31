@@ -3,11 +3,13 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from  django.contrib.auth import authenticate,login as auth_login
 from django.contrib.auth.decorators import login_required
+from clientes.decorators import admin_required  # ← ADICIONAR ESTA LINHA
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
 
 @login_required(login_url='login')
+@admin_required  # ← ADICIONAR ESTA LINHA
 def cadastrar_usuario(request):
         if request.method == 'GET':
             usuario = User.objects.all()
@@ -37,6 +39,7 @@ def cadastrar_usuario(request):
 
 
 @login_required(login_url='login')
+@admin_required  # ← ADICIONAR ESTA LINHA
 def editar_usuario(request):
     if request.method == 'POST':
         usuario_id = request.POST.get('id')
@@ -106,23 +109,13 @@ def login(request):
 
 
 def redirect_user_by_role(user):
-    """
-    Função auxiliar que redireciona o usuário baseado em seu papel.
-    ✅ CORRIGIDO: Usa is_staff em vez de is_superuser/is_staff
-    
-    Admin/Staff (is_staff=True) -> Quadro Geral
-    Cliente (is_staff=False) -> Página de Acessos do Cliente
-    """
-    # Se é admin ou staff (is_staff=True)
     if user.is_staff or user.is_superuser:
         return redirect('quadro_geral')
     
-    # Se é cliente (is_staff=False), buscar seu ID e redirecionar para acessos
     try:
         cliente = Cliente.objects.get(usuario=user)
-        return redirect(f'/clientes/listar/?id={cliente.id}')
+        return redirect('cliente_dashboard')  # ← ALTERADO
     except Cliente.DoesNotExist:
-        # Se não é admin nem cliente, vai para login
         messages.error(None, 'Sua conta não possui acesso ao sistema.')
         return redirect('login')
 

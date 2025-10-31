@@ -3,8 +3,11 @@ from .models import Modelo_equipamento
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
+from clientes.decorators import admin_required 
+
 
 @login_required(login_url='login')
+@admin_required 
 def listar_modelos(request):
     modelos = Modelo_equipamento.objects.all()
     return render(request, 'listar_equipamentos.html', {'modelos': modelos})
@@ -12,6 +15,7 @@ def listar_modelos(request):
 
 
 @login_required(login_url='login')
+@admin_required 
 def cadastrar_modelo(request):
     if request.method == 'POST':
         nome = request.POST.get('nome', '').strip()
@@ -43,6 +47,7 @@ def cadastrar_modelo(request):
 
 
 @login_required(login_url='login')
+@admin_required 
 def editar_modelo(request):
     if request.method == 'POST':
         id = request.POST.get('id')
