@@ -440,3 +440,73 @@ function showInfo(title, message, duration) {
 
 
 
+/**
+ * Abre a imagem em uma nova aba (SIMPLES)
+ * Permite zoom nativo (Ctrl + +/-) e scroll
+ * @param {string} imageUrl - URL da imagem
+ * @param {string} imageName - Nome da imagem (não usado nesta versão simples)
+ */
+function abrirImagemNovaAba(imageUrl, imageName) {
+    if (!imageUrl || imageUrl === 'None' || imageUrl === '') {
+        showError('ERRO', 'URL inválida', 3000);
+        return;
+    }
+    
+    try {
+        window.open(imageUrl, '_blank');
+        showSuccess('SUCESSO', 'Imagem aberta em nova aba', 2000);
+    } catch (error) {
+        showError('ERRO', 'Não foi possível abrir', 3000);
+    }
+}
+
+
+/**
+ * Função melhorada para visualizar imagem em modal (já existente)
+ */
+function visualizarImagemGrande(url, nome) {
+    const modal = document.getElementById('modalVisualizarImagem');
+    const img = document.getElementById('imagemGrande');
+    const nomeElement = document.getElementById('nomeImagemGrande');
+    
+    if (!modal || !img || !nomeElement) {
+        console.error('Elementos do modal não encontrados');
+        return;
+    }
+
+    img.src = url;
+    nomeElement.textContent = nome;
+    modal.style.display = 'flex';
+}
+
+
+/**
+ * Função para fechar modal de imagem grande
+ */
+function fecharModalImagem() {
+    const modal = document.getElementById('modalVisualizarImagem');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+
+/**
+ * Adicionar listener para fechar modal ao clicar fora
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('modalVisualizarImagem');
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                fecharModalImagem();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            fecharModalImagem();
+        }
+    });
+});

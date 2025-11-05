@@ -324,7 +324,7 @@
             </div>
         </div>
 
-        <!-- ABA TOPOLOGIA -->
+<!-- ABA TOPOLOGIA - VERSÃO MELHORADA COM NOVO BOTÃO -->
         <div id="tab-topologia" class="tab-content-main" style="display: none;">
             <div class="card">
                 <div class="card-body">
@@ -346,19 +346,34 @@
                                             alt="{{ topologia.nome }}" 
                                             class="topologia-image"
                                             onclick="visualizarImagemGrande('{{ topologia.imagem.url }}', '{{ topologia.nome }}')">
+                                        
+                                        <!-- ✅ OVERLAY COM 4 BOTÕES -->
                                         <div class="topologia-overlay">
+                                            
+                                            <!-- 1️⃣ BOTÃO: Visualizar Modal (Verde) -->
                                             <button class="btn-action-overlay" 
                                                     onclick="visualizarImagemGrande('{{ topologia.imagem.url }}', '{{ topologia.nome }}')" 
-                                                    title="Visualizar">
+                                                    title="Visualizar em Modal">
                                                 <i class="fas fa-search-plus"></i>
                                             </button>
+                                            
+                                            <!-- 2️⃣ BOTÃO: Abrir em Nova Aba (CYAN) - NOVO! -->
+                                            <button class="btn-action-overlay btn-expand-overlay" 
+                                                    onclick="abrirImagemNovaAba('{{ topologia.imagem.url }}', '{{ topologia.nome }}')" 
+                                                    title="Abrir em Nova Aba">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </button>
+                                            
+                                            <!-- 3️⃣ BOTÃO: Download (Verde) -->
                                             <a href="{{ topologia.imagem.url }}" 
                                             download 
                                             class="btn-action-overlay" 
                                             title="Download">
                                                 <i class="fas fa-download"></i>
                                             </a>
+                                            
                                            {% if not is_cliente %}
+                                            <!-- 4️⃣ BOTÃO: Delete - Admin Only (Vermelho) -->
                                             <form method="POST" 
                                                 action="{% url 'deletar_topologia' topologia.id %}" 
                                                 style="display: inline;" 
@@ -373,12 +388,14 @@
                                            {% endif %}
                                         </div>
                                     </div>
+                                    
+                                    <!-- ✅ INFORMAÇÕES COM ÍCONES MELHORADOS -->
                                     <div class="p-3">
                                         <p class="mb-1" style="color: var(--primary-green); font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700;">
-                                            {{ topologia.nome }}
+                                            <i class="fas fa-layer-group" style="margin-right: 6px;"></i>{{ topologia.nome }}
                                         </p>
                                         <p class="mb-0" style="color: var(--text-muted); font-family: 'Courier New', monospace; font-size: 11px;">
-                                            {{ topologia.data_upload|date:"d/m/Y H:i" }}
+                                            <i class="fas fa-calendar" style="margin-right: 4px;"></i>{{ topologia.data_upload|date:"d/m/Y H:i" }}
                                         </p>
                                     </div>
                                 </div>
