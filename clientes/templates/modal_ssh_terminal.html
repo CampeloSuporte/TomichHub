@@ -259,11 +259,52 @@ function toggleColorizacao() {
     const statusText = colorizacaoAtiva ? 'ATIVADA' : 'DESATIVADA';
     const cor = colorizacaoAtiva ? '\x1b[1;32m' : '\x1b[1;31m';
     
-    sshTerminal.writeln(`\n${cor}Colorização ${statusText}\x1b[0m\n`);
+    if (sshTerminal) {
+        sshTerminal.writeln(`\n${cor}Colorização ${statusText}\x1b[0m\n`);
+    }
+}
+
+// ✅ NOVA FUNÇÃO: Destruir terminal anterior completamente
+function destruirTerminalAnterior() {
+    console.log('🔌 Destruindo terminal anterior...');
+    
+    // Fechar WebSocket
+    if (sshSocket) {
+        try {
+            sshSocket.close();
+        } catch (e) {
+            console.log('⚠️ WebSocket já estava fechado');
+        }
+        sshSocket = null;
+    }
+    
+    // Destruir instância xterm
+    if (sshTerminal) {
+        try {
+            sshTerminal.dispose();
+        } catch (e) {
+            console.log('⚠️ Terminal já estava destruído');
+        }
+        sshTerminal = null;
+        sshFitAddon = null;
+    }
+    
+    // Limpar elemento DOM completamente
+    const terminalElement = document.getElementById('ssh_terminal');
+    if (terminalElement) {
+        terminalElement.innerHTML = '';
+    }
+    
+    console.log('✅ Terminal anterior destruído com sucesso!');
 }
 
 // Função para abrir o terminal SSH
 function abrirTerminalSSH(acessoId, host, porta, tipo) {
+    console.log('🔄 Abrindo novo terminal para:', acessoId, host, porta, tipo);
+    
+    // ✅ MUDANÇA 1: Destruir terminal anterior SEMPRE (mesmo que seja o primeiro)
+    destruirTerminalAnterior();
+    
     currentAcessoId = acessoId;
     
     // Mostrar modal
@@ -273,10 +314,8 @@ function abrirTerminalSSH(acessoId, host, porta, tipo) {
     // Atualizar informações de conexão
     document.getElementById('ssh_connection_info').textContent = `${tipo} - ${host}:${porta}`;
     
-    // Inicializar terminal se não existir
-    if (!sshTerminal) {
-        inicializarTerminal();
-    }
+    // ✅ MUDANÇA 2: SEMPRE inicializar um novo terminal (force recreate)
+    inicializarTerminal();
     
     // Conectar SSH
     setTimeout(() => {
@@ -286,7 +325,11 @@ function abrirTerminalSSH(acessoId, host, porta, tipo) {
 
 // Inicializar o terminal xterm
 function inicializarTerminal() {
+    console.log('📝 Inicializando novo terminal xterm...');
     const terminalElement = document.getElementById('ssh_terminal');
+    
+    // Limpar antes de criar
+    terminalElement.innerHTML = '';
     
     // Criar instância do terminal
     sshTerminal = new Terminal({
@@ -335,7 +378,7 @@ function inicializarTerminal() {
     
     // Redimensionar quando a janela mudar
     window.addEventListener('resize', () => {
-        if (sshTerminal) {
+        if (sshTerminal && sshFitAddon) {
             sshFitAddon.fit();
         }
     });
@@ -345,6 +388,8 @@ function inicializarTerminal() {
     sshTerminal.writeln('\x1b[1;32m║           CONEXA CRM - Terminal SSH v1.0              ║\x1b[0m');
     sshTerminal.writeln('\x1b[1;32m╚═══════════════════════════════════════════════════════╝\x1b[0m');
     sshTerminal.writeln('');
+    
+    console.log('✅ Terminal xterm inicializado!');
 }
 
 // Buffer para acumular output fragmentado
@@ -457,6 +502,8 @@ function conectarSSH(acessoId) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
     
+    console.log('🔗 Conectando ao WebSocket:', wsUrl);
+    
     // Atualizar status
     atualizarStatusConexao('Conectando...', 'connecting');
     
@@ -464,7 +511,7 @@ function conectarSSH(acessoId) {
         sshSocket = new WebSocket(wsUrl);
         
         sshSocket.onopen = function() {
-            console.log('WebSocket conectado');
+            console.log('✅ WebSocket conectado');
             
             // Enviar comando para conectar SSH
             sshSocket.send(JSON.stringify({
@@ -495,24 +542,25 @@ function conectarSSH(acessoId) {
         };
         
         sshSocket.onerror = function(error) {
-            console.error('Erro WebSocket:', error);
+            console.error('❌ Erro WebSocket:', error);
             atualizarStatusConexao('Erro', 'error');
             sshTerminal.writeln('\x1b[1;31mERRO: Falha na conexão WebSocket\x1b[0m');
             showError('ERRO', 'Falha na conexão WebSocket', 5000);
         };
         
         sshSocket.onclose = function() {
-            console.log('WebSocket desconectado');
+            console.log('🔌 WebSocket desconectado');
             atualizarStatusConexao('Desconectado', 'disconnected');
             sshTerminal.writeln('\x1b[1;33m\nConexão encerrada.\x1b[0m');
         };
         
     } catch (error) {
-        console.error('Erro ao criar WebSocket:', error);
+        console.error('❌ Erro ao criar WebSocket:', error);
         atualizarStatusConexao('Erro', 'error');
         showError('ERRO', 'Erro ao criar conexão: ' + error.message, 5000);
     }
 }
+
 // Configurar input do terminal
 function configurarInputTerminal() {
     let currentLine = '';
@@ -547,6 +595,8 @@ function atualizarStatusConexao(texto, status) {
 
 // Reconectar SSH
 function reconectarSSH() {
+    console.log('🔄 Reconectando SSH...');
+    
     if (sshSocket) {
         sshSocket.close();
     }
@@ -569,14 +619,15 @@ function limparTerminal() {
 
 // Fechar terminal SSH
 function fecharTerminalSSH() {
+    console.log('❌ Fechando terminal SSH...');
+    
     if (sshSocket) {
         sshSocket.close();
         sshSocket = null;
     }
     
-    if (sshTerminal) {
-        sshTerminal.clear();
-    }
+    // Não destruir aqui, apenas fechar o modal
+    // O próximo terminal destruirá o anterior em abrirTerminalSSH()
     
     document.getElementById('modalSSHTerminal').style.display = 'none';
     document.body.style.overflow = 'auto';
