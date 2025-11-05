@@ -104,6 +104,7 @@
                                         <h5 class="mb-0">{{ acesso.tipo }}</h5>
                                     </div>
                                     <div class="d-flex gap-2 flex-wrap">
+                                    {% if not is_cliente %}
                                         <form method="POST" action="{% url 'deletar_acesso' acesso.id %}" 
                                               style="display: inline;" 
                                               onsubmit="return confirm('Tem certeza que deseja excluir: {{ acesso.tipo }}?')">
@@ -112,15 +113,19 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
+                                    {% endif %}
+                                        
                                         <button class="icon-btn btn-sm"><i class="fas fa-link"></i></button>
                                         <button class="icon-btn btn-sm" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-code"></i></button>
 
                                         <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
                                             <i class="fas fa-file"></i>
                                         </button>
+                                      {% if not is_cliente %}  
                                         <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
                                             <i class="fas fa-edit"></i>
                                         </button>
+                                      {% endif %}
                                     </div>
                                 </div>
                                 <ul class="nav nav-tabs mb-3">
@@ -252,6 +257,7 @@
                                             <button class="icon-btn btn-sm" onclick="abrirModalEditarVPN({{ vpn.id }})" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </button>
+                                           {% if not is_cliente %} 
                                             <form method="POST" action="{% url 'deletar_vpn' vpn.id %}" 
                                                 style="display: inline;" 
                                                 onsubmit="return confirm('Tem certeza que deseja excluir: {{ vpn.nome }}?')">
@@ -260,6 +266,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                           {% endif %} 
                                         </div>
                                     </div>
                                     
@@ -351,6 +358,7 @@
                                             title="Download">
                                                 <i class="fas fa-download"></i>
                                             </a>
+                                           {% if not is_cliente %}
                                             <form method="POST" 
                                                 action="{% url 'deletar_topologia' topologia.id %}" 
                                                 style="display: inline;" 
@@ -362,6 +370,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                           {% endif %}
                                         </div>
                                     </div>
                                     <div class="p-3">
@@ -475,6 +484,7 @@
                                             <button class="icon-btn btn-sm" onclick="abrirModalEditarTunel({{ proxy.id }})" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </button>
+                                           {% if not is_cliente %}
                                             <form method="POST" action="{% url 'deletar_proxy' proxy.id %}" 
                                                 style="display: inline;" 
                                                 onsubmit="return confirm('Tem certeza que deseja excluir o túnel: {{ proxy.nome }}?')">
@@ -483,6 +493,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                           {% endif %}
                                         </div>
                                     </div>
 
@@ -714,6 +725,7 @@
                                             <a href="{{ doc.arquivo.url }}" download class="btn-action btn-download" title="Download">
                                                 <i class="fas fa-download"></i>
                                             </a>
+                                           {% if not is_cliente %}
                                             <form method="POST" action="{% url 'deletar_documento' doc.id %}" 
                                                   style="display: inline;" 
                                                   onsubmit="return confirm('Tem certeza que deseja excluir: {{ doc.nome }}?')">
@@ -722,6 +734,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                           {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -1782,43 +1795,43 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
     let urlAcesso = '';
     
     switch(protocolo.toLowerCase()) {
-        case 'telnet':
-            urlAcesso = `telnet://${host}:${porta}`;
-            break;
-        case 'http':
-            // ✅ CORRIGIDO: Verificar se porta é válida
-            if (porta && porta !== 'None' && porta !== '' && porta !== null) {
-                urlAcesso = `http://${host}:${porta}`;
-            } else {
-                urlAcesso = `http://${host}`;
-            }
-            break;
-            
-        case 'https':
-            // ✅ CORRIGIDO: Verificar se porta é válida
-            if (porta && porta !== 'None' && porta !== '' && porta !== null) {
-                urlAcesso = `https://${host}:${porta}`;
-            } else {
-                urlAcesso = `https://${host}`;
-            }
-            break;
-        case 'ftp':
-            urlAcesso = `ftp://${usuario}:${senha}@${host}:${porta}`;
-            break;
-        case 'sftp':
-            urlAcesso = `sftp://${usuario}@${host}:${porta}`;
-            break;
-        case 'rdp':
-            urlAcesso = `rdp://${host}:${porta}`;
-            break;
-        case 'vnc':
-            urlAcesso = `vnc://${host}:${porta}`;
-            break;
-        default:
-            const dados = `Protocolo: ${protocolo}\nHost: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}`;
-            showInfo('DADOS DE CONEXÃO', dados, 10000);
-            return;
-    }
+    case 'telnet':
+        urlAcesso = `telnet://${host}:${porta}`;
+        break;
+    case 'http':
+        // ✅ CORRIGIDO: Não adiciona porta 80 (padrão)
+        if (porta && porta !== 'None' && porta !== '' && porta !== null && porta !== '80') {
+            urlAcesso = `http://${host}:${porta}`;
+        } else {
+            urlAcesso = `http://${host}`;
+        }
+        break;
+        
+    case 'https':
+        // ✅ CORRIGIDO: Não adiciona porta 443 (padrão)
+        if (porta && porta !== 'None' && porta !== '' && porta !== null && porta !== '443') {
+            urlAcesso = `https://${host}:${porta}`;
+        } else {
+            urlAcesso = `https://${host}`;
+        }
+        break;
+    case 'ftp':
+        urlAcesso = `ftp://${usuario}:${senha}@${host}:${porta}`;
+        break;
+    case 'sftp':
+        urlAcesso = `sftp://${usuario}@${host}:${porta}`;
+        break;
+    case 'rdp':
+        urlAcesso = `rdp://${host}:${porta}`;
+        break;
+    case 'vnc':
+        urlAcesso = `vnc://${host}:${porta}`;
+        break;
+    default:
+        const dados = `Protocolo: ${protocolo}\nHost: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}`;
+        showInfo('DADOS DE CONEXÃO', dados, 10000);
+        return;
+}
     
     console.log('URL gerada:', urlAcesso);
     

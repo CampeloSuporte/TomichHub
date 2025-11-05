@@ -152,6 +152,10 @@ def cadastrar_acesso(request):
         vlan = request.POST.get('vlan')
         winbox = request.POST.get('winbox')
 
+        # ✅ Se funcao_id for vazio ou None, usa o padrão 13
+        if not funcao_id or funcao_id == '':
+            funcao_id = 13
+
         # ✅ Tratar VLAN vazia ou inválida
         if vlan == '' or vlan is None:
             vlan = None
@@ -159,7 +163,7 @@ def cadastrar_acesso(request):
             try:
                 vlan = int(vlan)
             except ValueError:
-                vlan = None  # evita erro se o usuário digitar algo não numérico
+                vlan = None
 
         # ✅ Tratar WINBOX vazio ou inválido
         if winbox == '' or winbox is None:
@@ -168,7 +172,7 @@ def cadastrar_acesso(request):
             try:
                 winbox = int(winbox)
             except ValueError:
-                winbox = None  # evita erro se o usuário digitar algo não numérico
+                winbox = None
 
         # 🧠 Verifica se já existe um Acesso com o mesmo tipo para o mesmo cliente
         if Acesso.objects.filter(tipo=tipo, cliente_id=cliente_id).exists():
@@ -178,7 +182,7 @@ def cadastrar_acesso(request):
         # ✅ Cria o registro normalmente
         acesso = Acesso(
             cliente_id=cliente_id,
-            funcao_id=funcao_id,
+            funcao_id=funcao_id,  # ✅ Agora sempre terá um valor (13 por padrão)
             modelo_id=modelo_id,
             tipo=tipo,
             host=host,
