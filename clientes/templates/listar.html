@@ -1803,8 +1803,9 @@ function abrirModalUpload() {
 function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, tipo) {
     console.log('Tentando acessar:', protocolo, host, porta, acessoId, tipo);
     
-    // ✅ SE FOR SSH, ABRIR TERMINAL INTEGRADO
-    if (protocolo.toLowerCase() === 'ssh') {
+    // ✅ SE FOR SSH OU TELNET, ABRIR TERMINAL INTEGRADO
+    if (protocolo.toLowerCase() === 'ssh' || protocolo.toLowerCase() === 'telnet') {
+        console.log(`🔗 Abrindo terminal ${protocolo.toUpperCase()} integrado...`);
         abrirTerminalSSH(acessoId, host, porta, tipo);
         return;
     }
@@ -1812,9 +1813,6 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
     let urlAcesso = '';
     
     switch(protocolo.toLowerCase()) {
-    case 'telnet':
-        urlAcesso = `telnet://${host}:${porta}`;
-        break;
     case 'http':
         // ✅ CORRIGIDO: Não adiciona porta 80 (padrão)
         if (porta && porta !== 'None' && porta !== '' && porta !== null && porta !== '80') {
@@ -1848,7 +1846,13 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         const dados = `Protocolo: ${protocolo}\nHost: ${host}\nPorta: ${porta}\nUsuário: ${usuario}\nSenha: ${senha}`;
         showInfo('DADOS DE CONEXÃO', dados, 10000);
         return;
-}
+    }
+    
+    // ✅ Abrir em nova aba
+    if (urlAcesso) {
+        window.open(urlAcesso, '_blank');
+    }
+
     
     console.log('URL gerada:', urlAcesso);
     
