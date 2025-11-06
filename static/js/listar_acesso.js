@@ -972,3 +972,252 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
+// ============================================
+// FILTRO DE ACESSOS - BUSCA INLINE EM TEMPO REAL
+// ============================================
+
+// Armazenar estado original
+let estadoOriginal = null;
+
+// Função para abrir o campo de filtro
+function abrirFiltroAcessos() {
+    const filtroContainer = document.getElementById('filtro-acessos-container');
+    
+    if (!filtroContainer) {
+        // Salvar estado original ANTES de fazer qualquer coisa
+        salvarEstadoOriginal();
+        
+        // Criar container do filtro
+        const container = document.createElement('div');
+        container.id = 'filtro-acessos-container';
+        container.className = 'filtro-acessos-wrapper';
+        container.innerHTML = `
+            <div class="filtro-acessos-box">
+                <div class="filtro-acessos-header">
+                    <i class="fas fa-search"></i>
+                    <input 
+                        type="text" 
+                        id="inputFiltroAcessosInline"
+                        class="filtro-acessos-input" 
+                        placeholder="Buscar hosts, routers, switches..."
+                        autocomplete="off"
+                    >
+                    <button class="filtro-acessos-close" onclick="fecharFiltroAcessos()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="filtro-acessos-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Digite o nome do acesso para filtrar em tempo real</span>
+                </div>
+            </div>
+        `;
+        
+        // Inserir antes da aba de acessos
+        const tabAcessos = document.getElementById('tab-acessos');
+        const divAbas = tabAcessos.querySelector('#funcaoTabs');
+        divAbas.parentNode.insertBefore(container, divAbas);
+        
+        // Focar no input
+        setTimeout(() => {
+            document.getElementById('inputFiltroAcessosInline').focus();
+        }, 100);
+    } else {
+        // Se já existe, apenas mostrar e focar
+        filtroContainer.style.display = 'block';
+        document.getElementById('inputFiltroAcessosInline').focus();
+    }
+    
+    // Adicionar listener para o input
+    const input = document.getElementById('inputFiltroAcessosInline');
+    if (input) {
+        input.removeEventListener('input', filtrarAcessosInline);
+        input.addEventListener('input', filtrarAcessosInline);
+        
+        input.removeEventListener('keydown', handleKeydown);
+        input.addEventListener('keydown', handleKeydown);
+    }
+}
+
+// Salvar estado original das funções
+function salvarEstadoOriginal() {
+    estadoOriginal = {
+        funcoes: {},
+        abaAtiva: null
+    };
+    
+    // Salvar display de cada função e qual está ativa
+    document.querySelectorAll('.funcao-content').forEach(funcao => {
+        const id = funcao.id;
+        estadoOriginal.funcoes[id] = funcao.style.display;
+    });
+    
+    // Salvar qual aba está ativa
+    const abaAtiva = document.querySelector('#funcaoTabs .nav-link.active');
+    if (abaAtiva) {
+        estadoOriginal.abaAtiva = abaAtiva.textContent.trim();
+    }
+}
+
+// Função para fechar o filtro
+function fecharFiltroAcessos() {
+    const filtroContainer = document.getElementById('filtro-acessos-container');
+    if (filtroContainer) {
+        filtroContainer.style.display = 'none';
+    }
+    
+    // Limpar filtro e restaurar estado original
+    restaurarEstadoOriginal();
+}
+
+// Restaurar estado original completamente
+function restaurarEstadoOriginal() {
+    // Limpar input
+    const input = document.getElementById('inputFiltroAcessosInline');
+    if (input) {
+        input.value = '';
+    }
+    
+    // Esconder e limpar container filtrado
+    const containerFiltrado = document.getElementById('container-acessos-filtrados');
+    if (containerFiltrado) {
+        containerFiltrado.style.display = 'none';
+        containerFiltrado.innerHTML = '';
+    }
+    
+    // Restaurar estado de todas as funções
+    if (estadoOriginal) {
+        // Esconder todas
+        document.querySelectorAll('.funcao-content').forEach(funcao => {
+            funcao.style.display = 'none';
+        });
+        
+        // Restaurar a primeira que estava visível
+        const primeiraFuncao = document.querySelector('.funcao-content');
+        if (primeiraFuncao) {
+            primeiraFuncao.style.display = 'block';
+        }
+    }
+    
+    // Restaurar abas
+    document.querySelectorAll('#funcaoTabs .nav-link').forEach(link => {
+        link.style.display = 'block';
+        link.classList.remove('active');
+    });
+    
+    // Ativar primeira aba
+    const primeiraAba = document.querySelector('#funcaoTabs .nav-link');
+    if (primeiraAba) {
+        primeiraAba.classList.add('active');
+    }
+}
+
+// Função para filtrar em tempo real
+function filtrarAcessosInline() {
+    const input = document.getElementById('inputFiltroAcessosInline');
+    const filtro = input.value.toLowerCase().trim();
+    
+    if (filtro === '') {
+        restaurarEstadoOriginal();
+        return;
+    }
+    
+    // Esconder todas as funções
+    document.querySelectorAll('.funcao-content').forEach(funcao => {
+        funcao.style.display = 'none';
+    });
+    
+    // Esconder todas as abas de função
+    document.querySelectorAll('#funcaoTabs .nav-link').forEach(link => {
+        link.style.display = 'none';
+    });
+    
+    // Mostrar container de resultados filtrados
+    let containerFiltrado = document.getElementById('container-acessos-filtrados');
+    if (!containerFiltrado) {
+        containerFiltrado = document.createElement('div');
+        containerFiltrado.id = 'container-acessos-filtrados';
+        containerFiltrado.className = 'row g-4';
+        
+        const tabAcessos = document.getElementById('tab-acessos');
+        const divAbas = tabAcessos.querySelector('#funcaoTabs');
+        divAbas.parentNode.insertBefore(containerFiltrado, divAbas.nextSibling);
+    }
+    
+    containerFiltrado.style.display = 'block';
+    containerFiltrado.innerHTML = '';
+    
+    let encontrou = 0;
+    
+    // Buscar em todas as funções
+    document.querySelectorAll('.funcao-content').forEach(funcaoContent => {
+        const acessos = funcaoContent.querySelectorAll('.col-xl-3');
+        
+        acessos.forEach(acesso => {
+            const tipo = acesso.querySelector('h5');
+            const tipoTexto = tipo ? tipo.textContent.toLowerCase() : '';
+            
+            if (tipoTexto.includes(filtro)) {
+                encontrou++;
+                // Clonar o card do acesso
+                const cardClone = acesso.cloneNode(true);
+                // Remover classes Bootstrap que conflitam
+                cardClone.classList.remove('col-xl-3', 'col-lg-4', 'col-md-6');
+                containerFiltrado.appendChild(cardClone);
+            }
+        });
+    });
+    
+    if (encontrou === 0) {
+        containerFiltrado.innerHTML = `
+            <div class="col-12 text-center mt-4">
+                <div class="alert alert-warning" style="border-left: 3px solid var(--accent-cyan);">
+                    <i class="fas fa-search me-2"></i>
+                    Nenhum acesso encontrado com: "<strong>${input.value}</strong>"
+                </div>
+            </div>
+        `;
+    } else {
+        const resultadoTexto = document.createElement('div');
+        resultadoTexto.className = 'col-12 mb-3';
+        resultadoTexto.innerHTML = `
+            <div style="color: var(--primary-green); font-family: 'Courier New', monospace; font-size: 12px; background: rgba(0, 255, 136, 0.05); padding: 12px 15px; border-left: 3px solid var(--primary-green); border-radius: 4px;">
+                <i class="fas fa-filter me-2"></i>
+                <strong>${encontrou}</strong> resultado(s) encontrado(s) • Filtro: "<strong>${input.value}</strong>"
+            </div>
+        `;
+        containerFiltrado.insertBefore(resultadoTexto, containerFiltrado.firstChild);
+    }
+}
+
+// Função para lidar com teclas
+function handleKeydown(e) {
+    if (e.key === 'Escape') {
+        fecharFiltroAcessos();
+    }
+}
+
+// Event listeners iniciais
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('inputFiltroAcessosInline');
+    if (input) {
+        input.addEventListener('input', filtrarAcessosInline);
+        input.addEventListener('keydown', handleKeydown);
+    }
+    
+    // Limpar filtro ao clicar em outra aba de função
+    const funcaoTabs = document.querySelectorAll('#funcaoTabs .nav-link');
+    funcaoTabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            // Se tem filtro ativo, limpar
+            const input = document.getElementById('inputFiltroAcessosInline');
+            if (input && input.value !== '') {
+                e.preventDefault();
+                restaurarEstadoOriginal();
+                return false;
+            }
+        });
+    });
+});
