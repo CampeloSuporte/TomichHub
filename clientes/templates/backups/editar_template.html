@@ -1,0 +1,113 @@
+cat > /opt/crm/clientes/templates/backups/editar_template.html << 'EOF'
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4>✏️ Editar Template - {{ template.get_fabricante_display }}</h4>
+            <a href="{% url 'listar_templates_backup' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Voltar
+            </a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="POST">
+                            {% csrf_token %}
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Fabricante</label>
+                                        <input type="text" class="form-control" value="{{ template.get_fabricante_display }}" disabled>
+                                        <small class="text-muted">Não pode ser alterado</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Nome do Template *</label>
+                                        <input type="text" name="nome" class="form-control" 
+                                               value="{{ template.nome }}" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group-modal">
+                                <label><span class="label-prefix">//</span> Descrição</label>
+                                <textarea name="descricao" class="form-control" rows="3">{{ template.descricao }}</textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Caminho do Playbook *</label>
+                                        <input type="text" name="playbook_path" class="form-control" 
+                                               value="{{ template.playbook_path }}" required>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Diretório de Backup *</label>
+                                        <input type="text" name="backup_path" class="form-control" 
+                                               value="{{ template.backup_path }}" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group-modal">
+                                <div class="form-check">
+                                    <input type="checkbox" name="ativo" class="form-check-input" 
+                                           id="ativo" {% if template.ativo %}checked{% endif %}>
+                                    <label class="form-check-label" for="ativo">
+                                        Template ativo
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Criado em</span>
+                                <span class="info-value">{{ template.data_criacao|date:"d/m/Y H:i" }}</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Atualizado em</span>
+                                <span class="info-value">{{ template.data_atualizacao|date:"d/m/Y H:i" }}</span>
+                            </div>
+
+                            <div class="terminal-status">
+                                <span class="status-indicator"></span>
+                                <span class="status-text">Pronto para atualizar</span>
+                            </div>
+
+                            <div class="modal-footer-acesso">
+                                <a href="{% url 'listar_templates_backup' %}" class="btn btn-cancel-modal">
+                                    <i class="fas fa-times me-2"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn-submit-modal">
+                                    <i class="fas fa-save me-2"></i> Salvar Alterações
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+EOF

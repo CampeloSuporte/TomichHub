@@ -48,6 +48,20 @@ class Acesso(models.Model):
     senha = models.CharField(max_length=100)
     senha_adm = models.CharField(max_length=100, blank=True)
     vlan = models.IntegerField(null=True, blank=True)
+    backup_habilitado = models.BooleanField(default=False, verbose_name="Habilitar Backup")
+    backup_template = models.ForeignKey(
+        'BackupTemplate', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='acessos',
+        verbose_name="Template de Backup"
+    )
+    backup_automatico = models.BooleanField(
+        default=False, 
+        verbose_name="Backup Automático",
+        help_text="Executar backup automaticamente via agendamento"
+    )
 
     def __str__(self):
         return f"{self.tipo} - {self.host}:{self.porta} ({self.cliente.nome_empresa})"
@@ -205,4 +219,74 @@ class ProxyServer(models.Model):
         ordering = ['-ativo', 'nome']
 
 
+class BackupTemplate(models.Model):
+    """Templates de backup para diferentes fabricantes"""
+    FABRICANTES_CHOICES = [
+        ('CISCO', 'Cisco'),
+        ('HUAWEI', 'Huawei'),
+        ('MIKROTIK', 'MikroTik'),
+        ('JUNIPER', 'Juniper'),
+        ('DELL', 'Dell'),
+        ('HP', 'HP/Aruba'),
+        ('EXTREME', 'Extreme Networks'),
+        ('GENERICO', 'Genérico'),
+    ]
+    
+    nome = models.CharField(max_length=100)
+    fabricante = models.CharField(max_length=20, choices=FABRICANTES_CHOICES)
+    comandos = models.TextField(help_text="Comandos separados por linha")
+    ativo = models.BooleanField(default=True)
+    descricao = models.TextField(blank=True, null=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Template de Backup'
+        verbose_name_plural = 'Templates de Backup'
+        ordering = ['fabricante', 'nome']
+    
+    def __str__(self):
+        return f"{self.get_fabricante_display()} - {self.nome}"
+    
+    def get_comandos_list(self):
+        """Retorna lista de comandos"""
+        return [cmd.strip() for cmd in self.comandos.split('\n') if cmd.strip()]
 
+
+class BackupLog(models.Model):
+    """Log de backups realizados"""
+    STATUS_CHOICES = [
+        ('SUCESSO', 'Sucesso'),
+        ('ERRO', 'Erro'),
+        ('PARCIAL', 'Parcial'),
+    ]
+    
+    acesso = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='backups')
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='backups')
+    template = models.ForeignKey('BackupTemplate', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    arquivo_path = models.CharField(max_length=500)  # Caminho relativo do arquivo
+    tamanho_bytes = models.IntegerField(default=0)
+    
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SUCESSO')
+    mensagem = models.TextField(blank=True, null=True)
+    
+    executado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    data_backup = models.DateTimeField(auto_now_add=True)
+    duracao_segundos = models.FloatField(default=0)
+    
+    class Meta:
+        verbose_name = 'Log de Backup'
+        verbose_name_plural = 'Logs de Backup'
+        ordering = ['-data_backup']
+    
+    def __str__(self):
+        return f"Backup {self.acesso.tipo} - {self.data_backup.strftime('%d/%m/%Y %H:%M')}"
+    
+    def get_tamanho_formatado(self):
+        """Retorna tamanho formatado"""
+        if self.tamanho_bytes < 1024:
+            return f"{self.tamanho_bytes} B"
+        elif self.tamanho_bytes < 1024 * 1024:
+            return f"{self.tamanho_bytes / 1024:.2f} KB"
+        else:
+            return f"{self.tamanho_bytes / (1024 * 1024):.2f} MB"

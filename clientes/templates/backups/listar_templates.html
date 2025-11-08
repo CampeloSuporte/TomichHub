@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4>🔧 Templates de Backup</h4>
+            <a href="{% url 'criar_template_backup' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> Novo Template
+            </a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="row">
+            {% for template in templates %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-microchip me-2"></i>{{ template.get_fabricante_display }}
+                        </h5>
+                        <p class="card-text">{{ template.nome }}</p>
+                        <small class="text-muted d-block mb-2">{{ template.descricao }}</small>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Playbook</span>
+                            <span class="info-value">{{ template.playbook_path }}</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Status</span>
+                            <span class="badge bg-success" style="background-color: var(--primary-green) !important;">
+                                {% if template.ativo %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="{% url 'editar_template_backup' template.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit me-1"></i> Editar
+                            </a>
+                            <form method="POST" action="{% url 'deletar_template_backup' template.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                        onclick="return confirm('Tem certeza?')">
+                                    <i class="fas fa-trash me-1"></i> Deletar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Nenhum template configurado. 
+                    <a href="{% url 'criar_template_backup' %}">Criar primeiro template</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

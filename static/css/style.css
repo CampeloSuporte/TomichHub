@@ -3732,3 +3732,157 @@ h4::before {
         grid-template-columns: 1fr !important;
     }
 }
+
+/* Estilos para badges de status */
+.badge-status {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--primary-green);
+    border: 1px solid var(--primary-green);
+}
+
+.badge-error {
+    background: rgba(255, 82, 82, 0.2);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+}
+
+.backup-section {
+    background: rgba(0, 217, 255, 0.05);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.backup-section h6 {
+    border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+}
+
+.backup-stat-card {
+    background: rgba(22, 27, 34, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.backup-stat-card:hover {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
+}
+
+.backup-stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(0, 217, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--accent-cyan);
+}
+
+.backup-stat-icon.success {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--primary-green);
+}
+
+.backup-stat-icon.error {
+    background: rgba(255, 82, 82, 0.2);
+    color: var(--error-red);
+}
+
+.backup-stat-icon.warning {
+    background: rgba(255, 191, 0, 0.2);
+    color: #ffbf00;
+}
+
+.backup-stat-info {
+    flex: 1;
+}
+
+.backup-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+}
+
+.backup-stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 5px;
+}
+
+/* Botão de backup com cor diferenciada */
+.icon-btn.backup-btn {
+    background: rgba(0, 217, 255, 0.1);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+.icon-btn.backup-btn:hover {
+    background: rgba(0, 217, 255, 0.2);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+}
+
+/* Indicador visual de backup habilitado no card */
+.card.backup-enabled {
+    position: relative;
+}
+
+.card.backup-enabled::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent-cyan);
+    animation: pulse-backup 2s infinite;
+}
+
+@keyframes pulse-backup {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Badge de backup no card */
+.backup-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 217, 255, 0.2);
+    color: var(--accent-cyan);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--accent-cyan);
+    z-index: 10;
+}

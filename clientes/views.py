@@ -6,7 +6,7 @@ from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate
 from .models import ProxyServer
 from .decorators import admin_required, cliente_login_required
 from .decorators import (
@@ -15,6 +15,19 @@ from .decorators import (
     cliente_or_admin_required,
     cliente_can_view_cliente
 )
+import paramiko
+import socket
+import os
+from pathlib import Path
+from datetime import datetime
+from django.conf import settings
+from django.http import FileResponse
+import time
+from .models import BackupTemplate
+
+# Instalar: pip install netmiko
+from netmiko import ConnectHandler
+from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
 
 
 @login_required(login_url='login')
@@ -151,6 +164,9 @@ def cadastrar_acesso(request):
         senha_adm = request.POST.get('senha_adm')
         vlan = request.POST.get('vlan')
         winbox = request.POST.get('winbox')
+        backup_habilitado = request.POST.get('backup_habilitado') == 'on'
+        backup_template_id = request.POST.get('backup_template')
+        backup_automatico = request.POST.get('backup_automatico') == 'on'
 
         # ✅ Se funcao_id for vazio ou None, usa o padrão 13
         if not funcao_id or funcao_id == '':
@@ -193,7 +209,10 @@ def cadastrar_acesso(request):
             senha=senha,
             senha_adm=senha_adm,
             vlan=vlan,
-            winbox=winbox
+            winbox=winbox,
+            backup_habilitado=backup_habilitado,
+            backup_template_id=backup_template_id if backup_template_id else None,
+            backup_automatico=backup_automatico
         )
         acesso.save()
 
@@ -315,6 +334,10 @@ def buscar_acesso(request, acesso_id):
             'funcao_nome': acesso.funcao.descricao if acesso.funcao and hasattr(acesso.funcao, 'descricao') else '',
             'modelo_id': acesso.modelo.id if acesso.modelo and hasattr(acesso.modelo, 'id') else '',
             'modelo_nome': acesso.modelo.nome if acesso.modelo and hasattr(acesso.modelo, 'nome') else '',
+            'backup_habilitado': acesso.backup_habilitado,
+            'backup_template_id': acesso.backup_template.id if acesso.backup_template else '',
+            'backup_template_nome': acesso.backup_template.nome if acesso.backup_template else '',
+            'backup_automatico': acesso.backup_automatico,
         }
         
         return JsonResponse(data)
@@ -340,6 +363,10 @@ def editar_acesso(request, acesso_id):
             acesso.usuario = request.POST.get('usuario')
             acesso.senha = request.POST.get('senha')
             acesso.senha_adm = request.POST.get('senha_adm')
+            acesso.backup_habilitado = request.POST.get('backup_habilitado') == 'on'
+            template_id = request.POST.get('backup_template')
+            acesso.backup_template_id = template_id if template_id else None
+            acesso.backup_automatico = request.POST.get('backup_automatico') == 'on'
 
             # ✅ Tratar WINBOX vazio ou inválido
             winbox = request.POST.get('winbox')
@@ -1047,4 +1074,548 @@ def cliente_dashboard(request):
     return render(request, 'cliente_dashboard.html', {
         'cliente': cliente,
         'chamados_abertos': chamados_abertos,
+    })
+
+def executar_backup_acesso(request, acesso_id):
+    """
+    Executa backup manual de um acesso específico
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Não autenticado'}, status=401)
+    
+    try:
+        acesso = Acesso.objects.get(id=acesso_id)
+        
+        # Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                cliente = Cliente.objects.get(usuario=request.user)
+                if acesso.cliente.id != cliente.id:
+                    return JsonResponse({'error': 'Sem permissão'}, status=403)
+            except Cliente.DoesNotExist:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        
+        # Verificar se backup está habilitado
+        if not acesso.backup_habilitado:
+            return JsonResponse({
+                'error': 'Backup não está habilitado para este acesso'
+            }, status=400)
+        
+        if not acesso.backup_template:
+            return JsonResponse({
+                'error': 'Template de backup não configurado'
+            }, status=400)
+        
+        # Executar backup
+        resultado = realizar_backup(acesso, request.user)
+        
+        if resultado['sucesso']:
+            return JsonResponse({
+                'success': True,
+                'message': f'Backup realizado com sucesso!',
+                'arquivo': resultado['arquivo'],
+                'tamanho': resultado['tamanho'],
+                'duracao': resultado['duracao']
+            })
+        else:
+            return JsonResponse({
+                'error': resultado['erro']
+            }, status=500)
+            
+    except Acesso.DoesNotExist:
+        return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def realizar_backup(acesso, usuario=None):
+    """
+    ✅ VERSÃO MELHORADA: Suporta proxy SSH para IPs privados
+    """
+    inicio = time.time()
+    ssh_tunnel = None
+    
+    try:
+        print(f"🔄 Iniciando backup de {acesso.tipo}")
+        print(f"📡 Host: {acesso.host}:{acesso.porta}")
+        
+        # ✅ NOVO: Verificar se é IP privado
+        eh_privado = is_private_ip(acesso.host)
+        print(f"🔍 IP privado? {eh_privado}")
+        
+        host_conexao = acesso.host
+        porta_conexao = int(acesso.porta) if acesso.porta else 22
+        
+        # ✅ NOVO: Se é privado, criar túnel via proxy
+        if eh_privado:
+            print(f"🔐 Host privado detectado, procurando proxy...")
+            
+            # Buscar proxy ativo do cliente
+            proxy = ProxyServer.objects.filter(
+                cliente=acesso.cliente,
+                ativo=True
+            ).first()
+            
+            if not proxy:
+                raise Exception(
+                    "Equipamento em rede privada detectado, mas nenhum proxy SSH ativo está "
+                    "configurado para este cliente. Configure um túnel SSH na aba 'Túneis SSH'."
+                )
+            
+            print(f"✅ Proxy encontrado: {proxy.nome}")
+            
+            # Criar túnel
+            ssh_tunnel = criar_ssh_tunnel(
+                {
+                    'host': proxy.host,
+                    'porta': proxy.porta,
+                    'usuario': proxy.usuario,
+                    'senha': proxy.senha
+                },
+                acesso.host,
+                porta_conexao
+            )
+            
+            # Usar localhost:porta_local para conexão
+            host_conexao = ssh_tunnel['local_host']
+            porta_conexao = ssh_tunnel['local_port']
+            
+            print(f"🔗 Conexão será feita via: {host_conexao}:{porta_conexao}")
+        
+        # Preparar diretório
+        backup_dir = preparar_diretorio_backup(acesso.cliente.id, acesso.id)
+        
+        # Mapear device type
+        device_type = mapear_device_type(acesso.modelo.nome if acesso.modelo else 'generic')
+        print(f"🔌 Device Type: {device_type}")
+        
+        # ✅ Configuração da conexão (AGORA COM HOST/PORTA DO TÚNEL SE PRIVADO)
+        device = {
+            'device_type': device_type,
+            'host': host_conexao,  # ← PODE SER localhost SE PRIVADO
+            'port': porta_conexao,  # ← PODE SER porta_local SE PRIVADO
+            'username': acesso.usuario,
+            'password': acesso.senha,
+            'secret': acesso.senha_adm or acesso.senha,
+            'timeout': 120,
+            'session_timeout': 120,
+            'conn_timeout': 60,
+            'auth_timeout': 60,
+            'banner_timeout': 60,
+            'blocking_timeout': 60,
+            'fast_cli': False,
+            'global_delay_factor': 4,
+        }
+        
+        print(f"🔐 Conectando...")
+        
+        # Conectar via Netmiko (que agora usa o túnel se necessário)
+        connection = ConnectHandler(**device)
+        print(f"✅ Conectado!")
+        
+        # Para Cisco, desabilitar paginação
+        if 'cisco' in device_type.lower():
+            try:
+                connection.send_command_timing('terminal length 0', delay_factor=2)
+                print("📄 Paginação desabilitada")
+            except:
+                pass
+        
+        # Para MikroTik, ajustar ambiente
+        if 'mikrotik' in device_type.lower():
+            try:
+                connection.send_command_timing('/quit', delay_factor=2)
+                print("🔧 Ambiente MikroTik ajustado")
+            except:
+                pass
+        
+        # Executar comandos
+        output = ""
+        comandos = acesso.backup_template.get_comandos_list()
+        print(f"📋 Executando {len(comandos)} comandos...")
+        
+        for i, comando in enumerate(comandos, 1):
+            print(f"  {i}/{len(comandos)}: {comando}")
+            output += f"\n{'='*60}\n"
+            output += f"Comando: {comando}\n"
+            output += f"{'='*60}\n"
+            
+            try:
+                resultado = connection.send_command_timing(
+                    comando,
+                    delay_factor=6,
+                    read_timeout=150,
+                    max_loops=500
+                )
+                
+                if not resultado or len(resultado) < 10:
+                    print(f"    ⚠️ Resultado vazio, tentando novamente...")
+                    time.sleep(3)
+                    resultado = connection.send_command_timing(
+                        comando,
+                        delay_factor=8,
+                        read_timeout=180
+                    )
+                
+                output += resultado + "\n"
+                print(f"    ✅ OK ({len(resultado)} bytes)")
+                
+            except Exception as cmd_error:
+                print(f"    ❌ Erro: {cmd_error}")
+                output += f"ERRO ao executar comando: {str(cmd_error)}\n"
+                continue
+        
+        # Desconectar
+        try:
+            connection.disconnect()
+            print(f"🔌 Desconectado do equipamento")
+        except:
+            pass
+        
+        if len(output) < 100:
+            raise Exception("Backup vazio ou muito pequeno. Verifique conexão e comandos.")
+        
+        # Salvar arquivo
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        nome_arquivo = f"{acesso.tipo.replace(' ', '_')}_{timestamp}.txt"
+        arquivo_path = os.path.join(backup_dir, nome_arquivo)
+        
+        with open(arquivo_path, 'w', encoding='utf-8') as f:
+            f.write(f"=" * 80 + "\n")
+            f.write(f"BACKUP DE CONFIGURAÇÃO\n")
+            f.write(f"=" * 80 + "\n")
+            f.write(f"Cliente: {acesso.cliente.nome_empresa}\n")
+            f.write(f"Equipamento: {acesso.tipo}\n")
+            f.write(f"Host: {acesso.host}:{acesso.porta}\n")
+            f.write(f"Tipo de Acesso: {'VIA PROXY SSH (Rede Privada)' if eh_privado else 'DIRETO'}\n")
+            f.write(f"Modelo: {acesso.modelo}\n")
+            f.write(f"Template: {acesso.backup_template.nome}\n")
+            f.write(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+            f.write(f"Executado por: {usuario.username if usuario else 'Sistema'}\n")
+            f.write(f"=" * 80 + "\n\n")
+            f.write(output)
+        
+        tamanho = os.path.getsize(arquivo_path)
+        duracao = time.time() - inicio
+        
+        print(f"💾 Arquivo salvo: {nome_arquivo} ({tamanho} bytes)")
+        print(f"⏱️ Duração: {duracao:.2f}s")
+        
+        arquivo_relativo = os.path.relpath(arquivo_path, settings.MEDIA_ROOT)
+        
+        # Registrar log
+        BackupLog.objects.create(
+            acesso=acesso,
+            cliente=acesso.cliente,
+            template=acesso.backup_template,
+            arquivo_path=arquivo_relativo,
+            tamanho_bytes=tamanho,
+            status='SUCESSO',
+            mensagem='Backup realizado com sucesso' + (' via proxy SSH' if eh_privado else ''),
+            executado_por=usuario,
+            duracao_segundos=duracao
+        )
+        
+        return {
+            'sucesso': True,
+            'arquivo': nome_arquivo,
+            'tamanho': tamanho,
+            'duracao': f"{duracao:.2f}s"
+        }
+        
+    except NetmikoTimeoutException as e:
+        erro = f"Timeout: Equipamento não respondeu. Verifique se está ligado e acessível."
+        print(f"❌ {erro}")
+        registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
+        return {'sucesso': False, 'erro': erro}
+        
+    except NetmikoAuthenticationException as e:
+        erro = f"Erro de autenticação. Verifique usuário e senha."
+        print(f"❌ {erro}")
+        registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
+        return {'sucesso': False, 'erro': erro}
+        
+    except Exception as e:
+        erro = f"Erro: {str(e)}"
+        print(f"❌ {erro}")
+        import traceback
+        traceback.print_exc()
+        registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
+        return {'sucesso': False, 'erro': erro}
+        
+    finally:
+        # ✅ CRÍTICO: Fechar túnel SSH se foi criado
+        if ssh_tunnel:
+            try:
+                print("🔐 Fechando túnel SSH...")
+                ssh_tunnel['channel'].close()
+                ssh_tunnel['ssh_client'].close()
+                print("✅ Túnel fechado")
+            except Exception as e:
+                print(f"⚠️ Erro ao fechar túnel: {str(e)}")
+
+def preparar_diretorio_backup(cliente_id, acesso_id):
+    """
+    Cria estrutura de diretórios para backups
+    """
+    base_dir = os.path.join(settings.MEDIA_ROOT, 'backups')
+    cliente_dir = os.path.join(base_dir, f'cliente_{cliente_id}')
+    acesso_dir = os.path.join(cliente_dir, f'acesso_{acesso_id}')
+    
+    os.makedirs(acesso_dir, exist_ok=True)
+    
+    return acesso_dir
+
+
+def mapear_device_type(modelo_nome):
+    """
+    Mapeia modelo do equipamento para device_type do Netmiko
+    """
+    modelo_lower = modelo_nome.lower()
+    
+    if 'cisco' in modelo_lower:
+        if 'ios-xe' in modelo_lower or 'catalyst' in modelo_lower:
+            return 'cisco_ios'
+        elif 'nexus' in modelo_lower:
+            return 'cisco_nxos'
+        elif 'asa' in modelo_lower:
+            return 'cisco_asa'
+        else:
+            return 'cisco_ios'
+    
+    elif 'huawei' in modelo_lower:
+        return 'huawei'
+    
+    elif 'mikrotik' in modelo_lower:
+        return 'mikrotik_routeros'
+    
+    elif 'juniper' in modelo_lower:
+        return 'juniper_junos'
+    
+    elif 'dell' in modelo_lower:
+        return 'dell_os10'
+    
+    elif 'hp' in modelo_lower or 'aruba' in modelo_lower:
+        return 'hp_procurve'
+    
+    elif 'extreme' in modelo_lower:
+        return 'extreme'
+    
+    else:
+        return 'cisco_ios'  # Fallback
+
+
+def is_private_ip(ip):
+    """
+    Verifica se IP é privado
+    Intervalos privados:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    """
+    import ipaddress
+    try:
+        return ipaddress.ip_address(ip).is_private
+    except:
+        return False
+
+
+def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=10):
+    """
+    🔧 NOVA FUNÇÃO: Cria um túnel SSH via proxy para acessar equipamento privado
+    
+    Retorna: {
+        'ssh_client': conexão SSH,
+        'local_host': 'localhost',
+        'local_port': porta_local
+    }
+    """
+    print(f"🔧 Criando túnel SSH via proxy...")
+    print(f"   Proxy: {proxy_server['host']}:{proxy_server['porta']}")
+    print(f"   Alvo: {equipamento_host}:{equipamento_porta}")
+    
+    try:
+        # Conectar ao proxy
+        ssh_proxy = paramiko.SSHClient()
+        ssh_proxy.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        ssh_proxy.connect(
+            hostname=proxy_server['host'],
+            port=proxy_server['porta'],
+            username=proxy_server['usuario'],
+            password=proxy_server['senha'],
+            timeout=timeout,
+            look_for_keys=False,
+            allow_agent=False
+        )
+        
+        print(f"✅ Conectado ao proxy")
+        
+        # Criar túnel (port forwarding)
+        sock = socket.socket()
+        sock.bind(('', 0))
+        local_port = sock.getsockname()[1]
+        sock.close()
+        
+        # Abrir forwarding
+        transport = ssh_proxy.get_transport()
+        channel = transport.open_channel(
+            'direct-tcpip',
+            (equipamento_host, int(equipamento_porta)),
+            ('127.0.0.1', local_port)
+        )
+        
+        print(f"✅ Túnel criado: localhost:{local_port} → {equipamento_host}:{equipamento_porta}")
+        
+        return {
+            'ssh_client': ssh_proxy,
+            'local_host': 'localhost',
+            'local_port': local_port,
+            'channel': channel
+        }
+        
+    except Exception as e:
+        print(f"❌ Erro ao criar túnel: {str(e)}")
+        raise
+
+
+def registrar_erro_backup(acesso, usuario, erro, duracao):
+    """
+    Registra erro no log de backup
+    """
+    BackupLog.objects.create(
+        acesso=acesso,
+        cliente=acesso.cliente,
+        template=acesso.backup_template,
+        arquivo_path='',
+        tamanho_bytes=0,
+        status='ERRO',
+        mensagem=erro,
+        executado_por=usuario,
+        duracao_segundos=duracao
+    )
+
+
+@login_required(login_url='login')
+def listar_backups_cliente(request):
+    """
+    Lista backups de um cliente (AJAX)
+    """
+    cliente_id = request.GET.get('id')
+    
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+    
+    # Verificar permissão
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if str(cliente.id) != str(cliente_id):
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    
+    # Buscar backups
+    backups = BackupLog.objects.filter(cliente=cliente).select_related(
+        'acesso', 'template', 'executado_por'
+    ).order_by('-data_backup')
+    
+    return JsonResponse({
+        'backups': [{
+            'id': backup.id,
+            'acesso_tipo': backup.acesso.tipo,
+            'acesso_host': backup.acesso.host,
+            'template': backup.template.nome if backup.template else 'N/A',
+            'status': backup.get_status_display(),
+            'status_code': backup.status,
+            'tamanho': backup.get_tamanho_formatado(),
+            'data': backup.data_backup.strftime('%d/%m/%Y %H:%M:%S'),
+            'duracao': f"{backup.duracao_segundos:.2f}s",
+            'executado_por': backup.executado_por.username if backup.executado_por else 'Sistema',
+            'mensagem': backup.mensagem or '',
+            'arquivo_path': backup.arquivo_path
+        } for backup in backups]
+    })
+
+
+@login_required(login_url='login')
+def download_backup(request, backup_id):
+    """
+    Download de arquivo de backup
+    """
+    try:
+        backup = BackupLog.objects.get(id=backup_id)
+        
+        # Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if backup.cliente.id != cliente.id:
+                messages.error(request, 'Sem permissão para acessar este backup')
+                return redirect('listar_clientes')
+        
+        arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+        
+        if not os.path.exists(arquivo_path):
+            messages.error(request, 'Arquivo de backup não encontrado')
+            return redirect('listar_clientes')
+        
+        return FileResponse(
+            open(arquivo_path, 'rb'),
+            as_attachment=True,
+            filename=os.path.basename(arquivo_path)
+        )
+        
+    except BackupLog.DoesNotExist:
+        messages.error(request, 'Backup não encontrado')
+        return redirect('listar_clientes')
+    except Exception as e:
+        messages.error(request, f'Erro ao baixar backup: {str(e)}')
+        return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+@admin_required
+def deletar_backup(request, backup_id):
+    """
+    Deleta um backup (arquivo + registro)
+    """
+    if request.method == 'POST':
+        try:
+            backup = get_object_or_404(BackupLog, id=backup_id)
+            cliente_id = backup.cliente.id
+            
+            # Deletar arquivo físico
+            arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+            if os.path.exists(arquivo_path):
+                os.remove(arquivo_path)
+            
+            # Deletar registro
+            backup.delete()
+            
+            messages.success(request, 'Backup excluído com sucesso!')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao excluir backup: {str(e)}')
+            return redirect('listar_clientes')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def buscar_templates_backup(request):
+    """
+    Busca templates de backup (AJAX)
+    """
+    templates = BackupTemplate.objects.filter(ativo=True).order_by('fabricante', 'nome')
+    
+    return JsonResponse({
+        'templates': [{
+            'id': t.id,
+            'nome': t.nome,
+            'fabricante': t.get_fabricante_display(),
+            'descricao': t.descricao or ''
+        } for t in templates]
     })

@@ -3,6 +3,21 @@ from .models import Cliente, Acesso
 from .models import ProxyServer
 
 
+from .models import BackupTemplate, BackupLog
+
+@admin.register(BackupTemplate)
+class BackupTemplateAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'fabricante', 'ativo', 'data_criacao']
+    list_filter = ['fabricante', 'ativo']
+    search_fields = ['nome', 'descricao']
+
+@admin.register(BackupLog)
+class BackupLogAdmin(admin.ModelAdmin):
+    list_display = ['acesso', 'cliente', 'status', 'tamanho_bytes', 'data_backup', 'duracao_segundos']
+    list_filter = ['status', 'data_backup', 'cliente']
+    search_fields = ['acesso__tipo', 'cliente__nome_empresa']
+    readonly_fields = ['data_backup']
+
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):
     list_display = ('nome_empresa', 'usuario', 'cnpj', 'telefone')

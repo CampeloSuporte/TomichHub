@@ -50,6 +50,11 @@ urlpatterns = [
     path('proxies/deletar/<int:proxy_id>/', views.deletar_proxy, name='deletar_proxy'),
     path('proxies/testar/<int:proxy_id>/', views.testar_proxy, name='testar_proxy'),
     path('proxies/toggle/<int:proxy_id>/', views.toggle_proxy_status, name='toggle_proxy_status'),
+    path('backups/executar/<int:acesso_id>/', views.executar_backup_acesso, name='executar_backup'),
+    path('backups/listar/', views.listar_backups_cliente, name='listar_backups'),
+    path('backups/download/<int:backup_id>/', views.download_backup, name='download_backup'),
+    path('backups/deletar/<int:backup_id>/', views.deletar_backup, name='deletar_backup'),
+    path('backups/templates/', views.buscar_templates_backup, name='buscar_templates_backup'),
     
     
 ]

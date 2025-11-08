@@ -1,0 +1,146 @@
+cat > /opt/crm/clientes/templates/backups/criar_template.html << 'EOF'
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4>➕ Criar Template de Backup</h4>
+            <a href="{% url 'listar_templates_backup' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Voltar
+            </a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="POST">
+                            {% csrf_token %}
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Fabricante *</label>
+                                        <select name="fabricante" class="form-control" required>
+                                            <option value="">Selecione um fabricante</option>
+                                            {% for value, label in fabricantes %}
+                                                <option value="{{ value }}">{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Nome do Template *</label>
+                                        <input type="text" name="nome" class="form-control" 
+                                               placeholder="Ex: Backup Huawei v1" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group-modal">
+                                <label><span class="label-prefix">//</span> Descrição</label>
+                                <textarea name="descricao" class="form-control" rows="3"
+                                          placeholder="Descreva o template..."></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Caminho do Playbook *</label>
+                                        <input type="text" name="playbook_path" class="form-control" 
+                                               placeholder="/opt/ansible/backup_huawei.yml" required>
+                                        <small class="text-muted">Caminho absoluto do playbook Ansible</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group-modal">
+                                        <label><span class="label-prefix">//</span> Diretório de Backup *</label>
+                                        <input type="text" name="backup_path" class="form-control" 
+                                               value="/mnt/backups/" required>
+                                        <small class="text-muted">Onde os backups serão salvos</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group-modal">
+                                <div class="form-check">
+                                    <input type="checkbox" name="ativo" class="form-check-input" 
+                                           id="ativo" checked>
+                                    <label class="form-check-label" for="ativo">
+                                        Template ativo (pronto para uso)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="terminal-status">
+                                <span class="status-indicator"></span>
+                                <span class="status-text">Pronto para criar template</span>
+                            </div>
+
+                            <div class="modal-footer-acesso">
+                                <a href="{% url 'listar_templates_backup' %}" class="btn btn-cancel-modal">
+                                    <i class="fas fa-times me-2"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn-submit-modal">
+                                    <i class="fas fa-save me-2"></i> Criar Template
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar com informações -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>Informações
+                        </h5>
+                        <div class="info-row">
+                            <span class="info-label">O que é um Template?</span>
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-light); line-height: 1.6;">
+                            Templates de backup definem como e quando fazer backup de cada tipo de fabricante. Cada template é associado a um playbook Ansible que executa o backup.
+                        </p>
+
+                        <hr style="border-color: rgba(0, 255, 136, 0.2);">
+
+                        <div class="info-row">
+                            <span class="info-label">Playbooks Disponíveis</span>
+                        </div>
+                        <ul style="font-size: 12px; color: var(--text-muted); padding-left: 20px;">
+                            <li>/opt/ansible/backup_huawei.yml</li>
+                            <li>/opt/ansible/backup_cisco.yml</li>
+                            <li>/opt/ansible/backup_juniper.yml</li>
+                            <li>/opt/ansible/backup_mikrotik.yml</li>
+                        </ul>
+
+                        <hr style="border-color: rgba(0, 255, 136, 0.2);">
+
+                        <div class="alert" style="background: rgba(0, 255, 136, 0.05); border-left: 3px solid var(--primary-green); color: var(--text-light); margin-bottom: 0; font-size: 12px;">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>Dica:</strong> Certifique-se de que o playbook existe no servidor antes de criar o template.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+EOF

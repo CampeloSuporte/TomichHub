@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4>💾 Backups - {{ cliente.nome_empresa }}</h4>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <input type="hidden" name="id" value="{{ cliente.id }}">
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Função do Equipamento</label>
+                        <select name="funcao" class="form-control">
+                            <option value="">Todas</option>
+                            {% for funcao_id, funcao_nome in funcoes %}
+                                <option value="{{ funcao_id }}" {% if filtro_funcao|slugify == funcao_id|slugify %}selected{% endif %}>
+                                    {{ funcao_nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">Todos</option>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if filtro_status == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-1"></i> Filtrar
+                        </button>
+                        <a href="{% url 'listar_backups_cliente' %}?id={{ cliente.id }}" class="btn btn-secondary">
+                            <i class="fas fa-redo me-1"></i> Limpar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabela de Backups -->
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Equipamento</th>
+                        <th>Template</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Tamanho</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr class="table-row-selectable">
+                        <td>{{ backup.acesso.tipo }}</td>
+                        <td>{{ backup.template.nome }}</td>
+                        <td>
+                            <span class="badge badge-status {{ backup.status|lower }}">
+                                {{ backup.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ backup.data_criacao|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if backup.tamanho_arquivo %}
+                                {{ backup.tamanho_arquivo|filesizeformat }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                {% if backup.arquivo %}
+                                    <a href="{{ backup.arquivo.url }}" download class="btn-action btn-download">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                {% endif %}
+                                {% if backup.mensagem_erro %}
+                                    <button class="btn-action" onclick="alert('{{ backup.mensagem_erro|escapejs }}')">
+                                        <i class="fas fa-exclamation"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            Nenhum backup encontrado
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

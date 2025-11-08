@@ -1,0 +1,30 @@
+---
+- name: Backup Cisco
+  hosts: all
+  gather_facts: no
+  vars:
+    backup_dir: "{{ backup_dir }}"
+  
+  tasks:
+    - name: Criar diretório de backup
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+
+    - name: Backup Cisco via SSH
+      expect:
+        command: "sshpass -p {{ password }} ssh -o StrictHostKeyChecking=no {{ username }}@{{ host_ip }}"
+        responses:
+          ".*[>#].*":
+            - "show running-config"
+            - "exit"
+        timeout: 30
+      register: backup_output
+
+    - name: Salvar backup
+      copy:
+        content: "{{ backup_output.stdout }}"
+        dest: "{{ backup_dir }}/cisco_{{ device_name }}_{{ ansible_date_time.iso8601_basic_short }}.cfg"
+      delegate_to: localhost
