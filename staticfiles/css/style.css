@@ -2970,3 +2970,24 @@ h4::before {
     flex-direction: column;
     gap: 20px;
 }
+
+/* Estilos para campo de pesquisa de backups */
+#pesquisaBackup:focus {
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    border-color: var(--primary-green) !important;
+    color: var(--text-light);
+}
+
+#pesquisaBackup::placeholder {
+    color: var(--text-muted);
+}
+
+.input-group .input-group-text {
+    background: var(--bg-dark) !important;
+    border: 1px solid var(--primary-green) !important;
+}
+
+.input-group .btn-outline-secondary:hover {
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
