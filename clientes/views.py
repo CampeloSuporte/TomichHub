@@ -1,5 +1,6 @@
 from django.shortcuts import render,redirect, get_object_or_404
 from django.contrib import messages
+import threading
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -1128,29 +1129,39 @@ def executar_backup_acesso(request, acesso_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# ✅ VERSÃO COM DEBUG DETALHADO
+
 def realizar_backup(acesso, usuario=None):
     """
-    ✅ VERSÃO MELHORADA: Suporta proxy SSH para IPs privados
+    ✅ VERSÃO COM DEBUG MELHORADO: Identifica exatamente onde está o problema
     """
     inicio = time.time()
     ssh_tunnel = None
     
     try:
-        print(f"🔄 Iniciando backup de {acesso.tipo}")
+        print(f"\n{'='*80}")
+        print(f"🔄 INICIANDO BACKUP DE CONFIGURAÇÃO")
+        print(f"{'='*80}")
+        print(f"📋 Equipamento: {acesso.tipo}")
         print(f"📡 Host: {acesso.host}:{acesso.porta}")
+        print(f"👤 Usuário: {acesso.usuario}")
+        print(f"🔧 Modelo: {acesso.modelo}")
+        print(f"📝 Template: {acesso.backup_template.nome if acesso.backup_template else 'N/A'}")
         
-        # ✅ NOVO: Verificar se é IP privado
+        # ✅ VERIFICAR SE É IP PRIVADO
         eh_privado = is_private_ip(acesso.host)
-        print(f"🔍 IP privado? {eh_privado}")
+        print(f"🔍 IP Privado? {eh_privado}")
         
         host_conexao = acesso.host
         porta_conexao = int(acesso.porta) if acesso.porta else 22
         
-        # ✅ NOVO: Se é privado, criar túnel via proxy
+        # ✅ SE PRIVADO, CRIAR TÚNEL
         if eh_privado:
-            print(f"🔐 Host privado detectado, procurando proxy...")
+            print(f"\n{'='*80}")
+            print(f"⚠️ IP PRIVADO DETECTADO - CRIANDO TÚNEL SSH")
+            print(f"{'='*80}")
             
-            # Buscar proxy ativo do cliente
+            # Buscar proxy ativo
             proxy = ProxyServer.objects.filter(
                 cliente=acesso.cliente,
                 ativo=True
@@ -1158,13 +1169,16 @@ def realizar_backup(acesso, usuario=None):
             
             if not proxy:
                 raise Exception(
-                    "Equipamento em rede privada detectado, mas nenhum proxy SSH ativo está "
-                    "configurado para este cliente. Configure um túnel SSH na aba 'Túneis SSH'."
+                    "❌ IP privado, mas nenhum proxy SSH ativo!\n"
+                    "Configure um túnel SSH na aba 'Túneis SSH'."
                 )
             
             print(f"✅ Proxy encontrado: {proxy.nome}")
+            print(f"   Host: {proxy.host}:{proxy.porta}")
+            print(f"   Usuário: {proxy.usuario}")
             
             # Criar túnel
+            print(f"\n📤 Criando túnel SSH...")
             ssh_tunnel = criar_ssh_tunnel(
                 {
                     'host': proxy.host,
@@ -1176,24 +1190,29 @@ def realizar_backup(acesso, usuario=None):
                 porta_conexao
             )
             
-            # Usar localhost:porta_local para conexão
             host_conexao = ssh_tunnel['local_host']
             porta_conexao = ssh_tunnel['local_port']
             
-            print(f"🔗 Conexão será feita via: {host_conexao}:{porta_conexao}")
+            print(f"✅ Túnel criado!")
+            print(f"   localhost:{porta_conexao} → {acesso.host}:{acesso.porta}")
         
-        # Preparar diretório
+        # ✅ PREPARAR DIRETÓRIO
         backup_dir = preparar_diretorio_backup(acesso.cliente.id, acesso.id)
+        print(f"\n📁 Diretório de backup: {backup_dir}")
         
-        # Mapear device type
+        # ✅ MAPEAR DEVICE TYPE
         device_type = mapear_device_type(acesso.modelo.nome if acesso.modelo else 'generic')
         print(f"🔌 Device Type: {device_type}")
         
-        # ✅ Configuração da conexão (AGORA COM HOST/PORTA DO TÚNEL SE PRIVADO)
+        # ✅ CONFIGURAR CONEXÃO
+        print(f"\n{'='*80}")
+        print(f"🔐 CONFIGURANDO CONEXÃO NETMIKO")
+        print(f"{'='*80}")
+        
         device = {
             'device_type': device_type,
-            'host': host_conexao,  # ← PODE SER localhost SE PRIVADO
-            'port': porta_conexao,  # ← PODE SER porta_local SE PRIVADO
+            'host': host_conexao,
+            'port': porta_conexao,
             'username': acesso.usuario,
             'password': acesso.senha,
             'secret': acesso.senha_adm or acesso.senha,
@@ -1207,35 +1226,94 @@ def realizar_backup(acesso, usuario=None):
             'global_delay_factor': 4,
         }
         
-        print(f"🔐 Conectando...")
+        print(f"📍 Device Type: {device['device_type']}")
+        print(f"🎯 Alvo: {device['host']}:{device['port']}")
+        print(f"👤 Usuário: {device['username']}")
+        print(f"⏱️ Timeout Geral: {device['timeout']}s")
+        print(f"⏱️ Conn Timeout: {device['conn_timeout']}s")
+        print(f"⏱️ Auth Timeout: {device['auth_timeout']}s")
+        print(f"⏱️ Banner Timeout: {device['banner_timeout']}s")
         
-        # Conectar via Netmiko (que agora usa o túnel se necessário)
-        connection = ConnectHandler(**device)
-        print(f"✅ Conectado!")
+        # ✅ TESTAR CONECTIVIDADE ANTES DE NETMIKO
+        print(f"\n{'='*80}")
+        print(f"🧪 TESTANDO CONECTIVIDADE")
+        print(f"{'='*80}")
         
-        # Para Cisco, desabilitar paginação
+        print(f"📤 Testando socket em {device['host']}:{device['port']}...")
+        test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        test_sock.settimeout(5)
+        try:
+            resultado = test_sock.connect_ex((device['host'], device['port']))
+            test_sock.close()
+            
+            if resultado == 0:
+                print(f"✅ Porta está ABERTA e respondendo!")
+            else:
+                print(f"❌ ERRO: Porta NÃO está respondendo!")
+                print(f"   Erro: {resultado}")
+                raise Exception(
+                    f"Porta {device['port']} não está acessível!\n"
+                    f"Verifique:\n"
+                    f"1. Se o equipamento está ligado\n"
+                    f"2. Se a porta SSH/Telnet é {device['port']}\n"
+                    f"3. Se o firewall não está bloqueando\n"
+                    f"4. Se o proxy SSH está funcionando"
+                )
+        except socket.timeout:
+            print(f"❌ TIMEOUT: Porta não respondeu")
+            raise Exception(
+                f"Timeout ao conectar em {device['host']}:{device['port']}\n"
+                f"Verifique conectividade e firewall."
+            )
+        
+        # ✅ CONECTAR VIA NETMIKO
+        print(f"\n{'='*80}")
+        print(f"🔗 CONECTANDO COM NETMIKO")
+        print(f"{'='*80}")
+        
+        print(f"📤 Conectando em {device['host']}:{device['port']}...")
+        try:
+            connection = ConnectHandler(**device)
+            print(f"✅ Conectado com sucesso!")
+        except NetmikoTimeoutException as e:
+            print(f"❌ TIMEOUT NETMIKO: {str(e)}")
+            raise Exception(
+                f"Timeout ao conectar com Netmiko\n"
+                f"Possíveis causas:\n"
+                f"1. Equipamento não respondendo\n"
+                f"2. Credenciais incorretas\n"
+                f"3. Protocolo incorreto (SSH vs Telnet)\n"
+                f"4. Timeout muito curto"
+            )
+        except NetmikoAuthenticationException as e:
+            print(f"❌ ERRO DE AUTENTICAÇÃO: {str(e)}")
+            raise Exception(
+                f"Erro de autenticação!\n"
+                f"Verifique usuário e senha."
+            )
+        except Exception as e:
+            print(f"❌ ERRO: {str(e)}")
+            raise
+        
+        # ✅ DESABILITAR PAGINAÇÃO (Cisco)
         if 'cisco' in device_type.lower():
             try:
                 connection.send_command_timing('terminal length 0', delay_factor=2)
-                print("📄 Paginação desabilitada")
+                print("📄 Paginação desabilitada (Cisco)")
             except:
                 pass
         
-        # Para MikroTik, ajustar ambiente
-        if 'mikrotik' in device_type.lower():
-            try:
-                connection.send_command_timing('/quit', delay_factor=2)
-                print("🔧 Ambiente MikroTik ajustado")
-            except:
-                pass
+        # ✅ EXECUTAR COMANDOS
+        print(f"\n{'='*80}")
+        print(f"📋 EXECUTANDO COMANDOS")
+        print(f"{'='*80}")
         
-        # Executar comandos
         output = ""
         comandos = acesso.backup_template.get_comandos_list()
-        print(f"📋 Executando {len(comandos)} comandos...")
+        print(f"🔢 Total de comandos: {len(comandos)}\n")
         
         for i, comando in enumerate(comandos, 1):
-            print(f"  {i}/{len(comandos)}: {comando}")
+            print(f"  [{i}/{len(comandos)}] {comando}")
             output += f"\n{'='*60}\n"
             output += f"Comando: {comando}\n"
             output += f"{'='*60}\n"
@@ -1265,17 +1343,21 @@ def realizar_backup(acesso, usuario=None):
                 output += f"ERRO ao executar comando: {str(cmd_error)}\n"
                 continue
         
-        # Desconectar
+        # ✅ DESCONECTAR
         try:
             connection.disconnect()
-            print(f"🔌 Desconectado do equipamento")
+            print(f"\n🔌 Desconectado do equipamento")
         except:
             pass
         
         if len(output) < 100:
-            raise Exception("Backup vazio ou muito pequeno. Verifique conexão e comandos.")
+            raise Exception("Backup vazio ou muito pequeno. Verifique comandos.")
         
-        # Salvar arquivo
+        # ✅ SALVAR ARQUIVO
+        print(f"\n{'='*80}")
+        print(f"💾 SALVANDO ARQUIVO DE BACKUP")
+        print(f"{'='*80}")
+        
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         nome_arquivo = f"{acesso.tipo.replace(' ', '_')}_{timestamp}.txt"
         arquivo_path = os.path.join(backup_dir, nome_arquivo)
@@ -1298,12 +1380,13 @@ def realizar_backup(acesso, usuario=None):
         tamanho = os.path.getsize(arquivo_path)
         duracao = time.time() - inicio
         
-        print(f"💾 Arquivo salvo: {nome_arquivo} ({tamanho} bytes)")
-        print(f"⏱️ Duração: {duracao:.2f}s")
+        print(f"✅ Arquivo salvo: {nome_arquivo}")
+        print(f"📊 Tamanho: {tamanho} bytes")
+        print(f"⏱️ Duração total: {duracao:.2f}s")
         
         arquivo_relativo = os.path.relpath(arquivo_path, settings.MEDIA_ROOT)
         
-        # Registrar log
+        # ✅ REGISTRAR LOG
         BackupLog.objects.create(
             acesso=acesso,
             cliente=acesso.cliente,
@@ -1316,6 +1399,10 @@ def realizar_backup(acesso, usuario=None):
             duracao_segundos=duracao
         )
         
+        print(f"\n{'='*80}")
+        print(f"✅ BACKUP CONCLUÍDO COM SUCESSO!")
+        print(f"{'='*80}\n")
+        
         return {
             'sucesso': True,
             'arquivo': nome_arquivo,
@@ -1324,32 +1411,40 @@ def realizar_backup(acesso, usuario=None):
         }
         
     except NetmikoTimeoutException as e:
-        erro = f"Timeout: Equipamento não respondeu. Verifique se está ligado e acessível."
-        print(f"❌ {erro}")
+        erro = f"Timeout: Equipamento não respondeu.\n{str(e)}"
+        print(f"\n❌ {erro}\n")
         registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
         return {'sucesso': False, 'erro': erro}
         
     except NetmikoAuthenticationException as e:
-        erro = f"Erro de autenticação. Verifique usuário e senha."
-        print(f"❌ {erro}")
+        erro = f"Erro de autenticação. Verifique usuário e senha.\n{str(e)}"
+        print(f"\n❌ {erro}\n")
         registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
         return {'sucesso': False, 'erro': erro}
         
     except Exception as e:
         erro = f"Erro: {str(e)}"
-        print(f"❌ {erro}")
+        print(f"\n❌ {erro}\n")
         import traceback
         traceback.print_exc()
         registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
         return {'sucesso': False, 'erro': erro}
         
     finally:
-        # ✅ CRÍTICO: Fechar túnel SSH se foi criado
+        # ✅ FECHAR TÚNEL
         if ssh_tunnel:
             try:
                 print("🔐 Fechando túnel SSH...")
-                ssh_tunnel['channel'].close()
-                ssh_tunnel['ssh_client'].close()
+                if 'channel' in ssh_tunnel and ssh_tunnel['channel']:
+                    try:
+                        ssh_tunnel['channel'].close()
+                    except:
+                        pass
+                if 'ssh_client' in ssh_tunnel and ssh_tunnel['ssh_client']:
+                    try:
+                        ssh_tunnel['ssh_client'].close()
+                    except:
+                        pass
                 print("✅ Túnel fechado")
             except Exception as e:
                 print(f"⚠️ Erro ao fechar túnel: {str(e)}")
@@ -1420,28 +1515,28 @@ def is_private_ip(ip):
         return False
 
 
+
+
 def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=10):
     """
-    🔧 NOVA FUNÇÃO: Cria um túnel SSH via proxy para acessar equipamento privado
-    
-    Retorna: {
-        'ssh_client': conexão SSH,
-        'local_host': 'localhost',
-        'local_port': porta_local
-    }
+    ✅ VERSÃO FINAL: Forwarding Socket com Threading
+    - Funciona com ANY versão de paramiko
+    - Cria um listening socket local real
+    - Faz forwarding bidirecional de dados
     """
-    print(f"🔧 Criando túnel SSH via proxy...")
+    print(f"🔧 Criando túnel SSH com socket forwarding...")
     print(f"   Proxy: {proxy_server['host']}:{proxy_server['porta']}")
     print(f"   Alvo: {equipamento_host}:{equipamento_porta}")
     
     try:
-        # Conectar ao proxy
+        # 1. Conectar ao proxy SSH
+        print(f"📤 Conectando ao proxy SSH...")
         ssh_proxy = paramiko.SSHClient()
         ssh_proxy.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
         ssh_proxy.connect(
             hostname=proxy_server['host'],
-            port=proxy_server['porta'],
+            port=int(proxy_server['porta']),
             username=proxy_server['usuario'],
             password=proxy_server['senha'],
             timeout=timeout,
@@ -1449,33 +1544,165 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
             allow_agent=False
         )
         
-        print(f"✅ Conectado ao proxy")
+        print(f"✅ Conectado ao proxy!")
         
-        # Criar túnel (port forwarding)
-        sock = socket.socket()
-        sock.bind(('', 0))
-        local_port = sock.getsockname()[1]
-        sock.close()
+        # 2. Encontrar porta local disponível
+        sock_temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock_temp.bind(('127.0.0.1', 0))
+        local_port = sock_temp.getsockname()[1]
+        sock_temp.close()
         
-        # Abrir forwarding
+        print(f"📍 Porta local disponível: {local_port}")
+        
+        # 3. Criar servidor local que escuta
+        print(f"🔗 Iniciando servidor de forwarding...")
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind(('127.0.0.1', local_port))
+        server_socket.listen(5)
+        server_socket.settimeout(1)  # Timeout para aceitar conexões
+        
+        print(f"✅ Servidor escutando em: 127.0.0.1:{local_port}")
+        
+        # 4. Função que forwarda dados
+        def forward_tunnel(client_socket, remote_host, remote_port, transport):
+            """Cria um channel direto-tcpip e forwarda dados"""
+            try:
+                print(f"   📨 Abrindo channel para {remote_host}:{remote_port}")
+                
+                # Abrir channel para o equipamento remoto
+                channel = transport.open_channel(
+                    'direct-tcpip',
+                    (remote_host, int(remote_port)),
+                    ('127.0.0.1', local_port)
+                )
+                
+                print(f"   ✅ Channel aberto!")
+                
+                # Forwarding bidirecional
+                def forward_data(src, dst, direction):
+                    """Forwarda dados de src para dst"""
+                    try:
+                        while True:
+                            data = src.recv(4096)
+                            if not data:
+                                print(f"   🔌 {direction}: Conexão fechada")
+                                break
+                            dst.send(data)
+                    except Exception as e:
+                        print(f"   ⚠️ {direction}: {str(e)}")
+                    finally:
+                        try:
+                            src.close()
+                        except:
+                            pass
+                        try:
+                            dst.close()
+                        except:
+                            pass
+                
+                # Criar threads de forwarding (bidirecional)
+                t1 = threading.Thread(
+                    target=forward_data, 
+                    args=(client_socket, channel, "CLIENT→REMOTE")
+                )
+                t2 = threading.Thread(
+                    target=forward_data, 
+                    args=(channel, client_socket, "REMOTE→CLIENT")
+                )
+                t1.daemon = True
+                t2.daemon = True
+                t1.start()
+                t2.start()
+                
+                print(f"   ✅ Forwarding iniciado")
+                
+            except Exception as e:
+                print(f"   ❌ Erro ao criar channel: {str(e)}")
+                try:
+                    client_socket.close()
+                except:
+                    pass
+        
+        # 5. Thread que aceita conexões
+        def accept_connections(server_socket, transport, remote_host, remote_port):
+            """Aceita conexões e forwarda"""
+            print(f"👂 Thread de aceitação iniciada")
+            try:
+                while True:
+                    try:
+                        client_socket, addr = server_socket.accept()
+                        print(f"📥 Conexão recebida de {addr}")
+                        
+                        # Forwarding em thread
+                        thread = threading.Thread(
+                            target=forward_tunnel,
+                            args=(client_socket, remote_host, remote_port, transport)
+                        )
+                        thread.daemon = True
+                        thread.start()
+                        
+                    except socket.timeout:
+                        # Timeout normal, continua ouvindo
+                        continue
+                    except Exception as e:
+                        print(f"⚠️ Erro ao aceitar conexão: {str(e)}")
+                        break
+                        
+            except Exception as e:
+                print(f"❌ Erro na thread de aceitação: {str(e)}")
+            finally:
+                try:
+                    server_socket.close()
+                except:
+                    pass
+        
+        # 6. Iniciar thread de aceitação
         transport = ssh_proxy.get_transport()
-        channel = transport.open_channel(
-            'direct-tcpip',
-            (equipamento_host, int(equipamento_porta)),
-            ('127.0.0.1', local_port)
+        accept_thread = threading.Thread(
+            target=accept_connections,
+            args=(server_socket, transport, equipamento_host, equipamento_porta)
         )
+        accept_thread.daemon = True
+        accept_thread.start()
         
-        print(f"✅ Túnel criado: localhost:{local_port} → {equipamento_host}:{equipamento_porta}")
+        print(f"✅ Túnel SSH criado com sucesso!")
+        print(f"   localhost:{local_port} → {equipamento_host}:{equipamento_porta}")
+        
+        # Aguardar um pouco para confirmar que está escutando
+        time.sleep(0.5)
+        
+        # Testar se porta está acessível
+        print(f"\n🧪 Testando se porta local está acessível...")
+        test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        test_sock.settimeout(2)
+        try:
+            resultado = test_sock.connect_ex(('127.0.0.1', local_port))
+            test_sock.close()
+            if resultado == 0:
+                print(f"✅ ✅ ✅ PORTA LOCAL CONFIRMADA COMO ACESSÍVEL! ✅ ✅ ✅")
+            else:
+                print(f"⚠️ Porta pode estar em warm-up...")
+        except Exception as e:
+            print(f"⚠️ Erro ao testar porta: {str(e)}")
+        
+        print()
         
         return {
+            'tunnel': None,
             'ssh_client': ssh_proxy,
-            'local_host': 'localhost',
+            'local_host': '127.0.0.1',
             'local_port': local_port,
-            'channel': channel
+            'server_socket': server_socket,
+            'channel': None,
+            'transport': transport,
+            'accept_thread': accept_thread
         }
         
     except Exception as e:
-        print(f"❌ Erro ao criar túnel: {str(e)}")
+        print(f"❌ ERRO ao criar túnel: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise
 
 
@@ -1500,6 +1727,7 @@ def registrar_erro_backup(acesso, usuario, erro, duracao):
 def listar_backups_cliente(request):
     """
     Lista backups de um cliente (AJAX)
+    ✅ CORRIGIDO: Verifica se arquivo existe antes de exibir
     """
     cliente_id = request.GET.get('id')
     
@@ -1522,6 +1750,25 @@ def listar_backups_cliente(request):
         'acesso', 'template', 'executado_por'
     ).order_by('-data_backup')
     
+    # ✅ PASSO 1: Verificar quais arquivos existem e quais são órfãos
+    backups_validos = []
+    backups_para_deletar = []
+    
+    for backup in backups:
+        arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+        if os.path.exists(arquivo_path):
+            backups_validos.append(backup)
+        else:
+            # Arquivo foi deletado manualmente da VM
+            backups_para_deletar.append(backup.id)
+            print(f"⚠️ Backup órfão: {backup.arquivo_path}")
+    
+    # ✅ PASSO 2: Remover registros órfãos do banco
+    if backups_para_deletar:
+        BackupLog.objects.filter(id__in=backups_para_deletar).delete()
+        print(f"✅ {len(backups_para_deletar)} registro(s) órfão(s) removido(s)")
+    
+    # ✅ PASSO 3: Retornar apenas backups válidos
     return JsonResponse({
         'backups': [{
             'id': backup.id,
@@ -1536,7 +1783,7 @@ def listar_backups_cliente(request):
             'executado_por': backup.executado_por.username if backup.executado_por else 'Sistema',
             'mensagem': backup.mensagem or '',
             'arquivo_path': backup.arquivo_path
-        } for backup in backups]
+        } for backup in backups_validos]
     })
 
 

@@ -2,35 +2,88 @@
 
 // Abrir modal de edição
 function abrirModalEditarAcesso(acessoId) {
-    fetch(`/clientes/buscar/${acessoId}/`)
+    console.log('🔧 Abrindo modal de edição para acesso ID:', acessoId);
+    
+    fetch(`/clientes/acessos/buscar/${acessoId}/`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('edit_acesso_id').value = data.id;
-            document.getElementById('edit_tipo').value = data.tipo;
-            document.getElementById('edit_hostname').value = data.host;
-            document.getElementById('edit_hostname_ipv6').value = data.host_ipv6 || '';
-            document.getElementById('edit_protocolo').value = data.protocolo;
-            document.getElementById('edit_porta').value = data.porta;
-            document.getElementById('edit_usuario').value = data.usuario;
-            document.getElementById('edit_senha').value = data.senha;
-            document.getElementById('edit_senha_adm').value = data.senha_adm || '';
-            document.getElementById('edit_vlan').value = data.vlan || '';
+            console.log('📦 Dados recebidos:', data);
             
-            // Preencher função
-            document.getElementById('edit_funcao').value = data.funcao_id;
-            document.getElementById('edit_funcao_input').value = data.funcao_nome;
+            // ✅ 1. Preenchimento de IDENTIFICAÇÃO
+            document.getElementById('edit_acesso_id').value = acessoId;
             
-            // Preencher modelo
-            document.getElementById('edit_modelo').value = data.modelo_id;
-            document.getElementById('edit_modelo_input').value = data.modelo_nome;
+            // ✅ 2. Preenchimento de DADOS BÁSICOS
+            document.getElementById('dup1_tipo').value = data.tipo;
+            document.getElementById('dup1_hostname').value = data.host;
+            document.getElementById('dup1_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('dup1_protocolo').value = data.protocolo;
+            document.getElementById('dup1_porta').value = data.porta;
+            document.getElementById('dup1_winbox').value = data.winbox || '';
+            document.getElementById('dup1_usuario').value = data.usuario;
+            document.getElementById('dup1_senha').value = data.senha;
+            document.getElementById('dup1_senha_adm').value = data.senha_adm || '';
+            document.getElementById('dup1_vlan').value = data.vlan || '';
             
-            // Alterar action do form
-            document.getElementById('formEditarAcesso').action = `/acessos/editar/${acessoId}/`;
+            // ✅ 3. Preenchimento de FUNÇÃO E MODELO
+            document.getElementById('dup1_funcao').value = data.funcao_id;
+            document.getElementById('dup1_funcao_input').value = data.funcao_nome;
+            document.getElementById('dup1_modelo').value = data.modelo_id;
+            document.getElementById('dup1_modelo_input').value = data.modelo_nome;
+
+            // ✅ 4. CRÍTICO: Preenchimento de BACKUP
+            console.log('📦 Dados de backup recebidos:', {
+                backup_habilitado: data.backup_habilitado,
+                backup_template_id: data.backup_template_id,
+                backup_template_nome: data.backup_template_nome,
+                backup_automatico: data.backup_automatico
+            });
             
+            // Checkbox de habilitar backup
+            const checkboxBackup = document.getElementById('dup1_backup_habilitado');
+            if (checkboxBackup) {
+                checkboxBackup.checked = data.backup_habilitado || false;
+                console.log('✅ Checkbox backup marcado:', checkboxBackup.checked);
+            }
+            
+            // Mostrar/ocultar campos de backup
+            const backupFields = document.getElementById('dup1_backup_fields');
+            if (backupFields) {
+                backupFields.style.display = (data.backup_habilitado) ? 'block' : 'none';
+            }
+            
+            // Template de backup
+            const selectTemplate = document.getElementById('dup1_backup_template');
+            if (selectTemplate && data.backup_template_id) {
+                const templateId = String(data.backup_template_id);
+                for (let i = 0; i < selectTemplate.options.length; i++) {
+                    if (String(selectTemplate.options[i].value) === templateId) {
+                        selectTemplate.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            // ✅ CRÍTICO: Checkbox de backup automático
+            const checkboxAutomatico = document.getElementById('dup1_backup_automatico');
+            if (checkboxAutomatico) {
+                checkboxAutomatico.checked = data.backup_automatico || false;
+                console.log('✅ Backup automático:', checkboxAutomatico.checked);
+            }
+
+            // ✅ 5. Define o action do form
+            document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;
+
+            // ✅ 6. Exibe o modal
             document.getElementById('modalEditarAcesso').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            console.log('✅ Modal aberto com sucesso!');
+        })
+        .catch(error => {
+            console.error('❌ Erro ao buscar acesso:', error);
+            alert('Erro ao carregar dados do acesso');
         });
 }
-
 // Fechar modal de edição
 function fecharModalEditarAcesso() {
     document.getElementById('modalEditarAcesso').style.display = 'none';

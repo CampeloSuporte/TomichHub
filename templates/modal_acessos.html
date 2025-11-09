@@ -130,14 +130,9 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="form-group-modal">
-                                <div class="form-check" style="padding-left: 0;">
-                                    <!-- ⚠️ ATENÇÃO: Alterar IDs conforme o modal:
-                                        - Modal Cadastrar: backup_habilitado
-                                        - Modal Editar: dup1_backup_habilitado
-                                        - Modal Duplicar: dup_backup_habilitado
-                                    -->
-                                    <input type="checkbox" name="backup_habilitado" id="backup_habilitado" class="form-check-input" onchange="toggleBackupFields(this, '')">
-                                    <label class="form-check-label" for="backup_habilitado" style="color: var(--text-light); font-size: 13px;">
+                                <div class="form-check" style="padding-left: 0; display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" name="backup_habilitado" id="backup_habilitado" class="form-check-input" onchange="toggleBackupFields(this, '')" style="width: 14px; height: 14px; margin: 0; cursor: pointer; flex-shrink: 0;">
+                                    <label class="form-check-label" for="backup_habilitado" style="color: var(--text-light); font-size: 13px; cursor: pointer; margin: 0;">
                                         Habilitar backup deste equipamento
                                     </label>
                                 </div>
@@ -145,17 +140,11 @@
                         </div>
                     </div>
                     
-                    <!-- ⚠️ ATENÇÃO: Alterar IDs do container conforme o modal:
-                        - Modal Cadastrar: backup_fields
-                        - Modal Editar: dup1_backup_fields
-                        - Modal Duplicar: dup_backup_fields
-                    -->
                     <div id="backup_fields" style="display: none;">
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group-modal">
                                     <label><span class="label-prefix">//</span> Template de Backup</label>
-                                    <!-- ⚠️ ATENÇÃO: Alterar ID conforme o modal -->
                                     <select name="backup_template" id="backup_template" class="form-control">
                                         <option value="">Selecione um template...</option>
                                     </select>
@@ -169,10 +158,9 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group-modal">
-                                    <div class="form-check" style="padding-left: 0;">
-                                        <!-- ⚠️ ATENÇÃO: Alterar ID conforme o modal -->
-                                        <input type="checkbox" name="backup_automatico" id="backup_automatico" class="form-check-input">
-                                        <label class="form-check-label" for="backup_automatico" style="color: var(--text-muted); font-size: 12px;">
+                                    <div class="form-check" style="padding-left: 0; display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" name="backup_automatico" id="backup_automatico" class="form-check-input" checked style="width: 14px; height: 14px; margin: 0; cursor: pointer; flex-shrink: 0;">
+                                        <label class="form-check-label" for="backup_automatico" style="color: var(--text-muted); font-size: 12px; cursor: pointer; margin: 0;">
                                             Executar backup automaticamente via agendamento (diário)
                                         </label>
                                     </div>
@@ -330,14 +318,9 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="form-group-modal">
-                                <div class="form-check" style="padding-left: 0;">
-                                    <!-- ⚠️ ATENÇÃO: Alterar IDs conforme o modal:
-                                        - Modal Cadastrar: backup_habilitado
-                                        - Modal Editar: dup1_backup_habilitado
-                                        - Modal Duplicar: dup_backup_habilitado
-                                    -->
-                                    <input type="checkbox" name="backup_habilitado" id="dup1_backup_habilitado" class="form-check-input" onchange="toggleBackupFields(this, 'dup1_')">
-                                    <label class="form-check-label" for="dup1_backup_habilitado" style="color: var(--text-light); font-size: 13px;">
+                                <div class="form-check" style="padding-left: 0; display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" name="backup_habilitado" id="dup1_backup_habilitado" class="form-check-input" onchange="toggleBackupFields(this, 'dup1_')" style="width: 14px; height: 14px; margin: 0; cursor: pointer; flex-shrink: 0;">
+                                    <label class="form-check-label" for="dup1_backup_habilitado" style="color: var(--text-light); font-size: 13px; cursor: pointer; margin: 0;">
                                         Habilitar backup deste equipamento
                                     </label>
                                 </div>
@@ -345,17 +328,11 @@
                         </div>
                     </div>
                     
-                    <!-- ⚠️ ATENÇÃO: Alterar IDs do container conforme o modal:
-                        - Modal Cadastrar: backup_fields
-                        - Modal Editar: dup1_backup_fields
-                        - Modal Duplicar: dup_backup_fields
-                    -->
                     <div id="dup1_backup_fields" style="display: none;">
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group-modal">
                                     <label><span class="label-prefix">//</span> Template de Backup</label>
-                                    <!-- ⚠️ ATENÇÃO: Alterar ID conforme o modal -->
                                     <select name="backup_template" id="dup1_backup_template" class="form-control">
                                         <option value="">Selecione um template...</option>
                                     </select>
@@ -369,11 +346,10 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group-modal">
-                                    <div class="form-check" style="padding-left: 0;">
-                                        <!-- ⚠️ ATENÇÃO: Alterar ID conforme o modal -->
-                                       <input type="checkbox" name="backup_automatico" id="dup1_backup_automatico" 
-                                            class="form-check-input">
-                                        <label class="form-check-label" for="dup1_backup_automatico">
+                                    <div class="form-check" style="padding-left: 0; display: flex; align-items: center; gap: 8px;">
+                                       <input type="checkbox" name="backup_automatico" id="dup1_backup_automatico"
+                                            class="form-check-input" checked style="width: 14px; height: 14px; margin: 0; cursor: pointer; flex-shrink: 0;">
+                                        <label class="form-check-label" for="dup1_backup_automatico" style="color: var(--text-muted); font-size: 12px; cursor: pointer; margin: 0;">
                                             Executar backup automaticamente via agendamento (diário)
                                         </label>
                                     </div>
@@ -533,15 +509,10 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="form-group-modal">
-                                <div class="form-check" style="padding-left: 0;">
-                                    <!-- ⚠️ ATENÇÃO: Alterar IDs conforme o modal:
-                                        - Modal Cadastrar: backup_habilitado
-                                        - Modal Editar: dup1_backup_habilitado
-                                        - Modal Duplicar: dup_backup_habilitado
-                                    -->
+                                <div class="form-check" style="padding-left: 0; display: flex; align-items: center; gap: 8px;">
                                     <input type="checkbox" name="backup_habilitado" id="dup_backup_habilitado" 
-                                        class="form-check-input" onchange="toggleBackupFields(this, 'dup_')">
-                                    <label class="form-check-label" for="dup_backup_habilitado">
+                                        class="form-check-input" onchange="toggleBackupFields(this, 'dup_')" style="width: 14px; height: 14px; margin: 0; cursor: pointer; flex-shrink: 0;">
+                                    <label class="form-check-label" for="dup_backup_habilitado" style="color: var(--text-light); font-size: 13px; cursor: pointer; margin: 0;">
                                         Habilitar backup deste equipamento
                                     </label>
                                 </div>
@@ -549,17 +520,11 @@
                         </div>
                     </div>
                     
-                    <!-- ⚠️ ATENÇÃO: Alterar IDs do container conforme o modal:
-                        - Modal Cadastrar: backup_fields
-                        - Modal Editar: dup1_backup_fields
-                        - Modal Duplicar: dup_backup_fields
-                    -->
                      <div id="dup_backup_fields" style="display: none;">
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group-modal">
                                     <label><span class="label-prefix">//</span> Template de Backup</label>
-                                    <!-- ⚠️ ATENÇÃO: Alterar ID conforme o modal -->
                                     <select name="backup_template" id="dup_backup_template" class="form-control">
                                         <option value="">Selecione um template...</option>
                                     </select>
@@ -573,10 +538,9 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group-modal">
-                                    <div class="form-check" style="padding-left: 0;">
-                                        <!-- ⚠️ ATENÇÃO: Alterar ID conforme o modal -->
-                                        <input type="checkbox" name="backup_automatico" id="backup_automatico" class="form-check-input">
-                                        <label class="form-check-label" for="backup_automatico" style="color: var(--text-muted); font-size: 12px;">
+                                    <div class="form-check" style="padding-left: 0; display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" name="backup_automatico" id="dup_backup_automatico" class="form-check-input" checked style="width: 14px; height: 14px; margin: 0; cursor: pointer; flex-shrink: 0;">
+                                        <label class="form-check-label" for="dup_backup_automatico" style="color: var(--text-muted); font-size: 12px; cursor: pointer; margin: 0;">
                                             Executar backup automaticamente via agendamento (diário)
                                         </label>
                                     </div>
@@ -601,7 +565,6 @@
         </div>
     </div>
 </div>
-
 
 
 <!-- MODAL UPLOAD DE DOCUMENTO -->

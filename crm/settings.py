@@ -123,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'pt-BR'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
@@ -161,3 +161,18 @@ CHANNEL_LAYERS = {
 # Limites de upload
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
+
+# ========================================
+# CELERY
+# ========================================
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_TIMEZONE = 'America/Sao_Paulo'
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Adicione ao INSTALLED_APPS:
+INSTALLED_APPS += [
+    'django_celery_beat',
+    'django_celery_results',
+]

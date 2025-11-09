@@ -1,0 +1,94 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: SW-HU-PE-PONTE-ALMAS
+Host: 10.255.0.2:22002
+Tipo de Acesso: VIA PROXY SSH (Rede Privada)
+Modelo: S6730
+Template: Configuração Básica
+Data: 09/11/2025 12:55:26
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: display current-configuration
+============================================================
+!Software Version V200R022C00SPC500
+#
+sysname SW-HU-ALMAS
+#
+ipv6
+#
+vlan batch 10 to 11 15 21 to 22 24 50 771 2005 2007 to 2010 2013 to 2017 2286 to 2287
+vlan batch 3353 to 3354
+#
+stp disable
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+set save-configuration
+#
+http server-source all-interface
+#
+clock timezone Brasilia minus 03:00:00
+#
+  ---- More ----
+
+============================================================
+Comando: display version
+============================================================
+[42D                                          [42D
+<SW-HU-ALMAS>isplay version
+             ^
+Error: Unrecognized command found at '^' position.
+
+============================================================
+Comando: display interface brief
+============================================================
+PHY: Physical
+*down: administratively down
+#down: LBDT down
+-down: link flap down
+(l): loopback
+(s): spoofing
+(E): E-Trunk down
+(b): BFD down
+(e): ETHOAM down
+(dl): DLDP down
+(lb): LBDT block
+(lp): Loop-detect block
+(o): Observe-port forwarding down
+InUti/OutUti: input utility/output utility
+Interface                   PHY   Protocol  InUti OutUti   inErrors  outErrors
+LoopBack0                   up    up(s)        0%     0%          0          0
+MEth0/0/1                   down  down         0%     0%          0          0
+NULL0                       up    up(s)        0%     0%          0          0
+Vlanif1                     up    down         --     --          0          0
+Vlanif2                     down  down         --     --          0          0
+Vlanif11                    up    up           --     --          0          0
+Vlanif15                    down  down         --     --          0          0
+Vlanif21                    down  down         --     --          0          0
+Vlanif22                    up    up           --     --          0          0
+Vlanif24                    up    up           --     --          0          0
+Vlanif50                    up    up           --     --          0          0
+Vlanif222                   down  down         --     --          0          0
+Vlanif2005                  down  down         --     --          0          0
+Vlanif2286                  down  down         --     --          0          0
+Vlanif2287                  down  down         --     --          0          0
+XGigabitEthernet0/0/1       down  down         0%     0%      81984          0
+XGigabitEthernet0/0/2       up    up        3.10%  0.52%       3707          0
+XGigabitEthernet0/0/3       up    up        0.09%  0.74%          0          0
+XGigabitEthernet0/0/4       up    up        0.41%  2.28%          0          0
+XGigabitEthernet0/0/5       up    up           0%  0.02%          0          0
+XGigabitEthernet0/0/6       up    up           0%     0%          0          0
+XGigabitEthernet0/0/7       down  down         0%     0%          0          0
+XGigabitEthernet0/0/8       down  down         0%     0%          0          0
+XGigabitEthernet0/0/9       down  down         0%     0%          0          0
+  ---- More ----

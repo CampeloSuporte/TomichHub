@@ -1123,7 +1123,9 @@ function AbrirmodalDuplicarAcesso(acessoId) {
     fetch(`/clientes/acessos/buscar/${acessoId}/`)
         .then(response => response.json())
         .then(data => {
-            // Preencher os campos do modal de DUPLICAR com prefixo "dup_"
+            console.log('📦 Abrindo modal de duplicação com dados:', data);
+            
+            // ✅ 1. Preencher campos básicos
             document.getElementById('dup_tipo').value = data.tipo + ' (Cópia)';
             document.getElementById('dup_hostname').value = data.host;
             document.getElementById('dup_hostname_ipv6').value = data.host_ipv6 || '';
@@ -1135,61 +1137,86 @@ function AbrirmodalDuplicarAcesso(acessoId) {
             document.getElementById('dup_senha_adm').value = data.senha_adm || '';
             document.getElementById('dup_vlan').value = data.vlan || '';
             
-            // Preencher os campos de função e modelo
+            // ✅ 2. Preencher função e modelo
             document.getElementById('dup_funcao').value = data.funcao_id;
             document.getElementById('dup_funcao_input').value = data.funcao_nome;
             document.getElementById('dup_modelo').value = data.modelo_id;
             document.getElementById('dup_modelo_input').value = data.modelo_nome;
             
-            // Abrir o modal de duplicar
+            // ✅ 3. NOVO: Preencher dados de BACKUP
+            console.log('🔄 Preenchendo dados de backup...');
+            
+            // 3.1 - Checkbox: Habilitar Backup
+            const checkboxBackup = document.getElementById('dup_backup_habilitado');
+            if (checkboxBackup) {
+                checkboxBackup.checked = data.backup_habilitado || false;
+                console.log('✅ backup_habilitado =', checkboxBackup.checked);
+            } else {
+                console.error('❌ Elemento dup_backup_habilitado não encontrado!');
+            }
+            
+            // 3.2 - Mostrar/ocultar campos de backup
+            const backupFields = document.getElementById('dup_backup_fields');
+            if (backupFields) {
+                backupFields.style.display = (data.backup_habilitado) ? 'block' : 'none';
+                console.log('📁 Campos de backup:', data.backup_habilitado ? 'VISÍVEL' : 'OCULTO');
+            }
+            
+            // 3.3 - Select: Template de Backup
+            const selectTemplate = document.getElementById('dup_backup_template');
+            if (selectTemplate) {
+                if (data.backup_template_id) {
+                    console.log('🔍 Procurando template ID:', data.backup_template_id);
+                    
+                    const templateId = String(data.backup_template_id);
+                    let encontrou = false;
+                    
+                    for (let i = 0; i < selectTemplate.options.length; i++) {
+                        if (String(selectTemplate.options[i].value) === templateId) {
+                            selectTemplate.selectedIndex = i;
+                            encontrou = true;
+                            console.log(`✅ Template encontrado: ${selectTemplate.options[i].text}`);
+                            break;
+                        }
+                    }
+                    
+                    if (!encontrou) {
+                        console.warn('⚠️ Template não encontrado, deixando vazio');
+                        selectTemplate.value = '';
+                    }
+                } else {
+                    selectTemplate.value = '';
+                    console.log('⚠️ Nenhum template_id fornecido');
+                }
+            } else {
+                console.error('❌ Elemento dup_backup_template não encontrado!');
+            }
+            
+            // 3.4 - Checkbox: Backup Automático ← ESTE ERA O PROBLEMA!
+            const checkboxAutomatico = document.getElementById('dup_backup_automatico');
+            if (checkboxAutomatico) {
+                checkboxAutomatico.checked = data.backup_automatico || false;
+                console.log('✅ backup_automatico =', checkboxAutomatico.checked);
+            } else {
+                console.error('❌ Elemento dup_backup_automatico não encontrado! Verifique o ID do HTML!');
+            }
+            
+            // ✅ 4. Abrir o modal
             document.getElementById('modalDuplicarAcesso').style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            
+            console.log('✅ Modal de duplicação aberto com sucesso!');
         })
         .catch(error => {
-            console.error('Erro:', error);
+            console.error('❌ Erro ao buscar acesso:', error);
             showError('ERRO', 'Não foi possível carregar os dados do acesso.', 5000);
         });
 }
 
+// Fechar modal de edição
 function fecharModalDuplicarAcesso() {
     document.getElementById('modalDuplicarAcesso').style.display = 'none';
-    document.body.style.overflow = 'auto';
 }
-
-function filterOptions(fieldName) {
-    const input = document.getElementById(`${fieldName}_input`);
-    const dropdown = document.getElementById(`${fieldName}-dropdown`);
-    const hiddenInput = document.getElementById(fieldName);
-    const filter = input.value.toUpperCase();
-    const options = dropdown.getElementsByClassName('search-select-option');
-    let hasVisibleOption = false;
-    
-    for (let i = 0; i < options.length; i++) {
-        const txtValue = options[i].textContent || options[i].innerText;
-        if (txtValue.toUpperCase().indexOf(filter) > -1) {
-            options[i].classList.add('visible');
-            hasVisibleOption = true;
-        } else {
-            options[i].classList.remove('visible');
-        }
-    }
-    
-    if (hasVisibleOption && input.value !== '') {
-        dropdown.classList.add('show');
-    } else {
-        dropdown.classList.remove('show');
-    }
-    
-    for (let i = 0; i < options.length; i++) {
-        options[i].onclick = function() {
-            input.value = this.getAttribute('data-text');
-            hiddenInput.value = this.getAttribute('data-value');
-            dropdown.classList.remove('show');
-        };
-    }
-}
-
-
 // ============================================
 // FUNÇÕES DO MODAL DE UPLOAD
 // ============================================
