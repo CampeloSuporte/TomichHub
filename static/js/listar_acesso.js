@@ -77,6 +77,9 @@ function abrirModalEditarAcesso(acessoId) {
             document.getElementById('modalEditarAcesso').style.display = 'flex';
             document.body.style.overflow = 'hidden';
             
+            // ✅ 7. IMPORTANTE: Re-inicializar listeners após abrir o modal
+            inicializarSearchSelects();
+            
             console.log('✅ Modal aberto com sucesso!');
         })
         .catch(error => {

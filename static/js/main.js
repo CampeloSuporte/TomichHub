@@ -86,24 +86,37 @@
         options.forEach(option => option.classList.remove('visible'));
     }
 
-    function inicializarSearchSelects() {
-        // Adicionar event listeners para todas as opções de search select
-        document.querySelectorAll('.search-select-option').forEach(option => {
-            // Remover listeners antigos para evitar duplicação
-            option.replaceWith(option.cloneNode(true));
+   function inicializarSearchSelects() {
+    // Seletores que cobrem todos os modais:
+    // - Modal de Cadastro: funcao-dropdown, modelo-dropdown
+    // - Modal de Edição: dup1_funcao-dropdown, dup1_modelo-dropdown
+    // - Modal de Duplicação: dup_funcao-dropdown, dup_modelo-dropdown
+    
+    const selectorTodosDrop = `
+        #funcao-dropdown .search-select-option,
+        #modelo-dropdown .search-select-option,
+        #dup1_funcao-dropdown .search-select-option,
+        #dup1_modelo-dropdown .search-select-option,
+        #dup_funcao-dropdown .search-select-option,
+        #dup_modelo-dropdown .search-select-option
+    `;
+    
+    // Remover e re-clonar para evitar duplicação de listeners
+    document.querySelectorAll(selectorTodosDrop).forEach(option => {
+        option.replaceWith(option.cloneNode(true));
+    });
+    
+    // Re-aplicar os listeners para TODOS os elementos
+    document.querySelectorAll(selectorTodosDrop).forEach(option => {
+        option.addEventListener('click', function() {
+            const dropdown = this.closest('.search-select-dropdown');
+            const fieldType = dropdown.id.replace('-dropdown', '');
+            const value = this.getAttribute('data-value');
+            const text = this.getAttribute('data-text');
+            selectOption(fieldType, value, text);
         });
-        
-        // Re-aplicar os listeners
-        document.querySelectorAll('.search-select-option').forEach(option => {
-            option.addEventListener('click', function() {
-                const dropdown = this.closest('.search-select-dropdown');
-                const fieldType = dropdown.id.replace('-dropdown', '');
-                const value = this.getAttribute('data-value');
-                const text = this.getAttribute('data-text');
-                selectOption(fieldType, value, text);
-            });
-        });
-    }
+    });
+}
 
     // Inicializar quando o DOM estiver pronto
     document.addEventListener('DOMContentLoaded', function() {
@@ -293,42 +306,8 @@ function selectOption(fieldType, value, text) {
     options.forEach(option => option.classList.remove('visible'));
 }
 
-function inicializarSearchSelects() {
-    // Adicionar event listeners para todas as opções de search select do modal de CADASTRO
-    document.querySelectorAll('#funcao-dropdown .search-select-option, #modelo-dropdown .search-select-option').forEach(option => {
-        option.replaceWith(option.cloneNode(true));
-    });
-    
-    // Re-aplicar os listeners
-    document.querySelectorAll('#funcao-dropdown .search-select-option, #modelo-dropdown .search-select-option').forEach(option => {
-        option.addEventListener('click', function() {
-            const dropdown = this.closest('.search-select-dropdown');
-            const fieldType = dropdown.id.replace('-dropdown', '');
-            const value = this.getAttribute('data-value');
-            const text = this.getAttribute('data-text');
-            selectOption(fieldType, value, text);
-        });
-    });
-}
 
-function inicializarSearchSelectsEditar() {
-    // Adicionar event listeners para todas as opções de search select do modal de EDIÇÃO
-    document.querySelectorAll('#edit_funcao-dropdown .search-select-option, #edit_modelo-dropdown .search-select-option').forEach(option => {
-        const clone = option.cloneNode(true);
-        option.parentNode.replaceChild(clone, option);
-    });
-    
-    // Re-aplicar os listeners
-    document.querySelectorAll('#edit_funcao-dropdown .search-select-option, #edit_modelo-dropdown .search-select-option').forEach(option => {
-        option.addEventListener('click', function() {
-            const dropdown = this.closest('.search-select-dropdown');
-            const fieldType = dropdown.id.replace('-dropdown', '');
-            const value = this.getAttribute('data-value');
-            const text = this.getAttribute('data-text');
-            selectOption(fieldType, value, text);
-        });
-    });
-}
+
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
