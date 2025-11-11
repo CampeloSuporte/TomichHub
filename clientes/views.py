@@ -1487,20 +1487,24 @@ def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120):
 
 
 
-
 def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
     """
-    ✅ MEGA ULTRA CORRIGIDO: Robustez TOTAL - SEM pexpect.ANY
-    - Desabilita ANSI colors do MikroTik
-    - Múltiplas sincronizações
-    - Timeouts agressivos
-    - Buffers maiores (64KB)
-    - Funciona com qualquer equipamento
+    ✅ MEGA ULTRA CORRIGIDO v2: Detecta e trata erro de SSH não encontrado
+    - Retry automático com fallback para /bin/bash
+    - Verifica SSH antes de conectar
+    - Logs detalhados para debug
     """
     print(f"📤 SSH: Conectando a {host}:{porta}...")
     
+    # ✅ VERIFICAR SSH
+    ssh_path = "/usr/bin/ssh"
+    if not os.path.exists(ssh_path):
+        print(f"⚠️ SSH não encontrado em {ssh_path}")
+        print(f"   Tentando via PATH...")
+        ssh_path = "ssh"  # Fallback para PATH
+    
     ssh_cmd = (
-        f"ssh -o StrictHostKeyChecking=no "
+        f"{ssh_path} -o StrictHostKeyChecking=no "
         f"-o UserKnownHostsFile=/dev/null "
         f"-o ConnectTimeout=30 "
         f"-o ServerAliveInterval=60 "
@@ -1508,17 +1512,60 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         f"-p {porta} {usuario}@{host}"
     )
     
-    ssh_process = pexpect.spawn(
-        ssh_cmd,
-        timeout=timeout,
-        encoding='utf-8',
-        maxread=65536  # ✅ 64KB - buffers maiores
-    )
+    ssh_process = None
+    tentativas = 3
     
+    for tentativa in range(tentativas):
+        try:
+            print(f"   [Tentativa {tentativa + 1}/{tentativas}]")
+            
+            if tentativa == 0 or tentativa == 1:
+                # Primeiras tentativas: direto
+                print(f"      Método: Direct spawn")
+                ssh_process = pexpect.spawn(
+                    ssh_cmd,
+                    timeout=timeout,
+                    encoding='utf-8',
+                    maxread=65536,
+                    cwd=os.path.expanduser('~')
+                )
+            else:
+                # Última tentativa: via shell
+                print(f"      Método: Shell wrapper")
+                ssh_process = pexpect.spawn(
+                    '/bin/bash',
+                    ['-c', ssh_cmd],
+                    timeout=timeout,
+                    encoding='utf-8',
+                    maxread=65536
+                )
+            
+            print(f"   ✅ Spawn OK!")
+            break
+            
+        except FileNotFoundError as e:
+            print(f"   ❌ FileNotFoundError: {str(e)}")
+            
+            if tentativa < tentativas - 1:
+                print(f"      Aguardando 2s antes de retry...")
+                time.sleep(2)
+                continue
+            else:
+                # Última tentativa falhou
+                raise Exception(
+                    f"❌ SSH não encontrado após {tentativas} tentativas\n"
+                    f"Execute no servidor: sudo apt-get install openssh-client"
+                )
+        
+        except Exception as e:
+            print(f"   ❌ Erro inesperado: {str(e)}")
+            raise
+    
+    # ✅ Resto do código continua igual (PASSO 1, 2, 3, etc)
     try:
         print(f"📤 Aguardando autenticação...")
         
-        # ✅ PASSO 1: Esperar prompt de senha
+        # PASSO 1
         try:
             index = ssh_process.expect([
                 "password:",
@@ -1531,34 +1578,32 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                 ssh_process.sendline(senha)
                 time.sleep(1)
                 
-                # Aguardar qualquer resposta após senha
                 try:
                     ssh_process.read_nonblocking(timeout=1.0, size=65536)
                 except:
                     pass
-            
+        
         except pexpect.exceptions.TIMEOUT:
             raise Exception("❌ Timeout ao autenticar SSH")
         
-        # ✅ PASSO 2: Aguardar BASTANTE para estabilizar (3s!)
+        # PASSO 2
         print(f"⏳ Aguardando sistema estabilizar (3s)...")
         time.sleep(3)
         
-        # ✅ PASSO 3: Enviar CTRL+U para limpar linha (caso haja lixo)
+        # PASSO 3
         print(f"🧹 Limpando buffer com CTRL+U...")
-        ssh_process.send("\x15")  # Ctrl+U = clear line
+        ssh_process.send("\x15")
         time.sleep(0.5)
         
-        # ✅ PASSO 4: Enviar Enter para confirmar
+        # PASSO 4
         print(f"🔍 Testando se prompt está respondendo...")
         ssh_process.send("\r")
         time.sleep(0.5)
         
         try:
-            # Procura por QUALQUER prompt-like string
             ssh_process.expect([
-                r".*[\#\>\$\]]\s*$",  # Prompt strict
-                r">",                  # MikroTik simples
+                r".*[\#\>\$\]]\s*$",
+                r">",
                 r"\$",
                 r"\]",
             ], timeout=3)
@@ -1570,7 +1615,7 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
             except:
                 pass
         
-        # ✅ PASSO 5: Desabilitar paginação (SSH/Cisco)
+        # PASSO 5-10 (mesmo código anterior)
         print(f"🔧 Desabilitando paginação...")
         ssh_process.send("terminal length 0\r")
         time.sleep(0.8)
@@ -1579,7 +1624,6 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         
-        # ✅ PASSO 6: Desabilitar cores ANSI (MikroTik)
         print(f"🎨 Desabilitando cores ANSI do MikroTik...")
         ssh_process.send("set colors=never\r")
         time.sleep(0.8)
@@ -1588,7 +1632,6 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         
-        # ✅ PASSO 7: Limpar novamente
         print(f"🧹 Limpando...")
         ssh_process.send("\r")
         time.sleep(1)
@@ -1597,10 +1640,9 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         
-        # ✅ PASSO 8: Sincronização CRÍTICA - múltiplas tentativas
         print(f"🔐 SINCRONIZANDO - Aguardando prompt 100%...")
-        for tentativa in range(3):
-            print(f"   Tentativa {tentativa + 1}/3...")
+        for tentativa_sync in range(3):
+            print(f"   Tentativa {tentativa_sync + 1}/3...")
             ssh_process.send("\r")
             time.sleep(0.5)
             
@@ -1612,11 +1654,9 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                 print(f"   ⚠️ Timeout")
                 continue
         
-        # ✅ PASSO 9: Aguardar LONGO final
         print(f"⏳ Aguardando final (2s)...")
         time.sleep(2)
         
-        # ✅ PASSO 10: Limpar buffer completamente
         print(f"🧹 Limpando buffer final...")
         try:
             while True:
@@ -1638,7 +1678,8 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         raise Exception(f"Erro SSH: {str(e)}")
-
+    
+    
 
 def conectar_telnet_backup(host, porta, usuario, senha, timeout=120):
     """
