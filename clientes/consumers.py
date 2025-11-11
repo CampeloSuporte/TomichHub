@@ -22,6 +22,7 @@ class SSHConsumer(WebsocketConsumer):
         self.protocol = None
         self.read_thread = None
         self.is_reading = False
+        self.is_huawei = False  # ✅ Flag para detectar Huawei
         
     def disconnect(self, close_code):
         """Fecha todas as conexões ao desconectar"""
@@ -72,7 +73,10 @@ class SSHConsumer(WebsocketConsumer):
             protocol = self.detect_protocol(acesso.porta)
             self.protocol = protocol
             
-            logger.info(f"🔗 Protocolo: {protocol.upper()}")
+            # ✅ Detectar se é Huawei
+            self.is_huawei = acesso.equipamento and 'huawei' in acesso.equipamento.lower() if hasattr(acesso, 'equipamento') else False
+            
+            logger.info(f"🔗 Protocolo: {protocol.upper()} | Huawei: {self.is_huawei}")
             
             if self.is_private_ip(acesso.host):
                 if protocol == 'ssh':
@@ -92,11 +96,11 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro ao conectar: {str(e)}')
     
     def enviar_comando(self, command):
-        """✅ Enviar comando literalmente, SEM DELAY"""
+        """✅ Enviar comando literalmente, com tratamento especial para Huawei"""
         try:
             if self.protocol == 'ssh':
                 if self.ssh_process:
-                    # Enviar imediatamente, sem processamento
+                    # ✅ Para Huawei: Usar -v para debug se necessário
                     self.ssh_process.send(command)
             
             elif self.protocol == 'telnet':
@@ -145,12 +149,15 @@ class SSHConsumer(WebsocketConsumer):
             raise Exception(f"Erro ao buscar proxy: {str(e)}")
     
     # ============================================================
-    # SSH - DIRETO
+    # SSH - DIRETO (COM SUPORTE HUAWEI)
     # ============================================================
     def connect_ssh(self, acesso):
-        """Conexão SSH direta"""
+        """Conexão SSH direta com suporte a Huawei"""
         try:
             logger.info(f"🔗 SSH: {acesso.host}:{acesso.porta}")
+            
+            # ✅ Configurações especiais para Huawei
+            terminal_type = "vt100" if self.is_huawei else "xterm-256color"
             
             ssh_cmd = (
                 f"ssh -o StrictHostKeyChecking=no "
@@ -158,15 +165,30 @@ class SSHConsumer(WebsocketConsumer):
                 f"-o ConnectTimeout=10 "
                 f"-o ServerAliveInterval=60 "
                 f"-o LogLevel=ERROR "
-                f"-p {acesso.porta} {acesso.usuario}@{acesso.host}"
             )
+            
+            # ✅ Adicionar opções para equipamentos Huawei antigos
+            if self.is_huawei:
+                ssh_cmd += (
+                    f"-o KexAlgorithms=+diffie-hellman-group1-sha1 "
+                    f"-o HostKeyAlgorithms=+ssh-rsa "
+                )
+            
+            ssh_cmd += f"-p {acesso.porta} {acesso.usuario}@{acesso.host}"
+            
+            logger.info(f"🖥️ Terminal type: {terminal_type}")
+            
+            # ✅ Configurar environment para terminal type correto
+            env = os.environ.copy()
+            env['TERM'] = terminal_type
             
             # ✅ OTIMIZADO: maxread maior para ler mais dados por vez
             self.ssh_process = pexpect.spawn(
                 ssh_cmd,
                 timeout=15,
                 encoding='utf-8',
-                maxread=16384  # ✅ Aumentado de 8192 para 16384
+                maxread=16384,
+                env=env  # ✅ Passar environment com TERM correto
             )
             
             index = self.ssh_process.expect([
@@ -203,7 +225,7 @@ class SSHConsumer(WebsocketConsumer):
             
             self.send_json({
                 'type': 'connected',
-                'message': f'✓ Conectado SSH a {acesso.host}:{acesso.porta}'
+                'message': f'✓ Conectado SSH a {acesso.host}:{acesso.porta}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
             # ✅ OTIMIZADO: Iniciar thread de leitura RÁPIDA
@@ -254,13 +276,25 @@ class SSHConsumer(WebsocketConsumer):
             
             logger.info(f"✅ Túnel criado")
             
+            terminal_type = "vt100" if self.is_huawei else "xterm-256color"
+            
             ssh_cmd = (
                 f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
                 f"-o ConnectTimeout=10 -o ServerAliveInterval=60 -o LogLevel=ERROR "
-                f"-p {local_port} {acesso.usuario}@127.0.0.1"
             )
             
-            self.ssh_process = pexpect.spawn(ssh_cmd, timeout=15, encoding='utf-8', maxread=16384)
+            if self.is_huawei:
+                ssh_cmd += (
+                    f"-o KexAlgorithms=+diffie-hellman-group1-sha1 "
+                    f"-o HostKeyAlgorithms=+ssh-rsa "
+                )
+            
+            ssh_cmd += f"-p {local_port} {acesso.usuario}@127.0.0.1"
+            
+            env = os.environ.copy()
+            env['TERM'] = terminal_type
+            
+            self.ssh_process = pexpect.spawn(ssh_cmd, timeout=15, encoding='utf-8', maxread=16384, env=env)
             
             index = self.ssh_process.expect([
                 pexpect.TIMEOUT,
@@ -289,7 +323,7 @@ class SSHConsumer(WebsocketConsumer):
             
             self.send_json({
                 'type': 'connected',
-                'message': f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome}'
+                'message': f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
             self.is_reading = True
@@ -469,7 +503,7 @@ class SSHConsumer(WebsocketConsumer):
     def read_ssh_output(self):
         """✅ OTIMIZADA: Leitura SSH ULTRA-RÁPIDA, sem delay"""
         try:
-            logger.info("📖 Thread SSH iniciada (modo rápido)")
+            logger.info("📖 Thread SSH iniciada (modo rápido)" + (" [HUAWEI]" if self.is_huawei else ""))
             
             while self.is_reading:
                 try:

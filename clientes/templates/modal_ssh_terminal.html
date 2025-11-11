@@ -156,6 +156,17 @@
         border-radius: 0;
     }
 }
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 </style>
 
 <script>
@@ -211,10 +222,19 @@ let fitAddon = null;
 let acessoId = null;
 let connected = false;
 let clipboardBuffer = '';
+let isHuawei = false;  // ✅ Flag para detecção Huawei
+let contextMenuSetup = false;  // ✅ Flag para evitar duplicação
 
 function setupContextMenu() {
+    // ✅ Evitar registrar múltiplas vezes
+    if (contextMenuSetup) {
+        console.log('⚠️ Context menu já configurado');
+        return;
+    }
+    
     const terminalContainer = document.getElementById('ssh_terminal');
     
+    // ✅ Listener único no container para evitar duplicação
     terminalContainer.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         
@@ -223,7 +243,8 @@ function setupContextMenu() {
         if (selecionado) {
             // Se há texto selecionado, copiar
             clipboardBuffer = selecionado;
-            console.log('Copiado:', selecionado);
+            console.log('✅ Copiado:', selecionado);
+            mostrarNotificacao('Copiado: ' + selecionado.substring(0, 30) + (selecionado.length > 30 ? '...' : ''));
         } else if (clipboardBuffer) {
             // Se não há seleção, mas tem buffer, colar
             if (connected && socket && socket.readyState === WebSocket.OPEN) {
@@ -231,10 +252,74 @@ function setupContextMenu() {
                     action: 'command',
                     command: clipboardBuffer
                 }));
-                console.log('Colado:', clipboardBuffer);
+                console.log('✅ Colado:', clipboardBuffer);
+                mostrarNotificacao('Colado: ' + clipboardBuffer.substring(0, 30) + (clipboardBuffer.length > 30 ? '...' : ''));
+            } else {
+                mostrarNotificacao('⚠️ Não conectado');
             }
         }
     });
+    
+    contextMenuSetup = true;
+    console.log('✅ Context menu configurado (primeira vez)');
+}
+
+// ✅ Notificação visual
+function mostrarNotificacao(texto) {
+    // Limpar notificação anterior se existir
+    const notifAnterior = document.getElementById('terminal-notif');
+    if (notifAnterior) notifAnterior.remove();
+    
+    // Criar notificação
+    const notif = document.createElement('div');
+    notif.id = 'terminal-notif';
+    notif.textContent = texto;
+    notif.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #00ff88;
+        color: #000;
+        padding: 10px 15px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        animation: slideUp 0.3s ease;
+    `;
+    
+    document.body.appendChild(notif);
+    
+    // Remover após 2 segundos
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        notif.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 2000);
+}
+
+// ✅ Configurar input do terminal com suporte a Huawei
+function configurarInputTerminal() {
+    console.log('⚙️ Configurando input do terminal...');
+    
+    terminal.onData((input) => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            // ✅ Para Huawei: Garantir que backspace seja enviado como DEL (\x7f)
+            let command = input;
+            
+            if (isHuawei) {
+                // ✅ Converter BS (\x08) para DEL (\x7f) para Huawei
+                command = input.replace(/\x08/g, '\x7f');
+            }
+            
+            socket.send(JSON.stringify({
+                action: 'command',
+                command: command
+            }));
+        }
+    });
+    
+    console.log('✅ Input configurado');
 }
 
 function abrirTerminalSSH(id, host, porta, tipo) {
@@ -245,6 +330,8 @@ function abrirTerminalSSH(id, host, porta, tipo) {
     
     acessoId = id;
     connected = false;
+    clipboardBuffer = ''; // ✅ Limpar buffer ao abrir novo terminal
+    contextMenuSetup = false; // ✅ Resetar flag de context menu
     
     document.getElementById('ssh_info').textContent = `${tipo} • ${host}:${porta}`;
     document.getElementById('ssh_status').textContent = '● Conectando...';
@@ -259,7 +346,8 @@ function criarTerminal() {
     const container = document.getElementById('ssh_terminal');
     container.innerHTML = '';
     
-    terminal = new Terminal({
+    // ✅ Configuração padrão
+    let terminalConfig = {
         cursorBlink: true,
         fontSize: 13,
         fontFamily: 'monospace',
@@ -269,7 +357,14 @@ function criarTerminal() {
         },
         scrollback: 500,
         rightClickSelectsWord: false,
-    });
+    };
+    
+    // ✅ Se for Huawei, usar vt100 para melhor compatibilidade
+    if (isHuawei) {
+        console.log('🖥️ Terminal Huawei detectado - modo vt100');
+    }
+    
+    terminal = new Terminal(terminalConfig);
     
     fitAddon = new FitAddon.FitAddon();
     terminal.loadAddon(fitAddon);
@@ -302,19 +397,16 @@ function conectar() {
         
         if (data.type === 'connected') {
             connected = true;
+            // ✅ Detectar se é Huawei pela mensagem
+            isHuawei = data.message && data.message.includes('[HUAWEI]');
+            
             document.getElementById('ssh_status').className = 'status connected';
-            document.getElementById('ssh_status').textContent = '● Conectado';
+            document.getElementById('ssh_status').textContent = '● Conectado' + (isHuawei ? ' [HUAWEI]' : '');
             
             terminal.writeln('\x1b[1;36m' + data.message + '\x1b[0m\n');
             
-            terminal.onData((input) => {
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        action: 'command',
-                        command: input
-                    }));
-                }
-            });
+            // ✅ Configurar input com suporte a Huawei
+            configurarInputTerminal();
             
         } else if (data.type === 'output' && data.data) {
             const colorido = colorirOutput(data.data);
