@@ -941,6 +941,90 @@
 </div>
 
 {% include 'modal_acessos.html'%}
+
+<!-- ✅ FUNÇÕES CRÍTICAS - ANTES DOS SCRIPTS EXTERNOS -->
+<script>
+// ============================================
+// FUNÇÕES DE TÚNEIS SSH - ESCOPO GLOBAL
+// ============================================
+
+function abrirModalCadastrarTunel() {
+    document.getElementById('modalCadastrarTunel').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalCadastrarTunel() {
+    document.getElementById('modalCadastrarTunel').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('formCadastrarTunel').reset();
+}
+
+function abrirModalEditarTunel(proxyId) {
+    fetch(`/clientes/proxies/buscar/${proxyId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit_proxy_id').value = data.id;
+            document.getElementById('edit_nome').value = data.nome;
+            document.getElementById('edit_host').value = data.host;
+            document.getElementById('edit_porta').value = data.porta;
+            document.getElementById('edit_usuario').value = data.usuario;
+            document.getElementById('edit_senha').value = data.senha;
+            document.getElementById('edit_ativo').checked = data.ativo;
+            
+            document.getElementById('formEditarProxy').action = `/clientes/proxies/editar/${proxyId}/`;
+            document.getElementById('modalEditarProxy').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar os dados do túnel.', 5000);
+        });
+}
+
+function fecharModalEditarTunel() {
+    document.getElementById('modalEditarProxy').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function testarTunel(proxyId) {
+    showInfo('TESTANDO', 'Testando conexão com o túnel SSH...', 3000);
+    
+    fetch(`/clientes/proxies/testar/${proxyId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('CONEXÃO OK', data.message, 5000);
+            } else {
+                showError('ERRO', data.message, 5000);
+            }
+        })
+        .catch(error => {
+            showError('ERRO', 'Erro ao testar conexão com o túnel.', 5000);
+        });
+}
+
+function toggleTunelStatus(proxyId) {
+    sessionStorage.setItem('abaAtiva', 'tuneis');
+    
+    fetch(`/clientes/proxies/toggle/${proxyId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('STATUS ATUALIZADO', data.message, 3000);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showError('ERRO', data.error, 5000);
+            }
+        })
+        .catch(error => {
+            showError('ERRO', 'Erro ao alterar status do túnel.', 5000);
+        });
+}
+</script>
+
+
 <script src="{% static 'js/acessar_equipamento.js' %}"></script>
 
 <script src="{% static 'js/main.js' %}"></script>

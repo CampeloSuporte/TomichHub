@@ -1,0 +1,770 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: CGNAT
+Host: 45.228.38.1:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 11/11/2025 14:38:44
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: /export compact
+============================================================
+/[lucascampelo@CGNAT] > /                                                       [K[lucascampelo@CGNAT] > /e[lucascampelo@CGNAT] > /e                                                      [K[lucascampelo@CGNAT] > /ex[lucascampelo@CGNAT] > /ex                                                     [K[lucascampelo@CGNAT] > /exp[lucascampelo@CGNAT] > /exp                                                    [K[lucascampelo@CGNAT] > /expo[lucascampelo@CGNAT] > /expo                                                   [K[lucascampelo@CGNAT] > /expor[lucascampelo@CGNAT] > /expor                                                  [K[lucascampelo@CGNAT] > /export[lucascampelo@CGNAT] > /export                                                 [K[lucascampelo@CGNAT] > /export [lucascampelo@CGNAT] > /export                                                 [K[lucascampelo@CGNAT] > /export c[lucascampelo@CGNAT] > /export c                                               [K[lucascampelo@CGNAT] > /export co[lucascampelo@CGNAT] > /export co                                              [K[lucascampelo@CGNAT] > /export com[lucascampelo@CGNAT] > /export com                                             [K[lucascampelo@CGNAT] > /export comp[lucascampelo@CGNAT] > /export comp                                            [K[lucascampelo@CGNAT] > /export compa[lucascampelo@CGNAT] > /export compa                                           [K[lucascampelo@CGNAT] > /export compac[lucascampelo@CGNAT] > /export compac                                          [K[lucascampelo@CGNAT] > /export compact[lucascampelo@CGNAT] > /export compact                                         [K[lucascampelo@CGNAT] > /export compact[lucascampelo@CGNAT] > /export compact
+# nov/11/2025 14:35:21 by RouterOS 6.49.8
+# software id = X4PR-7EEQ
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = E3200D8E0021
+[m[36m/interface[m [m[36mbridge
+[m[35madd[m [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32mname[m[33m=[mIXCCGNat10
+[m[35madd[m [m[32mdisabled[m[33m=[m[32myes[m [m[32mname[m[33m=[mloopback [m[32mprotocol-mode[m[33m=[mnone
+[m[36m/interface[m [m[36methernet
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mcombo1 [m[33m][m [m[32mauto-negotiation[m[33m=[m[32mno
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether1 [m[33m][m [m[32mname[m[33m=[mether1_
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether2 [m[33m][m [m[32madvertise[m[33m=[m[34;1m\
+    [m10M-half[m[33m,[m10M-full[m[33m,[m100M-half[m[33m,[m100M-full[m[33m,[m1000M-half[m[33m,[m1000M-full [m[32mname[m[33m=[mether2_
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether5 [m[33m][m [m[32madvertise[m[33m=[m[34;1m\
+    [m10M-half[m[33m,[m10M-full[m[33m,[m100M-half[m[33m,[m100M-full[m[33m,[m1000M-half[m[33m,[m1000M-full
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether6 [m[33m][m [m[32mname[m[33m="[mether6_gerencia huawei m4 8k[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[msfp-sfpplus1 [m[33m][m [m[32madvertise[m[33m=[m10000M-full [m[32mname[m[33m=[m[34;1m\
+    [msfpplus1-NE8K
+[m[36m/interface[m [m[36mvlan
+[m[35madd[m [m[32;1minterface[m[33m=[msfpplus1-NE8K [m[32mname[m[33m=[mvlan4042-PTP-NE8K [m[32;1mvlan-id[m[33m=[m4042
+[m[36m/ip[m [m[36mpool
+[m[35madd[m [m[32mcomment[m[33m="[mCGNat IXCSoft[m[33m"[m [m[32mname[m[33m=[mpoolIXCCGNat [m[32;1mranges[m[33m=[m100.64.16.0/21
+[m[36m/routing[m [m[36mbgp[m [m[36minstance
+[m[35mset[m [m[34mdefault[m [m[32mas[m[33m=[m266550 [m[32mdisabled[m[33m=[m[32myes
+[m[36m/routing[m [m[36mospf[m [m[36marea
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault[m[33m=[m[32myes[m [m[33m][m [m[32mdisabled[m[33m=[m[32myes
+[m[36m/routing[m [m[36mospf[m [m[36minstance
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault[m[33m=[m[32myes[m [m[33m][m [m[32mdisabled[m[33m=[m[32myes[m [m[32min-filter[m[33m=[mospfv2-in [m[32mout-filter[m[33m=[m[34;1m\
+    [mospfv2-out [m[32mredistribute-connected[m[33m=[mas-type-1 [m[32mredistribute-static[m[33m=[mas-type-1 [m[34;1m\
+    [m[32mrouter-id[m[33m=[m10.198.3.1
+[m[36m/routing[m [m[36mospf-v3[m [m[36marea
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault[m[33m=[m[32myes[m [m[33m][m [m[32mdisabled[m[33m=[m[32myes
+[m[36m/routing[m [m[36mospf-v3[m [m[36minstance
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault[m[33m=[m[32myes[m [m[33m][m [m[32mdisabled[m[33m=[m[32myes[m [m[32mredistribute-static[m[33m=[mas-type-1 [m[34;1m\
+    [m[32mrouter-id[m[33m=[m10.198.3.1
+[m[36m/snmp[m [m[36mcommunity
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault[m[33m=[m[32myes[m [m[33m][m [m[32maddresses[m[33m=[m45.228.38.0/24[m[33m,[m192.140.67.0/24
+[m[35madd[m [m[32maddresses[m[33m=[m::/0 [m[32mname[m[33m=[mcallfraninfonet
+[m[36m/user[m [m[36mgroup
+[m[35mset[m full [m[32mpolicy[m[33m="[mlocal,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,pas[m[34;1m\
+[m    sword,web,sniff,sensitive,api,romon,dude,tikapp[m[33m"
+[m[36m/ip[m [m[36mneighbor[m [m[36mdiscovery-settings
+[m[35mset[m [m[32mdiscover-interface-list[m[33m=![mdynamic
+[m[36m/ip[m [m[36maddress
+[m[35madd[m [m[32;1maddress[m[33m=[m172.30.30.6[m[33m/[m30 [m[32;1minterface[m[33m=[mvlan4042-PTP-NE8K [m[32mnetwork[m[33m=[m172.30.30.4
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.0[m[33m/[m27 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m01******FORA DO CGNAT********   BLOCO CALLFRAN[m[33m"[m [m[32mdisabled[m[33m=[m[32myes[m [m[32;1minterface[m[33m=[m[34;1m\
+    [m[34mloopback[m [m[32mnetwork[m[33m=[m45.228.38.0
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.0 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.0
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.1 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.1
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.2 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.2
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.3 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.3
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.4 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.4
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.5 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.5
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.6 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.6
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.7 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.7
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.8 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.8
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.9 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.9
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.10 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.10
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.11 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.11
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.12 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.12
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.13 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.13
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.14 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.14
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.15 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.15
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.16 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.16
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.17 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.17
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.18 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.18
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.19 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.19
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.20 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.20
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.21 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.21
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.22 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.22
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.23
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.24
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.25
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.26
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.27 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.27
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.28 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.28
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.29 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.29
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.30 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.30
+[m[35madd[m [m[32;1maddress[m[33m=[m45.228.38.31 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32;1minterface[m[33m=[mIXCCGNat10 [m[34;1m\
+    [m[32mnetwork[m[33m=[m45.228.38.31
+[m[36m/ip[m [m[36mdns
+[m[35mset[m [m[32mservers[m[33m=[m192.168.250.6[m[33m,[m192.168.250.10
+[m[36m/ip[m [m[36mfirewall[m [m[36maddress-list
+[m[35madd[m [m[32maddress[m[33m=[m45.228.38.0/24 [m[32mcomment[m[33m="[mbloco callfran[m[33m"[m [m[32;1mlist[m[33m=[mrede_local
+[m[35madd[m [m[32maddress[m[33m=[m179.0.110.0/24 [m[32mcomment[m[33m="[mip Lucas consultor[m[33m"[m [m[32;1mlist[m[33m=[mTRUSTED
+[m[35madd[m [m[32maddress[m[33m=[m192.168.0.0/16 [m[32mcomment[m[33m=[mprivado [m[32;1mlist[m[33m=[mTRUSTED
+[m[35madd[m [m[32maddress[m[33m=[m172.16.0.0/12 [m[32mcomment[m[33m=[mprivado [m[32;1mlist[m[33m=[mTRUSTED
+[m[35madd[m [m[32maddress[m[33m=[m10.0.0.0/8 [m[32mcomment[m[33m=[mprivado [m[32;1mlist[m[33m=[mTRUSTED
+[m[35madd[m [m[32maddress[m[33m=[m45.228.38.0/24 [m[32mcomment[m[33m="[mbloco callfran[m[33m"[m [m[32;1mlist[m[33m=[mTRUSTED
+[m[35madd[m [m[32maddress[m[33m=[m45.228.38.39 [m[32mcomment[m[33m="[mIXCProvedor endereco IP do sistema[m[33m"[m [m[32;1mlist[m[33m=[m[34;1m\
+    [mrede_local
+[m[35madd[m [m[32maddress[m[33m=[m10.0.0.0/8 [m[32mcomment[m[33m="[mbloco callfran[m[33m"[m [m[32;1mlist[m[33m=[mrede_local
+[m[35madd[m [m[32maddress[m[33m=[m192.168.0.0/16 [m[32mcomment[m[33m="[mbloco callfran[m[33m"[m [m[32;1mlist[m[33m=[mrede_local
+[m[35madd[m [m[32maddress[m[33m=[m172.16.0.0/12 [m[32mcomment[m[33m="[mbloco callfran[m[33m"[m [m[32;1mlist[m[33m=[mrede_local
+[m[36m/ip[m [m[36mfirewall[m [m[36mfilter
+[m[35madd[m [m[32maction[m[33m=[mfasttrack-connection [m[32;1mchain[m[33m=[mforward [m[32mconnection-state[m[33m=[m[34;1m\
+    [mestablished[m[33m,[mrelated
+[m[35madd[m [m[32maction[m[33m=[mdrop [m[32;1mchain[m[33m=[minput [m[32mcomment[m[33m="[mBLOQUEIO ACESSO WINBOX[m[33m"[m [m[32mdst-port[m[33m=[m8296 [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address-list[m[33m=![mTRUSTED
+[m[36m/ip[m [m[36mfirewall[m [m[36mnat
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcnat [m[32mcomment[m[33m="[mNAT GERAL[m[33m"[m [m[32mdisabled[m[33m=[m[32myes[m [m[34;1m\
+    [m[32mdst-address-list[m[33m=![mrede_local [m[32mout-interface[m[33m=[mvlan4042-PTP-NE8K [m[34;1m\
+    [m[32mto-addresses[m[33m=[m45.228.38.0/27
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcnat [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32mdst-address-list[m[33m=[m[34;1m\
+    [m[33m![mrede_local [m[32mjump-target[m[33m=[msrcIXCCGNat [m[32mout-interface[m[33m=[mvlan4042-PTP-NE8K [m[34;1m\
+    [m[32msrc-address[m[33m=[m100.64.16.0/21
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[32mjump-target[m[33m=[m[34;1m\
+    [msrcIXCCGNat-100.64.16.0-21 [m[32msrc-address[m[33m=[m100.64.16.0/21
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-21 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.0-22 [m[32msrc-address[m[33m=[m100.64.16.0/22
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-22 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.0-23 [m[32msrc-address[m[33m=[m100.64.16.0/23
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.0-24 [m[32msrc-address[m[33m=[m100.64.16.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.0-25 [m[32msrc-address[m[33m=[m100.64.16.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.0-26 [m[32msrc-address[m[33m=[m100.64.16.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m1500[m[33m-[m2499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m1500[m[33m-[m2499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m2500[m[33m-[m3499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m2500[m[33m-[m3499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.64-26 [m[32msrc-address[m[33m=[m100.64.16.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m3500[m[33m-[m4499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m3500[m[33m-[m4499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m4500[m[33m-[m5499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m4500[m[33m-[m5499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.128-25 [m[32msrc-address[m[33m=[m100.64.16.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.128-26 [m[32msrc-address[m[33m=[m100.64.16.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m5500[m[33m-[m6499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m5500[m[33m-[m6499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m6500[m[33m-[m7499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m6500[m[33m-[m7499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.16.192-26 [m[32msrc-address[m[33m=[m100.64.16.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m7500[m[33m-[m8499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m7500[m[33m-[m8499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.16.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m8500[m[33m-[m9499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.16.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m8500[m[33m-[m9499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.0-24 [m[32msrc-address[m[33m=[m100.64.17.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.0-25 [m[32msrc-address[m[33m=[m100.64.17.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.0-26 [m[32msrc-address[m[33m=[m100.64.17.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m9500[m[33m-[m10499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m9500[m[33m-[m10499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m10500[m[33m-[m11499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m10500[m[33m-[m11499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.64-26 [m[32msrc-address[m[33m=[m100.64.17.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m11500[m[33m-[m12499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m11500[m[33m-[m12499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m12500[m[33m-[m13499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m12500[m[33m-[m13499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.128-25 [m[32msrc-address[m[33m=[m100.64.17.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.128-26 [m[32msrc-address[m[33m=[m100.64.17.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m13500[m[33m-[m14499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m13500[m[33m-[m14499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m14500[m[33m-[m15499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m14500[m[33m-[m15499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.17.192-26 [m[32msrc-address[m[33m=[m100.64.17.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m15500[m[33m-[m16499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m15500[m[33m-[m16499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.17.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m16500[m[33m-[m17499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.17.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.17.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m16500[m[33m-[m17499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-22 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.0-23 [m[32msrc-address[m[33m=[m100.64.18.0/23
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.0-24 [m[32msrc-address[m[33m=[m100.64.18.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.0-25 [m[32msrc-address[m[33m=[m100.64.18.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.0-26 [m[32msrc-address[m[33m=[m100.64.18.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m17500[m[33m-[m18499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m17500[m[33m-[m18499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m18500[m[33m-[m19499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m18500[m[33m-[m19499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.64-26 [m[32msrc-address[m[33m=[m100.64.18.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m19500[m[33m-[m20499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m19500[m[33m-[m20499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m20500[m[33m-[m21499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m20500[m[33m-[m21499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.128-25 [m[32msrc-address[m[33m=[m100.64.18.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.128-26 [m[32msrc-address[m[33m=[m100.64.18.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m21500[m[33m-[m22499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m21500[m[33m-[m22499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m22500[m[33m-[m23499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m22500[m[33m-[m23499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.18.192-26 [m[32msrc-address[m[33m=[m100.64.18.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m23500[m[33m-[m24499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m23500[m[33m-[m24499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.18.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m24500[m[33m-[m25499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.18.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m24500[m[33m-[m25499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.18.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.0-24 [m[32msrc-address[m[33m=[m100.64.19.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.0-25 [m[32msrc-address[m[33m=[m100.64.19.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.0-26 [m[32msrc-address[m[33m=[m100.64.19.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m25500[m[33m-[m26499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m25500[m[33m-[m26499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m26500[m[33m-[m27499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m26500[m[33m-[m27499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.64-26 [m[32msrc-address[m[33m=[m100.64.19.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m27500[m[33m-[m28499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m27500[m[33m-[m28499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m28500[m[33m-[m29499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m28500[m[33m-[m29499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.128-25 [m[32msrc-address[m[33m=[m100.64.19.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.128-26 [m[32msrc-address[m[33m=[m100.64.19.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m29500[m[33m-[m30499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m29500[m[33m-[m30499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m30500[m[33m-[m31499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m30500[m[33m-[m31499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.19.192-26 [m[32msrc-address[m[33m=[m100.64.19.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m31500[m[33m-[m32499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m31500[m[33m-[m32499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.19.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m32500[m[33m-[m33499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.19.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.19.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m32500[m[33m-[m33499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.16.0-21 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.0-22 [m[32msrc-address[m[33m=[m100.64.20.0/22
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-22 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.0-23 [m[32msrc-address[m[33m=[m100.64.20.0/23
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.0-24 [m[32msrc-address[m[33m=[m100.64.20.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.0-25 [m[32msrc-address[m[33m=[m100.64.20.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.0-26 [m[32msrc-address[m[33m=[m100.64.20.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m33500[m[33m-[m34499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m33500[m[33m-[m34499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m34500[m[33m-[m35499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m34500[m[33m-[m35499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.64-26 [m[32msrc-address[m[33m=[m100.64.20.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m35500[m[33m-[m36499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m35500[m[33m-[m36499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m36500[m[33m-[m37499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m36500[m[33m-[m37499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.128-25 [m[32msrc-address[m[33m=[m100.64.20.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.128-26 [m[32msrc-address[m[33m=[m100.64.20.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m37500[m[33m-[m38499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m37500[m[33m-[m38499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m38500[m[33m-[m39499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m38500[m[33m-[m39499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.20.192-26 [m[32msrc-address[m[33m=[m100.64.20.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m39500[m[33m-[m40499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m39500[m[33m-[m40499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.20.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m40500[m[33m-[m41499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.20.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m40500[m[33m-[m41499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.0-24 [m[32msrc-address[m[33m=[m100.64.21.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.0-25 [m[32msrc-address[m[33m=[m100.64.21.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.0-26 [m[32msrc-address[m[33m=[m100.64.21.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m41500[m[33m-[m42499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m41500[m[33m-[m42499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m42500[m[33m-[m43499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m42500[m[33m-[m43499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.64-26 [m[32msrc-address[m[33m=[m100.64.21.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m43500[m[33m-[m44499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m43500[m[33m-[m44499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m44500[m[33m-[m45499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m44500[m[33m-[m45499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.128-25 [m[32msrc-address[m[33m=[m100.64.21.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.128-26 [m[32msrc-address[m[33m=[m100.64.21.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m45500[m[33m-[m46499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m45500[m[33m-[m46499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m46500[m[33m-[m47499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m46500[m[33m-[m47499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.21.192-26 [m[32msrc-address[m[33m=[m100.64.21.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m47500[m[33m-[m48499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m47500[m[33m-[m48499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.21.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m48500[m[33m-[m49499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.21.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.21.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m48500[m[33m-[m49499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.20.0-22 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.0-23 [m[32msrc-address[m[33m=[m100.64.22.0/23
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.0-24 [m[32msrc-address[m[33m=[m100.64.22.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.0-25 [m[32msrc-address[m[33m=[m100.64.22.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.0-26 [m[32msrc-address[m[33m=[m100.64.22.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m49500[m[33m-[m50499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m49500[m[33m-[m50499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m50500[m[33m-[m51499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m50500[m[33m-[m51499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.64-26 [m[32msrc-address[m[33m=[m100.64.22.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m51500[m[33m-[m52499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m51500[m[33m-[m52499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m52500[m[33m-[m53499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m52500[m[33m-[m53499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.128-25 [m[32msrc-address[m[33m=[m100.64.22.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.128-26 [m[32msrc-address[m[33m=[m100.64.22.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m53500[m[33m-[m54499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m53500[m[33m-[m54499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m54500[m[33m-[m55499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m54500[m[33m-[m55499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.22.192-26 [m[32msrc-address[m[33m=[m100.64.22.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m55500[m[33m-[m56499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m55500[m[33m-[m56499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.22.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m56500[m[33m-[m57499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.22.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m56500[m[33m-[m57499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.22.0-23 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.0-24 [m[32msrc-address[m[33m=[m100.64.23.0/24
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.0-25 [m[32msrc-address[m[33m=[m100.64.23.0/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.0-26 [m[32msrc-address[m[33m=[m100.64.23.0/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m57500[m[33m-[m58499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.0/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m57500[m[33m-[m58499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m58500[m[33m-[m59499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.32/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m58500[m[33m-[m59499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.64-26 [m[32msrc-address[m[33m=[m100.64.23.64/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m59500[m[33m-[m60499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.64/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m59500[m[33m-[m60499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m60500[m[33m-[m61499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.64-26 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.96/27 [m[32mto-addresses[m[33m=[m45.228.38.0/27 [m[34;1m\
+    [m[32mto-ports[m[33m=[m60500[m[33m-[m61499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.0-24 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.128-25 [m[32msrc-address[m[33m=[m100.64.23.128/25
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.128-26 [m[32msrc-address[m[33m=[m100.64.23.128/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m61500[m[33m-[m62499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.128/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m61500[m[33m-[m62499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m62500[m[33m-[m63499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.128-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.160/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m62500[m[33m-[m63499
+[m[35madd[m [m[32maction[m[33m=[mjump [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.128-25 [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mjump-target[m[33m=[msrcIXCCGNat-100.64.23.192-26 [m[32msrc-address[m[33m=[m100.64.23.192/26
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m63500[m[33m-[m64499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.192/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m63500[m[33m-[m64499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mtcp [m[32msrc-address[m[33m=[m100.64.23.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m64500[m[33m-[m65499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat-100.64.23.192-26 [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m{CGNat IXCSoft}[m[33m"[m [m[32mprotocol[m[33m=[mudp [m[32msrc-address[m[33m=[m100.64.23.224/27 [m[32mto-addresses[m[33m=[m[34;1m\
+    [m45.228.38.0/27 [m[32mto-ports[m[33m=[m64500[m[33m-[m65499
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcIXCCGNat [m[32mcomment[m[33m="[m{CGNat IXCSoft}[m[33m"[m [m[34;1m\
+    [m[32mdst-address-list[m[33m=![mrede_local [m[32mout-interface[m[33m=[mvlan4042-PTP-NE8K [m[32msrc-address[m[33m=[m[34;1m\
+    [m100.64.16.0/21 [m[32mto-addresses[m[33m=[m45.228.38.0/27
+[m[35madd[m [m[32maction[m[33m=[mnetmap [m[32;1mchain[m[33m=[msrcnat [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[m***********NAT PARA CLIENTES AGUARDANDO ASSINATURA*******[m[33m"[m [m[34;1m\
+    [m[32mdst-address-list[m[33m=![mrede_local [m[32mout-interface[m[33m=[mvlan4042-PTP-NE8K [m[32msrc-address[m[33m=[m[34;1m\
+    [m172.22.1.0/24 [m[32mto-addresses[m[33m=[m45.228.38.0/27
+[m[36m/ip[m [m[36mroute
+[m[35madd[m [m[32mcomment[m[33m=[mGATEWAY [m[32mdistance[m[33m=[m1 [m[32mgateway[m[33m=[m172.30.30.5 [m[32mpref-src[m[33m=[m45.228.38.0
+[m[35madd[m [m[32mdistance[m[33m=[m1 [m[32mdst-address[m[33m=[m100.64.16.0/21 [m[32mgateway[m[33m=[m172.30.30.5
+[m[35madd[m [m[32mdistance[m[33m=[m1 [m[32mdst-address[m[33m=[m172.22.1.0/24 [m[32mgateway[m[33m=[m172.30.30.5
+[m[36m/ip[m [m[36mservice
+[m[35mset[m [m[34mtelnet[m [m[32mdisabled[m[33m=[m[32myes
+[m[35mset[m [m[34mftp[m [m[32mdisabled[m[33m=[m[32myes
+[m[35mset[m [m[34mwww[m [m[32mdisabled[m[33m=[m[32myes
+[m[35mset[m ssh [m[32maddress[m[33m=[m179.48.68.73/32[m[33m,[m192.168.65.0/24[m[33m,[m179.0.110.0/24 [m[32mport[m[33m=[m22002
+[m[35mset[m api [m[32maddress[m[33m=[m45.228.38.39/32
+[m[35mset[m winbox [m[32mport[m[33m=[m8296
+[m[35mset[m [m[34mapi-ssl[m [m[32mdisabled[m[33m=[m[32myes
+[m[36m/ipv6[m [m[36mnd
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault[m[33m=[m[32myes[m [m[33m][m [m[32mmanaged-address-configuration[m[33m=[m[32myes[m [m[32mmtu[m[33m=[m1480 [m[34;1m\
+    [m[32mother-configuration[m[33m=[m[32myes
+[m[36m/ipv6[m [m[36mroute
+[m[35madd[m [m[32mdistance[m[33m=[m1 [m[32mgateway[m[33m=[mfc00::9
+[m[36m/lcd
+[m[35mset[m [m[32menabled[m[33m=[m[32mno[m [m[32mtouch-screen[m[33m=[m[32mdisabled
+[m[36m/radius
+[m[35madd[m [m[32maddress[m[33m=[m45.228.38.39 [m[32mcomment[m[33m="[mIXCProvedor configuracao radius[m[33m"[m [m[32msecret[m[33m=[m[34;1m\
+    [mPe2019@!netw [m[32mservice[m[33m=[mppp [m[32msrc-address[m[33m=[m172.30.30.6 [m[32mtimeout[m[33m=[m3s
+[m[36m/radius[m [m[36mincoming
+[m[35mset[m [m[32maccept[m[33m=[m[32myes
+[m[36m/snmp
+[m[35mset[m [m[32mcontact[m[33m=[msuporte|@callfran.com [m[32menabled[m[33m=[m[32myes[m [m[32mlocation[m[33m=[mBV [m[32mtrap-community[m[33m=[m[34;1m\
+    [mcallfraninfonet [m[32mtrap-version[m[33m=[m2
+[m[36m/system[m [m[36mclock
+[m[35mset[m [m[32mtime-zone-name[m[33m=[mAmerica/Bahia
+[m[36m/system[m [m[36mclock[m [m[36mmanual
+[m[35mset[m [m[32mdst-delta[m[33m=[m-03:00 [m[32mtime-zone[m[33m=[m-03:00
+[m[36m/system[m [m[36mconsole
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[33m][m [m[32mdisabled[m[33m=[m[32myes
+[m[36m/system[m [m[36midentity
+[m[35mset[m [m[32mname[m[33m=[mCGNAT
+[m[36m/system[m [m[36mlogging
+[m[35madd[m [m[32mdisabled[m[33m=[m[32myes[m [m[32mtopics[m[33m=[mdebug[m[33m,![mradius[m[33m,![mdhcp[m[33m,![mpppoe[m[33m,![msnmp
+[m[35madd[m [m[32mdisabled[m[33m=[m[32myes[m [m[32mtopics[m[33m=[mdebug[m[33m,[mradius
+[m[35madd[m [m[32mdisabled[m[33m=[m[32myes[m [m[32mtopics[m[33m=[mdebug[m[33m,![mradius[m[33m,![mdhcp[m[33m,![mpppoe[m[33m,![msnmp
+[m[35madd[m [m[32mdisabled[m[33m=[m[32myes[m [m[32mtopics[m[33m=[mdebug[m[33m,[mradius
+[m[36m/system[m [m[36mnote
+[m[35mset[m [m[32mshow-at-login[m[33m=[m[32mno
+[m[36m/system[m [m[36mntp[m [m[36mclient
+[m[35mset[m [m[32menabled[m[33m=[m[32myes[m [m[32mprimary-ntp[m[33m=[m192.168.203.2 [m[32msecondary-ntp[m[33m=[m192.168.203.2
+[m[36m/system[m [m[36mpackage[m [m[36mupdate
+[m[35mset[m [m[32mchannel[m[33m=[mlong-term
+[m[36m/system[m [m[36mscheduler
+[m[35madd[m [m[32minterval[m[33m=[m1d [m[32;1mname[m[33m=[mbackup-ftp-penetwork [m[32mon-event[m[33m=[mbackup-ftp-penetwork [m[34;1m\
+    [m[32mpolicy[m[33m=[mftp[m[33m,[mreboot[m[33m,[mread[m[33m,[mwrite[m[33m,[mpolicy[m[33m,[mtest[m[33m,[mpassword[m[33m,[msniff[m[33m,[msensitive[m[33m,[mromon [m[34;1m\
+    [m[32mstart-date[m[33m=[moct/24/2023 [m[32mstart-time[m[33m=[m04:00:00
+[m[35madd[m [m[32mcomment[m[33m=[mBACKUP-EMAIL [m[32minterval[m[33m=[m1d [m[32;1mname[m[33m=[mbackup-email [m[32mon-event[m[33m=[mbackup [m[34;1m\
+    [m[32mpolicy[m[33m=[mftp[m[33m,[mreboot[m[33m,[mread[m[33m,[mwrite[m[33m,[mpolicy[m[33m,[mtest[m[33m,[mpassword[m[33m,[msniff[m[33m,[msensitive[m[33m,[mromon [m[34;1m\
+    [m[32mstart-date[m[33m=[mmay/28/2023 [m[32mstart-time[m[33m=[m04:00:00
+[m[36m/system[m [m[36mscript
+[m[35madd[m [m[32mdont-require-permissions[m[33m=[m[32mno[m [m[32mname[m[33m=[mbackup-ftp-penetwork [m[32mowner[m[33m=[mpenetw [m[34;1m\
+    [m[32mpolicy[m[33m=[mftp[m[33m,[mreboot[m[33m,[mread[m[33m,[mwrite[m[33m,[mpolicy[m[33m,[mtest[m[33m,[mpassword[m[33m,[msniff[m[33m,[msensitive[m[33m,[mromon [m[34;1m\
+    [m[32msource[m[33m="[m:local ftpUser [m[34;1m\"[mcallfran[m[34;1m\"\r\
+[m    [m[34;1m\n[m:local ftpPassword [m[34;1m\"[mcallfran@23@[m[34;1m\"\r\
+[m    [m[34;1m\n[m:local ftpServer [m[34;1m\"[m172.20.36.2[m[34;1m\"\r\
+[m    [m[34;1m\n[m:local ftpPort 21[m[34;1m\r\
+[m    [m[34;1m\n[m:local ftpDestinationFolder [m[34;1m\"[m/home/mikrotik/[m[34;1m\"\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m:local fname ([/system identity get name] . [m[34;1m\"[m ([m[34;1m\"[m . [/system routerboar[m[34;1m\
+[m    d get model] . [m[34;1m\"[m [[m[34;1m\"[m . [/system clock get time] . [m[34;1m\"[m]).backup[m[34;1m\"[m)[m[34;1m\r\
+[m    [m[34;1m\n[m:local fname1 ([/system identity get name] . [m[34;1m\"[m ([m[34;1m\"[m . [/system routerboa[m[34;1m\
+[m    rd get model] . [m[34;1m\"[m [[m[34;1m\"[m . [/system clock get time] . [m[34;1m\"[m]).rsc[m[34;1m\"[m)[m[34;1m\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m/system backup save dont-encrypt=yes name=[m[34;1m\$[mfname[m[34;1m\r\
+[m    [m[34;1m\n[m:log info message=[m[34;1m\"[mGerando Arquivo de Backup[m[34;1m\"[m;[m[34;1m\r\
+[m    [m[34;1m\n[m/export file=[m[34;1m\$[mfname1[m[34;1m\r\
+[m    [m[34;1m\n[m:log info message=[m[34;1m\"[mGerando Arquivo de Export[m[34;1m\"[m;[m[34;1m\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m/tool fetch address=[m[34;1m\$[mftpServer port=[m[34;1m\$[mftpPort src-path=[m[34;1m\$[mfname1 user=[m[34;1m\$\
+[m    ftpUser password=[m[34;1m\$[mftpPassword mode=ftp dst-path=([m[34;1m\$[mftpDestinationFolder .[m[34;1m\
+[m    [m[34;1m\_\$[mfname1) upload=yes;[m[34;1m\r\
+[m    [m[34;1m\n[m:log warning message=[m[34;1m\"[mArquivo de Backup Enviado para o Servidor FTP[m[34;1m\"[m;[m[34;1m\
+[m    [m[34;1m\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m/tool fetch address=[m[34;1m\$[mftpServer port=[m[34;1m\$[mftpPort src-path=[m[34;1m\$[mfname user=[m[34;1m\$[mf[m[34;1m\
+[m    tpUser password=[m[34;1m\$[mftpPassword mode=ftp dst-path=([m[34;1m\$[mftpDestinationFolder . [m[34;1m\
+[m    [m[34;1m\$[mfname) upload=yes;[m[34;1m\r\
+[m    [m[34;1m\n[m:log warning message=[m[34;1m\"[mArquivo de Export Enviado para o Servidor FTP[m[34;1m\"[m;[m[34;1m\
+[m    [m[34;1m\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m/file remove [find name=[m[34;1m\$[mfname];[m[34;1m\r\
+[m    [m[34;1m\n[m:log info message=[m[34;1m\"[mArquivo de Backup Removido[m[34;1m\"[m;[m[34;1m\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m/file remove [find name=[m[34;1m\$[mfname1];[m[34;1m\r\
+[m    [m[34;1m\n[m:log info message=[m[34;1m\"[mArquivo de Export Removido[m[34;1m\"[m;[m[34;1m\r\
+[m    [m[34;1m\n\r\
+[m    [m[34;1m\n[m:log warning message=[m[34;1m\"[mProcesso de backup finalizado com sucesso[m[34;1m\"[m;[m[33m"
+[m[36m/tool[m [m[36me-mail
+[m[35mset[m [m[32maddress[m[33m=[msmtp.office365.com [m[32mfrom[m[33m=[mbackupcallfran@outlook.com [m[32mpassword[m[33m=[m[34;1m\
+    [mcallfran@23@ [m[32mport[m[33m=[m587 [m[32mstart-tls[m[33m=[myes [m[32muser[m[33m=[mbackupcallfran@outlook.com
+[m[36m/tool[m [m[36mromon
+[m[35mset[m [m[32menabled[m[33m=[m[32myes[m [m[32msecrets[m[33m=[mcall2315@
+[lucascampelo@CGNAT] >                                                         [lucascampelo@CGNAT] > 
