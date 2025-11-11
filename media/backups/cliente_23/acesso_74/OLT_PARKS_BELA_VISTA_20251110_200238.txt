@@ -1,0 +1,43 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: OLT PARKS BELA VISTA
+Host: 192.168.244.2:22
+Tipo de Acesso: VIA PROXY SSH (Rede Privada)
+Modelo: OLT PARKS FIBERLINK 30028
+Template: Backup Completo
+Data: 10/11/2025 20:02:38
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+STDERR: Warning: Permanently added '[127.0.0.1]:53485' (ECDSA) to the list of known hosts.
+
+
+============================================================
+Comando: show running-config
+============================================================
+STDERR: Warning: Permanently added '[127.0.0.1]:53485' (ECDSA) to the list of known hosts.
+
+
+============================================================
+Comando: show version
+============================================================
+STDERR: Warning: Permanently added '[127.0.0.1]:53485' (ECDSA) to the list of known hosts.
+
+
+============================================================
+Comando: show ip interface brief
+============================================================
+STDERR: Warning: Permanently added '[127.0.0.1]:53485' (ECDSA) to the list of known hosts.
+
+
+============================================================
+Comando: show inventory
+============================================================
+STDERR: Warning: Permanently added '[127.0.0.1]:53485' (ECDSA) to the list of known hosts.
+

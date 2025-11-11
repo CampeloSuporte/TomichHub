@@ -1,0 +1,38 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: OLT-DATACOM-02
+Host: 192.168.0.25:22
+Tipo: VIA PROXY SSH
+Modelo: OLT DM4615
+Template: Backup Completo
+Data: 10/11/2025 17:26:16
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: show running-config
+============================================================
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Warning: Permanently added '[127.0.0.1]:48993' (ED25519) to the list of known hosts.
+aaa authentication-order [ local ]
+aaa user g5
+ password $1$qP1tmhsd$YG..W/HKyUczTZAkqXBFS0
+
+============================================================
+Comando: show version
+============================================================
+ group admin
+!
+aaa user ixc
+ password $1$u8vB6YJf$P/2LWuWgcykZzZ1qjKpwp.
+
+============================================================
+Comando: show ip interface brief
+============================================================
+ group admin
+!
+aaa user sgpsgp
+ password $1$.X5Fztfh$EgfmoEOmEOt048jgjbSSt1

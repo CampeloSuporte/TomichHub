@@ -1,0 +1,49 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: SW CRS326 CLAUDIO
+Host: 172.20.35.62:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 11/11/2025 14:22:46
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: /export compact
+============================================================
+/[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /                                      [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /e[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /e                                     [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /ex[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /ex                                    [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /exp[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /exp                                   [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /expo[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /expo                                  [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /expor[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /expor                                 [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export                                [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export [lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export                                [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export c[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export c                              [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export co[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export co                             [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export com[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export com                            [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export comp[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export comp                           [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compa[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compa                          [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compac[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compac                         [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compact[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compact                        [K[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compact[lucascampelo@ALC_SW_CRS-326_CLAUDIO] > /export compact
+# nov/11/2025 14:19:51 by RouterOS 6.49.8
+# software id = QE4C-B7PS
+#
+# model = CRS326-24G-2S+
+# serial number = 94550B9BF013
+[m[36m/interface[m [m[36mbridge
+[m[35madd[m [m[32madd-dhcp-option82[m[33m=[m[32myes[m [m[32mdhcp-snooping[m[33m=[m[32myes[m [m[32mname[m[33m=[mbridge1 [m[32mvlan-filtering[m[33m=[m[32myes
+[m[36m/interface[m [m[36methernet
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether1 [m[33m][m [m[32mname[m[33m="[mether1 - G01_POE[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether2 [m[33m][m [m[32mname[m[33m="[mether2 - G02_gerencia oltalianca[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether3 [m[33m][m [m[32mname[m[33m="[mether3 - G03_[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether4 [m[33m][m [m[32mname[m[33m="[mether4 - G04_Vlans_REDE_AREIAS[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether5 [m[33m][m [m[32mname[m[33m="[mether5 - G05_Vlan1201[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether6 [m[33m][m [m[32mdisabled[m[33m=[m[32myes[m [m[32mname[m[33m=[m[34;1m\
+    [m[33m"[mether6 - G06_Vlan1202_PORTA QUEIMADA[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether7 [m[33m][m [m[32mname[m[33m="[mether7 - G07_Vlan1203[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether8 [m[33m][m [m[32mname[m[33m="[mether8 -G08_Vlan1204[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether9 [m[33m][m [m[32mname[m[33m="[mether9 - G09_Vlans_REDE_OLERIAS[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether10 [m[33m][m [m[32mname[m[33m="[mether10 - G10_Vlan1206[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether11 [m[33m][m [m[32mcomment[m[33m=[m[34;1m\
+    [m[33m"[mserra da batateira antena ptp mikrotik[m[33m"[m [m[32mname[m[33m="[mether11 - G11_Vlan1001[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether12 [m[33m][m [m[32mcomment[m[33m="[m PORTA QUEIMADA[m[33m"[m [m[32mdisabled[m[33m=[m[32myes[m [m[34;1m\
+    [m[32mname[m[33m="[mether12 - G12_Vlan1002_PORTA QUEIMADA[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether13 [m[33m][m [m[32mname[m[33m="[mether13 - G13_Vlan1003[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether14 [m[33m][m [m[32mname[m[33m="[mether14 - G14_Vlan1004[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether15 [m[33m][m [m[32mname[m[33m="[mether15 - G15_Vlan1005[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether16 [m[33m][m [m[32mname[m[33m="[mether16 - G16_Vlan1006[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether17 [m[33m][m [m[32madvertise[m[33m=[m10M-full[m[33m,[m100M-full[m[33m,[m1000M-full [m[34;1m\
+    [m[32mname[m[33m="[mether17 - G17_Vlan1007_PTP_CASTELO_BRANCO_MIKROTIK[m[33m"
+[m[35mset[m [m[33m[[m [m[35mfind[m [m[32;1mdefault-name[m[33m=[mether18 [m[33m][m [m[32mname[m[33m="[mether18 - G18_Vlan1008[m[33m"
+

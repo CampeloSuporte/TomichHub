@@ -1,0 +1,26 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: BORDA
+Host: 45.228.38.253:2299
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M8
+Template: Backup Huawei
+Data: 11/11/2025 14:17:32
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<VS1-BGP-AS266550>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+

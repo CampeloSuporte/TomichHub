@@ -1,0 +1,29 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: OLT PARKS BELA VISTA
+Host: 192.168.244.2:22
+Acesso: VIA PROXY SSH
+Modelo: OLT PARKS FIBERLINK 30028
+Template: Backup Completo
+Data: 11/11/2025 14:33:51
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+Building configuration...
+
+Current configuration:
+!
+version 1.0
+aaa username ixcsoft level priviledged password hash 

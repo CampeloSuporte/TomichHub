@@ -1,0 +1,215 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: ALC_SW_REDE_AREIAS_PTP
+Host: 172.20.35.94:22002
+Tipo de Acesso: VIA PROXY SSH (Rede Privada)
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Completo
+Data: 10/11/2025 18:40:08
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: /export compact
+============================================================
+# mar/20/1970 17:27:30 by RouterOS 6.49.7
+# software id = NM1P-ZMXQ
+#
+# model = RB4011iGS+
+# serial number = B8F30A6B0B13
+/interface bridge
+add admin-mac=74:4D:28:A5:12:E5 auto-mac=no name=bridge1 vlan-filtering=yes
+/interface ethernet
+set [ find default-name=ether8 ] name="ether 8 - G08_155" speed=100Mbps
+set [ find default-name=ether1 ] name="ether1 - G01_POE" speed=100Mbps
+set [ find default-name=ether2 ] name="ether2 - G02_LinkALIANCA-MIMOSA" speed=100Mbps
+set [ find default-name=ether3 ] advertise=10M-full,100M-full,1000M-full name="ether3 - G03_150" speed=100Mbps
+set [ find default-name=ether4 ] name="ether4 - G04_151" speed=100Mbps
+set [ find default-name=ether5 ] name="ether5 - G05_152" speed=100Mbps
+set [ find default-name=ether6 ] loop-protect=off name="ether6 - G06_153" speed=100Mbps tx-flow-control=auto
+set [ find default-name=ether7 ] name="ether7 - G07_154" speed=100Mbps
+set [ find default-name=ether9 ] name="ether9 - G09_156" speed=100Mbps
+set [ find default-name=ether10 ] advertise=10M-full,100M-full,1000M-full name="ether10 - G10_157" poe-out=off speed=100Mbps
+set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - S01_158-OLTVSOL"
+/interface vlan
+add interface="ether2 - G02_LinkALIANCA-MIMOSA" name="vlan149_GERENCIA SW REDE AREIAS" vlan-id=149
+/interface ethernet switch port
+set 0 default-vlan-id=0
+set 1 default-vlan-id=0
+set 2 default-vlan-id=0
+set 3 default-vlan-id=0
+set 4 default-vlan-id=0
+set 5 default-vlan-id=0
+set 6 default-vlan-id=0
+set 7 default-vlan-id=0
+set 8 default-vlan-id=0
+set 9 default-vlan-id=0
+set 10 default-vlan-id=0
+set 11 default-vlan-id=0
+/interface list
+add comment=defconf name=WAN
+add comment=defconf name=LAN
+add name=links
+add name="lista de saida"
+/ip pool
+add name=default-dhcp ranges=192.168.88.10-192.168.88.254
+/ip dhcp-server
+add address-pool=default-dhcp disabled=no interface=bridge1 name=defconf
+/routing ospf area
+set [ find default=yes ] disabled=yes
+/routing ospf instance
+set [ find default=yes ] disabled=yes
+/routing ospf-v3 area
+set [ find default=yes ] disabled=yes
+/routing ospf-v3 instance
+set [ find default=yes ] disabled=yes
+/snmp community
+set [ find default=yes ] name=callfraninfonet
+/user group
+set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port
+add bridge=bridge1 interface="ether2 - G02_LinkALIANCA-MIMOSA"
+add bridge=bridge1 ingress-filtering=yes interface="ether3 - G03_150" pvid=150
+add bridge=bridge1 ingress-filtering=yes interface="ether4 - G04_151" pvid=151
+add bridge=bridge1 ingress-filtering=yes interface="ether5 - G05_152" pvid=152
+add bridge=bridge1 ingress-filtering=yes interface="ether6 - G06_153" pvid=153
+add bridge=bridge1 ingress-filtering=yes interface="ether7 - G07_154" pvid=154
+add bridge=bridge1 ingress-filtering=yes interface="ether 8 - G08_155" pvid=155
+add bridge=bridge1 ingress-filtering=yes interface="ether9 - G09_156" pvid=156
+add bridge=bridge1 ingress-filtering=yes interface="ether10 - G10_157" pvid=157
+add bridge=bridge1 ingress-filtering=yes interface="sfp-sfpplus1 - S01_158-OLTVSOL" pvid=158
+add bridge=bridge1 interface="ether1 - G01_POE"
+/ip firewall connection tracking
+set enabled=no
+/ip neighbor discovery-settings
+set discover-interface-list=all
+/interface bridge vlan
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether3 - G03_150" vlan-ids=150
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether4 - G04_151" vlan-ids=151
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether5 - G05_152" vlan-ids=152
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether6 - G06_153" vlan-ids=153
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether7 - G07_154" vlan-ids=154
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether 8 - G08_155" vlan-ids=155
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether9 - G09_156" vlan-ids=156
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA" untagged="ether10 - G10_157" vlan-ids=157
+add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA,sfp-sfpplus1 - S01_158-OLTVSOL" vlan-ids=158-159
+/interface list member
+add comment=defconf interface=bridge1 list=LAN
+add comment=defconf interface="ether1 - G01_POE" list=WAN
+add disabled=yes interface="ether3 - G03_150" list="lista de saida"
+add disabled=yes interface="ether9 - G09_156" list="lista de saida"
+add disabled=yes interface="ether2 - G02_LinkALIANCA-MIMOSA" list=links
+/interface pptp-server server
+set authentication=pap,chap,mschap1,mschap2
+/ip address
+add address=172.20.35.94/30 interface="vlan149_GERENCIA SW REDE AREIAS" network=172.20.35.92
+/ip cloud
+set update-time=no
+/ip dhcp-client
+# DHCP client can not run on slave interface!
+add comment=defconf disabled=no interface="ether1 - G01_POE"
+/ip dhcp-server network
+add address=192.168.88.0/24 comment=defconf dns-server=192.168.88.1 gateway=192.168.88.1
+/ip dns
+set cache-size=204800KiB max-concurrent-queries=30000 servers=192.168.250.6,192.168.250.10
+/ip route
+add distance=10 gateway=172.20.35.93
+/ip service
+set telnet disabled=yes
+set ftp disabled=yes
+set www disabled=yes
+set ssh port=22002
+set api disabled=yes
+set winbox address=192.168.65.0/24 port=8296
+set api-ssl disabled=yes
+/ip ssh
+set allow-none-crypto=yes forwarding-enabled=remote
+/ip upnp
+set allow-disable-external-interface=yes
+/ppp aaa
+set interim-update=20m use-radius=yes
+/snmp
+set enabled=yes trap-version=2
+/system clock
+set time-zone-autodetect=no time-zone-name=America/Bahia
+/system identity
+set name=ALC_SW_REDE_AREIAS_PTP
+/system ntp client
+set enabled=yes primary-ntp=200.160.0.8 secondary-ntp=200.189.40.8
+/system resource irq rps
+set "ether1 - G01_POE" disabled=no
+set "ether2 - G02_LinkALIANCA-MIMOSA" disabled=no
+set "ether3 - G03_150" disabled=no
+set "ether4 - G04_151" disabled=no
+set "ether5 - G05_152" disabled=no
+set "ether6 - G06_153" disabled=no
+set "ether7 - G07_154" disabled=no
+set "ether9 - G09_156" disabled=no
+set "ether10 - G10_157" disabled=no
+/system routerboard settings
+set auto-upgrade=yes
+/system scheduler
+add interval=1d name=backup-ftp-penetwork on-event=backup-ftp-penetwork policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jul/29/2023 start-time=21:09:26
+/system script
+add dont-require-permissions=no name=backup-ftp-penetwork owner=callfran policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=""
+/tool bandwidth-server
+set enabled=no
+/tool graphing interface
+add interface="ether5 - G05_152"
+add
+add interface="ether3 - G03_150"
+/tool mac-server
+set allowed-interface-list=LAN
+/tool mac-server mac-winbox
+set allowed-interface-list=LAN
+/tool romon
+set enabled=yes secrets=call2315@
+
+============================================================
+Comando: /system identity print
+============================================================
+name: ALC_SW_REDE_AREIAS_PTP
+
+============================================================
+Comando: /system resource print
+============================================================
+uptime: 10w6d1h44m9s
+            version: 6.49.7 (stable)
+         build-time: Oct/11/2022 14:37:24
+   factory-software: 6.44.3
+        free-memory: 967.4MiB
+       total-memory: 1024.0MiB
+                cpu: ARMv7
+          cpu-count: 4
+      cpu-frequency: 1400MHz
+           cpu-load: 0%
+     free-hdd-space: 426.6MiB
+    total-hdd-space: 512.3MiB
+  architecture-name: arm
+         board-name: RB4011iGS+
+           platform: MikroTik
+
+============================================================
+Comando: /interface print terse
+============================================================
+0  RS name=ether 8 - G08_155 default-name=ether8 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:EB last-link-down-time=jan/03/1970 18:29:58 last-link-up-time=jan/03/1970 18:30:00 link-downs=2 
+ 1   S name=ether1 - G01_POE default-name=ether1 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:E4 link-downs=0 
+ 2  RS name=ether2 - G02_LinkALIANCA-MIMOSA default-name=ether2 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:E5 last-link-down-time=jan/03/1970 18:30:47 last-link-up-time=jan/03/1970 18:30:51 link-downs=4 
+ 3  RS name=ether3 - G03_150 default-name=ether3 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:E6 last-link-down-time=mar/19/1970 17:57:15 last-link-up-time=mar/19/1970 17:57:17 link-downs=43 
+ 4  RS name=ether4 - G04_151 default-name=ether4 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:E7 last-link-down-time=mar/16/1970 12:09:24 last-link-up-time=mar/16/1970 12:09:27 link-downs=4 
+ 5  RS name=ether5 - G05_152 default-name=ether5 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:E8 last-link-down-time=mar/18/1970 11:53:09 last-link-up-time=mar/18/1970 11:53:13 link-downs=32 
+ 6  RS name=ether6 - G06_153 default-name=ether6 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:E9 last-link-down-time=jan/03/1970 18:46:50 last-link-up-time=jan/03/1970 18:47:21 link-downs=3 
+ 7  RS name=ether7 - G07_154 default-name=ether7 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:EA last-link-down-time=feb/07/1970 17:14:15 last-link-up-time=feb/07/1970 17:14:18 link-downs=10 
+ 8  RS name=ether9 - G09_156 default-name=ether9 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:EC last-link-up-time=jan/03/1970 16:51:45 link-downs=0 
+ 9  RS name=ether10 - G10_157 default-name=ether10 type=ether mtu=1500 actual-mtu=1500 l2mtu=1592 max-l2mtu=9578 mac-address=74:4D:28:A5:12:ED last-link-up-time=jan/03/1970 16:08:16 link-downs=0 
+10  RS name=sfp-sfpplus1 - S01_158-OLTVSOL default-name=sfp-sfpplus1 type=ether mtu=1500 actual-mtu=1500 l2mtu=1600 max-l2mtu=9586 mac-address=74:4D:28:A5:12:EE last-link-up-time=jan/03/1970 15:43:49 link-downs=0 
+11  R  name=bridge1 type=bridge mtu=auto actual-mtu=1500 l2mtu=1592 mac-address=74:4D:28:A5:12:E5 last-link-down-time=jan/23/1970 12:34:18 last-link-up-time=jan/23/1970 12:34:18 link-downs=1 
+12  R  name=vlan149_GERENCIA SW REDE AREIAS type=vlan mtu=1500 actual-mtu=1500 l2mtu=1588 mac-address=74:4D:28:A5:12:E5 last-link-down-time=jan/03/1970 18:30:47 last-link-up-time=jan/03/1970 18:30:51 link-downs=4
+
+============================================================
+Comando: /ip address print terse
+============================================================
+0   address=172.20.35.94/30 network=172.20.35.92 interface=vlan149_GERENCIA SW REDE AREIAS actual-interface=vlan149_GERENCIA SW REDE AREIAS
