@@ -22,7 +22,7 @@ class SSHConsumer(WebsocketConsumer):
         self.protocol = None
         self.read_thread = None
         self.is_reading = False
-        self.is_huawei = False  # ✅ Flag para detectar Huawei
+        self.is_huawei = False
         
     def disconnect(self, close_code):
         """Fecha todas as conexões ao desconectar"""
@@ -73,7 +73,6 @@ class SSHConsumer(WebsocketConsumer):
             protocol = self.detect_protocol(acesso.porta)
             self.protocol = protocol
             
-            # ✅ Detectar se é Huawei
             self.is_huawei = acesso.equipamento and 'huawei' in acesso.equipamento.lower() if hasattr(acesso, 'equipamento') else False
             
             logger.info(f"🔗 Protocolo: {protocol.upper()} | Huawei: {self.is_huawei}")
@@ -96,12 +95,13 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro ao conectar: {str(e)}')
     
     def enviar_comando(self, command):
-        """✅ Enviar comando literalmente, com tratamento especial para Huawei"""
+        """Enviar comando"""
         try:
             if self.protocol == 'ssh':
                 if self.ssh_process:
-                    # ✅ Para Huawei: Usar -v para debug se necessário
+                    logger.info(f"📤 ENVIANDO COMANDO: {repr(command[:50])}")
                     self.ssh_process.send(command)
+                    logger.info(f"✅ COMANDO ENVIADO")
             
             elif self.protocol == 'telnet':
                 if self.telnet_client:
@@ -148,15 +148,11 @@ class SSHConsumer(WebsocketConsumer):
         except Exception as e:
             raise Exception(f"Erro ao buscar proxy: {str(e)}")
     
-    # ============================================================
-    # SSH - DIRETO (COM SUPORTE HUAWEI)
-    # ============================================================
     def connect_ssh(self, acesso):
-        """Conexão SSH direta com suporte a Huawei"""
+        """Conexão SSH direta"""
         try:
             logger.info(f"🔗 SSH: {acesso.host}:{acesso.porta}")
             
-            # ✅ Configurações especiais para Huawei
             terminal_type = "vt100" if self.is_huawei else "xterm-256color"
             
             ssh_cmd = (
@@ -167,7 +163,6 @@ class SSHConsumer(WebsocketConsumer):
                 f"-o LogLevel=ERROR "
             )
             
-            # ✅ Adicionar opções para equipamentos Huawei antigos
             if self.is_huawei:
                 ssh_cmd += (
                     f"-o KexAlgorithms=+diffie-hellman-group1-sha1 "
@@ -178,24 +173,23 @@ class SSHConsumer(WebsocketConsumer):
             
             logger.info(f"🖥️ Terminal type: {terminal_type}")
             
-            # ✅ Configurar environment para terminal type correto
             env = os.environ.copy()
             env['TERM'] = terminal_type
             
-            # ✅ OTIMIZADO: maxread maior para ler mais dados por vez
+            # ✅ MUDANÇA CRÍTICA: SEM encoding='utf-8' - ler como bytes
             self.ssh_process = pexpect.spawn(
                 ssh_cmd,
                 timeout=15,
-                encoding='utf-8',
-                maxread=16384,
-                env=env  # ✅ Passar environment com TERM correto
+                encoding=None,  # ✅ SEM ENCODING - bytes puro
+                maxread=262144,
+                env=env
             )
             
             index = self.ssh_process.expect([
                 pexpect.TIMEOUT,
-                "password:",
-                "Password:",
-                "Are you sure",
+                b"password:",
+                b"Password:",
+                b"Are you sure",
                 pexpect.EOF
             ], timeout=10)
             
@@ -205,8 +199,8 @@ class SSHConsumer(WebsocketConsumer):
                 
                 index = self.ssh_process.expect([
                     pexpect.TIMEOUT,
-                    "Permission denied",
-                    r".*[#>$\]].*",
+                    b"Permission denied",
+                    rb".*[#>$\]].*",
                     pexpect.EOF
                 ], timeout=10)
                 
@@ -217,20 +211,31 @@ class SSHConsumer(WebsocketConsumer):
             
             elif index == 3:
                 self.ssh_process.sendline('yes')
-                self.ssh_process.expect("password:", timeout=10)
+                self.ssh_process.expect(b"password:", timeout=10)
                 self.ssh_process.sendline(acesso.senha)
-                self.ssh_process.expect([r".*[#>$\]].*", pexpect.EOF], timeout=10)
+                self.ssh_process.expect([rb".*[#>$\]].*", pexpect.EOF], timeout=10)
             
             logger.info(f"✅ SSH: Conectado")
+            
+            if self.is_huawei:
+                try:
+                    logger.info("⚙️ Desabilitando paginação Huawei...")
+                    self.ssh_process.send("screen-length 0 temporary\r")
+                    time.sleep(0.5)
+                    try:
+                        self.ssh_process.read_nonblocking(timeout=0.5, size=32768)
+                    except:
+                        pass
+                except Exception as e:
+                    logger.warning(f"⚠️ Não foi possível desabilitar paginação: {e}")
             
             self.send_json({
                 'type': 'connected',
                 'message': f'✓ Conectado SSH a {acesso.host}:{acesso.porta}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
-            # ✅ OTIMIZADO: Iniciar thread de leitura RÁPIDA
             self.is_reading = True
-            self.read_thread = threading.Thread(target=self.read_ssh_output)
+            self.read_thread = threading.Thread(target=self.read_ssh_output_fixed)
             self.read_thread.daemon = True
             self.read_thread.start()
         
@@ -238,9 +243,6 @@ class SSHConsumer(WebsocketConsumer):
             logger.error(f"❌ SSH: {str(e)}")
             self.send_error(f'Erro SSH: {str(e)}')
     
-    # ============================================================
-    # SSH - VIA PROXY
-    # ============================================================
     def connect_ssh_via_proxy(self, acesso):
         """Conexão SSH via proxy"""
         try:
@@ -261,11 +263,11 @@ class SSHConsumer(WebsocketConsumer):
                 f"-p {proxy.porta} {proxy.usuario}@{proxy.host}"
             )
             
-            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding='utf-8')
+            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)
             
             index = self.tunnel_process.expect([
-                "password:",
-                "Password:",
+                b"password:",
+                b"Password:",
                 pexpect.TIMEOUT,
                 pexpect.EOF
             ], timeout=10)
@@ -294,12 +296,13 @@ class SSHConsumer(WebsocketConsumer):
             env = os.environ.copy()
             env['TERM'] = terminal_type
             
-            self.ssh_process = pexpect.spawn(ssh_cmd, timeout=15, encoding='utf-8', maxread=16384, env=env)
+            # ✅ SEM ENCODING
+            self.ssh_process = pexpect.spawn(ssh_cmd, timeout=15, encoding=None, maxread=262144, env=env)
             
             index = self.ssh_process.expect([
                 pexpect.TIMEOUT,
-                "password:",
-                "Password:",
+                b"password:",
+                b"Password:",
                 pexpect.EOF
             ], timeout=10)
             
@@ -311,8 +314,8 @@ class SSHConsumer(WebsocketConsumer):
             
             index = self.ssh_process.expect([
                 pexpect.TIMEOUT,
-                "Permission denied",
-                r".*[#>$\]].*",
+                b"Permission denied",
+                rb".*[#>$\]].*",
                 pexpect.EOF
             ], timeout=10)
             
@@ -321,13 +324,25 @@ class SSHConsumer(WebsocketConsumer):
             
             logger.info(f"✅ SSH via proxy: Conectado")
             
+            if self.is_huawei:
+                try:
+                    logger.info("⚙️ Desabilitando paginação Huawei...")
+                    self.ssh_process.send("screen-length 0 temporary\r")
+                    time.sleep(0.5)
+                    try:
+                        self.ssh_process.read_nonblocking(timeout=0.5, size=32768)
+                    except:
+                        pass
+                except Exception as e:
+                    logger.warning(f"⚠️ Não foi possível desabilitar paginação: {e}")
+            
             self.send_json({
                 'type': 'connected',
                 'message': f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
             self.is_reading = True
-            self.read_thread = threading.Thread(target=self.read_ssh_output)
+            self.read_thread = threading.Thread(target=self.read_ssh_output_fixed)
             self.read_thread.daemon = True
             self.read_thread.start()
         
@@ -341,9 +356,6 @@ class SSHConsumer(WebsocketConsumer):
                 except:
                     pass
     
-    # ============================================================
-    # TELNET - DIRETO
-    # ============================================================
     def connect_telnet(self, acesso):
         """Conexão Telnet direta"""
         try:
@@ -433,9 +445,6 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro na autenticação Telnet: {str(e)}')
             raise
     
-    # ============================================================
-    # TELNET - VIA PROXY
-    # ============================================================
     def connect_telnet_via_proxy(self, acesso):
         """Conexão Telnet via proxy SSH"""
         try:
@@ -456,11 +465,11 @@ class SSHConsumer(WebsocketConsumer):
                 f"-p {proxy.porta} {proxy.usuario}@{proxy.host}"
             )
             
-            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding='utf-8')
+            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)
             
             index = self.tunnel_process.expect([
-                "password:",
-                "Password:",
+                b"password:",
+                b"Password:",
                 pexpect.TIMEOUT,
                 pexpect.EOF
             ], timeout=10)
@@ -498,32 +507,42 @@ class SSHConsumer(WebsocketConsumer):
                     pass
     
     # ============================================================
-    # LEITURA - SSH (OTIMIZADA PARA SER MUITO RÁPIDA)
+    # LEITURA - SSH (CORRIGIDO - SEM ENCODING)
     # ============================================================
-    def read_ssh_output(self):
-        """✅ OTIMIZADA: Leitura SSH ULTRA-RÁPIDA, sem delay"""
+    def read_ssh_output_fixed(self):
+        """✅ CORRIGIDO: Leitura SSH SEM encoding - bytes puro"""
         try:
-            logger.info("📖 Thread SSH iniciada (modo rápido)" + (" [HUAWEI]" if self.is_huawei else ""))
+            logger.info("📖 Thread SSH iniciada (SEM ENCODING - bytes puro)")
             
             while self.is_reading:
                 try:
-                    # ✅ OTIMIZAÇÃO 1: Timeout MUITO curto (0.05 em vez de 0.1)
-                    # ✅ OTIMIZAÇÃO 2: Tamanho de leitura MAIOR (32KB em vez de 8KB)
-                    output = self.ssh_process.read_nonblocking(timeout=0.05, size=32768)
+                    # ✅ read_nonblocking já retorna bytes quando encoding=None
+                    output = self.ssh_process.read_nonblocking(timeout=0.1, size=262144)
                     
-                    if output:
-                        # ✅ OTIMIZAÇÃO 3: Enviar imediatamente via WebSocket
+                    if output and len(output) > 0:
+                        # ✅ Converter bytes para string com tolerância a erros
+                        try:
+                            # Primeira tentativa: UTF-8
+                            texto = output.decode('utf-8', errors='replace')
+                        except:
+                            # Se UTF-8 falhar, tentar latin1 (quase sempre funciona)
+                            texto = output.decode('latin1', errors='replace')
+                        
+                        # ✅ Enviar dados
                         self.send_json({
                             'type': 'output',
-                            'data': output
+                            'data': texto
                         })
+                        
+                        logger.info(f"📤 Enviado {len(output)}B: OK")
+                    else:
+                        time.sleep(0.001)
                 
                 except pexpect.exceptions.TIMEOUT:
-                    # ✅ OTIMIZAÇÃO 4: Usar time.sleep muito curto (0.01)
-                    time.sleep(0.01)
                     continue
+                    
                 except pexpect.exceptions.EOF:
-                    logger.info("🔌 SSH: EOF")
+                    logger.info("🔌 SSH: EOF recebido")
                     break
                 except Exception as e:
                     logger.error(f"❌ Erro leitura SSH: {str(e)}")
@@ -535,17 +554,13 @@ class SSHConsumer(WebsocketConsumer):
             logger.info("🛑 Thread SSH finalizada")
             self.is_reading = False
     
-    # ============================================================
-    # LEITURA - TELNET (OTIMIZADA)
-    # ============================================================
     def read_telnet_output(self):
-        """✅ OTIMIZADA: Leitura Telnet ULTRA-RÁPIDA"""
+        """Leitura Telnet"""
         try:
-            logger.info("📖 Thread Telnet iniciada (modo rápido)")
+            logger.info("📖 Thread Telnet iniciada")
             
             while self.is_reading:
                 try:
-                    # ✅ OTIMIZAÇÃO: read_very_eager sem timeout (rápido)
                     output = self.telnet_client.read_very_eager()
                     
                     if output:
@@ -554,8 +569,7 @@ class SSHConsumer(WebsocketConsumer):
                             'data': output.decode('utf-8', errors='ignore')
                         })
                     else:
-                        # ✅ OTIMIZAÇÃO: Sleep curto quando nada há
-                        time.sleep(0.01)
+                        time.sleep(0.001)
                 
                 except EOFError:
                     logger.info("🔌 Telnet: Conexão encerrada")
@@ -567,9 +581,6 @@ class SSHConsumer(WebsocketConsumer):
             logger.info("🛑 Thread Telnet finalizada")
             self.is_reading = False
     
-    # ============================================================
-    # UTILITÁRIOS
-    # ============================================================
     def find_available_port(self, start=9000, max_attempts=100):
         """Encontra uma porta disponível"""
         import socket

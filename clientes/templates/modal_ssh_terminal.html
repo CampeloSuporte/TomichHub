@@ -1,4 +1,4 @@
-<!-- MODAL TERMINAL SSH - VERSÃO SIMPLIFICADA E FLUIDA -->
+<!-- MODAL TERMINAL SSH - VERSÃO FINAL AJUSTADA -->
 
 <div id="modalSSHTerminal" class="modal-overlay" style="display: none;">
     <div class="modal-ssh">
@@ -170,6 +170,29 @@
 </style>
 
 <script>
+// ✅ NOVO: Função para escrever em chunks (sem travar)
+function escreverComChunks(dados) {
+    if (!terminal || !dados) return;
+    
+    const CHUNK = 16384; // 16KB por chunk
+    let pos = 0;
+    
+    function chunk() {
+        if (pos >= dados.length) return;
+        
+        const parte = dados.substring(pos, pos + CHUNK);
+        pos += CHUNK;
+        
+        terminal.write(parte);
+        
+        if (pos < dados.length) {
+            setTimeout(chunk, 2);  // 2ms entre chunks
+        }
+    }
+    
+    chunk();
+}
+
 function colorirOutput(texto) {
     // 🟨 IPs em amarelo
     texto = texto.replace(
@@ -207,10 +230,28 @@ function colorirOutput(texto) {
         '\x1b[1;35m$&\x1b[0m'
     );
     
-    // 🟫 BGP em Marrom/Orange (34 é marrom, 38;5;208 é orange)
+    // 🟫 BGP em Marrom/Orange
     texto = texto.replace(
         /\bBGP\b/gi,
         '\x1b[38;5;208m$&\x1b[0m'
+    );
+    
+    // 🔴 Números negativos em vermelho claro
+    texto = texto.replace(
+        /-\d+\.?\d*/g,
+        '\x1b[1;31m$&\x1b[0m'
+    );
+    
+    // 📥 RX em azul claro
+    texto = texto.replace(
+        /\bRx\b/gi,
+        '\x1b[1;34m$&\x1b[0m'
+    );
+    
+    // 📤 TX em verde claro
+    texto = texto.replace(
+        /\bTx\b/gi,
+        '\x1b[1;32m$&\x1b[0m'
     );
     
     return texto;
@@ -222,11 +263,10 @@ let fitAddon = null;
 let acessoId = null;
 let connected = false;
 let clipboardBuffer = '';
-let isHuawei = false;  // ✅ Flag para detecção Huawei
-let contextMenuSetup = false;  // ✅ Flag para evitar duplicação
+let isHuawei = false;
+let contextMenuSetup = false;
 
 function setupContextMenu() {
-    // ✅ Evitar registrar múltiplas vezes
     if (contextMenuSetup) {
         console.log('⚠️ Context menu já configurado');
         return;
@@ -234,19 +274,16 @@ function setupContextMenu() {
     
     const terminalContainer = document.getElementById('ssh_terminal');
     
-    // ✅ Listener único no container para evitar duplicação
     terminalContainer.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         
         const selecionado = window.getSelection().toString();
         
         if (selecionado) {
-            // Se há texto selecionado, copiar
             clipboardBuffer = selecionado;
             console.log('✅ Copiado:', selecionado);
             mostrarNotificacao('Copiado: ' + selecionado.substring(0, 30) + (selecionado.length > 30 ? '...' : ''));
         } else if (clipboardBuffer) {
-            // Se não há seleção, mas tem buffer, colar
             if (connected && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     action: 'command',
@@ -261,16 +298,13 @@ function setupContextMenu() {
     });
     
     contextMenuSetup = true;
-    console.log('✅ Context menu configurado (primeira vez)');
+    console.log('✅ Context menu configurado');
 }
 
-// ✅ Notificação visual
 function mostrarNotificacao(texto) {
-    // Limpar notificação anterior se existir
     const notifAnterior = document.getElementById('terminal-notif');
     if (notifAnterior) notifAnterior.remove();
     
-    // Criar notificação
     const notif = document.createElement('div');
     notif.id = 'terminal-notif';
     notif.textContent = texto;
@@ -290,7 +324,6 @@ function mostrarNotificacao(texto) {
     
     document.body.appendChild(notif);
     
-    // Remover após 2 segundos
     setTimeout(() => {
         notif.style.opacity = '0';
         notif.style.transition = 'opacity 0.3s ease';
@@ -298,17 +331,14 @@ function mostrarNotificacao(texto) {
     }, 2000);
 }
 
-// ✅ Configurar input do terminal com suporte a Huawei
 function configurarInputTerminal() {
     console.log('⚙️ Configurando input do terminal...');
     
     terminal.onData((input) => {
         if (socket && socket.readyState === WebSocket.OPEN) {
-            // ✅ Para Huawei: Garantir que backspace seja enviado como DEL (\x7f)
             let command = input;
             
             if (isHuawei) {
-                // ✅ Converter BS (\x08) para DEL (\x7f) para Huawei
                 command = input.replace(/\x08/g, '\x7f');
             }
             
@@ -330,8 +360,8 @@ function abrirTerminalSSH(id, host, porta, tipo) {
     
     acessoId = id;
     connected = false;
-    clipboardBuffer = ''; // ✅ Limpar buffer ao abrir novo terminal
-    contextMenuSetup = false; // ✅ Resetar flag de context menu
+    clipboardBuffer = '';
+    contextMenuSetup = false;
     
     document.getElementById('ssh_info').textContent = `${tipo} • ${host}:${porta}`;
     document.getElementById('ssh_status').textContent = '● Conectando...';
@@ -346,7 +376,7 @@ function criarTerminal() {
     const container = document.getElementById('ssh_terminal');
     container.innerHTML = '';
     
-    // ✅ Configuração padrão
+    // ✅ AJUSTE 1: scrollback aumentado de 500 para 5000
     let terminalConfig = {
         cursorBlink: true,
         fontSize: 13,
@@ -355,11 +385,10 @@ function criarTerminal() {
             background: '#000000',
             foreground: '#ffffff',
         },
-        scrollback: 500,
+        scrollback: 5000,  // ✅ ANTES: 500, AGORA: 5000
         rightClickSelectsWord: false,
     };
     
-    // ✅ Se for Huawei, usar vt100 para melhor compatibilidade
     if (isHuawei) {
         console.log('🖥️ Terminal Huawei detectado - modo vt100');
     }
@@ -397,7 +426,6 @@ function conectar() {
         
         if (data.type === 'connected') {
             connected = true;
-            // ✅ Detectar se é Huawei pela mensagem
             isHuawei = data.message && data.message.includes('[HUAWEI]');
             
             document.getElementById('ssh_status').className = 'status connected';
@@ -405,12 +433,12 @@ function conectar() {
             
             terminal.writeln('\x1b[1;36m' + data.message + '\x1b[0m\n');
             
-            // ✅ Configurar input com suporte a Huawei
             configurarInputTerminal();
             
         } else if (data.type === 'output' && data.data) {
+            // ✅ COLORIR dados antes de escrever
             const colorido = colorirOutput(data.data);
-            terminal.write(colorido);
+            escreverComChunks(colorido);
             
         } else if (data.type === 'error') {
             connected = false;
@@ -454,14 +482,12 @@ function fecharTerminalSSH() {
     document.body.style.overflow = 'auto';
 }
 
-// Fechar com ESC
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.getElementById('modalSSHTerminal').style.display === 'flex') {
         fecharTerminalSSH();
     }
 });
 
-// Fechar clicando fora
 document.addEventListener('click', (e) => {
     const modal = document.getElementById('modalSSHTerminal');
     if (e.target === modal) {
