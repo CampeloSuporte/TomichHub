@@ -6,7 +6,6 @@ import ipaddress
 import logging
 import time
 import os
-import subprocess
 from channels.generic.websocket import WebsocketConsumer
 from .models import Acesso, ProxyServer
 
@@ -16,6 +15,45 @@ logger = logging.getLogger(__name__)
 class SSHConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
+        self.limpar_recursos()
+        
+    def limpar_recursos(self):
+        """✅ LIMPEZA COMPLETA E SEGURA DE RECURSOS"""
+        # ✅ Parar thread PRIMEIRO
+        self.is_reading = False
+        if hasattr(self, 'read_thread') and self.read_thread and self.read_thread.is_alive():
+            time.sleep(0.2)
+            try:
+                # Dar tempo para thread terminar
+                self.read_thread.join(timeout=1.0)
+            except:
+                pass
+        
+        # ✅ Fechar socket primeiro (para evitar segfault)
+        if hasattr(self, 'ssh_process') and self.ssh_process:
+            try:
+                self.ssh_process.close()
+            except:
+                pass
+            self.ssh_process = None
+        
+        # ✅ Fechar telnet
+        if hasattr(self, 'telnet_client') and self.telnet_client:
+            try:
+                self.telnet_client.close()
+            except:
+                pass
+            self.telnet_client = None
+        
+        # ✅ Fechar túnel
+        if hasattr(self, 'tunnel_process') and self.tunnel_process:
+            try:
+                self.tunnel_process.close()
+            except:
+                pass
+            self.tunnel_process = None
+        
+        # ✅ Reinicializar variáveis
         self.ssh_process = None
         self.telnet_client = None
         self.tunnel_process = None
@@ -23,27 +61,13 @@ class SSHConsumer(WebsocketConsumer):
         self.read_thread = None
         self.is_reading = False
         self.is_huawei = False
+        self.acessoId = None
         
     def disconnect(self, close_code):
-        """Fecha todas as conexões ao desconectar"""
-        self.is_reading = False
-        time.sleep(0.05)
-        
-        if self.ssh_process:
-            try:
-                self.ssh_process.close()
-            except:
-                pass
-        if self.telnet_client:
-            try:
-                self.telnet_client.close()
-            except:
-                pass
-        if self.tunnel_process:
-            try:
-                self.tunnel_process.close()
-            except:
-                pass
+        """Fecha tudo ao desconectar"""
+        logger.info("🔌 WebSocket desconectando...")
+        self.limpar_recursos()
+        logger.info("✅ Limpeza concluída")
     
     def receive(self, text_data):
         """Receber e processar comandos do frontend"""
@@ -53,6 +77,12 @@ class SSHConsumer(WebsocketConsumer):
             
             if action == 'connect':
                 acesso_id = data.get('acesso_id')
+                logger.info(f"📋 Conectar acesso {acesso_id}")
+                
+                # ✅ Limpar recursos antes de nova conexão
+                self.limpar_recursos()
+                time.sleep(0.1)
+                
                 self.conectar_acesso(acesso_id)
             
             elif action == 'command':
@@ -69,6 +99,7 @@ class SSHConsumer(WebsocketConsumer):
     def conectar_acesso(self, acesso_id):
         """Conectar a um acesso específico"""
         try:
+            self.acessoId = acesso_id
             acesso = Acesso.objects.get(id=acesso_id)
             protocol = self.detect_protocol(acesso.porta)
             self.protocol = protocol
@@ -99,9 +130,8 @@ class SSHConsumer(WebsocketConsumer):
         try:
             if self.protocol == 'ssh':
                 if self.ssh_process:
-                    logger.info(f"📤 ENVIANDO COMANDO: {repr(command[:50])}")
+                    logger.debug(f"📤 ENVIANDO: {repr(command[:50])}")
                     self.ssh_process.send(command)
-                    logger.info(f"✅ COMANDO ENVIADO")
             
             elif self.protocol == 'telnet':
                 if self.telnet_client:
@@ -176,11 +206,10 @@ class SSHConsumer(WebsocketConsumer):
             env = os.environ.copy()
             env['TERM'] = terminal_type
             
-            # ✅ MUDANÇA CRÍTICA: SEM encoding='utf-8' - ler como bytes
             self.ssh_process = pexpect.spawn(
                 ssh_cmd,
                 timeout=15,
-                encoding=None,  # ✅ SEM ENCODING - bytes puro
+                encoding=None,
                 maxread=262144,
                 env=env
             )
@@ -234,9 +263,9 @@ class SSHConsumer(WebsocketConsumer):
                 'message': f'✓ Conectado SSH a {acesso.host}:{acesso.porta}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
+            # ✅ Iniciar thread de leitura
             self.is_reading = True
-            self.read_thread = threading.Thread(target=self.read_ssh_output_fixed)
-            self.read_thread.daemon = True
+            self.read_thread = threading.Thread(target=self.read_ssh_output, daemon=True)
             self.read_thread.start()
         
         except Exception as e:
@@ -296,7 +325,6 @@ class SSHConsumer(WebsocketConsumer):
             env = os.environ.copy()
             env['TERM'] = terminal_type
             
-            # ✅ SEM ENCODING
             self.ssh_process = pexpect.spawn(ssh_cmd, timeout=15, encoding=None, maxread=262144, env=env)
             
             index = self.ssh_process.expect([
@@ -341,9 +369,9 @@ class SSHConsumer(WebsocketConsumer):
                 'message': f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
+            # ✅ Iniciar thread de leitura
             self.is_reading = True
-            self.read_thread = threading.Thread(target=self.read_ssh_output_fixed)
-            self.read_thread.daemon = True
+            self.read_thread = threading.Thread(target=self.read_ssh_output, daemon=True)
             self.read_thread.start()
         
         except Exception as e:
@@ -377,9 +405,9 @@ class SSHConsumer(WebsocketConsumer):
                 'message': f'✓ Conectado Telnet a {acesso.host}:{acesso.porta}'
             })
             
+            # ✅ Iniciar thread de leitura
             self.is_reading = True
-            self.read_thread = threading.Thread(target=self.read_telnet_output)
-            self.read_thread.daemon = True
+            self.read_thread = threading.Thread(target=self.read_telnet_output, daemon=True)
             self.read_thread.start()
         
         except Exception as e:
@@ -491,9 +519,9 @@ class SSHConsumer(WebsocketConsumer):
                 'message': f'✓ Telnet a {acesso.host}:{acesso.porta} via {proxy.nome}'
             })
             
+            # ✅ Iniciar thread de leitura
             self.is_reading = True
-            self.read_thread = threading.Thread(target=self.read_telnet_output)
-            self.read_thread.daemon = True
+            self.read_thread = threading.Thread(target=self.read_telnet_output, daemon=True)
             self.read_thread.start()
         
         except Exception as e:
@@ -506,41 +534,30 @@ class SSHConsumer(WebsocketConsumer):
                 except:
                     pass
     
-    # ============================================================
-    # LEITURA - SSH (CORRIGIDO - SEM ENCODING)
-    # ============================================================
-    def read_ssh_output_fixed(self):
-        """✅ CORRIGIDO: Leitura SSH SEM encoding - bytes puro"""
+    def read_ssh_output(self):
+        """✅ Leitura SSH com segurança"""
         try:
-            logger.info("📖 Thread SSH iniciada (SEM ENCODING - bytes puro)")
+            logger.info("📖 Thread SSH iniciada")
             
-            while self.is_reading:
+            while self.is_reading and self.ssh_process:
                 try:
-                    # ✅ read_nonblocking já retorna bytes quando encoding=None
                     output = self.ssh_process.read_nonblocking(timeout=0.1, size=262144)
                     
                     if output and len(output) > 0:
-                        # ✅ Converter bytes para string com tolerância a erros
                         try:
-                            # Primeira tentativa: UTF-8
                             texto = output.decode('utf-8', errors='replace')
                         except:
-                            # Se UTF-8 falhar, tentar latin1 (quase sempre funciona)
                             texto = output.decode('latin1', errors='replace')
                         
-                        # ✅ Enviar dados
                         self.send_json({
                             'type': 'output',
                             'data': texto
                         })
-                        
-                        logger.info(f"📤 Enviado {len(output)}B: OK")
                     else:
                         time.sleep(0.001)
                 
                 except pexpect.exceptions.TIMEOUT:
                     continue
-                    
                 except pexpect.exceptions.EOF:
                     logger.info("🔌 SSH: EOF recebido")
                     break
@@ -555,11 +572,11 @@ class SSHConsumer(WebsocketConsumer):
             self.is_reading = False
     
     def read_telnet_output(self):
-        """Leitura Telnet"""
+        """Leitura Telnet com segurança"""
         try:
             logger.info("📖 Thread Telnet iniciada")
             
-            while self.is_reading:
+            while self.is_reading and self.telnet_client:
                 try:
                     output = self.telnet_client.read_very_eager()
                     
