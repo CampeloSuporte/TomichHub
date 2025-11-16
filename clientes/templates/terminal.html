@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal SSH Múltiplo - CONEXA</title>
+    
+    <!-- XTerm CSS - GARANTIR QUE CARREGA -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #ffffff;  /* ← Branco */
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .terminal-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* HEADER */
+        .terminal-header {
+            background: rgba(0, 20, 10, 0.8);
+            border-bottom: 2px solid #00ff88;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            min-height: 60px;
+        }
+        
+        .terminal-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff88;
+            flex: 1;
+        }
+        
+        .terminal-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .terminal-status.connected {
+            color: #00ff88;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-dot.connected {
+            background: #00ff88;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* TABS */
+        .terminal-tabs {
+            display: flex;
+            background: #000;
+            border-bottom: 1px solid #222;
+            overflow-x: auto;
+            gap: 5px;
+            padding: 8px 10px;
+            min-height: 40px;
+        }
+        
+        .terminal-tab {
+            background: rgba(50, 50, 50, 0.5);
+            border: 1px solid #333;
+            border-bottom: none;
+            color: #888;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 4px 4px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        
+        .terminal-tab:hover {
+            background: rgba(100, 100, 100, 0.5);
+            color: #00ff88;
+        }
+        
+        .terminal-tab.active {
+            background: #0a0a0a;
+            border: 1px solid #00ff88;
+            border-bottom: 1px solid #0a0a0a;
+            color: #00ff88;
+        }
+        
+        .terminal-tab-close {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: 0.2s;
+        }
+        
+        .terminal-tab-close:hover {
+            color: #ff4444;
+            opacity: 1;
+        }
+        
+        .terminal-tab-status {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #888;
+        }
+        
+        .terminal-tab-status.connected {
+            background: #00ff88;
+        }
+        
+        /* CONTEÚDO - CRÍTICO: ESTE DEVE TER HEIGHT 100% */
+        .terminal-content {
+            flex: 1;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .terminal-pane {
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .terminal-pane.active {
+            display: flex;
+        }
+        
+        /* ✅ CRÍTICO: xterm DEVE TER TAMANHO DEFINIDO */
+        .xterm {
+            flex: 1;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .xterm-screen {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* FOOTER */
+        .terminal-footer {
+            background: rgba(0, 20, 10, 0.5);
+            border-top: 1px solid #333;
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-height: 50px;
+        }
+        
+        .btn-terminal {
+            background: transparent;
+            border: 1px solid #555;
+            color: #aaa;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 11px;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        
+        .btn-terminal:hover {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        /* ESTADO VAZIO */
+        .terminal-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #555;
+            font-size: 14px;
+            gap: 15px;
+        }
+        
+        .terminal-empty-text {
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        /* DEBUG PANEL - DESABILITADO */
+        .debug-panel {
+            display: none !important;  /* ← Sempre oculto */
+        }
+        
+        .debug-line {
+            margin: 2px 0;
+            padding: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <!-- Header -->
+        <div class="terminal-header">
+            <div class="terminal-title">
+                ▶ Terminal SSH Múltiplo CONEXA
+            </div>
+            <div class="terminal-status connected" id="terminalStatus">
+                <div class="status-dot connected"></div>
+                <span id="statusText">Pronto para conexões</span>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="terminal-tabs" id="terminalTabs">
+            <!-- Tabs adicionadas aqui -->
+        </div>
+        
+        <!-- Conteúdo - CRÍTICO: MUST HAVE FLEX: 1 -->
+        <div class="terminal-content" id="terminalContent" style="flex: 1; min-height: 0;">
+            <div class="terminal-pane active">
+                <div class="terminal-empty">
+                    <div>⏳</div>
+                    <div class="terminal-empty-text">
+                        <p>Nenhum terminal conectado</p>
+                        <p style="font-size: 11px; color: #777;">Clique em "Acessar" na página principal para abrir um terminal</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="terminal-footer">
+            <button class="btn-terminal" onclick="limparTela()">
+                ✕ Limpar Tela
+            </button>
+            <button class="btn-terminal" onclick="window.location.reload()">
+                ↻ Atualizar
+            </button>
+            <button class="btn-terminal" onclick="fecharTodosTerminais()">
+                ⏻ Fechar Todos
+            </button>
+            <button class="btn-terminal" onclick="window.close()">
+                ✕ Fechar Aba
+            </button>
+        </div>
+    </div>
+    
+    <!-- DEBUG PANEL -->
+    <div class="debug-panel" id="debugPanel" style="display: none;">
+        <div style="color: #00ff88; margin-bottom: 5px;"><strong>DEBUG</strong></div>
+        <div id="debugOutput"></div>
+    </div>
+    
+    <!-- XTerm JS -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+
+    <script>
+        // ============================================
+        // DEBUG HELPER - DESABILITADO
+        // ============================================
+        
+        const DEBUG = false;  // ← DEBUG DESABILITADO
+        const debugLines = [];
+        
+        function addDebug(msg) {
+            if (DEBUG) {
+                debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
+                
+                // Manter apenas as últimas 20 linhas
+                if (debugLines.length > 20) {
+                    debugLines.shift();
+                }
+                
+                // Atualizar painel de debug
+                const debugPanel = document.getElementById('debugPanel');
+                if (debugPanel) {
+                    debugPanel.style.display = 'block';
+                    const output = document.getElementById('debugOutput');
+                    if (output) {
+                        output.innerHTML = debugLines.map(l => 
+                            '<div class="debug-line">' + l.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>'
+                        ).join('');
+                        output.scrollTop = output.scrollHeight;
+                    }
+                }
+                
+                console.log(msg);
+            }
+        }
+        
+        // ============================================
+        // COLORIZAÇÃO DE OUTPUT - SYNTAX HIGHLIGHTING
+        // ============================================
+        
+        const COLORS = {
+            RESET: '\x1b[0m',
+            
+            // Protocolos
+            PROTOCOL: '\x1b[36m',      // Cyan - BGP, OSPF, OSPFv3
+            
+            // Rede
+            INTERFACE: '\x1b[34m',     // Blue - Interface
+            IPV4: '\x1b[1;94m',        // Bold Bright Blue - IPv4 (AZUL BEM FORTE!)
+            IPV6: '\x1b[1;94m',        // Bold Bright Blue - IPv6 (AZUL BEM FORTE!)
+            
+            // ASN
+            ASN: '\x1b[92m',           // Bright Green - AS Numbers
+            
+            // BFD, Peer, Neighbors
+            KEYWORDS: '\x1b[36m',      // Cyan - bfd, peer, neighbors
+            
+            // Óptica e Sinais
+            OPTICAL: '\x1b[1;33m',     // Bold Yellow - Valores ópticos (RxPower, TxPower, dBm)
+            RX: '\x1b[1;96m',          // Bold Bright Cyan - RX (Recepção)
+            TX: '\x1b[1;91m',          // Bold Bright Red - TX (Transmissão)
+            
+            // Estados de conexão
+            ESTABLISHED: '\x1b[92m',   // Bright Green - Established
+            IDLE: '\x1b[93m',          // Bright Yellow - Idle
+            ACTIVE: '\x1b[91m',        // Bright Red - Active
+            ADMIN: '\x1b[33m',         // Yellow - Admin
+            
+            // OSPF Estados
+            FULL: '\x1b[92m',          // Bright Green - Full
+            EXSTART: '\x1b[93m',       // Bright Yellow - ExStart
+            EXCHANGE: '\x1b[96m',      // Bright Cyan - Exchange
+            LOADING: '\x1b[94m',       // Bright Blue - Loading
+            INIT: '\x1b[91m',          // Bright Red - Init
+            DOWN: '\x1b[31m',          // Red - Down
+            TWOWAY: '\x1b[93m',        // Yellow - 2-Way
+            
+            // Sinais
+            SIGNAL: '\x1b[92m',        // Bright Green - RX/TX/Signal
+            RSSI: '\x1b[93m',          // Yellow - Valores RSSI
+            
+            // Destaque especial
+            HIGHLIGHT: '\x1b[97m',     // White - Valores importantes
+        };
+        
+        function colorizeOutput(text) {
+            if (!text) return text;
+            
+            // Array para armazenar todas as transformações: [início, fim, cor]
+            const transformations = [];
+            
+            // ⭐ 1️⃣ IPv4 - PROCESSA PRIMEIRO E COM PRIORIDADE MÁXIMA
+            const ipv4Regex = /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/g;
+            let match;
+            while ((match = ipv4Regex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.IPV4,
+                    priority: 1000  // Máxima prioridade
+                });
+            }
+            
+            // 2️⃣ IPv6
+            const ipv6Regex = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
+            while ((match = ipv6Regex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.IPV6,
+                    priority: 900
+                });
+            }
+            
+            // 3️⃣ ASN - COM SUPORTE 32-BIT E 16-BIT
+            const asnRegex = /(?:\bAS\s*)?(\d+)\b/g;
+            while ((match = asnRegex.exec(text)) !== null) {
+                const num = match[0].replace('AS', '').trim();
+                const n = parseInt(num);
+                // Colorir se tiver "AS" na frente OU se for ASN válido (16-bit: 0-65535 ou 32-bit: 4200000000-4294967295)
+                if (match[0].includes('AS') || (n >= 1 && n <= 65535) || (n >= 4200000000 && n <= 4294967295)) {
+                    transformations.push({
+                        start: match.index,
+                        end: match.index + match[0].length,
+                        color: COLORS.ASN,
+                        priority: 800
+                    });
+                }
+            }
+            
+            // 4️⃣ PROTOCOLOS
+            const protocolRegex = /\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi;
+            while ((match = protocolRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.PROTOCOL,
+                    priority: 700
+                });
+            }
+            
+            // 5️⃣ INTERFACES
+            const interfaceRegex = /\b(Interface|interface|eth\d+|ether\d+|FastEthernet|GigabitEthernet|Loopback|Tunnel|VLAN|ge-|xe-|et-)\b/gi;
+            while ((match = interfaceRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.INTERFACE,
+                    priority: 600
+                });
+            }
+            
+            // 6️⃣ KEYWORDS (peer, bfd, neighbors)
+            const keywordsRegex = /\b(bfd|BFD|peer|Peer|PEER|neighbors|Neighbors|NEIGHBORS)\b/g;
+            while ((match = keywordsRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.KEYWORDS,
+                    priority: 500
+                });
+            }
+            
+            // 6️⃣.5️⃣ ÓPTICA - RxPower, TxPower, dBm (amarelo)
+            const opticalNamesRegex = /\b(RxPower|TxPower|dBm)\b/g;
+            while ((match = opticalNamesRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.OPTICAL,
+                    priority: 450
+                });
+            }
+            
+            // 6️⃣.6️⃣ RX (Recepção) - Ciano
+            const rxRegex = /\b(RX|Rx|rx)\b/g;
+            while ((match = rxRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.RX,
+                    priority: 445
+                });
+            }
+            
+            // 6️⃣.7️⃣ TX (Transmissão) - Vermelho
+            const txRegex = /\b(TX|Tx|tx)\b/g;
+            while ((match = txRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.TX,
+                    priority: 445
+                });
+            }
+            
+            // 6️⃣.8️⃣ VALORES ÓPTICOS - Números negativos com decimais (ex: -40.00, -30.5)
+            const opticalValuesRegex = /(-\d{1,3}\.\d{1,2})\b/g;
+            while ((match = opticalValuesRegex.exec(text)) !== null) {
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: COLORS.OPTICAL,
+                    priority: 440
+                });
+            }
+            
+            // 7️⃣ ESTADOS BGP
+            const bgpStateRegex = /\b(Established|Connect|Active|Idle|OpenSent|OpenConfirm|Idle\(Admin\))\b/gi;
+            while ((match = bgpStateRegex.exec(text)) !== null) {
+                let color = COLORS.EXCHANGE;
+                const m = match[0].toLowerCase();
+                if (m.includes('established')) color = COLORS.ESTABLISHED;
+                else if (m.includes('active')) color = COLORS.ACTIVE;
+                else if (m.includes('idle') || m.includes('admin')) color = COLORS.ADMIN;
+                
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: color,
+                    priority: 400
+                });
+            }
+            
+            // 8️⃣ ESTADOS OSPF
+            const ospfStateRegex = /\b(Full|ExStart|Exchange|Loading|Attempt|Init|Down|2-Way|Waiting)\b/gi;
+            while ((match = ospfStateRegex.exec(text)) !== null) {
+                let color = COLORS.HIGHLIGHT;
+                const m = match[0].toLowerCase();
+                if (m.includes('full')) color = COLORS.FULL;
+                else if (m.includes('exstart') || m.includes('exchange')) color = COLORS.EXCHANGE;
+                else if (m.includes('loading')) color = COLORS.LOADING;
+                else if (m.includes('init')) color = COLORS.INIT;
+                else if (m.includes('down')) color = COLORS.DOWN;
+                else if (m.includes('2-way') || m.includes('waiting')) color = COLORS.TWOWAY;
+                else if (m.includes('attempt')) color = COLORS.IDLE;
+                
+                transformations.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    color: color,
+                    priority: 300
+                });
+            }
+            
+            // Remover transformações conflitantes (manter apenas a de maior prioridade)
+            transformations.sort((a, b) => {
+                if (a.start !== b.start) return a.start - b.start;
+                return b.priority - a.priority;  // Maior prioridade vem primeiro
+            });
+            
+            const filtered = [];
+            for (const t of transformations) {
+                let conflicts = false;
+                for (const f of filtered) {
+                    // Verifica se há sobreposição
+                    if ((t.start < f.end && t.end > f.start)) {
+                        conflicts = true;
+                        break;
+                    }
+                }
+                if (!conflicts) {
+                    filtered.push(t);
+                }
+            }
+            
+            // Reconstruir texto com cores (de trás para frente para não deslocar índices)
+            let result = text;
+            for (let i = filtered.length - 1; i >= 0; i--) {
+                const t = filtered[i];
+                const before = result.substring(0, t.start);
+                const match = result.substring(t.start, t.end);
+                const after = result.substring(t.end);
+                result = before + t.color + match + COLORS.RESET + after;
+            }
+            
+            return result;
+        }
+        
+        // ============================================
+        
+        class TerminalManager {
+            constructor() {
+                this.terminals = new Map();
+                this.activeTerminal = null;
+                this.tabCounter = 0;
+                this.wsRetryCount = 0;
+                this.maxRetries = 3;
+                this.retryDelay = 2000;
+                
+                addDebug('🚀 TerminalManager inicializando...');
+                
+                // Verificar localStorage
+                this.verificarAcessoPendente();
+                
+                // Ouvir mensagens de outras abas
+                window.addEventListener('message', (e) => this.handleMessage(e));
+                
+                // Limpar terminais desconectados
+                setInterval(() => this.limparTerminaisDesconectados(), 5000);
+                
+                addDebug('✅ TerminalManager pronto');
+            }
+            
+            verificarAcessoPendente() {
+                try {
+                    let acessoPendente = localStorage.getItem('acessoPendente');
+                    
+                    if (acessoPendente) {
+                        const acesso = JSON.parse(acessoPendente);
+                        
+                        // Limpar dados
+                        localStorage.removeItem('acessoPendente');
+                        
+                        addDebug('📂 Acesso pendente encontrado: ' + acesso.tipo);
+                        
+                        setTimeout(() => {
+                            this.abrirTerminal(acesso);
+                        }, 500);
+                    } else {
+                        addDebug('⚠️ Nenhum acesso pendente');
+                    }
+                } catch (e) {
+                    addDebug('❌ Erro ao verificar acesso: ' + e.message);
+                }
+            }
+            
+            handleMessage(event) {
+                if (event.data && event.data.type === 'NOVA_CONEXAO') {
+                    addDebug('📬 Nova conexão via postMessage: ' + event.data.acesso.tipo);
+                    this.abrirTerminal(event.data.acesso);
+                    window.focus();
+                }
+            }
+            
+            abrirTerminal(acessoData) {
+                const terminalId = `terminal-${++this.tabCounter}`;
+                
+                addDebug(`📂 Abrindo terminal ${terminalId}: ${acessoData.tipo}`);
+                addDebug(`   Host: ${acessoData.host}:${acessoData.porta}`);
+                
+                try {
+                    // ✅ CRIAR TERMINAL XTERM
+                    const terminal = new Terminal({
+                        cursorBlink: true,
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        theme: { 
+                            background: '#000000', 
+                            foreground: '#ffffff',  /* ← Branco */
+                            cursor: '#ffffff'       /* ← Cursor branco */
+                        },
+                        scrollback: 5000,
+                        rows: 24,
+                        cols: 80
+                    });
+                    
+                    addDebug('✅ Terminal xterm criado');
+                    
+                    const fitAddon = new FitAddon.FitAddon();
+                    terminal.loadAddon(fitAddon);
+                    
+                    addDebug('✅ FitAddon carregado');
+                    
+                    // ✅ CRIAR PANE
+                    const pane = document.createElement('div');
+                    pane.className = 'terminal-pane';  // ← SEM active no início
+                    pane.id = `pane-${terminalId}`;
+                    pane.style.flex = '1';
+                    pane.style.overflow = 'hidden';
+                    pane.style.display = 'none';  // ← Oculto inicialmente
+                    
+                    addDebug('✅ Pane criado: ' + pane.id);
+                    
+                    // ✅ ADICIONAR AO DOM (SEM LIMPAR OS ANTERIORES!)
+                    const content = document.getElementById('terminalContent');
+                    
+                    // Ocular todos os panes anteriores
+                    const panesAnteriores = content.querySelectorAll('.terminal-pane.active');
+                    panesAnteriores.forEach(paneAnterior => {
+                        paneAnterior.classList.remove('active');
+                        paneAnterior.style.display = 'none';
+                    });
+                    
+                    // Adicionar o novo pane SEM limpar (preserva os anteriores)
+                    content.appendChild(pane);
+                    
+                    addDebug('✅ Pane adicionado ao DOM (mantendo anteriores intactos)');
+                    
+                    // ✅ ABRIR TERMINAL NO PANE
+                    terminal.open(pane);
+                    
+                    addDebug('✅ Terminal aberto no pane');
+                    
+                    // Armazenar
+                    const terminalObj = {
+                        id: terminalId,
+                        terminal: terminal,
+                        fitAddon: fitAddon,
+                        pane: pane,
+                        acesso: acessoData,
+                        socket: null,
+                        connected: false,
+                        wsRetries: 0
+                    };
+                    
+                    this.terminals.set(terminalId, terminalObj);
+                    
+                    // ✅ CRIAR ABA
+                    this.criarAba(terminalId, acessoData);
+                    
+                    // ✅ ATIVAR (mostra e faz fit)
+                    this.ativarTerminal(terminalId);
+                    
+                    // Welcome message
+                    terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
+                    terminal.writeln('\x1b[1;36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
+                    
+                    addDebug('✅ Mensagem de boas-vindas enviada');
+                    
+                    // Input do terminal
+                    terminal.onData((input) => {
+                        if (terminalObj.socket && terminalObj.socket.readyState === WebSocket.OPEN) {
+                            terminalObj.socket.send(JSON.stringify({
+                                action: 'command',
+                                command: input
+                            }));
+                        }
+                    });
+                    
+                    // Conectar WebSocket
+                    setTimeout(() => this.conectarWebSocket(terminalId), 200);
+                    
+                } catch (e) {
+                    addDebug('❌ Erro ao abrir terminal: ' + e.message);
+                    console.error(e);
+                }
+            }
+            
+            criarAba(terminalId, acessoData) {
+                const tabs = document.getElementById('terminalTabs');
+                
+                const tab = document.createElement('div');
+                tab.className = 'terminal-tab active';
+                tab.id = `tab-${terminalId}`;
+                
+                tab.innerHTML = `
+                    <div class="terminal-tab-status connected"></div>
+                    <span>${acessoData.tipo} - ${acessoData.host}</span>
+                    <span class="terminal-tab-close" onclick="event.stopPropagation(); terminalManager.fecharTerminal('${terminalId}')">✕</span>
+                `;
+                
+                tab.onclick = () => this.ativarTerminal(terminalId);
+                tabs.appendChild(tab);
+                
+                addDebug('✅ Aba criada: ' + terminalId);
+            }
+            
+            ativarTerminal(terminalId) {
+                // Ocular e desativar terminal anterior
+                if (this.activeTerminal) {
+                    const anterior = this.terminals.get(this.activeTerminal);
+                    if (anterior) {
+                        anterior.pane.classList.remove('active');
+                        anterior.pane.style.display = 'none';  // ← Ocultar visualmente
+                        const tabAnterior = document.getElementById(`tab-${this.activeTerminal}`);
+                        if (tabAnterior) tabAnterior.classList.remove('active');
+                    }
+                }
+                
+                // Ativar novo terminal
+                this.activeTerminal = terminalId;
+                const terminalObj = this.terminals.get(terminalId);
+                
+                if (terminalObj) {
+                    // Mostrar e ativar
+                    terminalObj.pane.classList.add('active');
+                    terminalObj.pane.style.display = 'flex';  // ← Mostrar visualmente
+                    
+                    const tab = document.getElementById(`tab-${terminalId}`);
+                    if (tab) tab.classList.add('active');
+                    
+                    // Fazer fit e focar
+                    setTimeout(() => {
+                        try {
+                            terminalObj.fitAddon.fit();
+                            addDebug(`✅ Terminal ${terminalId} dimensionado e focado`);
+                        } catch (e) {
+                            addDebug('⚠️ Erro ao fazer fit: ' + e.message);
+                        }
+                        terminalObj.terminal.focus();
+                    }, 50);
+                    
+                    addDebug(`👁️ Terminal ativado: ${terminalId}`);
+                }
+            }
+            
+            conectarWebSocket(terminalId) {
+                const terminalObj = this.terminals.get(terminalId);
+                if (!terminalObj) return;
+                
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
+                
+                addDebug('🔌 Conectando WebSocket: ' + wsUrl);
+                
+                try {
+                    terminalObj.socket = new WebSocket(wsUrl);
+                    
+                    terminalObj.socket.onopen = () => {
+                        addDebug('✅ WebSocket conectado');
+                        terminalObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
+                        terminalObj.wsRetries = 0;
+                        
+                        terminalObj.socket.send(JSON.stringify({
+                            action: 'connect',
+                            acesso_id: terminalObj.acesso.id
+                        }));
+                        
+                        addDebug('📤 Enviado: action=connect, acesso_id=' + terminalObj.acesso.id);
+                    };
+                    
+                    terminalObj.socket.onmessage = (e) => {
+                        const data = JSON.parse(e.data);
+                        
+                        if (data.type === 'connected') {
+                            terminalObj.connected = true;
+                            const tab = document.getElementById(`tab-${terminalId}`);
+                            if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
+                            
+                            terminalObj.terminal.writeln('\x1b[1;32m✓ ' + data.message + '\x1b[0m\n');
+                            addDebug('✅ Conectado: ' + data.message);
+                            
+                        } else if (data.type === 'output' && data.data) {
+                            // ✅ ESCREVER OUTPUT NO XTERM COM COLORIZAÇÃO
+                            const colorizedData = colorizeOutput(data.data);
+                            terminalObj.terminal.write(colorizedData);
+                            
+                        } else if (data.type === 'error') {
+                            terminalObj.connected = false;
+                            terminalObj.terminal.writeln('\x1b[1;31m✕ ERRO: ' + data.message + '\x1b[0m\n');
+                            addDebug('❌ Erro: ' + data.message);
+                        }
+                    };
+                    
+                    terminalObj.socket.onerror = (error) => {
+                        addDebug('❌ WebSocket erro');
+                        terminalObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
+                    };
+                    
+                    terminalObj.socket.onclose = () => {
+                        addDebug('🔌 WebSocket fechado');
+                        terminalObj.connected = false;
+                        
+                        if (terminalObj.wsRetries < this.maxRetries) {
+                            terminalObj.wsRetries++;
+                            addDebug(`🔄 Reconectando (${terminalObj.wsRetries}/${this.maxRetries})...`);
+                            setTimeout(() => this.conectarWebSocket(terminalId), this.retryDelay);
+                        }
+                    };
+                    
+                } catch (e) {
+                    addDebug('❌ Erro ao criar WebSocket: ' + e.message);
+                }
+            }
+            
+            fecharTerminal(terminalId) {
+                const terminalObj = this.terminals.get(terminalId);
+                if (!terminalObj) return;
+                
+                if (terminalObj.socket) {
+                    terminalObj.socket.close();
+                }
+                
+                terminalObj.terminal.dispose();
+                terminalObj.pane.remove();
+                const tab = document.getElementById(`tab-${terminalId}`);
+                if (tab) tab.remove();
+                
+                this.terminals.delete(terminalId);
+                
+                if (this.activeTerminal === terminalId) {
+                    const proximoId = Array.from(this.terminals.keys())[0];
+                    if (proximoId) {
+                        this.ativarTerminal(proximoId);
+                    } else {
+                        this.activeTerminal = null;
+                    }
+                }
+                
+                addDebug('🔴 Terminal fechado: ' + terminalId);
+            }
+            
+            fecharTodos() {
+                Array.from(this.terminals.keys()).forEach(id => {
+                    this.fecharTerminal(id);
+                });
+            }
+            
+            limparTerminaisDesconectados() {
+                // Implementação...
+            }
+        }
+        
+        // Inicializar
+        const terminalManager = new TerminalManager();
+        
+        function limparTela() {
+            if (terminalManager.activeTerminal) {
+                const terminalObj = terminalManager.terminals.get(terminalManager.activeTerminal);
+                if (terminalObj) {
+                    terminalObj.terminal.clear();
+                    addDebug('🧹 Tela do terminal ' + terminalManager.activeTerminal + ' foi limpa');
+                }
+            }
+        }
+        
+        function fecharTodosTerminais() {
+            terminalManager.fecharTodos();
+        }
+        
+        // Resize
+        window.addEventListener('resize', () => {
+            if (terminalManager.activeTerminal) {
+                const terminalObj = terminalManager.terminals.get(terminalManager.activeTerminal);
+                if (terminalObj) {
+                    terminalObj.fitAddon.fit();
+                }
+            }
+        });
+        
+        addDebug('🚀 Terminal SSH Múltiplo carregado');
+    </script>
+</body>
+</html>

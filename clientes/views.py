@@ -1,4 +1,5 @@
 from django.shortcuts import render,redirect, get_object_or_404
+from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 import threading
 from django.contrib.auth.decorators import login_required
@@ -2170,3 +2171,8 @@ def buscar_templates_backup(request):
             'descricao': t.descricao or ''
         } for t in templates]
     })
+
+@require_http_methods(["GET"])
+def terminal_page(request):
+    """Renderiza a página de terminal SSH múltiplo"""
+    return render(request, 'terminal.html')

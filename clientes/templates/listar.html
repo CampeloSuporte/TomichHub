@@ -116,7 +116,7 @@
                                     {% endif %}
                                         
                                         <button class="icon-btn btn-sm"><i class="fas fa-link"></i></button>
-                                        <button class="icon-btn btn-sm" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-code"></i></button>
+                                        <button class="icon-btn btn-sm" title="Acessar Terminal" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-code"></i></button>
                                          {% if acesso.backup_habilitado %}
                                         <button class="icon-btn btn-sm backup-btn" 
                                                 onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')" 
@@ -1024,12 +1024,12 @@ function toggleTunelStatus(proxyId) {
 }
 </script>
 
+<script src="{% static 'js/terminal_tab_manager.js' %}"></script>
 
-<script src="{% static 'js/acessar_equipamento.js' %}"></script>
 
 <script src="{% static 'js/main.js' %}"></script>
 <script src="{% static 'js/listar_acesso.js' %}"></script>
-{% include 'modal_ssh_terminal.html' %}
+
 
 
 <script>
@@ -2193,13 +2193,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 
-// ============================================
-// FUNÇÃO PARA ACESSAR EQUIPAMENTOS
-// ============================================
-
-// ============================================
-// FUNÇÕES PARA TÚNEIS SSH (para a aba Túneis)
-// ============================================
 
 function abrirModalCadastrarTunel() {
     document.getElementById('modalCadastrarTunel').style.display = 'flex';
@@ -2409,200 +2402,6 @@ function abrirModalUpload() {
 // ============================================
 // FUNÇÃO PARA ABRIR TERMINAL SSH
 // ============================================
-
-function abrirTerminalSSH(acessoId, host, porta, tipo) {
-    console.log('🔥 Abrindo terminal SSH para:', acessoId, host, porta, tipo);
-    
-    // Verificar se o modal existe
-    const modal = document.getElementById('modalSSHTerminal');
-    if (!modal) {
-        console.error('❌ Modal SSH Terminal não encontrado!');
-        showError('ERRO', 'Modal de terminal SSH não está disponível', 5000);
-        return;
-    }
-    
-    // Definir informações do acesso no modal
-    const sshHostInfo = document.getElementById('ssh-host-info');
-    const sshAcessoId = document.getElementById('ssh-acesso-id');
-    const terminalOutput = document.getElementById('terminal-output');
-    
-    if (sshHostInfo) {
-        sshHostInfo.textContent = `${tipo} - ${host}:${porta}`;
-    }
-    
-    if (sshAcessoId) {
-        sshAcessoId.value = acessoId;
-    }
-    
-    // Limpar terminal anterior
-    if (terminalOutput) {
-        terminalOutput.innerHTML = '<div class="terminal-welcome">🔌 Conectando ao servidor SSH...</div>';
-    }
-    
-    // Abrir o modal
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    
-    console.log('✅ Modal aberto com sucesso!');
-    
-    // Focar no input do terminal
-    setTimeout(() => {
-        const terminalInput = document.getElementById('terminal-input');
-        if (terminalInput) {
-            terminalInput.focus();
-        }
-    }, 300);
-    
-    // Iniciar conexão WebSocket
-    iniciarConexaoSSH(acessoId);
-}
-
-function fecharTerminalSSH() {
-    const modal = document.getElementById('modalSSHTerminal');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-    
-    // Fechar conexão WebSocket se existir
-    if (window.sshWebSocket && window.sshWebSocket.readyState === WebSocket.OPEN) {
-        window.sshWebSocket.close();
-    }
-    
-    // Limpar terminal
-    const terminalOutput = document.getElementById('terminal-output');
-    if (terminalOutput) {
-        terminalOutput.innerHTML = '';
-    }
-}
-
-let sshWebSocket = null;
-
-function iniciarConexaoSSH(acessoId) {
-    console.log('📡 Iniciando conexão SSH para acesso ID:', acessoId);
-    
-    // Fechar conexão anterior se existir
-    if (sshWebSocket && sshWebSocket.readyState === WebSocket.OPEN) {
-        console.log('⚠️ Fechando conexão anterior...');
-        sshWebSocket.close();
-    }
-    
-    // Determinar protocolo WebSocket (ws ou wss)
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
-    
-    console.log('🔗 URL WebSocket:', wsUrl);
-    
-    try {
-        sshWebSocket = new WebSocket(wsUrl);
-        
-        sshWebSocket.onopen = function(e) {
-            console.log('✅ WebSocket conectado com sucesso!');
-            adicionarSaidaTerminal('Sistema: WebSocket conectado\n', 'info');
-            
-            // Enviar comando de conexão
-            const payload = {
-                action: 'connect',
-                acesso_id: acessoId
-            };
-            console.log('📤 Enviando comando de conexão:', payload);
-            sshWebSocket.send(JSON.stringify(payload));
-        };
-        
-        sshWebSocket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            console.log('📨 Mensagem recebida:', data);
-            
-            switch(data.type) {
-                case 'connected':
-                    adicionarSaidaTerminal(data.message + '\n', 'success');
-                    break;
-                case 'output':
-                    adicionarSaidaTerminal(data.data, 'output');
-                    break;
-                case 'error':
-                    adicionarSaidaTerminal('ERRO: ' + data.message + '\n', 'error');
-                    break;
-                case 'info':
-                    adicionarSaidaTerminal('INFO: ' + data.message + '\n', 'info');
-                    break;
-            }
-        };
-        
-        sshWebSocket.onerror = function(error) {
-            console.error('❌ Erro WebSocket:', error);
-            adicionarSaidaTerminal('ERRO: Falha na conexão WebSocket\n', 'error');
-        };
-        
-        sshWebSocket.onclose = function(event) {
-            console.log('🔌 WebSocket fechado:', event);
-            if (event.wasClean) {
-                adicionarSaidaTerminal('Sistema: Conexão encerrada\n', 'info');
-            } else {
-                adicionarSaidaTerminal('ERRO: Conexão perdida\n', 'error');
-            }
-        };
-        
-        window.sshWebSocket = sshWebSocket;
-        
-    } catch (error) {
-        console.error('❌ Erro ao criar WebSocket:', error);
-        adicionarSaidaTerminal('ERRO: Não foi possível estabelecer conexão\n', 'error');
-    }
-}
-
-function adicionarSaidaTerminal(texto, tipo = 'output') {
-    const terminalOutput = document.getElementById('terminal-output');
-    if (!terminalOutput) {
-        console.error('❌ Elemento terminal-output não encontrado!');
-        return;
-    }
-    
-    const linha = document.createElement('div');
-    linha.className = `terminal-line terminal-${tipo}`;
-    linha.textContent = texto;
-    
-    terminalOutput.appendChild(linha);
-    
-    // Auto-scroll para o final
-    terminalOutput.scrollTop = terminalOutput.scrollHeight;
-}
-
-function enviarComandoSSH(event) {
-    if (event) {
-        event.preventDefault();
-    }
-    
-    const input = document.getElementById('terminal-input');
-    if (!input) return;
-    
-    const comando = input.value;
-    
-    if (!comando.trim()) return;
-    
-    // Adicionar comando ao terminal
-    adicionarSaidaTerminal('$ ' + comando + '\n', 'input');
-    
-    // Enviar comando via WebSocket
-    if (sshWebSocket && sshWebSocket.readyState === WebSocket.OPEN) {
-        sshWebSocket.send(JSON.stringify({
-            action: 'command',
-            command: comando + '\n'
-        }));
-    } else {
-        adicionarSaidaTerminal('ERRO: Não há conexão ativa\n', 'error');
-    }
-    
-    // Limpar input
-    input.value = '';
-}
-
-function limparTerminal() {
-    const terminalOutput = document.getElementById('terminal-output');
-    if (terminalOutput) {
-        terminalOutput.innerHTML = '<div class="terminal-welcome">Terminal limpo</div>';
-    }
-}
 
 // Função para copiar dados de conexão
 function copiarDadosConexao(host, porta, usuario, senha, protocolo) {
