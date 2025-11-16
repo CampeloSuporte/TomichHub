@@ -1,0 +1,978 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: RB-MONITORAMENTO
+Host: 10.255.255.250:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 16/11/2025 06:27:56
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[admin@RB-MONITORAMENTO-CSO] > /                                               [K[admin@RB-MONITORAMENTO-CSO] > /e[admin@RB-MONITORAMENTO-CSO] > /e                                              [K[admin@RB-MONITORAMENTO-CSO] > /ex[admin@RB-MONITORAMENTO-CSO] > /ex                                             [K[admin@RB-MONITORAMENTO-CSO] > /exp[admin@RB-MONITORAMENTO-CSO] > /exp                                            [K[admin@RB-MONITORAMENTO-CSO] > /expo[admin@RB-MONITORAMENTO-CSO] > /expo                                           [K[admin@RB-MONITORAMENTO-CSO] > /expor[admin@RB-MONITORAMENTO-CSO] > /expor                                          [K[admin@RB-MONITORAMENTO-CSO] > /export[admin@RB-MONITORAMENTO-CSO] > /export                                         [K[admin@RB-MONITORAMENTO-CSO] > /export [admin@RB-MONITORAMENTO-CSO] > /export                                         [K[admin@RB-MONITORAMENTO-CSO] > /export t[admin@RB-MONITORAMENTO-CSO] > /export t                                       [K[admin@RB-MONITORAMENTO-CSO] > /export te[admin@RB-MONITORAMENTO-CSO] > /export te                                      [K[admin@RB-MONITORAMENTO-CSO] > /export ter[admin@RB-MONITORAMENTO-CSO] > /export ter                                     [K[admin@RB-MONITORAMENTO-CSO] > /export ters[admin@RB-MONITORAMENTO-CSO] > /export ters                                    [K[admin@RB-MONITORAMENTO-CSO] > /export terse[admin@RB-MONITORAMENTO-CSO] > /export terse                                   [K[admin@RB-MONITORAMENTO-CSO] > /export terse[admin@RB-MONITORAMENTO-CSO] > /export terse
+# nov/16/2025 06:27:51 by RouterOS 6.49.6
+# software id = GDLE-40Q8
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 84970788FAD7
+/interface bridge add name=br-acesso
+/interface bridge add name=br-hotspot
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=combo1 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full comment=******************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+*************************************************************************** name
+="combo1 " speed=10Mbps
+/interface ethernet set [ find default-name=ether6 ] comment=********************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+**************************************** name=ether-6
+/interface ethernet set [ find default-name=ether7 ] comment=********************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************* name="ether-7 "
+/interface ethernet set [ find default-name=ether1 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full comment=******************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************************** name="ether1 -AP_LAGOA-SALGAD
+A"
+/interface ethernet set [ find default-name=ether2 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full auto-negotiation=no comment=**********
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+*********************************** loop-protect=on name="ether2 " speed=100Mbps
+
+/interface ethernet set [ find default-name=ether3 ] comment=********************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+******************************************************* name=ether3-AP_AGUA_BRAN
+CA
+/interface ethernet set [ find default-name=ether4 ] comment=********************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********** name="ether4 - PTP ARENA"
+/interface ethernet set [ find default-name=ether5 ] comment=********************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+*************************************************************************** name
+=ether5-FZD.BARBOSA-AC
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-ful
+l auto-negotiation=no speed=1Gbps
+/interface vlan add interface="ether2 " name=GERENCIA-ZTE vlan-id=40
+/interface vlan add interface="combo1 " name=VLAN-22-QINQ-SITIO vlan-id=22
+/interface vlan add interface="combo1 " name=VLAN-23-QINQ-MARI vlan-id=23
+/interface vlan add interface="combo1 " name=VLAN-24-QINQ-NORDESTINA vlan-id=24
+/interface vlan add interface="combo1 " name=VLAN-25-OLT-SDG vlan-id=25
+/interface vlan add interface="combo1 " name=VLAN-26-APS-SDG vlan-id=26
+/interface vlan add interface="combo1 " name=VLAN-27-CLIENTES-OLT-JACU vlan-id=27
+
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-40-GR-OLT-SITIO vlan-i
+d=40
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-60-CAMERA-NDT vla
+n-id=60
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-100-REDE-POP-TOCA
+S vlan-id=100
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-101-REDE-LAGE-DEN
+TRO-POP-MITONHO vlan-id=101
+/interface vlan add interface="combo1 " name=VLAN-101-REDE-POP-TREADO_ZELIA vlan-
+id=101
+/interface vlan add interface="combo1 " name=VLAN-102-REDE-POP-NOVA-OLINDA-ZELIA 
+vlan-id=102
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-102-REDE-POP-UMBU
+RANA vlan-id=102
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-103-REDE-POP-MITO
+NHO vlan-id=103
+/interface vlan add interface="combo1 " name=VLAN-103-REDE-POP-NOVO-HORIZONTE vla
+n-id=103
+/interface vlan add interface="combo1 " name=VLAN-104-REDE-APS-POP-ZELIA vlan-id=
+104
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-104-REDE-CALDEIRO
+ES-POP-MITONHO vlan-id=104
+/interface vlan add interface="combo1 " name=VLAN-105-BARRAGEM-POP-LARANJEIRA vla
+n-id=105
+/interface vlan add interface="combo1 " name=VLAN-106-MAE-CHICA-POP-LARANJEIRA vl
+an-id=106
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-106-REDE-POP-TRIN
+DADE vlan-id=106
+/interface vlan add interface="combo1 " name=VLAN-107-APS-POP-LARANJEIRA vlan-id=
+107
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-107-REDE-POP-JACU
+ vlan-id=107
+/interface vlan add interface="combo1 " name=VLAN-108-PAINEL-ROCKET-POP-LARANJEIR
+A vlan-id=108
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-108-REDE-POP-COST
+A vlan-id=108
+/interface vlan add interface="combo1 " name=VLAN-109-CURRALINHO-POP-LARANJEIRA v
+lan-id=109
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-109-REDE-POP-LAGO
+A-DOS-BOIS vlan-id=109
+/interface vlan add interface="combo1 " name=VLAN-110-POWERBEAM-POP-LARANJEIRA vl
+an-id=110
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-110-REDE-POP-CRUZ
+ vlan-id=110
+/interface vlan add disabled=yes interface="combo1 " name=VLAN-111-PEDRA-DGUA-POP
+-LARANJEIRA vlan-id=111
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-111-REDE-POP-SALI
+NAS vlan-id=111
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-112-REDE-POP-GAME
+LEIRA-NDT vlan-id=112
+/interface vlan add interface="combo1 " name=VLAN-112-RIO-SECO-POP-LARANJEIRA vla
+n-id=112
+/interface vlan add interface="combo1 " name=VLAN-113-CLIENTES-OLT-LARANJEIRA vla
+n-id=113
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-113-REDE-POP-COST
+A-NDT vlan-id=113
+/interface vlan add interface="combo1 " name=VLAN-114-LARANJEIRA vlan-id=114
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-114-REDE-POP-PALH
+A-NDT vlan-id=114
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-115-REDE-POP-GARR
+IDA-NDT vlan-id=115
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-116-POP-AUGUSTO-R
+IO_SECO vlan-id=116
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-200-SANGRIA-ANGICO vla
+n-id=200
+/interface vlan add interface="combo1 " name=VLAN-303-OLT-ALTO-LINDO vlan-id=303
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-317 vlan-id=317
+/interface vlan add interface="combo1 " name=VLAN-317-DHCP vlan-id=317
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-317-DHCP-NDT vlan
+-id=317
+/interface vlan add interface=sfp-sfpplus1 name=VLAN-317-DHCP-OUT vlan-id=317
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-1001-GAMELEIRA vlan-id
+=1001
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-1003-SITIO vlan-id=100
+3
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-1005-TANQUE vlan-id=10
+05
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-1006-SITIO-DO-FELIX vl
+an-id=1006
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-1007-SITIO-DO-FELIX vl
+an-id=1007
+/interface vlan add interface=VLAN-22-QINQ-SITIO name=VLAN-1008 vlan-id=1008
+/interface vlan add interface="combo1 " name=VLAN-1601-HOTPOST vlan-id=1601
+/interface vlan add interface=VLAN-24-QINQ-NORDESTINA name=VLAN-1601-HOTSPOT-NDT 
+vlan-id=1601
+/interface vlan add interface=sfp-sfpplus1 name=VLAN-1601-HOTSPOT-OUT vlan-id=160
+1
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=VLAN-23-QINQ-MARI loop-protect=o
+n name=VLAN-2031-GR-OLT-MARI vlan-id=2031
+/interface vlan add interface="combo1 " name=VLAN-GR-OLT-JENIPAPO vlan-id=300
+/interface vlan add interface="combo1 " name=VLAN36-OSPF-SDG vlan-id=36
+/interface vlan add interface="combo1 " name=VLAN2019_PE vlan-id=2019
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+******* interface=sfp-sfpplus1 name=VLAN_10_POPULAR vlan-id=10
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 loop-protect=on nam
+e=VLAN_201-POPS-LGA-EUGENIO-ASSENTAMENTO vlan-id=201
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 loop-protect=on nam
+e=VLAN_202_SANGRIA_CHINA-CALDEIRAOZINHO vlan-id=202
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 loop-protect=on nam
+e=VLAN_203_POP-LGOA_SERTAO vlan-id=203
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************** interface=sfp-sfpplus1 name=VLAN_204_POP-RUA_SANTO_ANTONI
+O_2_AP vlan-id=204
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 name=VLAN_205_POP-B
+AIRRO-POPULARES-CSO vlan-id=205
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+******* interface=sfp-sfpplus1 name=VLAN_206_PCA-RENIGIO vlan-id=206
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 name="VLAN_302 - FA
+ZENDA CAIX\C3O" vlan-id=302
+/interface vlan add interface="combo1 " name=VLAN_302-JENIPAPO vlan-id=302
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 name=VLAN_303_JATOB
+A vlan-id=303
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 name=VLAN_304_EVENT
+O vlan-id=304
+/interface vlan add comment=*****************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+********************************************************************************
+************************************* interface=sfp-sfpplus1 loop-protect=on nam
+e=VLAN_402_PRAXEDES vlan-id=402
+/interface vlan add interface=VLAN-23-QINQ-MARI loop-protect=on name=VLAN_2002-PO
+N2-MARI vlan-id=2002
+/interface vlan add interface="combo1 " name="VLAN_2025_PTP_LAGADI\C7O" vlan-id=2
+025
+/interface vlan add interface="combo1 " name=VLAN_2026_PTP_CAPOEIRA vlan-id=2026
+/interface vlan add interface="combo1 " name=VLAN_2053_IPV6 vlan-id=2053
+/interface vlan add interface=ether-6 name=vlan27 vlan-id=27
+/interface vlan add interface="combo1 " name=vlan4000 vlan-id=4000
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip hotspot profile add hotspot-address=10.11.13.1 name=hsprof1
+/ip pool add name=Remoto-1 ranges=100.64.6.0/23
+/ip pool add name=Local-1 ranges=10.0.20.0/24,10.0.21.0/24,10.0.22.0/24
+/ip pool add name=pgcorte ranges=10.40.1.0/24
+/ip pool add name=hs-pool-16 ranges=10.11.13.2-10.11.13.254
+/ip pool add name=bloqueados ranges=10.40.5.0/24
+/ip pool add name=pool2 ranges=100.64.8.0/22
+/ip pool add name=dhcp_pool6 ranges=172.25.0.2-172.25.1.254
+/ip pool add name=dhcp_pool7 ranges=192.168.69.2-192.168.69.254
+/ip pool add name=dhcp_pool8 ranges=10.120.0.2-10.120.0.254
+/ip pool add name=dhcp_pool9 ranges=100.64.100.2-100.64.100.254
+/ip pool add name=dhcp_pool10 ranges=172.28.38.2-172.28.38.254
+/ip pool add name=dhcp_pool11 ranges=10.10.18.2-10.10.19.254
+/ip pool add name=dhcp_pool12 ranges=10.10.18.2-10.10.19.254
+/ip pool add name=dhcp_pool13 ranges=172.19.0.2-172.19.0.254
+/ip pool add name=dhcp_pool14 ranges=10.22.22.2-10.22.22.254
+/ip pool add name=dhcp_pool15 ranges=172.19.0.2-172.19.0.254
+/ip pool add name=dhcp_pool16 ranges=172.18.101.2-172.18.101.254
+/ip pool add name=dhcp_pool17 ranges=10.10.18.2-10.10.18.254
+/ip pool add name=dhcp_pool18 ranges=172.18.101.2-172.18.101.254
+/ip pool add name=dhcp_pool19 ranges=10.10.24.2-10.10.24.254
+/ip pool add name=dhcp_pool20 ranges=10.10.24.2-10.10.24.254
+/ip pool add name=CGNAT ranges=100.64.131.0/24,100.64.132.0/23
+/ip pool add name=dhcp_pool24 ranges=10.21.19.2-10.21.19.254
+/ip pool add name=dhcp_pool25 ranges=10.22.22.2-10.22.22.254
+/ip pool add name=dhcp_pool26 ranges=10.21.19.2-10.21.19.254
+/ip pool add name=dhcp_pool27 ranges=192.168.1.2-192.168.1.254
+/ip pool add name=dhcp_pool28 ranges=10.10.18.2-10.10.18.254
+/ip pool add name=dhcp_pool29 ranges=10.44.77.2-10.44.77.254
+/ip pool add name=dhcp_pool30 ranges=10.44.77.2-10.44.77.254
+/ip pool add name=dhcp_pool31 ranges=10.44.77.2-10.44.77.254
+/ip pool add name=dhcp_pool32 ranges=10.44.77.2-10.44.77.254
+/ip pool add comment="Bloqueio IXCSoft" name=pool_bloqueio ranges=10.0.50.0/24
+/ip pool add name=dhcp_pool34 ranges=172.28.40.2-172.28.40.254
+/ip pool add name=dhcp_pool35 ranges=10.200.0.1-10.200.15.254
+/ip pool add name=dhcp_pool36 ranges=10.11.12.2-10.11.12.254
+/ip pool add name=dhcp_pool37 ranges=172.30.54.2-172.30.55.254
+/ip pool add name=dhcp_pool38 ranges=10.8.9.2-10.8.9.254
+/ip pool add name=dhcp_pool39 ranges=10.10.115.2-10.10.115.254
+/ip pool add name=dhcp_pool40 ranges=10.10.17.2-10.10.17.254
+/ip pool add name=dhcp_pool41 ranges=10.8.9.2-10.8.9.254
+/ip pool add name=dhcp_pool42 ranges=10.3.3.2-10.3.3.254
+/ip pool add name=dhcp_pool43 ranges=10.3.3.2-10.3.3.254
+/ip pool add name=dhcp_pool44 ranges=172.30.30.2-172.30.30.254
+/ip pool add name=dhcp_pool45 ranges=10.11.12.2-10.11.12.254
+/ip pool add name=dhcp_pool46 ranges=10.10.28.2-10.10.28.254
+/ip pool add name=dhcp_pool47 ranges=192.168.10.2
+/ip pool add name=dhcp_pool48 ranges=192.168.10.2
+/ip pool add name=dhcp_pool49 ranges=192.168.10.2-192.168.10.14
+/ip pool add name=dhcp_pool50 ranges=192.168.10.2
+/ip pool add name=dhcp_pool51 ranges=192.168.10.2
+/ip pool add name=dhcp_pool52 ranges=100.69.1.2-100.69.1.254
+/ip pool add name=dhcp_pool54 ranges=172.20.3.2-172.20.3.254
+/ip pool add name=dhcp_pool55 ranges=172.20.3.2-172.20.3.254
+/ip pool add name=dhcp_pool56 ranges=10.7.7.2-10.7.7.254
+/ip pool add name=dhcp_pool57 ranges=10.10.156.2-10.10.156.254
+/ip pool add name=dhcp_pool58 ranges=172.20.3.2-172.20.3.254
+/ip pool add name=dhcp_pool59 ranges=10.10.18.2-10.10.18.254
+/ip pool add name=dhcp_pool60 ranges=10.209.208.2-10.209.209.254
+/ip dhcp-server add address-pool=dhcp_pool58 disabled=no interface=VLAN-60-CAMERA
+-NDT name=dhcp1
+/ip hotspot add address-pool=hs-pool-16 interface="ether4 - PTP ARENA" name=hotsp
+ot1 profile=hsprof1
+/ipv6 pool add name=PD-CLIENTES-V6 prefix=2804:80e0:10c0::/44 prefix-length=56
+/ipv6 pool add name=delegated-block-v6 prefix=2001:db8:1000::/48 prefix-length=64
+
+/ipv6 pool add name=pool-block-v6 prefix=2001:db8:2000::/48 prefix-length=64
+/ipv6 pool add name=TL-WAN-CLINTES prefix=2804:80e0:10d0::/44 prefix-length=64
+/ipv6 pool add name=pool_aviso_bloqueio_ipv6 prefix=2001:db8:3003::/48 prefix-len
+gth=64
+/port set 0 baud-rate=115200
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PD-CLIENTES-V6 dns-server=172.
+18.234.105,208.67.220.220 local-address=10.255.255.250 name=INFORLIMA on-up="{:d
+elay delay-time=14s;  :local name=\"ii\" value=\"0\";  :local name=\"tt\" value=
+\"60\";   :local name=\"InterfacePppoe\" value=\"0\";   :local name=\"Ipv6Wan\" 
+value=\"0\";   :local name=\"Ipv6Lan\" value=\"0\";   while (\$ii < \$tt) do={  
+\t:if ((\$InterfacePppoe != \"0\") && (\$Ipv6Wan != \"0\") && (\$Ipv6Lan != \"0\
+")) do={    :set name=\$ii value=(\$ii +300);   :log warning message=\"Coleta de
+ IPv6 IXCSoft Usuario PPPoE: \$InterfacePppoe IPv6 WAN: \$Ipv6Wan  IPv6 LAN: \$I
+pv6Lan\";\t   /tool fetch url=\"https://172.18.234.35:443/api-module/router-nas/
+collect-ipv6-accounting\" http-data=\"hostname=BNG_REDE_MISTA&ipNas=10.255.255.2
+50&key=7&usuario_pppoe=\$InterfacePppoe&ipv6_wan=\$Ipv6Wan&ipv6_lan=\$Ipv6Lan\" 
+http-method=post;   \t} else={    :set name=\"InterfacePppoe\" value=[/interface
+ get \$interface name];   :set name=\"Ipv6Wan\" value=[/ipv6 nd prefix get value
+-name=prefix [find interface=\$InterfacePppoe]];    :set name=\"Ipv6Lan\" value=
+[/ipv6 dhcp-server binding get value-name=address [find server=\$InterfacePppoe]
+];     :log info message=\"IXCProvedor: Coleta de dados IPV6 em andamento...\"; 
+ };  \t:set name=\$ii value=(\$ii +1);  :delay delay-time=1s;  }  }" remote-addr
+ess=CGNAT remote-ipv6-prefix-pool=TL-WAN-CLINTES use-compression=no use-encrypti
+on=no use-mpls=no use-upnp=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_40MB only-one=yes rate-limit="40000k/45000k 0/0 0/0 0/0 8 0/0" remote
+-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=SEM-TERRA01 only-one=yes rate-limit="5000k/5000k 0/0 0/0 0/0 8 0/0" remote-
+address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_10MB_INTERIOR only-one=yes rate-limit="100000k/105000k 0/0 0/0 0/0 8 
+0/0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=10Megas_Cidade only-one=yes rate-limit="10000k/10000k 0/0 0/0 0/0 8 0/0" re
+mote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=10M_Povoado only-one=yes rate-limit="6000k/10000k 0/0 0/0 0/0 8 0/0" remote
+-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=15Megas_Cidade only-one=yes rate-limit="7000k/15000k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=3M-Prom-Povoado only-one=yes rate-limit="3000k/3200k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=5M-Prom-Finan only-one=yes rate-limit="5000k/5200k 0k/0k 0k/0k 0/0 4 5000k/
+5000k" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=7Megas-povoado only-one=yes rate-limit="7000k/7000k 0/0 0/0 0/0 8 0/0" remo
+te-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_100MB only-one=yes rate-limit="100000k/105000k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_12MB_INTERIOR only-one=yes rate-limit="12000k/13000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_150MB only-one=yes rate-limit="75000k/150000k 0/0 0/0 0/0 8 0/0" remo
+te-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_200MB only-one=yes rate-limit="150000k/200000k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_20MB_INTERIOR only-one=yes rate-limit="20000k/23000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_25MB_INTERIOR only-one=yes rate-limit="25000k/27000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_60MB_PROMO only-one=yes rate-limit="60000k/65000k 0/0 0/0 0/0 8 0/0" 
+remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_80MB only-one=yes rate-limit="80000k/83000k 0/0 0/0 0/0 8 0/0" remote
+-address=CGNAT use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_80MB_INTERIOR only-one=yes rate-limit="80000k/85000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_90MEGAS only-one=yes rate-limit="90000k/93000k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=PLANO_NDT3_70 only-one=yes rate-limit="3000k/5000k 0/0 0/0 0/0 8 0/0" remot
+e-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=SEM-TERRA02-80 only-one=yes rate-limit="3000k/4000k 0/0 0/0 0/0 8 0/0" remo
+te-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=SEM-TERRA03-90 only-one=yes rate-limit="4000k/5000k 0/0 0/0 0/0 8 0/0" remo
+te-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=Bloqueio-IPV6 only-one=yes rate-limit="0k/0k 0/0 0/0 0/0 8 0/0" remote-addr
+ess=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_300MB only-one=yes rate-limit="300000k/300000k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_35MB only-one=yes rate-limit="35000k/37000k 0/0 0/0 0/0 8 0/0" remote
+-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_15_MEGAS only-one=yes rate-limit="15000k/16000k 0/0 0/0 0/0 8 0/0" re
+mote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_7MB-INTERIOR only-one=yes rate-limit="7000k/8000k 0/0 0/0 0/0 8 0/0" 
+remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_40MB_INTERIOR only-one=yes rate-limit="40000k/45000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_25M-INTERIOR only-one=yes rate-limit="27000k/27000k 0/0 0/0 0/0 8 0/0
+" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_40MEGAS_INTERIOR-NOVO only-one=yes rate-limit="45000k/45000k 0/0 0/0 
+0/0 8 0/0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_60MB_INTERIOR only-one=yes rate-limit="60000k/65000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_60MB_NOVO only-one=yes rate-limit="70000k/70000k 0/0 0/0 0/0 8 0/0" r
+emote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_150MB_NOVO only-one=yes rate-limit="160000k/160000k 0/0 0/0 0/0 8 0/0
+" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_200MB_NOVO only-one=yes rate-limit="210000k/210000k 0/0 0/0 0/0 8 0/0
+" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_300MB_NOVO only-one=yes rate-limit="310000k/310000k 0/0 0/0 0/0 8 0/0
+" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_60MB only-one=yes rate-limit="60000k/65000k 0/0 0/0 0/0 8 0/0" remote
+-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=7MB_Nova_Olinda only-one=yes rate-limit="4000k/7000k 0/0 0/0 0/0 8 0/0" rem
+ote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name="10MB_Nova_Olinda\t" only-one=yes rate-limit="6000k/10000k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=PLANO_NDT-2_Megas4 only-one=yes rate-limit="2000k/4000k 0/0 0/0 0/0 8 0/0" 
+remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=10_MB_RIO only-one=yes rate-limit="5000k/10000k 0/0 0/0 0/0 8 0/0" remote-a
+ddress=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=5Megas_Povoado only-one=yes rate-limit="3000k/5000k 0/0 0/0 0/0 8 0/0" remo
+te-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=FIBRA_100MB_NOVO only-one=yes rate-limit="110000k/110000k 0/0 0/0 0/0 8 0/0
+" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=4MEGAS_50_ANTIGO only-one=yes rate-limit="3000k/4000k 0/0 0/0 0/0 8 0/0" re
+mote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=4MB_DIFICIL_ACESSO_70 only-one=yes rate-limit="4000k/4200k 0/0 0/0 0/0 8 0/
+0" remote-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=5MB_80_DIFICIL_ACESSO only-one=yes rate-limit="4000k/5000k 0/0 0/0 0/0 1 0/
+0" remote-address=CGNAT use-encryption=yes use-mpls=no
+/queue simple add comment="10M PARA TESTE DURANTE 2 DIAS 15.03.2024 A 17.03.2024"
+ disabled=yes max-limit=10M/10M name="Pedro Ferreira Borges" target=100.64.131.7
+0/32
+/routing bgp instance set default disabled=yes
+/routing ospf instance set [ find default=yes ] redistribute-connected=as-type-1 
+redistribute-static=as-type-1 router-id=10.255.255.250
+/snmp community set [ find default=yes ] disabled=yes
+/snmp community add addresses=::/0 name=conectaisp-ro
+/system logging action add bsd-syslog=yes name=syslong remote=172.18.234.129 remo
+te-port=1514 syslog-facility=syslog target=remote
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge=br-acesso interface=VLAN-317-DHCP
+/interface bridge port add bridge=br-acesso interface=VLAN-317-DHCP-OUT
+/interface bridge port add bridge=br-hotspot interface=VLAN-1601-HOTPOST
+/interface bridge port add bridge=br-hotspot interface=VLAN-1601-HOTSPOT-OUT
+/interface bridge port add bridge=br-hotspot interface=VLAN-1601-HOTSPOT-NDT
+/interface bridge port add bridge=br-acesso interface=VLAN-317-DHCP-NDT
+/interface bridge port add bridge=br-acesso interface=VLAN-1001-GAMELEIRA
+/ip firewall connection tracking set enabled=yes
+/ip neighbor discovery-settings set discover-interface-list=all
+/ip settings set rp-filter=strict tcp-syncookies=yes
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e="combo1 " keepalive-timeout=30 one-session-per-host=yes service-name=PPPOE_POR
+TA6
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=ether5-FZD.BARBOSA-AC keepalive-timeout=30 one-session-per-host=yes service-na
+me=PPPOE_PORTA5
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e="ether4 - PTP ARENA" keepalive-timeout=30 one-session-per-host=yes service-nam
+e=PPPOE_PORTA4
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=ether3-AP_AGUA_BRANCA keepalive-timeout=30 one-session-per-host=yes service-na
+me=PPPOE_PORTA3
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=VLAN_10_POPULAR one-session-per-host=yes service-name=VLAN_10_POPULAR
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=VLAN_402_PRAXEDES keepalive-timeout=30 one-session-per-host=yes service-name=P
+PPOE_VLAN_402_PRAXEDES
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e="VLAN_302 - FAZENDA CAIX\C3O" keepalive-timeout=30 one-session-per-host=yes se
+rvice-name=PPPOE_VLAN_302-RENIGIO
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e="VLAN_302 - FAZENDA CAIX\C3O" keepalive-timeout=30 one-session-per-host=yes se
+rvice-name=PPPOE_302-FAZENDA-CAIXAO
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e="ether1 -AP_LAGOA-SALGADA" keepalive-timeout=30 one-session-per-host=yes servi
+ce-name=PPPOE_ETHER1
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=VLAN-26-APS-SDG one-session-per-host=yes service-name=PPPOE_VLAN-406_SERTAO
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=VLAN-60-CAMERA-NDT keepalive-timeout=30 one-session-per-host=yes service-name=
+PPPOE_VLAN_2002-PON2-MARI
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=VLAN-200-SANGRIA-ANGICO max-mru=1492 max-mtu=1492 one-session-per-host=yes ser
+vice-name=PPPOE
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=ether-6 max-mru=1492 max-mtu=1492 one-session-per-host=yes service-name=servic
+e1
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interfac
+e=vlan27 max-mru=1492 max-mtu=1492 one-session-per-host=yes service-name=service
+2
+/ip address add address=172.28.32.1/24 interface=ether5-FZD.BARBOSA-AC network=17
+2.28.32.0
+/ip address add address=172.28.33.1/24 interface=ether-6 network=172.28.33.0
+/ip address add address=10.255.255.250 interface=loopback network=10.255.255.250
+/ip address add address=172.20.0.22/30 interface=VLAN2019_PE network=172.20.0.20
+/ip address add address=10.10.17.1/24 interface=VLAN_204_POP-RUA_SANTO_ANTONIO_2_
+AP network=10.10.17.0
+/ip address add address=10.15.15.1/24 interface=ether3-AP_AGUA_BRANCA network=10.
+15.15.0
+/ip address add address=10.21.19.1/24 interface=VLAN_2026_PTP_CAPOEIRA network=10
+.21.19.0
+/ip address add address=10.10.21.1/24 interface=VLAN_203_POP-LGOA_SERTAO network=
+10.10.21.0
+/ip address add address=10.4.4.1/24 interface="ether1 -AP_LAGOA-SALGADA" network=
+10.4.4.0
+/ip address add address=172.28.41.1/24 interface="ether4 - PTP ARENA" network=172
+.28.41.0
+/ip address add address=10.10.18.1/24 interface=VLAN_202_SANGRIA_CHINA-CALDEIRAOZ
+INHO network=10.10.18.0
+/ip address add address=10.22.22.1/24 interface=VLAN_202_SANGRIA_CHINA-CALDEIRAOZ
+INHO network=10.22.22.0
+/ip address add address=10.15.19.1/24 interface=VLAN_204_POP-RUA_SANTO_ANTONIO_2_
+AP network=10.15.19.0
+/ip address add address=172.28.38.1/24 interface=VLAN_206_PCA-RENIGIO network=172
+.28.38.0
+/ip address add address=10.4.5.1/24 interface=VLAN_205_POP-BAIRRO-POPULARES-CSO n
+etwork=10.4.5.0
+/ip address add address=10.15.17.1/24 interface=VLAN_2026_PTP_CAPOEIRA network=10
+.15.17.0
+/ip address add address=10.10.24.1/24 interface=VLAN_202_SANGRIA_CHINA-CALDEIRAOZ
+INHO network=10.10.24.0
+/ip address add address=10.23.22.1/24 interface="VLAN_302 - FAZENDA CAIX\C3O" net
+work=10.23.22.0
+/ip address add address=10.20.1.1/24 interface=VLAN_2002-PON2-MARI network=10.20.
+1.0
+/ip address add address=10.11.18.1/24 interface=VLAN_2002-PON2-MARI network=10.11
+.18.0
+/ip address add address=172.16.100.17/30 comment=GERENCIA-OLT-JENIPAPO interface=
+VLAN-GR-OLT-JENIPAPO network=172.16.100.16
+/ip address add address=10.15.16.1/24 interface=VLAN-1001-GAMELEIRA network=10.15
+.16.0
+/ip address add address=10.19.18.1/24 interface=VLAN-1001-GAMELEIRA network=10.19
+.18.0
+/ip address add address=10.11.14.1/24 interface=VLAN-1001-GAMELEIRA network=10.11
+.14.0
+/ip address add address=10.11.12.1/24 interface=VLAN-1005-TANQUE network=10.11.12
+.0
+/ip address add address=172.28.40.1/24 interface=VLAN-1006-SITIO-DO-FELIX network
+=172.28.40.0
+/ip address add address=172.16.100.1/30 comment=GERENCIA-OLT-SITIO-DAS-FLORES int
+erface=VLAN-40-GR-OLT-SITIO network=172.16.100.0
+/ip address add address=10.12.12.1/24 interface=VLAN-1001-GAMELEIRA network=10.12
+.12.0
+/ip address add address=10.0.2.1/24 interface=VLAN-1001-GAMELEIRA network=10.0.2.
+0
+/ip address add address=10.11.13.1/24 interface=VLAN-200-SANGRIA-ANGICO network=1
+0.11.13.0
+/ip address add address=10.19.17.1/24 interface=VLAN-200-SANGRIA-ANGICO network=1
+0.19.17.0
+/ip address add address=10.44.77.1/24 interface=VLAN-1601-HOTSPOT-NDT network=10.
+44.77.0
+/ip address add address=172.16.100.13/30 comment=GERENCIA-OLT-MARI interface=VLAN
+-2031-GR-OLT-MARI network=172.16.100.12
+/ip address add address=10.200.0.0/20 interface=VLAN-1008 network=10.200.0.0
+/ip address add address=10.10.14.1/24 interface=VLAN-112-REDE-POP-GAMELEIRA-NDT n
+etwork=10.10.14.0
+/ip address add address=10.10.15.1/24 interface=VLAN-101-REDE-LAGE-DENTRO-POP-MIT
+ONHO network=10.10.15.0
+/ip address add address=10.10.16.1/24 interface=VLAN-113-REDE-POP-COSTA-NDT netwo
+rk=10.10.16.0
+/ip address add address=10.11.20.1/24 interface=VLAN-114-REDE-POP-PALHA-NDT netwo
+rk=10.11.20.0
+/ip address add address=10.14.14.1/24 interface=VLAN-111-REDE-POP-SALINAS network
+=10.14.14.0
+/ip address add address=10.10.20.1/24 interface=VLAN-115-REDE-POP-GARRIDA-NDT net
+work=10.10.20.0
+/ip address add address=10.9.9.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network=1
+0.9.9.0
+/ip address add address=10.10.28.1/24 interface=VLAN-113-CLIENTES-OLT-LARANJEIRA 
+network=10.10.28.0
+/ip address add address=172.21.21.1/24 interface=VLAN-100-REDE-POP-TOCAS network=
+172.21.21.0
+/ip address add address=10.10.27.1/24 interface=VLAN-115-REDE-POP-GARRIDA-NDT net
+work=10.10.27.0
+/ip address add address=10.10.35.1/24 interface=VLAN-102-REDE-POP-UMBURANA networ
+k=10.10.35.0
+/ip address add address=10.7.7.1/24 interface=VLAN-113-CLIENTES-OLT-LARANJEIRA ne
+twork=10.7.7.0
+/ip address add address=10.19.19.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network
+=10.19.19.0
+/ip address add address=10.10.13.1/24 disabled=yes interface=VLAN-27-CLIENTES-OLT
+-JACU network=10.10.13.0
+/ip address add address=10.12.13.1/24 interface=VLAN-108-REDE-POP-COSTA network=1
+0.12.13.0
+/ip address add address=10.10.11.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network
+=10.10.11.0
+/ip address add address=10.11.19.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network
+=10.11.19.0
+/ip address add address=172.17.1.1/24 interface=VLAN-109-REDE-POP-LAGOA-DOS-BOIS 
+network=172.17.1.0
+/ip address add address=172.20.3.1/24 interface=VLAN-60-CAMERA-NDT network=172.20
+.3.0
+/ip address add address=10.10.30.1/24 interface=VLAN-115-REDE-POP-GARRIDA-NDT net
+work=10.10.30.0
+/ip address add address=172.16.102.1/30 comment=SW-QUEIMADINHA-CSS interface=VLAN
+-24-QINQ-NORDESTINA network=172.16.102.0
+/ip address add address=10.64.11.1/24 interface=VLAN-115-REDE-POP-GARRIDA-NDT net
+work=10.64.11.0
+/ip address add address=10.10.9.1/24 interface=VLAN-104-REDE-APS-POP-ZELIA networ
+k=10.10.9.0
+/ip address add address=172.30.54.1/23 interface=VLAN-1005-TANQUE network=172.30.
+54.0
+/ip address add address=10.10.115.1/24 interface=VLAN-1601-HOTSPOT-NDT network=10
+.10.115.0
+/ip address add address=172.26.1.9/30 comment=PATCH-PAINEL-JACU interface=VLAN-10
+7-REDE-POP-JACU network=172.26.1.8
+/ip address add address=10.10.12.1/24 interface=VLAN-114-LARANJEIRA network=10.10
+.12.0
+/ip address add address=10.10.23.1/24 interface=VLAN-114-LARANJEIRA network=10.10
+.23.0
+/ip address add address=172.16.100.25/30 comment=GERENCIA-OLT-JACU interface=VLAN
+-27-CLIENTES-OLT-JACU network=172.16.100.24
+/ip address add address=10.11.21.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network
+=10.11.21.0
+/ip address add address=10.11.22.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network
+=10.11.22.0
+/ip address add address=10.10.36.1/24 interface=VLAN_201-POPS-LGA-EUGENIO-ASSENTA
+MENTO network=10.10.36.0
+/ip address add address=10.10.37.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network
+=10.10.37.0
+/ip address add address=10.10.8.1/24 interface=VLAN-27-CLIENTES-OLT-JACU network=
+10.10.8.0
+/ip address add address=192.168.11.1/24 interface=VLAN-27-CLIENTES-OLT-JACU netwo
+rk=192.168.11.0
+/ip address add address=10.10.39.1/24 interface=VLAN-100-REDE-POP-TOCAS network=1
+0.10.39.0
+/ip address add address=10.10.38.1/24 interface=VLAN-109-REDE-POP-LAGOA-DOS-BOIS 
+network=10.10.38.0
+/ip address add address=192.168.10.1/30 interface=VLAN_302-JENIPAPO network=192.1
+68.10.0
+/ip address add address=100.69.1.1/24 interface=VLAN_10_POPULAR network=100.69.1.
+0
+/ip address add address=192.168.0.2/24 interface=VLAN-303-OLT-ALTO-LINDO network=
+192.168.0.0
+/ip address add address=172.20.0.89/30 disabled=yes interface=VLAN36-OSPF-SDG net
+work=172.20.0.88
+/ip address add address=172.16.100.33/30 comment=GERENCIA-OLT-ALTO-LINDO interfac
+e=VLAN-303-OLT-ALTO-LINDO network=172.16.100.32
+/ip address add address=10.11.104.1/24 comment=GERENCIA-OLT-HUAWEI interface=VLAN
+-24-QINQ-NORDESTINA network=10.11.104.0
+/ip address add address=192.168.10.5/30 comment="CAMERA ALTO LINDO" interface=VLA
+N-303-OLT-ALTO-LINDO network=192.168.10.4
+/ip address add address=10.10.18.1/24 disabled=yes interface=VLAN-303-OLT-ALTO-LI
+NDO network=10.10.18.0
+/ip address add address=10.10.25.1/24 interface=VLAN-303-OLT-ALTO-LINDO network=1
+0.10.25.0
+/ip address add address=10.209.208.1/23 interface=VLAN-200-SANGRIA-ANGICO network
+=10.209.208.0
+/ip address add address=172.16.100.29/30 interface=VLAN-113-CLIENTES-OLT-LARANJEI
+RA network=172.16.100.28
+/ip address add address=10.10.26.1/24 interface=VLAN-113-CLIENTES-OLT-LARANJEIRA 
+network=10.10.26.0
+/ip address add address=10.10.22.1/24 disabled=yes interface=VLAN-100-REDE-POP-TO
+CAS network=10.10.22.0
+/ip address add address=10.10.41.1/24 interface=VLAN_302-JENIPAPO network=10.10.4
+1.0
+/ip address add address=192.168.1.1/24 disabled=yes interface=VLAN-303-OLT-ALTO-L
+INDO network=192.168.1.0
+/ip address add address=10.5.5.1/24 interface=VLAN-113-CLIENTES-OLT-LARANJEIRA ne
+twork=10.5.5.0
+/ip arp add address=10.44.77.7 interface=VLAN-22-QINQ-SITIO mac-address=10:82:3D:
+1D:DE:28
+/ip arp add address=10.8.9.196 interface=VLAN-102-REDE-POP-NOVA-OLINDA-ZELIA mac-
+address=00:27:22:0E:CE:67
+/ip dhcp-server network add address=10.3.3.0/24 gateway=10.3.3.1
+/ip dhcp-server network add address=10.7.7.0/24 gateway=10.7.7.1
+/ip dhcp-server network add address=10.8.9.0/24 gateway=10.8.9.1
+/ip dhcp-server network add address=10.10.17.0/24 gateway=10.10.17.1
+/ip dhcp-server network add address=10.10.18.0/24 gateway=10.10.18.1
+/ip dhcp-server network add address=10.10.24.0/24 gateway=10.10.24.1
+/ip dhcp-server network add address=10.10.28.0/24 gateway=10.10.28.1
+/ip dhcp-server network add address=10.10.115.0/24 gateway=10.10.115.1
+/ip dhcp-server network add address=10.10.156.0/24 gateway=10.10.156.1
+/ip dhcp-server network add address=10.11.12.0/24 gateway=10.11.12.1
+/ip dhcp-server network add address=10.21.19.0/24 gateway=10.21.19.1
+/ip dhcp-server network add address=10.22.22.0/24 gateway=10.22.22.1
+/ip dhcp-server network add address=10.44.77.0/24 gateway=10.44.77.1
+/ip dhcp-server network add address=10.200.0.0/20 gateway=10.200.0.0
+/ip dhcp-server network add address=10.209.208.0/23 gateway=10.209.208.1
+/ip dhcp-server network add address=100.69.1.0/24 gateway=100.69.1.1
+/ip dhcp-server network add address=172.18.101.0/24 gateway=172.18.101.1
+/ip dhcp-server network add address=172.20.3.0/24 gateway=172.20.3.1
+/ip dhcp-server network add address=172.28.40.0/24 gateway=172.28.40.1
+/ip dhcp-server network add address=172.30.30.0/24 gateway=172.30.30.1
+/ip dhcp-server network add address=172.30.54.0/23 gateway=172.30.54.1
+/ip dhcp-server network add address=192.168.1.0/24 gateway=192.168.1.1
+/ip dhcp-server network add address=192.168.10.0/30 gateway=192.168.10.1
+/ip dhcp-server network add address=192.168.10.0/28 gateway=192.168.10.1
+/ip dns set servers=172.18.234.105,8.8.8.8,1.1.1.1,2804:80e0:1010::5,208.67.222.2
+22,2001:4860:4860::8888
+/ip firewall address-list add address=172.18.234.35 comment="IXCProvedor endereco
+ IP do sistema" list=rede_local
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-address=!172.18.234.35 protocol=tcp src-address=10.0.50.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-address=!172.18.234.35 protocol=tcp src-address-list=aviso_bl
+oqueio
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-port=!53 protocol=udp src-address=10.0.50.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-port=!53 protocol=udp src-address-list=aviso_bloqueio
+/ip firewall nat add action=src-nat chain=srcnat dst-address=172.20.3.25 to-addre
+sses=172.20.3.1
+/ip firewall nat add action=src-nat chain=srcnat dst-address=192.168.0.50 to-addr
+esses=192.168.0.2
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de av
+iso bloqueio" dst-address=!172.18.234.35 dst-port=80 protocol=tcp src-address=10
+.0.50.0/24 to-addresses=172.18.234.35 to-ports=8082
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de av
+iso bloqueio" dst-address=!172.18.234.35 dst-port=80 protocol=tcp src-address-li
+st=aviso_bloqueio to-addresses=172.18.234.35 to-ports=8082
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes dst-address=172.20.
+0.90 to-addresses=172.20.0.89
+/ip hotspot ip-binding add address=10.11.13.0/24 type=bypassed
+/ip hotspot ip-binding add address=10.10.12.0/24 type=bypassed
+/ip hotspot user add name=manutencao password=63675@ht
+/ip route add distance=1 dst-address=10.255.255.255/32 gateway=172.20.0.21
+/ip route add distance=1 dst-address=100.64.6.0/23 type=blackhole
+/ip route add distance=1 dst-address=100.64.8.0/22 type=blackhole
+/ip route add distance=1 dst-address=100.64.131.0/24 type=blackhole
+/ip route add distance=1 dst-address=100.64.132.0/23 type=blackhole
+/ip service set telnet disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set winbox port=43828
+/ip service set api-ssl disabled=yes
+/ipv6 address add address=2804:80e0:1003::2/126 advertise=no interface=VLAN_2053_
+IPV6
+/ipv6 address add address=fc00:cafe::2/126 advertise=no interface=VLAN_2053_IPV6
+/ipv6 nd set [ find default=yes ] other-configuration=yes
+/ipv6 route add distance=1 gateway=2804:80e0:1003::1
+/mpls ldp set distribute-for-default-route=yes enabled=yes lsr-id=10.255.255.250 
+transport-address=10.255.255.250
+/mpls ldp interface add disabled=yes interface=sfp-sfpplus1
+/ppp aaa set interim-update=20m use-radius=yes
+/ppp secret add disabled=yes name=teste password=63675@ht profile=INFORLIMA servi
+ce=pppoe
+/ppp secret add name=Igor.feitosa password=53080797817 profile=INFORLIMA service=
+pppoe
+/ppp secret add disabled=yes name=Zenelda.carlos password=03748225571 profile=FIB
+RA_80MB service=pppoe
+/ppp secret add name=Jackson.l.sertao password=06141835538 profile=FIBRA_80MB ser
+vice=pppoe
+/ppp secret add name=Otica.saojorge password=39760114000175 profile=FIBRA_200MB_N
+OVO service=pppoe
+/radius add address=172.18.234.35 comment="IXCProvedor configuracao radius" secre
+t=radiusixcsoft service=ppp,hotspot,wireless,dhcp src-address=10.255.255.250 tim
+eout=3s
+/radius add address=167.172.106.53 comment="RADIUS EMERGENCIA" disabled=yes secre
+t=testing123 service=ppp timeout=3s
+/radius incoming set accept=yes
+/routing bgp network add network=100.64.6.0/23 synchronize=no
+/routing bgp network add network=172.28.32.0/24 synchronize=no
+/routing bgp network add network=10.30.29.0/24 synchronize=no
+/routing bgp network add network=10.15.16.0/24 synchronize=no
+/routing bgp network add network=172.28.33.0/24 synchronize=no
+/routing bgp network add network=172.28.43.0/24 synchronize=no
+/routing bgp network add network=10.10.17.0/24 synchronize=no
+/routing bgp network add network=10.15.15.0/24 synchronize=no
+/routing bgp peer add disabled=yes in-filter=ibgp_in name=iBGP_BORDA nexthop-choi
+ce=force-self out-filter=ibgp_out remote-address=172.20.0.21 remote-as=65530 ttl
+=default
+/routing filter add action=accept chain=ibgp_in prefix=0.0.0.0/0 prefix-length=0-
+1
+/routing filter add action=discard chain=ibgp_in prefix=0.0.0.0/0 prefix-length=1
+-128
+/routing filter add action=accept chain=ibgp_out prefix=172.16.0.0/12 prefix-leng
+th=12-30
+/routing filter add action=accept chain=ibgp_out prefix=100.64.6.0/23 prefix-leng
+th=12-30
+/routing filter add action=accept chain=ibgp_out prefix=10.15.15.0/24 prefix-leng
+th=12-30
+/routing filter add action=accept chain=ibgp_out prefix=10.15.16.0/24 prefix-leng
+th=12-30
+/routing filter add action=discard chain=ibgp_out prefix=0.0.0.0/0 prefix-length=
+0-128
+/routing filter add action=discard chain=ospf-in prefix=100.64.0.0/10 prefix-leng
+th=32
+/routing filter add action=discard chain=ospf-out prefix=10.100.100.0/24 prefix-l
+ength=24-32
+/routing filter add action=discard chain=ospf-out prefix=172.29.200.0/24 prefix-l
+ength=24-32
+/routing ospf interface add interface=VLAN2019_PE network-type=point-to-point
+/routing ospf network add area=backbone network=10.255.255.250/32
+/routing ospf network add area=backbone network=172.20.0.20/30
+/routing ospf network add area=backbone network=10.23.22.0/24
+/snmp set enabled=yes trap-community=conectaisp-ro trap-version=2
+/system clock set time-zone-autodetect=no time-zone-name=America/Sao_Paulo
+/system console set [ find ] disabled=yes
+/system identity set name=RB-MONITORAMENTO-CSO
+/system logging add disabled=yes topics=radius,debug
+/system logging add action=syslong topics=warning
+/system ntp client set enabled=yes primary-ntp=200.160.7.186 secondary-ntp=201.49
+.148.135
+/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
+,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
+art-time=03:00:00
+/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
+,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
+kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
+em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
+m identity get name] . \".rsc\")\r\
+    \n\r\
+    \n# Cria o backup\r\
+    \n/export file=\$backupFileName\r\
+    \n\r\
+    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
+th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
+    \ndelay 10s\r\
+    \n/file remove \$backupFileName"
+/tool netwatch add comment="Check Mk Auth" down-script="ppp secret enable [find c
+omment =\"mkauth\"]" host=172.31.255.2 interval=30s up-script="ppp secret disabl
+e [find comment =\"mkauth\"]"
+/tool romon set enabled=yes secrets=Conecta@2023
+/user aaa set use-radius=yes
+[admin@RB-MONITORAMENTO-CSO] >                                                 [admin@RB-MONITORAMENTO-CSO] > 

@@ -169,7 +169,7 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_TIMEZONE = 'America/Sao_Paulo'
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+#CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Adicione ao INSTALLED_APPS:
 INSTALLED_APPS += [

@@ -1,0 +1,626 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: SW-HU-PE-PONTE-ALTA
+Host: 10.255.0.4:22002
+Acesso: VIA PROXY SSH
+Modelo: S6730
+Template: Backup Huawei
+Data: 16/11/2025 01:17:34
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<SW-HU-PONTE-ALTA>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R022C00SPC500
+#
+sysname SW-HU-PONTE-ALTA
+#
+ipv6
+#
+vlan batch 10 to 13 15 17 19 21 to 23 28 42 to 47 103 300 to 301 540 to 541
+vlan batch 604 771 to 772 1234 1384 to 1385 2004 2008 2010 2014 2016 2185
+vlan batch 2297 2370 3118 3203 3334 3353 to 3354
+#
+lnp disable
+#
+stp disable
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+set save-configuration
+#
+http server-source all-interface
+#
+clock timezone Brasilia minus 03:00:00
+#
+set if-mib sample-interval 0
+#
+dhcp enable
+#
+smart-upgrade web-prompt disable
+#
+diffserv domain default
+#
+radius-server template default
+#
+mpls lsr-id 10.255.0.4
+mpls
+#
+mpls l2vpn
+#
+vsi VLAN-PTT-WIRELINK-TGG
+ pwsignal ldp
+  vsi-id 3353
+  flow-label both
+  peer 10.255.0.1
+ mtu 1550
+#
+vsi VLAN-PTT-V6-WIRELINK-TGG
+ pwsignal ldp
+  vsi-id 3354
+  flow-label both
+  peer 10.255.0.1
+ mtu 1550
+#
+vsi PPPOE-15-OLT-MECNET-PONTE-ALTA
+ pwsignal ldp
+  vsi-id 15
+  flow-label both
+  peer 10.255.255.2
+  peer 10.255.0.1
+ mtu 1550
+#
+vsi PPPOE-43-CCR1009-F.TORRES
+ pwsignal ldp
+  vsi-id 43
+  peer 10.255.0.46
+  peer 10.255.0.49
+ mtu 1508
+ encapsulation ethernet
+#
+vsi 2297-LINK-BRDIGITIAL-TGG-DNO
+ pwsignal ldp
+  vsi-id 2297
+  peer 10.255.255.2
+ mtu 1550
+#
+vsi 3118-TRANSP-SIM-TGG-NDD
+ pwsignal ldp
+  vsi-id 3118
+  flow-label both
+  peer 10.255.0.1
+ mtu 9000
+#
+mpls ldp
+#
+#
+mpls ldp remote-peer peer-mpls-crr1009-rio
+ remote-ip 10.255.0.42
+#
+mpls ldp remote-peer peer-mpls-ne8k-bras
+ remote-ip 10.255.255.2
+#
+mpls ldp remote-peer peer-mpls-rb-4011-dno
+ remote-ip 10.255.0.38
+#
+mpls ldp remote-peer peer-mpls-rb4011-porto
+ remote-ip 10.255.0.18
+#
+mpls ldp remote-peer peer-rb1009-f.torres
+ remote-ip 10.255.0.49
+#
+mpls ldp remote-peer peer-rb2011-guara
+ remote-ip 10.255.0.58
+#
+mpls ldp remote-peer peer-rb3011-casarao
+ remote-ip 10.255.0.54
+#
+mpls ldp remote-peer peer-rb3011-santa-maria
+ remote-ip 10.255.0.118
+#
+mpls ldp remote-peer peer-rb4011-taipas
+ remote-ip 10.255.0.50
+#
+mpls ldp remote-peer peer-rb750-faz-torres
+ remote-ip 10.255.0.122
+#
+mpls ldp remote-peer peer-sw-hu-almas
+ remote-ip 10.255.0.2
+#
+mpls ldp remote-peer peer-sw-hu-dno
+ remote-ip 10.255.0.3
+#
+mpls ldp remote-peer peer-sw-hu-ndd
+ remote-ip 10.255.0.1
+#
+mpls ldp remote-peer rt-sva
+ remote-ip 10.255.0.7
+#
+rsa peer-public-key 45.169.6.0
+ public-key-code begin
+  30820107
+    02820100
+      97B26131 5481E433 5698D639 D566C00A 73A8EB7E 5A4469E5 9ACE55B2 B579CF27
+      A7FE2168 BC8A6E1A 077C5FA6 914F04E4 B1AF086B 14002E10 A207458B FFA3535A
+      747C73A1 1646A8B9 538A332A 6982D0E6 0F1AFAF0 EC8ABCEB B754214C 05E4D070
+      9D204896 B3A26864 C0576B19 3FB75080 10AB8517 8C5E07C4 BA06B376 B8F9CED9
+      C92B3377 AF12EFB7 D1192327 C114D679 4730E6A1 C3531E99 E13C8E93 DCF9B713
+      616603C0 D0BA5BF3 B5FC0020 303E3DB0 9EC28E37 78CFC7BF 4D36653C FD8B9A91
+      B5FE8696 F293AD62 E0062BB6 084F8CFB 0FB48AE7 45047F5A D426BF3C 97B3DFFD
+      C55D8F79 9DC05A09 2592BE2A 3259FDCE F85D3F40 83CD574D E1A02C58 CB4A3739
+    0201
+      03
+ public-key-code end
+peer-public-key end
+#
+ecc peer-public-key 10.255.0.2 encoding-type der
+ public-key-code begin
+    0401AB87 089BC8BB B300D1E7 C3D97EC7 896F2A04 BD6B9038 AAEE190B 6F6C0C96
+    1329935B 8F0B727C 45CACB6A 84781694 88430177 6CBE6F06 7123D5FE EDC82733
+    A319B700 B4159CF1 7C19CF71 9F935ADD 13BA24DC 09F6C3F2 94199E99 96420269
+    876D29E2 296722E5 220EB8CE F9121F88 1DA79F3A 8FFF24F2 3D5D6830 3B044E8F
+    D85BD2CD D2
+ public-key-code end
+peer-public-key end
+#
+ecc peer-public-key 10.255.0.1 encoding-type der
+ public-key-code begin
+    04019099 FF3AF7B6 9386551E 7FC30EC7 106B8A3A E9B53DC9 EF31C7C3 C23FE470
+    1FDA35B8 B18BB72B 5322F1C8 97B97A61 956945A0 9BB856D5 95C2C556 A8B60820
+    89A23F00 FA854484 14F71DAE 6BFF287D DB291773 AD8FC97A 9107AB68 A7D895EE
+    6514F2E0 8B4BCF01 B07952DA 6D9D6502 D21653E0 EE5B591F D8304710 1EF10490
+    E4F91281 8C
+ public-key-code end
+peer-public-key end
+#
+ecc peer-public-key 10.255.0.3 encoding-type der
+ public-key-code begin
+    0401F103 D5E63CAA A061EDDB 3D2B9BB4 042BE691 6165DDE1 6466D0E7 C811A61F
+    231BFA89 3457161E 89BCC9A0 05AFA05F 78012588 21ED8174 3149FECF 49FE56B0
+    6BBBE400 1DF93B22 30711464 9228D11A 7E19265E 3EB96C0B 7FEAC17D EEFCAFF8
+    656F87AA A455C974 1A9DD6B4 8042E6F3 DF242460 D3962E74 2967233C E2D5E9FD
+    09D4B22F 1E
+ public-key-code end
+peer-public-key end
+#
+ecc peer-public-key 172.18.100.2 encoding-type der
+ public-key-code begin
+    04019099 FF3AF7B6 9386551E 7FC30EC7 106B8A3A E9B53DC9 EF31C7C3 C23FE470
+    1FDA35B8 B18BB72B 5322F1C8 97B97A61 956945A0 9BB856D5 95C2C556 A8B60820
+    89A23F00 FA854484 14F71DAE 6BFF287D DB291773 AD8FC97A 9107AB68 A7D895EE
+    6514F2E0 8B4BCF01 B07952DA 6D9D6502 D21653E0 EE5B591F D8304710 1EF10490
+    E4F91281 8C
+ public-key-code end
+peer-public-key end
+#
+ecc peer-public-key 10.255.255.2 encoding-type der
+ public-key-code begin
+    04011928 C91D83D4 7D6398CF 55A37878 B2D6759A 54543962 42F90B23 04277942
+    C16C3E57 FF8384C8 CFBA177D 45DFD386 1DD19643 13EFC9A1 DF7AD617 DC1D8B33
+    C7E64F00 5656E91C 561632AA 8043C53E 182010D5 58356D19 72208494 61A82A33
+    23A84106 4B999AA6 9F716412 6EDE9453 6DEB7919 9BEE5C84 B950DF14 64E66723
+    EA705D3D C8
+ public-key-code end
+peer-public-key end
+#
+pki realm default
+ certificate-check none
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default
+#
+vlan 10
+ description PPPOE-10-OLTS-NDD
+vlan 11
+ description PPPOE-11-OLTS-ALMA
+vlan 12
+ description PPPOE-12-OLTS-DNO
+vlan 13
+ description PPPOE-13-OLTS-MECNET
+vlan 15
+ description PPPOE-15-OLT-MECNET-PONTE-ALTA
+vlan 17
+ description PPPOE-17-RB-RAIPAS
+vlan 19
+ description PPPOE-19-RB-4011-DNO
+vlan 21
+ description PPPOE-21-RB-4011-PORTO
+vlan 22
+ description PPPOE-22-RB-4011-TAIPAS
+vlan 23
+ description OSPF-SW-HU-DNO
+vlan 28
+ description OSPF-CCR-CGNAT
+vlan 42
+ description PPPOE-42-RB3011-CASARAO
+vlan 43
+ description PPPOE-43-CCR1009-F.TORRES
+vlan 44
+ description PPPOE-44-RB2011-GUARA
+vlan 45
+ description PPPOE-45-RB3001-SANTA-MARIA
+vlan 46
+ description PPPOE-46-RB750-FAZ-TORRES
+vlan 47
+ description PPPOE-47-RIO
+vlan 103
+ description PPPPOE-SVA
+vlan 300
+ description IBGP-CCR-DNO->TGG
+vlan 301
+ description 301-IBGP-CGNAT-TGG
+vlan 540
+ description OSPF-RT-BRAS-DNO
+vlan 541
+ description OSPF-RT-PE-BOA-VISTA
+vlan 771
+ description VLAN-771-IBGP-BORDAS
+vlan 772
+ description OSPF-CGNAT-BGP-TGG
+vlan 1234
+ description TRANSP-WIRELINK-PEIXES
+vlan 1384
+ description WIRELINK-V4
+vlan 1385
+ description WIRELINK-V6
+vlan 2004
+ description BRAS-01-JMA
+vlan 2185
+ description TRANSP-NDD-CIANET
+vlan 2297
+ description 2297-LINK-BR-DIGITAL
+vlan 2370
+ description UPSTREAM-ELETRONET-TGG
+vlan 3118
+ description 3118-TRANSP-SIM-TGG-NDD
+vlan 3203
+ description OSPF-TRANSP-SIMTELECOM-NDD
+vlan 3334
+ description TRANSPT-TGG-CIANET-PTT
+vlan 3353
+ description VLAN-PTT-WIRELINK-TGG
+vlan 3354
+ description VLAN-PTT-V6-WIRELINK-TGG
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ local-aaa-user password policy administrator
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme radius
+  accounting-scheme default
+  radius-server default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ local-user hemily password irreversible-cipher $1c$RfC/;Sg:J-$=X}-B@;T!BM2heCh>Q<)pO(<5nC+#H2+O]Vo6seD$
+ local-user hemily privilege level 15
+ local-user hemily service-type telnet ssh http
+ local-user suporte password irreversible-cipher $1c$1{0XXgkI|R$ZYRY,;)7-PXC@*Dt<1}(:b+|'oxe@4xylCC<W9|5$
+ local-user suporte privilege level 15
+ local-user suporte service-type ssh
+ local-user jmatelecom password irreversible-cipher $1c$$CZZL-x]I"$K37@1n-RWY18"VB7,3s&Ah{iLZl{zDh{YB:_dB*G$
+ local-user jmatelecom privilege level 15
+ local-user jmatelecom service-type ssh http
+#
+ospfv3 1
+ router-id 10.255.0.4
+#
+interface Vlanif1
+ ip address dhcp-alloc
+#
+interface Vlanif15
+ description PPPOE-15-OLT-MECNET-PONTE-ALTA
+ l2 binding vsi PPPOE-15-OLT-MECNET-PONTE-ALTA
+#
+interface Vlanif23
+ description OSPF-SW-HU-DNO
+ mtu 9198
+ ipv6 enable
+ ip address 172.18.100.14 255.255.255.252
+ ipv6 address auto link-local
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls ldp
+#
+interface Vlanif540
+ description OSPF-RT-PE-BOA-VISTA
+ mtu 9198
+ ip address 172.18.100.66 255.255.255.252
+ ospf cost 5000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls ldp
+#
+interface Vlanif541
+ description OSPF-RT-PE-BOA-VISTA
+ mtu 9198
+ ip address 172.18.100.149 255.255.255.252
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls ldp
+#
+interface Vlanif1234
+ description OSPF-PEIXES-TRANSP-WIRELINK
+ shutdown
+ mtu 9000
+ ip address 172.18.100.129 255.255.255.252
+ ospf cost 10000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls ldp
+ statistic enable both
+#
+interface Vlanif2297
+ description 2297-LINK-BRDIGITIAL-TGG-DNO
+ l2 binding vsi 2297-LINK-BRDIGITIAL-TGG-DNO
+#
+interface Vlanif3118
+ description 3118-TRANSP-SIM-TGG-NDD
+ l2 binding vsi 3118-TRANSP-SIM-TGG-NDD
+#
+interface Vlanif3203
+ description OSPF-TRANSP-SIMTELECOM-NDD
+ mtu 9000
+ ip address 172.18.100.230 255.255.255.252
+ ospf cost 8000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls ldp
+ statistic enable both
+#
+interface Vlanif3353
+ description VLAN-PTT-WIRELINK-TGG
+ l2 binding vsi VLAN-PTT-WIRELINK-TGG
+#
+interface Vlanif3354
+ description VLAN-PTT-V6-WIRELINK-TGG
+ l2 binding vsi VLAN-PTT-V6-WIRELINK-TGG
+#
+interface MEth0/0/1
+ ip address 192.168.1.253 255.255.255.0
+#
+interface XGigabitEthernet0/0/1
+ description P2P-RT-BRAS-DNO-P7
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 23 207 604 1384 to 1385 2008 2010 2014 2016 3353 to 3354
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/2
+ description P2P-SW-CRS-BOA-VISTA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 540 to 541
+#
+interface XGigabitEthernet0/0/3
+ description P2P-UPSTREAM-BR_DIGITAL
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 2297
+ stp disable
+#
+interface XGigabitEthernet0/0/4
+ description UPSTREAM-WIRELINK
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 1234 1384 to 1385 2370 3118 3203 3353 to 3354
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/5
+ description OLT-MECNET-PONTE-ALTA
+ port link-type dot1q-tunnel
+ port default vlan 15
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/6
+ undo negotiation auto
+ description RB-FAZ-JACU-PONTE-ALTA-P1
+ port link-type dot1q-tunnel
+ port default vlan 15
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/7
+ shutdown
+#
+interface XGigabitEthernet0/0/8
+ shutdown
+#
+interface XGigabitEthernet0/0/9
+ shutdown
+#
+interface XGigabitEthernet0/0/10
+ shutdown
+#
+interface XGigabitEthernet0/0/11
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/12
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/13
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/14
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/15
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/16
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/17
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/18
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/19
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/20
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/21
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/22
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/23
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface XGigabitEthernet0/0/24
+ port trunk allow-pass only-vlan 2 to 4094
+ jumboframe enable 12288
+#
+interface 40GE0/0/1
+#
+interface 40GE0/0/2
+#
+interface 40GE0/0/3
+#
+interface 40GE0/0/4
+#
+interface 40GE0/0/5
+#
+interface 40GE0/0/6
+#
+interface NULL0
+#
+interface LoopBack0
+ ip address 10.255.0.4 255.255.255.255
+ ospf enable 1 area 0.0.0.0
+#
+ospf 1 router-id 10.255.0.4
+ frr
+  loop-free-alternate
+ area 0.0.0.0
+#
+undo icmp name timestamp-request receive
+#
+snmp-agent
+snmp-agent local-engineid 800007DB03449BC1D64090
+snmp-agent community read cipher %^%#6GBNIzE7`K|!j4SR)HF"Ph3|@{9^BM1p~E!-Ew[HtDxr#"xdM-N>XFO>c(o#X"G,GK[Wl=,V|#DTr/}3%^%#
+snmp-agent community complexity-check disable
+snmp-agent sys-info contact MandaChuva
+snmp-agent sys-info location "-22.882528, -42.011830"
+snmp-agent sys-info version v2c v3
+snmp-agent mib-view included mibvew mib-2
+snmp-agent mib-view included mib2view mib-2
+snmp-agent protocol source-status all-interface
+snmp-agent protocol source-status ipv6 all-interface
+#
+stelnet server enable
+ssh server port 22002
+ssh user hemily
+ssh user hemily authentication-type password
+ssh user hemily service-type stelnet
+ssh client first-time enable
+ssh client 10.255.0.1 assign ecc-key 10.255.0.1
+ssh client 10.255.0.2 assign ecc-key 10.255.0.2
+ssh client 10.255.0.3 assign ecc-key 10.255.0.3
+ssh client 10.255.255.2 assign ecc-key 10.255.255.2
+ssh client 172.18.100.2 assign ecc-key 172.18.100.2
+ssh client 45.169.6.0 assign rsa-key 45.169.6.0
+ssh server-source all-interface
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh client key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh server dh-exchange min-len 2048
+ssh authorization-type default aaa
+ssh server publickey ecc dsa rsa
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$a75I!mkD=)$v<hmN2LyM596hHL\UV-1-!b@PgFIg2XZ,F('k<_X$
+user-interface vty 0 4
+ authentication-mode aaa
+user-interface vty 16 20
+#
+wlan
+ traffic-profile name default
+ security-profile name default
+ security-profile name default-wds
+ security-profile name default-mesh
+ ssid-profile name default
+ vap-profile name default
+ wds-profile name default
+ mesh-handover-profile name default
+ mesh-profile name default
+ regulatory-domain-profile name default
+ air-scan-profile name default
+ rrm-profile name default
+ radio-2g-profile name default
+ radio-5g-profile name default
+ wids-spoof-profile name default
+ wids-whitelist-profile name default
+ wids-profile name default
+ ap-system-profile name default
+ port-link-profile name default
+ wired-port-profile name default
+ ap-group name default
+ provision-ap
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+ops
+#
+remote-unit
+#
+return
+<SW-HU-PONTE-ALTA>

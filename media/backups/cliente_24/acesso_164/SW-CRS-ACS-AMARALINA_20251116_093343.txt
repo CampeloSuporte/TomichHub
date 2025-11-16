@@ -1,0 +1,221 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: SW-CRS-ACS-AMARALINA
+Host: 172.27.2.3:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 16/11/2025 09:33:43
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[suporte@SW-CRS-ACS-AMARALINA] > /export terse
+# nov/10/2025 00:49:54 by RouterOS 6.48.7
+# software id = HUP3-I4Z1
+#
+# model = CRS309-1G-8S+
+# serial number = HEA08YAJ51Z
+/interface bridge add name=BridgeGeral protocol-mode=none vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] l2mtu=10218 mtu=10218 name=e
+ther1_olt
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full l2mtu=10218 mtu=1021
+8 name="sfp-sfpplus1 - NOVO-JARDIM"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full l2mtu=10218 mtu=1021
+8 name="sfp-sfpplus2 - SW-APLICACAO DNO-P9"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] l2mtu=10218 mtu=10218 
+name=sfp-sfpplus4_energia
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus7 ] l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus8 ] l2mtu=10218 mtu=10218
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=jmatelecom-ro
+/interface bridge port add bridge=BridgeGeral interface="sfp-sfpplus1 - NOVO-JARD
+IM"
+/interface bridge port add bridge=BridgeGeral interface="sfp-sfpplus2 - SW-APLICA
+CAO DNO-P9"
+/interface bridge port add bridge=BridgeGeral interface=sfp-sfpplus3 pvid=901
+/interface bridge port add bridge=BridgeGeral interface=sfp-sfpplus4_energia
+/interface bridge port add bridge=BridgeGeral interface=sfp-sfpplus6
+/interface bridge port add bridge=BridgeGeral interface=sfp-sfpplus7
+/interface bridge port add bridge=BridgeGeral interface=sfp-sfpplus8
+/interface bridge port add bridge=BridgeGeral interface=sfp-sfpplus5
+/interface bridge port add bridge=BridgeGeral interface=ether1_olt pvid=901
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface bridge vlan add bridge=BridgeGeral comment=OLT tagged="sfp-sfpplus2 - 
+SW-APLICACAO DNO-P9" untagged=ether1_olt vlan-ids=901
+/interface bridge vlan add bridge=BridgeGeral comment="NJD Gerencia" tagged="Brid
+geGeral,sfp-sfpplus2 - SW-APLICACAO DNO-P9,sfp-sfpplus1 - NOVO-JARDIM" vlan-ids=
+203
+/interface bridge vlan add bridge=BridgeGeral comment=NJD tagged="sfp-sfpplus2 - 
+SW-APLICACAO DNO-P9,sfp-sfpplus1 - NOVO-JARDIM" vlan-ids=401-450,2702,77
+/interface bridge vlan add bridge=BridgeGeral tagged="sfp-sfpplus1 - NOVO-JARDIM,
+sfp-sfpplus2 - SW-APLICACAO DNO-P9" vlan-ids=20
+/interface bridge vlan add bridge=BridgeGeral comment="VLAN OSPF DNO" tagged="sfp
+-sfpplus2 - SW-APLICACAO DNO-P9,sfp-sfpplus1 - NOVO-JARDIM" vlan-ids=540,542-543
+
+/ip address add address=172.27.2.3/28 interface=BridgeGeral network=172.27.2.0
+/ip address add address=192.168.50.17/28 interface="sfp-sfpplus1 - NOVO-JARDIM" n
+etwork=192.168.50.16
+/ip dns set servers=192.168.160.1,192.168.160.2,8.8.8.8
+/ip route add distance=1 gateway=172.27.2.1
+/ip service set telnet address=192.168.160.0/21 disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www address=192.168.160.0/21 disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-version=2
+/system clock set time-zone-autodetect=no time-zone-name=America/Araguaina
+/system identity set name=SW-CRS-ACS-AMARALINA
+/system ntp client set enabled=yes primary-ntp=192.168.160.1 secondary-ntp=192.16
+8.160.2
+/system package update set channel=long-term
+/system routerboard settings set boot-os=router-os
+/system scheduler add interval=1d name=bkp_interno on-event=bkpinterno policy=ftp
+,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=mar/22/
+2024 start-time=04:05:00
+/system scheduler add interval=1d name=bkp_procyon on-event=bkp_ftp_procyon polic
+y=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=ma
+r/22/2024 start-time=04:00:00
+/system script add dont-require-permissions=no name=EFETUAR_BACKUP_SISTEMA owner=
+admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon so
+urce=":log info \"INICIANDO BACKUP\";\r\
+    \n\r\
+    \n:global filename;\r\
+    \n:global senha \"x9y5@4xn\";\r\
+    \n\r\
+    \n:global date [/system clock get date];\r\
+    \n:global time [/system clock get time];\r\
+    \n:global name [/system identity get name];\r\
+    \n\r\
+    \n:global months (\"jan\",\"feb\",\"mar\",\"apr\",\"may\",\"jun\",\"jul\",\"a
+ug\",\"sep\",\"oct\",\"nov\",\"dec\");\r\
+    \n:global hour [:pick \$time 0 2];\r\
+    \n:global min [:pick \$time 3 5];\r\
+    \n:global sec [:pick \$time 6 8];\r\
+    \n:global month [:pick \$date 0 3];\r\
+    \n:set month ([ :find \$months \$month -1 ] + 1);\r\
+    \n\r\
+    \n:if (\$month < 10) do={ :set month (\"0\" . \$month); }\r\
+    \n\r\
+    \n:global day [:pick \$date 4 6];\r\
+    \n:global year [:pick \$date 7 11];\r\
+    \n:set filename (\"BACKUP_\".\$name. \"_\" .\$year.\"-\".\$month.\"-\".\$day.
+\"_\".\$hour.\"-\".\$min.\"-\".\$sec);\r\
+    \n\r\
+    \n/system backup save name=\$filename password=\$senha;\r\
+    \n\r\
+    \n\r\
+    \n:log info \"GERANDO RSC\";\r\
+    \n:global rsc \$filename;\r\
+    \n\r\
+    \n/export file=\$rsc;\r\
+    \n\r\
+    \n:log info \"BACKUP FINALIZADO\""
+/system script add dont-require-permissions=no name=bkpinterno owner=victor polic
+y=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":loca
+l password \"!@#jma123\"\r\
+    \n:local username \"bkpftp\"\r\
+    \n:local ftpserver \"45.169.4.109\"\r\
+    \n\r\
+    \n# months array\r\
+    \n:local months (\"\"jan\"\",\"\"feb\"\",\"\"mar\"\",\"\"apr\"\",\"\"may\"\",
+\"\"jun\"\",\"\"jul\"\",\"\"aug\"\",\"\"sep\"\",\"\"oct\"\",\"\"nov\"\",\"\"dec\
+"\");\r\
+    \n\r\
+    \n# get time\r\
+    \n:local ts [/system clock get time]\r\
+    \n:set ts ([:pick \$ts 0 2].[:pick \$ts 3 5].[:pick \$ts 6 8])\r\
+    \n\r\
+    \n# get Date\r\
+    \n:local ds [/system clock get date]\r\
+    \n:local month [:pick \$ds 0 3];\r\
+    \n:local mm ([:find \$months \$month -1] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n# set \$ds to format YYYY-MM-DD\r\
+    \n:set ds ([:pick \$ds 7 11].\$mm.[:pick \$ds 4 6]);\r\
+    \n\r\
+    \n# file name for config export - file name will be UMDB-servername-date-time
+.rsc\r\
+    \n:local filename ([/system identity get name].\"-\".\$ds.\"-\".\$ts.\".rsc\"
+)\r\
+    \n\r\
+    \n# backup the data\r\
+    \n#/tool user-manager database save name=\$filename\r\
+    \n/export compact file=\$filename\r\
+    \n:log warning message=\"Config export finished (2/2).\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$filename\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"/AMARALINA CRS309/\$filename\" upload=yes\r\
+    \n\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n# Delete created backup files once they have been uploaded\r\
+    \n# so they don't accumulate and fill up storage space on the router.\r\
+    \n\r\
+    \n/file remove \"\$filename\"\r\
+    \n\r\
+    \n:log info \"Local Backup Files Deleted Successfully\""
+/system script add dont-require-permissions=no name=bkp_ftp_procyon owner=victor 
+policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
+:local password \"procyon1q2w\"\r\
+    \n:local username \"bkpprocyon\"\r\
+    \n:local ftpserver \"191.252.193.112\"\r\
+    \n\r\
+    \n# months array\r\
+    \n:local months (\"\"jan\"\",\"\"feb\"\",\"\"mar\"\",\"\"apr\"\",\"\"may\"\",
+\"\"jun\"\",\"\"jul\"\",\"\"aug\"\",\"\"sep\"\",\"\"oct\"\",\"\"nov\"\",\"\"dec\
+"\");\r\
+    \n\r\
+    \n# get time\r\
+    \n:local ts [/system clock get time]\r\
+    \n:set ts ([:pick \$ts 0 2].[:pick \$ts 3 5].[:pick \$ts 6 8])\r\
+    \n\r\
+    \n# get Date\r\
+    \n:local ds [/system clock get date]\r\
+    \n:local month [:pick \$ds 0 3];\r\
+    \n:local mm ([:find \$months \$month -1] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n# set \$ds to format YYYY-MM-DD\r\
+    \n:set ds ([:pick \$ds 7 11].\$mm.[:pick \$ds 4 6]);\r\
+    \n\r\
+    \n# file name for config export - file name will be UMDB-servername-date-time
+.rsc\r\
+    \n:local filename ([/system identity get name].\"-\".\$ds.\"-\".\$ts.\".rsc\"
+)\r\
+    \n\r\
+    \n# backup the data\r\
+    \n#/tool user-manager database save name=\$filename\r\
+    \n/export compact file=\$filename\r\
+    \n:log warning message=\"Config export finished (2/2).\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$filename\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"/Mikrotiks/JMA/AMARALINA CRS309/\$filename\" upload=yes\r\
+    \n\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n# Delete created backup files once they have been uploaded\r\
+    \n# so they don't accumulate and fill up storage space on the router.\r\
+    \n\r\
+    \n/file remove \"\$filename\"\r\
+    \n\r\
+    \n:log info \"Local Backup Files Deleted Successfully\""
+/system watchdog set automatic-supout=no watchdog-timer=no
+/tool romon set enabled=yes id=48:A9:8A:94:AA:C4 secrets=jma
+[suporte@SW-CRS-ACS-AMARALINA] >                                               [suporte@SW-CRS-ACS-AMARALINA] > 

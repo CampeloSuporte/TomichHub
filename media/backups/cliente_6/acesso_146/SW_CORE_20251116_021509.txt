@@ -1,0 +1,273 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
+Equipamento: SW CORE
+Host: 172.31.1.2:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS326-24s+2Q+
+Template: Backup Mikrotik
+Data: 16/11/2025 02:15:09
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@SWITCH CORE] > /                                                       [K[tomich@SWITCH CORE] > /e[tomich@SWITCH CORE] > /e                                                      [K[tomich@SWITCH CORE] > /ex[tomich@SWITCH CORE] > /ex                                                     [K[tomich@SWITCH CORE] > /exp[tomich@SWITCH CORE] > /exp                                                    [K[tomich@SWITCH CORE] > /expo[tomich@SWITCH CORE] > /expo                                                   [K[tomich@SWITCH CORE] > /expor[tomich@SWITCH CORE] > /expor                                                  [K[tomich@SWITCH CORE] > /export[tomich@SWITCH CORE] > /export                                                 [K[tomich@SWITCH CORE] > /export [tomich@SWITCH CORE] > /export                                                 [K[tomich@SWITCH CORE] > /export t[tomich@SWITCH CORE] > /export t                                               [K[tomich@SWITCH CORE] > /export te[tomich@SWITCH CORE] > /export te                                              [K[tomich@SWITCH CORE] > /export ter[tomich@SWITCH CORE] > /export ter                                             [K[tomich@SWITCH CORE] > /export ters[tomich@SWITCH CORE] > /export ters                                            [K[tomich@SWITCH CORE] > /export terse[tomich@SWITCH CORE] > /export terse                                           [K[tomich@SWITCH CORE] > /export terse[tomich@SWITCH CORE] > /export terse
+# nov/16/2025 01:52:00 by RouterOS 6.49.17
+# software id = LVFJ-QDMZ
+#
+# model = CRS326-24S+2Q+
+# serial number = BF720AF53C0D
+/interface bridge add admin-mac=74:4D:28:E3:06:19 auto-mac=no name=bridge priorit
+y=0x1000 vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full comment="PROXMOX 1 - ANTIGO - DNS-SLAV
+E, ZABBIX - VLAN 3000" mac-address=74:4D:28:E3:06:19 speed=1Gbps
+/interface ethernet set [ find default-name=qsfpplus1-1 ] advertise=10M-half,10M-
+full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full
+ auto-negotiation=no l2mtu=1592 speed=100Mbps
+/interface ethernet set [ find default-name=qsfpplus1-2 ] advertise=10M-half,10M-
+full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full
+ auto-negotiation=no l2mtu=1592 speed=100Mbps
+/interface ethernet set [ find default-name=qsfpplus1-3 ] l2mtu=1592 speed=1Gbps
+/interface ethernet set [ find default-name=qsfpplus1-4 ] l2mtu=1592 speed=1Gbps
+/interface ethernet set [ find default-name=qsfpplus2-1 ] l2mtu=1592
+/interface ethernet set [ find default-name=qsfpplus2-2 ] l2mtu=1592
+/interface ethernet set [ find default-name=qsfpplus2-3 ] auto-negotiation=no l2m
+tu=1592 speed=10Gbps
+/interface ethernet set [ find default-name=qsfpplus2-4 ] l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] auto-negotiation=no l2
+mtu=1592 speed=100Mbps
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment=ROTEADOR l2mtu
+=1592
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="WAN BGP - F
+AZER O LACP - BGP - ROTA 1 - HUAWEI - 0/7/3 - VLAN 503" l2mtu=1592 speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="FAZER O LAC
+P - BGP - ROTA 2 - HUAWEI - 0/7/4 - VLAN 503" l2mtu=1592 speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] comment="LACP -HILLSTO
+NE - XETH24" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] comment="LACP -HILLSTO
+NE - XETH25" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus7 ] comment="LACP - HUAWEI
+ - 0/7/7" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus8 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="LACP - HUAW
+EI - 0/7/8" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus9 ] comment="SISTEMAS INST
+ALADO NO PROXMOX 2 - NOVO - ETHER2 - CABO VERMELHO - DNS MASTER, IXC, OPA" l2mtu
+=1592
+/interface ethernet set [ find default-name=sfp-sfpplus10 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="ACESSO AO 
+PROXMOX 2 - NOVO - ETHER1 - CABO AMARELO" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus11 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="LACP - CGN
+AT - SFPLUS1" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus12 ] comment="LACP - CGNAT
+ - SFPLUS2" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus13 ] l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus14 ] l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus15 ] comment="RB3011 - PRO
+XMOX 1 - ANTIGO - DNS-SLAVE, ZABBIX, MINHACONEXAO - VLAN 3000" l2mtu=1592 speed=
+100Mbps
+/interface ethernet set [ find default-name=sfp-sfpplus16 ] l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus17 ] comment="ROTA 1  - RI
+QUENA NETO - (POP VILLAGGIO / AV. ELDES SCHERRER SOUZA) ANEL 10Gbps VILLAGGIO LA
+RANJEIRAS / SIERRA LOG CIVIT II" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus18 ] comment="OLT-4 Xeth2"
+ l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus19 ] comment="FIO FORTE" l
+2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus20 ] l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus21 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="LACP - MOR
+ADA - ROTA 1 - LARANJEIRAS" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus22 ] comment="LACP - MORAD
+A - ROTA 2 - ES010" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus23 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="UPLINK XET
+H1 OLT-1 DIGISTAR POP VILLAGGIO LARANJEIRAS" l2mtu=1592
+/interface ethernet set [ find default-name=sfp-sfpplus24 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="UPLINK XET
+H1 OLT-4 DIGISTAR POP VILLAGGIO LARANJEIRAS 172.17.24.2/30" l2mtu=1592
+/interface vlan add comment="VLAN- GERENCIA OLT POP VILLAGGIO LARANJEIRAS IP 172.
+17.21.2" interface=sfp-sfpplus23 name=vlan3 vlan-id=3
+/interface vlan add comment="VLAN GERENCIA OLT 4" interface=sfp-sfpplus24 name=vl
+an4 vlan-id=4
+/interface vlan add interface=sfp-sfpplus23 name=vlan333 vlan-id=333
+/interface bonding add mode=802.3ad name=bonding1-LACP-VENTURA-MORADA slaves=sfp-
+sfpplus21,sfp-sfpplus22
+/interface bonding add mode=802.3ad name=bonding2-LACP-HUAWEI-CGNAT slaves=sfp-sf
+pplus11,sfp-sfpplus12 transmit-hash-policy=layer-2-and-3
+/interface bonding add mode=802.3ad name=bonding3-LACP-HUAWEI-PPPoEeBGP slaves=sf
+p-sfpplus7,sfp-sfpplus8
+/interface bonding add mode=802.3ad name=bonding4-LACP-HILLSTONE slaves=sfp-sfppl
+us5,sfp-sfpplus6
+/interface vlan add interface=bonding1-LACP-VENTURA-MORADA name="vlan16 - OLT VEN
+TURA MORADA" vlan-id=16
+/interface vlan add interface=bonding2-LACP-HUAWEI-CGNAT name="vlan3010-GERECNAI 
+SWITCHS" vlan-id=3010
+/ppp profile add local-address=10.30.30.1 name=pppoe remote-address=10.30.30.2
+/snmp community set [ find default=yes ] disabled=yes name=GSS-AGILIZA
+/snmp community add addresses=::/0 name=TOMICH
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge=bridge comment="SERVIDOR DELL" interface=ether1
+ pvid=3000
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-1
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-2
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-1
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-2
+/interface bridge port add bridge=bridge interface=sfp-sfpplus1
+/interface bridge port add bridge=bridge comment=ROTEADOR interface=sfp-sfpplus2 
+pvid=171
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=s
+fp-sfpplus7
+/interface bridge port add bridge=bridge comment="HUAWEI PPPoE" disabled=yes inte
+rface=sfp-sfpplus8
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus9 p
+vid=1001
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus10 
+pvid=1001
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=s
+fp-sfpplus11
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=s
+fp-sfpplus12
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus13
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus14
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus15
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus16
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus17 
+path-cost=150
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus18
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus19
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus20
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=s
+fp-sfpplus21
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=s
+fp-sfpplus22
+/interface bridge port add bridge=bridge comment="OLT 1 - VILLAGGIO BUSINESS - VL
+AN 101 A 116" interface=sfp-sfpplus23
+/interface bridge port add bridge=bridge interface=sfp-sfpplus24
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-3
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-4
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-3
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus3
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus4
+/interface bridge port add bridge=bridge interface=bonding1-LACP-VENTURA-MORADA
+/interface bridge port add bridge=bridge interface=bonding2-LACP-HUAWEI-CGNAT
+/interface bridge port add bridge=bridge interface=bonding3-LACP-HUAWEI-PPPoEeBGP
+
+/interface bridge port add bridge=bridge interface=bonding4-LACP-HILLSTONE
+/ip firewall connection tracking set enabled=yes
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface bridge vlan add bridge=bridge comment=BGP tagged=bonding3-LACP-HUAWEI-
+PPPoEeBGP,bonding2-LACP-HUAWEI-CGNAT vlan-ids=502
+/interface bridge vlan add bridge=bridge comment="VLANS OLT VILLAGGIO BUSSINES" t
+agged=sfp-sfpplus23,bonding3-LACP-HUAWEI-PPPoEeBGP vlan-ids=100-112,114-116
+/interface bridge vlan add bridge=bridge comment="OLT VENTURA MORADA" disabled=ye
+s tagged=sfp-sfpplus21,sfp-sfpplus22 vlan-ids=16
+/interface bridge vlan add bridge=bridge comment="ACESSO OLT BOULEVARD LAGOA" tag
+ged=bonding1-LACP-VENTURA-MORADA,sfp-sfpplus8,sfp-sfpplus17 vlan-ids=3004
+/interface bridge vlan add bridge=bridge comment="VLANS PORTAS PON OLT BOULEVARD 
+LAGOA" tagged=bonding1-LACP-VENTURA-MORADA,bonding3-LACP-HUAWEI-PPPoEeBGP,sfp-sf
+pplus17 untagged=sfp-sfpplus15 vlan-ids=300-316,610,609
+/interface bridge vlan add bridge=bridge comment="PROXMOX 1 - ANTIGO - DNS SLANVE
+, GERENET, DUDE, ZABBIX. AINDA ESTA LIGADO NO CGNAT, MUDAR CABO FISICO PARA O SW
+ITCH E COLOCAR NA VLAN 3000" tagged=bonding3-LACP-HUAWEI-PPPoEeBGP,bonding2-LACP
+-HUAWEI-CGNAT,sfp-sfpplus15,bonding4-LACP-HILLSTONE untagged=ether1 vlan-ids=300
+0
+/interface bridge vlan add bridge=bridge comment="PROXMOX 2 - NOVO - SISTEMAS INS
+TALADOS NO PROXMOX - IXC" tagged=bonding2-LACP-HUAWEI-CGNAT,bonding4-LACP-HILLST
+ONE,bonding3-LACP-HUAWEI-PPPoEeBGP untagged=sfp-sfpplus9,sfp-sfpplus10 vlan-ids=
+1001
+/interface bridge vlan add bridge=bridge comment=PPPoE tagged=bonding3-LACP-HUAWE
+I-PPPoEeBGP,bonding2-LACP-HUAWEI-CGNAT vlan-ids=501
+/interface bridge vlan add bridge=bridge comment=UNESC tagged=bonding3-LACP-HUAWE
+I-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA vlan-ids=1100,1106
+/interface bridge vlan add bridge=bridge comment=UNESC tagged=bonding3-LACP-HUAWE
+I-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA,sfp-sfpplus17 vlan-ids=1110
+/interface bridge vlan add bridge=bridge comment="VLANS PORTAS PON OLT VENTURA" t
+agged=bonding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA,bonding2-LACP-
+HUAWEI-CGNAT vlan-ids=200-216
+/interface bridge vlan add bridge=bridge comment="PPPoE SIERRA LOG MATRIZ" tagged
+=sfp-sfpplus17,bonding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA vlan-
+ids=1101
+/interface bridge vlan add bridge=bridge comment="TEST PPPoE" tagged=bonding3-LAC
+P-HUAWEI-PPPoEeBGP,sfp-sfpplus15 untagged=sfp-sfpplus2 vlan-ids=171
+/interface bridge vlan add bridge=bridge comment="TEST PPPoE" tagged=bonding2-LAC
+P-HUAWEI-CGNAT,sfp-sfpplus15 vlan-ids=172
+/interface bridge vlan add bridge=bridge tagged=bonding3-LACP-HUAWEI-PPPoEeBGP,sf
+p-sfpplus15 vlan-ids=701
+/interface bridge vlan add bridge=bridge comment="PPPoE TRIGALI" tagged=sfp-sfppl
+us17,bonding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA vlan-ids=1102
+/interface bridge vlan add bridge=bridge comment="CLIENTE VILLAGGIONET" tagged=bo
+nding3-LACP-HUAWEI-PPPoEeBGP,sfp-sfpplus23 vlan-ids=150
+/interface bridge vlan add bridge=bridge comment="CLIENTE MEGA EVENTOS" tagged=bo
+nding3-LACP-HUAWEI-PPPoEeBGP,sfp-sfpplus23 vlan-ids=1103
+/interface bridge vlan add bridge=bridge comment="GERENCIA OLT POP VILLAGGIO" tag
+ged=bonding2-LACP-HUAWEI-CGNAT,sfp-sfpplus23 vlan-ids=3
+/interface bridge vlan add bridge=bridge comment="PPPoE PDV" tagged=sfp-sfpplus17
+,bonding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA vlan-ids=1104,1201
+/interface bridge vlan add bridge=bridge comment="PPPoE MARKET" tagged=sfp-sfpplu
+s17,bonding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA vlan-ids=1105
+/interface bridge vlan add bridge=bridge comment="PPPoE SIERRA LOG FILIAL" tagged
+=bonding3-LACP-HUAWEI-PPPoEeBGP,sfp-sfpplus17,bonding1-LACP-VENTURA-MORADA vlan-
+ids=1107
+/interface bridge vlan add bridge=bridge comment="PPPoE ABR-TOPMAX" tagged=sfp-sf
+pplus17,bonding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA vlan-ids=110
+8
+/interface bridge vlan add bridge=bridge comment="GERENCIA SWITCHS" tagged=bondin
+g1-LACP-VENTURA-MORADA,sfp-sfpplus17,bridge,bonding2-LACP-HUAWEI-CGNAT vlan-ids=
+3010
+/interface bridge vlan add bridge=bridge comment="VLANS OLT 04 VILLAGGIO BUSINESS
+" tagged=bonding3-LACP-HUAWEI-PPPoEeBGP,sfp-sfpplus24 vlan-ids=400-416
+/interface bridge vlan add bridge=bridge comment="vlan test" tagged=bonding3-LACP
+-HUAWEI-PPPoEeBGP,sfp-sfpplus23 vlan-ids=113
+/interface bridge vlan add bridge=bridge comment="CLIENTE NACIONAL GAS" tagged=bo
+nding3-LACP-HUAWEI-PPPoEeBGP,bonding1-LACP-VENTURA-MORADA,sfp-sfpplus17 vlan-ids
+=1109
+/interface bridge vlan add bridge=bridge comment="BGP - HILLSTONE" tagged=bonding
+3-LACP-HUAWEI-PPPoEeBGP,bonding4-LACP-HILLSTONE vlan-ids=503
+/interface bridge vlan add bridge=bridge comment="HILLSTONE - BNG" tagged=bonding
+3-LACP-HUAWEI-PPPoEeBGP,bonding4-LACP-HILLSTONE vlan-ids=504
+/interface pppoe-server server add authentication=pap,chap default-profile=pppoe 
+interface=sfp-sfpplus2 service-name=service1
+/interface pppoe-server server add interface=bonding4-LACP-HILLSTONE
+/ip address add address=172.31.1.2/24 comment="GERENCIA SWITCHS" interface="vlan3
+010-GERECNAI SWITCHS" network=172.31.1.0
+/ip address add address=172.17.16.1/30 comment="CLASSE IP GERENCIA OLT DIGISTAR D
+OLT 1044 / 172.17.16.2/30" interface="vlan16 - OLT VENTURA MORADA" network=172.1
+7.16.0
+/ip address add address=172.17.21.1/30 comment="VLAN- GERENCIA OLT POP VILLAGGIO 
+LARANJEIRAS IP 172.17.21.2" disabled=yes interface=vlan3 network=172.17.21.0
+/ip address add address=172.17.24.1/30 comment="IP GERENCIA OLT 4" interface=vlan
+4 network=172.17.24.0
+/ip address add address=192.168.1.9/24 disabled=yes interface=vlan333 network=192
+.168.1.0
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=22334 prot
+ocol=tcp to-addresses=192.168.255.65 to-ports=22334
+/ip route add distance=1 gateway=172.31.1.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip tftp add disabled=yes ip-addresses=172.17.21.1 read-only=no real-filename=fir
+m_maple_3.11r.img req-filename=firm_maple_3.11r.img
+/ipv6 nd set [ find default=yes ] advertise-dns=no
+/ppp secret add disabled=yes name=tomich password=tomich service=pppoe
+/snmp set enabled=yes trap-community=TOMICH trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name="SWITCH CORE"
+/system package update set channel=long-term
+/system routerboard settings set auto-upgrade=yes boot-os=router-os
+/tool romon set enabled=yes secrets=Net.10
+[tomich@SWITCH CORE] >                                                         [tomich@SWITCH CORE] > 

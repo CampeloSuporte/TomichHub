@@ -1,0 +1,53 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
+Equipamento: SW VENTURA MORADA
+Host: 172.31.1.4:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS326-24s+2Q+
+Template: Backup Mikrotik
+Data: 16/11/2025 04:47:29
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[tomich@SWITCH  POP VENTURA MORADA] > /export terse
+# nov/15/2025 07:05:27 by RouterOS 6.47.9
+# software id = RXSP-0VTK
+#
+# model = CRS326-24S+2Q+
+# serial number = D84E0EB8D2AC
+/interface bridge add admin-mac=2C:C8:1B:CD:9D:6C auto-mac=no comment=defconf nam
+e=bridge priority=0x3000 protocol-mode=mstp vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] speed=1Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment="ROTA 1  (LARA
+NJEIRAS) - POP VILLAGGIO LARANJEIRAS/ POP VENTURA MORADA"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment="ROTA 2 (ES-01
+0 PARREIRAL) POP VILLAGGIO LARANJEIRAS/ POP VENTURA MORADA"
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment=TRIGALI
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] comment="SAIDA ponto a
+ ponto optico CASTELANDIA"
+/interface ethernet set [ find default-name=sfp-sfpplus10 ] auto-negotiation=no
+/interface ethernet set [ find default-name=sfp-sfpplus23 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="UPLINK OLT
+-3 BOULEVARD LAGOA DIGISTAR DOLT-14416 / 172.17.22.2/30"
+/interface ethernet set [ find default-name=sfp-sfpplus24 ] advertise=10M-half,10
+M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="UPLINK OLT
+-2 VENTURA DIGISTAR  DOLT-14416 / 172.17.23.2/30" speed=10Gbps
+/interface vlan add interface=sfp-sfpplus23 name=vlan4 vlan-id=4
+/interface vlan add interface=sfp-sfpplus24 name=vlan5 vlan-id=5
+/interface vlan add interface=bridge name="vlan3010-GERENCIA SWITCHS" vlan-id=301
+0
+/interface bonding add mode=802.3ad name=bonding1-LACP-VILLAGGIO-LARANJEIRAS slav
+es=sfp-sfpplus1,sfp-sfpplus2
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip hotspot profile set [ find default=yes ] html-directory=flash/hotspot
+/snmp community set [ find default=yes ] disabled=yes name=GSS-AGILIZA
+/snmp community add addresses=::/0 name=TOMICH
+

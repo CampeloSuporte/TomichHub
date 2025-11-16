@@ -108,11 +108,14 @@ def agendar_backups_pendentes():
 
 
 @shared_task
-def limpar_backups_antigos(dias=30):
+def limpar_backups_antigos(dias=3):
     """
-    ✅ Task para limpar backups antigos
-    - Mantém apenas os últimos X dias
-    - Deleta arquivo físico e registro
+    ✅ Task para limpar backups antigos com validações:
+    - Exclui backups com mais de X dias
+    - MAS mantém SEMPRE os 2 últimos de cada acesso
+    - Antes de excluir, valida:
+      1. Existe backup do MESMO ACESSO no dia da limpeza
+      2. Esse backup tem tamanho IGUAL OU MAIOR
     """
     from django.utils import timezone
     from datetime import timedelta
@@ -120,30 +123,125 @@ def limpar_backups_antigos(dias=30):
     from django.conf import settings
     
     logger.info(f"🗑️ Limpando backups com mais de {dias} dias...")
+    logger.info(f"📋 Regras: Manter 2 últimos | Validar backup do dia com tamanho ≥")
     
     data_limite = timezone.now() - timedelta(days=dias)
-    backups_antigos = BackupLog.objects.filter(data_backup__lt=data_limite)
+    logger.info(f"📅 Data limite: {data_limite}")
+    
+    # Pegar todos os backups antigos
+    backups_antigos = BackupLog.objects.filter(
+        data_backup__lt=data_limite
+    ).select_related('acesso', 'cliente').order_by('acesso_id', '-data_backup')
     
     total = backups_antigos.count()
+    logger.info(f"🔍 Total de backups antigos encontrados: {total}")
+    
     deletados = 0
+    mantidos = 0
+    recusados = 0  # Não passou na validação
+    erros = 0
     
+    # Agrupar backups por acesso
+    backups_por_acesso = {}
     for backup in backups_antigos:
-        try:
-            # Deletar arquivo físico
-            if backup.arquivo_path:
-                arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
-                if os.path.exists(arquivo_path):
-                    os.remove(arquivo_path)
-            
-            # Deletar registro
-            backup.delete()
-            deletados += 1
-            
-        except Exception as e:
-            logger.error(f"❌ Erro ao deletar backup #{backup.id}: {str(e)}")
+        acesso_id = backup.acesso_id
+        if acesso_id not in backups_por_acesso:
+            backups_por_acesso[acesso_id] = []
+        backups_por_acesso[acesso_id].append(backup)
     
-    logger.info(f"✅ {deletados}/{total} backups antigos removidos")
-    return {
+    logger.info(f"📊 Backups agrupados por {len(backups_por_acesso)} acessos")
+    
+    for acesso_id, backups_do_acesso in backups_por_acesso.items():
+        # Os backups já estão ordenados por -data_backup (mais recentes primeiro)
+        ultimos_2 = backups_do_acesso[:2]  # Manter sempre os 2 últimos
+        backups_para_avaliar = backups_do_acesso[2:]  # Resto para avaliar
+        
+        logger.info(f"\n🔐 Acesso #{acesso_id}: {len(backups_do_acesso)} backups antigos")
+        logger.info(f"   ⭐ Mantendo os 2 últimos automaticamente")
+        
+        for idx, backup in enumerate(backups_para_avaliar, 1):
+            try:
+                equipamento_info = f"{backup.acesso.tipo} ({backup.acesso.host})"
+                logger.info(f"\n   📦 [{idx}] Avaliando backup #{backup.id} - {equipamento_info}")
+                logger.info(f"      Data: {backup.data_backup} | Tamanho: {backup.tamanho_bytes} bytes")
+                
+                # ============================================
+                # VALIDAÇÃO 1: Existe backup do mesmo acesso NO DIA?
+                # ============================================
+                backup_do_dia = BackupLog.objects.filter(
+                    acesso=backup.acesso,
+                    cliente=backup.cliente,
+                    data_backup__gte=data_limite,  # No dia da limpeza ou depois
+                    status='SUCESSO'
+                ).order_by('-data_backup').first()
+                
+                if not backup_do_dia:
+                    logger.warning(f"      ❌ VALIDAÇÃO FALHOU: Nenhum backup do dia para {equipamento_info}")
+                    logger.info(f"      ⚠️ Backup #{backup.id} MANTIDO por segurança")
+                    mantidos += 1
+                    recusados += 1
+                    continue
+                
+                logger.info(f"      ✅ Backup do dia encontrado: #{backup_do_dia.id}")
+                logger.info(f"         Tamanho: {backup_do_dia.tamanho_bytes} bytes")
+                
+                # ============================================
+                # VALIDAÇÃO 2: Backup do dia >= backup antigo?
+                # ============================================
+                if backup_do_dia.tamanho_bytes < backup.tamanho_bytes:
+                    logger.warning(
+                        f"      ❌ VALIDAÇÃO FALHOU: Backup do dia é menor!"
+                        f"\n         Backup do dia: {backup_do_dia.tamanho_bytes} bytes"
+                        f"\n         Backup antigo: {backup.tamanho_bytes} bytes"
+                    )
+                    logger.info(f"      ⚠️ Backup #{backup.id} MANTIDO por segurança")
+                    mantidos += 1
+                    recusados += 1
+                    continue
+                
+                logger.info(f"      ✅ Backup do dia é maior/igual: {backup_do_dia.tamanho_bytes} >= {backup.tamanho_bytes}")
+                
+                # ============================================
+                # TUDO OK: Deletar!
+                # ============================================
+                logger.info(f"      🗑️ ✅ Deletando backup #{backup.id}")
+                
+                # Deletar arquivo físico
+                if backup.arquivo_path:
+                    arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+                    logger.info(f"         📄 Arquivo: {arquivo_path}")
+                    if os.path.exists(arquivo_path):
+                        logger.info(f"         Deletando arquivo...")
+                        os.remove(arquivo_path)
+                        logger.info(f"         ✅ Arquivo deletado")
+                    else:
+                        logger.warning(f"         ⚠️ Arquivo não encontrado")
+                
+                # Deletar registro
+                backup.delete()
+                deletados += 1
+                logger.info(f"         ✅ Registro deletado do banco")
+                
+            except Exception as e:
+                erros += 1
+                logger.error(f"      ❌ ERRO ao deletar backup #{backup.id}: {str(e)}")
+                logger.error(f"         {traceback.format_exc()}")
+    
+    resultado = {
         'total': total,
-        'deletados': deletados
+        'deletados': deletados,
+        'mantidos': mantidos,
+        'recusados': recusados,
+        'erros': erros
     }
+    
+    logger.info(f"\n" + "="*60)
+    logger.info(f"✅ RESUMO DA LIMPEZA:")
+    logger.info(f"   📊 Total encontrado: {total}")
+    logger.info(f"   🗑️  Deletados: {deletados}")
+    logger.info(f"   ⭐ Mantidos (2 últimos): {mantidos - recusados}")
+    logger.info(f"   ⚠️  Recusados (falha na validação): {recusados}")
+    logger.info(f"   ❌ Erros: {erros}")
+    logger.info(f"="*60)
+    
+    return resultado
