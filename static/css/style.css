@@ -3886,3 +3886,417 @@ h4::before {
     border: 1px solid var(--accent-cyan);
     z-index: 10;
 }
+
+/* Modal Ping Result */
+#modalPingResult {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+#modalPingResult.modal-overlay {
+    display: flex;
+}
+
+.ping-modal-content {
+    background: var(--bg-darker);
+    border: 2px solid var(--primary-green);
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ping-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--primary-green);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.ping-modal-header h2 {
+    margin: 0;
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ping-modal-header .btn-close-modal {
+    background: none;
+    border: none;
+    color: var(--primary-green);
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ping-modal-header .btn-close-modal:hover {
+    color: var(--error-red);
+    transform: scale(1.15) rotate(90deg);
+}
+
+.ping-modal-body {
+    padding: 30px 20px;
+}
+
+/* Resultado Ping - Success */
+.ping-result-success {
+    text-align: center;
+}
+
+.ping-result-success .ping-icon-success {
+    font-size: 64px;
+    color: var(--primary-green);
+    margin-bottom: 15px;
+    animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Resultado Ping - Warning */
+.ping-result-warning {
+    text-align: center;
+}
+
+.ping-result-warning .ping-icon-warning {
+    font-size: 64px;
+    color: #FFA500;
+    margin-bottom: 15px;
+    animation: pulse-warning 1.5s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* Resultado Ping - Error */
+.ping-result-error {
+    text-align: center;
+}
+
+.ping-result-error .ping-icon-error {
+    font-size: 64px;
+    color: var(--error-red);
+    margin-bottom: 15px;
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.ping-result-title {
+    color: var(--text-light);
+    font-size: 18px;
+    margin: 15px 0;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.ping-stats {
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 6px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.ping-stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+    font-family: 'Courier New', monospace;
+}
+
+.ping-stats-row:last-child {
+    border-bottom: none;
+}
+
+.ping-stat-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ping-stat-value {
+    color: var(--primary-green);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.ping-message {
+    color: var(--text-light);
+    font-size: 13px;
+    margin-top: 15px;
+    line-height: 1.6;
+    font-family: 'Courier New', monospace;
+}
+
+/* Modal Footer */
+.ping-modal-footer {
+    padding: 20px;
+    border-top: 1px solid var(--primary-green);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: rgba(0, 255, 136, 0.02);
+}
+
+.ping-modal-footer .btn {
+    padding: 10px 20px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.ping-modal-footer .btn-close {
+    background: rgba(0, 217, 255, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid var(--accent-cyan);
+}
+
+.ping-modal-footer .btn-close:hover {
+    background: var(--accent-cyan);
+    color: var(--bg-darker);
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
+}
+
+/* Scrollbar customizado */
+.ping-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ping-modal-content::-webkit-scrollbar-track {
+    background: var(--bg-darker);
+}
+
+.ping-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 136, 0.3);
+    border-radius: 4px;
+}
+
+.ping-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 136, 0.5);
+}
+
+
+/* Modal Ping Result */
+#modalPingResult {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+#modalPingResult.modal-overlay {
+    display: flex;
+}
+
+.ping-modal-content {
+    background: var(--bg-darker);
+    border: 1px solid var(--primary-green);
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+.ping-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--primary-green);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ping-modal-header h2 {
+    margin: 0;
+    color: var(--primary-green);
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+}
+
+.ping-modal-header .btn-close-modal {
+    background: none;
+    border: none;
+    color: var(--primary-green);
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ping-modal-header .btn-close-modal:hover {
+    color: var(--error-red);
+    transform: scale(1.1);
+}
+
+.ping-modal-body {
+    padding: 30px 20px;
+}
+
+/* Resultado Ping */
+.ping-result-success,
+.ping-result-warning,
+.ping-result-error {
+    text-align: center;
+}
+
+.ping-icon-success,
+.ping-icon-warning,
+.ping-icon-error {
+    font-size: 64px;
+    margin-bottom: 15px;
+    animation: pulse 1.5s infinite;
+}
+
+.ping-icon-success {
+    color: var(--primary-green);
+}
+
+.ping-icon-warning {
+    color: #FFA500;
+}
+
+.ping-icon-error {
+    color: var(--error-red);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.ping-result-title {
+    color: var(--text-light);
+    font-size: 18px;
+    margin: 15px 0;
+    font-weight: 600;
+}
+
+.ping-stats {
+    background: rgba(0, 255, 136, 0.05);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 6px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.ping-stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+}
+
+.ping-stats-row:last-child {
+    border-bottom: none;
+}
+
+.ping-stat-label {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+}
+
+.ping-stat-value {
+    color: var(--primary-green);
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+.ping-message {
+    color: var(--text-light);
+    font-size: 13px;
+    margin-top: 15px;
+    line-height: 1.5;
+}
+
+/* Modal Footer */
+.ping-modal-footer {
+    padding: 20px;
+    border-top: 1px solid var(--primary-green);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.ping-modal-footer .btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ping-modal-footer .btn-close {
+    background: rgba(0, 217, 255, 0.2);
+    color: var(--accent-cyan);
+    border: 1px solid var(--accent-cyan);
+}
+
+.ping-modal-footer .btn-close:hover {
+    background: var(--accent-cyan);
+    color: var(--bg-darker);
+}

@@ -1510,6 +1510,8 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         f"-o ConnectTimeout=30 "
         f"-o ServerAliveInterval=60 "
         f"-o LogLevel=ERROR "
+        f"-o HostKeyAlgorithms=+ssh-rsa "
+        f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
         f"-p {porta} {usuario}@{host}"
     )
     
@@ -2176,3 +2178,247 @@ def buscar_templates_backup(request):
 def terminal_page(request):
     """Renderiza a página de terminal SSH múltiplo"""
     return render(request, 'terminal.html')
+
+
+
+# ============================================
+# FUNÇÕES DE PING - ADICIONAR AO views.py
+# ============================================
+
+@login_required(login_url='login')
+def ping_acesso(request, acesso_id):
+    """Realiza ping para um acesso (via proxy se necessário)"""
+    try:
+        acesso = Acesso.objects.get(id=acesso_id)
+        
+        # ✅ Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                cliente = Cliente.objects.get(usuario=request.user)
+                if acesso.cliente.id != cliente.id:
+                    return JsonResponse({'error': 'Sem permissão'}, status=403)
+            except Cliente.DoesNotExist:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        
+        host = acesso.host
+        eh_privado = is_private_ip(host)
+        
+        print(f"\n{'='*80}")
+        print(f"🔍 PING REQUEST")
+        print(f"{'='*80}")
+        print(f"Host: {host}")
+        print(f"IP Privado? {eh_privado}")
+        
+        # ✅ Se IP privado, executar via proxy
+        if eh_privado:
+            print(f"⚠️ IP PRIVADO - Usando proxy SSH")
+            
+            proxy = ProxyServer.objects.filter(
+                cliente=acesso.cliente,
+                ativo=True
+            ).first()
+            
+            if not proxy:
+                return JsonResponse({
+                    'error': 'IP privado sem proxy SSH ativo',
+                    'host': host,
+                    'status': 'erro'
+                }, status=400)
+            
+            resultado = ping_via_proxy(proxy, host)
+        else:
+            # ✅ IP público, ping direto
+            print(f"✅ IP PÚBLICO - Ping direto")
+            resultado = ping_direto(host)
+        
+        print(f"{'='*80}")
+        print(f"Resultado: {resultado}")
+        print(f"{'='*80}\n")
+        
+        return JsonResponse(resultado)
+    
+    except Acesso.DoesNotExist:
+        return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
+    except Exception as e:
+        print(f"❌ ERRO: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def ping_direto(host, packets=10):
+    """
+    ✅ Ping direto para IP público
+    Compatível com Linux e Windows
+    """
+    try:
+        import subprocess
+        import platform
+        
+        # ✅ Detectar sistema operacional
+        sistema = platform.system()
+        
+        if sistema == 'Windows':
+            cmd = ['ping', '-n', str(packets), host]
+        else:  # Linux/Mac
+            cmd = ['ping', '-c', str(packets), host]
+        
+        print(f"📤 Executando: {' '.join(cmd)}")
+        
+        # ✅ Executar ping com timeout
+        resultado = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        output = resultado.stdout
+        return_code = resultado.returncode
+        
+        print(f"Return code: {return_code}")
+        print(f"Output:\n{output}")
+        
+        # ✅ Parsear resultado
+        return parsear_output_ping(output, host, return_code)
+    
+    except subprocess.TimeoutExpired:
+        return {
+            'host': host,
+            'status': 'timeout',
+            'mensagem': 'Timeout ao executar ping',
+            'packets_enviados': packets,
+            'packets_recebidos': 0,
+            'pacotes_perdidos': packets
+        }
+    except Exception as e:
+        return {
+            'host': host,
+            'status': 'erro',
+            'mensagem': f'Erro ao executar ping: {str(e)}',
+            'packets_enviados': packets,
+            'packets_recebidos': 0,
+            'pacotes_perdidos': packets
+        }
+
+
+def ping_via_proxy(proxy, host, packets=10):
+    """
+    ✅ Ping via proxy SSH (para IPs privados)
+    """
+    try:
+        print(f"📡 Ping via proxy SSH")
+        
+        # ✅ Conectar ao proxy
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        ssh_client.connect(
+            hostname=proxy.host,
+            port=proxy.porta,
+            username=proxy.usuario,
+            password=proxy.senha,
+            timeout=10,
+            look_for_keys=False,
+            allow_agent=False
+        )
+        
+        print(f"✅ Conectado ao proxy")
+        
+        # ✅ Executar ping no servidor remoto
+        cmd_ping = f'ping -c {packets} {host}'
+        print(f"📤 Executando no proxy: {cmd_ping}")
+        
+        stdin, stdout, stderr = ssh_client.exec_command(cmd_ping, timeout=30)
+        
+        output = stdout.read().decode('utf-8', errors='ignore')
+        error = stderr.read().decode('utf-8', errors='ignore')
+        
+        ssh_client.close()
+        
+        print(f"Output:\n{output}")
+        if error:
+            print(f"Error:\n{error}")
+        
+        # ✅ Parsear resultado
+        return parsear_output_ping(output, host, 0)
+    
+    except Exception as e:
+        print(f"❌ Erro ping via proxy: {str(e)}")
+        return {
+            'host': host,
+            'status': 'erro',
+            'mensagem': f'Erro ao executar ping via proxy: {str(e)}',
+            'packets_enviados': packets,
+            'packets_recebidos': 0,
+            'pacotes_perdidos': packets
+        }
+
+
+def parsear_output_ping(output, host, return_code):
+    """
+    ✅ Parser universal para output de ping
+    Funciona com Linux, Mac e Windows
+    """
+    try:
+        import re
+        
+        # ✅ Se return_code é diferente de 0, host não respondeu
+        if return_code != 0 and 'transmitted' not in output.lower():
+            return {
+                'host': host,
+                'status': 'inalcancavel',
+                'mensagem': f'Host {host} não está alcançável (sem resposta)',
+                'packets_enviados': 0,
+                'packets_recebidos': 0,
+                'pacotes_perdidos': 0,
+                'output': output[:500]
+            }
+        
+        # ✅ Padrão Linux: "10 packets transmitted, 10 received, 0% packet loss"
+        linux_pattern = r'(\d+)\s+packets? transmitted[,.]?\s+(\d+)\s+(?:packets? )?received'
+        
+        # ✅ Procurar padrão Linux
+        match_linux = re.search(linux_pattern, output)
+        if match_linux:
+            enviados = int(match_linux.group(1))
+            recebidos = int(match_linux.group(2))
+            perdidos = enviados - recebidos
+            
+            # ✅ Procurar tempo
+            time_pattern = r'min/avg/max(?:/stddev)?\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)'
+            match_time = re.search(time_pattern, output)
+            
+            tempos = {}
+            if match_time:
+                tempos = {
+                    'min': float(match_time.group(1)),
+                    'avg': float(match_time.group(2)),
+                    'max': float(match_time.group(3))
+                }
+            
+            return {
+                'host': host,
+                'status': 'sucesso' if recebidos > 0 else 'timeout',
+                'packets_enviados': enviados,
+                'packets_recebidos': recebidos,
+                'pacotes_perdidos': perdidos,
+                'percentual_perda': (perdidos / enviados * 100) if enviados > 0 else 100,
+                'tempos': tempos,
+                'mensagem': f'{recebidos}/{enviados} packets recebidos' if recebidos > 0 else 'Sem resposta'
+            }
+        
+        # ✅ Se não encontrou padrão
+        return {
+            'host': host,
+            'status': 'desconhecido',
+            'mensagem': 'Não foi possível parsear resultado do ping',
+            'output': output[:300]
+        }
+    
+    except Exception as e:
+        print(f"❌ Erro ao parsear: {str(e)}")
+        return {
+            'host': host,
+            'status': 'erro',
+            'mensagem': f'Erro ao parsear resultado: {str(e)}',
+            'output': output[:300]
+        }

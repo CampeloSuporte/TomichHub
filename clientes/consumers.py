@@ -191,6 +191,8 @@ class SSHConsumer(WebsocketConsumer):
                 f"-o ConnectTimeout=10 "
                 f"-o ServerAliveInterval=60 "
                 f"-o LogLevel=ERROR "
+                f"-o HostKeyAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
+                f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
             )
             
             if self.is_huawei:
@@ -290,6 +292,8 @@ class SSHConsumer(WebsocketConsumer):
                 f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
                 f"-o ConnectTimeout=10 -o LogLevel=ERROR "
                 f"-p {proxy.porta} {proxy.usuario}@{proxy.host}"
+                f"-o HostKeyAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
+                f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
             )
             
             self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)

@@ -1277,3 +1277,221 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+function realizarPing(acessoId, host) {
+    console.log(`📡 Iniciando ping para: ${host} (Acesso ${acessoId})`);
+    
+    // Abrir modal de ping
+    abrirModalPing(host);
+    
+    // Executar ping via fetch
+    executarPingFetch(acessoId, host);
+}
+
+
+/**
+ * Abre o modal de ping
+ */
+function abrirModalPing(host) {
+    const modal = document.getElementById('modalPingResult');
+    
+    // Resetar conteúdo
+    document.getElementById('ping-host-title').textContent = host;
+    document.getElementById('ping-status').innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--accent-cyan);"></i>
+            <p class="mt-3">Executando ping... Aguarde...</p>
+        </div>
+    `;
+    
+    // Mostrar modal
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+
+/**
+ * Executa o ping via fetch
+ */
+function executarPingFetch(acessoId, host) {
+    fetch(`/clientes/acessos/ping/${acessoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            renderizarResultadoPing(data);
+        })
+        .catch(error => {
+            console.error('Erro ao executar ping:', error);
+            mostrarErropingModal(`Erro ao executar ping: ${error.message}`);
+        });
+}
+
+
+/**
+ * Renderiza o resultado do ping no modal
+ */
+function renderizarResultadoPing(data) {
+    const statusDiv = document.getElementById('ping-status');
+    
+    // ✅ SUCESSO
+    if (data.status === 'sucesso') {
+        let temposHtml = '';
+        
+        if (data.tempos && Object.keys(data.tempos).length > 0) {
+            temposHtml = `
+                <div class="ping-stats-row">
+                    <span class="ping-stat-label">Min:</span>
+                    <span class="ping-stat-value">${data.tempos.min || 'N/A'} ms</span>
+                    
+                    <span class="ping-stat-label">Avg:</span>
+                    <span class="ping-stat-value">${data.tempos.avg || 'N/A'} ms</span>
+                    
+                    <span class="ping-stat-label">Max:</span>
+                    <span class="ping-stat-value">${data.tempos.max || 'N/A'} ms</span>
+                </div>
+            `;
+        }
+        
+        statusDiv.innerHTML = `
+            <div class="ping-result-success">
+                <div class="ping-icon-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                
+                <h3 class="ping-result-title">Host Alcançável ✓</h3>
+                
+                <div class="ping-stats">
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Packets Enviados:</span>
+                        <span class="ping-stat-value">${data.packets_enviados}</span>
+                    </div>
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Packets Recebidos:</span>
+                        <span class="ping-stat-value" style="color: var(--primary-green);">${data.packets_recebidos}</span>
+                    </div>
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Packets Perdidos:</span>
+                        <span class="ping-stat-value">${data.pacotes_perdidos}</span>
+                    </div>
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Taxa de Perda:</span>
+                        <span class="ping-stat-value">${data.percentual_perda.toFixed(2)}%</span>
+                    </div>
+                    ${temposHtml}
+                </div>
+                
+                <p class="ping-message">${data.mensagem}</p>
+            </div>
+        `;
+    }
+    
+    // ⚠️ TIMEOUT
+    else if (data.status === 'timeout') {
+        statusDiv.innerHTML = `
+            <div class="ping-result-warning">
+                <div class="ping-icon-warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                
+                <h3 class="ping-result-title">Timeout ⏱️</h3>
+                
+                <div class="ping-stats">
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Host:</span>
+                        <span class="ping-stat-value">${data.host}</span>
+                    </div>
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Packets Enviados:</span>
+                        <span class="ping-stat-value">${data.packets_enviados}</span>
+                    </div>
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Packets Recebidos:</span>
+                        <span class="ping-stat-value" style="color: var(--error-red);">0</span>
+                    </div>
+                </div>
+                
+                <p class="ping-message">⚠️ Nenhuma resposta do host. Pode estar desligado ou inalcançável.</p>
+            </div>
+        `;
+    }
+    
+    // ❌ INALCANÇÁVEL
+    else if (data.status === 'inalcancavel') {
+        statusDiv.innerHTML = `
+            <div class="ping-result-error">
+                <div class="ping-icon-error">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                
+                <h3 class="ping-result-title">Host Inalcançável ✗</h3>
+                
+                <div class="ping-stats">
+                    <div class="ping-stats-row">
+                        <span class="ping-stat-label">Host:</span>
+                        <span class="ping-stat-value">${data.host}</span>
+                    </div>
+                </div>
+                
+                <p class="ping-message">${data.mensagem}</p>
+            </div>
+        `;
+    }
+    
+    // ❌ ERRO
+    else if (data.status === 'erro') {
+        statusDiv.innerHTML = `
+            <div class="ping-result-error">
+                <div class="ping-icon-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                
+                <h3 class="ping-result-title">Erro na Execução ✗</h3>
+                
+                <p class="ping-message">${data.mensagem}</p>
+            </div>
+        `;
+    }
+    
+    // ❓ DESCONHECIDO
+    else {
+        statusDiv.innerHTML = `
+            <div class="ping-result-warning">
+                <div class="ping-icon-warning">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                
+                <h3 class="ping-result-title">Resultado Desconhecido</h3>
+                
+                <p class="ping-message">${data.mensagem || 'Não foi possível determinar o status'}</p>
+            </div>
+        `;
+    }
+}
+
+
+/**
+ * Mostra erro no modal de ping
+ */
+function mostrarErropingModal(mensagem) {
+    const statusDiv = document.getElementById('ping-status');
+    
+    statusDiv.innerHTML = `
+        <div class="ping-result-error">
+            <div class="ping-icon-error">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            
+            <h3 class="ping-result-title">Erro ✗</h3>
+            
+            <p class="ping-message">${mensagem}</p>
+        </div>
+    `;
+}
+
+
+/**
+ * Fecha o modal de ping
+ */
+function fecharModalPing() {
+    document.getElementById('modalPingResult').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}

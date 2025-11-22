@@ -56,5 +56,6 @@ urlpatterns = [
     path('backups/deletar/<int:backup_id>/', views.deletar_backup, name='deletar_backup'),
     path('backups/templates/', views.buscar_templates_backup, name='buscar_templates_backup'),
     path('terminal/', views.terminal_page, name='terminal_page'),
+    path('acessos/ping/<int:acesso_id>/', views.ping_acesso, name='ping_acesso'),
     
 ]

@@ -1,257 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Conecta ISP
-Equipamento: SW-CORE-CSO
-Host: 10.100.100.2:22002
-Acesso: VIA PROXY SSH
-Modelo: CSS326-24G-2S+
-Template: Backup Mikrotik
-Data: 16/11/2025 07:31:05
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[admin@SW-CORE-CSO] > /                                                        [K[admin@SW-CORE-CSO] > /e[admin@SW-CORE-CSO] > /e                                                       [K[admin@SW-CORE-CSO] > /ex[admin@SW-CORE-CSO] > /ex                                                      [K[admin@SW-CORE-CSO] > /exp[admin@SW-CORE-CSO] > /exp                                                     [K[admin@SW-CORE-CSO] > /expo[admin@SW-CORE-CSO] > /expo                                                    [K[admin@SW-CORE-CSO] > /expor[admin@SW-CORE-CSO] > /expor                                                   [K[admin@SW-CORE-CSO] > /export[admin@SW-CORE-CSO] > /export                                                  [K[admin@SW-CORE-CSO] > /export [admin@SW-CORE-CSO] > /export                                                  [K[admin@SW-CORE-CSO] > /export t[admin@SW-CORE-CSO] > /export t                                                [K[admin@SW-CORE-CSO] > /export te[admin@SW-CORE-CSO] > /export te                                               [K[admin@SW-CORE-CSO] > /export ter[admin@SW-CORE-CSO] > /export ter                                              [K[admin@SW-CORE-CSO] > /export ters[admin@SW-CORE-CSO] > /export ters                                             [K[admin@SW-CORE-CSO] > /export terse[admin@SW-CORE-CSO] > /export terse                                            [K[admin@SW-CORE-CSO] > /export terse[admin@SW-CORE-CSO] > /export terse
-# nov/15/2025 07:11:30 by RouterOS 6.49.6
-# software id = FRH5-XW6H
-#
-# model = CRS328-4C-20S-4S+
-# serial number = A0A40A703C67
-/interface bridge add admin-mac=74:4D:28:37:6C:A8 auto-mac=no comment=defconf nam
-e=bridge vlan-filtering=yes
-/interface ethernet set [ find default-name=combo1 ] auto-negotiation=no l2mtu=10
-218 mtu=10000 speed=100Mbps
-/interface ethernet set [ find default-name=combo2 ] l2mtu=10218 mtu=10000 name="
-combo2 - SERVIDOR DELL R710"
-/interface ethernet set [ find default-name=combo3 ] l2mtu=10218 mtu=10000 name="
-combo3 - REDE MIXTA"
-/interface ethernet set [ find default-name=combo4 ] l2mtu=10218 mtu=10000 name="
-combo4 - SERVIDOR DELL R630"
-/interface ethernet set [ find default-name=sfp-sfpplus1 ] l2mtu=10218 mtu=10000 
-name="sfp-sfpplus1 - PE-BORDA" speed=10Gbps
-/interface ethernet set [ find default-name=sfp-sfpplus2 ] l2mtu=10218 mtu=10000 
-name="sfp-sfpplus2 - HUAWEI GIGA7" speed=10Gbps
-/interface ethernet set [ find default-name=sfp-sfpplus3 ] auto-negotiation=no l2
-mtu=10218 mtu=10000 name="sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" speed=10Gbps
-
-/interface ethernet set [ find default-name=sfp-sfpplus4 ] l2mtu=10218 mtu=10000 
-name="sfp-sfpplus4 - OLT SITIO DAS FLORES"
-/interface ethernet set [ find default-name=sfp1 ] l2mtu=10218 mtu=10000 name="sf
-p1 - "
-/interface ethernet set [ find default-name=sfp2 ] l2mtu=10218 mtu=10000 name="sf
-p2 - SW-DST-CAPO"
-/interface ethernet set [ find default-name=sfp3 ] l2mtu=10218 mtu=10000 name="sf
-p3 - FIBRA MARI"
-/interface ethernet set [ find default-name=sfp4 ] advertise=1000M-half,1000M-ful
-l l2mtu=10218 mtu=10000 name="sfp4 - OLT-SDG"
-/interface ethernet set [ find default-name=sfp5 ] l2mtu=10218 mtu=10000 name="sf
-p5 "
-/interface ethernet set [ find default-name=sfp6 ] l2mtu=10218 mtu=10000 name="sf
-p6 "
-/interface ethernet set [ find default-name=sfp7 ] l2mtu=10218 mtu=10000
-/interface ethernet set [ find default-name=sfp8 ] l2mtu=10218 mtu=10000 name="sf
-p8 - "
-/interface ethernet set [ find default-name=sfp9 ] l2mtu=10218 mtu=10000 name="sf
-p9 - BNG-FIBRA-CSO"
-/interface ethernet set [ find default-name=sfp10 ] l2mtu=10218 mtu=10000 name="s
-fp10 - BNG-FIBRA-CSO"
-/interface ethernet set [ find default-name=sfp11 ] l2mtu=10218 mtu=10000 name="s
-fp11 - BNG-FIBRA-CSO"
-/interface ethernet set [ find default-name=sfp12 ] auto-negotiation=no l2mtu=102
-18 mtu=10000 name="sfp12 - BNG-FIBRA-CSO"
-/interface ethernet set [ find default-name=sfp13 ] l2mtu=10218 mtu=10000
-/interface ethernet set [ find default-name=sfp14 ] l2mtu=10218 mtu=10000
-/interface ethernet set [ find default-name=sfp15 ] auto-negotiation=no l2mtu=102
-18 mtu=10000
-/interface ethernet set [ find default-name=sfp16 ] l2mtu=10218 mtu=10000
-/interface ethernet set [ find default-name=sfp17 ] advertise=10M-full,100M-full,
-1000M-full auto-negotiation=no l2mtu=10218 mtu=10000
-/interface ethernet set [ find default-name=sfp18 ] l2mtu=10218 mtu=10000
-/interface ethernet set [ find default-name=sfp19 ] l2mtu=10218 mtu=10000 name="s
-fp19 - ENLACE OLT GENIPAPO"
-/interface ethernet set [ find default-name=sfp20 ] l2mtu=10218 mtu=10000 name=sf
-p20-SW-DST-MS
-/interface bonding add mode=802.3ad name="bonding1 - BNG FIBRA CSO" slaves="sfp9 
-- BNG-FIBRA-CSO,sfp10 - BNG-FIBRA-CSO,sfp11 - BNG-FIBRA-CSO" transmit-hash-polic
-y=layer-2-and-3
-/interface list add exclude=dynamic include=dynamic name=LAN
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/snmp community set [ find default=yes ] addresses=172.18.234.152/32
-/snmp community add addresses=0.0.0.0/0 name=ConectaISP-ro
-/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
-nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
-ntagged-and-priority-tagged interface=combo1 pvid=2031
-/interface bridge port add bridge=bridge comment=defconf interface="combo2 - SERV
-IDOR DELL R710" pvid=2031
-/interface bridge port add bridge=bridge comment=defconf interface="combo3 - REDE
- MIXTA"
-/interface bridge port add bridge=bridge comment=defconf interface="combo4 - SERV
-IDOR DELL R630" pvid=2031
-/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus1 
-- PE-BORDA"
-/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus2 
-- HUAWEI GIGA7"
-/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus3 
- - SW-ACS-QUEIMADINHA-SFP+1"
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
-ntagged-and-priority-tagged interface="sfp-sfpplus4 - OLT SITIO DAS FLORES" pvid
-=22 tag-stacking=yes
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
-ntagged-and-priority-tagged interface="sfp1 - " pvid=22 tag-stacking=yes
-/interface bridge port add bridge=bridge comment=defconf interface="sfp2 - SW-DST
--CAPO"
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
-ntagged-and-priority-tagged interface="sfp3 - FIBRA MARI" pvid=23 tag-stacking=y
-es
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-v
-lan-tagged interface="sfp4 - OLT-SDG"
-/interface bridge port add bridge=bridge comment=defconf interface="sfp5 "
-/interface bridge port add bridge=bridge comment=defconf interface="sfp6 "
-/interface bridge port add bridge=bridge comment=defconf interface=sfp7
-/interface bridge port add bridge=bridge comment=defconf interface="sfp8 - " pvid
-=2031
-/interface bridge port add bridge=bridge comment=defconf disabled=yes interface="
-sfp9 - BNG-FIBRA-CSO"
-/interface bridge port add bridge=bridge comment=defconf disabled=yes interface="
-sfp10 - BNG-FIBRA-CSO"
-/interface bridge port add bridge=bridge comment=defconf disabled=yes interface="
-sfp11 - BNG-FIBRA-CSO"
-/interface bridge port add bridge=bridge comment=defconf disabled=yes interface="
-sfp12 - BNG-FIBRA-CSO"
-/interface bridge port add bridge=bridge comment=defconf interface=sfp13
-/interface bridge port add bridge=bridge comment=defconf interface=sfp14
-/interface bridge port add bridge=bridge comment=defconf interface=sfp15
-/interface bridge port add bridge=bridge comment=defconf interface=sfp16
-/interface bridge port add bridge=bridge comment=defconf interface=sfp17
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
-ntagged-and-priority-tagged interface=sfp18 pvid=25
-/interface bridge port add bridge=bridge comment=defconf interface="sfp19 - ENLAC
-E OLT GENIPAPO"
-/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-v
-lan-tagged interface=sfp20-SW-DST-MS
-/interface bridge port add bridge=bridge interface="bonding1 - BNG FIBRA CSO"
-/ip firewall connection tracking set enabled=no
-/ip neighbor discovery-settings set discover-interface-list=LAN
-/interface bridge vlan add bridge=bridge tagged="sfp2 - SW-DST-CAPO,sfp-sfpplus1 
-- PE-BORDA,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" vlan-ids=2022,2023
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,combo3 -
- REDE MIXTA" vlan-ids=2019
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus3  - SW-ACS-QUEIMADIN
-HA-SFP+1,sfp-sfpplus2 - HUAWEI GIGA7,sfp-sfpplus1 - PE-BORDA,sfp3 - FIBRA MARI" 
-untagged="combo2 - SERVIDOR DELL R710,combo1,combo4 - SERVIDOR DELL R630,sfp8 - 
-" vlan-ids=2031
-/interface bridge vlan add bridge=bridge tagged="sfp8 - ,sfp2 - SW-DST-CAPO,sfp5 
-,sfp-sfpplus1 - PE-BORDA,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" vlan-ids=2030
-
-/interface bridge vlan add bridge=bridge tagged="sfp2 - SW-DST-CAPO,sfp-sfpplus1 
-- PE-BORDA,sfp8 - ,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1,combo3 - REDE MIXTA,
-bonding1 - BNG FIBRA CSO" vlan-ids=2053,2035,2057
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp-sfpp
-lus3  - SW-ACS-QUEIMADINHA-SFP+1,bonding1 - BNG FIBRA CSO,sfp8 - " vlan-ids=2021
-
-/interface bridge vlan add bridge=bridge comment="VLANS REDE POP CAPOEIRA" tagged
-="sfp2 - SW-DST-CAPO,combo3 - REDE MIXTA,sfp-sfpplus2 - HUAWEI GIGA7,sfp5 " vlan
--ids=2026
-/interface bridge vlan add bridge=bridge disabled=yes tagged="sfp-sfpplus1 - PE-B
-ORDA" untagged="sfp1 - " vlan-ids=2024
-/interface bridge vlan add bridge=bridge disabled=yes tagged="sfp-sfpplus2 - HUAW
-EI GIGA7,sfp3 - FIBRA MARI" vlan-ids=405
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp8 - ,
-sfp2 - SW-DST-CAPO,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" vlan-ids=2020
-/interface bridge vlan add bridge=bridge comment=QINQ-MARI tagged="sfp-sfpplus2 -
- HUAWEI GIGA7,combo3 - REDE MIXTA" untagged="sfp3 - FIBRA MARI" vlan-ids=23
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp-sfpp
-lus2 - HUAWEI GIGA7" vlan-ids=3179
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp-sfpp
-lus2 - HUAWEI GIGA7,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" vlan-ids=33
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp-sfpp
-lus4 - OLT SITIO DAS FLORES" vlan-ids=2909
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp8 - ,
-bonding1 - BNG FIBRA CSO,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" vlan-ids=2018
-
-/interface bridge vlan add bridge=bridge comment=VLAN-JENIPAPO tagged="combo3 - R
-EDE MIXTA,sfp-sfpplus2 - HUAWEI GIGA7,sfp19 - ENLACE OLT GENIPAPO,sfp-sfpplus1 -
- PE-BORDA" vlan-ids=300-302
-/interface bridge vlan add bridge=bridge comment=QINQ-SITIO tagged="sfp-sfpplus2 
-- HUAWEI GIGA7,combo3 - REDE MIXTA" untagged="sfp1 - ,sfp-sfpplus4 - OLT SITIO D
-AS FLORES" vlan-ids=22
-/interface bridge vlan add bridge=bridge tagged="sfp19 - ENLACE OLT GENIPAPO,sfp8
- - ,sfp-sfpplus1 - PE-BORDA,combo3 - REDE MIXTA" vlan-ids=1601
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - PE-BORDA,sfp-sfpp
-lus2 - HUAWEI GIGA7" vlan-ids=10,21
-/interface bridge vlan add bridge=bridge comment=VLAN-VM-ITTV tagged="sfp-sfpplus
-2 - HUAWEI GIGA7,combo4 - SERVIDOR DELL R630,sfp-sfpplus4 - OLT SITIO DAS FLORES
-,combo2 - SERVIDOR DELL R710" vlan-ids=12
-/interface bridge vlan add bridge=bridge tagged="combo3 - REDE MIXTA,sfp8 - " vla
-n-ids=317
-/interface bridge vlan add bridge=bridge comment=QINQ-QUEIMADINHA tagged="sfp-sfp
-plus2 - HUAWEI GIGA7,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1,combo3 - REDE MIXT
-A" vlan-ids=24,116,27,400
-/interface bridge vlan add bridge=bridge comment=VLANS-ZELIA tagged="sfp4 - OLT-S
-DG,sfp-sfpplus2 - HUAWEI GIGA7,combo3 - REDE MIXTA,sfp-sfpplus3  - SW-ACS-QUEIMA
-DINHA-SFP+1" vlan-ids=101-115
-/interface bridge vlan add bridge=bridge comment=VLAN-OLT-SDG tagged="combo3 - RE
-DE MIXTA,sfp-sfpplus2 - HUAWEI GIGA7,sfp2 - SW-DST-CAPO,sfp4 - OLT-SDG" vlan-ids
-=26
-/interface bridge vlan add bridge=bridge comment=VLAN-OSPF-ZELIA tagged="sfp-sfpp
-lus2 - HUAWEI GIGA7,sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" vlan-ids=30
-/interface bridge vlan add bridge=bridge comment=VLAN-OSPF-SDG tagged="sfp-sfpplu
-s2 - HUAWEI GIGA7,sfp4 - OLT-SDG" vlan-ids=36
-/interface bridge vlan add bridge=bridge comment=VLAN-OLT-ALTO-LINDO tagged="sfp2
-0-SW-DST-MS,sfp-sfpplus2 - HUAWEI GIGA7,combo3 - REDE MIXTA" vlan-ids=303
-/interface bridge vlan add bridge=bridge tagged="combo3 - REDE MIXTA,sfp20-SW-DST
--MS" vlan-ids=37
-/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus3  - SW-ACS-QUEIMADIN
-HA-SFP+1,sfp-sfpplus1 - PE-BORDA,bridge" vlan-ids=41
-/interface list member add interface="sfp-sfpplus1 - PE-BORDA" list=LAN
-/interface list member add interface="sfp-sfpplus2 - HUAWEI GIGA7" list=LAN
-/interface list member add interface="sfp-sfpplus3  - SW-ACS-QUEIMADINHA-SFP+1" l
-ist=LAN
-/interface list member add interface="sfp-sfpplus4 - OLT SITIO DAS FLORES" list=L
-AN
-/interface list member add interface="sfp2 - SW-DST-CAPO" list=LAN
-/interface list member add interface="sfp3 - FIBRA MARI" list=LAN
-/interface list member add interface="sfp4 - OLT-SDG" list=LAN
-/interface list member add interface="sfp19 - ENLACE OLT GENIPAPO" list=LAN
-/interface list member add interface="combo3 - REDE MIXTA" list=LAN
-/ip address add address=10.100.100.2/24 interface=bridge network=10.100.100.0
-/ip arp add address=10.100.100.3 interface=bridge mac-address=80:2A:A8:5C:DA:28
-/ip dns set servers=8.8.8.8
-/ip route add distance=1 gateway=10.100.100.1
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=8283
-/ip service set api-ssl disabled=yes
-/snmp set contact=74988737970 enabled=yes location="-10.66666452684104, -39.49281
-5244708616" trap-community=ConectaISP-ro trap-generators=interfaces trap-interfa
-ces=all trap-version=2
-/system clock set time-zone-name=America/Bahia
-/system identity set name=SW-CORE-CSO
-/system routerboard settings set boot-os=router-os
-/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
-,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
-art-time=03:00:00
-/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
-,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
-kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
-em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
-m identity get name] . \".rsc\")\r\
-    \n\r\
-    \n# Cria o backup\r\
-    \n/export file=\$backupFileName\r\
-    \n\r\
-    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
-th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
-    \ndelay 10s\r\
-    \n/file remove \$backupFileName"
-/tool romon set enabled=yes secrets=Conecta@2023
-[admin@SW-CORE-CSO] >                                                          [admin@SW-CORE-CSO] > 
