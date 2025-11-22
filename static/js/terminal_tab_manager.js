@@ -105,29 +105,72 @@ class TerminalTabManager {
 const terminalTabManager = new TerminalTabManager();
 
 // ============================================
-// MODIFICAR FUNÇÃO DE ACESSO
+// FUNÇÃO CORRIGIDA - acessarEquipamento
 // ============================================
-
-// Função original está em acessar_equipamento.js
-// Vamos SOBRESCREVER a função acessarEquipamento
+// ✅ CORREÇÃO:
+// 1. Limpar HOST para remover porta e caminhos
+// 2. Converter PORTA para número
+// 3. Comparar portas como NÚMERO, não STRING
 
 function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, tipo) {
-    console.log(`
-    ╔════════════════════════════════════════╗
-    ║        ACESSANDO EQUIPAMENTO           ║
-    ╠════════════════════════════════════════╣
-    ║ ID: ${acessoId}
-    ║ Tipo: ${tipo}
-    ║ Host: ${host}:${porta}
-    ║ Protocolo: ${protocolo}
-    ╚════════════════════════════════════════╝
-    `);
+    
+    // ✅ Converter porta para NÚMERO
+    const portaNum = parseInt(String(porta).trim(), 10);
+    console.log('📊 Porta Numérica:', portaNum);
+    
+    // ✅ VERIFICAÇÃO DE PROTOCOLO WEB
+    const proto = String(protocolo).toUpperCase().trim();
+    
+    if (proto === 'HTTPS' || proto === 'HTTP') {
+        console.log('🌐 Protocolo WEB detectado:', proto);
+        
+        // ✅ Construir URL mantendo o host e caminho intacto
+        let url = `${proto.toLowerCase()}://${host}`;
+        
+        // ✅ NÃO adicionar porta se for a padrão
+        if (!isNaN(portaNum)) {
+            if (proto === 'HTTP' && portaNum === 80) {
+                console.log('   ✅ Ignorando porta padrão HTTP (80)');
+                // Não adiciona nada
+            } else if (proto === 'HTTPS' && portaNum === 443) {
+                console.log('   ✅ Ignorando porta padrão HTTPS (443)');
+                // Não adiciona nada
+            } else {
+                console.log('   ✅ Adicionando porta ' + portaNum + ' (não é padrão)');
+                url += `:${portaNum}`;
+            }
+        }
+        
+        // Abrir em nova aba
+        window.open(url, '_blank');
+        
+        // Mostrar notificação
+        if (typeof showSuccess === 'function') {
+            showSuccess('NAVEGADOR ABERTO', `Acessando ${url}`, 3000);
+        } else {
+            alert('Abrindo: ' + url);
+        }
+        
+        return;  // ⚠️ IMPORTANTE: Parar aqui e NÃO abrir o terminal
+    }
+    
+    // ✅ PARA SSH, TELNET, WINBOX, ETC - ABRIR TERMINAL
+    console.log('🖥️ Protocolo de terminal detectado:', proto);
+    
+    // Limpar host apenas para SSH/Telnet (remover caminho e porta extra)
+    let hostLimpo = String(host).trim();
+    if (hostLimpo.includes('/')) {
+        hostLimpo = hostLimpo.split('/')[0];
+    }
+    if (hostLimpo.includes(':') && proto !== 'SSH' && proto !== 'TELNET') {
+        hostLimpo = hostLimpo.split(':')[0];
+    }
     
     // Abrir terminal em nova aba
     terminalTabManager.abrirTerminal(
         acessoId,
-        host,
-        porta,
+        hostLimpo,
+        portaNum,
         usuario,
         senha,
         protocolo,
@@ -145,5 +188,10 @@ window.addEventListener('beforeunload', () => {
 });
 
 console.log('✅ Terminal Tab Manager inicializado');
-console.log('📌 Função acessarEquipamento foi sobrescrita');
+console.log('📌 Função acessarEquipamento foi corrigida com:');
+console.log('   ✓ Limpeza de HOST (remove porta e caminhos)');
+console.log('   ✓ Conversão de PORTA para número');
+console.log('   ✓ Comparação numérica de portas padrão');
+console.log('🌐 HTTP/HTTPS abrirão no navegador');
+console.log('🖥️ SSH/Telnet abrirão no terminal');
 console.log('🔄 Usando localStorage para compartilhar dados entre abas');
