@@ -275,7 +275,7 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro SSH: {str(e)}')
     
     def connect_ssh_via_proxy(self, acesso):
-        """Conexão SSH via proxy"""
+        """Conexão SSH via proxy - ✅ CORRIGIDO COM ESPAÇOS"""
         try:
             proxy = self.get_active_proxy(acesso.cliente)
             logger.info(f"🔗 SSH via proxy: {proxy.nome}")
@@ -287,13 +287,14 @@ class SSHConsumer(WebsocketConsumer):
             
             local_port = self.find_available_port()
             
+            # ✅ CORRIGIDO: Opções antes do -p para evitar erro de concatenação
             tunnel_cmd = (
                 f"ssh -N -L {local_port}:{acesso.host}:{acesso.porta} "
                 f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
                 f"-o ConnectTimeout=10 -o LogLevel=ERROR "
+                f"-o HostKeyAlgorithms=+ssh-rsa "  # ✅ ANTES do -p
+                f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "  # ✅ ANTES do -p
                 f"-p {proxy.porta} {proxy.usuario}@{proxy.host}"
-                f"-o HostKeyAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
-                f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
             )
             
             self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)
@@ -313,9 +314,12 @@ class SSHConsumer(WebsocketConsumer):
             
             terminal_type = "vt100" if self.is_huawei else "xterm-256color"
             
+            # ✅ CORRIGIDO: Todas as opções antes do -p
             ssh_cmd = (
                 f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
                 f"-o ConnectTimeout=10 -o ServerAliveInterval=60 -o LogLevel=ERROR "
+                f"-o HostKeyAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
+                f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "  # ✅ ADICIONADO
             )
             
             if self.is_huawei:
