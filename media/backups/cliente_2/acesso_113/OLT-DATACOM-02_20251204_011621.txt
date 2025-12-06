@@ -1,0 +1,5039 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: OLT-DATACOM-02
+Host: 10.10.2.34:22002
+Acesso: VIA PROXY SSH
+Modelo: OLT DATACOM DM4615
+Template: Backup Datacom
+Data: 04/12/2025 01:16:21
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+show running-config | nomore
+aaa authentication-order [ local ]
+aaa user g5
+ password $1$COyvrObw$FJutPvJ9.v0zsk6HC5nPP0
+ group admin
+!
+aaa user ixc
+ password $1$/JRGU3IV$VfjIMDtkW.U/PVO9OLqfG/
+ group admin
+!
+aaa user sgpsgp
+ password $1$VLnrbLXs$m77BlzmIR/MkpiVVbtImr0
+ group admin
+!
+aaa user weidy
+ password $1$4ykgmeq3$6n7d7x56NRDp8XMJuZZxl0
+ group admin
+!
+snmp system contact noc@tomich.com.br
+snmp system location VITORIA-ES
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent ip 10.10.2.34
+snmp agent version v2c
+snmp agent version v3
+snmp community TOMICH
+ sec-name TOMICH
+!
+snmp target TOMICH
+ ip 10.100.100.2
+ tag [ std_v2_trap ]
+ v2c sec-name TOMICH
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group TOMICH
+ member TOMICH
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/3
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/4
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/1
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/2
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/3
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/4
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 12266
+!
+interface l3 gerencia
+ description interface-grencia-inband-vlan-4094
+ lower-layer-if vlan 4094
+ ipv4 address 10.10.2.34/30
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.5.25/24
+!
+interface gpon 1/1/1
+ downstream-fec
+ no shutdown
+ onu 0
+  serial-number ZTEGCCEB87D7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  name DIEGO_LIMA
+  serial-number DACM91EBB466
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 3
+  name ORISMAR_ARAUJO_DE_ALMEIDA
+  serial-number DACM91D27B88
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 4
+  name EDINALVA_SALES_FLORENTINO_NASCIMENTO
+  serial-number DACM91EB9426
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  name ROBSON_ALMEIDA_DOS_SANTOS
+  serial-number DACM91EBB54E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  name SONIA_MARIA_DA_SILVA_SOUSA
+  serial-number DACM00017F7E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  serial-number ZTEGCCEB83F9
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  name VALDECI_VIEIRA_DA_SILVA
+  serial-number DACM9109C853
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number DACM9153E11A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  serial-number FHTCAFA44B08
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 11
+  name CLEBSON_DOS_REIS_DE_LIMA
+  serial-number DACM0000F88A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  serial-number ZTEGCD1ABD04
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  serial-number DACM9109C29B
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  name ANTONIO_CARLOS_PESSOA_DE_BRITO
+  serial-number DACM91EB67F2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  serial-number ITBS448776B3
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  name NORTEGLAN_SILVA
+  serial-number DACM91EB8FBE
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  serial-number DACM91FAFFCA
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  name SONIA_SOUSA
+  serial-number ZTEGCD1ABD0C
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  name MARIA_DA_CONCEICAO_DE_BARROS
+  serial-number DACM9153E1A2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  name FABIO_DO_NASCIMENTO
+  serial-number FHTCAFA41690
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 21
+  name construtoracomercio_g5fibra
+  serial-number FHTCAFA41588
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 22
+  name G5_TORRES_MINERIOS
+  serial-number DACM912B3971
+  service-profile ONU_BRIDGE line-profile LAN2LAN
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2020
+  !
+ !
+ onu 23
+  name ANDERSON_MACHADO_SOUZA
+  serial-number FHTCAFA415C0
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  serial-number ITBS4483021F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 25
+  serial-number VSOL00BB433D
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1057
+  !
+ !
+ onu 26
+  serial-number VSOL00BC35A9
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 27
+  serial-number FHTTAB175369
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 28
+  serial-number VSOL00402901
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1057
+  !
+ !
+ onu 29
+  serial-number VSOL00BB6879
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 30
+  serial-number DACM91EC4D65
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 31
+  serial-number VSOL003796DB
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 32
+  serial-number FHTCAFA416E8
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 33
+  serial-number DACM91D29320
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 34
+  serial-number DACMDFB840BB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 35
+  serial-number FHTCAFA44BE0
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 36
+  serial-number DACM91543316
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 37
+  serial-number FHTCAFA3C138
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 38
+  serial-number VSOL00178622
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 39
+  serial-number ITBS0A489CBC
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 40
+  serial-number DACM91FC5A7B
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 41
+  serial-number VSOL0040006D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 42
+  serial-number ZTEGCD1A8AFF
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 43
+  serial-number FHTCAFA3BB18
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 44
+  serial-number ZTEGCD0FE7B2
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 45
+  name 11829
+  serial-number DACM9108BFDB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/2
+ downstream-fec
+ no shutdown
+ onu 0
+  serial-number ITBS0A4C08C6
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 1
+  name FLAVIO_SILVA
+  serial-number ZTEGCD0FD60A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  name ELIANA_ELLEN_MOTA_FREITAS_DE_LIMA
+  serial-number DACM91D28F90
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 3
+  name GABRIEL_NASCIMENTO_SOBRINHO
+  serial-number DACM9154191F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  serial-number CMSZ3B34B5A9
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  serial-number DACM91088682
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  serial-number DACM91261BD6
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  name MARCOS_BARROS
+  serial-number ZTEGCD1A86B2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  name ANDRESSA_PRISCILA_DO_NASCIMENTO_MELO
+  serial-number DACMDFB84681
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number DACM910D857F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  serial-number HWTC3B6741C9
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1057
+  !
+ !
+ onu 11
+  serial-number ITBS8BF82399
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 12
+  name CE_COMERCIO_DE_MATERIAIS_DE_CONSTRUCAO_LTDA
+  serial-number DACM91EB5AC2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  name CONTROTEST_LTDA
+  serial-number DACM91262ED8
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  serial-number VSOL0037385F
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 15
+  serial-number VSOL00A957BB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  serial-number DACM9153E312
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  serial-number DACM91FC73F0
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  name JOSE_CARLOS_RIBEIRO_SOARES
+  serial-number DACM9153E07A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  serial-number FHTCAFA3BAD0
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  serial-number DACM91FAEB7C
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 21
+  serial-number ITBS0AE34FBD
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 22
+  serial-number DACM91D293AC
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 23
+  serial-number DACM91262F02
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  serial-number DACMDFB18AA2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 25
+  serial-number DACM91EB8D2A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 26
+  serial-number VSOL00A9970F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 27
+  serial-number DACMDFB86B6B
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 28
+  serial-number VSOL001AC63D
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 29
+  serial-number DACM916CDEE4
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 30
+  serial-number VSOL003FFD21
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 31
+  serial-number FHTCAFA40C28
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 32
+  serial-number DACM91ECB1CB
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 33
+  serial-number DACMDFB863D5
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 34
+  serial-number DACM912D3371
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 56
+  serial-number DC90466D2200
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+ onu 57
+  name 7129
+  serial-number DACMDFB8705F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 102
+  name 11470
+  serial-number ZTEGCD0FF5C1
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 120
+  name 7931
+  serial-number DACM910A9381
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/3
+ downstream-fec
+ no shutdown
+ onu 0
+  serial-number ITBS5B0E71B6
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 1
+  serial-number DC90466B2888
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+ onu 2
+  serial-number DACM9153E09E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 3
+  name RANDERSON_CARVALHO_LIMA
+  serial-number DACM91EC3AF9
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  name UERBESON_DA_CONCEICCAO
+  serial-number ZTEGCD1A8ADD
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  name NICOLLY_FRANCO
+  serial-number DACM91EB944A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  name MARCELINA_DA_CONCEICAO
+  serial-number DACM91EBAEDE
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  serial-number ITBS5B0E6019
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 8
+  name IDAIANE_BARBOSA
+  serial-number DACM91EB8006
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  name AURELIA_DE_OLIVEIRA_PROTASIO
+  serial-number DACM91EC3E31
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  serial-number ITBS4435ED33
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 11
+  name BEATRIZ_SILVA_DOS_SANTOS
+  serial-number DACM91EC9FDB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  name BILHETERIA_FAP
+  serial-number DACM91EC44A1
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  name TECNOSONDA_ALOJAMENTO
+  serial-number DACM0000F868
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  name CLEYVER_AUGUSTO
+  serial-number DACM91EC9A03
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  name LUCAS_SOUSA
+  serial-number DACM9153E30E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  serial-number DACM0001797A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  name ZILDIMARA_ALVES_OLIVEIRA
+  serial-number DACM91EC4495
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  serial-number ITBSAC03F619
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 19
+  serial-number DACM915416DB
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  name PORTARIA.FAP
+  serial-number DACM91EC4531
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 21
+  serial-number DACM91EC4D61
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 23
+  serial-number TPLG4A47F685
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 24
+  serial-number DACM91FC9C4B
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 25
+  name ZEIDI
+  serial-number ZTEGCD0FE7B1
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 26
+  serial-number VSOL00A9803F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 27
+  name ANTONIO_HELIO_ALVES_DOS_SANTOS
+  serial-number DACM91262DB2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 28
+  name NATALIA_MACEDO_DOS_SANTOS
+  serial-number ITBS44956327
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 29
+  serial-number DACMDFB87BFB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 30
+  name ESTACIONAMENTO_FAP
+  serial-number DACM9108B936
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 31
+  name DORGIVAL_DA_SILVA
+  serial-number DACM9153E28E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 32
+  serial-number VSOL00A983F7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 33
+  serial-number DACM916CF015
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 35
+  name CLUBE_VIOLA
+  serial-number DACM00017B33
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 36
+  name RAYSSA_DIAS_DA_SILVA
+  serial-number DACM9153E1BA
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 37
+  name ediana_verissimo_g5fibra
+  serial-number DACM9154181F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 38
+  name ELIZANGELA_ALVES_SOUSA
+  serial-number DACM910A8CC4
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 40
+  serial-number TPLG89FFE33A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 41
+  serial-number FHTT975F98A8
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 42
+  serial-number DACM91FDC85D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 43
+  serial-number DACMDFB18B9C
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 44
+  serial-number DACM91FC9C93
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 45
+  serial-number FHTT9B3125E8
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 46
+  serial-number FHTT102A81C8
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 48
+  serial-number VSOL00A984E7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 49
+  serial-number DACM0000F851
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 52
+  serial-number ITBS4487750D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 53
+  serial-number DACM91D297B8
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 54
+  serial-number FHTT9B30DBE8
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 55
+  serial-number FHTT977A8100
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 56
+  serial-number VSOL00BB4D35
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 57
+  serial-number ZTEGCD1A8B12
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 58
+  serial-number DACM91D27B60
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 59
+  serial-number DACM9153E06E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/4
+ downstream-fec
+ no shutdown
+ onu 0
+  serial-number DACM91261BFB
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  serial-number DACMDFB883B3
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  name 9207
+  serial-number DC90466B25D8
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 3
+  name 5455
+  serial-number DACMDFB86923
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  name 10915
+  serial-number DACM000178F7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  serial-number DACM9109D27B
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 6
+  name WELLIGTON_OLIVEIRA_AGUILAR_BEZERRA
+  serial-number DACM91EB9186
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  name ROBERTO_BAGGIO_LIMA_TAVARES
+  serial-number DACM910A8BA7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  name 7232
+  serial-number DACMDFB840A3
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  name RANAN_CHRYSTIAN_ALVES_PEREIRA
+  serial-number DACM91D29A98
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 10
+  serial-number ITBS448302D3
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 11
+  serial-number DACM910D849D
+  service-profile ONU_BRIDGE line-profile LAN2LAN
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2020
+  !
+ !
+ onu 12
+  name A7TREE
+  serial-number DACM912628C6
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  name DIVINO_FRANCISCO_DE_CAMPOS
+  serial-number DACM91D28F38
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 14
+  serial-number DACMDFB1994E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  name HUGO_BRAGA_DE_OLIVEIRA
+  serial-number DACM91EBB98C
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  name LUCIANO_FARIAS
+  serial-number DACM91ECC45D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  name ERITON_DINIZ_DE_OLIVEIRA
+  serial-number DACM91EB8AB2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  serial-number DACM91FC62DE
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  name 7349
+  serial-number DACMDFB85891
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  name PAULO_CESAR_FERRAZ_CAMPOS
+  serial-number DACM000176B1
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 21
+  serial-number VSOL0041F6A1
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1056
+  !
+ !
+ onu 22
+  name FRANCISCO_QUEIROZ
+  serial-number DACM910BEB97
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 23
+  serial-number FHTCAFA39640
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  name FENANDO_AREIA
+  serial-number DACM915418A3
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 25
+  serial-number ITBS448774CF
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 26
+  name GLEYBER_WENDEL_CHAVAGLIA
+  serial-number DACM9153E2AA
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 27
+  serial-number TPLG4A47FA5B
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 28
+  serial-number DACM9154173B
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 29
+  serial-number DACM91FDBBF4
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 30
+  serial-number DACM91D2920C
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 31
+  serial-number ZTEGCD0FD58F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 32
+  serial-number DACMDFB1A996
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 33
+  serial-number DB19463F98BC
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 34
+  serial-number FHTCAFA3BAF8
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 35
+  serial-number VSOL003740BB
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 36
+  serial-number DACMDFB87985
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 37
+  serial-number FHTT976DE128
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 38
+  serial-number VSOL00373993
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 39
+  serial-number DACMDFB88A81
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 40
+  serial-number DACM915416CB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 41
+  serial-number VSOL001826F6
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 42
+  serial-number DACMDFB85B0F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 43
+  serial-number VSOL0040C2C9
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 44
+  serial-number FHTCAFA3AB38
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 45
+  serial-number TPLG0CC9836E
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1056
+  !
+ !
+ onu 46
+  serial-number DACM00018160
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 47
+  serial-number ZTEGCD0FD5AF
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 48
+  serial-number ITBSAC797A57
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 49
+  serial-number VSOL00410111
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1057
+  !
+ !
+ onu 50
+  serial-number ZTEGCD0FB752
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 54
+  name 5965
+  serial-number DACMDFB845FF
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  auto-provisioned true
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 92
+  name 10658
+  serial-number DC90466D3088
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/5
+ downstream-fec
+ no shutdown
+ onu 0
+  name 11537
+  serial-number ZTEGCD0FCA0F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  serial-number VSOL0037AD0F
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  name 8121
+  serial-number DC90466B7848
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 3
+  name 11494
+  serial-number ZTEGCD1A8AA0
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  serial-number DACM91FD8B05
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  serial-number DACM91FD8B19
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  name ALAN_LIMA_DA_SILVA
+  serial-number DACM0000F941
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  name BRUNA_CLARA_CRUZ_GOMES
+  serial-number DACM91D29188
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 8
+  name CLAUDIA_DA_SILVA_MOURA
+  serial-number DACMDFB8610F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  name FABIOLA_CRISTINA_MENDES_GONCALVES_SOUZA
+  serial-number ZTEGCD0FD599
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  name NATANI_SOUZA
+  serial-number DACM91EB8F16
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 11
+  name ANA_CLAUDIA_DOS_SANTOS_LIMA
+  serial-number DACM91EB93BE
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  name IZAQUE_DE_OLIVEIRA_RODRIGUES
+  serial-number DACMDFB87BAD
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  name CLEVIA_ABREU_ALVES
+  serial-number ZTEGCD1A86E5
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  serial-number VSOL00A996F7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  name MAIK_FRANK_LACERDA
+  serial-number DACM9153E2DE
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  name RODRIGO_MOREIRA_LIMA
+  serial-number DACM9153E2DA
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  serial-number DACM91EB7E5A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  serial-number DACM9108BE66
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  serial-number VSOL00A983DB
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  name thalia_lima_g5fibra
+  serial-number DACM9153E2B2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 21
+  serial-number DACMDFB84C6F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 22
+  serial-number VSOL003FF885
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 23
+  serial-number DACMDFB887EB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  serial-number TPLG848C5121
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 25
+  serial-number VSOL00BC7E75
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 26
+  serial-number VSOL00BB7EDD
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 27
+  serial-number VSOL00BC2EB1
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 28
+  serial-number DACMDFB8741F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 29
+  serial-number ZTEGCD1A8BAD
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 30
+  name 14726-g5_grajau134
+  serial-number HWTC868388A5
+  service-profile ONU-BRIDGE line-profile pppoe-wireless-router
+  veip 1
+  !
+ !
+ onu 31
+  serial-number ITBSAC797A45
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 32
+  serial-number FHTCAFA41598
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 33
+  serial-number ITBSAC3D63D9
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 34
+  serial-number DACM00017905
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 35
+  serial-number DACM9154330E
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 36
+  serial-number VSOL0036EA13
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 37
+  name 15608-mariaaraujo
+  serial-number VSOL00D90837
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1060
+  !
+ !
+ onu 39
+  name 9887
+  serial-number DC90466B17F0
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+ onu 43
+  name 9957
+  serial-number DC90466B5AB8
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+ onu 55
+  name 10293
+  serial-number DC90466D0AF0
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+ onu 60
+  name 11884
+  serial-number DC90466CE7C0
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 62
+  name 11007
+  serial-number ZTEGCD0FD545
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/6
+ downstream-fec
+ no shutdown
+ onu 0
+  name JOSE_RIBAMAR_DA_SILVA
+  serial-number DACM9108BE30
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  name ANDERSON_MATEUS_VIEIRA_ALMEIDA
+  serial-number DACM910D81A7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  name jailaneferreira_cruz_g5fibra
+  serial-number ZTEGCCEC115D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 3
+  serial-number FHTCAFA3BB78
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  serial-number FHTT9B30F9A0
+  service-profile ONU_BRIDGE line-profile PPPoE-megalink
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 5
+  serial-number VSOL0036A087
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 6
+  serial-number FHTCAFA415B8
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  serial-number ZTEGCD1A8AD9
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  serial-number DACM91EC98F3
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number GPON001C216D
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 30
+  name 11874
+  serial-number DC90466BDFF0
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/7
+ downstream-fec
+ no shutdown
+ onu 0
+  name DANIEL_LIMA_DE_SOUSA
+  serial-number DACMDFB87F1F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  name RENICE_FERREIRA_NUNES
+  serial-number DACM9154172F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  name JAKELINE_MARTINS_DA_SILVA
+  serial-number ZTEGCD0FD609
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  serial-number VSOL0040BDA1
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  name GERSON_NASCIMENTO_DOS_SANTOS
+  serial-number DACM91EBAED2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  name MARIZA_SANTOS_RIBEIRO
+  serial-number DACM91EC966F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  name EILA_MARIA_MONTEIRO
+  serial-number DACM91EBAEA2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  name MISSILENE_DA_SILVA_BARROS
+  serial-number DACM91EBCD60
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number DACM912B36DA
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  name JULIANA_SOUZA_DA_SILVA
+  serial-number DACM91EBC844
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  name MILENA_NOGUEIRA_DA_SILVA
+  serial-number ZTEGCD0FD50B
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  serial-number DACM9108D5FF
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  serial-number HWTC3B672B43
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  serial-number VSOL00C11341
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  serial-number VSOL0036E12F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  serial-number PRKS00BD6EB9
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  serial-number HWTC3B6734F7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  serial-number HWTC3B672BBB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 22
+  serial-number HWTC3B674ED7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 23
+  serial-number DACM91FDB1B4
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  serial-number DACM910BED76
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/8
+ downstream-fec
+ no shutdown
+ onu 0
+  serial-number DACM91542305
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  name ANTONIO_ANTEONE_RUBIM_VIEIRA
+  serial-number ZTEGCD1ABCF8
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  name MARINEIDE_MARIA_DO_NASCIMENTO_SALOMAO
+  serial-number DACM91EBBA28
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 3
+  serial-number ITBS8BF82657
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 4
+  serial-number DACM91D294B8
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 5
+  name 15608-edrianferreira
+  serial-number VSOL007AF546
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1060
+  !
+ !
+ onu 6
+  serial-number ITBS449560CD
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  name 7354
+  serial-number DACMDFB87E93
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  serial-number DACM91262F0C
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  name josejunior_g5fibra
+  serial-number FHTCAFA44B00
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  serial-number VSOL00BB9D0D
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1057
+  !
+ !
+ onu 11
+  serial-number ZTEGCD1A8B0F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  serial-number DACM9154171F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  serial-number DACM9109C29C
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  serial-number DACM91FDD222
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  serial-number ITBS443DB441
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  serial-number DACM91FDC785
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 17
+  serial-number TPLG4A47F95D
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 18
+  serial-number DACM91FDB26C
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  serial-number PRKS00BD6A42
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  serial-number VSOL00BC76B9
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 21
+  serial-number HWTC3B676887
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 22
+  serial-number DACM91EB8E3E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 23
+  serial-number VSOL00BC30F9
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  serial-number DACM910D8B4A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 25
+  serial-number FHTCAFA39680
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 49
+  name 10359
+  serial-number DC90466D0FB8
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/9
+ downstream-fec
+ no shutdown
+ onu 0
+  name RAIMUNDO_NONATO_SILVA
+  serial-number ZTEGCD0FC96D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  serial-number HWTC3B67480B
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 2
+  serial-number DACM910A8CC3
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 3
+  serial-number DD72E6907B0B
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  serial-number VSOL00BC28E1
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 5
+  serial-number VSOL00BC787D
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  serial-number VSOL00BC1271
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  serial-number PRKS00BB9D3A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  serial-number VSOL008CC3BB
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number VSOL00BC7879
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  serial-number VSOL00A95CA3
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 11
+  name 15650-elielsontrindade
+  serial-number VSOL007AFBCA
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  name 15608-joalbemodesto
+  serial-number VSOL00400F55
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1060
+  !
+ !
+ onu 20
+  name 11913
+  serial-number ZTEGCD0FC9AA
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/10
+ downstream-fec
+ no shutdown
+ onu 0
+  name antonio_lima_conecta
+  serial-number FHTCAFA396B0
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 1
+  name FHTCAFA395F8
+  serial-number FHTCAFA395F8
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 2
+  serial-number DACM91FDBBD4
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 3
+  serial-number FHTCAFA39688
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 4
+  serial-number DACM91EB93F6
+  service-profile ONU-BRIDGE line-profile PPPoE-conecta
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1014
+  !
+ !
+ onu 5
+  serial-number DACM91FDBBFC
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  serial-number DACM91D2DEF4
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 7
+  serial-number DACM91FAFFD2
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  serial-number DACM91EC3F65
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number ITBS448301DD
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 10
+  serial-number DACM9108D5F6
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 11
+  serial-number DACM910A8BB7
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  serial-number DACMDFB88781
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  serial-number DACM91EC9D3F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  serial-number DACM91EBAE4A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 15
+  serial-number DACM000179FC
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 16
+  serial-number DACM91D283A8
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 17
+  serial-number DACM912B36D8
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 18
+  serial-number VSOL00180DCE
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 19
+  serial-number DACMDFB87309
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 20
+  serial-number VSOL004040E9
+  service-profile ONU_BRIDGE line-profile PPPoE-ispnet
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1052
+  !
+ !
+ onu 21
+  serial-number DACM91EB8E2E
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 22
+  serial-number DACM915433CA
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 23
+  serial-number DACMDFB874CF
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 24
+  serial-number DACM91EBADAE
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 126
+  name 8059
+  serial-number DACM9108E096
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/11
+ downstream-fec
+ no shutdown
+ onu 0
+  serial-number ZTEGCD0FD49F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 1
+  name 12606
+  serial-number DACM91D297C0
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 2
+  serial-number FHTT96B3E4C8
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 3
+  serial-number DB1946657E30
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1057
+  !
+ !
+ onu 4
+  serial-number ITBS0A4FC4C0
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 5
+  serial-number DACMDFB861A5
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 6
+  serial-number DACM91FC9EEB
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  serial-number DACM000044F1
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 8
+  serial-number DACM91EC38ED
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  serial-number ITBS5F446A1B
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1050
+  !
+ !
+ onu 10
+  serial-number DACMDFB1945A
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 11
+  serial-number DACM9108DD28
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 12
+  serial-number DACM9126197A
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 13
+  serial-number DACMDFB86B1F
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 14
+  serial-number DACM91261993
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 33
+  name 10510
+  serial-number ZTEGCD0FD594
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 55
+  name 10389
+  serial-number DC90466B2850
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+ onu 69
+  name 11555
+  serial-number ZTEGCD0FCA0A
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/12
+ downstream-fec
+ no shutdown
+ onu 3
+  serial-number DACM910BEF5C
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 4
+  serial-number DACM910A8EA7
+  service-profile ONU_BRIDGE line-profile BRIDGE_G5
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 7
+  name 8688
+  serial-number DACM91262E2F
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 9
+  name 7139
+  serial-number DACM91262E29
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 41
+  name 11188
+  serial-number ZTEGCD0FA210
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 43
+  name 10791
+  serial-number DC90466CAE50
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 48
+  name 11360
+  serial-number ZTEGCD1A8BB4
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 49
+  name 7708
+  serial-number DACM91262818
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+interface gpon 1/1/13
+ downstream-fec
+ no shutdown
+ onu 6
+  name 8834
+  serial-number DACM91261982
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 40
+  name 11824
+  serial-number DC90466B5010
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 43
+  name 10220
+  serial-number DC90466D0890
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  auto-provisioned true
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/14
+ downstream-fec
+ no shutdown
+!
+interface gpon 1/1/15
+ downstream-fec
+ no shutdown
+!
+interface gpon 1/1/16
+ downstream-fec
+ no shutdown
+ onu 16
+  name 11081
+  serial-number ZTEGCD0FD593
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+ onu 29
+  name 11931
+  serial-number DC90466B4A28
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 46
+  name 9477
+  serial-number DC90466B8A40
+  service-profile ONU_BRIDGE line-profile pppoe-router-2525
+  veip 1
+  !
+ !
+ onu 57
+  name liveigrejadatacom
+  serial-number DACM912628C7
+  service-profile ONU_BRIDGE line-profile pppoe-dados
+  auto-provisioned true
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2620
+  !
+ !
+!
+clock timezone Brasil -3
+hostname G5DM02
+ssh-server port 22002
+telnet-server enabled
+profile gpon bandwidth-profile L2L
+ traffic type-4 max-bw 1106944
+!
+profile gpon bandwidth-profile PPPoE
+ traffic type-4 max-bw 1106944
+!
+profile gpon bandwidth-profile cianet-router
+ traffic type-4 max-bw 1106944
+!
+profile gpon line-profile BRIDGE_G5
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map 107
+   ethernet any vlan any cos any
+  !
+ !
+!
+profile gpon line-profile L2L-TORRES
+ upstream-fec
+ tcont 6 bandwidth-profile L2L
+ gem 6
+  tcont 6 priority 0
+  map LAN2LAN
+   ethernet any vlan any cos any
+  !
+ !
+!
+profile gpon line-profile LAN2LAN
+ upstream-fec
+ tcont 2 bandwidth-profile L2L
+ tcont 3 bandwidth-profile L2L
+ gem 2
+  tcont 2 priority 0
+  map LAN2LAN
+   ethernet any vlan 2020 cos any
+  !
+ !
+ gem 3
+  tcont 3 priority 0
+  map LAN2LAN
+   ethernet any vlan 2020 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-conecta
+ upstream-fec
+ tcont 2 bandwidth-profile PPPoE
+ gem 2
+  tcont 2 priority 0
+  map PPPoE
+   ethernet any vlan 1014 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-conecta1
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map veip
+   veip 1 vlan 1014 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-ispnet
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 7
+  tcont 1 priority 0
+  map PPPoE
+   ethernet any vlan 1052 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-megalink
+ upstream-fec
+ tcont 2 bandwidth-profile PPPoE
+ gem 4
+  tcont 2 priority 0
+  map PPPoE
+   ethernet any vlan 1050 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-spaceweb
+ upstream-fec
+ tcont 2 bandwidth-profile PPPoE
+ gem 4
+  tcont 2 priority 0
+  map PPPoE
+   ethernet any vlan 1054 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-wireless-bridge
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 7
+  tcont 1 priority 0
+  map PPPoE
+   ethernet any vlan 1051 cos any
+  !
+ !
+!
+profile gpon line-profile ROUTER_G5
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map 107
+   veip 1 vlan any cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-conecta-router
+ upstream-fec
+ tcont 6 bandwidth-profile PPPoE
+ gem 6
+  tcont 6 priority 0
+  map pppoe
+   veip 1 vlan 1014 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-dados
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ tcont 2 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map PPPoe
+   ethernet any vlan 2620 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map L2L
+   iphost vlan 2020 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-megalink-router
+ upstream-fec
+ tcont 6 bandwidth-profile PPPoE
+ gem 6
+  tcont 6 priority 0
+  map pppoe
+   veip 1 vlan 1050 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-rede-neutra-a7
+ upstream-fec
+ tcont 2 bandwidth-profile PPPoE
+ gem 2
+  tcont 2 priority 0
+  map PPPoE
+   ethernet any vlan 1014 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-rede-neutra-a7-router
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map veip
+   veip 1 vlan 1014 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-router
+ upstream-fec
+ tcont 4 bandwidth-profile PPPoE
+ gem 4
+  tcont 4 priority 0
+  map pppoe
+   veip 1 vlan 2620 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-router-2525
+ upstream-fec
+ tcont 5 bandwidth-profile PPPoE
+ gem 5
+  tcont 5 priority 0
+  map pppoe
+   veip 1 vlan any cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-router-conecta-cianet
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 1014 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-router-ispnet
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 7
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 1052 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-spaceweb-router
+ upstream-fec
+ tcont 6 bandwidth-profile PPPoE
+ gem 6
+  tcont 6 priority 0
+  map pppoe
+   veip 1 vlan 1054 cos any
+  !
+ !
+!
+profile gpon line-profile pppoe-wireless-router
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 7
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 1051 cos any
+  !
+ !
+!
+profile gpon onu-profile DM984-100B
+ ethernet adaptive
+!
+profile gpon onu-profile ONU-BRIDGE
+ ethernet adaptive
+!
+profile gpon service-profile ONU-BRIDGE
+ onu-profile DM984-100B
+!
+profile gpon service-profile ONU_BRIDGE
+ onu-profile DM984-100B
+!
+service vlan 1014
+ type tls
+!
+service vlan 1050
+ type tls
+!
+service vlan 1051
+ type tls
+!
+service vlan 1052
+ type tls
+!
+service vlan 1056
+ type n:1
+!
+service vlan 1057
+ type n:1
+!
+service vlan 1060
+ type n:1
+!
+service vlan 2020
+ type tls
+!
+service vlan 2620
+ type n:1
+!
+service vlan 4072
+ type tls
+!
+dhcp l2-relay circuit-id format <hostname> eth <oltSlot>/<panelPort>/<onuId>/<onuSlot>/<gemPort>:<svlan>
+gpon 1/1
+ onu-auth-method serial-number
+ aes-key-exchange 3600
+!
+loopback-detection
+ destination-address alternative
+!
+mac-address-table
+ aging-time 600
+!
+service-port 1
+ gpon 1/1/3 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 4
+ gpon 1/1/2 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 5
+ gpon 1/1/5 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 6
+ gpon 1/1/6 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 7
+ gpon 1/1/3 onu 36 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 8
+ gpon 1/1/1 onu 3 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 9
+ gpon 1/1/2 onu 2 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 10
+ gpon 1/1/2 onu 120 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 11
+ gpon 1/1/4 onu 9 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 15
+ gpon 1/1/3 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 17
+ gpon 1/1/5 onu 7 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 18
+ gpon 1/1/2 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 19
+ gpon 1/1/1 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 20
+ gpon 1/1/2 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 22
+ gpon 1/1/1 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 24
+ gpon 1/1/4 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 25
+ gpon 1/1/6 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 26
+ gpon 1/1/3 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 27
+ gpon 1/1/3 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 28
+ gpon 1/1/4 onu 13 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 29
+ gpon 1/1/1 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 30
+ gpon 1/1/4 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 32
+ gpon 1/1/6 onu 2 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 35
+ gpon 1/1/4 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 39
+ gpon 1/1/5 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 40
+ gpon 1/1/2 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 41
+ gpon 1/1/2 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 42
+ gpon 1/1/7 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 43
+ gpon 1/1/7 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 44
+ gpon 1/1/7 onu 2 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 45
+ gpon 1/1/9 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 47
+ gpon 1/1/8 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 48
+ gpon 1/1/1 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 50
+ gpon 1/1/5 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 52
+ gpon 1/1/3 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 54
+ gpon 1/1/3 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 55
+ gpon 1/1/8 onu 2 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 56
+ gpon 1/1/5 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 57
+ gpon 1/1/10 onu 0 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 58
+ gpon 1/1/7 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 59
+ gpon 1/1/7 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 60
+ gpon 1/1/7 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 61
+ gpon 1/1/3 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 63
+ gpon 1/1/3 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 64
+ gpon 1/1/3 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 66
+ gpon 1/1/3 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 67
+ gpon 1/1/3 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 69
+ gpon 1/1/4 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 70
+ gpon 1/1/3 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 72
+ gpon 1/1/3 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 75
+ gpon 1/1/4 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 77
+ gpon 1/1/7 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 80
+ gpon 1/1/7 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 81
+ gpon 1/1/1 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 83
+ gpon 1/1/2 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 84
+ gpon 1/1/1 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 86
+ gpon 1/1/1 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 93
+ gpon 1/1/5 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 95
+ gpon 1/1/3 onu 25 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 99
+ gpon 1/1/10 onu 1 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 100
+ gpon 1/1/3 onu 30 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 104
+ gpon 1/1/1 onu 22 gem 2 match vlan vlan-id 2020 action vlan replace vlan-id 2020
+!
+service-port 105
+ gpon 1/1/3 onu 35 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 106
+ gpon 1/1/4 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 108
+ gpon 1/1/1 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 109
+ gpon 1/1/5 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 110
+ gpon 1/1/3 onu 27 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 111
+ gpon 1/1/5 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 112
+ gpon 1/1/4 onu 22 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 117
+ gpon 1/1/1 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 118
+ gpon 1/1/4 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 119
+ gpon 1/1/3 onu 37 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 121
+ gpon 1/1/4 onu 26 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 122
+ gpon 1/1/3 onu 29 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 123
+ gpon 1/1/3 onu 31 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 125
+ gpon 1/1/7 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 126
+ gpon 1/1/5 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 127
+ gpon 1/1/1 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 128
+ gpon 1/1/5 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 129
+ gpon 1/1/2 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 132
+ gpon 1/1/4 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 134
+ gpon 1/1/1 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 137
+ gpon 1/1/1 onu 21 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 138
+ gpon 1/1/1 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 141
+ gpon 1/1/5 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 142
+ gpon 1/1/3 onu 28 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 143
+ gpon 1/1/8 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 144
+ gpon 1/1/8 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 145
+ gpon 1/1/3 onu 38 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 190
+ gpon 1/1/5 onu 43 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 201
+ gpon 1/1/3 onu 1 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 249
+ gpon 1/1/16 onu 57 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 262
+ gpon 1/1/13 onu 43 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 279
+ gpon 1/1/4 onu 54 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 301
+ gpon 1/1/5 onu 55 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 304
+ gpon 1/1/8 onu 49 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 312
+ gpon 1/1/5 onu 39 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 331
+ gpon 1/1/2 onu 57 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 335
+ gpon 1/1/11 onu 55 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 358
+ gpon 1/1/2 onu 56 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 2047
+ gpon 1/1/4 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 2053
+ gpon 1/1/8 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 2258
+ gpon 1/1/10 onu 126 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 2385
+ gpon 1/1/12 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 2396
+ gpon 1/1/12 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 2426
+ gpon 1/1/13 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 2812
+ gpon 1/1/16 onu 46 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 2910
+ gpon 1/1/4 onu 92 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 2950
+ gpon 1/1/12 onu 43 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3092
+ gpon 1/1/12 onu 41 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3175
+ gpon 1/1/12 onu 48 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3224
+ gpon 1/1/2 onu 102 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3242
+ gpon 1/1/5 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3267
+ gpon 1/1/11 onu 69 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3282
+ gpon 1/1/12 onu 49 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3325
+ gpon 1/1/5 onu 2 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3363
+ gpon 1/1/11 onu 33 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3375
+ gpon 1/1/13 onu 40 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3379
+ gpon 1/1/1 onu 45 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3387
+ gpon 1/1/5 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3404
+ gpon 1/1/5 onu 60 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3406
+ gpon 1/1/6 onu 30 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3421
+ gpon 1/1/5 onu 62 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3430
+ gpon 1/1/9 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3437
+ gpon 1/1/16 onu 29 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3466
+ gpon 1/1/4 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3536
+ gpon 1/1/16 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3539
+ gpon 1/1/4 onu 2 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3540
+ gpon 1/1/4 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3541
+ gpon 1/1/4 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3552
+ gpon 1/1/1 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3553
+ gpon 1/1/5 onu 21 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3560
+ gpon 1/1/4 onu 29 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3561
+ gpon 1/1/10 onu 2 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3562
+ gpon 1/1/3 onu 42 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3563
+ gpon 1/1/1 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3566
+ gpon 1/1/5 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3567
+ gpon 1/1/4 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3568
+ gpon 1/1/8 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3569
+ gpon 1/1/3 onu 21 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3570
+ gpon 1/1/4 onu 30 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3571
+ gpon 1/1/2 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3575
+ gpon 1/1/4 onu 31 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3576
+ gpon 1/1/2 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3577
+ gpon 1/1/1 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3578
+ gpon 1/1/10 onu 3 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 3580
+ gpon 1/1/5 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3584
+ gpon 1/1/2 onu 20 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 3585
+ gpon 1/1/10 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3589
+ gpon 1/1/1 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3590
+ gpon 1/1/8 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3591
+ gpon 1/1/10 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3595
+ gpon 1/1/8 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3596
+ gpon 1/1/8 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3597
+ gpon 1/1/8 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3598
+ gpon 1/1/5 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3601
+ gpon 1/1/5 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3604
+ gpon 1/1/3 onu 43 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3607
+ gpon 1/1/6 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3608
+ gpon 1/1/8 onu 4 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3611
+ gpon 1/1/8 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3616
+ gpon 1/1/10 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3617
+ gpon 1/1/5 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3625
+ gpon 1/1/9 onu 2 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3630
+ gpon 1/1/9 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3631
+ gpon 1/1/9 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3635
+ gpon 1/1/9 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3636
+ gpon 1/1/9 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3638
+ gpon 1/1/2 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3639
+ gpon 1/1/7 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3641
+ gpon 1/1/8 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3643
+ gpon 1/1/8 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3647
+ gpon 1/1/4 onu 32 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3651
+ gpon 1/1/9 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3656
+ gpon 1/1/3 onu 48 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3658
+ gpon 1/1/2 onu 25 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3663
+ gpon 1/1/9 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3664
+ gpon 1/1/1 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3666
+ gpon 1/1/2 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3667
+ gpon 1/1/10 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3670
+ gpon 1/1/9 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3673
+ gpon 1/1/6 onu 4 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3675
+ gpon 1/1/8 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3676
+ gpon 1/1/1 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3679
+ gpon 1/1/3 onu 46 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3680
+ gpon 1/1/8 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3681
+ gpon 1/1/7 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3684
+ gpon 1/1/9 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3685
+ gpon 1/1/4 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3686
+ gpon 1/1/7 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3688
+ gpon 1/1/7 onu 20 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3692
+ gpon 1/1/3 onu 26 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3693
+ gpon 1/1/10 onu 4 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 3694
+ gpon 1/1/1 onu 26 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 3696
+ gpon 1/1/2 onu 21 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3698
+ gpon 1/1/5 onu 28 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3699
+ gpon 1/1/7 onu 22 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3700
+ gpon 1/1/4 onu 33 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3701
+ gpon 1/1/8 onu 21 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3702
+ gpon 1/1/4 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3703
+ gpon 1/1/7 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3704
+ gpon 1/1/7 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3710
+ gpon 1/1/4 onu 27 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3711
+ gpon 1/1/5 onu 25 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3712
+ gpon 1/1/5 onu 26 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3713
+ gpon 1/1/5 onu 27 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3714
+ gpon 1/1/6 onu 5 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3721
+ gpon 1/1/1 onu 27 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3725
+ gpon 1/1/4 onu 35 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3726
+ gpon 1/1/3 onu 44 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3727
+ gpon 1/1/3 onu 45 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3730
+ gpon 1/1/4 onu 34 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3731
+ gpon 1/1/7 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3734
+ gpon 1/1/3 onu 54 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3736
+ gpon 1/1/7 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3737
+ gpon 1/1/5 onu 30 gem 7 match vlan vlan-id 1051 action vlan replace vlan-id 1051
+!
+service-port 3738
+ gpon 1/1/3 onu 55 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3742
+ gpon 1/1/4 onu 36 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3743
+ gpon 1/1/3 onu 40 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3745
+ gpon 1/1/3 onu 10 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3746
+ gpon 1/1/3 onu 52 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3747
+ gpon 1/1/3 onu 41 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3748
+ gpon 1/1/2 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3749
+ gpon 1/1/3 onu 56 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3750
+ gpon 1/1/4 onu 37 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3751
+ gpon 1/1/10 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3754
+ gpon 1/1/1 onu 29 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3755
+ gpon 1/1/3 onu 18 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3761
+ gpon 1/1/2 onu 22 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3762
+ gpon 1/1/10 onu 16 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3763
+ gpon 1/1/1 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3766
+ gpon 1/1/5 onu 34 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3767
+ gpon 1/1/2 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3768
+ gpon 1/1/3 onu 57 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3769
+ gpon 1/1/1 onu 31 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3771
+ gpon 1/1/4 onu 11 gem 2 match vlan vlan-id 2020 action vlan replace vlan-id 2020
+!
+service-port 3772
+ gpon 1/1/6 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3775
+ gpon 1/1/2 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3777
+ gpon 1/1/8 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3779
+ gpon 1/1/1 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3780
+ gpon 1/1/10 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3781
+ gpon 1/1/1 onu 32 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3783
+ gpon 1/1/2 onu 11 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3784
+ gpon 1/1/1 onu 33 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3785
+ gpon 1/1/3 onu 2 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3787
+ gpon 1/1/3 onu 58 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3788
+ gpon 1/1/7 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3789
+ gpon 1/1/5 onu 36 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3793
+ gpon 1/1/6 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3794
+ gpon 1/1/10 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3796
+ gpon 1/1/2 onu 14 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3798
+ gpon 1/1/4 onu 25 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3799
+ gpon 1/1/4 onu 38 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3800
+ gpon 1/1/10 onu 17 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3804
+ gpon 1/1/8 onu 17 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3805
+ gpon 1/1/2 onu 27 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3806
+ gpon 1/1/3 onu 53 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3807
+ gpon 1/1/4 onu 40 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3809
+ gpon 1/1/1 onu 34 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3812
+ gpon 1/1/8 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3813
+ gpon 1/1/4 onu 5 gem 2 match vlan vlan-id 1014 action vlan replace vlan-id 1014
+!
+service-port 3814
+ gpon 1/1/5 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3815
+ gpon 1/1/2 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3817
+ gpon 1/1/3 onu 59 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3818
+ gpon 1/1/1 onu 36 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3819
+ gpon 1/1/5 onu 24 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3821
+ gpon 1/1/8 onu 22 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3823
+ gpon 1/1/3 onu 49 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3824
+ gpon 1/1/1 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3825
+ gpon 1/1/4 onu 41 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3826
+ gpon 1/1/10 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3827
+ gpon 1/1/4 onu 42 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3829
+ gpon 1/1/5 onu 33 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3830
+ gpon 1/1/1 onu 37 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3831
+ gpon 1/1/10 onu 18 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3832
+ gpon 1/1/10 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3833
+ gpon 1/1/7 onu 9 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3834
+ gpon 1/1/10 onu 20 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3835
+ gpon 1/1/1 onu 38 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3836
+ gpon 1/1/2 onu 28 gem 1 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3837
+ gpon 1/1/1 onu 39 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3838
+ gpon 1/1/6 onu 9 gem 1 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3840
+ gpon 1/1/5 onu 29 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3841
+ gpon 1/1/8 onu 25 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3843
+ gpon 1/1/10 onu 21 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3845
+ gpon 1/1/1 onu 35 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3847
+ gpon 1/1/1 onu 41 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3848
+ gpon 1/1/2 onu 30 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3850
+ gpon 1/1/3 onu 7 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3851
+ gpon 1/1/3 onu 16 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3852
+ gpon 1/1/4 onu 21 gem 1 match vlan vlan-id 1056 action vlan replace vlan-id 1056
+!
+service-port 3853
+ gpon 1/1/7 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3854
+ gpon 1/1/3 onu 23 gem 7 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3855
+ gpon 1/1/3 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3856
+ gpon 1/1/4 onu 43 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3857
+ gpon 1/1/3 onu 32 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3858
+ gpon 1/1/10 onu 22 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3859
+ gpon 1/1/1 onu 30 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3860
+ gpon 1/1/4 onu 44 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3861
+ gpon 1/1/1 onu 42 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3862
+ gpon 1/1/5 onu 35 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3864
+ gpon 1/1/4 onu 45 gem 1 match vlan vlan-id 1056 action vlan replace vlan-id 1056
+!
+service-port 3865
+ gpon 1/1/2 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3866
+ gpon 1/1/2 onu 26 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3868
+ gpon 1/1/1 onu 43 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3869
+ gpon 1/1/10 onu 6 gem 5 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3871
+ gpon 1/1/9 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3873
+ gpon 1/1/4 onu 28 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3874
+ gpon 1/1/5 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3876
+ gpon 1/1/3 onu 0 gem 4 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3877
+ gpon 1/1/9 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3878
+ gpon 1/1/2 onu 31 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3879
+ gpon 1/1/4 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3881
+ gpon 1/1/4 onu 46 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3886
+ gpon 1/1/11 onu 4 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3887
+ gpon 1/1/11 onu 5 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3889
+ gpon 1/1/11 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3890
+ gpon 1/1/11 onu 8 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3892
+ gpon 1/1/11 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3893
+ gpon 1/1/11 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3897
+ gpon 1/1/11 onu 1 gem 5 match vlan vlan-id 2525 action vlan replace vlan-id 2620
+!
+service-port 3899
+ gpon 1/1/11 onu 0 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3901
+ gpon 1/1/11 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3902
+ gpon 1/1/11 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3903
+ gpon 1/1/11 onu 14 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3904
+ gpon 1/1/11 onu 13 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3905
+ gpon 1/1/5 onu 22 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3910
+ gpon 1/1/2 onu 32 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3912
+ gpon 1/1/12 onu 3 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3913
+ gpon 1/1/12 onu 4 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3919
+ gpon 1/1/10 onu 15 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3921
+ gpon 1/1/5 onu 31 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3922
+ gpon 1/1/8 onu 12 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3923
+ gpon 1/1/2 onu 10 gem 1 match vlan vlan-id 1057 action vlan replace vlan-id 1057
+!
+service-port 3924
+ gpon 1/1/8 onu 10 gem 1 match vlan vlan-id 1057 action vlan replace vlan-id 1057
+!
+service-port 3925
+ gpon 1/1/1 onu 25 gem 1 match vlan vlan-id 1057 action vlan replace vlan-id 1057
+!
+service-port 3926
+ gpon 1/1/2 onu 33 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3927
+ gpon 1/1/1 onu 40 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3929
+ gpon 1/1/4 onu 47 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3931
+ gpon 1/1/6 onu 7 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3932
+ gpon 1/1/4 onu 48 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3933
+ gpon 1/1/4 onu 49 gem 1 match vlan vlan-id 1057 action vlan replace vlan-id 1057
+!
+service-port 3934
+ gpon 1/1/11 onu 9 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3935
+ gpon 1/1/11 onu 3 gem 1 match vlan vlan-id 1057 action vlan replace vlan-id 1057
+!
+service-port 3936
+ gpon 1/1/1 onu 28 gem 1 match vlan vlan-id 1057 action vlan replace vlan-id 1057
+!
+service-port 3937
+ gpon 1/1/4 onu 50 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3938
+ gpon 1/1/2 onu 0 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3939
+ gpon 1/1/5 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3940
+ gpon 1/1/1 onu 44 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3941
+ gpon 1/1/4 onu 39 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3942
+ gpon 1/1/8 onu 3 gem 1 match vlan vlan-id 1052 action vlan replace vlan-id 1052
+!
+service-port 3944
+ gpon 1/1/4 onu 1 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3945
+ gpon 1/1/3 onu 19 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3946
+ gpon 1/1/2 onu 6 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3947
+ gpon 1/1/11 onu 2 gem 1 match vlan vlan-id 1050 action vlan replace vlan-id 1050
+!
+service-port 3949
+ gpon 1/1/9 onu 12 gem 1 match vlan vlan-id 1060 action vlan replace vlan-id 1060
+!
+service-port 3950
+ gpon 1/1/8 onu 5 gem 1 match vlan vlan-id 1060 action vlan replace vlan-id 1060
+!
+service-port 3951
+ gpon 1/1/2 onu 34 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3952
+ gpon 1/1/5 onu 37 gem 1 match vlan vlan-id 1060 action vlan replace vlan-id 1060
+!
+service-port 3953
+ gpon 1/1/10 onu 23 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3954
+ gpon 1/1/4 onu 10 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3956
+ gpon 1/1/3 onu 33 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3957
+ gpon 1/1/10 onu 11 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3958
+ gpon 1/1/10 onu 24 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3959
+ gpon 1/1/2 onu 29 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+service-port 3960
+ gpon 1/1/5 onu 32 gem 1 match vlan vlan-id 2620 action vlan replace vlan-id 2620
+!
+sntp client
+sntp server 200.160.0.8
+vrf global
+!
+vrf mgmt
+!
+router static
+ address-family ipv4
+  0.0.0.0/0 next-hop 10.10.2.33
+  !
+ !
+!
+dot1q
+ vlan 1014
+  name REDE-NEUTRA-CONECTA
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1050
+  name VLAN-REDE-NEUTRA-MEGA-LINK
+  interface gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1051
+  name VLAN-REDE-NEUTRA-WIRELESS
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1052
+  name VLAN-REDE-NEUTRA-ISPNET-A7TREE
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1054
+  name REDE-NEUTRA-SPACE-WEB
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1056
+  name REDE-NEUTRA-A7-PARAUBEBAS
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1057
+  name 1057-PPPOE-REDE-NEUTRA-LINK-ONE
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1060
+  name VLAN-REDE-NEUTRA-EXTRANET
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1578
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 2020
+  name L2L
+  interface gigabit-ethernet-1/1/2
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 2620
+  name PPPOE
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 4072-4082
+  name L2L
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 4094
+  name gerencia
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+!
+license gpon-16-ports enabled
+license gpon-16-ports key ***
+license mpls disabled
+G5DM02# 

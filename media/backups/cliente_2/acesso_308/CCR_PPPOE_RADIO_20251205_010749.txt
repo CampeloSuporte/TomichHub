@@ -1,0 +1,516 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: CCR PPPOE RADIO
+Host: 10.255.255.4:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 05/12/2025 01:07:49
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@PPPoE_RADIO] > /                                                       [K[tomich@PPPoE_RADIO] > /e[tomich@PPPoE_RADIO] > /e                                                      [K[tomich@PPPoE_RADIO] > /ex[tomich@PPPoE_RADIO] > /ex                                                     [K[tomich@PPPoE_RADIO] > /exp[tomich@PPPoE_RADIO] > /exp                                                    [K[tomich@PPPoE_RADIO] > /expo[tomich@PPPoE_RADIO] > /expo                                                   [K[tomich@PPPoE_RADIO] > /expor[tomich@PPPoE_RADIO] > /expor                                                  [K[tomich@PPPoE_RADIO] > /export[tomich@PPPoE_RADIO] > /export                                                 [K[tomich@PPPoE_RADIO] > /export [tomich@PPPoE_RADIO] > /export                                                 [K[tomich@PPPoE_RADIO] > /export t[tomich@PPPoE_RADIO] > /export t                                               [K[tomich@PPPoE_RADIO] > /export te[tomich@PPPoE_RADIO] > /export te                                              [K[tomich@PPPoE_RADIO] > /export ter[tomich@PPPoE_RADIO] > /export ter                                             [K[tomich@PPPoE_RADIO] > /export ters[tomich@PPPoE_RADIO] > /export ters                                            [K[tomich@PPPoE_RADIO] > /export terse[tomich@PPPoE_RADIO] > /export terse                                           [K[tomich@PPPoE_RADIO] > /export terse[tomich@PPPoE_RADIO] > /export terse
+# dec/04/2025 08:17:38 by RouterOS 6.49.18
+# software id = BCLB-RZF2
+#
+# model = CCR1016-12G
+# serial number = 468804241792
+/interface bridge add name=Loopback
+/interface bridge add name=br-acesso
+/interface bridge add disabled=yes name=bridge1 vlan-filtering=yes
+/interface bridge add name="bridge2-MONITORAMENTO ENERGIA"
+/interface bridge add name="bridge3-ROTAS BACKUP"
+/interface ethernet set [ find default-name=ether1 ] comment="MONITORAMENTO ENERG
+IA ANTIGO DATACENTER 1" mac-address=4C:5E:0C:2E:59:98 speed=10Mbps
+/interface ethernet set [ find default-name=ether2 ] comment="MONITORAMENTO ENERG
+IA NOVA DATACENTER 1" mac-address=4C:5E:0C:2E:59:99 speed=100Mbps
+/interface ethernet set [ find default-name=ether3 ] comment="SERRA CEDRO" mac-ad
+dress=4C:5E:0C:2E:59:9A speed=100Mbps
+/interface ethernet set [ find default-name=ether4 ] comment=ESCRITORIO mac-addre
+ss=4C:5E:0C:2E:59:9B speed=100Mbps
+/interface ethernet set [ find default-name=ether5 ] comment="ROTA BACKUP - PARAI
+SO" mac-address=4C:5E:0C:2E:59:9C
+/interface ethernet set [ find default-name=ether6 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full comment="PTP VILAGE" mac-address=4C:5E
+:0C:2E:59:9D speed=100Mbps
+/interface ethernet set [ find default-name=ether7 ] comment="ROTA BACKUP NC1" ma
+c-address=4C:5E:0C:2E:59:9E
+/interface ethernet set [ find default-name=ether8 ] comment="OLT 03" mac-address
+=4C:5E:0C:2E:59:9F speed=100Mbps
+/interface ethernet set [ find default-name=ether9 ] comment="PPPoE DATACENTER" m
+ac-address=4C:5E:0C:2E:59:A0 speed=100Mbps
+/interface ethernet set [ find default-name=ether10 ] comment="PPPoE CLIENTE DANU
+BIA" mac-address=4C:5E:0C:2E:59:A1
+/interface ethernet set [ find default-name=ether11 ] comment="WAN - SW01 - ETHER
+7" mac-address=4C:5E:0C:2E:59:A2 speed=100Mbps
+/interface ethernet set [ find default-name=ether12 ] mac-address=4C:5E:0C:2E:59:
+A3 speed=100Mbps
+/interface vlan add interface=ether11 name=VLAN-101_WAN vlan-id=101
+/interface vlan add interface=ether8 name="VLAN-2604- OLT03 - LAN2LAN DM3" vlan-i
+d=2604
+/interface vlan add interface=ether8 name="VLAN-3032 - OLT03 - LAN2LAN DM3" vlan-
+id=3032
+/interface vlan add interface=ether11 name=VLAN2603-PPPOE vlan-id=2603
+/interface bonding add disabled=yes mode=802.3ad name=Bonding-Switch slaves=ether
+11,ether12
+/interface list add name=WAN
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip pool add name=Pool-PPPoE ranges=100.72.150.0/23,100.73.150.0/23,100.74.150.0/
+23,100.75.150.0/23,100.76.150.0/23
+/ip pool add comment=100.64.22.0/22 name=CGNAT-CLIENTES ranges=100.64.22.0/24
+/ip pool add name=pool1-NVR ranges=192.168.98.2-192.168.98.10
+/ip pool add name=dhcp_pool68 ranges=192.168.98.2-192.168.98.10
+/ip pool add comment=SGP-BLOQUEADOS name=bloqueados ranges=10.24.0.0/22
+/ip pool add comment="Aviso Atraso IXCSoft" name=pool_aviso_atraso ranges=172.23.
+1.0/24
+/ip pool add comment="Bloqueio IXCSoft" name=pool_bloqueio ranges=172.24.1.0/24
+/ip pool add comment="Aguardando Assinatura IXCSoft" name=pool_aguardando_assinat
+ura ranges=172.25.1.0/24
+/ppp profile add change-tcp-mss=yes local-address=10.255.255.4 name=PPPOE-1036-RA
+DIO on-down=":local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server binding remove [find server=\$servername]\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server remove [find numbers=\$user>\r\
+    \n```" on-up=":local TOKEN \"TOKEN\"\r\
+    \n:local ipv6pool \"Pool-IPv6-LAN-PD\"\r\
+    \n:local ipnas \"10.0.0.10\"\r\
+    \n:local ipsgp \"10.11.11.4\"\r\
+    \n:local prefixo\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n:delay 5s\r\
+    \n:log info [/ipv6 dhcp-server binding find server=\"\$servername\"]\r\
+    \n:foreach binding in=[/ipv6 dhcp-server binding find status=\"bound\" server
+=\"\$servername\"] do={\r\
+    \n:set prefixo [/ipv6 dhcp-server binding get \$binding address]\r\
+    \n:log info \"FETCH  http://\$ipsgp/ws/radius/ipv6/update/\\\?token=\$TOKEN&u
+sername=\$user&app=radius&nasip=\$ipnas&pd=\$prefixo\"\r\
+    \n/tool fetch url=\"http://\$ipsgp/ws/radius/ipv6/update/\\\?token=\$TOKEN&us
+ername=\$user&app=radius&nasip=\$ipnas&pd=\$prefixo\" mode=http as-value output=
+user\r\
+    \n}" only-one=yes remote-address=CGNAT-CLIENTES use-upnp=yes
+/ppp profile add local-address=10.255.255.4 name=5MB rate-limit=2500k/5720k remot
+e-address=CGNAT-CLIENTES
+/ppp profile add local-address=10.255.255.4 name=10MB rate-limit=10000k/10000k re
+mote-address=CGNAT-CLIENTES
+/ppp profile add local-address=10.255.255.4 name="20 MEGA" rate-limit=20000k/2000
+0k remote-address=CGNAT-CLIENTES
+/ppp profile add local-address=10.255.255.4 name=7MB rate-limit=7000k/7000k remot
+e-address=CGNAT-CLIENTES
+/ppp profile add change-tcp-mss=yes local-address=10.255.255.4 name=Profile-IPv6 
+remote-address=CGNAT-CLIENTES use-upnp=no
+/ppp profile add name=SGP-BLOQUEADOS rate-limit=1k/1k remote-address=bloqueados
+/interface ovpn-client add connect-to=207.148.17.120 disabled=yes mac-address=02:
+AE:27:98:65:F6 name=ovpn-out1-sgp password=B7RV9EA49N19XT profile=default-encryp
+tion user=nrede07
+/queue type set 9 pfifo-limit=50
+/routing bgp instance set default as=270506 redistribute-connected=yes redistribu
+te-static=yes router-id=10.255.255.4
+/routing ospf area add area-id=100.64.22.0 name=area1-PPPoE
+/routing ospf instance set [ find default=yes ] redistribute-connected=as-type-1 
+redistribute-static=as-type-1 router-id=10.255.255.4
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=TOMICH
+/system logging action set 1 disk-file-name=log
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge="bridge2-MONITORAMENTO ENERGIA" interface=ether
+1
+/interface bridge port add bridge="bridge2-MONITORAMENTO ENERGIA" interface=ether
+2
+/interface bridge port add bridge="bridge3-ROTAS BACKUP" interface=ether5
+/interface bridge port add bridge=br-acesso interface=ether6
+/interface bridge port add bridge="bridge2-MONITORAMENTO ENERGIA" interface=ether
+7
+/interface bridge port add bridge=br-acesso interface=VLAN2603-PPPOE
+/interface bridge port add bridge=br-acesso interface=ether3
+/interface bridge port add bridge=br-acesso interface="VLAN-2604- OLT03 - LAN2LAN
+ DM3"
+/interface bridge port add bridge=br-acesso interface=ether4
+/interface bridge port add bridge=br-acesso interface=ether10
+/ip firewall connection tracking set enabled=no generic-timeout=2m tcp-establishe
+d-timeout=30m
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/ip settings set rp-filter=strict
+/interface bridge vlan add bridge=bridge1 disabled=yes tagged=ether11,ether8 vlan
+-ids=2604,3032
+/interface bridge vlan add bridge=bridge1 disabled=yes tagged=ether11 untagged=et
+her3 vlan-ids=803
+/interface bridge vlan add bridge=bridge1 disabled=yes tagged=ether11 untagged=et
+her4 vlan-ids=804
+/interface bridge vlan add bridge=bridge1 disabled=yes tagged=ether11 untagged=et
+her9 vlan-ids=809
+/interface list member add interface=VLAN-101_WAN list=WAN
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO interface=<l2tp> max-mru=1500 max-mtu=1492 one-session-per-host=yes servic
+e-name=PPP-VLAN-2106
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO disabled=no interface=ether9 max-mru=1500 max-mtu=1492 mrru=1600 one-sessi
+on-per-host=yes service-name=PPPOE-RADIO-ANTIGO
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO interface="VLAN-2604- OLT03 - LAN2LAN DM3" max-mru=1500 max-mtu=1492 mrru=
+1600 one-session-per-host=yes service-name=PPP-VLAN-2604
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO disabled=no interface="VLAN-3032 - OLT03 - LAN2LAN DM3" max-mru=1500 max-m
+tu=1492 mrru=1600 one-session-per-host=yes service-name=PPP-VLAN-3032
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO interface=ether4 max-mru=1500 max-mtu=1492 mrru=1600 one-session-per-host=
+yes service-name=PPP-DATACENTER2
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO interface=ether3 max-mru=1500 max-mtu=1492 mrru=1600 one-session-per-host=
+yes service-name=PPPPOE-SBT
+/interface pppoe-server server add authentication=pap default-profile=PPPOE-1036-
+RADIO interface=ether10 max-mru=1500 max-mtu=1492 mrru=1600 one-session-per-host
+=yes
+/ip address add address=192.168.35.1/24 comment="===REDE LIBERDADE==" interface="
+VLAN-2604- OLT03 - LAN2LAN DM3" network=192.168.35.0
+/ip address add address=192.168.14.1/24 interface="VLAN-2604- OLT03 - LAN2LAN DM3
+" network=192.168.14.0
+/ip address add address=192.168.15.1/24 comment="ROTA BACKUP AMZ" interface="brid
+ge3-ROTAS BACKUP" network=192.168.15.0
+/ip address add address=192.168.17.1/24 comment="MONITORAMENTO ENERGIA DATACENTER
+ 01" interface="bridge2-MONITORAMENTO ENERGIA" network=192.168.17.0
+/ip address add address=192.168.19.1/24 disabled=yes interface=ether9 network=192
+.168.19.0
+/ip address add address=10.15.15.1/24 comment="ROTA BACKUP - PARAISO" interface="
+bridge3-ROTAS BACKUP" network=10.15.15.0
+/ip address add address=172.16.111.1/24 interface="VLAN-2604- OLT03 - LAN2LAN DM3
+" network=172.16.111.0
+/ip address add address=172.100.11.1/24 comment=Guanabara interface="VLAN-2604- O
+LT03 - LAN2LAN DM3" network=172.100.11.0
+/ip address add address=10.0.22.1/24 disabled=yes interface="VLAN-2604- OLT03 - L
+AN2LAN DM3" network=10.0.22.0
+/ip address add address=192.168.1.1/24 interface="VLAN-2604- OLT03 - LAN2LAN DM3"
+ network=192.168.1.0
+/ip address add address=192.168.33.1/24 disabled=yes interface=ether9 network=192
+.168.33.0
+/ip address add address=10.255.255.4 interface=Loopback network=10.255.255.4
+/ip address add address=10.0.0.10/30 comment=WAN interface=VLAN-101_WAN network=1
+0.0.0.8
+/ip address add address=172.16.112.1/24 interface="VLAN-2604- OLT03 - LAN2LAN DM3
+" network=172.16.112.0
+/ip address add address=172.17.12.1/24 interface="VLAN-2604- OLT03 - LAN2LAN DM3"
+ network=172.17.12.0
+/ip address add address=192.168.98.1/24 disabled=yes interface=ether2 network=192
+.168.98.0
+/ip address add address=186.0.149.1/30 comment="NVR DATA CENTER - DESATIVEI DIA 1
+508-POIS ESTAVA OFF A INTERFACE" disabled=yes interface=ether2 network=186.0.149
+.0
+/ip address add address=192.168.16.1/24 comment="CERRA CEDRO" interface=ether3 ne
+twork=192.168.16.0
+/ip address add address=192.168.36.1/24 comment="Cabo SBT Rede G5" interface=ethe
+r3 network=192.168.36.0
+/ip address add address=192.168.18.1/24 interface=ether6 network=192.168.18.0
+/ip dhcp-server network add address=192.168.98.0/24 gateway=192.168.98.1
+/ip dns set cache-size=20480KiB servers=186.0.151.34,186.0.151.35,2804:6d00:2000:
+1::2
+/ip firewall address-list add address=10.0.0.0/8 list=no-wm-cgnat
+/ip firewall address-list add address=172.16.0.0/12 list=no-wm-cgnat
+/ip firewall address-list add address=192.168.0.0/16 list=no-wm-cgnat
+/ip firewall address-list add address=186.0.151.40 comment="IXCProvedor endereco 
+IP do sistema" list=rede_local
+/ip firewall filter add action=drop chain=input dst-port=53 in-interface=VLAN-101
+_WAN protocol=udp
+/ip firewall filter add action=drop chain=forward dst-port=53 in-interface=VLAN-1
+01_WAN protocol=udp
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-address=!186.0.151.40 protocol=tcp src-address=172.24.1.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-address=!186.0.151.40 protocol=tcp src-address-list=aviso_blo
+queio
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-port=!53 protocol=udp src-address=172.24.1.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+viso bloqueio" dst-port=!53 protocol=udp src-address-list=aviso_bloqueio
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+guardando assinatura" dst-address=!186.0.151.40 protocol=tcp src-address=172.25.
+1.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+guardando assinatura" dst-address=!186.0.151.40 protocol=tcp src-address-list=ag
+uardando_assinatura
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+guardando assinatura" dst-port=!53 protocol=udp src-address=172.25.1.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de a
+guardando assinatura" dst-port=!53 protocol=udp src-address-list=aguardando_assi
+natura
+/ip firewall nat add action=accept chain=dstnat disabled=yes to-addresses=192.168
+.98.10
+/ip firewall nat add action=accept chain=dstnat disabled=yes to-addresses=192.168
+.98.10
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de av
+iso atraso" dst-address=!186.0.151.40 dst-port=80 protocol=tcp src-address=172.2
+3.1.0/24 to-addresses=186.0.151.40 to-ports=8083
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de av
+iso atraso" dst-address=!186.0.151.40 dst-port=80 protocol=tcp src-address-list=
+aviso_atraso to-addresses=186.0.151.40 to-ports=8083
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de av
+iso bloqueio" dst-address=!186.0.151.40 dst-port=80 protocol=tcp src-address=172
+.24.1.0/24 to-addresses=186.0.151.40 to-ports=8082
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de av
+iso bloqueio" dst-address=!186.0.151.40 dst-port=80 protocol=tcp src-address-lis
+t=aviso_bloqueio to-addresses=186.0.151.40 to-ports=8082
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de ag
+uardando assinatura" dst-address=!186.0.151.40 dst-port=80 protocol=tcp src-addr
+ess=172.25.1.0/24 to-addresses=186.0.151.40 to-ports=8086
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de ag
+uardando assinatura" dst-address=!186.0.151.40 dst-port=80 protocol=tcp src-addr
+ess-list=aguardando_assinatura to-addresses=186.0.151.40 to-ports=8086
+/ip firewall raw add action=notrack chain=prerouting protocol=ospf
+/ip firewall raw add action=notrack chain=output protocol=ospf
+/ip route add distance=111 gateway=10.0.0.9
+/ip route add comment="ESCRITORIO REDE ESCRITORIO PARA ACESSAR DE QUALQUER LUGAR 
+DA REDE INTERNA" distance=1 dst-address=192.168.73.0/24 gateway=186.0.149.150
+/ip route rule add action=drop src-address=10.24.0.0/20
+/ip route rule add action=drop dst-address=10.24.0.0/20
+/ip route rule add action=drop src-address=10.24.0.0/20
+/ip route rule add action=drop dst-address=10.24.0.0/20
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api address=186.0.151.40/32 port=3540
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip ssh set forwarding-enabled=remote
+/mpls interface set [ find default=yes ] mpls-mtu=1560
+/ppp aaa set interim-update=20m use-radius=yes
+/ppp secret add disabled=yes local-address=10.0.0.1 name=CANAA-VPN password=CANAA
+-VPN remote-address=10.0.0.8
+/ppp secret add disabled=yes local-address=10.0.0.1 name=VPN-G5-MVS password=VPN-
+G5-MVS remote-address=10.0.0.11
+/ppp secret add comment="permuta pop uanabara topo ladeira monteiro lobato" disab
+led=yes name=Pedro password=1234 profile=10MB service=pppoe
+/ppp secret add disabled=yes name=dejane01 password=dejane01 profile=5MB service=
+pppoe
+/ppp secret add comment="Betania torre" disabled=yes name=free-enayle password=nr
+ede! profile=5MB service=pppoe
+/ppp secret add comment="Carlao MVS torre " disabled=yes name=carlanmvs@g5 passwo
+rd=carlanmvs profile=5MB service=pppoe
+/ppp secret add disabled=yes name=mayconnot password=mayconnot profile=5MB servic
+e=pppoe
+/ppp secret add comment="POP LUCIVAN" disabled=yes name=lucivan@g5 password=luciv
+an profile=10MB service=pppoe
+/ppp secret add comment="ROTEADOR CLIENTES SETOR 1 - AC" disabled=yes name=setor1
+ac@g5 password=setor1ac service=pppoe
+/ppp secret add disabled=yes name=enio.beto@g5 password=enio.beto profile=10MB se
+rvice=pppoe
+/ppp secret add comment="POP SAO LUCAS" disabled=yes name=popsaolucas@g5 password
+=popsaolucas profile=5MB service=pppoe
+/ppp secret add comment="LOGIN TEMPORARIO AT\C9 JUNHO" disabled=yes name=quadrilh
+arabodepalha@g5 password=quadrilharabodepalha profile=5MB service=pppoe
+/ppp secret add disabled=yes name=repetidor@g5 password=repetidor profile=10MB se
+rvice=pppoe
+/ppp secret add comment="Mae do Maycon" name=nversatil@g5 password=nversatil prof
+ile="20 MEGA" service=pppoe
+/ppp secret add comment="permuta pop uanabara topo ladeira monteiro lobato" disab
+led=yes name=testejosuepop password=testejosuepop service=pppoe
+/ppp secret add comment="permuta pop uanabara topo ladeira monteiro lobato" disab
+led=yes name=cristalino@g5 password=cristalino service=pppoe
+/ppp secret add name=miquinha.teste@g5 password=miquinha.teste profile="20 MEGA" 
+service=pppoe
+/ppp secret add disabled=yes name=sidcley## password=sidcley## profile=PPPOE-1036
+-RADIO service=pptp
+/ppp secret add comment="SETOR 1 - RouterBoard" disabled=yes name=setor1rb@g5 pas
+sword=setor1rb service=pppoe
+/ppp secret add disabled=yes name=testeamz password=testeamz service=pppoe
+/ppp secret add disabled=yes name=testes2@g5 password=testes2 service=pppoe
+/ppp secret add disabled=yes name=popvitoria password=popvitoria profile=7MB
+/ppp secret add disabled=yes name=livefap@g5 password=livefap service=pppoe
+/ppp secret add disabled=yes name=mutirao@g5 password=mutirao service=pppoe
+/ppp secret add disabled=yes name=livegovernador password=livegovernador service=
+pppoe
+/ppp secret add comment="POP TORRE PALMARES" disabled=yes name=energiatorrepalmar
+es@g5 password=energiatorrepalmares profile=7MB service=pppoe
+/ppp secret add comment="CAMERAS PL" disabled=yes name=cameraspl@g5 password=came
+raspl profile=7MB remote-address=186.0.149.30 service=pppoe
+/ppp secret add comment="Live do dia 10/10/2021" disabled=yes name=liveigrejapebi
+nha@g5 password=liveigrejapebinha service=pppoe
+/ppp secret add disabled=yes name=s2pdn@g5 password=s2pdn service=pppoe
+/ppp secret add disabled=yes name=torre password=torre profile=10MB service=pppoe
+
+/ppp secret add disabled=yes local-address=10.0.0.1 name=datacenter2 password=dat
+acenter2 remote-address=10.0.0.12
+/ppp secret add comment="RO\C7A BARILOCHE" disabled=yes name=joaogomes@g5fibra pa
+ssword=joaogomes profile="20 MEGA" service=pppoe
+/ppp secret add comment="RO\C7A BARILOCHE" name=rocabari@g5 password=rocabari ser
+vice=pppoe
+/ppp secret add name=setor1.escritorio password=setor1.escritorio remote-address=
+186.0.149.110 service=pppoe
+/ppp secret add name=datacenter02@g5 password=datacenter02 service=pppoe
+/ppp secret add name=nnmaycon password=nnmaycon service=pppoe
+/radius add address=186.0.151.40 comment="IXCProvedor configuracao radius" requir
+e-message-auth=no secret=radiusixcsoft service=ppp,hotspot,wireless src-address=
+10.0.0.10 timeout=3s
+/radius add address=10.11.11.4 disabled=yes require-message-auth=no secret=sgp@ra
+dius service=ppp,login,dhcp src-address=10.255.255.4 timeout=3s
+/radius incoming set accept=yes
+/routing bgp aggregate add include-igp=yes instance=default prefix=100.72.150.0/2
+3
+/routing bgp aggregate add include-igp=yes instance=default prefix=100.73.150.0/2
+3
+/routing bgp aggregate add include-igp=yes instance=default prefix=100.74.150.0/2
+3
+/routing bgp aggregate add include-igp=yes instance=default prefix=100.75.150.0/2
+3
+/routing bgp aggregate add include-igp=yes instance=default prefix=100.76.150.0/2
+3
+/routing bgp aggregate add include-igp=yes instance=default prefix=2804:6d00:2020
+::/44
+/routing bgp aggregate add include-igp=yes instance=default prefix=2804:6d00:2030
+::/44
+/routing bgp peer add address-families=ip,ipv6 disabled=yes in-filter=IN-Concentr
+ador name=Core out-filter=OUT-Concentrador remote-address=10.0.0.9 remote-as=270
+506 ttl=default
+/routing filter add action=discard chain=OUT-Concentrador prefix=10.24.0.0/20 pre
+fix-length=32
+/routing filter add action=accept chain=ospf-in prefix=0.0.0.0/0
+/routing filter add action=discard chain=ospf-in
+/routing filter add action=discard chain=OUT-Concentrador prefix=10.24.0.0/20 pre
+fix-length=32
+/routing filter add action=accept chain=ospf-in prefix=0.0.0.0/0
+/routing filter add action=discard chain=ospf-in
+/routing ospf area range add area=area1-PPPoE range=100.64.22.0/24
+/routing ospf interface add network-type=broadcast passive=yes
+/routing ospf interface add interface=ether11 network-type=broadcast
+/routing ospf interface add interface=VLAN-101_WAN network-type=point-to-point
+/routing ospf network add area=backbone comment=WAN network=10.0.0.8/30
+/routing ospf network add area=backbone network=192.168.0.0/16
+/routing ospf network add area=backbone comment=OSPF network=10.255.255.4/32
+/routing ospf network add area=area1-PPPoE comment=PPPoE network=100.64.22.0/24
+/routing ospf network add area=backbone network=186.0.148.0/22
+/routing ospf network add area=backbone network=10.0.22.0/24
+/routing ospf network add area=backbone network=172.16.111.0/24
+/routing ospf network add area=backbone network=172.16.112.0/24
+/routing ospf network add area=backbone network=172.17.12.0/24
+/routing ospf network add area=backbone network=172.100.11.0/24
+/routing ospf network add area=backbone network=10.15.15.0/24
+/routing ospf network add area=backbone comment="REDE DO ESCRITORIO" network=192.
+168.73.0/24
+/snmp set enabled=yes trap-version=2
+/system clock set time-zone-name=America/Belem
+/system identity set name=PPPoE_RADIO
+/system leds add leds="" type=interface-activity
+/system leds add leds="" type=interface-activity
+/system leds add leds="" type=interface-activity
+/system leds add leds="" type=interface-activity
+/system package update set channel=long-term
+/system routerboard settings
+# Warning: cpu not running at default frequency
+set cpu-frequency=1000MHz enter-setup-on=delete-key
+/system scheduler add interval=1w name=auto-system-upgrade on-event="# leonardoro
+sa.com\r\
+    \n#\r\
+    \n#\r\
+    \n# uncomment desired channel below. recommended is long-term.\r\
+    \n# descomente abaixo o canal desejado. recomendo long-term.\r\
+    \n\r\
+    \n:local \"my-channel\" \"long-term\";\r\
+    \n#:local \"my-channel\" \"stable\";\r\
+    \n#:local \"my-channel\" \"testing\";\r\
+    \n\r\
+    \n\r\
+    \n/sys pac upd set chan=\$\"my-channel\";:exec {/sys pac upd check};:delay 10
+;:local \"ver-status\" [/sys pac upd get status];:local \"ver-status-len\" [:len
+ \$\"ver-status\"];:local \"ver-latest\" [/system package update get latest-vers
+ion];/sys sche add inte=1w start-t=([/sys clo get time]+[:totime 2]) start-d=[/s
+ys clo get date] name=\"auto-system-upgrade_running\" on-event=\":if (ver-status
+-len < 27 ) do={:exec {/sys pac upd ins};:global \\\"wday-ok\\\" 1} else={:globa
+l \\\"wday-ok\\\" 0};\";:delay 5;:if (wday-ok = 1) do={:log warn \"#\";:log warn
+ \"# \$\"ver-status\": v\$\"ver-latest\"\";:log warn \"# Installing upgrade...\"
+;:log warn \"#\";:log warn \"# leonardorosa.com\";/sys scri env rem \"wday-ok\";
+} else={:log warn \"#\";:log warn \"# \$\"ver-status\": v\$\"ver-latest\"\";:log
+ warn \"#\";:log warn \"# leonardorosa.com\";/sys scri env rem \"wday-ok\";};/sy
+s sched rem [find name=\"auto-system-upgrade_running\"];\r\
+    \n" policy=ftp,reboot,read,write,policy,test start-date=nov/17/2015 start-tim
+e=04:00:00
+/system scheduler add name=Reboot on-event=":log warn #;:log warn \"# REBOOT AGEN
+DADO\";:log warn #;:log warn \"# leonardorosa.com\";/system reboot;\r\
+    \n" policy=reboot start-date=sep/10/2021 start-time=04:30:00
+/system scheduler add name=DOWNGRADE on-event=":log warn #;:log warn \"# REBOOT A
+GENDADO para DOWNGRADE\";:log warn #;:log warn \"# leonardorosa.com\";/system pa
+ckage downgrade;\r\
+    \n" policy=ftp,reboot,read,write,policy,test start-date=nov/17/2015 start-tim
+e=04:30:00
+/system scheduler add disabled=yes interval=5s name=wm-cgnat on-event=":local g 0
+;:local ip;:local d;:if ([:tostr [/ip pool find name~\"^wm-cgnat/\"]] != \"\") d
+o={:set ip [:toarray [/ip pool get [find name~\"^wm-cgnat/\"] name]];:set d [:pi
+ck (ip) 0];:set ip [:pick (ip) 1];:local cu;:if ([:tostr [:find (ip) \" \"]] != 
+\"\") do={:set cu [:pick (ip) ([:find (ip) \" \"]+1) [:len (ip)]];:set ip [:pick
+ (ip) 0 [:find (ip) \" \"]];};:log warning (cu);:log warning (ip);:if ([:tostr [
+:find (ip) \"/\"]] != \"\") do={:if ([:tostr [:find (d) \"/\"]] != \"\") do={:se
+t d [:tonum [:pick (d) ([:find (d) \"/\"]+1) [:len (d)]]];:if ([:tostr (d)] = \"
+\" || [:tonum (d)] > 64) do={:set d 64;\t};:if ((d) > 1 && (d) < 65) do={:if ([:
+tostr (g)] = \"\") do={:set g 0;\t};/ip firewall address-list remove [find list=
+no-wm-cgnat];/ip firewall nat remove [find comment~\"^wm-cgnat\"];/ip pool remov
+e [find name~\"^wm-cgnat\"];:foreach i in=[:toarray \"10.0.0.0/8,172.16.0.0/12,1
+92.168.0.0/16\"] do={/ip firewall address-list add list=no-wm-cgnat address=(i);
+/};:local p1 0;:local p2 1023;:local ac netmap;:local ipa;:for i from=0 to=([:le
+n (ip)]-1) do={:local c [:pick (ip) (i)];:if ((c) = \".\") do={:set ipa ((ipa).\
+",\");} else={:if ((c) = \"/\" || (c) = \"-\") do={:set ipa ((ipa).\",\");};:set
+ ipa ((ipa).(c));:if ((c) = \"-\") do={:set ac src-nat;:set ipa ((ipa).\",\");};
+};};:set ipa [:toarray (ipa)];:local r;:local t;:local u;:local a;:local pl \"\"
+;:local n none;:for i from=0 to=((d)-1) do={:set p1 (p2+1);:set p2 ((64511 /(d))
++(p2));:if ((i) = ((d)-1)) do={:set p2 65535;};:local p (\"\\\"wm-cgnat [\".(p1)
+.\"-\".(p2).\"]\\\"\");:local cg;:for ii from=0 to=([:len (ipa)]-1) do={:local c
+ [:pick (ipa) (ii)];:if ((ii) = 0 || (ii) = 5 && [:pick (ipa) (4)] = \"-\") do={
+:set cg ((cg).\"100\");} else={:if ((ii) != 4) do={:set cg ((cg).\".\");};:if ((
+ii) = 1 || (ii) = 6) do={:set cg ((cg).((i)+64));} else={:set cg ((cg).(c));};};
+};:foreach ii in=[:toarray \"tcp,udp,all\"] do={:local h (\"\\\"wm-cgnat (jump -
+-> \".(ii).\")\\\"\");:local j;:if ((i) = 0) do={:set j (\"/ip firewall nat add 
+chain=srcnat action=jump jump-target=\".(h).\" dst-address-list=!no-wm-cgnat com
+ment=\".(h));};:local f (\"/ip firewall nat add chain=\".(h).\" src-address=\".(
+cg).\" dst-address-list=!no-wm-cgnat action=\".(ac).\" to-address=\\\"\".(ip).\"
+\\\" comment=\".(p));:if ((ii) != \"all\") do={:if ((i) = 0) do={:set j ((j).\" 
+protocol=\".(ii).\";\\n\\r\");};:set f ((f).\" to-ports=\".((p1).\"-\".(p2)).\" 
+protocol=\".(ii));:if ((ii) = \"tcp\") do={:set t ((t).(j).(f).\";\\n\\r\");} el
+se={:set u ((u).(j).(f).\";\\n\\r\");};} else={:if ((i) = 0) do={:set j ((j).\";
+\\n\\r\");};:set a ((a).(j).(f).\";\\n\\r\");};};:if ([:tostr (cu)] != \"\") do=
+{:local ra [:pick (cu) 0 [:find (cu) \"-\"]];:local rb [:pick (cu) ([:find (cu) 
+\"-\"]+1) [:len (cu)]];:local nt [:tonum [:pick (cg) ([:find (cg) \"/\"]+1) [:le
+n (cg)]]];:for ii from=0 to=1 do={:set ra [:pick (ra) ([:find (ra) \".\"]+1) [:l
+en (ra)]];:set rb [:pick (rb) ([:find (rb) \".\"]+1) [:len (rb)]];};:local ri [:
+pick (cg) 0 [:find (cg) \"/\"]];:local rit [:pick (ri) 0 [:find (ri) \".\"]];:se
+t ri [:pick (ri) ([:find (ri) \".\"]+1) [:len (ri)]];:set ri ((rit).\".\".[:pick
+ (ri) 0 [:find (ri) \".\"]]);:set cg ((ri).\".\".(ra).\"-\".(ri).\".\".(rb));};:
+if ((g) = 0) do={:set r ((r).\"/ip pool add name=\".(p).\" range=\".(cg).\";\\n\
+\r\");:if ((i) != 0 && (i) != (d)) do={:set r ((r).\"/ip pool set [find name=\".
+(n).\"] next-pool=\".(p).\";\\n\\r\");};} else={:set pl ((pl).(cg).\",\");};:set
+ n (p);};:if ((g) = 1) do={:set r ((r).\"/ip pool add name=wm-cgnat range=\\\"\"
+.(pl).\"\\\";\\n\\r\");};:set r ((r).(t).(u).(a));:put (r);[:parse (r)];};};};};
+" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-
+time=startup
+/system scheduler add interval=6h name=sgp_login_local on-event=sgp_login_local p
+olicy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-dat
+e=sep/23/2022 start-time=16:04:49
+/system scheduler add interval=1d name=IXCProvedor_agendamento-backup on-event=IX
+CProvedor-fazer-e-enviar-backup policy=ftp,reboot,read,write,policy,test,passwor
+d,sniff,sensitive start-date=mar/12/2023 start-time=04:00:00
+/system script add dont-require-permissions=no name=sgp_login_local owner=SGP pol
+icy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":gl
+obal filename \"sgp_login_local.txt\";\r\
+    \n/file remove [/file find name=\$filename]\r\
+    \n/tool fetch url=\"https://nrede.c.sgp.net.br/ws/mikrotik/login/local/\?toke
+n=869d9925-256e-40a4-bc1b-3ca16667fdd5&app=mikrotik&nas=10.0.0.10&disabled=1\" d
+uration=30 dst-path=\$filename;\r\
+    \n:delay 32s;\r\
+    \n/import file-name=\$filename;"
+/system script add dont-require-permissions=no name=IXCProvedor-fazer-e-enviar-ba
+ckup owner=ixcsoft policy=ftp,reboot,read,write,policy,test,password,sniff,sensi
+tive source="export file=backup-mikrotik_BNG_RADIO.rsc; :log info message=\"IXCS
+oft enviando backup por email\"; /tool e-mail send to=\"destino@email.com\" subj
+ect=\"backup-BNG_RADIO\" file=backup-mikrotik_BNG_RADIO.rsc start-tls=yes"
+/tool bandwidth-server set authenticate=no enabled=no
+/tool e-mail set address=smtp.hostinger.com.br from=sac@g5internet.net.br passwor
+d=97784615###@@Ab port=587 user=sac@g5internet.net.br
+/tool graphing resource add allow-address=127.0.0.1/32
+/tool graphing resource add allow-address=127.0.0.1/32
+/tool romon set enabled=yes secrets=g5telecom.2020
+/tool romon port set [ find default=yes ] forbid=yes
+/tool romon port add disabled=no interface=ether11
+/tool romon port add disabled=no
+[tomich@PPPoE_RADIO] >                                                         [tomich@PPPoE_RADIO] > 

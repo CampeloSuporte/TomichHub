@@ -1,0 +1,589 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: DEANGELES MOURÃO PIMENTA 
+Equipamento: BORDA - CGNAT
+Host: 179.191.35.128:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 06/12/2025 00:09:12
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@LOAD BALANCE - CGNAT] > /                                              [K[tomich@LOAD BALANCE - CGNAT] > /e[tomich@LOAD BALANCE - CGNAT] > /e                                             [K[tomich@LOAD BALANCE - CGNAT] > /ex[tomich@LOAD BALANCE - CGNAT] > /ex                                            [K[tomich@LOAD BALANCE - CGNAT] > /exp[tomich@LOAD BALANCE - CGNAT] > /exp                                           [K[tomich@LOAD BALANCE - CGNAT] > /expo[tomich@LOAD BALANCE - CGNAT] > /expo                                          [K[tomich@LOAD BALANCE - CGNAT] > /expor[tomich@LOAD BALANCE - CGNAT] > /expor                                         [K[tomich@LOAD BALANCE - CGNAT] > /export[tomich@LOAD BALANCE - CGNAT] > /export                                        [K[tomich@LOAD BALANCE - CGNAT] > /export [tomich@LOAD BALANCE - CGNAT] > /export                                        [K[tomich@LOAD BALANCE - CGNAT] > /export t[tomich@LOAD BALANCE - CGNAT] > /export t                                      [K[tomich@LOAD BALANCE - CGNAT] > /export te[tomich@LOAD BALANCE - CGNAT] > /export te                                     [K[tomich@LOAD BALANCE - CGNAT] > /export ter[tomich@LOAD BALANCE - CGNAT] > /export ter                                    [K[tomich@LOAD BALANCE - CGNAT] > /export ters[tomich@LOAD BALANCE - CGNAT] > /export ters                                   [K[tomich@LOAD BALANCE - CGNAT] > /export terse[tomich@LOAD BALANCE - CGNAT] > /export terse                                  [K[tomich@LOAD BALANCE - CGNAT] > /export terse[tomich@LOAD BALANCE - CGNAT] > /export terse
+# dec/06/2025 00:09:04 by RouterOS 6.49.18
+# software id = 9CA1-QCHX
+#
+# model = CCR1036-8G-2S+
+# serial number = D8370C43DEF2
+/interface bridge add disabled=yes fast-forward=no name=bridge-olt-datcom
+/interface bridge add fast-forward=no name=loopback
+/interface ethernet set [ find default-name=ether1 ] comment="LINK ALTERNA" disab
+led=yes speed=100Mbps
+/interface ethernet set [ find default-name=ether2 ] comment=TEST speed=100Mbps
+/interface ethernet set [ find default-name=ether3 ] disabled=yes name=ether3-mod
+em-50 speed=100Mbps
+/interface ethernet set [ find default-name=ether4 ] comment="LINK LOGA 2" disabl
+ed=yes speed=100Mbps
+/interface ethernet set [ find default-name=ether5 ] comment=":::  Gerencia OLT D
+atacom" name=ether5-Gerencia-DATACOM speed=100Mbps
+/interface ethernet set [ find default-name=ether6 ] comment="WAN BACKUP - LINK 1
+" speed=10Gbps
+/interface ethernet set [ find default-name=ether7 ] comment=PROXMOX speed=100Mbp
+s
+/interface ethernet set [ find default-name=ether8 ] comment="WAN BACKUP - LINK 2
+"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-full,100
+M-full,1000M-full comment="LINK INTERVIX"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-full,100
+M-full,1000M-full,10000M-full comment=SWITCH speed=1Gbps
+/interface pppoe-client add interface=ether1 name=GVT_Link_1_150mb password=gvt25
+ user=2730903394@turbonetpro
+/interface pppoe-client add interface=ether1 name=LINK password=3470263 user=1398
+5407738
+/interface ipip add disabled=yes name=ipip-tunnel1 remote-address=138.97.84.33
+/interface vlan add interface=sfp-sfpplus1 name="vlan97-WAN-INTERVIX-ROTA 01" vla
+n-id=97
+/interface vlan add interface=sfp-sfpplus1 name="vlan98-WAN-INTERVIX-ROTA 02" vla
+n-id=98
+/interface vlan add comment="LINK LAN" interface=sfp-sfpplus2 name=vlan100-IPv4-C
+ANAA vlan-id=100
+/interface vlan add interface=sfp-sfpplus2 name=vlan101-IPv4-CANAA2 vlan-id=101
+/interface vlan add interface=sfp-sfpplus2 name=vlan103-OSPF-BRAS-02 vlan-id=103
+/interface vlan add interface=sfp-sfpplus2 name=vlan200-IPv6-CANAA vlan-id=200
+/interface vlan add interface=sfp-sfpplus2 name="vlan201-IPv6-CANAA 2" vlan-id=20
+1
+/interface vlan add interface=ether8 name=vlan1503-OLT-DATACOM vlan-id=1503
+/interface vlan add comment=MK-AUTH interface=ether7 name=vlan1504 vlan-id=1504
+/interface vlan add comment="VM PROXMOX 2" interface=ether7 name=vlan1505 vlan-id
+=1505
+/interface bonding add disabled=yes mode=802.3ad name=bonding1 slaves=ether2,ethe
+r6 transmit-hash-policy=layer-2-and-3
+/interface list add name=ent-links
+/interface list add name=WAN
+/interface list add name=LAN
+/interface list add name=LOGA
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip pool add name=vpn ranges=192.168.89.2-192.168.89.255
+/ip pool add name=dhcp_pool1 ranges=10.66.66.2-10.66.66.254
+/ip dhcp-server add address-pool=dhcp_pool1 interface=ether2 name=dhcp1
+/port set 0 baud-rate=9600
+/ppp profile set *0 dns-server=8.8.8.8,1.1.1.1 local-address=179.191.35.128 remot
+e-address=vpn
+/ppp profile add change-tcp-mss=yes dns-server=8.8.8.8,8.8.4.4 local-address=10.1
+0.10.1 name=VPN remote-address=10.10.10.10 use-upnp=yes
+/ppp profile set *FFFFFFFE local-address=192.168.89.1 remote-address=vpn
+/routing bgp instance set default as=65350 router-id=2.2.2.1
+/routing ospf area add area-id=0.0.0.1 name=area1
+/routing ospf instance set [ find default=yes ] distribute-default=if-installed-a
+s-type-1 name=R1 redistribute-connected=as-type-1 redistribute-static=as-type-1 
+router-id=2.2.2.1
+/snmp community set [ find default=yes ] name=public-DESATIVADO
+/snmp community add addresses=::/0 name=TOMICH write-access=yes
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge=bridge-olt-datcom interface=vlan1503-OLT-DATACO
+M
+/interface bridge port add bridge=bridge-olt-datcom interface=ether5-Gerencia-DAT
+ACOM
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface l2tp-server server set enabled=yes ipsec-secret=102030 max-mru=1500 ma
+x-mtu=1500 one-session-per-host=yes use-ipsec=yes
+/interface list member add disabled=yes interface=GVT_Link_1_150mb list=ent-links
+
+/interface list member add interface=ether6 list=ent-links
+/interface list member add interface=sfp-sfpplus1 list=ent-links
+/interface list member add disabled=yes interface=GVT_Link_1_150mb list=WAN
+/interface list member add interface=bridge-olt-datcom list=LAN
+/interface list member add interface=ether1 list=ent-links
+/interface list member add interface=ether4 list=ent-links
+/interface list member add interface=ether2 list=LOGA
+/interface list member add interface=ether4 list=LOGA
+/interface list member add interface=ether6 list=WAN
+/interface list member add interface=ether8 list=WAN
+/interface pppoe-server server add disabled=no interface=ether2 keepalive-timeout
+=30 max-mtu=1492 one-session-per-host=yes service-name=service1
+/interface pptp-server server set enabled=yes
+/ip address add address=10.9.1.1/30 comment="PPPoE CANAA 1" interface=vlan100-IPv
+4-CANAA network=10.9.1.0
+/ip address add address=2.2.2.1 comment=LOOPBACK interface=loopback network=2.2.2
+.1
+/ip address add address=192.168.0.5/24 comment="GERENCIA - OLT - DATACOM" interfa
+ce=ether5-Gerencia-DATACOM network=192.168.0.0
+/ip address add address=172.28.4.1/30 comment="DMVIER DATACOM" interface=vlan1503
+-OLT-DATACOM network=172.28.4.0
+/ip address add address=100.64.168.70/30 comment="WAN INTERVIX" interface=sfp-sfp
+plus1 network=100.64.168.68
+/ip address add address=10.9.1.5/30 comment="PPPoE CANAA 2" interface=vlan101-IPv
+4-CANAA2 network=10.9.1.4
+/ip address add address=172.28.4.5/30 comment="MK-AUTH - 1504" interface=ether7 n
+etwork=172.28.4.4
+/ip address add address=172.28.4.9/30 comment=ZABBIX interface=ether7 network=172
+.28.4.8
+/ip address add address=179.191.35.0 comment="IPS PUBLICOS 179.191.35.0/24 - CGNA
+T ULTILIZANDO: 179.191.35.0/25" disabled=yes network=179.191.35.0
+/ip address add address=192.168.101.1/30 comment=PROXMOX interface=ether7 network
+=192.168.101.0
+/ip address add address=172.16.20.1/24 comment="SERVIDOR QUE FICA O DMVIER" inter
+face=vlan1505 network=172.16.20.0
+/ip address add address=192.168.88.2/24 interface=sfp-sfpplus2 network=192.168.88
+.0
+/ip address add address=172.28.4.13/30 comment=DNS disabled=yes interface=vlan150
+4 network=172.28.4.12
+/ip address add address=179.191.35.128 comment="NAT GERAL" interface=loopback net
+work=179.191.35.128
+/ip address add address=179.191.35.129 comment="IP MK-AUTH" disabled=yes interfac
+e=loopback network=179.191.35.129
+/ip address add address=179.191.35.145/28 comment=SERVIDORES interface=ether7 net
+work=179.191.35.144
+/ip address add address=172.31.102.1/30 comment=DNS interface=ether7 network=172.
+31.102.0
+/ip address add address=10.66.66.1/24 comment="TEST BANDA" interface=ether2 netwo
+rk=10.66.66.0
+/ip address add address=100.64.168.138/30 comment="WAN - INTERVIX - ROTA 01" inte
+rface="vlan97-WAN-INTERVIX-ROTA 01" network=100.64.168.136
+/ip address add address=100.64.168.142/30 comment="WAN - INTERVIX - ROTA 02" inte
+rface="vlan98-WAN-INTERVIX-ROTA 02" network=100.64.168.140
+/ip address add address=10.9.1.9/30 comment=OSPF-BRAS-02 interface=vlan103-OSPF-B
+RAS-02 network=10.9.1.8
+/ip cloud set ddns-enabled=yes
+/ip dhcp-client add add-default-route=no interface=ether1
+/ip dhcp-client add default-route-distance=3 disabled=no interface=ether2 use-pee
+r-dns=no
+/ip dhcp-client add default-route-distance=4 disabled=no interface=ether4 use-pee
+r-dns=no
+/ip dhcp-client add default-route-distance=12 disabled=no interface=ether8 use-pe
+er-dns=no use-peer-ntp=no
+/ip dhcp-client add default-route-distance=11 disabled=no interface=ether6 use-pe
+er-dns=no use-peer-ntp=no
+/ip dhcp-server network add address=10.66.66.0/24 gateway=10.66.66.1
+/ip dns set servers=8.8.8.8,8.8.4.4,2001:4860:4860::8888,2001:4860:4860::8844
+/ip firewall address-list add address=159.153.59.0/24 comment="FIFA 2018 PS3" dis
+abled=yes list=sem-load
+/ip firewall address-list add address=187.66.7.0/24 comment="FIFA 2018 PS3" disab
+led=yes list=sem-load
+/ip firewall address-list add address=157.240.12.0/24 comment="FIFA 2018 PS3" dis
+abled=yes list=sem-load
+/ip firewall address-list add address=10.105.0.0/24 list=SAIDA-INTERVIX
+/ip firewall address-list add address=10.100.4.0/24 list=SAIDA-INTERVIX
+/ip firewall address-list add address=10.100.4.0/24 list=CGNAT
+/ip firewall address-list add address=10.105.0.0/24 list=CGNAT
+/ip firewall address-list add address=198.27.91.173 comment="FIFA 2018 PS3" disab
+led=yes list=sem-load
+/ip firewall address-list add address=177.69.235.24 disabled=yes list=algar
+/ip firewall address-list add address=177.69.235.35 disabled=yes list=algar
+/ip firewall address-list add address=172.28.4.8/30 list=INTERNO
+/ip firewall address-list add address=10.200.200.0/30 list=INTERNO
+/ip firewall address-list add address=192.168.0.25 list=INTERNO
+/ip firewall address-list add address=100.64.0.0/21 list=rede-privada-para-cgnat
+/ip firewall address-list add address=172.28.4.0/24 list=NAT-GERAL
+/ip firewall address-list add address=192.168.101.0/24 comment=PROXMOX list=NAT-G
+ERAL
+/ip firewall address-list add address=172.16.20.0/24 comment="SERVIDOR WINDOWS CO
+M DMVIER" list=NAT-GERAL
+/ip firewall address-list add address=10.20.30.0/24 comment=VPN list=NAT-GERAL
+/ip firewall address-list add address=179.191.35.0/24 list=SEM-NAT
+/ip firewall address-list add address=172.31.102.0/30 comment=DNS disabled=yes li
+st=NAT-GERAL
+/ip firewall address-list add address=10.101.0.0/24 comment="CANAA 1" list="CLIEN
+TES ROTA BACKUP"
+/ip firewall address-list add address=10.100.0.0/24 comment="CANAA 2" list="CLIEN
+TES ROTA BACKUP"
+/ip firewall address-list add address=10.9.1.4/30 list=NAT-GERAL
+/ip firewall address-list add address=10.9.1.0/30 list=NAT-GERAL
+/ip firewall address-list add address=100.64.168.68/30 list=NAT-GERAL
+/ip firewall address-list add address=100.64.7.112 comment="CANAA 2" list="CLIENT
+ES ROTA BACKUP"
+/ip firewall address-list add address=10.66.66.0/24 comment="TESTE BANDA" list=NA
+T-GERAL
+/ip firewall address-list add address=192.168.89.254 list=NAT-GERAL
+/ip firewall address-list add address=100.64.8.0/22 list=NAT-GERAL
+/ip firewall address-list add address=100.66.0.1 list=NAT-GERAL
+/ip firewall filter add action=drop chain=forward disabled=yes dst-address=177.69
+.0.0/16 src-address=10.105.0.93
+/ip firewall filter add action=accept chain=forward comment=PS3 disabled=yes dst-
+port=3658 protocol=udp
+/ip firewall filter add action=accept chain=forward disabled=yes dst-port=3478 pr
+otocol=udp
+/ip firewall filter add action=accept chain=forward disabled=yes dst-port=3479 pr
+otocol=udp
+/ip firewall filter add action=accept chain=forward disabled=yes dst-port=3659 pr
+otocol=udp
+/ip firewall filter add action=accept chain=forward disabled=yes dst-port=443 pro
+tocol=tcp
+/ip firewall filter add action=accept chain=forward disabled=yes dst-port=5223 pr
+otocol=tcp
+/ip firewall filter add action=accept chain=forward disabled=yes dst-port=3658 pr
+otocol=tcp
+/ip firewall mangle add action=accept chain=prerouting disabled=yes dst-address-l
+ist=INTERNO src-address-list=INTERNO
+/ip firewall mangle add action=accept chain=prerouting disabled=yes dst-address=1
+72.28.4.2
+/ip firewall mangle add action=accept chain=prerouting disabled=yes dst-address=1
+72.16.80.4/30
+/ip firewall mangle add action=accept chain=prerouting disabled=yes dst-address=1
+72.16.80.0/30
+/ip firewall mangle add action=accept chain=prerouting disabled=yes dst-address=1
+92.168.1.0/24
+/ip firewall mangle add action=mark-routing chain=prerouting comment=ALTERNA disa
+bled=yes new-routing-mark=LINKALTERNATIVO passthrough=no src-address=10.99.0.0/2
+4
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Link Dedica
+do" disabled=yes new-routing-mark=SAIDA-INTERVIX passthrough=no src-address-list
+=SAIDA-INTERVIX
+/ip firewall mangle add action=accept chain=postrouting comment="CONEX\C3O SEM BA
+LANCE" disabled=yes dst-address-list=sem-load out-interface=bridge-olt-datcom
+/ip firewall mangle add action=mark-routing chain=prerouting comment="link 1" dis
+abled=yes new-routing-mark=SAIDA-LINK1 passthrough=yes src-address=10.101.0.0/24
+
+/ip firewall mangle add action=mark-routing chain=prerouting comment="LOGA 1" dst
+-address-type=!local new-routing-mark=LOGA passthrough=yes per-connection-classi
+fier=both-addresses:2/0 src-address=10.102.0.0/23
+/ip firewall mangle add action=mark-routing chain=prerouting comment="CLIENTES EM
+ ROTAS ALTERNATIVA - PELO LINK BACKUP" dst-address-type=!local new-routing-mark=
+LINK-BACKUP passthrough=yes src-address-list="CLIENTES ROTA BACKUP"
+/ip firewall mangle add action=mark-routing chain=prerouting comment="LOGA 2" dst
+-address-type=!local new-routing-mark=LOGA2 passthrough=yes per-connection-class
+ifier=both-addresses:2/1 src-address=10.102.0.0/23
+/ip firewall mangle add action=mark-routing chain=prerouting comment="LOGA 2" dst
+-address-type=!local new-routing-mark=LOGA2 passthrough=yes per-connection-class
+ifier=both-addresses:2/1 src-address=172.31.102.0/30
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Link 4" dis
+abled=yes new-routing-mark=cgnat passthrough=yes src-address=10.104.0.0/24
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Link 5" dis
+abled=yes new-routing-mark=cgnat passthrough=yes src-address=10.103.0.0/24
+/ip firewall nat add action=masquerade chain=srcnat comment="NAT PARA LINK BACKUP
+" out-interface-list=WAN src-address-list="CLIENTES ROTA BACKUP"
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT GERAL" dst-address-
+list=!SEM-NAT src-address-list=NAT-GERAL to-addresses=179.191.35.0/25
+/ip firewall nat add action=masquerade chain=srcnat comment="NAT PARA LINK LOGA" 
+out-interface-list=LOGA src-address=10.102.0.0/23
+/ip firewall nat add action=masquerade chain=srcnat comment="NAT PARA LINK LOGA" 
+out-interface-list=LOGA src-address=172.31.102.0/30
+/ip firewall nat add action=masquerade chain=srcnat comment="NAT GER OLT DATACOM"
+ out-interface=ether5-Gerencia-DATACOM
+/ip firewall nat add action=dst-nat chain=dstnat comment="WINBOX PPPoE CANAA" dst
+-port=8898 protocol=tcp to-addresses=10.9.1.2 to-ports=8898
+/ip firewall nat add action=dst-nat chain=dstnat comment="WINBOX PPPoE CANAA2" ds
+t-port=8897 protocol=tcp to-addresses=10.9.1.6 to-ports=8897
+/ip firewall nat add action=dst-nat chain=dstnat comment="SERVIDOR DMVIER" dst-ad
+dress=179.191.35.128 dst-port=8101 protocol=tcp to-addresses=172.16.20.2 to-port
+s=8101
+/ip firewall nat add action=dst-nat chain=dstnat comment="ZABBIX SSH" dst-address
+=179.191.35.128 dst-port=8104 protocol=tcp to-addresses=172.28.4.10 to-ports=220
+02
+/ip firewall nat add action=dst-nat chain=dstnat comment=ZABBIX dst-address=179.1
+91.35.128 dst-port=8105 protocol=tcp to-addresses=172.28.4.10 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment=GRAFANA dst-address=179.
+191.35.128 dst-port=3030 protocol=tcp to-addresses=172.28.4.10 to-ports=3030
+/ip firewall nat add action=dst-nat chain=dstnat comment=PHPIPAM dst-address=179.
+191.35.128 dst-port=3080 protocol=tcp to-addresses=172.28.4.10 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment=PROXMOX dst-address=179.
+191.35.128 dst-port=8007 protocol=tcp to-addresses=192.168.101.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="SSH DNS" dst-address=17
+9.191.35.128 dst-port=8008 protocol=tcp to-addresses=172.31.102.2 to-ports=22002
+
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT CLIENTE CLEIDI
+ANE SOUZA" dst-address=179.191.35.128 dst-port=25565 protocol=tcp to-addresses=1
+00.66.0.1 to-ports=25565
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-targe
+t=cgnat src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.0/25 portas=1024-5055" jump-target=100.64.0.0/25 src-address=100.64.0.0/25
+/ip firewall nat add action=netmap chain=100.64.0.0/25 comment="100.64.0.0/25 ==>
+ portas=1024-5055" protocol=tcp to-addresses=179.191.35.0/25 to-ports=1024-5055
+/ip firewall nat add action=netmap chain=100.64.0.0/25 comment="100.64.0.0/25 ==>
+ portas=1024-5055" protocol=udp to-addresses=179.191.35.0/25 to-ports=1024-5055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.128/25 portas=5056-9087" jump-target=100.64.0.128/25 src-address=100.64.0.128/2
+5
+/ip firewall nat add action=netmap chain=100.64.0.128/25 comment="100.64.0.128/25
+ ==> portas=5056-9087" protocol=tcp to-addresses=179.191.35.0/25 to-ports=5056-9
+087
+/ip firewall nat add action=netmap chain=100.64.0.128/25 comment="100.64.0.128/25
+ ==> portas=5056-9087" protocol=udp to-addresses=179.191.35.0/25 to-ports=5056-9
+087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.0/25 portas=9088-13119" jump-target=100.64.1.0/25 src-address=100.64.1.0/25
+/ip firewall nat add action=netmap chain=100.64.1.0/25 comment="100.64.1.0/25 ==>
+ portas=9088-13119" protocol=tcp to-addresses=179.191.35.0/25 to-ports=9088-1311
+9
+/ip firewall nat add action=netmap chain=100.64.1.0/25 comment="100.64.1.0/25 ==>
+ portas=9088-13119" protocol=udp to-addresses=179.191.35.0/25 to-ports=9088-1311
+9
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.128/25 portas=13120-17151" jump-target=100.64.1.128/25 src-address=100.64.1.128
+/25
+/ip firewall nat add action=netmap chain=100.64.1.128/25 comment="100.64.1.128/25
+ ==> portas=13120-17151" protocol=tcp to-addresses=179.191.35.0/25 to-ports=1312
+0-17151
+/ip firewall nat add action=netmap chain=100.64.1.128/25 comment="100.64.1.128/25
+ ==> portas=13120-17151" protocol=udp to-addresses=179.191.35.0/25 to-ports=1312
+0-17151
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.0/25 portas=17152-21183" jump-target=100.64.2.0/25 src-address=100.64.2.0/25
+/ip firewall nat add action=netmap chain=100.64.2.0/25 comment="100.64.2.0/25 ==>
+ portas=17152-21183" protocol=tcp to-addresses=179.191.35.0/25 to-ports=17152-21
+183
+/ip firewall nat add action=netmap chain=100.64.2.0/25 comment="100.64.2.0/25 ==>
+ portas=17152-21183" protocol=udp to-addresses=179.191.35.0/25 to-ports=17152-21
+183
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.128/25 portas=21184-25215" jump-target=100.64.2.128/25 src-address=100.64.2.128
+/25
+/ip firewall nat add action=netmap chain=100.64.2.128/25 comment="100.64.2.128/25
+ ==> portas=21184-25215" protocol=tcp to-addresses=179.191.35.0/25 to-ports=2118
+4-25215
+/ip firewall nat add action=netmap chain=100.64.2.128/25 comment="100.64.2.128/25
+ ==> portas=21184-25215" protocol=udp to-addresses=179.191.35.0/25 to-ports=2118
+4-25215
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.0/25 portas=25216-29247" jump-target=100.64.3.0/25 src-address=100.64.3.0/25
+/ip firewall nat add action=netmap chain=100.64.3.0/25 comment="100.64.3.0/25 ==>
+ portas=25216-29247" protocol=tcp to-addresses=179.191.35.0/25 to-ports=25216-29
+247
+/ip firewall nat add action=netmap chain=100.64.3.0/25 comment="100.64.3.0/25 ==>
+ portas=25216-29247" protocol=udp to-addresses=179.191.35.0/25 to-ports=25216-29
+247
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.128/25 portas=29248-33279" jump-target=100.64.3.128/25 src-address=100.64.3.128
+/25
+/ip firewall nat add action=netmap chain=100.64.3.128/25 comment="100.64.3.128/25
+ ==> portas=29248-33279" protocol=tcp to-addresses=179.191.35.0/25 to-ports=2924
+8-33279
+/ip firewall nat add action=netmap chain=100.64.3.128/25 comment="100.64.3.128/25
+ ==> portas=29248-33279" protocol=udp to-addresses=179.191.35.0/25 to-ports=2924
+8-33279
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.0/25 portas=33280-37311" jump-target=100.64.4.0/25 src-address=100.64.4.0/25
+/ip firewall nat add action=netmap chain=100.64.4.0/25 comment="100.64.4.0/25 ==>
+ portas=33280-37311" protocol=tcp to-addresses=179.191.35.0/25 to-ports=33280-37
+311
+/ip firewall nat add action=netmap chain=100.64.4.0/25 comment="100.64.4.0/25 ==>
+ portas=33280-37311" protocol=udp to-addresses=179.191.35.0/25 to-ports=33280-37
+311
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.128/25 portas=37312-41343" jump-target=100.64.4.128/25 src-address=100.64.4.128
+/25
+/ip firewall nat add action=netmap chain=100.64.4.128/25 comment="100.64.4.128/25
+ ==> portas=37312-41343" protocol=tcp to-addresses=179.191.35.0/25 to-ports=3731
+2-41343
+/ip firewall nat add action=netmap chain=100.64.4.128/25 comment="100.64.4.128/25
+ ==> portas=37312-41343" protocol=udp to-addresses=179.191.35.0/25 to-ports=3731
+2-41343
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.0/25 portas=41344-45375" jump-target=100.64.5.0/25 src-address=100.64.5.0/25
+/ip firewall nat add action=netmap chain=100.64.5.0/25 comment="100.64.5.0/25 ==>
+ portas=41344-45375" protocol=tcp to-addresses=179.191.35.0/25 to-ports=41344-45
+375
+/ip firewall nat add action=netmap chain=100.64.5.0/25 comment="100.64.5.0/25 ==>
+ portas=41344-45375" protocol=udp to-addresses=179.191.35.0/25 to-ports=41344-45
+375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.128/25 portas=45376-49407" jump-target=100.64.5.128/25 src-address=100.64.5.128
+/25
+/ip firewall nat add action=netmap chain=100.64.5.128/25 comment="100.64.5.128/25
+ ==> portas=45376-49407" protocol=tcp to-addresses=179.191.35.0/25 to-ports=4537
+6-49407
+/ip firewall nat add action=netmap chain=100.64.5.128/25 comment="100.64.5.128/25
+ ==> portas=45376-49407" protocol=udp to-addresses=179.191.35.0/25 to-ports=4537
+6-49407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.0/25 portas=49408-53439" jump-target=100.64.6.0/25 src-address=100.64.6.0/25
+/ip firewall nat add action=netmap chain=100.64.6.0/25 comment="100.64.6.0/25 ==>
+ portas=49408-53439" protocol=tcp to-addresses=179.191.35.0/25 to-ports=49408-53
+439
+/ip firewall nat add action=netmap chain=100.64.6.0/25 comment="100.64.6.0/25 ==>
+ portas=49408-53439" protocol=udp to-addresses=179.191.35.0/25 to-ports=49408-53
+439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.128/25 portas=53440-57471" jump-target=100.64.6.128/25 src-address=100.64.6.128
+/25
+/ip firewall nat add action=netmap chain=100.64.6.128/25 comment="100.64.6.128/25
+ ==> portas=53440-57471" protocol=tcp to-addresses=179.191.35.0/25 to-ports=5344
+0-57471
+/ip firewall nat add action=netmap chain=100.64.6.128/25 comment="100.64.6.128/25
+ ==> portas=53440-57471" protocol=udp to-addresses=179.191.35.0/25 to-ports=5344
+0-57471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.0/25 portas=57472-61503" jump-target=100.64.7.0/25 src-address=100.64.7.0/25
+/ip firewall nat add action=netmap chain=100.64.7.0/25 comment="100.64.7.0/25 ==>
+ portas=57472-61503" protocol=tcp to-addresses=179.191.35.0/25 to-ports=57472-61
+503
+/ip firewall nat add action=netmap chain=100.64.7.0/25 comment="100.64.7.0/25 ==>
+ portas=57472-61503" protocol=udp to-addresses=179.191.35.0/25 to-ports=57472-61
+503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.128/25 portas=61504-65535" jump-target=100.64.7.128/25 src-address=100.64.7.128
+/25
+/ip firewall nat add action=netmap chain=100.64.7.128/25 comment="100.64.7.128/25
+ ==> portas=61504-65535" protocol=tcp to-addresses=179.191.35.0/25 to-ports=6150
+4-65535
+/ip firewall nat add action=netmap chain=100.64.7.128/25 comment="100.64.7.128/25
+ ==> portas=61504-65535" protocol=udp to-addresses=179.191.35.0/25 to-ports=6150
+4-65535
+/ip firewall nat add action=netmap chain=srcnat comment="100.64.0.0/21 ==> 179.19
+1.35.0/25" src-address=100.64.0.0/21 to-addresses=179.191.35.0/25
+/ip route add disabled=yes distance=1 gateway=192.168.1.1 routing-mark=LINKALTERN
+ATIVO
+/ip route add disabled=yes distance=1 gateway=GVT_Link_1_150mb routing-mark=SAIDA
+-LINK1
+/ip route add disabled=yes distance=1 gateway=192.168.25.1 routing-mark=SAIDA-LIN
+K1
+/ip route add distance=1 gateway=192.168.18.1 routing-mark=LOGA
+/ip route add check-gateway=ping comment=LINK_BACKUP distance=1 gateway=192.168.1
+.254,192.168.10.254 routing-mark=LINK-BACKUP
+/ip route add distance=1 gateway=192.168.19.1 routing-mark=LOGA2
+/ip route add disabled=yes distance=1 gateway=100.64.168.69 routing-mark=cgnat
+/ip route add check-gateway=ping comment="INTERVIX - ROTA 01" distance=10 gateway
+=100.64.168.137
+/ip route add check-gateway=ping comment="INTERVIX - ROTA 02" distance=21 gateway
+=100.64.168.141
+/ip route add disabled=yes distance=2 gateway=100.64.168.69
+/ip route add comment="PPPOE CANAA" distance=111 dst-address=2.2.2.2/32 gateway=1
+0.9.1.2 scope=20
+/ip route add comment="PPPoE CANAA 2" distance=111 dst-address=2.2.2.3/32 gateway
+=10.9.1.6 scope=20
+/ip route add comment="TEST BANDA CANNA 1" distance=1 dst-address=10.66.66.0/24 g
+ateway=10.9.1.2
+/ip route add comment="FAIXA DE IP PARA OLT DE CANAA" distance=111 dst-address=10
+.200.200.0/30 gateway=10.9.1.2
+/ip route add comment="PPPOE CANAA" distance=111 dst-address=100.64.0.0/22 gatewa
+y=10.9.1.2 scope=20
+/ip route add comment="PPPoE CANAA 2" distance=111 dst-address=100.64.4.0/22 gate
+way=10.9.1.6 scope=20
+/ip route add comment=BLACKHOLE distance=1 dst-address=179.191.35.0/24 type=black
+hole
+/ip route add distance=1 dst-address=179.191.35.0/25 type=blackhole
+/ip route add comment="PPPOE CANAA - IPS PUBLICOS PARA CLIENTE" distance=111 dst-
+address=179.191.35.224/28 gateway=10.9.1.2 scope=20
+/ip route add comment="PPPoE CANAA 2 - IPS PUBLICOS PARA CLIENTES" distance=111 d
+st-address=179.191.35.240/28 gateway=10.9.1.6 scope=20
+/ip route rule add comment="ROTA BACKUP" disabled=yes dst-address=0.0.0.0/0 src-a
+ddress=100.64.7.112/32 table=LINK-BACKUP
+/ip route rule add comment="ROTA PRINCIPAL" src-address=100.64.0.0/21 table=main
+/ip route rule add comment="ROTA BACKUP" src-address=100.64.0.0/21 table=LINK-BAC
+KUP
+/ip service set telnet disabled=yes port=8223
+/ip service set ftp disabled=yes port=8221
+/ip service set www disabled=yes port=8386
+/ip service set ssh port=22002
+/ip service set api disabled=yes port=8228
+/ip service set winbox port=8899
+/ip service set api-ssl disabled=yes port=8229
+/ip ssh set allow-none-crypto=yes forwarding-enabled=remote
+/ip upnp set enabled=yes
+/ip upnp interfaces add interface=ether7 type=internal
+/ipv6 address add address=2804:2e7c::1000:116/126 advertise=no comment=WAN interf
+ace=sfp-sfpplus1
+/ipv6 address add address=2804:2e7c:2400::1/128 advertise=no comment="LOOPBACK DE
+ TEST" disabled=yes interface=loopback
+/ipv6 address add address=fd00:0:1:400::1/126 advertise=no comment="REDE CANAA" i
+nterface=vlan200-IPv6-CANAA
+/ipv6 address add address=fd00:0:1:500::1/126 advertise=no comment="REDE CANAA2" 
+interface="vlan201-IPv6-CANAA 2"
+/ipv6 address add address=2804:2e7c::1000:136/126 advertise=no comment="WAN - INT
+ERVIX - ROTA 01" interface="vlan97-WAN-INTERVIX-ROTA 01"
+/ipv6 address add address=2804:2e7c::1000:139/126 advertise=no comment="WAN - INT
+ERVIX - ROTA 02" interface="vlan98-WAN-INTERVIX-ROTA 02"
+/ipv6 nd set [ find default=yes ] advertise-dns=no
+/ipv6 route add distance=1 gateway=2804:2e7c::1000:115
+/ipv6 route add check-gateway=ping comment="INTERVIX - ROTA 01" distance=10 gatew
+ay=2804:2e7c::1000:135
+/ipv6 route add check-gateway=ping comment="INTERVIX - ROTA 02" distance=11 gatew
+ay=2804:2e7c::1000:13a
+/ipv6 route add check-gateway=ping comment="PPPoE CANAA - SERVER 1" distance=1 ds
+t-address=2804:2e7c:2400::/45 gateway=fd00:0:1:400::2
+/ipv6 route add check-gateway=ping comment="PPPoE CANAA 2 - SERVER 2" distance=1 
+dst-address=2804:2e7c:2408::/45 gateway=fd00:0:1:500::2
+/ppp secret add disabled=yes name=nemmervpn password=123456 profile=default-encry
+ption service=pptp
+/ppp secret add local-address=10.20.30.40 name=tomich password=tomich.10 profile=
+VPN remote-address=10.20.30.41 service=l2tp
+/ppp secret add disabled=yes local-address=10.20.30.41 name=acsinfo2 password=acs
+info2 profile=default-encryption remote-address=10.20.30.42 service=pptp
+/ppp secret add name=tarciso password=123456 service=pppoe
+/routing bgp network add network=179.191.35.0/24 synchronize=no
+/routing bgp network add network=2804:2e7c:2400::/42 synchronize=no
+/routing bgp peer add in-filter=AS265348-INTERVIX-IPv4-ROTA01_in name=AS265348-IN
+TERVIX-IPv4-ROTA01 out-filter=AS265348-INTERVIX-IPv4-ROTA01_out remote-address=1
+00.64.168.137 remote-as=265348
+/routing bgp peer add in-filter=AS265348-INTERVIX-IPv4-ROTA02_in name=AS265348-IN
+TERVIX-IPv4-ROTA02 out-filter=AS265348-INTERVIX-IPv4-ROTA02_out remote-address=1
+00.64.168.141 remote-as=265348
+/routing bgp peer add address-families=ipv6 in-filter=AS265348-INTERVIX-IPv6-ROTA
+01_in name=AS265348-INTERVIX-IPv6-ROTA01 out-filter=AS265348-INTERVIX-IPv6-ROTA0
+1_out remote-address=2804:2e7c::1000:135 remote-as=265348
+/routing bgp peer add address-families=ipv6 in-filter=AS265348-INTERVIX-IPv6-ROTA
+02_in name=AS265348-INTERVIX-IPv6-ROTA02 out-filter=AS265348-INTERVIX-IPv6-ROTA0
+2_out remote-address=2804:2e7c::1000:13a remote-as=265348
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv4-ROTA01_in prefix=
+!0.0.0.0/0 set-bgp-local-pref=200
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv6-ROTA01_in prefix=
+!::/0 set-bgp-local-pref=200
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv6-ROTA01_in set-bgp
+-local-pref=200
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv4-ROTA02_in prefix=
+!0.0.0.0/0
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv6-ROTA02_in prefix=
+!::/0
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv6-ROTA02_in
+/routing filter add action=accept chain=AS265348-INTERVIX-IPv4-ROTA01_out prefix=
+179.191.35.0/24
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv4-ROTA01_out
+/routing filter add action=accept chain=AS265348-INTERVIX-IPv4-ROTA02_out prefix=
+179.191.35.0/24 set-bgp-prepend=3
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv4-ROTA02_out
+/routing filter add action=accept chain=AS265348-INTERVIX-IPv6-ROTA01_out prefix=
+2804:2e7c:2400::/42
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv6-ROTA01_out
+/routing filter add action=discard chain=AS265348-INTERVIX-IPv6-ROTA02_out
+/routing filter add action=accept chain=AS265348-INTERVIX-IPv6-ROTA02_out prefix=
+2804:2e7c:2400::/42 set-bgp-prepend=3
+/routing ospf interface add authentication=md5 authentication-key=Net.10 interfac
+e=vlan101-IPv4-CANAA2 network-type=point-to-point
+/routing ospf interface add authentication=md5 authentication-key=Net.10 interfac
+e=vlan100-IPv4-CANAA network-type=point-to-point
+/routing ospf interface add interface=vlan103-OSPF-BRAS-02 network-type=point-to-
+point
+/routing ospf network add area=backbone network=2.2.2.1/32
+/routing ospf network add area=backbone network=10.100.0.0/21
+/routing ospf network add area=backbone network=10.101.0.0/21
+/routing ospf network add area=backbone network=10.102.0.0/21
+/routing ospf network add area=backbone network=10.103.0.0/21
+/routing ospf network add area=backbone network=10.104.0.0/21
+/routing ospf network add area=backbone network=10.105.0.0/21
+/routing ospf network add area=backbone network=10.10.10.0/24
+/routing ospf network add area=backbone network=10.10.1.0/24
+/routing ospf network add area=backbone network=172.28.4.0/30
+/routing ospf network add area=area1 network=172.16.80.0/30
+/routing ospf network add area=backbone disabled=yes network=172.28.4.4/30
+/routing ospf network add area=backbone network=10.9.1.4/30
+/routing ospf network add area=backbone network=10.9.1.0/30
+/routing ospf network add area=backbone network=10.9.1.8/30
+/snmp set contact="Tomich Tecnologia" enabled=yes location=Viana-ES trap-communit
+y=TOMICH trap-version=2
+/system clock set time-zone-autodetect=no time-zone-name=America/Sao_Paulo
+/system console set [ find ] disabled=yes
+/system identity set name="LOAD BALANCE - CGNAT"
+/system ntp client set enabled=yes primary-ntp=200.160.0.8 secondary-ntp=200.189.
+40.8
+/system scheduler add interval=1d name=enviar-backup-automatico on-event=":log in
+fo message=\"enviando backup por email\"\r\
+    \n:global data [/system clock get date]\r\
+    \n:global hora [/system clock get time]\r\
+    \n/tool e-mail send to=\"hminfornet@gmail.com\" subject=\"POP-GDG-BORDA \$dat
+a \$hora\" file=POP-GDG-BORDA.backup" policy=reboot,read,write,policy,test,passw
+ord,sniff,sensitive start-date=dec/25/2018 start-time=23:59:00
+/system scheduler add interval=1d name=salvar-backup-automatico on-event="/system
+ backup save name=POP-GDG-BORDA.backup" policy=reboot,read,write,policy,test,pas
+sword,sniff,sensitive start-date=dec/25/2018 start-time=23:55:00
+/tool e-mail set address=smtp.zoho.com from=backup@consultcom.inf.br password=Con
+sultcom@2022 port=587 start-tls=yes user=backup@consultcom.inf.br
+

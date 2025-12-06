@@ -1,28 +1,22 @@
-# clientes/tasks.py - VERSÃO FINAL FLEXÍVEL
+# clientes/tasks.py - VERSÃO CORRIGIDA
 """
-✅ VERSÃO COM VALIDAÇÃO FLEXÍVEL
+✅ VERSÃO CORRIGIDA COM AMBAS AS FUNÇÕES CORRETAS
 
-Problema anterior:
-  Backup do dia: 184694 bytes
-  Backup antigo: 185077 bytes
-  Falha porque é 383 bytes menor (0.2%)
-  → NÃO DELETA os 27 backups
-
-Solução:
-  Usar tolerância de 95%
-  Se backup do dia >= 95% do antigo → PODE DELETAR
-  184694 >= 185077 * 0.95 (175823)?
-  184694 >= 175823? SIM! ✅ DELETA
+- limpar_backups_antigos() - completa e isolada
+- validar_blocos_rpki_irr_agendado() - completa e isolada
 """
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.contrib.auth.models import User
-from .models import Acesso, BackupLog, BackupTemplate
-from .views import realizar_backup
+from .models import Acesso, BackupLog, BackupTemplate, BlocoIP, ValidacaoRPKI_IRR_Log
+from .views import realizar_backup, executar_validacao_rpki_irr
 from datetime import datetime
 import traceback
 import os
+from django.utils import timezone
+from datetime import timedelta
+from django.conf import settings
 
 logger = get_task_logger(__name__)
 
@@ -110,10 +104,6 @@ def limpar_backups_antigos(dias=3):
     - Tolerância 95%: 185077 * 0.95 = 175823 bytes
     - Validação: 184694 >= 175823? SIM! ✅ DELETA
     """
-    from django.utils import timezone
-    from datetime import timedelta
-    import os
-    from django.conf import settings
     
     logger.info(f"\n{'='*80}")
     logger.info(f"🗑️ LIMPEZA DE BACKUPS ANTIGOS")
@@ -182,7 +172,6 @@ def limpar_backups_antigos(dias=3):
             para_deletar = backups_do_acesso[2:]
             
             logger.info(f"      ⭐ Mantendo 2 últimos (automático)")
-            
             logger.info(f"      🗑️ Para processar: {len(para_deletar)}")
             
             # ================================================================
@@ -292,3 +281,106 @@ def limpar_backups_antigos(dias=3):
         'erros': erros,
         'mensagem': f'{deletados} deletados, {mantidos} mantidos'
     }
+
+
+@shared_task
+def validar_blocos_rpki_irr_agendado():
+    """
+    ✅ Task Celery para validar RPKI/IRR diariamente às 4h da manhã
+    
+    Processa todos os BlocoIP cadastrados e atualiza:
+    - rpki_valido, rpki_status, rpki_mensagem
+    - irr_valido, irr_status, irr_mensagem
+    - ultima_validacao
+    """
+    
+    logger.info("\n" + "="*80)
+    logger.info("🌐 VALIDAÇÃO RPKI/IRR AGENDADA")
+    logger.info("="*80)
+    logger.info(f"⏰ Horário: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    
+    # Buscar todos os blocos
+    blocos = BlocoIP.objects.all().select_related('cliente').order_by('cliente_id', 'bloco')
+    total_blocos = blocos.count()
+    
+    logger.info(f"📊 Total de blocos: {total_blocos}\n")
+    
+    sucesso = 0
+    erro = 0
+    rpki_validos = 0
+    rpki_invalidos = 0
+    irr_validos = 0
+    irr_invalidos = 0
+    
+    # Processar cada bloco
+    for idx, bloco in enumerate(blocos, 1):
+        try:
+            cliente_nome = bloco.cliente.nome_empresa if bloco.cliente else "SEM_CLIENTE"
+            logger.info(f"[{idx}/{total_blocos}] Cliente {cliente_nome} | {bloco.bloco}")
+            logger.info("-" * 60)
+            
+            # Executar validação
+            resultado = executar_validacao_rpki_irr(bloco)
+            
+            # ✅ ATUALIZAR ultima_validacao
+            bloco.ultima_validacao = datetime.now()
+            bloco.save()
+            
+            logger.info("   ✅ Validação concluída")
+            
+            # Contar resultados RPKI
+            if bloco.rpki_valido is True:
+                rpki_validos += 1
+                logger.info(f"   🟢 RPKI: Valid")
+            else:
+                rpki_invalidos += 1
+                logger.info(f"   🔴 RPKI: Invalid/Unknown")
+            
+            # Contar resultados IRR
+            if bloco.irr_valido is True:
+                irr_validos += 1
+                logger.info(f"   🟢 IRR: Found")
+            else:
+                irr_invalidos += 1
+                logger.info(f"   🔴 IRR: Not Found/Error")
+            
+            # Log detalhado
+            logger.info(f"   Status: {bloco.rpki_status} / {bloco.irr_status}")
+            
+            sucesso += 1
+            logger.info("")
+            
+        except Exception as e:
+            logger.error(f"   ❌ Erro na validação: {str(e)}")
+            logger.error(f"   {traceback.format_exc()}")
+            erro += 1
+            logger.info("")
+            continue
+    
+    # Resumo final
+    logger.info("=" * 80)
+    logger.info("✅ VALIDAÇÃO CONCLUÍDA")
+    logger.info("=" * 80)
+    logger.info(f"📊 Total: {total_blocos}")
+    logger.info(f"✅ Sucesso: {sucesso}")
+    logger.info(f"❌ Erro: {erro}")
+    logger.info(f"🟢 RPKI Válidos: {rpki_validos}")
+    logger.info(f"🔴 RPKI Inválidos: {rpki_invalidos}")
+    logger.info(f"🟢 IRR Válidos: {irr_validos}")
+    logger.info(f"🔴 IRR Inválidos: {irr_invalidos}")
+    logger.info(f"⏰ Timestamp: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    logger.info("=" * 80 + "\n")
+    
+    resultado = {
+        'status': 'ok',
+        'total': total_blocos,
+        'sucesso': sucesso,
+        'erro': erro,
+        'rpki_validos': rpki_validos,
+        'rpki_invalidos': rpki_invalidos,
+        'irr_validos': irr_validos,
+        'irr_invalidos': irr_invalidos,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    return resultado

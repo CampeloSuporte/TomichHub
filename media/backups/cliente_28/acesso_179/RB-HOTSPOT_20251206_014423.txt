@@ -1,0 +1,175 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: RB-HOTSPOT
+Host: 10.255.255.25:22
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 06/12/2025 01:44:23
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[admin@RB-HOTSPOT] > /export terse
+# 2025-12-06 01:44:19 by RouterOS 7.19.6
+# software id = CBUD-LUY1
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 7AEC076AEC1F
+/interface bridge add name=br-hotspot
+/interface ethernet set [ find default-name=ether2 ] name="ether2 - P2P-SW-CORE"
+/interface vlan add interface="ether2 - P2P-SW-CORE" name=VLAN317 vlan-id=317
+/interface vlan add interface="ether2 - P2P-SW-CORE" name=VLAN1601-HOTSPOT vlan-i
+d=1601
+/interface vlan add interface="ether2 - P2P-SW-CORE" name=VLAN2018-RT-CGNAT vlan-
+id=2018
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip hotspot profile add dns-name=hotspot.conectaisp.com.br hotspot-address=10.5.5
+0.1 login-by=cookie,http-chap,trial name=hsprof1
+/ip hotspot profile add dns-name=hotspot.conectaisp.com.br hotspot-address=10.5.5
+0.1 login-by=cookie,http-chap,trial name=hsprof2
+/ip hotspot user profile set [ find default=yes ] on-login="delay 5\r\
+    \n:global hotspotuser [pick \$user 2 20]\r\
+    \n\r\
+    \n:global dados [toarray  [/ip hotspot user get [find name=\$hotspotuser] com
+ment]]\r\
+    \n\r\
+    \n:global name [pick \$dados 0]\r\
+    \n:global phone [pick \$dados 1]\r\
+    \n:global dataNascimento [pick \$dados 2]\r\
+    \n:global macAddress [pick \$dados 3]\r\
+    \n:global ip [pick \$dados 4]\r\
+    \n\r\
+    \n:global urlGoogleSheets \"https://script.google.com/macros/s/AKfycbyoqmaT_J
+R6YgZoGDMIfIToMhV5ncVJMFToM1JpV9Ff3H05fSJYRlHGYx7yeiHJ4SxcCw/exec\"\r\
+    \n\r\
+    \n/tool fetch http-method=post http-header-field=\"Content-Type: application/
+json\" url=\$urlGoogleSheets  http-data=\"{\\\r\
+    \n\\\"sheet\\\":\\\"LOGS\\\",\\\r\
+    \n\\\"NOME\\\":\\\"\$name\\\",\\\r\
+    \n\\\"DATA_NASCIMENTO\\\":\\\"\$dataNascimento\\\",\\\r\
+    \n\\\"MAC\\\":\\\"\$macAddress\\\",\\\r\
+    \n\\\"IP\\\":\\\"\$ip\\\",\\\r\
+    \n\\\"STATUS\\\":\\\"CONECTOU\\\",\\\r\
+    \n\\\"TELEFONE\\\":\\\"\$phone\\\"\\\r\
+    \n\r\
+    \n}\"\r\
+    \n" on-logout="#:global user \"T-00:50:88:00:03:00\"\r\
+    \n:global hotspotuser [pick \$user 2 20]\r\
+    \n\r\
+    \n:global dados [toarray  [/ip hotspot user get [find name=\$hotspotuser] com
+ment]]\r\
+    \n\r\
+    \n:global name [pick \$dados 0]\r\
+    \n:global phone [pick \$dados 1]\r\
+    \n:global dataNascimento [pick \$dados 2]\r\
+    \n:global macAddress [pick \$dados 3]\r\
+    \n:global ip [pick \$dados 4]\r\
+    \n\r\
+    \n:global urlGoogleSheets \"https://script.google.com/macros/s/AKfycbyoqmaT_J
+R6YgZoGDMIfIToMhV5ncVJMFToM1JpV9Ff3H05fSJYRlHGYx7yeiHJ4SxcCw/exec\"\r\
+    \n\r\
+    \n/tool fetch http-method=post http-header-field=\"Content-Type: application/
+json\" url=\$urlGoogleSheets  http-data=\"{\\\r\
+    \n\\\"sheet\\\":\\\"LOGS\\\",\\\r\
+    \n\\\"NOME\\\":\\\"\$name\\\",\\\r\
+    \n\\\"DATA_NASCIMENTO\\\":\\\"\$dataNascimento\\\",\\\r\
+    \n\\\"MAC\\\":\\\"\$macAddress\\\",\\\r\
+    \n\\\"IP\\\":\\\"\$ip\\\",\\\r\
+    \n\\\"STATUS\\\":\\\"DESCONECTOU\\\",\\\r\
+    \n\\\"TELEFONE\\\":\\\"\$phone\\\"\\\r\
+    \n\r\
+    \n}\"\r\
+    \n" shared-users=5
+/ip pool add name=dhcp_pool0 ranges=10.222.0.2-10.222.15.254
+/ip pool add name=hs-pool-8 ranges=10.5.50.2-10.5.50.254
+/ip dhcp-server add address-pool=dhcp_pool0 interface=VLAN317 name=dhcp1
+/ip dhcp-server add address-pool=hs-pool-8 interface=ether5 name=dhcp2
+/ip dhcp-server add address-pool=hs-pool-8 interface=VLAN1601-HOTSPOT name=dhcp3
+/ip hotspot add address-pool=hs-pool-8 disabled=no interface=VLAN1601-HOTSPOT nam
+e=hotspot1 profile=hsprof2
+/port set 0 name=serial0
+/port set 1 name=serial1
+/routing ospf instance add disabled=no name=ospf-instance-1 router-id=10.255.255.
+25
+/routing ospf area add disabled=no instance=ospf-instance-1 name=backbone
+/interface bridge port add bridge=br-hotspot disabled=yes interface=ether5
+/interface bridge port add bridge=br-hotspot disabled=yes interface=VLAN1601-HOTS
+POT
+/ip address add address=10.255.255.25 interface=lo network=10.255.255.25
+/ip address add address=172.20.0.6/30 interface=VLAN2018-RT-CGNAT network=172.20.
+0.4
+/ip address add address=10.222.0.1/20 interface=VLAN317 network=10.222.0.0
+/ip address add address=10.5.50.1/24 comment="hotspot network" interface=VLAN1601
+-HOTSPOT network=10.5.50.0
+/ip dhcp-server network add address=10.5.50.0/24 comment="hotspot network" gatewa
+y=10.5.50.1
+/ip dhcp-server network add address=10.222.0.0/20 gateway=10.222.0.1
+/ip dns set servers=172.18.234.105,8.8.8.8
+/ip firewall filter add action=passthrough chain=unused-hs-chain comment="place h
+otspot rules here" disabled=yes
+/ip firewall nat add action=passthrough chain=unused-hs-chain comment="place hots
+pot rules here" disabled=yes
+/ip firewall nat add action=masquerade chain=srcnat comment="masquerade hotspot n
+etwork" src-address=10.5.50.0/24
+/ip firewall nat add action=masquerade chain=srcnat comment="masquerade hotspot n
+etwork" src-address=10.5.50.0/24
+/ip hotspot user add name=admin
+/ip service set telnet disabled=yes
+/routing ospf interface-template add area=backbone disabled=no interfaces=VLAN201
+8-RT-CGNAT type=ptp
+/routing ospf interface-template add area=backbone disabled=no interfaces=lo
+/routing ospf interface-template add area=backbone disabled=no networks=10.222.0.
+0/20 passive
+/system clock set time-zone-name=America/Bahia
+/system identity set name=RB-HOTSPOT
+/system scheduler add interval=3s name=ADD_USER_HOTSPOT on-event=":global userToA
+dd 1\r\
+    \n:global fileContent  [/file get [find  name=users-to-hotspot.0.txt] content
+s  ]\r\
+    \n\r\
+    \n:while (\$userToAdd != 0) do={\r\
+    \n\r\
+    \n:global beginString ([:find \$fileContent \"!==\"] + 3) \r\
+    \n:if (\$beginString = 3) do={/file set [find name=users-to-hotspot.0.txt] co
+ntents=\"\";:return \"\";} \r\
+    \n:global endString [:find \$fileContent \"==!\"]\r\
+    \n:global userToAdd [toarray [:pick \$fileContent \$beginString \$endString]]
+\r\
+    \n:global fileContent [:pick \$fileContent (\$endString + 3) [:len \$fileCont
+ent]]\r\
+    \n\r\
+    \n\r\
+    \n:global name [pick \$userToAdd 0]\r\
+    \n:global phone [pick \$userToAdd 1]\r\
+    \n:global dataNascimento [pick \$userToAdd 2]\r\
+    \n:global macAddress [pick \$userToAdd 3]\r\
+    \n:global ip [pick \$userToAdd 4]\r\
+    \n\r\
+    \n:do {\r\
+    \n\r\
+    \n/ip hotspot user add password=\"lhdla\E7shd\E7lahsd\E7l\" name=\$macAddress
+ comment=\"\$name,\$phone,\$dataNascimento,\$macAddress,\$ip\"\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n} on-error={}\r\
+    \n\r\
+    \n/log warning message=\"\$name,\$phone,\$dataNascimento,\$macAddress,\$ip\"\
+r\
+    \n\r\
+    \n\r\
+    \ndelay 500ms\r\
+    \n\r\
+    \n}\r\
+    \n\r\
+    \n" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon s
+tart-date=2025-11-22 start-time=08:34:11
+/tool romon set enabled=yes
+[admin@RB-HOTSPOT] >                                                           [admin@RB-HOTSPOT] > 

@@ -1,0 +1,742 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: BRAS
+Host: 186.0.148.255:22002
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M8
+Template: Backup Huawei
+Data: 06/12/2025 04:02:43
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<RT-BRAS-01-G5>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V800R021C00SPC100
+!Last configuration was updated at 2025-12-04 17:14:40-03:00 by tomich
+!Last configuration was saved at 2025-12-04 17:15:44-03:00 by danilo
+#
+clock timezone America/Recife minus 03:00:00
+#
+sysname RT-BRAS-01-G5
+#
+set neid 24c745
+#
+undo FTP server-source all-interface
+undo FTP ipv6 server-source all-interface
+#
+undo user-security-policy enable
+#
+service-template template-default0
+#
+service-template template-default1
+#
+service-template template-default2
+#
+service-template template-default3
+#
+service-template template-default4
+#
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+#
+undo icmp name timestamp-reply send
+#
+undo telnet server enable
+undo telnet ipv6 server enable
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+diffserv domain default
+#
+diffserv domain 5p3d
+#
+soc
+#
+ip vpn-instance __LOCAL_OAM_VPN__
+ ipv4-family
+ ipv6-family
+#
+ip dcn vpn-instance __dcn_vpn__
+ ipv4-family
+#
+radius-server group g5internet
+ radius-server shared-key-cipher %^%#3]w^IG2#rHYqx;%q&Aq<J_mq*=*Hg=g*d9R<wWVH1r!'1i+%E6Q67U;LXlk;%^%#
+ radius-server authentication 177.52.37.194 source ip-address 186.0.148.255 2021 weight 0
+ radius-server accounting 177.52.37.194 source ip-address 186.0.148.255 2022 weight 0
+ radius-server source interface LoopBack1
+ radius-server user-name original
+ radius-server format-attribute nas-port-id vendor redback-simple
+ radius-attribute case-sensitive qos-profile-name
+#
+radius local-ip all
+radius-server authorization 177.52.37.194 destination-port 3799 shared-key-cipher %^%#Sx5P54=#K=ba35/i}|Q.u%[HXcE9qUSzQh2KM:[&R^A]4|n<3(]Nm&@p`q9Q%^%# server-group g5internet
+#
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+#
+mpls l2vpn
+#
+mpls ldp
+ #
+ ipv4-family
+#
+ip pool 100.96.0.0_20 bas local
+ gateway 100.96.0.1 255.255.240.0
+ section 0 100.96.0.2 100.96.15.255
+ dns-server 10.100.100.3 10.200.200.3
+#
+ip pool bloqueio bas local
+ gateway 10.24.0.1 255.255.252.0
+ section 0 10.24.0.2 10.24.3.254
+ dns-server 10.100.100.3 10.200.200.3
+#
+ip pool invalido bas local
+ gateway 10.100.0.1 255.255.240.0
+ section 0 10.100.0.20 10.100.15.255
+ dns-server 10.100.100.3 10.200.200.3
+ lease 0 12 0
+#
+dhcp server request-packet all-interface disable
+#
+ipv6 prefix bloqueiov6prefix local
+ prefix 2001:DC8:100::/40
+#
+ipv6 prefix bloqueiov6pd delegation
+ prefix 2001:DB8:900::/40 delegating-prefix-length 56
+#
+ipv6 prefix ndra-wan local
+ prefix 2804:6D00:1300::/44
+#
+ipv6 prefix dhcp-pd-lan delegation
+ prefix 2804:6D00:1310::/44 delegating-prefix-length 60
+#
+ipv6 pool bloqueiov6pd bas delegation
+ dns-server 2804:6D00:2000:1::2 2804:6D00:2000:2::2
+ prefix bloqueiov6pd
+#
+ipv6 pool bloqueiov6prefix bas local
+ dns-server 2804:6D00:2000:1::2 2804:6D00:2000:2::2
+ prefix bloqueiov6prefix
+#
+ipv6 pool pool_v6_lan bas delegation
+ dns-server 2804:6D00:2000:1::2 2804:6D00:2000:2::2
+ prefix dhcp-pd-lan
+#
+ipv6 pool pool_v6_wan bas local
+ dns-server 2804:6D00:2000:1::2 2804:6D00:2000:2::2
+ prefix ndra-wan
+#
+dot1x-template 1
+#
+acl number 2000
+ description Permite Consulta SNMP
+ rule 1 permit source 10.100.100.0 0.0.1.255
+ rule 15 deny
+#
+dhcpv6 duid 000100012e86fd24983f60846967
+#
+security password
+ #
+ rule admin
+  forbidden word changeme_123
+#
+aaa
+ ppp username check
+ pure-user-name no-exist-policy online
+ acct-session-id-version version3
+ user-name minimum-length 4
+ user-password password-force-change disable
+ domain-name-delimiter <
+ local-user tomich password irreversible-cipher $1c$2HT4)wXko:$JfpR5`rhF<w_$%Hu;uuH#MV)I]*DjAjc8pQsA\>;$
+ local-user tomich service-type ftp telnet ssh snmp http
+ local-user tomich level 3
+ local-user tomich state block fail-times 5 interval 5
+ local-user root password irreversible-cipher $1c$]f(3Q<j7uS$!0!)8@e`\+lj]vQx\2l&y-$M(|\n_ERFU_BF$!6X$
+ local-user root service-type ssh
+ local-user root state block fail-times 3 interval 5
+ local-user root user-group manage-ug
+ local-user root expire 2000-01-01
+ local-user sgpsistema password irreversible-cipher $1c$DFq!)>;GnT$},(+~yT2w8_~drG[3yV57pP<:op{;'JSb',i=vl)$
+ local-user sgpsistema service-type ssh
+ local-user sgpsistema level 3
+ local-user sgpsistema state block fail-times 3 interval 5
+ local-user backup password irreversible-cipher $1c$|ss'N;y";8$.#&2(xI^BVx8$V4{l|GG\!4l,vn(LCOlCX([@3D>$
+ local-user backup service-type ssh
+ local-user backup level 3
+ local-user backup state block fail-times 3 interval 5
+ local-user danilo password irreversible-cipher $1c$(qAe6MX*FL$/^l'"0jkb'k~]LCNvC<LkM+'C#K.#YC<JpSe%t,'$
+ local-user danilo service-type ssh
+ local-user danilo level 3
+ local-user danilo state block fail-times 10 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local radius
+ #
+ authentication-scheme aut_g5internet
+  authentication-mode radius local
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ accounting-scheme acc_g5internet
+  accounting interim interval 5
+  accounting send-update
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+ #
+ domain g5internet
+  authentication-scheme aut_g5internet
+  accounting-scheme acc_g5internet
+  radius-server group g5internet
+  ip-pool 100.96.0.0_20
+  ipv6-pool pool_v6_lan
+  ipv6-pool pool_v6_wan
+  dns primary-ip 10.100.100.3
+  dns second-ip 10.200.200.3
+  dns primary-ipv6 2804:6D00:2000:1::2
+  dns second-ipv6 2804:6D00:2000:2::2
+  accounting-start-delay 10 online user-type ppp ipoe static
+  user-basic-service-ip-type ipv4
+  qos rate-limit-mode car inbound
+  qos rate-limit-mode car outbound
+ #
+ domain bloqueados
+  radius-server group g5internet
+  ip-pool bloqueio
+  ipv6-pool bloqueiov6prefix
+  ipv6-pool bloqueiov6pd
+  dns primary-ip 10.100.100.3
+  dns second-ip 10.200.200.3
+  dns primary-ipv6 2804:6D00:2000:1::2
+  dns second-ipv6 2804:6D00:2000:2::2
+#
+license
+#
+ospfv3 1
+ router-id 10.255.255.60
+ import-route direct
+ import-route unr
+ area 0.0.0.0
+#
+interface Eth-Trunk0
+ description LACP
+ ipv6 enable
+ ipv6 address auto link-local
+ mode lacp-static
+ lacp preempt enable
+ lacp preempt delay 20
+ statistic enable
+#
+interface Eth-Trunk0.130
+ vlan-type dot1q 130
+#
+interface Eth-Trunk0.1018
+ vlan-type dot1q 1018
+#
+interface Eth-Trunk0.2020
+ description PPPOE-TORRE-CDJ
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2020
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1
+ description LACP-SW-HU-CORE
+ mode lacp-static
+ lacp preempt enable
+ max active-linknumber 3
+ lacp preempt delay 20
+ statistic enable
+#
+interface Eth-Trunk1.50
+ vlan-type dot1q 50
+ description OSPF-SW-HU-CORE
+ ip address 172.18.100.14 255.255.255.252
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk1.51
+ vlan-type dot1q 51
+#
+interface Eth-Trunk1.52
+ vlan-type dot1q 52
+#
+interface Eth-Trunk1.130
+ vlan-type dot1q 130
+#
+interface Eth-Trunk1.140
+ vlan-type dot1q 140
+ description CGNAT
+ ip address 172.31.255.6 255.255.255.252
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk1.395
+ vlan-type dot1q 395
+#
+interface Eth-Trunk1.396
+ vlan-type dot1q 396
+#
+interface Eth-Trunk1.1001
+ description PPPOE-OLT-ZTE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1001
+ user-vlan 1100
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.1013
+ vlan-type dot1q 1013
+#
+interface Eth-Trunk1.1016
+ vlan-type dot1q 1016
+#
+interface Eth-Trunk1.1018
+ vlan-type dot1q 1018
+#
+interface Eth-Trunk1.1053
+ description CLIENTES-REDE-NEUTRA-WIRELESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1053
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.1058
+ description REDE-NEUTRA-G5-LINK-ONE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1058
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.1066
+ vlan-type dot1q 1066
+#
+interface Eth-Trunk1.1100
+ description PPPoE PARAUAPEBAS - geosol.s11d@g5fibra - TRANSPORTE PELA FIBRA DO FORNECEDOR
+#
+interface Eth-Trunk1.1113
+ vlan-type dot1q 1113
+#
+interface Eth-Trunk1.1401
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2020
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.1473
+ description REDE NEUTRA DA ISPNET PARA G5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1473
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.1729
+ vlan-type dot1q 1729
+#
+interface Eth-Trunk1.2004
+ vlan-type dot1q 2004
+#
+interface Eth-Trunk1.2603
+ description PPPOE-OLT-DATACOM-03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2603
+ user-vlan 1015 qinq 1013
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.2606
+ description PPPOE-2606
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2606
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.2612
+ description PPPOE-CURIANOPOLIS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2612
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.2620
+ description PPPOE-CURIANOPOLIS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1401
+ user-vlan 2620
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.3011
+ description PPPOE-OLT-ZTE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 3011
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.3030
+ description PPPOE-OLT-DATACOM-5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 3030
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.3031
+ description PPPOE-OLT-DATACOM-5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 3031
+ user-vlan 4040
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication force g5internet
+ #
+#
+interface Eth-Trunk1.3725
+ vlan-type dot1q 3725
+#
+interface Eth-Trunk1.4083
+ vlan-type dot1q 4083
+#
+interface Ethernet0/0/0
+ speed auto
+ duplex auto
+ undo shutdown
+ ip binding vpn-instance __LOCAL_OAM_VPN__
+ ip address 192.168.0.1 255.255.255.0
+#
+interface Virtual-Template0
+ ppp authentication-mode pap chap
+ ppp keepalive interval 10 retransmit 3 response-timeout 10
+ pppoe-server service-name-parameter g5internet
+ pppoe-server ac-name g5internet
+ tcp adjust-mss 1420
+ ip urpf strict enable check subnet
+ ipv6 urpf strict enable check subnet
+#
+interface Virtual-Template1
+ ppp authentication-mode chap pap
+ ppp keepalive interval 30 retransmit 3 datacheck
+ undo ip urpf strict enable
+#
+interface GigabitEthernet0/7/0
+ description LACP 1/2 Trunk 0
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/7/1
+ description SW-HU-CORE-P13
+ undo shutdown
+ eth-trunk 1
+ dcn
+#
+interface GigabitEthernet0/7/2
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/7/3
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/7/4
+ description SW-HU-CORE-P1
+ undo shutdown
+ eth-trunk 1
+ dcn
+#
+interface GigabitEthernet0/7/5
+ description SW-HU-CORE-P2
+ undo shutdown
+ eth-trunk 1
+ dcn
+#
+interface GigabitEthernet0/7/6
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/7/7
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/7/8
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/7/9
+ undo shutdown
+ dcn
+#
+interface LoopBack0
+ ipv6 enable
+ ip address 10.255.255.60 255.255.255.255
+ ipv6 address 2804:6D00:2000::2/128
+#
+interface LoopBack1
+ ip address 186.0.148.255 255.255.255.255
+ ospf enable 1 area 0.0.0.0
+#
+interface LoopBack1023
+ description DCN loopback interface
+ ip binding vpn-instance __dcn_vpn__
+ ip address 128.36.199.69 255.255.0.0
+#
+interface Virtual-Ethernet0/1/1
+ ve-group 2 l2-terminate
+#
+interface Virtual-Ethernet0/1/1.10
+ vlan-type dot1q 10
+#
+interface Virtual-Ethernet0/1/11
+ ve-group 2 l3-access
+ mac-address c4b8-cafe-ff11
+#
+interface Virtual-Ethernet0/1/11.10
+ vlan-type dot1q 10
+ description INTER-VS-VS-BGP
+ ipv6 enable
+ ip address 10.66.66.1 255.255.255.252
+ ipv6 address auto link-local
+ statistic enable
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+#
+interface Virtual-Ethernet0/2/2
+ ve-group 3 l2-terminate
+#
+interface Virtual-Ethernet0/2/2.10
+ vlan-type dot1q 10
+#
+interface Virtual-Ethernet0/2/22
+ ve-group 3 l3-access
+ mac-address c4b8-cafe-ff22
+#
+interface Virtual-Ethernet0/2/22.10
+ vlan-type dot1q 10
+#
+interface NULL0
+#
+ccc p2p-10 interface Virtual-Ethernet0/1/1.10 tagged out-interface Virtual-Ethernet0/2/2.10 tagged
+#
+ospf 1 router-id 10.255.255.66
+ import-route static
+ import-route unr
+ opaque-capability enable
+ area 0.0.0.0
+#
+ospf 65534 vpn-instance __dcn_vpn__
+ description DCN ospf create by default
+ opaque-capability enable
+ hostname
+ vpn-instance-capability simple
+ area 0.0.0.0
+  network 0.0.0.0 255.255.255.255
+#
+!The DCN function implements the capability of plug-and-play for this device.
+!A NE IP address based on the unique NE ID is automatically generated in VPN
+!of DCN. It is recommended that the NE IP address be changed to the planned
+!one by running the ne-ip X.X.X.X <MASK> command after the device being online.
+dcn
+#
+ip route-static 0.0.0.0 0.0.0.0 172.31.255.5 description ROTA DEFALUT
+ip route-static 100.96.0.0 255.255.240.0 NULL0 description CLIENTES-PPPOE
+#
+snmp-agent
+snmp-agent acl 2000
+snmp-agent local-engineid 800007DB03084F0A233065
+snmp-agent community read cipher %^%#CbLHW[(GP1mw3+HX[s@8d/lc+!uA3A9/HL8:9'&Cx_=gFPtg,Fk\7RUJah2O8c5~:&U"9K)5B>>)/F(P%^%# alias __CommunityAliasName_01_8182
+snmp-agent community read cipher %^%#YAk0K>.c'OZ}=\Cn=.I#fdB|Y#6PnDzJNe*rrcwG*]o*4r2xAJa.]UJ2"wh$,f3,Li\(2-XiDC#q4pm@%^%# alias __CommunityAliasName_02_28353
+#
+snmp-agent sys-info contact danilo@tomich.com.br
+snmp-agent sys-info location Datacenter
+snmp-agent sys-info version v2c v3
+snmp-agent community complexity-check disable
+#
+snmp-agent mib-view included mibvew mib-2
+snmp-agent mib-view included mib2view mib-2
+#
+snmp-agent udp-port 10161
+#
+snmp-agent protocol source-status all-interface
+undo snmp-agent protocol source-status ipv6 all-interface
+#
+undo snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+lldp enable
+#
+undo web-auth-server source-ip all
+#
+undo web-auth-server source-ipv6 all
+#
+stelnet server enable
+sftp server enable
+snetconf server enable
+ssh ipv4 server port 22002
+ssh ipv6 server port 22002
+sftp server default-directory cfcard:
+ssh user sgpsistema
+ssh user sgpsistema authentication-type password
+ssh user sgpsistema service-type all
+ssh user tomich
+ssh user tomich authentication-type password
+ssh user tomich service-type all
+ssh user tomich sftp-directory cfcard:/
+ssh server-source -i Ethernet0/0/0
+ssh server-source -i LoopBack1023
+ssh server-source all-interface
+ssh ipv6 server-source all-interface
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh server hmac sha2_512 sha2_256
+ssh server key-exchange dh_group_exchange_sha256
+#
+ssh server publickey ecc rsa
+#
+ssh server dh-exchange min-len 2048
+#
+ssh client publickey ecc rsa
+#
+ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh client hmac sha2_512 sha2_256 sha1
+ssh client key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+user-interface maximum-vty 21
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$($3/(#+DA%$yprBWZt}U5-zY|;7*7@*FeZyGzx^cV'ciKNAT[]7$
+#
+user-interface vty 0 4
+ authentication-mode aaa
+ idle-timeout 35791 0
+ protocol inbound ssh
+#
+netconf
+ activate module huawei-ip
+#
+local-aaa-server
+#
+admin
+ virtual-system BGP pvmb slot 10 9
+  port-mode port
+  resource u4route upper-limit 1048576
+  resource m4route upper-limit 2000
+  resource u6route upper-limit 1048576
+  resource m6route upper-limit 512
+  resource vpn-instance upper-limit 512
+  resource cpu weight 5
+  assign interface Eth-Trunk0.130
+  assign interface Eth-Trunk0.1018
+  assign interface Eth-Trunk1.51
+  assign interface Eth-Trunk1.52
+  assign interface Eth-Trunk1.130
+  assign interface Eth-Trunk1.395
+  assign interface Eth-Trunk1.396
+  assign interface Eth-Trunk1.1013
+  assign interface Eth-Trunk1.1016
+  assign interface Eth-Trunk1.1018
+  assign interface Eth-Trunk1.1066
+  assign interface Eth-Trunk1.1113
+  assign interface Eth-Trunk1.1729
+  assign interface Eth-Trunk1.2004
+  assign interface Eth-Trunk1.3725
+  assign interface Eth-Trunk1.4083
+  assign interface Virtual-Ethernet0/2/22.10
+#
+warranty
+#
+l2tp-group default-lac
+ tunnel name HUAWEI
+#
+l2tp-group default-lns
+ tunnel name HUAWEI
+#
+return
+<RT-BRAS-01-G5>

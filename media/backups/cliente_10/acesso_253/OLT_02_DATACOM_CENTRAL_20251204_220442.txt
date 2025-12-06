@@ -1,0 +1,6846 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CONECTONLINE SERVICOS DE INFORMATICA E TELECOMUNICACOES LTDA - ME
+Equipamento: OLT 02 DATACOM CENTRAL
+Host: 10.32.51.2:22
+Acesso: VIA PROXY SSH
+Modelo: OLT DATACOM DM4615
+Template: Backup Datacom
+Data: 04/12/2025 22:04:42
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+show running-config | nomore
+aaa authentication-order [ local ]
+aaa user admin
+ password $1$eBAImWCO$OXhUMgpBh/Np4Zr56/B4v.
+ group admin
+!
+aaa user sgp
+ password $1$kPR5/TAt$B7OOFFcAQAP9f8BnAX5ni/
+ group config
+!
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent ip 10.32.51.2
+snmp agent version v1
+snmp agent version v2c
+snmp agent version v3
+snmp community TOMICH
+ sec-name sartor-ro
+!
+snmp community datacom
+ sec-name datacom
+!
+snmp target datacom
+ ip 172.28.3.2
+ tag [ std_v2_trap ]
+ v2c sec-name datacom
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group TOMICH
+ member TOMICH
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+ !
+!
+snmp vacm group datacom
+ member datacom
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+  notify-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/3
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/4
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/5
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/6
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/7
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/8
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/9
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/10
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/11
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/12
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface ten-gigabit-ethernet 1/1/1
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 16361
+!
+interface ten-gigabit-ethernet 1/1/2
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 16361
+!
+interface l3 Gerencia
+ lower-layer-if vlan 1000
+ ipv4 address 10.32.51.2/30
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.0.25/24
+!
+interface gpon 1/1/1
+ no shutdown
+ onu 0
+  serial-number TLCM0006FB68
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFC51B96A
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number ALCLFBDD4465
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number DE30E6EF1F1E
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 4
+  serial-number HWTC9F94F8A5
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number TLCM008A5AF4
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number TLCM00036C3B
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 7
+  serial-number ITBSAC0DF301
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number HWTCCDA670A3
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 9
+  serial-number ALCLFBDF2855
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 10
+  serial-number ALCLFBDD21D5
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number ALCLFBCF01F7
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 12
+  serial-number FHTT1867D8A7
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number ALCLFC4E6BC3
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ITBS0A3AF38A
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number TLCM0003642D
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number ALCLFC6BF585
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 17
+  serial-number SHLN3C3D8674
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number ALCLFCCDDCBF
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 19
+  name Andressa_Prado
+  serial-number ALCLFC1805DF
+  line-profile PON1_2701_Router
+  veip 1
+  !
+ !
+ onu 20
+  serial-number TLCM0002E70C
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number ITBS0A3B3CC5
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number TLCM0089A62D
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 23
+  serial-number SHLN3C3D86B4
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  serial-number TLCM000A608F
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 25
+  serial-number FHTT6A0C4F10
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 26
+  serial-number HWTC7A5796A2
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 27
+  serial-number TLCM000A639D
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  serial-number ALCLFC1F528A
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 29
+  serial-number FHTT6A0F2617
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 30
+  serial-number MSTC326CFF82
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  name KauaLucas_ONU
+  serial-number DACM911B115A
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 32
+  serial-number FHTT07189959
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 33
+  serial-number TLCM00036BB0
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 34
+  serial-number FHTT07192644
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 35
+  serial-number ITBS0AC7655D
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 36
+  name Wenderson_Senna
+  serial-number FHTT6A0BF110
+  line-profile PON1_2701_Router
+  veip 1
+  !
+ !
+ onu 37
+  serial-number TLCM00020294
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 38
+  serial-number FHTT07191138
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 39
+  serial-number FHTT07189456
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 40
+  serial-number TLCM0009137F
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 41
+  serial-number ITBS0AC941A1
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 42
+  serial-number ALCLFC6BAF25
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 43
+  serial-number MSTC35BDEE4B
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 44
+  serial-number MSTC393A0D12
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 45
+  serial-number ALCLFC568F04
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 46
+  serial-number MSTC03A70D31
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 47
+  serial-number MSTC393BFE07
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 48
+  serial-number ALCLB2890AE9
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 49
+  serial-number TLCM008C6535
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 50
+  serial-number MSTC2CA54F0A
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 51
+  serial-number ALCLFBD89156
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 52
+  serial-number ALCLFC17C65F
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 53
+  serial-number ITBS0AC76581
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 54
+  serial-number ALCLFBF29CF0
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 55
+  serial-number ALCLFC2EC346
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 56
+  serial-number TLCM0009D58D
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 57
+  serial-number ALCLFCC16DF5
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 58
+  serial-number ITBS0A1676A5
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 59
+  serial-number TLCM000A2C70
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 60
+  serial-number TLCM008962E5
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 61
+  serial-number ALCLFC6CFD45
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 62
+  serial-number TLCM0007CEE1
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 63
+  serial-number ALCLFC33B353
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 64
+  name Barbara_Mesdes
+  serial-number DACM911561B2
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 65
+  serial-number ALCLFCF3DF45
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 66
+  serial-number ITBS0ADB909F
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 67
+  serial-number GPON0010BCE8
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 68
+  serial-number ALCLFBF4AC47
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 69
+  serial-number TLCM00899DF4
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 70
+  serial-number ALCLFC4DD922
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 71
+  serial-number ALCLFC182136
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 72
+  serial-number ALCLFCCDF162
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 73
+  serial-number DC90E66D4C77
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 74
+  serial-number DACM911B01EE
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 75
+  serial-number ITBS0A3AF3C0
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 76
+  serial-number ALCLFC31D268
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 77
+  serial-number ALCLFBD331A7
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 78
+  serial-number ITBS0AA819B1
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 79
+  serial-number DD7246768FA4
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 80
+  serial-number TLCM008CFC34
+  service-profile ROUTER line-profile PON1_2701_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 81
+  serial-number ALCLFC3369C1
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 82
+  serial-number ITBS0AC94432
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 83
+  serial-number ITBS0AC79941
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 84
+  serial-number ITBS0A1673F9
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 85
+  serial-number ITBS0ACE6350
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 86
+  serial-number ALCLFBDEC67B
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 87
+  name Maxsuel_Barbosa
+  serial-number ALCLFBD22C61
+  line-profile PON1_2701_Router
+  veip 1
+  !
+ !
+ onu 88
+  serial-number ALCLB266F9A0
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 89
+  name Jose-Cicero
+  serial-number ITBS0ADFA694
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 90
+  serial-number ALCLFC10A80F
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 91
+  serial-number ALCLB277A8AD
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 92
+  serial-number ITBSAC0DC304
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 93
+  serial-number ITBSAC0DC532
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 95
+  serial-number DE30E6EF75FD
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 96
+  serial-number FHTTFE14DF53
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 97
+  serial-number ITBS0AC7651E
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 98
+  serial-number DACM911AFE94
+  service-profile Service_Bridge line-profile PON_1_2701
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2701
+  !
+ !
+ onu 99
+  serial-number ITBS0AC28B68
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 100
+  serial-number ALCLFCB55DB7
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 101
+  name RafaelCosta_Teixeira
+  serial-number ALCLFBE392CC
+  line-profile PON1_2701_Router
+  veip 1
+  !
+ !
+ onu 102
+  name Norma_Noemia
+  serial-number ALCLFC4D83E9
+  line-profile PON1_2701_Router
+  veip 1
+  !
+ !
+ onu 104
+  serial-number FHTTC082786D
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 105
+  serial-number SHLN3C3FA50C
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 106
+  serial-number ALCLFCDDDCAF
+  service-profile ROUTER line-profile PON1_2701_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+!
+interface gpon 1/1/2
+ no shutdown
+ onu 0
+  serial-number MSTC391AC813
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFBF2752B
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number MSTC326CF5EE
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number ALCLFC2676A2
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 4
+  serial-number MSTC09DCD570
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  name IgrejaBatista_ONU
+  serial-number XGTC07103307
+  service-profile ROUTER line-profile PON_2_2702
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2702
+  !
+ !
+ onu 6
+  serial-number TLCM000A6434
+  service-profile ROUTER line-profile PON2_2702_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 7
+  serial-number ITBS0ADFA5F2
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number ITBSAC0DC409
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  serial-number HWTC039A32A4
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 10
+  serial-number TLCM0009B35F
+  service-profile ROUTER line-profile PON2_2702_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number FHTT07191073
+  service-profile Service_Bridge line-profile PON_2_2702
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2702
+  !
+ !
+ onu 12
+  serial-number MSTC03A68226
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number MSTC03A2F2A6
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ITBS0A3AF3AE
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number HWTCE62196AE
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number MSTC2BFD1E80
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 17
+  serial-number TLCM00019413
+  service-profile ROUTER line-profile PON2_2702_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number ALCLFBCB40E1
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 19
+  serial-number ALCLFC33953B
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 20
+  serial-number ALCLFCB88578
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number TLCM0089826F
+  service-profile ROUTER line-profile PON2_2702_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number ITBS0ADFA5B3
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  serial-number ALCLFC329706
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 25
+  serial-number ITBS0AC7659C
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  serial-number ALCLFCC14F92
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 29
+  serial-number ALCLFC1C58C3
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 30
+  serial-number FHTTFE15C413
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  serial-number ALCLFCDE3D47
+  service-profile ROUTER line-profile PON2_2702_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 32
+  serial-number HNET20818398
+  service-profile Service_Bridge line-profile PON_2_2702
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2702
+  !
+ !
+!
+interface gpon 1/1/3
+ no shutdown
+ onu 0
+  serial-number MSTC328BF3BA
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFC31E84D
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number DE30E6EF582D
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number HWTCDAA492A4
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 4
+  serial-number ITBS0AC285C8
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number TLCM008BEB45
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number ALCLFBF12B8D
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 7
+  serial-number MSTC03A66617
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number FHTTC0826719
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  serial-number TLCM00091A5C
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 10
+  serial-number MSTC09D682B1
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number ALCLFC17D08C
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 12
+  serial-number ALCLFC4EA13E
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number ITBSAC0DDA65
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ALCLFBF1106D
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number ITBS0AC764D6
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number ALCLFBE93EA3
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 17
+  serial-number MSTC03A686C2
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number FHTT6A0BA868
+  service-profile Service_Bridge line-profile PON_3_2703
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2703
+  !
+ !
+ onu 19
+  serial-number TLCM0002121F
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 20
+  serial-number ITBS0AC765F6
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number ITBS0AC76461
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number HWTC39081DA6
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 23
+  serial-number ALCLFBEDFB1F
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  serial-number GPON00D95348
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 25
+  serial-number TLCM0008D4BD
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 26
+  serial-number TLCM0009D3E9
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 27
+  serial-number ALCLFCC1646E
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  serial-number ITBS0AC76623
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 29
+  serial-number ALCLFBEDE99B
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 30
+  serial-number ITBS0A39C6C2
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  serial-number FHTT6A0F2693
+  service-profile Service_Bridge line-profile PON_3_2703
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2703
+  !
+ !
+ onu 32
+  serial-number HWTC9F94FEA5
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 33
+  serial-number HWTCF3C280A5
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 34
+  serial-number MSTC31E3D9E4
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 35
+  serial-number ALCLFCC1320F
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 36
+  serial-number MSTC393D59E6
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 37
+  serial-number HWTC0D18D3A3
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 38
+  serial-number MSTC391AC20E
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 39
+  serial-number MSTC393C41BD
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 40
+  serial-number DACM911B064C
+  service-profile Service_Bridge line-profile PON_3_2703
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2703
+  !
+ !
+ onu 41
+  serial-number ALCLFBDD1A49
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 42
+  serial-number ALCLFBFDA06B
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 43
+  serial-number MSTC393B7EEB
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 44
+  serial-number ALCLFCF4B32C
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 45
+  serial-number ITBSF1A35514
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 46
+  serial-number TLCM0003C1CA
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 47
+  serial-number TLCM0007D169
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 48
+  serial-number MSTC03A2EDAC
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 49
+  serial-number ALCLFBDF9C9B
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 50
+  serial-number HWTC29B44BA3
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 51
+  name Elizabete_Pereira
+  serial-number ITBS0AC79AA0
+  line-profile PON3_2703_Router
+  veip 1
+  !
+ !
+ onu 52
+  serial-number ALCLFCC17556
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 53
+  serial-number ALCLFC03FF76
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 54
+  serial-number ITBS0AA81921
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 55
+  serial-number ALCLFC043408
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 56
+  serial-number ALCLFBEA450B
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 57
+  serial-number ALCLFBD894B8
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 58
+  serial-number TLCM0008DDBF
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 59
+  serial-number MSTC393BEC32
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 60
+  serial-number TLCM008C4D85
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 61
+  serial-number MSTC391A7E8D
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 62
+  serial-number GPON002854B0
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 63
+  serial-number TLCM0007D781
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 64
+  serial-number ITBS0AA81996
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 65
+  serial-number MSTC099E4390
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 66
+  serial-number ALCLFBDD4D46
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 67
+  serial-number GPON00D930C0
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 68
+  serial-number ALCLFC03BFB0
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 69
+  serial-number ALCLB3FE7091
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 70
+  serial-number TLCM008C91DC
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 71
+  serial-number ITBSAC0DC382
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 72
+  serial-number FHTTC08247A1
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 73
+  serial-number ITBS0ADB8F9A
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 74
+  serial-number ALCLFC4D5F43
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 75
+  serial-number FHTTC082470F
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 76
+  serial-number TLCM008AC120
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 77
+  serial-number ALCLFCC73E4F
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 78
+  serial-number ALCLFBDD2656
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 79
+  serial-number HWTCCB82F3B4
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 80
+  serial-number ALCLFBF357CC
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 81
+  serial-number FHTTFE11A84B
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 82
+  serial-number ALCLFCDDCB97
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 84
+  serial-number ITBS0AC79A8E
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 85
+  serial-number MSTC38EC2F5D
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 87
+  serial-number ALCLFC556A55
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 89
+  name Nilson_Lan
+  serial-number ALCLFBDD47C8
+  line-profile PON3_2703_Router
+  veip 1
+  !
+ !
+ onu 90
+  serial-number TLCM0007CE9B
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 93
+  serial-number FHTTFE1497EF
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 94
+  serial-number TLCM00011911
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 95
+  serial-number MSTC039E4575
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 96
+  serial-number FHTTFE10D537
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 99
+  serial-number ALCLFBCE57E6
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 100
+  serial-number TLCM0009D343
+  service-profile ROUTER line-profile PON3_2703_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 102
+  serial-number DACM9111E518
+  service-profile Service_Bridge line-profile PON_3_2703
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2703
+  !
+ !
+ onu 103
+  serial-number ITBS0ADB9096
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 107
+  serial-number ALCLFBF42563
+  service-profile ROUTER line-profile PON3_2703_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+!
+interface gpon 1/1/4
+ no shutdown
+ onu 0
+  serial-number ITBS0A3B3CBC
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFBE47763
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number ALCLFCB1924B
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number ITBS0A167522
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 4
+  serial-number ITBS0A16752B
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number FHTTFE112817
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number MSTC0FD4F208
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 7
+  serial-number ALCLFBDF1564
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number ALCLFBDB67CF
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  serial-number HWTC9AC116AC
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 10
+  serial-number ALCLFBCB31A0
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number HWTCFBA2FBA4
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 12
+  serial-number ALCLFBCB2C4B
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number ITBS0AC797BE
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ALCLFBDAC316
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number ALCLFBDF9D18
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number FHTT07191786
+  service-profile Service_Bridge line-profile PON_4_2704
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2704
+  !
+ !
+ onu 17
+  serial-number TLCM0002F82C
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number ALCLFBDF4549
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 19
+  serial-number ITBSAC0DDA92
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 20
+  serial-number TLCM00897AD8
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number ITBS0AC28874
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number TLCM0001C696
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 23
+  serial-number ALCLFC6BA7A1
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  serial-number TLCM00090F7B
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 25
+  serial-number SHLN3C3FA464
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 26
+  serial-number ALCLFBCE5EC8
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 27
+  serial-number TLCM000775B0
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  serial-number ALCLFC322376
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 29
+  serial-number ALCLFCB72E8B
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 30
+  serial-number ALCLFBD9739D
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  serial-number ITBS0ADB90A8
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 32
+  serial-number DACM911B003C
+  service-profile Service_Bridge line-profile PON_4_2704
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2704
+  !
+ !
+ onu 33
+  name Erondino_Souza
+  serial-number TLCM000A59FD
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 34
+  serial-number TLCM0009B041
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 35
+  serial-number ALCLFCC89A0E
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 36
+  serial-number ALCLFCCDA53F
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 37
+  serial-number TLCM0000C2B7
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 38
+  serial-number ALCLFCC845C7
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 39
+  serial-number HWTC390DCCA6
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 40
+  serial-number FHTT07192370
+  service-profile Service_Bridge line-profile PON_4_2704
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2704
+  !
+ !
+ onu 41
+  serial-number ALCLFC1F746D
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 42
+  serial-number ALCLFBF4AD01
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 43
+  serial-number GPON0010BE48
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 44
+  serial-number ITBS0ADB8FC7
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 45
+  serial-number ALCLFCB19AE3
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 46
+  serial-number ITBS8BA700B8
+  line-profile PON4_2704_Router
+  veip 1
+  !
+ !
+ onu 47
+  serial-number ALCLFBDB1594
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 48
+  serial-number ALCLFCC8B3F6
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 49
+  serial-number ALCLFBDDD4A2
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 50
+  serial-number ALCLFBF43D79
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 51
+  serial-number MSTC099FB460
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 52
+  serial-number ALCLFBF2752A
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 53
+  serial-number MSTC09DD95D7
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 54
+  serial-number TLCM000A66EB
+  service-profile ROUTER line-profile PON4_2704_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 55
+  serial-number ITBS0AC76554
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 56
+  serial-number ITBS0AC943C6
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 57
+  serial-number ITBS0AC28742
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 58
+  serial-number HWTCDE41D1A3
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 60
+  serial-number ALCLB277A8D1
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 61
+  serial-number MSTC393CF3F6
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 62
+  serial-number DC90E688DC34
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 63
+  serial-number ALCLFBD25788
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 64
+  serial-number ALCLFC1C794D
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 65
+  serial-number MSTC393D5438
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 66
+  serial-number ALCLFCB1830A
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 67
+  serial-number ITBS0AC9425E
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 69
+  serial-number ALCLFBE8B327
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 70
+  serial-number DE30E6EF1BD0
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 72
+  serial-number GPON00A35C90
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 74
+  serial-number SHLN3C3ED2BE
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 75
+  serial-number ALCLFBD8CDFF
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 76
+  serial-number ITBS0ACE6398
+  service-profile ROUTER line-profile PON4_2704_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 88
+  name AgostinianaSecretaria
+  serial-number HWTCCE4D829E
+  line-profile PON4_2704_Router
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/5
+ no shutdown
+ onu 0
+  serial-number TLCM0008DF9D
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFBF3F41F
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  name Roberto_Rosario
+  serial-number ITBSF12F1ACF
+  line-profile PON5_2705_Router
+  veip 1
+  !
+ !
+ onu 3
+  serial-number ALCLFBCB5958
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 4
+  serial-number ALCLFBD2DDAA
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number ALCLFCB854D6
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number ITBSF12F1B0E
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 7
+  serial-number FHTTFE14A1BB
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number ALCLFC6BB3DF
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  serial-number ITBS8BA70288
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 10
+  serial-number ITBS0AC287D2
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number SHLN3C3E3DA6
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 12
+  serial-number ALCLFC1F53C0
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number ITBSAC0DF2CB
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ALCLFC07D5DF
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number ITBSAC0DDA80
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number MSTC328BEAF2
+  line-profile PON5_2705_Router
+  veip 1
+  !
+ !
+ onu 17
+  serial-number MSTC391A8373
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number ALCLFC4EC6C5
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 19
+  serial-number GPON00D99820
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 20
+  serial-number MSTC099F163B
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number MSTC039EFFEA
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number TLCM00073D9D
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 23
+  serial-number TLCM000774C2
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  name Rosileia_fairich
+  serial-number MSTC393C260C
+  line-profile PON5_2705_Router
+  veip 1
+  !
+ !
+ onu 25
+  serial-number ALCLFBDB1807
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 26
+  serial-number ALCLFBE8BAD8
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 27
+  serial-number ITBSAC0DD92A
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  name Amanda_Silva
+  serial-number GPON00D928F8
+  line-profile PON5_2705_Router
+  veip 1
+  !
+ !
+ onu 29
+  serial-number ALCLFBD963EB
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 30
+  serial-number MSTC03A6657F
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  serial-number ALCLFC567E5E
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 32
+  serial-number ITBS0AC28685
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 33
+  serial-number ALCLFC2E21A0
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 34
+  serial-number ALCLFC187BEC
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 35
+  serial-number ALCLFC4A727E
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 36
+  serial-number TLCM0009FCC0
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 37
+  serial-number ITBS0A1673A8
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 38
+  serial-number ALCLFC1AAE3F
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 39
+  serial-number ALCLFC568665
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 40
+  serial-number ALCLFCB1673F
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 41
+  serial-number ALCLFBDF9EB4
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 42
+  serial-number ALCLFBCF22C0
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 43
+  serial-number DACM91D2D8C4
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 44
+  serial-number TLCM0001D1FC
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 46
+  serial-number HWTC3A9287A6
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 47
+  serial-number MSTC09A18FFF
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 48
+  serial-number ALCLFCC75E76
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 49
+  serial-number MSTC09D69B44
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 50
+  serial-number GPON00BD4668
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 51
+  serial-number ALCLFBE4765B
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 52
+  serial-number ALCLFCC15600
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 53
+  serial-number ALCLFBDB2406
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 54
+  serial-number ALCLFCC8AE07
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 55
+  serial-number ITBS0A16744A
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 56
+  serial-number ALCLFBDD2208
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 57
+  serial-number MSTC393A0BA4
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 58
+  serial-number TLCM00048CA2
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 59
+  serial-number ALCLFCC8B3A8
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 60
+  name NAO_REMOVER
+  serial-number ALCLFBDD1CD3
+  line-profile PON5_2705_Router
+  veip 1
+  !
+ !
+ onu 61
+  serial-number ALCLFC04FBEF
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 62
+  serial-number TLCM0006FB60
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 63
+  serial-number ALCLB3EB4D97
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 64
+  serial-number ALCLFBF234FE
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 65
+  serial-number TLCM0001C9A2
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 66
+  serial-number ALCLFC5353DA
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 67
+  serial-number TLCM008C927A
+  service-profile ROUTER line-profile PON5_2705_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 68
+  serial-number HWTCD2D6A8A6
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 69
+  serial-number MSTC09DE05DE
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 70
+  serial-number ALCLFBF43CAE
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 71
+  serial-number MSTC09D84172
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 72
+  serial-number MSTC09D6919F
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 73
+  serial-number FHTT6A0F26B6
+  service-profile Service_Bridge line-profile PON_5_2705
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2705
+  !
+ !
+ onu 74
+  serial-number ITBS0AC28A48
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 75
+  serial-number ALCLFBD6C3DE
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 76
+  serial-number ALCLFBDB345E
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 77
+  serial-number ALCLFBDF1B8B
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 78
+  serial-number ALCLFBE4C516
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 79
+  serial-number ITBS0A16753D
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 80
+  serial-number ALCLFC1A5651
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 81
+  name Roberto_Rodrigues_Brans
+  serial-number TLCM00037194
+  line-profile PON5_2705_ASKEY_3505
+  veip 1
+  !
+ !
+ onu 82
+  serial-number HWTCFB95C7A4
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 84
+  serial-number ALCLFBCE824B
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 85
+  serial-number ALCLFC182423
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 87
+  serial-number ALCLFC4E64F2
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 88
+  serial-number ITBS0ADB8F2E
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 89
+  serial-number ALCLFCC8ACF8
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 90
+  name Rafa_Burguer
+  serial-number ITBSAC0DC517
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 92
+  serial-number ITBS0AC79701
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 94
+  serial-number FHTTC0825288
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 95
+  serial-number ITBS0AC76515
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 96
+  serial-number ALCLFCC7517C
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 97
+  serial-number ITBSAC0DC50E
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 99
+  serial-number ALCLFCCDD7DD
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 100
+  serial-number ALCLFC175B71
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 101
+  serial-number ALCLFCCD8F2F
+  service-profile ROUTER line-profile PON5_2705_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+!
+interface gpon 1/1/6
+ no shutdown
+ onu 0
+  serial-number ALCLFBD6401C
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ITBS0AC76635
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number ALCLFC501993
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number FHTT6A0C1498
+  service-profile Service_Bridge line-profile PON_6_2706
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2706
+  !
+ !
+ onu 4
+  serial-number ALCLFC1F81EB
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number ITBS0ADB8EA7
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number DACM9111E37C
+  service-profile Service_Bridge line-profile PON_6_2706
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2706
+  !
+ !
+ onu 7
+  serial-number GPON00D95BB0
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number MSTC393BC8AD
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  serial-number HWTC0603099A
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 10
+  serial-number ALCLFBDB67C4
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number ALCLFCB17DCE
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 12
+  serial-number ITBS0AC28B8C
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number MSTC03A684A6
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ALCLFBEDEB23
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number ALCLFBDF9C3C
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number FHTT6A0F2516
+  service-profile Service_Bridge line-profile PON_6_2706
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2706
+  !
+ !
+ onu 17
+  serial-number ALCLFC03B0E5
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number ITBS0AC7644F
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 19
+  serial-number ALCLFCD9338D
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 20
+  serial-number ALCLFC567DE5
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number ALCLFCCDDD47
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number ALCLFBDD4572
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 23
+  serial-number MSTC328C3E2D
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  serial-number ITBS0AC76419
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 25
+  serial-number ALCLFBCB2E1D
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 27
+  serial-number ALCLFC59AB87
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  serial-number ITBS0ADB8FEB
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 29
+  serial-number ALCLFCD95732
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 30
+  serial-number FHTTFE14C22B
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  serial-number ALCLFCB19470
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 32
+  serial-number ALCLFC266E9A
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 33
+  serial-number ALCLFBD919EB
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 34
+  serial-number ALCLFC2682E0
+  service-profile ROUTER line-profile PON6_2706_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+!
+interface gpon 1/1/7
+ no shutdown
+ onu 0
+  serial-number ALCLFCCDD536
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFBDAB545
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number ITBS0AC7661A
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number ALCLB3EDB174
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 4
+  serial-number ITBS0ADB8F88
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number ITBSAC0DDA77
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number TLCM0009D618
+  service-profile ROUTER line-profile PON7_2707_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 7
+  serial-number ALCLFBF06516
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number ITBSAC0DD87F
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  name Priscila_Rocha
+  serial-number GPON00D93448
+  line-profile PON7_2707_Router
+  veip 1
+  !
+ !
+ onu 10
+  serial-number FHTTFE15A2FB
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 11
+  serial-number HWTC2B98485F
+  service-profile Service_Bridge line-profile PON_7_2707
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2707
+  !
+ !
+ onu 12
+  serial-number ALCLFBD8DBC7
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 13
+  serial-number ALCLFCCD9DDB
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 14
+  serial-number ALCLFBDB9A04
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 15
+  serial-number ALCLFCDDA5E3
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 16
+  serial-number TLCM0001FFCC
+  service-profile ROUTER line-profile PON7_2707_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 17
+  serial-number ALCLFCCDC143
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  serial-number ALCLFCC1674B
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 19
+  serial-number SHLN3C3ED2A6
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 20
+  serial-number ALCLB3EB3F99
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 21
+  serial-number ALCLFC17F446
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 22
+  serial-number ITBS0ACE5FB1
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 23
+  serial-number TLCM000039D5
+  service-profile ROUTER line-profile PON7_2707_ASKEY_3505
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 24
+  serial-number ALCLFCC9299F
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 25
+  serial-number ALCLFBDDD2C1
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 26
+  serial-number ITBS0AC76650
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 27
+  serial-number ITBS0AC28697
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 28
+  serial-number DACM911B072C
+  service-profile Service_Bridge line-profile PON_7_2707
+  ipv4 vlan vlan-id 100
+  ipv4 dhcp
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 2707
+  !
+ !
+ onu 29
+  serial-number GPON00280550
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 30
+  serial-number ALCLFBE3EC27
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 31
+  serial-number ITBS0AA8E2FD
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 33
+  serial-number ITBS0AC76578
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 35
+  serial-number ALCLFCC5A06F
+  service-profile ROUTER line-profile PON7_2707_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+!
+interface gpon 1/1/8
+ no shutdown
+ onu 0
+  serial-number ALCLFCDE5231
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 1
+  serial-number ALCLFBE47576
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 2
+  serial-number FHTTFE14786F
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 3
+  serial-number ALCLFC1A0FE8
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 5
+  serial-number ITBS0AC797C7
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 6
+  serial-number ALCLFC568DB4
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 8
+  serial-number ITBS0AC7662C
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 9
+  serial-number ALCLFBDDE269
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+ onu 18
+  name AiranWesley_MitraStar
+  serial-number MSTC09D84324
+  service-profile ROUTER line-profile PON8_2708_Router
+  ethernet 1
+   negotiation
+   no shutdown
+  !
+ !
+!
+clock timezone BRA -3
+hostname DM4610-CENTRAL-2
+telnet-server disabled
+profile gpon bandwidth-profile type-2_1024
+ traffic type-2 assured-bw 1024
+!
+profile gpon bandwidth-profile type-4_1106944
+ traffic type-4 max-bw 1106944
+!
+profile gpon line-profile PACPON_2709
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2709
+   ethernet any vlan 2709 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2710
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2710
+   ethernet any vlan 2710 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2711
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2711
+   ethernet any vlan 2711 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2712
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2712
+   ethernet any vlan 2712 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2713
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2713
+   ethernet any vlan 2713 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2714
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2714
+   ethernet any vlan 2714 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2715
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2715
+   ethernet any vlan 2715 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2716
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PPACPON_2716
+   ethernet any vlan 2716 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2717
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2717
+   ethernet any vlan 2717 cos any
+  !
+ !
+!
+profile gpon line-profile PACPON_2718
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PACPON_2718
+   ethernet any vlan 2718 cos any
+  !
+ !
+!
+profile gpon line-profile PON1_2701_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2701 cos any
+  !
+ !
+!
+profile gpon line-profile PON1_2701_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2701 cos any
+  !
+ !
+!
+profile gpon line-profile PON2_2702_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2702 cos any
+  !
+ !
+!
+profile gpon line-profile PON2_2702_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2702 cos any
+  !
+ !
+!
+profile gpon line-profile PON3_2703_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2703 cos any
+  !
+ !
+!
+profile gpon line-profile PON3_2703_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2703 cos any
+  !
+ !
+!
+profile gpon line-profile PON4_2704_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2704 cos any
+  !
+ !
+!
+profile gpon line-profile PON4_2704_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2704 cos any
+  !
+ !
+!
+profile gpon line-profile PON5_2705_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2705 cos any
+  !
+ !
+!
+profile gpon line-profile PON5_2705_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2705 cos any
+  !
+ !
+!
+profile gpon line-profile PON6_2706_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2706 cos any
+  !
+ !
+!
+profile gpon line-profile PON6_2706_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2706 cos any
+  !
+ !
+!
+profile gpon line-profile PON7_2707_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2707 cos any
+  !
+ !
+!
+profile gpon line-profile PON7_2707_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2707 cos any
+  !
+ !
+!
+profile gpon line-profile PON8_2708_ASKEY_3505
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   ethernet any vlan 2708 cos any
+  !
+ !
+!
+profile gpon line-profile PON8_2708_Router
+ upstream-fec
+ tcont 1 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map pppoe
+   veip 1 vlan 2708 cos any
+  !
+ !
+!
+profile gpon line-profile PON_1_2701
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_1_2701
+   ethernet any vlan 2701 cos any
+  !
+ !
+!
+profile gpon line-profile PON_2_2702
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_1_2702
+   ethernet any vlan 2702 cos any
+  !
+ !
+!
+profile gpon line-profile PON_3_2703
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_2703
+   ethernet any vlan 2703 cos any
+  !
+ !
+!
+profile gpon line-profile PON_4_2704
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_4_2704
+   ethernet any vlan 2704 cos any
+  !
+ !
+!
+profile gpon line-profile PON_5_2705
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_5_2705
+   ethernet any vlan 2705 cos any
+  !
+ !
+!
+profile gpon line-profile PON_6_2706
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_6_2706
+   ethernet any vlan 2706 cos any
+  !
+ !
+!
+profile gpon line-profile PON_7_2707
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_7_2707
+   ethernet any vlan 2707 cos any
+  !
+ !
+!
+profile gpon line-profile PON_8_2708
+ upstream-fec
+ tcont 1 bandwidth-profile type-2_1024
+ tcont 2 bandwidth-profile type-4_1106944
+ gem 1
+  tcont 1 priority 0
+  map Gerencia_ONUs
+   iphost vlan 100 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map PON_8_2708
+   ethernet any vlan 2708 cos any
+  !
+ !
+!
+profile gpon onu-profile ONU_Bridge
+ ethernet adaptive
+!
+profile gpon onu-profile ROUTER
+ pots 2
+ veip 1
+!
+profile gpon service-profile ROUTER
+ onu-profile ROUTER
+!
+profile gpon service-profile Service_Bridge
+ onu-profile ONU_Bridge
+!
+service vlan 100
+ type tls
+!
+service vlan 2701
+ type n:1
+!
+service vlan 2702
+ type n:1
+!
+service vlan 2703
+ type n:1
+!
+service vlan 2704
+ type n:1
+!
+service vlan 2705
+ type n:1
+!
+service vlan 2706
+ type n:1
+!
+service vlan 2707
+ type n:1
+!
+service vlan 2708
+ type n:1
+!
+service vlan 2709
+ type n:1
+!
+service vlan 2710
+ type n:1
+!
+service vlan 2711
+ type n:1
+!
+service vlan 2712
+ type n:1
+!
+service vlan 2713
+ type n:1
+!
+service vlan 2714
+ type n:1
+!
+service vlan 2715
+ type n:1
+!
+service vlan 2716
+ type n:1
+!
+service vlan 2717
+ type n:1
+!
+service vlan 2718
+ type n:1
+!
+dhcp l2-relay circuit-id format <hostname> eth <oltSlot>/<panelPort>/<onuId>/<onuSlot>/<gemPort>:<svlan>
+dhcp l2-relay vlan 100
+!
+gpon 1/1
+ onu-auth-method serial-number
+ aes-key-exchange 3600
+!
+loopback-detection
+ destination-address alternative
+!
+mac-address-table
+ aging-time 600
+!
+service-port 10000021
+ gpon 1/1/2 onu 0 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10000251
+ gpon 1/1/5 onu 2 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10000521
+ gpon 1/1/2 onu 5 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10000522
+ gpon 1/1/2 onu 5 gem 2 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10000971
+ gpon 1/1/7 onu 9 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10001881
+ gpon 1/1/8 onu 18 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10001911
+ gpon 1/1/1 onu 19 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10002451
+ gpon 1/1/5 onu 24 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10002851
+ gpon 1/1/5 onu 28 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10003111
+ gpon 1/1/1 onu 31 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10003112
+ gpon 1/1/1 onu 31 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10003341
+ gpon 1/1/4 onu 33 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10003611
+ gpon 1/1/1 onu 36 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10005131
+ gpon 1/1/3 onu 51 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10006051
+ gpon 1/1/5 onu 60 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10006241
+ gpon 1/1/4 onu 62 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10006411
+ gpon 1/1/1 onu 64 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10006412
+ gpon 1/1/1 onu 64 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10008151
+ gpon 1/1/5 onu 81 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10008711
+ gpon 1/1/1 onu 87 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10008841
+ gpon 1/1/4 onu 88 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10008931
+ gpon 1/1/3 onu 89 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10010111
+ gpon 1/1/1 onu 101 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10010211
+ gpon 1/1/1 onu 102 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012167
+ gpon 1/1/6 onu 13 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012293
+ gpon 1/1/5 onu 6 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012335
+ gpon 1/1/1 onu 34 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012336
+ gpon 1/1/1 onu 34 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012337
+ gpon 1/1/1 onu 38 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012338
+ gpon 1/1/1 onu 38 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012354
+ gpon 1/1/4 onu 16 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012355
+ gpon 1/1/4 onu 16 gem 2 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012364
+ gpon 1/1/4 onu 40 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012365
+ gpon 1/1/4 onu 40 gem 2 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012381
+ gpon 1/1/6 onu 3 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012382
+ gpon 1/1/6 onu 3 gem 2 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012383
+ gpon 1/1/6 onu 6 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012384
+ gpon 1/1/6 onu 6 gem 2 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012386
+ gpon 1/1/6 onu 16 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012387
+ gpon 1/1/6 onu 16 gem 2 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012392
+ gpon 1/1/2 onu 11 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012393
+ gpon 1/1/2 onu 11 gem 2 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012468
+ gpon 1/1/7 onu 28 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012469
+ gpon 1/1/7 onu 28 gem 2 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012544
+ gpon 1/1/1 onu 8 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012545
+ gpon 1/1/1 onu 8 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012548
+ gpon 1/1/1 onu 16 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012550
+ gpon 1/1/1 onu 24 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012551
+ gpon 1/1/1 onu 27 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012552
+ gpon 1/1/1 onu 37 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012553
+ gpon 1/1/1 onu 40 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012554
+ gpon 1/1/1 onu 43 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012556
+ gpon 1/1/1 onu 44 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012558
+ gpon 1/1/1 onu 46 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012559
+ gpon 1/1/1 onu 47 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012560
+ gpon 1/1/1 onu 50 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012561
+ gpon 1/1/1 onu 56 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012562
+ gpon 1/1/1 onu 59 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012563
+ gpon 1/1/1 onu 62 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012570
+ gpon 1/1/3 onu 5 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012571
+ gpon 1/1/3 onu 7 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012573
+ gpon 1/1/4 onu 1 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012576
+ gpon 1/1/4 onu 8 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012577
+ gpon 1/1/4 onu 10 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012580
+ gpon 1/1/4 onu 17 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012584
+ gpon 1/1/4 onu 22 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012587
+ gpon 1/1/4 onu 27 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012589
+ gpon 1/1/4 onu 34 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012592
+ gpon 1/1/4 onu 43 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012593
+ gpon 1/1/4 onu 45 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012594
+ gpon 1/1/4 onu 46 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012595
+ gpon 1/1/4 onu 51 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012596
+ gpon 1/1/4 onu 54 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012597
+ gpon 1/1/5 onu 0 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012599
+ gpon 1/1/5 onu 9 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012600
+ gpon 1/1/5 onu 11 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012603
+ gpon 1/1/5 onu 16 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012604
+ gpon 1/1/5 onu 17 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012605
+ gpon 1/1/5 onu 19 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012606
+ gpon 1/1/5 onu 36 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012608
+ gpon 1/1/5 onu 30 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012612
+ gpon 1/1/7 onu 1 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012614
+ gpon 1/1/6 onu 8 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012615
+ gpon 1/1/6 onu 9 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012616
+ gpon 1/1/6 onu 10 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012620
+ gpon 1/1/6 onu 15 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012626
+ gpon 1/1/7 onu 6 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012628
+ gpon 1/1/2 onu 9 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012629
+ gpon 1/1/2 onu 10 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012630
+ gpon 1/1/6 onu 22 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012631
+ gpon 1/1/2 onu 12 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012635
+ gpon 1/1/3 onu 1 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012637
+ gpon 1/1/1 onu 1 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012639
+ gpon 1/1/4 onu 6 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012641
+ gpon 1/1/3 onu 6 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012643
+ gpon 1/1/3 onu 53 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012644
+ gpon 1/1/6 onu 2 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012645
+ gpon 1/1/5 onu 12 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012648
+ gpon 1/1/4 onu 12 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012649
+ gpon 1/1/5 onu 1 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012650
+ gpon 1/1/4 onu 14 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012651
+ gpon 1/1/5 onu 40 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012653
+ gpon 1/1/5 onu 56 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012655
+ gpon 1/1/1 onu 75 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012663
+ gpon 1/1/8 onu 1 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10012664
+ gpon 1/1/2 onu 3 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012666
+ gpon 1/1/1 onu 5 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012669
+ gpon 1/1/5 onu 75 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012670
+ gpon 1/1/3 onu 35 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012672
+ gpon 1/1/5 onu 77 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012679
+ gpon 1/1/2 onu 1 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012680
+ gpon 1/1/4 onu 47 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012686
+ gpon 1/1/5 onu 26 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012688
+ gpon 1/1/5 onu 38 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012689
+ gpon 1/1/4 onu 15 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012690
+ gpon 1/1/1 onu 3 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012692
+ gpon 1/1/4 onu 30 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012693
+ gpon 1/1/5 onu 25 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012694
+ gpon 1/1/4 onu 50 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012695
+ gpon 1/1/4 onu 26 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012696
+ gpon 1/1/1 onu 2 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012697
+ gpon 1/1/1 onu 17 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012700
+ gpon 1/1/1 onu 51 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012701
+ gpon 1/1/4 onu 7 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012702
+ gpon 1/1/1 onu 6 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012706
+ gpon 1/1/7 onu 7 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012707
+ gpon 1/1/1 onu 22 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012708
+ gpon 1/1/1 onu 10 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012709
+ gpon 1/1/2 onu 16 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012712
+ gpon 1/1/1 onu 9 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012714
+ gpon 1/1/7 onu 16 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012716
+ gpon 1/1/5 onu 42 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012717
+ gpon 1/1/5 onu 44 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012721
+ gpon 1/1/5 onu 47 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012722
+ gpon 1/1/5 onu 49 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012723
+ gpon 1/1/2 onu 4 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012724
+ gpon 1/1/5 onu 20 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012728
+ gpon 1/1/5 onu 29 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012734
+ gpon 1/1/5 onu 71 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012736
+ gpon 1/1/5 onu 62 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012738
+ gpon 1/1/5 onu 65 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012739
+ gpon 1/1/5 onu 67 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012740
+ gpon 1/1/5 onu 72 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012744
+ gpon 1/1/5 onu 68 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012745
+ gpon 1/1/5 onu 69 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012746
+ gpon 1/1/5 onu 70 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012747
+ gpon 1/1/5 onu 76 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012749
+ gpon 1/1/5 onu 79 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012754
+ gpon 1/1/3 onu 87 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012756
+ gpon 1/1/3 onu 68 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012762
+ gpon 1/1/8 onu 5 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10012765
+ gpon 1/1/4 onu 3 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012766
+ gpon 1/1/3 onu 76 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012767
+ gpon 1/1/3 onu 80 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012768
+ gpon 1/1/1 onu 82 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012769
+ gpon 1/1/3 onu 39 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012771
+ gpon 1/1/5 onu 21 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012772
+ gpon 1/1/3 onu 59 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012773
+ gpon 1/1/5 onu 57 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012774
+ gpon 1/1/3 onu 0 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012776
+ gpon 1/1/3 onu 9 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012778
+ gpon 1/1/5 onu 58 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012779
+ gpon 1/1/5 onu 78 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012780
+ gpon 1/1/5 onu 3 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012786
+ gpon 1/1/7 onu 22 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012788
+ gpon 1/1/7 onu 23 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012789
+ gpon 1/1/4 onu 42 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012791
+ gpon 1/1/7 onu 25 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012794
+ gpon 1/1/7 onu 30 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012795
+ gpon 1/1/4 onu 49 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012797
+ gpon 1/1/4 onu 58 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012799
+ gpon 1/1/4 onu 65 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012800
+ gpon 1/1/4 onu 70 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012802
+ gpon 1/1/4 onu 72 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012803
+ gpon 1/1/4 onu 74 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012804
+ gpon 1/1/4 onu 75 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012805
+ gpon 1/1/3 onu 18 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012806
+ gpon 1/1/3 onu 18 gem 2 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012807
+ gpon 1/1/3 onu 19 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012812
+ gpon 1/1/3 onu 22 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012814
+ gpon 1/1/2 onu 21 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012817
+ gpon 1/1/3 onu 24 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012819
+ gpon 1/1/1 onu 83 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012825
+ gpon 1/1/5 onu 55 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012826
+ gpon 1/1/2 onu 2 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012831
+ gpon 1/1/3 onu 29 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012832
+ gpon 1/1/3 onu 31 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012833
+ gpon 1/1/3 onu 31 gem 2 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012834
+ gpon 1/1/3 onu 32 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012835
+ gpon 1/1/3 onu 33 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012836
+ gpon 1/1/3 onu 36 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012837
+ gpon 1/1/3 onu 38 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012839
+ gpon 1/1/3 onu 45 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012840
+ gpon 1/1/3 onu 46 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012841
+ gpon 1/1/3 onu 47 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012842
+ gpon 1/1/3 onu 49 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012844
+ gpon 1/1/1 onu 85 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012845
+ gpon 1/1/3 onu 34 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012847
+ gpon 1/1/3 onu 56 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012849
+ gpon 1/1/3 onu 60 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012850
+ gpon 1/1/3 onu 61 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012852
+ gpon 1/1/3 onu 63 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012854
+ gpon 1/1/3 onu 65 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012855
+ gpon 1/1/3 onu 70 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012859
+ gpon 1/1/3 onu 78 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012861
+ gpon 1/1/3 onu 84 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012862
+ gpon 1/1/3 onu 85 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012864
+ gpon 1/1/3 onu 40 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012865
+ gpon 1/1/3 onu 40 gem 2 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012866
+ gpon 1/1/3 onu 90 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012868
+ gpon 1/1/3 onu 94 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012869
+ gpon 1/1/3 onu 48 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012872
+ gpon 1/1/3 onu 99 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012874
+ gpon 1/1/3 onu 102 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012875
+ gpon 1/1/3 onu 102 gem 2 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012877
+ gpon 1/1/1 onu 0 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012881
+ gpon 1/1/3 onu 10 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012883
+ gpon 1/1/1 onu 11 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012884
+ gpon 1/1/2 onu 6 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012885
+ gpon 1/1/4 onu 37 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012887
+ gpon 1/1/5 onu 41 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012888
+ gpon 1/1/6 onu 0 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012892
+ gpon 1/1/2 onu 13 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012893
+ gpon 1/1/3 onu 37 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012894
+ gpon 1/1/5 onu 64 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012897
+ gpon 1/1/2 onu 17 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012898
+ gpon 1/1/5 onu 84 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012899
+ gpon 1/1/1 onu 26 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012901
+ gpon 1/1/4 onu 25 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012902
+ gpon 1/1/1 onu 25 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012903
+ gpon 1/1/1 onu 25 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012905
+ gpon 1/1/4 onu 53 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012907
+ gpon 1/1/1 onu 29 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10012908
+ gpon 1/1/1 onu 29 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012916
+ gpon 1/1/1 onu 49 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012917
+ gpon 1/1/1 onu 55 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012919
+ gpon 1/1/5 onu 39 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012920
+ gpon 1/1/3 onu 95 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012921
+ gpon 1/1/3 onu 43 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012923
+ gpon 1/1/5 onu 66 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012925
+ gpon 1/1/1 onu 57 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012926
+ gpon 1/1/1 onu 60 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012928
+ gpon 1/1/3 onu 100 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012930
+ gpon 1/1/2 onu 18 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012936
+ gpon 1/1/2 onu 19 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012937
+ gpon 1/1/4 onu 48 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012938
+ gpon 1/1/3 onu 30 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012940
+ gpon 1/1/8 onu 6 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10012941
+ gpon 1/1/7 onu 17 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012942
+ gpon 1/1/5 onu 85 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012943
+ gpon 1/1/2 onu 20 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10012944
+ gpon 1/1/4 onu 64 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012949
+ gpon 1/1/4 onu 76 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012950
+ gpon 1/1/7 onu 19 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10012956
+ gpon 1/1/1 onu 58 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012957
+ gpon 1/1/1 onu 14 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012958
+ gpon 1/1/5 onu 37 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012959
+ gpon 1/1/1 onu 21 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012960
+ gpon 1/1/3 onu 58 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012961
+ gpon 1/1/1 onu 15 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012962
+ gpon 1/1/3 onu 103 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012963
+ gpon 1/1/1 onu 23 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012966
+ gpon 1/1/5 onu 18 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012967
+ gpon 1/1/1 onu 52 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012973
+ gpon 1/1/4 onu 52 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012976
+ gpon 1/1/4 onu 69 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10012979
+ gpon 1/1/1 onu 33 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012982
+ gpon 1/1/5 onu 22 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012983
+ gpon 1/1/5 onu 50 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012984
+ gpon 1/1/5 onu 4 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012985
+ gpon 1/1/1 onu 30 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012986
+ gpon 1/1/6 onu 14 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10012988
+ gpon 1/1/3 onu 107 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012990
+ gpon 1/1/3 onu 14 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012991
+ gpon 1/1/3 onu 73 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10012997
+ gpon 1/1/5 onu 88 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10012998
+ gpon 1/1/1 onu 68 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10012999
+ gpon 1/1/2 onu 22 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013001
+ gpon 1/1/1 onu 54 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013003
+ gpon 1/1/4 onu 4 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013008
+ gpon 1/1/6 onu 28 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013009
+ gpon 1/1/4 onu 32 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013010
+ gpon 1/1/4 onu 32 gem 2 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013011
+ gpon 1/1/4 onu 31 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013013
+ gpon 1/1/6 onu 23 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013014
+ gpon 1/1/3 onu 26 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013015
+ gpon 1/1/4 onu 44 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013017
+ gpon 1/1/7 onu 14 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013020
+ gpon 1/1/5 onu 54 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013021
+ gpon 1/1/8 onu 9 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10013023
+ gpon 1/1/5 onu 89 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013024
+ gpon 1/1/3 onu 74 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013027
+ gpon 1/1/4 onu 13 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013028
+ gpon 1/1/5 onu 59 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013031
+ gpon 1/1/5 onu 87 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013032
+ gpon 1/1/1 onu 41 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013033
+ gpon 1/1/1 onu 93 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013036
+ gpon 1/1/3 onu 13 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013037
+ gpon 1/1/7 onu 8 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013038
+ gpon 1/1/5 onu 90 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013040
+ gpon 1/1/5 onu 27 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013041
+ gpon 1/1/5 onu 92 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013042
+ gpon 1/1/1 onu 7 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013044
+ gpon 1/1/1 onu 67 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013045
+ gpon 1/1/5 onu 23 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013048
+ gpon 1/1/3 onu 71 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013052
+ gpon 1/1/4 onu 19 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013053
+ gpon 1/1/5 onu 94 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013054
+ gpon 1/1/7 onu 26 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013055
+ gpon 1/1/7 onu 27 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013056
+ gpon 1/1/1 onu 95 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013058
+ gpon 1/1/6 onu 1 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013059
+ gpon 1/1/1 onu 39 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013060
+ gpon 1/1/1 onu 39 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013061
+ gpon 1/1/6 onu 18 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013062
+ gpon 1/1/3 onu 28 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013063
+ gpon 1/1/1 onu 92 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013064
+ gpon 1/1/1 onu 97 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013067
+ gpon 1/1/8 onu 8 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10013068
+ gpon 1/1/1 onu 98 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013069
+ gpon 1/1/1 onu 98 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013070
+ gpon 1/1/4 onu 39 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013071
+ gpon 1/1/3 onu 21 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013075
+ gpon 1/1/4 onu 24 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013076
+ gpon 1/1/4 onu 21 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013077
+ gpon 1/1/1 onu 35 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013078
+ gpon 1/1/5 onu 95 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013079
+ gpon 1/1/6 onu 12 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013080
+ gpon 1/1/4 onu 55 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013082
+ gpon 1/1/1 onu 53 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013083
+ gpon 1/1/2 onu 25 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013085
+ gpon 1/1/3 onu 4 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013086
+ gpon 1/1/7 onu 33 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013087
+ gpon 1/1/1 onu 99 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013088
+ gpon 1/1/3 onu 15 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013089
+ gpon 1/1/5 onu 10 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013090
+ gpon 1/1/4 onu 57 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013092
+ gpon 1/1/4 onu 0 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013094
+ gpon 1/1/3 onu 54 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013095
+ gpon 1/1/3 onu 8 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013096
+ gpon 1/1/3 onu 20 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013097
+ gpon 1/1/3 onu 66 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013098
+ gpon 1/1/7 onu 31 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013099
+ gpon 1/1/4 onu 41 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013100
+ gpon 1/1/2 onu 29 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013102
+ gpon 1/1/7 onu 0 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013103
+ gpon 1/1/1 onu 100 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013104
+ gpon 1/1/6 onu 17 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013106
+ gpon 1/1/5 onu 96 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013107
+ gpon 1/1/3 onu 72 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013110
+ gpon 1/1/5 onu 97 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013115
+ gpon 1/1/5 onu 34 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013116
+ gpon 1/1/1 onu 104 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013117
+ gpon 1/1/3 onu 27 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013118
+ gpon 1/1/1 onu 105 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013119
+ gpon 1/1/1 onu 106 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013120
+ gpon 1/1/3 onu 77 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013124
+ gpon 1/1/7 onu 2 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013126
+ gpon 1/1/7 onu 11 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013127
+ gpon 1/1/7 onu 11 gem 2 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013128
+ gpon 1/1/6 onu 20 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013129
+ gpon 1/1/7 onu 18 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013130
+ gpon 1/1/1 onu 45 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013132
+ gpon 1/1/1 onu 80 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013136
+ gpon 1/1/5 onu 5 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013139
+ gpon 1/1/4 onu 61 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013140
+ gpon 1/1/4 onu 66 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013142
+ gpon 1/1/3 onu 41 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013143
+ gpon 1/1/2 onu 24 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013145
+ gpon 1/1/1 onu 13 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013147
+ gpon 1/1/6 onu 7 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013149
+ gpon 1/1/1 onu 89 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013150
+ gpon 1/1/3 onu 81 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013151
+ gpon 1/1/3 onu 3 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013152
+ gpon 1/1/6 onu 21 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013153
+ gpon 1/1/7 onu 35 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013156
+ gpon 1/1/5 onu 99 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013157
+ gpon 1/1/3 onu 75 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013158
+ gpon 1/1/4 onu 5 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013159
+ gpon 1/1/6 onu 24 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013161
+ gpon 1/1/4 onu 35 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013164
+ gpon 1/1/3 onu 25 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013167
+ gpon 1/1/5 onu 14 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013173
+ gpon 1/1/6 onu 27 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013175
+ gpon 1/1/4 onu 56 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013177
+ gpon 1/1/5 onu 100 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013178
+ gpon 1/1/4 onu 18 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013179
+ gpon 1/1/7 onu 21 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013180
+ gpon 1/1/5 onu 101 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013181
+ gpon 1/1/3 onu 52 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013182
+ gpon 1/1/5 onu 15 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013183
+ gpon 1/1/3 onu 93 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013185
+ gpon 1/1/1 onu 65 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013186
+ gpon 1/1/5 onu 48 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013187
+ gpon 1/1/5 onu 73 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013188
+ gpon 1/1/5 onu 73 gem 2 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013189
+ gpon 1/1/5 onu 7 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013190
+ gpon 1/1/2 onu 30 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013191
+ gpon 1/1/3 onu 96 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013192
+ gpon 1/1/8 onu 2 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10013193
+ gpon 1/1/7 onu 10 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013194
+ gpon 1/1/4 onu 28 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013195
+ gpon 1/1/2 onu 31 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013196
+ gpon 1/1/6 onu 19 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013197
+ gpon 1/1/6 onu 30 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013199
+ gpon 1/1/4 onu 11 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013200
+ gpon 1/1/6 onu 29 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013201
+ gpon 1/1/3 onu 2 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013203
+ gpon 1/1/1 onu 66 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013205
+ gpon 1/1/3 onu 17 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013206
+ gpon 1/1/6 onu 5 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013207
+ gpon 1/1/5 onu 35 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013212
+ gpon 1/1/1 onu 72 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013213
+ gpon 1/1/5 onu 51 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013214
+ gpon 1/1/7 onu 4 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013215
+ gpon 1/1/3 onu 23 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013216
+ gpon 1/1/3 onu 42 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013219
+ gpon 1/1/3 onu 16 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013220
+ gpon 1/1/3 onu 44 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013222
+ gpon 1/1/7 onu 20 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013225
+ gpon 1/1/2 onu 7 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013226
+ gpon 1/1/5 onu 52 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013228
+ gpon 1/1/3 onu 12 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013231
+ gpon 1/1/5 onu 31 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013232
+ gpon 1/1/2 onu 32 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013233
+ gpon 1/1/2 onu 32 gem 2 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013234
+ gpon 1/1/6 onu 31 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013235
+ gpon 1/1/6 onu 33 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013236
+ gpon 1/1/7 onu 12 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013237
+ gpon 1/1/4 onu 29 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013238
+ gpon 1/1/3 onu 57 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013239
+ gpon 1/1/3 onu 55 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013242
+ gpon 1/1/5 onu 53 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013243
+ gpon 1/1/5 onu 13 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013244
+ gpon 1/1/5 onu 63 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013245
+ gpon 1/1/5 onu 80 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013248
+ gpon 1/1/1 onu 63 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013249
+ gpon 1/1/1 onu 78 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013250
+ gpon 1/1/6 onu 34 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013253
+ gpon 1/1/1 onu 77 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013254
+ gpon 1/1/1 onu 81 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013255
+ gpon 1/1/1 onu 69 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013256
+ gpon 1/1/4 onu 20 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013257
+ gpon 1/1/7 onu 24 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013258
+ gpon 1/1/7 onu 13 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013259
+ gpon 1/1/7 onu 5 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013261
+ gpon 1/1/4 onu 36 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013262
+ gpon 1/1/1 onu 12 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013263
+ gpon 1/1/8 onu 0 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10013264
+ gpon 1/1/1 onu 18 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013265
+ gpon 1/1/1 onu 71 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013267
+ gpon 1/1/2 onu 14 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013268
+ gpon 1/1/2 onu 28 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013269
+ gpon 1/1/1 onu 48 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013270
+ gpon 1/1/1 onu 86 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013271
+ gpon 1/1/1 onu 20 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013272
+ gpon 1/1/1 onu 76 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013274
+ gpon 1/1/4 onu 60 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013275
+ gpon 1/1/1 onu 88 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013276
+ gpon 1/1/5 onu 8 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013277
+ gpon 1/1/1 onu 91 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013278
+ gpon 1/1/1 onu 4 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013279
+ gpon 1/1/2 onu 8 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013280
+ gpon 1/1/6 onu 11 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013281
+ gpon 1/1/6 onu 4 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013283
+ gpon 1/1/3 onu 64 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013284
+ gpon 1/1/3 onu 67 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013285
+ gpon 1/1/6 onu 25 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013286
+ gpon 1/1/1 onu 28 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013287
+ gpon 1/1/1 onu 42 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013288
+ gpon 1/1/4 onu 23 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013289
+ gpon 1/1/3 onu 69 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013290
+ gpon 1/1/5 onu 61 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013291
+ gpon 1/1/1 onu 74 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013292
+ gpon 1/1/1 onu 74 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013293
+ gpon 1/1/5 onu 74 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013294
+ gpon 1/1/1 onu 84 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013295
+ gpon 1/1/4 onu 63 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013297
+ gpon 1/1/1 onu 70 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013298
+ gpon 1/1/4 onu 67 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013301
+ gpon 1/1/5 onu 43 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013303
+ gpon 1/1/1 onu 96 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013304
+ gpon 1/1/6 onu 32 gem 1 match vlan vlan-id 2706 action vlan replace vlan-id 2706
+!
+service-port 10013305
+ gpon 1/1/1 onu 61 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013308
+ gpon 1/1/7 onu 29 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013309
+ gpon 1/1/4 onu 9 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013310
+ gpon 1/1/4 onu 2 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013311
+ gpon 1/1/3 onu 11 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013312
+ gpon 1/1/7 onu 3 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013313
+ gpon 1/1/8 onu 3 gem 1 match vlan vlan-id 2708 action vlan replace vlan-id 2708
+!
+service-port 10013314
+ gpon 1/1/7 onu 15 gem 1 match vlan vlan-id 2707 action vlan replace vlan-id 2707
+!
+service-port 10013317
+ gpon 1/1/5 onu 46 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013318
+ gpon 1/1/5 onu 32 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013319
+ gpon 1/1/1 onu 32 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013320
+ gpon 1/1/1 onu 32 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013321
+ gpon 1/1/3 onu 50 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013322
+ gpon 1/1/1 onu 73 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013323
+ gpon 1/1/4 onu 38 gem 1 match vlan vlan-id 2704 action vlan replace vlan-id 2704
+!
+service-port 10013324
+ gpon 1/1/5 onu 82 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+service-port 10013325
+ gpon 1/1/1 onu 79 gem 1 match vlan vlan-id 100 action vlan replace vlan-id 100
+!
+service-port 10013326
+ gpon 1/1/1 onu 79 gem 2 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013327
+ gpon 1/1/3 onu 62 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013328
+ gpon 1/1/3 onu 79 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013329
+ gpon 1/1/1 onu 90 gem 1 match vlan vlan-id 2701 action vlan replace vlan-id 2701
+!
+service-port 10013330
+ gpon 1/1/3 onu 82 gem 1 match vlan vlan-id 2703 action vlan replace vlan-id 2703
+!
+service-port 10013331
+ gpon 1/1/2 onu 15 gem 1 match vlan vlan-id 2702 action vlan replace vlan-id 2702
+!
+service-port 10013332
+ gpon 1/1/5 onu 33 gem 1 match vlan vlan-id 2705 action vlan replace vlan-id 2705
+!
+vrf global
+!
+vrf mgmt
+!
+router static
+ address-family ipv4
+  0.0.0.0/0 next-hop 10.32.51.1
+  !
+ !
+!
+dot1q
+ vlan 100
+  name Gerencia_ONUs
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 1000
+  name Gerencia
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2701
+  name PON_1_2701
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2702
+  name PON_2_2702
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2703
+  name PON_3_2703
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2704
+  name PON_4_2704
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2705
+  name PON_5_2705
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2706
+  name PON_6_2706
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2707
+  name PON_7_2707
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2708
+  name PON_8_2708
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2709
+  name PACPON_2709
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2710
+  name PACPON_2710
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2711
+  name PACPON_2711
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2712
+  name PACPON_2712
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2713
+  name PACPON_2713
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2714
+  name PACPON_2714
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2715
+  name PACPON_2715
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2716
+  name PACPON_2716
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2717
+  name PACPACPON_2717
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2718
+  name PACPON_2718
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/10
+  !
+  interface gigabit-ethernet-1/1/11
+  !
+  interface gigabit-ethernet-1/1/12
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface gigabit-ethernet-1/1/3
+  !
+  interface gigabit-ethernet-1/1/4
+  !
+  interface gigabit-ethernet-1/1/5
+  !
+  interface gigabit-ethernet-1/1/6
+  !
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+  interface gigabit-ethernet-1/1/9
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+!
+license mpls disabled
+DM4610-CENTRAL-2# 

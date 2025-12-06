@@ -1,0 +1,477 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: RT-PE-PORTO
+Host: 10.255.0.18:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 05/12/2025 02:00:05
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[suporte@JMA-BRAS-PORTO-ALEGRE] > /                                            [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /e[suporte@JMA-BRAS-PORTO-ALEGRE] > /e                                           [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /ex[suporte@JMA-BRAS-PORTO-ALEGRE] > /ex                                          [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /exp[suporte@JMA-BRAS-PORTO-ALEGRE] > /exp                                         [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /expo[suporte@JMA-BRAS-PORTO-ALEGRE] > /expo                                        [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /expor[suporte@JMA-BRAS-PORTO-ALEGRE] > /expor                                       [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export[suporte@JMA-BRAS-PORTO-ALEGRE] > /export                                      [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export [suporte@JMA-BRAS-PORTO-ALEGRE] > /export                                      [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export t[suporte@JMA-BRAS-PORTO-ALEGRE] > /export t                                    [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export te[suporte@JMA-BRAS-PORTO-ALEGRE] > /export te                                   [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export ter[suporte@JMA-BRAS-PORTO-ALEGRE] > /export ter                                  [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export ters[suporte@JMA-BRAS-PORTO-ALEGRE] > /export ters                                 [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export terse[suporte@JMA-BRAS-PORTO-ALEGRE] > /export terse                                [K[suporte@JMA-BRAS-PORTO-ALEGRE] > /export terse[suporte@JMA-BRAS-PORTO-ALEGRE] > /export terse
+# oct/30/2025 17:56:58 by RouterOS 6.49.13
+# software id = 73YC-BQN9
+#
+# model = RB4011iGS+
+# serial number = D4480DDFBD92
+/interface bridge add name=Loopback
+/interface bridge add name=b_vlan77_gerencia_pa
+/interface bridge add name=br-acesso
+/interface bridge add name=lo2
+/interface bridge add name=pa
+/interface ethernet set [ find default-name=ether1 ] mac-address=48:8F:5A:65:11:5
+3
+/interface ethernet set [ find default-name=ether2 ] mac-address=48:8F:5A:65:11:5
+4 mtu=1592
+/interface ethernet set [ find default-name=ether3 ] mac-address=48:8F:5A:65:11:5
+5
+/interface ethernet set [ find default-name=ether4 ] mac-address=48:8F:5A:65:11:5
+6
+/interface ethernet set [ find default-name=ether5 ] mac-address=48:8F:5A:65:11:5
+7
+/interface ethernet set [ find default-name=ether6 ] mac-address=48:8F:5A:65:11:5
+8
+/interface ethernet set [ find default-name=ether7 ] mac-address=48:8F:5A:65:11:5
+9
+/interface ethernet set [ find default-name=ether8 ] mac-address=48:8F:5A:65:11:5
+A speed=100Mbps
+/interface ethernet set [ find default-name=ether9 ] mac-address=48:8F:5A:65:11:5
+B
+/interface ethernet set [ find default-name=ether10 ] mac-address=48:8F:5A:65:11:
+5C
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10000M-full 
+l2mtu=1592 mac-address=48:8F:5A:65:11:5D mtu=1592
+/interface vpls add advertised-l2mtu=1508 cisco-style=yes cisco-style-id=21 disab
+led=no l2mtu=1508 mac-address=02:DC:08:73:9B:D0 name=vpls-sw-ponte-alta remote-p
+eer=10.255.0.4
+/interface vpls add advertised-l2mtu=1508 cisco-style=yes cisco-style-id=20 disab
+led=no l2mtu=1508 mac-address=02:DC:08:73:9B:D0 name=vpls1-bras-ne8k remote-peer
+=10.255.255.2
+/interface vlan add interface=ether3 name=e03_vlan401_olt1_pon1 vlan-id=401
+/interface vlan add interface=ether3 name=e03_vlan402_olt1_pon2 vlan-id=402
+/interface vlan add interface=ether3 name=e03_vlan403_olt1_pon3 vlan-id=403
+/interface vlan add interface=ether3 name=e03_vlan404_olt1_pon4 vlan-id=404
+/interface vlan add interface=ether4 name=e04_vlan77_gerencia_olt vlan-id=77
+/interface vlan add interface=ether4 name=e04_vlan411_olt2_pon1 vlan-id=411
+/interface vlan add interface=ether4 name=e04_vlan412_olt2_pon2 vlan-id=412
+/interface vlan add interface=ether4 name=e04_vlan413_olt2_pon3 vlan-id=413
+/interface vlan add interface=ether4 name=e04_vlan414_olt2_pon4 vlan-id=414
+/interface vlan add interface=ether5 name=e05_vlan427_renato vlan-id=427
+/interface vlan add interface=ether8 name=e06_vlan77_gerencia_wom vlan-id=77
+/interface vlan add interface=ether8 name=e06_vlan78_gerencia_pch_manoel_alves vl
+an-id=78
+/interface vlan add interface=ether8 name=e06_vlan710_hybrazil_subestacao vlan-id
+=710
+/interface vlan add interface=ether10 name=e10_vlan77_gerencia_distrito vlan-id=7
+7
+/interface vlan add interface=sfp-sfpplus1 name=vlan14-gerencia-sw vlan-id=14
+/interface vlan add interface=sfp-sfpplus1 name=vlan24-ospf-sw-almas vlan-id=24
+/interface vlan add interface=sfp-sfpplus1 name=vlan25-ospf-sw-dno vlan-id=25
+/interface vlan add comment=Gerencia-OLT interface=ether3 name=vlan77 vlan-id=77
+/interface vlan add interface=ether1 name=vlan431 vlan-id=431
+/interface vlan add interface=ether1 name=vlan432 vlan-id=432
+/interface ethernet switch port set 0 default-vlan-id=0
+/interface ethernet switch port set 1 default-vlan-id=0
+/interface ethernet switch port set 2 default-vlan-id=0
+/interface ethernet switch port set 3 default-vlan-id=0
+/interface ethernet switch port set 4 default-vlan-id=0
+/interface ethernet switch port set 5 default-vlan-id=0
+/interface ethernet switch port set 6 default-vlan-id=0
+/interface ethernet switch port set 7 default-vlan-id=0
+/interface ethernet switch port set 8 default-vlan-id=0
+/interface ethernet switch port set 9 default-vlan-id=0
+/interface ethernet switch port set 10 default-vlan-id=0
+/interface ethernet switch port set 11 default-vlan-id=0
+/ip pool add name=pool_bloqueados ranges=172.24.133.1-172.24.133.254
+/ip pool add name=pool_avisados ranges=172.24.134.1-172.24.134.254
+/ip pool add name=pool_username_or_mac_error ranges=172.24.135.1-172.24.135.254
+/ip pool add name=pool_password_error ranges=172.24.136.1-172.24.136.254
+/ipv6 pool add name=PREFIX-PD prefix=2804:57b0:c100::/40 prefix-length=60
+/ipv6 pool add name=PREFIX-WAN prefix=2804:57b0:c000::/40 prefix-length=64
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="50 MBF" only-one=yes rate-limit=50m/50m r
+emote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes comment=PROFILE_VPN_RADIUSNET___NAO_APAGAR_OU
+_MODIFICAR dhcpv6-pd-pool=PREFIX-PD name=profile_vpn_radiusnet only-one=no remot
+e-ipv6-prefix-pool=PREFIX-WAN use-compression=no use-encryption=yes use-mpls=no
+/ppp profile set *FFFFFFFE dhcpv6-pd-pool=PREFIX-PD insert-queue-before=bottom on
+ly-one=no remote-ipv6-prefix-pool=PREFIX-WAN
+/routing ospf area add area-id=0.0.0.1 default-cost=1 disabled=yes inject-summary
+-lsas=yes name=area1 type=stub
+/routing ospf instance set [ find default=yes ] redistribute-connected=as-type-1 
+redistribute-static=as-type-1 router-id=10.255.0.18
+/routing ospf-v3 instance set [ find default=yes ] redistribute-static=as-type-1 
+router-id=10.255.255.7
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=jmatelecom-ro
+/snmp community add addresses=66.175.209.15/32 name=public
+/interface bridge port add bridge=pa interface=ether1
+/interface bridge port add bridge=pa interface=ether5
+/interface bridge port add bridge=b_vlan77_gerencia_pa interface=vlan77
+/interface bridge port add bridge=b_vlan77_gerencia_pa interface=e04_vlan77_geren
+cia_olt
+/interface bridge port add bridge=b_vlan77_gerencia_pa interface=e06_vlan77_geren
+cia_wom
+/interface bridge port add bridge=b_vlan77_gerencia_pa interface=e10_vlan77_geren
+cia_distrito
+/interface bridge port add bridge=b_vlan77_gerencia_pa interface=e06_vlan78_geren
+cia_pch_manoel_alves
+/interface bridge port add bridge=br-acesso interface=vpls1-bras-ne8k
+/interface bridge port add bridge=br-acesso interface=vpls-sw-ponte-alta
+/interface bridge port add bridge=br-acesso interface=e03_vlan401_olt1_pon1
+/interface bridge port add bridge=br-acesso interface=e03_vlan402_olt1_pon2
+/interface bridge port add bridge=br-acesso interface=e03_vlan403_olt1_pon3
+/interface bridge port add bridge=br-acesso interface=e03_vlan404_olt1_pon4
+/interface bridge port add bridge=br-acesso interface=e04_vlan411_olt2_pon1
+/interface bridge port add bridge=br-acesso interface=e04_vlan412_olt2_pon2
+/interface bridge port add bridge=br-acesso interface=e04_vlan413_olt2_pon3
+/interface bridge port add bridge=br-acesso interface=e04_vlan414_olt2_pon4
+/interface bridge port add bridge=br-acesso interface=e05_vlan427_renato
+/interface bridge port add bridge=br-acesso interface=ether10
+/interface bridge port add bridge=br-acesso interface=ether2
+/ip firewall connection tracking set enabled=no tcp-established-timeout=30m
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface l2tp-server server set authentication=chap,mschap1,mschap2 enabled=yes
+ ipsec-secret="\$Ur4c2Tk4@VuH1#R" use-ipsec=required
+/interface pppoe-server server add interface=e04_vlan412_olt2_pon2 service-name=s
+ervice1
+/ip address add address=192.168.101.17/28 interface=b_vlan77_gerencia_pa network=
+192.168.101.16
+/ip address add address=192.168.101.65/28 interface=pa network=192.168.101.64
+/ip address add address=192.168.33.3/24 comment="192.168.33.8 TX HYBRASIL" interf
+ace=e06_vlan710_hybrazil_subestacao network=192.168.33.0
+/ip address add address=192.168.11.249/25 comment="192.168.33.8 TX HYBRASIL" inte
+rface=e06_vlan710_hybrazil_subestacao network=192.168.11.128
+/ip address add address=192.168.100.206/30 interface=sfp-sfpplus1 network=192.168
+.100.204
+/ip address add address=192.168.101.254 interface=Loopback network=192.168.101.25
+4
+/ip address add address=172.24.140.5/30 comment=postodesaudepa@carvalhonet.com in
+terface=e04_vlan411_olt2_pon1 network=172.24.140.4
+/ip address add address=192.168.100.209/30 comment="gerencia sw crs305" interface
+=sfp-sfpplus1 network=192.168.100.208
+/ip address add address=192.168.88.10/24 interface=sfp-sfpplus1 network=192.168.8
+8.0
+/ip address add address=192.168.50.13/30 comment="Ger\EAncia SW PORTO ALEGRE" int
+erface=sfp-sfpplus1 network=192.168.50.12
+/ip address add address=45.169.4.254 interface=Loopback network=45.169.4.254
+/ip address add address=45.169.7.2 interface=Loopback network=45.169.7.2
+/ip address add address=172.18.100.18/30 interface=vlan24-ospf-sw-almas network=1
+72.18.100.16
+/ip address add address=10.255.0.18 interface=Loopback network=10.255.0.18
+/ip address add address=172.18.100.21/30 interface=vlan25-ospf-sw-dno network=172
+.18.100.20
+/ip address add address=10.10.15.1/30 interface=e06_vlan710_hybrazil_subestacao n
+etwork=10.10.15.0
+/ip address add address=172.18.100.61/30 interface=sfp-sfpplus1 network=172.18.10
+0.60
+/ip dhcp-client add add-default-route=no interface=e04_vlan414_olt2_pon4 use-peer
+-dns=no use-peer-ntp=no
+/ip dns set max-udp-packet-size=512 servers=8.8.8.8,45.169.4.99,2804:57b0:853:1::
+2
+/ip firewall raw add action=accept chain=prerouting protocol=ospf
+/ip firewall raw add action=notrack chain=output protocol=ospf
+/ip firewall raw add action=accept chain=output protocol=ospf
+/ip route add distance=1 dst-address=45.169.4.63/32 gateway=10.10.15.2
+/ip route rule add disabled=yes src-address=100.64.16.0/24 table=TGG
+/ip service set telnet address=192.168.96.0/21,45.169.4.104/32 disabled=yes
+/ip service set ftp address=0.0.0.0/0 disabled=yes port=32372
+/ip service set www address=192.168.96.0/21,45.169.4.104/32 disabled=yes
+/ip service set ssh port=22002
+/ip service set www-ssl address=192.168.64.0/18,45.169.4.96/28
+/ip service set api address=66.175.209.15/32,191.252.60.142/32,172.18.0.1/32 disa
+bled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip tftp add allow-rollover=yes ip-addresses=0.0.0.0/0 read-only=no
+/ipv6 address add address=fc00:cafe:ca00::e/126 advertise=no
+/ipv6 address add address=fc00:cafe:ca00::2e/126 advertise=no
+/ipv6 route add distance=1 dst-address=2804:57b0:c000::/40 type=unreachable
+/ipv6 route add distance=1 dst-address=2804:57b0:c100::/40 type=unreachable
+/mpls interface set [ find default=yes ] mpls-mtu=1570
+/mpls ldp set enabled=yes lsr-id=10.255.0.18 transport-address=10.255.0.18
+/mpls ldp interface add interface=vlan24-ospf-sw-almas
+/mpls ldp interface add interface=vlan25-ospf-sw-dno
+/mpls ldp neighbor add transport=10.255.255.2
+/ppp aaa set interim-update=5m use-circuit-id-in-nas-port-id=yes use-radius=yes
+/ppp profile set *0 dhcpv6-pd-pool=PREFIX-PD dns-server=45.169.7.83,1.1.1.1 inser
+t-queue-before=bottom local-address=45.169.4.10 only-one=no remote-address=*1 re
+mote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=10m/10m 
+rate-limit=10m/10m remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=10000k/8
+00k rate-limit=10000k/800k remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=50M/50M 
+rate-limit=50M/50M remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=100M/100
+M rate-limit=100M/100M remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=200M/200
+M rate-limit=200M/200M remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=300M/300
+M rate-limit=300M/300M remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD dns-server=8.8.8.8,4
+5.169.4.99 insert-queue-before=bottom local-address=10.255.255.7 name=clientes o
+nly-one=yes remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name="100 MBF
+" rate-limit=100m/100m remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=livre only-one=yes remote-address=*1 remot
+e-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=pppoe_porto_alegre only-one=yes remote-add
+ress=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=2MBd only-one=yes rate-limit=50m/50m remot
+e-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="25 MBFf" only-one=yes rate-limit=100m/100
+m remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="25 MBD" only-one=yes rate-limit=100m/100m
+ remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=5mbd only-one=yes rate-limit=50m/50m remot
+e-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="10 mbd" only-one=yes rate-limit=100m/100m
+ remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=2MBF only-one=yes rate-limit=50m/50m remot
+e-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="10 MBF" only-one=yes rate-limit=100m/100m
+ remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="11 mbd" only-one=yes rate-limit=100m/100m
+ remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="35 MBD" only-one=yes rate-limit=100m/100m
+ remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=8mbd only-one=yes rate-limit=50m/50m remot
+e-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=6mbd only-one=yes rate-limit=50m/50m remot
+e-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name=3mbd only-one=yes rate-limit=50m/50m remot
+e-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="5 MBD" only-one=yes rate-limit=50m/50m re
+mote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PREFIX-PD insert-queue-before=
+bottom local-address=45.169.4.10 name="5 MBF" only-one=yes rate-limit=50m/50m re
+mote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD insert-queue-before=bottom local-addres
+s=45.169.4.10 name="15 MBF" only-one=yes rate-limit=100m/100m remote-address=*1 
+remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name="20 MBPF
+" only-one=yes rate-limit=100m/100m remote-address=*1 remote-ipv6-prefix-pool=PR
+EFIX-WAN
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD local-address=45.169.4.10 name=75MBF ra
+te-limit=100m/100m remote-address=*1 remote-ipv6-prefix-pool=PREFIX-WAN
+/ppp secret add name=hybrazil@carvalhonet.com password=carvalho@net profile="35 M
+BD" remote-address=45.169.7.246 service=pppoe
+/ppp secret add name=cleiton@carvalhonet.com password=carvalho@net profile="100 M
+BF" service=pppoe
+/ppp secret add name=secretariadaagricultura@carvalhonet.com password=carvalho@ne
+t profile="100 MBF" service=pppoe
+/ppp secret add disabled=yes name=paulapeixoto@carvalhonet.com password=carvalho@
+net profile="100 MBF" service=pppoe
+/ppp secret add disabled=yes name=rodrigoadamantecasa@carvalhonet.com password=ca
+rvalho@net profile="50 MBF" service=pppoe
+/ppp secret add disabled=yes name=luanyrmarques@carvalhonet.com password=carvalho
+@net service=pppoe
+/ppp secret add name=automecanicaitamar@carvalhonet.com password=carvalho@net ser
+vice=pppoe
+/ppp secret add disabled=yes name=alan password=alan service=pppoe
+/ppp secret add disabled=yes name=mauriliogoncalves@carvalhonet.com password=carv
+alho@net profile=100M/100M service=pppoe
+/ppp secret add disabled=yes name=amandatavares@carvalhonet.com password=carvalho
+@net service=pppoe
+/ppp secret add disabled=yes name=josenilopes@carvalhonet.com password=carvalho@n
+et profile=100M/100M service=pppoe
+/radius add address=172.18.0.1 comment="Radiusnet via tgg" disabled=yes secret=jm
+a10324 service=ppp src-address=172.18.0.3 timeout=600ms
+/radius add address=167.172.106.53 comment=RADIUS-EMERGENCIA disabled=yes secret=
+testing123 service=ppp src-address=45.169.4.254 timeout=3s
+/radius incoming set accept=yes
+/routing bfd interface add
+/routing bfd interface add
+/routing filter add action=accept chain=ospf-in disabled=yes prefix=0.0.0.0/0 set
+-pref-src=10.255.255.7
+/routing filter add action=discard chain=ospf-in disabled=yes
+/routing filter add action=discard chain=ospf-out prefix=100.64.0.0/10 prefix-len
+gth=32
+/routing filter add action=discard chain=ospf-out prefix=0.0.0.0/0
+/routing ospf area range add area=area1 range=100.75.4.0/22
+/routing ospf interface add cost=20 network-type=point-to-point use-bfd=yes
+/routing ospf interface add cost=1300 network-type=point-to-point use-bfd=yes
+/routing ospf interface add passive=yes
+/routing ospf interface add interface=vlan24-ospf-sw-almas network-type=point-to-
+point
+/routing ospf interface add cost=12000 interface=vlan25-ospf-sw-dno network-type=
+point-to-point
+/routing ospf network add area=backbone network=172.18.100.16/30
+/routing ospf network add area=backbone network=10.255.0.18/32
+/routing ospf network add area=backbone network=172.18.100.20/30
+/routing ospf network add area=backbone network=172.18.100.60/30
+/routing ospf-v3 interface add area=backbone network-type=point-to-point
+/routing ospf-v3 interface add area=backbone cost=500 network-type=point-to-point
+
+/snmp set contact=suporte@jmatelecom.com.br enabled=yes location=JMA trap-version
+=2
+/system clock set time-zone-autodetect=no time-zone-name=America/Araguaina
+/system identity set name=JMA-BRAS-PORTO-ALEGRE
+/system ntp client set enabled=yes primary-ntp=200.160.0.8 secondary-ntp=200.189.
+40.8 server-dns-names=pool.ntp.br
+/system package update set channel=long-term
+/system scheduler add interval=1d name=bkp_procyon on-event=bkp_ftp_procyon polic
+y=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=ma
+r/22/2024 start-time=04:00:00
+/system scheduler add interval=1d name=bkp_interno on-event=bkpinterno policy=ftp
+,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=mar/22/
+2024 start-time=04:05:00
+/system script add dont-require-permissions=no name=EFETUAR_BACKUP_SISTEMA owner=
+ALAN policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon sou
+rce=":log info \"INICIANDO BACKUP\";\r\
+    \n\r\
+    \n:global filename;\r\
+    \n:global senha \"Je3m4eU@A\";\r\
+    \n\r\
+    \n:global date [/system clock get date];\r\
+    \n:global time [/system clock get time];\r\
+    \n:global name [/system identity get name];\r\
+    \n\r\
+    \n:global months (\"jan\",\"feb\",\"mar\",\"apr\",\"may\",\"jun\",\"jul\",\"a
+ug\",\"sep\",\"oct\",\"nov\",\"dec\");\r\
+    \n:global hour [:pick \$time 0 2];\r\
+    \n:global min [:pick \$time 3 5];\r\
+    \n:global sec [:pick \$time 6 8];\r\
+    \n:global month [:pick \$date 0 3];\r\
+    \n:set month ([ :find \$months \$month -1 ] + 1);\r\
+    \n\r\
+    \n:if (\$month < 10) do={ :set month (\"0\" . \$month); }\r\
+    \n\r\
+    \n:global day [:pick \$date 4 6];\r\
+    \n:global year [:pick \$date 7 11];\r\
+    \n:set filename (\"BACKUP_\".\$name. \"_\" .\$year.\"-\".\$month.\"-\".\$day.
+\"_\".\$hour.\"-\".\$min.\"-\".\$sec);\r\
+    \n\r\
+    \n/system backup save name=\$filename password=\$senha;\r\
+    \n\r\
+    \n\r\
+    \n:log info \"GERANDO RSC\";\r\
+    \n:global rsc \$filename;\r\
+    \n\r\
+    \n/export file=\$rsc;\r\
+    \n\r\
+    \n:log info \"BACKUP FINALIZADO\""
+/system script add dont-require-permissions=no name=bkp_ftp_procyon owner=victor 
+policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
+:local password \"procyon1q2w\"\r\
+    \n:local username \"bkpprocyon\"\r\
+    \n:local ftpserver \"191.252.193.112\"\r\
+    \n\r\
+    \n# months array\r\
+    \n:local months (\"\"jan\"\",\"\"feb\"\",\"\"mar\"\",\"\"apr\"\",\"\"may\"\",
+\"\"jun\"\",\"\"jul\"\",\"\"aug\"\",\"\"sep\"\",\"\"oct\"\",\"\"nov\"\",\"\"dec\
+"\");\r\
+    \n\r\
+    \n# get time\r\
+    \n:local ts [/system clock get time]\r\
+    \n:set ts ([:pick \$ts 0 2].[:pick \$ts 3 5].[:pick \$ts 6 8])\r\
+    \n\r\
+    \n# get Date\r\
+    \n:local ds [/system clock get date]\r\
+    \n:local month [:pick \$ds 0 3];\r\
+    \n:local mm ([:find \$months \$month -1] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n# set \$ds to format YYYY-MM-DD\r\
+    \n:set ds ([:pick \$ds 7 11].\$mm.[:pick \$ds 4 6]);\r\
+    \n\r\
+    \n# file name for config export - file name will be UMDB-servername-date-time
+.rsc\r\
+    \n:local filename ([/system identity get name].\"-\".\$ds.\"-\".\$ts.\".rsc\"
+)\r\
+    \n\r\
+    \n# backup the data\r\
+    \n#/tool user-manager database save name=\$filename\r\
+    \n/export compact file=\$filename\r\
+    \n:log warning message=\"Config export finished (2/2).\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$filename\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"/Mikrotiks/JMA/JMA BRAS PORTO ALEGRE/\$filename\" upload=yes\r\
+    \n\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n# Delete created backup files once they have been uploaded\r\
+    \n# so they don't accumulate and fill up storage space on the router.\r\
+    \n\r\
+    \n/file remove \"\$filename\"\r\
+    \n\r\
+    \n:log info \"Local Backup Files Deleted Successfully\""
+/system script add dont-require-permissions=no name=bkpinterno owner=victor polic
+y=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":loca
+l password \"!@#jma123\"\r\
+    \n:local username \"bkpftp\"\r\
+    \n:local ftpserver \"45.169.4.109\"\r\
+    \n\r\
+    \n# months array\r\
+    \n:local months (\"\"jan\"\",\"\"feb\"\",\"\"mar\"\",\"\"apr\"\",\"\"may\"\",
+\"\"jun\"\",\"\"jul\"\",\"\"aug\"\",\"\"sep\"\",\"\"oct\"\",\"\"nov\"\",\"\"dec\
+"\");\r\
+    \n\r\
+    \n# get time\r\
+    \n:local ts [/system clock get time]\r\
+    \n:set ts ([:pick \$ts 0 2].[:pick \$ts 3 5].[:pick \$ts 6 8])\r\
+    \n\r\
+    \n# get Date\r\
+    \n:local ds [/system clock get date]\r\
+    \n:local month [:pick \$ds 0 3];\r\
+    \n:local mm ([:find \$months \$month -1] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n# set \$ds to format YYYY-MM-DD\r\
+    \n:set ds ([:pick \$ds 7 11].\$mm.[:pick \$ds 4 6]);\r\
+    \n\r\
+    \n# file name for config export - file name will be UMDB-servername-date-time
+.rsc\r\
+    \n:local filename ([/system identity get name].\"-\".\$ds.\"-\".\$ts.\".rsc\"
+)\r\
+    \n\r\
+    \n# backup the data\r\
+    \n#/tool user-manager database save name=\$filename\r\
+    \n/export compact file=\$filename\r\
+    \n:log warning message=\"Config export finished (2/2).\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$filename\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"/JMA BRAS PORTO ALEGRE/\$filename\" upload=yes\r\
+    \n\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n# Delete created backup files once they have been uploaded\r\
+    \n# so they don't accumulate and fill up storage space on the router.\r\
+    \n\r\
+    \n/file remove \"\$filename\"\r\
+    \n\r\
+    \n:log info \"Local Backup Files Deleted Successfully\""
+/tool bandwidth-server set allocate-udp-ports-from=1000 authenticate=no max-sessi
+ons=1
+/tool e-mail set address=smtp.gmail.com from=backup.jmafibra@gmail.com password=!
+@#jma!@# port=587 start-tls=yes user=backup.jmafibra@gmail.com
+/tool netwatch add down-script="ip route rule disable numbers=0" host=100.80.0.21
+ up-script="ip route rule enable numbers=0"
+/tool netwatch add down-script="/radius disable [find comment=\"RadiusNET\"]" hos
+t=45.169.4.4 interval=5m up-script="/radius enable[find comment=\"RadiusNET\"]"
+/tool romon set enabled=yes secrets=jma
+[suporte@JMA-BRAS-PORTO-ALEGRE] >                                              [suporte@JMA-BRAS-PORTO-ALEGRE] > 

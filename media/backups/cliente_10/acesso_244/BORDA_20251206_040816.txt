@@ -1,0 +1,1082 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CONECTONLINE SERVICOS DE INFORMATICA E TELECOMUNICACOES LTDA - ME
+Equipamento: BORDA
+Host: 201.33.167.255:22003
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 06/12/2025 04:08:16
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[danilo@BORDA-CGNAT-ConectOnline] > /export terse
+# 2025-12-06 04:08:11 by RouterOS 7.15.3
+# software id = 4LTE-G79Y
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 914F0BE0E8F1
+/interface bridge add disabled=yes name=bridge-servico-start port-cost-mode=short
+
+/interface bridge add disabled=yes name=bridge-temporaria port-cost-mode=short
+/interface bridge add disabled=yes name=bridge-teste port-cost-mode=short
+/interface bridge add disabled=yes name=bridge-wan-k2 port-cost-mode=short
+/interface bridge add disabled=yes name=bridge-wan-nv7 port-cost-mode=short
+/interface bridge add name=loopback port-cost-mode=short
+/interface bridge add disabled=yes name=loopback-ospf port-cost-mode=short
+/interface bridge add disabled=yes name=loopback-ospf-bgp port-cost-mode=short
+/interface bridge add disabled=yes name=loopback-wan-bgp port-cost-mode=short
+/interface bridge add disabled=yes name=loopback-wan-intervip port-cost-mode=shor
+t
+/interface bridge add disabled=yes name=loopback-wan-snet port-cost-mode=short
+/interface bridge add disabled=yes name=loopback-wan-start port-cost-mode=short
+/interface ethernet set [ find default-name=combo1 ] auto-negotiation=no speed=1G
+-baseX
+/interface ethernet set [ find default-name=ether3 ] comment="CONFIG. OLT"
+/interface ethernet set [ find default-name=ether5 ] comment="MONIORAMENTO INVERS
+O / ENERGIA - RB750"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment="SW UBIQUITI"
+/interface eoip add mac-address=02:D7:79:73:18:64 name=eoip-tunnel-start-servicos
+ remote-address=10.20.30.41 tunnel-id=3900
+/interface vlan add interface=sfp-sfpplus1 name=vlan-2200-IPv4-BNG-01 vlan-id=220
+0
+/interface vlan add interface=sfp-sfpplus1 name=vlan-2201-IPv4-BNG-02 vlan-id=220
+1
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan22-acesso-novo-n
+as vlan-id=22
+/interface vlan add interface=ether5 name=vlan1000-MONITORAR-ENERGIA-PING vlan-id
+=1000
+/interface vlan add interface=sfp-sfpplus1 name=vlan1000-gerencia-equipamentos vl
+an-id=1000
+/interface vlan add interface=sfp-sfpplus1 name=vlan1400-POWERMASTER-INTELBRAS-NO
+BREAK vlan-id=1400
+/interface vlan add interface=sfp-sfpplus1 name="vlan1500-DNS\B4S" vlan-id=1500
+/interface vlan add interface=sfp-sfpplus1 name=vlan1501-OLT-CIANET vlan-id=1501
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan1502-PRTG vlan-i
+d=1502
+/interface vlan add interface=sfp-sfpplus1 name=vlan1503-MK-AUTH vlan-id=1503
+/interface vlan add interface=sfp-sfpplus1 name=vlan1504-DMVIEW vlan-id=1504
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan1505-FASTNETMON 
+vlan-id=1505
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan1506-SERVIDOR-MI
+DIA vlan-id=1506
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan1509-atd-emergen
+cial-start vlan-id=1509
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan1517-xui vlan-id
+=1517
+/interface vlan add interface=sfp-sfpplus1 name=vlan1518-SGP vlan-id=1518
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan2002-nv7-bloco-r
+oteado vlan-id=2002
+/interface vlan add interface=sfp-sfpplus1 name=vlan2204-IPv4-BNG-03 vlan-id=2204
+
+/interface vlan add interface=sfp-sfpplus1 name=vlan3012-WAN-K2 vlan-id=3012
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan3320-wan-snet vl
+an-id=3320
+/interface list add name=LINKS
+/interface lte apn set [ find default=yes ] ip-type=ipv4 use-network-apn=no
+/ip pool add name=POOL-VPN ranges=10.10.10.0/24
+/ip smb users set [ find default=yes ] disabled=yes
+/port set 0 name=serial0
+/port set 1 name=serial1
+/ppp profile set *0 local-address=201.33.167.255 remote-address=POOL-VPN
+/ppp profile add name=VPN-SGP use-encryption=yes
+/ppp profile set *FFFFFFFE use-compression=no use-ipv6=no use-mpls=no
+/routing bgp template set default as=270879 disabled=yes output.network=bgp-netwo
+rks router-id=186.194.8.0
+/routing ospf instance add disabled=no name=borda-v2 originate-default=always red
+istribute=connected router-id=10.255.255.1
+/routing ospf instance add disabled=yes name=cgnat-v2 redistribute=connected,stat
+ic,vpn,dhcp,modem router-id=10.255.255.201
+/routing ospf instance add disabled=no name=default-v3 originate-default=always v
+ersion=3
+/routing ospf area add disabled=no instance=borda-v2 name=backbone-v2
+/routing ospf area add area-id=0.0.0.1 disabled=yes instance=cgnat-v2 name=bgp-v2
+
+/routing ospf area add disabled=no instance=default-v3 name=backbone-v3
+/routing table add fib name=Rota-K2
+/routing table add disabled=no fib name=rota-dinamica
+/snmp community set [ find default=yes ] addresses=192.168.0.0/16,172.16.0.0/12,1
+0.0.0.0/8,100.64.0.0/10,172.96.12.155/32 disabled=yes
+/snmp community add addresses=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/
+10,172.96.12.155/32 disabled=yes name=acsinfo
+/snmp community add addresses=172.16.116.1/32,45.178.140.60/32,172.31.0.2/32 name
+=SGP-GRAPHICs
+/snmp community add addresses=::/0 name=TOMICH
+/interface bridge port add bridge=bridge-temporaria disabled=yes ingress-filterin
+g=no interface=ether6 internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge-temporaria disabled=yes ingress-filterin
+g=no interface=vlan1504-DMVIEW internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge-servico-start disabled=yes ingress-filte
+ring=no interface=eoip-tunnel-start-servicos internal-path-cost=10 path-cost=10
+/ip firewall connection tracking set tcp-established-timeout=30m udp-timeout=10s
+/ip neighbor discovery-settings set discover-interface-list=all
+/ip settings set max-neighbor-entries=8192
+/ipv6 settings set max-neighbor-entries=8192
+/interface l2tp-server server set enabled=yes use-ipsec=yes
+/interface list member add interface=vlan3012-WAN-K2 list=LINKS
+/interface ovpn-server server set auth=sha1,md5
+/interface pptp-server server
+# PPTP connections are considered unsafe, it is suggested to use a more modern VP
+N protocol instead
+set enabled=yes keepalive-timeout=60
+/interface sstp-server server set port=15443
+/ip address add address=10.0.32.1/30 comment="COMUNICACAO CONCENTRADO" interface=
+vlan-2200-IPv4-BNG-01 network=10.0.32.0
+/ip address add address=192.168.100.1/24 comment=PROXMOX interface=sfp-sfpplus1 n
+etwork=192.168.100.0
+/ip address add address=10.255.255.1 interface=loopback network=10.255.255.1
+/ip address add address=10.10.10.9/29 comment=DNS interface="vlan1500-DNS\B4S" ne
+twork=10.10.10.8
+/ip address add address=172.28.3.1/29 comment=PRTG disabled=yes interface=vlan150
+2-PRTG network=172.28.3.0
+/ip address add address=172.31.255.1/30 comment=MK-AUTH interface=vlan1503-MK-AUT
+H network=172.31.255.0
+/ip address add address=10.255.255.201 disabled=yes interface=loopback-ospf-bgp n
+etwork=10.255.255.201
+/ip address add address=172.28.4.1/29 comment=DMVIEW interface=vlan1504-DMVIEW ne
+twork=172.28.4.0
+/ip address add address=192.168.1.100/24 comment="MGMT OLT DATACOM" interface=sfp
+-sfpplus1 network=192.168.1.0
+/ip address add address=10.32.50.1/30 comment="GERENCIA UPLINK OLT DATACOM" inter
+face=vlan1000-gerencia-equipamentos network=10.32.50.0
+/ip address add address=172.28.8.1/30 comment="COMUNICA\C7\C3O CIANET" interface=
+vlan1501-OLT-CIANET network=172.28.8.0
+/ip address add address=172.28.7.1/29 comment=Fastnetmon disabled=yes interface=v
+lan1505-FASTNETMON network=172.28.7.0
+/ip address add address=10.30.30.29/30 comment=SERVER-MIDIA disabled=yes interfac
+e=vlan1506-SERVIDOR-MIDIA network=10.30.30.28
+/ip address add address=10.0.33.1/30 comment="COMUNICACAO CONCENTRADO-02" interfa
+ce=vlan-2201-IPv4-BNG-02 network=10.0.33.0
+/ip address add address=10.32.49.1/24 comment="MONITORAMENTTO INVERSOR" interface
+=vlan1000-MONITORAR-ENERGIA-PING network=10.32.49.0
+/ip address add address=10.123.90.1/30 comment=ATD-START-EMERGENCIA disabled=yes 
+interface=vlan1509-atd-emergencial-start network=10.123.90.0
+/ip address add address=10.32.51.1/30 comment="GERENCIA UPLINK OLT DATACOM 2" int
+erface=vlan1000-gerencia-equipamentos network=10.32.51.0
+/ip address add address=10.32.52.1/30 comment="GERENCIA UPLINK OLT DATACOM ESTREL
+INHA" interface=vlan1000-gerencia-equipamentos network=10.32.52.0
+/ip address add address=10.0.34.1/30 comment="COMUNICACAO NAS-03-ESTRELINHA" inte
+rface=vlan2204-IPv4-BNG-03 network=10.0.34.0
+/ip address add address=172.28.10.1/30 comment="POWERMASTER INTELBRAS" interface=
+vlan1400-POWERMASTER-INTELBRAS-NOBREAK network=172.28.10.0
+/ip address add address=10.63.5.234/30 comment="LINK K2" interface=vlan3012-WAN-K
+2 network=10.63.5.232
+/ip address add address=10.32.53.1/30 comment="GERENCIA UPLINK OLT DATACOM-04" in
+terface=vlan1000-gerencia-equipamentos network=10.32.53.0
+/ip address add address=172.18.0.1/30 comment=XUI-MIDIA disabled=yes interface=vl
+an1517-xui network=172.18.0.0
+/ip address add address=172.28.5.1/30 comment=SGP interface=vlan1518-SGP network=
+172.28.5.0
+/ip address add address=191.241.72.79 comment="191.241.72.64/28 - IPS K2 - CGNAT"
+ disabled=yes interface=bridge-wan-k2 network=191.241.72.79
+/ip address add address=10.32.47.1/24 comment=GERENCIA-SWITCHS interface=vlan1000
+-gerencia-equipamentos network=10.32.47.0
+/ip address add address=172.31.0.1/30 comment=ZABBIX/GRAFANA interface=sfp-sfpplu
+s1 network=172.31.0.0
+/ip address add address=201.33.167.255 comment=LOOPBACK interface=loopback networ
+k=201.33.167.255
+/ip address add address=191.241.72.8 comment="IPs PUBLICOS PARA UTULIZAR EM CLIEN
+TES - 191.241.72.8/30" disabled=yes interface=loopback network=191.241.72.8
+/ip cloud set ddns-update-interval=1m update-time=no
+/ip dns set servers=10.10.10.10,10.10.10.11,2001:4860:4860::8888
+/ip firewall address-list add address=10.3.0.0/22 list=pgcorte
+/ip firewall address-list add address=10.4.0.0/22 list=pgcorte
+/ip firewall address-list add address=10.5.0.0/22 list=pgcorte
+/ip firewall address-list add address=10.24.0.0/22 list=pgcorte
+/ip firewall address-list add address=10.32.50.2 list=SEM-NAT
+/ip firewall address-list add address=100.64.0.0/21 list=rede-privada-para-cgnat
+/ip firewall address-list add address=201.33.167.128/27 list=publico
+/ip firewall address-list add address=201.33.167.255 list=SEM-NAT
+/ip firewall filter add action=fasttrack-connection chain=forward connection-stat
+e=established,related hw-offload=yes
+/ip firewall filter add action=accept chain=input comment="Permite conexoes estab
+elecidas" connection-state=established
+/ip firewall filter add action=accept chain=forward connection-state=established,
+related
+/ip firewall filter add action=drop chain=forward connection-state=invalid
+/ip firewall filter add action=drop chain=input comment="drop pptp brute forcers"
+ dst-port=1723 protocol=tcp src-address-list=pptp_blacklist
+/ip firewall filter add action=add-src-to-address-list address-list=pptp_blacklis
+t address-list-timeout=1w3d chain=input connection-state=new dst-port=1723 proto
+col=tcp src-address-list=pptp_stage3
+/ip firewall filter add action=add-src-to-address-list address-list=pptp_stage3 a
+ddress-list-timeout=1m chain=input connection-state=new dst-port=1723 protocol=t
+cp src-address-list=pptp_stage2
+/ip firewall filter add action=add-src-to-address-list address-list=pptp_stage2 a
+ddress-list-timeout=1m chain=input connection-state=new dst-port=1723 protocol=t
+cp src-address-list=pptp_stage1
+/ip firewall filter add action=add-src-to-address-list address-list=pptp_stage1 a
+ddress-list-timeout=1m chain=input connection-state=new dst-port=1723 protocol=t
+cp src-address-list=!confiavel
+/ip firewall filter add action=drop chain=forward comment=CORTE-ACSINFO src-addre
+ss-list=pgcorte
+/ip firewall filter add action=drop chain=input comment=CORTE-ACSINFO dst-address
+-list=pgcorte
+/ip firewall filter add action=drop chain=output comment=CORTE-ACSINFO src-addres
+s-list=pgcorte
+/ip firewall filter add action=add-src-to-address-list address-list=BLOQUEIO-AVIS
+ADOS address-list-timeout=1m chain=forward comment="SGP REGRAS" connection-mark=
+BLOQUEIO-AVISAR dst-address=45.178.140.49 dst-port=6495 protocol=tcp
+/ip firewall filter add action=accept chain=input comment="Aceita OVPN" dst-port=
+51194 protocol=tcp
+/ip firewall filter add action=accept chain=input comment="Aceita conexoes estabe
+lecidas e relacionadas" connection-state=established,related
+/ip firewall filter add action=drop chain=input dst-port=53 protocol=udp
+/ip firewall filter add action=drop chain=input dst-port=53 protocol=tcp
+/ip firewall filter add action=drop chain=input comment="Descarta conexoes invali
+das" connection-state=invalid
+/ip firewall filter add action=accept chain=input comment="Aceita SNMP" dst-port=
+161 protocol=udp
+/ip firewall filter add action=accept chain=input comment=Aceita-WINBOX dst-port=
+8260 protocol=tcp src-address-list=Permitidos
+/ip firewall filter add action=accept chain=input comment=Aceita-OSPF protocol=os
+pf
+/ip firewall filter add action=accept chain=input comment=ACEITA-IPSEC protocol=i
+psec-esp
+/ip firewall filter add action=accept chain=input comment=ACEITA-IPSEC protocol=i
+psec-ah
+/ip firewall filter add action=accept chain=input comment=Aceita-BGP dst-port=179
+ protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Aceita-Servicos dst-por
+t=8222,8223,8282 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Libera-L2TP dst-port=17
+01 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Aceita-PPTP dst-port=17
+23 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Libera-L2TP dst-port=50
+0,4500 protocol=udp
+/ip firewall filter add action=accept chain=input comment=Libera-ICMP protocol=ic
+mp
+/ip firewall filter add action=accept chain=forward comment=Libera-ICMP dst-addre
+ss-list=100.64.0.0/10 dst-port=80,443,8888,8080 protocol=tcp src-address-list=Pe
+rmitidos
+/ip firewall filter add action=drop chain=input disabled=yes src-address-list=!Pe
+rmitidos
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAR PARA DNS 8
+.8.8.8" dst-port=53 in-interface=!vlan3012-WAN-K2 protocol=udp src-address-list=
+rede-privada-para-cgnat to-addresses=8.8.8.8 to-ports=53
+/ip firewall nat add action=src-nat chain=srcnat comment="SEM NAT" src-address=17
+2.28.5.2 to-addresses=201.33.167.255
+/ip firewall nat add action=src-nat chain=srcnat comment="SEM NAT" disabled=yes s
+rc-address=191.241.72.8 to-addresses=201.33.167.255
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT" dst-address-lis
+t=SEM-NAT src-address-list=SEM-NAT
+/ip firewall nat add action=accept chain=srcnat comment=MKAUTH-ACSINFO2 dst-addre
+ss-list=nas src-address=172.31.255.2
+/ip firewall nat add action=accept chain=srcnat comment=MKAUTH-ACSINFO3 dst-addre
+ss=172.31.255.2 src-address-list=nas
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SGP" dst
+-address=201.33.167.255 dst-port=80 protocol=tcp to-addresses=172.28.5.2 to-port
+s=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SGP" dst
+-address=201.33.167.255 dst-port=8000 protocol=tcp to-addresses=172.28.5.2 to-po
+rts=8000
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SGP" dst
+-address=201.33.167.255 dst-port=443 protocol=tcp to-addresses=172.28.5.2 to-por
+ts=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SGP" dst
+-address=201.33.167.255 dst-port=2250 protocol=tcp to-addresses=172.28.5.2 to-po
+rts=2250
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO BNG1" dst-addres
+s=201.33.167.255 dst-port=9293 in-interface-list=LINKS protocol=tcp to-addresses
+=10.0.32.2 to-ports=20583
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO BNG2" dst-addres
+s=201.33.167.255 dst-port=9294 in-interface-list=LINKS protocol=tcp to-addresses
+=10.0.33.2 to-ports=20583
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO BNG3" dst-addres
+s=201.33.167.255 dst-port=9295 in-interface-list=LINKS protocol=tcp to-addresses
+=10.0.34.2 to-ports=20583
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO MK-AUTH"
+ dst-address=201.33.167.255 dst-port=6080 protocol=tcp to-addresses=172.31.255.2
+ to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO MK-AUTH"
+ dst-address=201.33.167.255 dst-port=6081 protocol=tcp to-addresses=172.31.255.2
+ to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-address=10.30.3
+0.30 dst-port=80 protocol=tcp to-addresses=10.30.30.30 to-ports=8096
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO DMVIEW" 
+dst-address=201.33.167.255 dst-port=8101 in-interface-list=LINKS protocol=tcp to
+-addresses=172.28.4.2 to-ports=8101
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PROXMOX" dst-add
+ress=201.33.167.255 dst-port=8006 protocol=tcp to-addresses=192.168.100.2 to-por
+ts=8006
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=7879 proto
+col=tcp to-addresses=192.168.1.2 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO POWER-MA
+STERE" dst-address=201.33.167.255 dst-port=3052 protocol=tcp to-addresses=172.28
+.10.2 to-ports=3052
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO PROXMOX"
+ dst-address=201.33.167.255 dst-port=3001 protocol=tcp to-addresses=192.168.100.
+2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO ZABBIX S
+SH" dst-address=201.33.167.255 dst-port=3002 protocol=tcp to-addresses=172.31.0.
+2 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO ZABBIX" 
+dst-address=201.33.167.255 dst-port=3003 protocol=tcp to-addresses=172.31.0.2 to
+-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO GRAFANA"
+ dst-address=201.33.167.255 dst-port=3004 protocol=tcp to-addresses=172.31.0.2 t
+o-ports=3030
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-targe
+t=cgnat src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.0/27 portas=1024-2031" jump-target=100.64.0.0/27 src-address=100.64.0.0/27
+/ip firewall nat add action=netmap chain=100.64.0.0/27 comment="100.64.0.0/27 ==>
+ portas=1024-2031" protocol=tcp to-addresses=201.33.167.128/27 to-ports=1024-203
+1
+/ip firewall nat add action=netmap chain=100.64.0.0/27 comment="100.64.0.0/27 ==>
+ portas=1024-2031" protocol=udp to-addresses=201.33.167.128/27 to-ports=1024-203
+1
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.32/27 portas=2032-3039" jump-target=100.64.0.32/27 src-address=100.64.0.32/27
+/ip firewall nat add action=netmap chain=100.64.0.32/27 comment="100.64.0.32/27 =
+=> portas=2032-3039" protocol=tcp to-addresses=201.33.167.128/27 to-ports=2032-3
+039
+/ip firewall nat add action=netmap chain=100.64.0.32/27 comment="100.64.0.32/27 =
+=> portas=2032-3039" protocol=udp to-addresses=201.33.167.128/27 to-ports=2032-3
+039
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.64/27 portas=3040-4047" jump-target=100.64.0.64/27 src-address=100.64.0.64/27
+/ip firewall nat add action=netmap chain=100.64.0.64/27 comment="100.64.0.64/27 =
+=> portas=3040-4047" protocol=tcp to-addresses=201.33.167.128/27 to-ports=3040-4
+047
+/ip firewall nat add action=netmap chain=100.64.0.64/27 comment="100.64.0.64/27 =
+=> portas=3040-4047" protocol=udp to-addresses=201.33.167.128/27 to-ports=3040-4
+047
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.96/27 portas=4048-5055" jump-target=100.64.0.96/27 src-address=100.64.0.96/27
+/ip firewall nat add action=netmap chain=100.64.0.96/27 comment="100.64.0.96/27 =
+=> portas=4048-5055" protocol=tcp to-addresses=201.33.167.128/27 to-ports=4048-5
+055
+/ip firewall nat add action=netmap chain=100.64.0.96/27 comment="100.64.0.96/27 =
+=> portas=4048-5055" protocol=udp to-addresses=201.33.167.128/27 to-ports=4048-5
+055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.128/27 portas=5056-6063" jump-target=100.64.0.128/27 src-address=100.64.0.128/2
+7
+/ip firewall nat add action=netmap chain=100.64.0.128/27 comment="100.64.0.128/27
+ ==> portas=5056-6063" protocol=tcp to-addresses=201.33.167.128/27 to-ports=5056
+-6063
+/ip firewall nat add action=netmap chain=100.64.0.128/27 comment="100.64.0.128/27
+ ==> portas=5056-6063" protocol=udp to-addresses=201.33.167.128/27 to-ports=5056
+-6063
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.160/27 portas=6064-7071" jump-target=100.64.0.160/27 src-address=100.64.0.160/2
+7
+/ip firewall nat add action=netmap chain=100.64.0.160/27 comment="100.64.0.160/27
+ ==> portas=6064-7071" protocol=tcp to-addresses=201.33.167.128/27 to-ports=6064
+-7071
+/ip firewall nat add action=netmap chain=100.64.0.160/27 comment="100.64.0.160/27
+ ==> portas=6064-7071" protocol=udp to-addresses=201.33.167.128/27 to-ports=6064
+-7071
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.192/27 portas=7072-8079" jump-target=100.64.0.192/27 src-address=100.64.0.192/2
+7
+/ip firewall nat add action=netmap chain=100.64.0.192/27 comment="100.64.0.192/27
+ ==> portas=7072-8079" protocol=tcp to-addresses=201.33.167.128/27 to-ports=7072
+-8079
+/ip firewall nat add action=netmap chain=100.64.0.192/27 comment="100.64.0.192/27
+ ==> portas=7072-8079" protocol=udp to-addresses=201.33.167.128/27 to-ports=7072
+-8079
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.224/27 portas=8080-9087" jump-target=100.64.0.224/27 src-address=100.64.0.224/2
+7
+/ip firewall nat add action=netmap chain=100.64.0.224/27 comment="100.64.0.224/27
+ ==> portas=8080-9087" protocol=tcp to-addresses=201.33.167.128/27 to-ports=8080
+-9087
+/ip firewall nat add action=netmap chain=100.64.0.224/27 comment="100.64.0.224/27
+ ==> portas=8080-9087" protocol=udp to-addresses=201.33.167.128/27 to-ports=8080
+-9087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.0/27 portas=9088-10095" jump-target=100.64.1.0/27 src-address=100.64.1.0/27
+/ip firewall nat add action=netmap chain=100.64.1.0/27 comment="100.64.1.0/27 ==>
+ portas=9088-10095" protocol=tcp to-addresses=201.33.167.128/27 to-ports=9088-10
+095
+/ip firewall nat add action=netmap chain=100.64.1.0/27 comment="100.64.1.0/27 ==>
+ portas=9088-10095" protocol=udp to-addresses=201.33.167.128/27 to-ports=9088-10
+095
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.32/27 portas=10096-11103" jump-target=100.64.1.32/27 src-address=100.64.1.32/27
+
+/ip firewall nat add action=netmap chain=100.64.1.32/27 comment="100.64.1.32/27 =
+=> portas=10096-11103" protocol=tcp to-addresses=201.33.167.128/27 to-ports=1009
+6-11103
+/ip firewall nat add action=netmap chain=100.64.1.32/27 comment="100.64.1.32/27 =
+=> portas=10096-11103" protocol=udp to-addresses=201.33.167.128/27 to-ports=1009
+6-11103
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.64/27 portas=11104-12111" jump-target=100.64.1.64/27 src-address=100.64.1.64/27
+
+/ip firewall nat add action=netmap chain=100.64.1.64/27 comment="100.64.1.64/27 =
+=> portas=11104-12111" protocol=tcp to-addresses=201.33.167.128/27 to-ports=1110
+4-12111
+/ip firewall nat add action=netmap chain=100.64.1.64/27 comment="100.64.1.64/27 =
+=> portas=11104-12111" protocol=udp to-addresses=201.33.167.128/27 to-ports=1110
+4-12111
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.96/27 portas=12112-13119" jump-target=100.64.1.96/27 src-address=100.64.1.96/27
+
+/ip firewall nat add action=netmap chain=100.64.1.96/27 comment="100.64.1.96/27 =
+=> portas=12112-13119" protocol=tcp to-addresses=201.33.167.128/27 to-ports=1211
+2-13119
+/ip firewall nat add action=netmap chain=100.64.1.96/27 comment="100.64.1.96/27 =
+=> portas=12112-13119" protocol=udp to-addresses=201.33.167.128/27 to-ports=1211
+2-13119
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.128/27 portas=13120-14127" jump-target=100.64.1.128/27 src-address=100.64.1.128
+/27
+/ip firewall nat add action=netmap chain=100.64.1.128/27 comment="100.64.1.128/27
+ ==> portas=13120-14127" protocol=tcp to-addresses=201.33.167.128/27 to-ports=13
+120-14127
+/ip firewall nat add action=netmap chain=100.64.1.128/27 comment="100.64.1.128/27
+ ==> portas=13120-14127" protocol=udp to-addresses=201.33.167.128/27 to-ports=13
+120-14127
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.160/27 portas=14128-15135" jump-target=100.64.1.160/27 src-address=100.64.1.160
+/27
+/ip firewall nat add action=netmap chain=100.64.1.160/27 comment="100.64.1.160/27
+ ==> portas=14128-15135" protocol=tcp to-addresses=201.33.167.128/27 to-ports=14
+128-15135
+/ip firewall nat add action=netmap chain=100.64.1.160/27 comment="100.64.1.160/27
+ ==> portas=14128-15135" protocol=udp to-addresses=201.33.167.128/27 to-ports=14
+128-15135
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.192/27 portas=15136-16143" jump-target=100.64.1.192/27 src-address=100.64.1.192
+/27
+/ip firewall nat add action=netmap chain=100.64.1.192/27 comment="100.64.1.192/27
+ ==> portas=15136-16143" protocol=tcp to-addresses=201.33.167.128/27 to-ports=15
+136-16143
+/ip firewall nat add action=netmap chain=100.64.1.192/27 comment="100.64.1.192/27
+ ==> portas=15136-16143" protocol=udp to-addresses=201.33.167.128/27 to-ports=15
+136-16143
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.224/27 portas=16144-17151" jump-target=100.64.1.224/27 src-address=100.64.1.224
+/27
+/ip firewall nat add action=netmap chain=100.64.1.224/27 comment="100.64.1.224/27
+ ==> portas=16144-17151" protocol=tcp to-addresses=201.33.167.128/27 to-ports=16
+144-17151
+/ip firewall nat add action=netmap chain=100.64.1.224/27 comment="100.64.1.224/27
+ ==> portas=16144-17151" protocol=udp to-addresses=201.33.167.128/27 to-ports=16
+144-17151
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.0/27 portas=17152-18159" jump-target=100.64.2.0/27 src-address=100.64.2.0/27
+/ip firewall nat add action=netmap chain=100.64.2.0/27 comment="100.64.2.0/27 ==>
+ portas=17152-18159" protocol=tcp to-addresses=201.33.167.128/27 to-ports=17152-
+18159
+/ip firewall nat add action=netmap chain=100.64.2.0/27 comment="100.64.2.0/27 ==>
+ portas=17152-18159" protocol=udp to-addresses=201.33.167.128/27 to-ports=17152-
+18159
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.32/27 portas=18160-19167" jump-target=100.64.2.32/27 src-address=100.64.2.32/27
+
+/ip firewall nat add action=netmap chain=100.64.2.32/27 comment="100.64.2.32/27 =
+=> portas=18160-19167" protocol=tcp to-addresses=201.33.167.128/27 to-ports=1816
+0-19167
+/ip firewall nat add action=netmap chain=100.64.2.32/27 comment="100.64.2.32/27 =
+=> portas=18160-19167" protocol=udp to-addresses=201.33.167.128/27 to-ports=1816
+0-19167
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.64/27 portas=19168-20175" jump-target=100.64.2.64/27 src-address=100.64.2.64/27
+
+/ip firewall nat add action=netmap chain=100.64.2.64/27 comment="100.64.2.64/27 =
+=> portas=19168-20175" protocol=tcp to-addresses=201.33.167.128/27 to-ports=1916
+8-20175
+/ip firewall nat add action=netmap chain=100.64.2.64/27 comment="100.64.2.64/27 =
+=> portas=19168-20175" protocol=udp to-addresses=201.33.167.128/27 to-ports=1916
+8-20175
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.96/27 portas=20176-21183" jump-target=100.64.2.96/27 src-address=100.64.2.96/27
+
+/ip firewall nat add action=netmap chain=100.64.2.96/27 comment="100.64.2.96/27 =
+=> portas=20176-21183" protocol=tcp to-addresses=201.33.167.128/27 to-ports=2017
+6-21183
+/ip firewall nat add action=netmap chain=100.64.2.96/27 comment="100.64.2.96/27 =
+=> portas=20176-21183" protocol=udp to-addresses=201.33.167.128/27 to-ports=2017
+6-21183
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.128/27 portas=21184-22191" jump-target=100.64.2.128/27 src-address=100.64.2.128
+/27
+/ip firewall nat add action=netmap chain=100.64.2.128/27 comment="100.64.2.128/27
+ ==> portas=21184-22191" protocol=tcp to-addresses=201.33.167.128/27 to-ports=21
+184-22191
+/ip firewall nat add action=netmap chain=100.64.2.128/27 comment="100.64.2.128/27
+ ==> portas=21184-22191" protocol=udp to-addresses=201.33.167.128/27 to-ports=21
+184-22191
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.160/27 portas=22192-23199" jump-target=100.64.2.160/27 src-address=100.64.2.160
+/27
+/ip firewall nat add action=netmap chain=100.64.2.160/27 comment="100.64.2.160/27
+ ==> portas=22192-23199" protocol=tcp to-addresses=201.33.167.128/27 to-ports=22
+192-23199
+/ip firewall nat add action=netmap chain=100.64.2.160/27 comment="100.64.2.160/27
+ ==> portas=22192-23199" protocol=udp to-addresses=201.33.167.128/27 to-ports=22
+192-23199
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.192/27 portas=23200-24207" jump-target=100.64.2.192/27 src-address=100.64.2.192
+/27
+/ip firewall nat add action=netmap chain=100.64.2.192/27 comment="100.64.2.192/27
+ ==> portas=23200-24207" protocol=tcp to-addresses=201.33.167.128/27 to-ports=23
+200-24207
+/ip firewall nat add action=netmap chain=100.64.2.192/27 comment="100.64.2.192/27
+ ==> portas=23200-24207" protocol=udp to-addresses=201.33.167.128/27 to-ports=23
+200-24207
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.224/27 portas=24208-25215" jump-target=100.64.2.224/27 src-address=100.64.2.224
+/27
+/ip firewall nat add action=netmap chain=100.64.2.224/27 comment="100.64.2.224/27
+ ==> portas=24208-25215" protocol=tcp to-addresses=201.33.167.128/27 to-ports=24
+208-25215
+/ip firewall nat add action=netmap chain=100.64.2.224/27 comment="100.64.2.224/27
+ ==> portas=24208-25215" protocol=udp to-addresses=201.33.167.128/27 to-ports=24
+208-25215
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.0/27 portas=25216-26223" jump-target=100.64.3.0/27 src-address=100.64.3.0/27
+/ip firewall nat add action=netmap chain=100.64.3.0/27 comment="100.64.3.0/27 ==>
+ portas=25216-26223" protocol=tcp to-addresses=201.33.167.128/27 to-ports=25216-
+26223
+/ip firewall nat add action=netmap chain=100.64.3.0/27 comment="100.64.3.0/27 ==>
+ portas=25216-26223" protocol=udp to-addresses=201.33.167.128/27 to-ports=25216-
+26223
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.32/27 portas=26224-27231" jump-target=100.64.3.32/27 src-address=100.64.3.32/27
+
+/ip firewall nat add action=netmap chain=100.64.3.32/27 comment="100.64.3.32/27 =
+=> portas=26224-27231" protocol=tcp to-addresses=201.33.167.128/27 to-ports=2622
+4-27231
+/ip firewall nat add action=netmap chain=100.64.3.32/27 comment="100.64.3.32/27 =
+=> portas=26224-27231" protocol=udp to-addresses=201.33.167.128/27 to-ports=2622
+4-27231
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.64/27 portas=27232-28239" jump-target=100.64.3.64/27 src-address=100.64.3.64/27
+
+/ip firewall nat add action=netmap chain=100.64.3.64/27 comment="100.64.3.64/27 =
+=> portas=27232-28239" protocol=tcp to-addresses=201.33.167.128/27 to-ports=2723
+2-28239
+/ip firewall nat add action=netmap chain=100.64.3.64/27 comment="100.64.3.64/27 =
+=> portas=27232-28239" protocol=udp to-addresses=201.33.167.128/27 to-ports=2723
+2-28239
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.96/27 portas=28240-29247" jump-target=100.64.3.96/27 src-address=100.64.3.96/27
+
+/ip firewall nat add action=netmap chain=100.64.3.96/27 comment="100.64.3.96/27 =
+=> portas=28240-29247" protocol=tcp to-addresses=201.33.167.128/27 to-ports=2824
+0-29247
+/ip firewall nat add action=netmap chain=100.64.3.96/27 comment="100.64.3.96/27 =
+=> portas=28240-29247" protocol=udp to-addresses=201.33.167.128/27 to-ports=2824
+0-29247
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.128/27 portas=29248-30255" jump-target=100.64.3.128/27 src-address=100.64.3.128
+/27
+/ip firewall nat add action=netmap chain=100.64.3.128/27 comment="100.64.3.128/27
+ ==> portas=29248-30255" protocol=tcp to-addresses=201.33.167.128/27 to-ports=29
+248-30255
+/ip firewall nat add action=netmap chain=100.64.3.128/27 comment="100.64.3.128/27
+ ==> portas=29248-30255" protocol=udp to-addresses=201.33.167.128/27 to-ports=29
+248-30255
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.160/27 portas=30256-31263" jump-target=100.64.3.160/27 src-address=100.64.3.160
+/27
+/ip firewall nat add action=netmap chain=100.64.3.160/27 comment="100.64.3.160/27
+ ==> portas=30256-31263" protocol=tcp to-addresses=201.33.167.128/27 to-ports=30
+256-31263
+/ip firewall nat add action=netmap chain=100.64.3.160/27 comment="100.64.3.160/27
+ ==> portas=30256-31263" protocol=udp to-addresses=201.33.167.128/27 to-ports=30
+256-31263
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.192/27 portas=31264-32271" jump-target=100.64.3.192/27 src-address=100.64.3.192
+/27
+/ip firewall nat add action=netmap chain=100.64.3.192/27 comment="100.64.3.192/27
+ ==> portas=31264-32271" protocol=tcp to-addresses=201.33.167.128/27 to-ports=31
+264-32271
+/ip firewall nat add action=netmap chain=100.64.3.192/27 comment="100.64.3.192/27
+ ==> portas=31264-32271" protocol=udp to-addresses=201.33.167.128/27 to-ports=31
+264-32271
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.224/27 portas=32272-33279" jump-target=100.64.3.224/27 src-address=100.64.3.224
+/27
+/ip firewall nat add action=netmap chain=100.64.3.224/27 comment="100.64.3.224/27
+ ==> portas=32272-33279" protocol=tcp to-addresses=201.33.167.128/27 to-ports=32
+272-33279
+/ip firewall nat add action=netmap chain=100.64.3.224/27 comment="100.64.3.224/27
+ ==> portas=32272-33279" protocol=udp to-addresses=201.33.167.128/27 to-ports=32
+272-33279
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.0/27 portas=33280-34287" jump-target=100.64.4.0/27 src-address=100.64.4.0/27
+/ip firewall nat add action=netmap chain=100.64.4.0/27 comment="100.64.4.0/27 ==>
+ portas=33280-34287" protocol=tcp to-addresses=201.33.167.128/27 to-ports=33280-
+34287
+/ip firewall nat add action=netmap chain=100.64.4.0/27 comment="100.64.4.0/27 ==>
+ portas=33280-34287" protocol=udp to-addresses=201.33.167.128/27 to-ports=33280-
+34287
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.32/27 portas=34288-35295" jump-target=100.64.4.32/27 src-address=100.64.4.32/27
+
+/ip firewall nat add action=netmap chain=100.64.4.32/27 comment="100.64.4.32/27 =
+=> portas=34288-35295" protocol=tcp to-addresses=201.33.167.128/27 to-ports=3428
+8-35295
+/ip firewall nat add action=netmap chain=100.64.4.32/27 comment="100.64.4.32/27 =
+=> portas=34288-35295" protocol=udp to-addresses=201.33.167.128/27 to-ports=3428
+8-35295
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.64/27 portas=35296-36303" jump-target=100.64.4.64/27 src-address=100.64.4.64/27
+
+/ip firewall nat add action=netmap chain=100.64.4.64/27 comment="100.64.4.64/27 =
+=> portas=35296-36303" protocol=tcp to-addresses=201.33.167.128/27 to-ports=3529
+6-36303
+/ip firewall nat add action=netmap chain=100.64.4.64/27 comment="100.64.4.64/27 =
+=> portas=35296-36303" protocol=udp to-addresses=201.33.167.128/27 to-ports=3529
+6-36303
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.96/27 portas=36304-37311" jump-target=100.64.4.96/27 src-address=100.64.4.96/27
+
+/ip firewall nat add action=netmap chain=100.64.4.96/27 comment="100.64.4.96/27 =
+=> portas=36304-37311" protocol=tcp to-addresses=201.33.167.128/27 to-ports=3630
+4-37311
+/ip firewall nat add action=netmap chain=100.64.4.96/27 comment="100.64.4.96/27 =
+=> portas=36304-37311" protocol=udp to-addresses=201.33.167.128/27 to-ports=3630
+4-37311
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.128/27 portas=37312-38319" jump-target=100.64.4.128/27 src-address=100.64.4.128
+/27
+/ip firewall nat add action=netmap chain=100.64.4.128/27 comment="100.64.4.128/27
+ ==> portas=37312-38319" protocol=tcp to-addresses=201.33.167.128/27 to-ports=37
+312-38319
+/ip firewall nat add action=netmap chain=100.64.4.128/27 comment="100.64.4.128/27
+ ==> portas=37312-38319" protocol=udp to-addresses=201.33.167.128/27 to-ports=37
+312-38319
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.160/27 portas=38320-39327" jump-target=100.64.4.160/27 src-address=100.64.4.160
+/27
+/ip firewall nat add action=netmap chain=100.64.4.160/27 comment="100.64.4.160/27
+ ==> portas=38320-39327" protocol=tcp to-addresses=201.33.167.128/27 to-ports=38
+320-39327
+/ip firewall nat add action=netmap chain=100.64.4.160/27 comment="100.64.4.160/27
+ ==> portas=38320-39327" protocol=udp to-addresses=201.33.167.128/27 to-ports=38
+320-39327
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.192/27 portas=39328-40335" jump-target=100.64.4.192/27 src-address=100.64.4.192
+/27
+/ip firewall nat add action=netmap chain=100.64.4.192/27 comment="100.64.4.192/27
+ ==> portas=39328-40335" protocol=tcp to-addresses=201.33.167.128/27 to-ports=39
+328-40335
+/ip firewall nat add action=netmap chain=100.64.4.192/27 comment="100.64.4.192/27
+ ==> portas=39328-40335" protocol=udp to-addresses=201.33.167.128/27 to-ports=39
+328-40335
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.224/27 portas=40336-41343" jump-target=100.64.4.224/27 src-address=100.64.4.224
+/27
+/ip firewall nat add action=netmap chain=100.64.4.224/27 comment="100.64.4.224/27
+ ==> portas=40336-41343" protocol=tcp to-addresses=201.33.167.128/27 to-ports=40
+336-41343
+/ip firewall nat add action=netmap chain=100.64.4.224/27 comment="100.64.4.224/27
+ ==> portas=40336-41343" protocol=udp to-addresses=201.33.167.128/27 to-ports=40
+336-41343
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.0/27 portas=41344-42351" jump-target=100.64.5.0/27 src-address=100.64.5.0/27
+/ip firewall nat add action=netmap chain=100.64.5.0/27 comment="100.64.5.0/27 ==>
+ portas=41344-42351" protocol=tcp to-addresses=201.33.167.128/27 to-ports=41344-
+42351
+/ip firewall nat add action=netmap chain=100.64.5.0/27 comment="100.64.5.0/27 ==>
+ portas=41344-42351" protocol=udp to-addresses=201.33.167.128/27 to-ports=41344-
+42351
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.32/27 portas=42352-43359" jump-target=100.64.5.32/27 src-address=100.64.5.32/27
+
+/ip firewall nat add action=netmap chain=100.64.5.32/27 comment="100.64.5.32/27 =
+=> portas=42352-43359" protocol=tcp to-addresses=201.33.167.128/27 to-ports=4235
+2-43359
+/ip firewall nat add action=netmap chain=100.64.5.32/27 comment="100.64.5.32/27 =
+=> portas=42352-43359" protocol=udp to-addresses=201.33.167.128/27 to-ports=4235
+2-43359
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.64/27 portas=43360-44367" jump-target=100.64.5.64/27 src-address=100.64.5.64/27
+
+/ip firewall nat add action=netmap chain=100.64.5.64/27 comment="100.64.5.64/27 =
+=> portas=43360-44367" protocol=tcp to-addresses=201.33.167.128/27 to-ports=4336
+0-44367
+/ip firewall nat add action=netmap chain=100.64.5.64/27 comment="100.64.5.64/27 =
+=> portas=43360-44367" protocol=udp to-addresses=201.33.167.128/27 to-ports=4336
+0-44367
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.96/27 portas=44368-45375" jump-target=100.64.5.96/27 src-address=100.64.5.96/27
+
+/ip firewall nat add action=netmap chain=100.64.5.96/27 comment="100.64.5.96/27 =
+=> portas=44368-45375" protocol=tcp to-addresses=201.33.167.128/27 to-ports=4436
+8-45375
+/ip firewall nat add action=netmap chain=100.64.5.96/27 comment="100.64.5.96/27 =
+=> portas=44368-45375" protocol=udp to-addresses=201.33.167.128/27 to-ports=4436
+8-45375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.128/27 portas=45376-46383" jump-target=100.64.5.128/27 src-address=100.64.5.128
+/27
+/ip firewall nat add action=netmap chain=100.64.5.128/27 comment="100.64.5.128/27
+ ==> portas=45376-46383" protocol=tcp to-addresses=201.33.167.128/27 to-ports=45
+376-46383
+/ip firewall nat add action=netmap chain=100.64.5.128/27 comment="100.64.5.128/27
+ ==> portas=45376-46383" protocol=udp to-addresses=201.33.167.128/27 to-ports=45
+376-46383
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.160/27 portas=46384-47391" jump-target=100.64.5.160/27 src-address=100.64.5.160
+/27
+/ip firewall nat add action=netmap chain=100.64.5.160/27 comment="100.64.5.160/27
+ ==> portas=46384-47391" protocol=tcp to-addresses=201.33.167.128/27 to-ports=46
+384-47391
+/ip firewall nat add action=netmap chain=100.64.5.160/27 comment="100.64.5.160/27
+ ==> portas=46384-47391" protocol=udp to-addresses=201.33.167.128/27 to-ports=46
+384-47391
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.192/27 portas=47392-48399" jump-target=100.64.5.192/27 src-address=100.64.5.192
+/27
+/ip firewall nat add action=netmap chain=100.64.5.192/27 comment="100.64.5.192/27
+ ==> portas=47392-48399" protocol=tcp to-addresses=201.33.167.128/27 to-ports=47
+392-48399
+/ip firewall nat add action=netmap chain=100.64.5.192/27 comment="100.64.5.192/27
+ ==> portas=47392-48399" protocol=udp to-addresses=201.33.167.128/27 to-ports=47
+392-48399
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.224/27 portas=48400-49407" jump-target=100.64.5.224/27 src-address=100.64.5.224
+/27
+/ip firewall nat add action=netmap chain=100.64.5.224/27 comment="100.64.5.224/27
+ ==> portas=48400-49407" protocol=tcp to-addresses=201.33.167.128/27 to-ports=48
+400-49407
+/ip firewall nat add action=netmap chain=100.64.5.224/27 comment="100.64.5.224/27
+ ==> portas=48400-49407" protocol=udp to-addresses=201.33.167.128/27 to-ports=48
+400-49407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.0/27 portas=49408-50415" jump-target=100.64.6.0/27 src-address=100.64.6.0/27
+/ip firewall nat add action=netmap chain=100.64.6.0/27 comment="100.64.6.0/27 ==>
+ portas=49408-50415" protocol=tcp to-addresses=201.33.167.128/27 to-ports=49408-
+50415
+/ip firewall nat add action=netmap chain=100.64.6.0/27 comment="100.64.6.0/27 ==>
+ portas=49408-50415" protocol=udp to-addresses=201.33.167.128/27 to-ports=49408-
+50415
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.32/27 portas=50416-51423" jump-target=100.64.6.32/27 src-address=100.64.6.32/27
+
+/ip firewall nat add action=netmap chain=100.64.6.32/27 comment="100.64.6.32/27 =
+=> portas=50416-51423" protocol=tcp to-addresses=201.33.167.128/27 to-ports=5041
+6-51423
+/ip firewall nat add action=netmap chain=100.64.6.32/27 comment="100.64.6.32/27 =
+=> portas=50416-51423" protocol=udp to-addresses=201.33.167.128/27 to-ports=5041
+6-51423
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.64/27 portas=51424-52431" jump-target=100.64.6.64/27 src-address=100.64.6.64/27
+
+/ip firewall nat add action=netmap chain=100.64.6.64/27 comment="100.64.6.64/27 =
+=> portas=51424-52431" protocol=tcp to-addresses=201.33.167.128/27 to-ports=5142
+4-52431
+/ip firewall nat add action=netmap chain=100.64.6.64/27 comment="100.64.6.64/27 =
+=> portas=51424-52431" protocol=udp to-addresses=201.33.167.128/27 to-ports=5142
+4-52431
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.96/27 portas=52432-53439" jump-target=100.64.6.96/27 src-address=100.64.6.96/27
+
+/ip firewall nat add action=netmap chain=100.64.6.96/27 comment="100.64.6.96/27 =
+=> portas=52432-53439" protocol=tcp to-addresses=201.33.167.128/27 to-ports=5243
+2-53439
+/ip firewall nat add action=netmap chain=100.64.6.96/27 comment="100.64.6.96/27 =
+=> portas=52432-53439" protocol=udp to-addresses=201.33.167.128/27 to-ports=5243
+2-53439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.128/27 portas=53440-54447" jump-target=100.64.6.128/27 src-address=100.64.6.128
+/27
+/ip firewall nat add action=netmap chain=100.64.6.128/27 comment="100.64.6.128/27
+ ==> portas=53440-54447" protocol=tcp to-addresses=201.33.167.128/27 to-ports=53
+440-54447
+/ip firewall nat add action=netmap chain=100.64.6.128/27 comment="100.64.6.128/27
+ ==> portas=53440-54447" protocol=udp to-addresses=201.33.167.128/27 to-ports=53
+440-54447
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.160/27 portas=54448-55455" jump-target=100.64.6.160/27 src-address=100.64.6.160
+/27
+/ip firewall nat add action=netmap chain=100.64.6.160/27 comment="100.64.6.160/27
+ ==> portas=54448-55455" protocol=tcp to-addresses=201.33.167.128/27 to-ports=54
+448-55455
+/ip firewall nat add action=netmap chain=100.64.6.160/27 comment="100.64.6.160/27
+ ==> portas=54448-55455" protocol=udp to-addresses=201.33.167.128/27 to-ports=54
+448-55455
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.192/27 portas=55456-56463" jump-target=100.64.6.192/27 src-address=100.64.6.192
+/27
+/ip firewall nat add action=netmap chain=100.64.6.192/27 comment="100.64.6.192/27
+ ==> portas=55456-56463" protocol=tcp to-addresses=201.33.167.128/27 to-ports=55
+456-56463
+/ip firewall nat add action=netmap chain=100.64.6.192/27 comment="100.64.6.192/27
+ ==> portas=55456-56463" protocol=udp to-addresses=201.33.167.128/27 to-ports=55
+456-56463
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.224/27 portas=56464-57471" jump-target=100.64.6.224/27 src-address=100.64.6.224
+/27
+/ip firewall nat add action=netmap chain=100.64.6.224/27 comment="100.64.6.224/27
+ ==> portas=56464-57471" protocol=tcp to-addresses=201.33.167.128/27 to-ports=56
+464-57471
+/ip firewall nat add action=netmap chain=100.64.6.224/27 comment="100.64.6.224/27
+ ==> portas=56464-57471" protocol=udp to-addresses=201.33.167.128/27 to-ports=56
+464-57471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.0/27 portas=57472-58479" jump-target=100.64.7.0/27 src-address=100.64.7.0/27
+/ip firewall nat add action=netmap chain=100.64.7.0/27 comment="100.64.7.0/27 ==>
+ portas=57472-58479" protocol=tcp to-addresses=201.33.167.128/27 to-ports=57472-
+58479
+/ip firewall nat add action=netmap chain=100.64.7.0/27 comment="100.64.7.0/27 ==>
+ portas=57472-58479" protocol=udp to-addresses=201.33.167.128/27 to-ports=57472-
+58479
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.32/27 portas=58480-59487" jump-target=100.64.7.32/27 src-address=100.64.7.32/27
+
+/ip firewall nat add action=netmap chain=100.64.7.32/27 comment="100.64.7.32/27 =
+=> portas=58480-59487" protocol=tcp to-addresses=201.33.167.128/27 to-ports=5848
+0-59487
+/ip firewall nat add action=netmap chain=100.64.7.32/27 comment="100.64.7.32/27 =
+=> portas=58480-59487" protocol=udp to-addresses=201.33.167.128/27 to-ports=5848
+0-59487
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.64/27 portas=59488-60495" jump-target=100.64.7.64/27 src-address=100.64.7.64/27
+
+/ip firewall nat add action=netmap chain=100.64.7.64/27 comment="100.64.7.64/27 =
+=> portas=59488-60495" protocol=tcp to-addresses=201.33.167.128/27 to-ports=5948
+8-60495
+/ip firewall nat add action=netmap chain=100.64.7.64/27 comment="100.64.7.64/27 =
+=> portas=59488-60495" protocol=udp to-addresses=201.33.167.128/27 to-ports=5948
+8-60495
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.96/27 portas=60496-61503" jump-target=100.64.7.96/27 src-address=100.64.7.96/27
+
+/ip firewall nat add action=netmap chain=100.64.7.96/27 comment="100.64.7.96/27 =
+=> portas=60496-61503" protocol=tcp to-addresses=201.33.167.128/27 to-ports=6049
+6-61503
+/ip firewall nat add action=netmap chain=100.64.7.96/27 comment="100.64.7.96/27 =
+=> portas=60496-61503" protocol=udp to-addresses=201.33.167.128/27 to-ports=6049
+6-61503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.128/27 portas=61504-62511" jump-target=100.64.7.128/27 src-address=100.64.7.128
+/27
+/ip firewall nat add action=netmap chain=100.64.7.128/27 comment="100.64.7.128/27
+ ==> portas=61504-62511" protocol=tcp to-addresses=201.33.167.128/27 to-ports=61
+504-62511
+/ip firewall nat add action=netmap chain=100.64.7.128/27 comment="100.64.7.128/27
+ ==> portas=61504-62511" protocol=udp to-addresses=201.33.167.128/27 to-ports=61
+504-62511
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.160/27 portas=62512-63519" jump-target=100.64.7.160/27 src-address=100.64.7.160
+/27
+/ip firewall nat add action=netmap chain=100.64.7.160/27 comment="100.64.7.160/27
+ ==> portas=62512-63519" protocol=tcp to-addresses=201.33.167.128/27 to-ports=62
+512-63519
+/ip firewall nat add action=netmap chain=100.64.7.160/27 comment="100.64.7.160/27
+ ==> portas=62512-63519" protocol=udp to-addresses=201.33.167.128/27 to-ports=62
+512-63519
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.192/27 portas=63520-64527" jump-target=100.64.7.192/27 src-address=100.64.7.192
+/27
+/ip firewall nat add action=netmap chain=100.64.7.192/27 comment="100.64.7.192/27
+ ==> portas=63520-64527" protocol=tcp to-addresses=201.33.167.128/27 to-ports=63
+520-64527
+/ip firewall nat add action=netmap chain=100.64.7.192/27 comment="100.64.7.192/27
+ ==> portas=63520-64527" protocol=udp to-addresses=201.33.167.128/27 to-ports=63
+520-64527
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.224/27 portas=64528-65535" jump-target=100.64.7.224/27 src-address=100.64.7.224
+/27
+/ip firewall nat add action=netmap chain=100.64.7.224/27 comment="100.64.7.224/27
+ ==> portas=64528-65535" protocol=tcp to-addresses=201.33.167.128/27 to-ports=64
+528-65535
+/ip firewall nat add action=netmap chain=100.64.7.224/27 comment="100.64.7.224/27
+ ==> portas=64528-65535" protocol=udp to-addresses=201.33.167.128/27 to-ports=64
+528-65535
+/ip firewall nat add action=netmap chain=srcnat comment="100.64.0.0/21 ==> 201.33
+.167.128/27" src-address=100.64.0.0/21 to-addresses=201.33.167.128/27
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT GERAL K2" dst-addre
+ss-list=!Rede-Interna out-interface=vlan3012-WAN-K2 src-address-list=!publico to
+-addresses=201.33.167.255
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT CLIENTE CONTAB
+ILIDADE" dst-address=201.33.167.255 dst-port=161 protocol=udp to-addresses=100.6
+4.4.1 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT CLIENTE CONTAB
+ILIDADE" dst-address=201.33.167.255 dst-port=161 protocol=tcp to-addresses=100.6
+4.4.1 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT CLIENTE CONTAB
+ILIDADE" dst-address=201.33.167.255 dst-port=10050-10053 protocol=tcp to-address
+es=100.64.4.1 to-ports=10050-10053
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT CLIENTE CONTAB
+ILIDADE" dst-address=201.33.167.255 dst-port=10050-10053 protocol=udp to-address
+es=100.64.4.1 to-ports=10050-10053
+/ip firewall raw add action=notrack chain=output protocol=ospf
+/ip firewall raw add action=notrack chain=output comment="SGP NAO FAZER NAT PARA 
+O RADIUS" disabled=yes dst-address=172.16.116.1 dst-port=2812-2813,3799 protocol
+=udp
+/ip firewall raw add action=drop chain=prerouting comment="SGP BLOQUEIO" disabled
+=yes dst-address-list=!SITES-LIBERADOS src-address-list=BLOQUEADOS
+/ip firewall raw add action=drop chain=prerouting protocol=udp src-port=19,25,190
+0,11211
+/ip firewall raw add action=drop chain=prerouting protocol=tcp src-port=19,25,190
+0,11211
+/ip firewall raw add action=drop chain=prerouting dst-port=19,25,1900,11211 proto
+col=udp
+/ip firewall raw add action=drop chain=prerouting dst-port=19,25,1900,11211 proto
+col=tcp
+/ip firewall service-port set irc disabled=no
+/ip route add check-gateway=ping comment="LINK K2" disabled=no distance=1 dst-add
+ress=0.0.0.0/0 gateway=10.63.5.233 pref-src=201.33.167.255 routing-table=main sc
+ope=30 suppress-hw-offload=no target-scope=10
+/ip route add comment=BNG01 disabled=no distance=111 dst-address=100.64.0.0/23 ga
+teway=10.0.32.2 routing-table=main scope=30 suppress-hw-offload=no target-scope=
+10
+/ip route add comment=BNG02 disabled=no distance=111 dst-address=100.64.2.0/23 ga
+teway=10.0.33.2 routing-table=main scope=30 suppress-hw-offload=no target-scope=
+10
+/ip route add comment=BNG03 disabled=no distance=111 dst-address=100.64.4.0/23 ga
+teway=10.0.34.2 routing-table=main scope=30 suppress-hw-offload=no target-scope=
+10
+/ip route add blackhole comment="IPS CGNAT" disabled=no distance=1 dst-address=20
+1.33.167.128/27 gateway="" routing-table=main scope=30 suppress-hw-offload=no ta
+rget-scope=10
+/ip route add disabled=no distance=111 dst-address=191.241.72.8/32 gateway=10.0.3
+4.2%vlan2204-IPv4-BNG-03 routing-table=main scope=20 suppress-hw-offload=no targ
+et-scope=10
+/ipv6 route add disabled=no dst-address=::/0 gateway=fc00:0:1c00::11 routing-tabl
+e=main suppress-hw-offload=no
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes port=8182
+/ip service set ssh port=22003
+/ip service set api address=172.16.116.1/32,45.178.140.60/32 port=3540
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip smb shares set [ find default=yes ] directory=/pub
+/ipv6 address add address=fc00:0:1c00::12/126 advertise=no interface=vlan3012-WAN
+-K2
+/ipv6 address add address=2804:113c:9003::1/50 advertise=no comment=PREFIXO-V6 in
+terface=loopback
+/lcd set time-interval=hour
+/ppp aaa set interim-update=5m use-radius=yes
+/ppp secret add comment="ACESSO REMOTO CONSULTORIA N\C3O EXCLUIR" local-address=1
+0.20.30.41 name=acsinfo profile=default-encryption remote-address=10.20.30.40 se
+rvice=l2tp
+/ppp secret add comment="ACESSO REMOTO CONSULTORIA N\C3O EXCLUIR" local-address=1
+0.20.30.41 name=acsinfo2 profile=default-encryption remote-address=10.20.30.42 s
+ervice=pptp
+/ppp secret add comment="ACESSO REMOTO CONSULTORIA N\C3O EXCLUIR" local-address=1
+0.20.30.41 name=josiney remote-address=10.20.30.43 service=l2tp
+/ppp secret add name=tomich service=l2tp
+/radius incoming set accept=yes
+/routing bfd configuration add disabled=no interfaces=all min-rx=200ms min-tx=200
+ms multiplier=5
+/routing ospf interface-template add area=backbone-v2 auth-id=1 auth-key="" cost=
+10 disabled=no interfaces=vlan-2200-IPv4-BNG-01 networks=10.0.32.0/30 priority=1
+ type=ptp use-bfd=no
+/routing ospf interface-template add area=backbone-v2 disabled=no interfaces=loop
+back-ospf networks=10.255.255.1 priority=1
+/routing ospf interface-template add area=bgp-v2 disabled=yes interfaces=loopback
+-ospf-bgp networks=10.255.255.201 priority=1
+/routing ospf interface-template add area=backbone-v2 auth-id=1 auth-key="" cost=
+10 disabled=no interfaces=vlan-2201-IPv4-BNG-02 networks=10.0.33.0/30 priority=1
+ type=ptp use-bfd=no
+/routing ospf interface-template add area=backbone-v2 auth-id=1 auth-key="" cost=
+10 disabled=no interfaces=vlan2204-IPv4-BNG-03 networks=10.0.34.0/30 priority=1 
+type=ptp use-bfd=no
+/routing ospf interface-template add area=backbone-v3 disabled=no interfaces=vlan
+-2200-IPv4-BNG-01 type=ptp
+/routing ospf interface-template add area=backbone-v3 disabled=no interfaces=vlan
+-2201-IPv4-BNG-02 type=ptp
+/routing ospf interface-template add area=backbone-v3 disabled=no interfaces=vlan
+2204-IPv4-BNG-03 type=ptp
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=20
+1.33.167.144/28 table=main
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=19
+1.241.72.64/28 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=191.241.72.64/28 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=191.241.72.64/28 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=191.241.72.64/28 table=main
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=10
+.80.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=10
+.81.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=10
+.82.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=18
+9.84.216.192/27 table=main
+/routing rule add action=lookup disabled=no dst-address=10.0.0.0/8 src-address=19
+1.241.72.8/29 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=201.33.167.144/28 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=10.80.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=10.81.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=10.82.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=189.84.216.192/27 table=main
+/routing rule add action=lookup disabled=no dst-address=192.168.0.0/16 src-addres
+s=191.241.72.8/29 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=201.33.167.144/28 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=10.80.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=10.81.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=10.82.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=189.84.216.192/27 table=main
+/routing rule add action=lookup disabled=no dst-address=172.16.0.0/12 src-address
+=191.241.72.8/29 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=201.33.167.144/28 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=10.80.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=10.81.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=10.82.248.0/22 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=189.84.216.192/27 table=main
+/routing rule add action=lookup disabled=no dst-address=100.64.0.0/10 src-address
+=191.241.72.8/29 table=main
+/routing rule add action=lookup disabled=no dst-address=0.0.0.0/0 src-address=201
+.33.167.144/28 table=Rota-K2
+/routing rule add action=lookup disabled=no dst-address=0.0.0.0/0 src-address=189
+.84.216.192/27 table=rota-dinamica
+/routing rule add action=lookup disabled=no dst-address=0.0.0.0/0 src-address=191
+.241.72.8/29 table=Rota-K2
+/routing rule add action=lookup disabled=no dst-address=0.0.0.0/0 src-address=191
+.241.72.64/28 table=Rota-K2
+/snmp set contact=noc@tomich.com.br enabled=yes location=Brazil trap-community=TO
+MICH trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name=BORDA-CGNAT-ConectOnline
+/system logging set 0 topics=info,!account
+/system note set show-at-login=no
+/system ntp client set enabled=yes
+/system ntp client servers add address=200.160.0.8
+/tool bandwidth-server set enabled=no
+/tool e-mail set from=conectnetes.backup@gmail.com port=587 server=64.233.186.109
+ tls=starttls user=conectnetes.backup@gmail.com
+/tool graphing set store-every=24hours
+/tool graphing interface add interface=*D
+/tool graphing interface add interface=vlan-2200-IPv4-BNG-01
+/tool graphing interface add interface=ether7
+/tool graphing interface add interface=ether1
+/tool graphing interface add interface=ether2
+/tool graphing interface add interface=*17
+/tool graphing resource add
+/tool netwatch add disabled=no down-script="/ip firewal nat set [/ip firewal nat 
+find comment=CASODNSFALHE1] disabled=no" host=10.10.10.10 http-codes="" interval
+=10s test-script="" timeout=1s type=simple up-script="/ip firewal nat set [/ip f
+irewal nat find comment=CASODNSFALHE1] disabled=yes"
+/tool netwatch add disabled=no down-script="/ip firewal nat set [/ip firewal nat 
+find comment=CASODNSFALHE2] disabled=no" host=10.10.10.11 http-codes="" interval
+=10s test-script="" timeout=1s type=simple up-script="/ip firewal nat set [/ip f
+irewal nat find comment=CASODNSFALHE2] disabled=yes"
+/tool romon set enabled=yes
+/user aaa set use-radius=yes
+[danilo@BORDA-CGNAT-ConectOnline] >                                            [danilo@BORDA-CGNAT-ConectOnline] > 

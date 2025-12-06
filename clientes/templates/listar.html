@@ -58,6 +58,9 @@
             </li>
             -->
             <li class="nav-item">
+                <a class="nav-link" href="#" onclick="trocarAba(event, 'rpki-irr')">RPKI/IRR</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="#" onclick="trocarAba(event, 'chamados')">Chamados</a>
             </li>
         </ul>
@@ -223,6 +226,206 @@
                 </div>
             </div></div>
         </div>
+
+        <!-- Conteúdo da aba RPKI/IRR -->
+        <div id="tab-rpki-irr" class="tab-content-main" style="display: none;">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">Validação RPKI/IRR</h5>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="carregarBlocosIP()">
+                                <i class="fas fa-sync-alt me-1"></i> Atualizar
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="abrirModalCadastrarBloco()">
+                                <i class="fas fa-plus me-1"></i> Adicionar Bloco IP
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="alert" style="background: rgba(0, 217, 255, 0.1); border-left: 3px solid var(--accent-cyan); color: var(--text-light); margin-bottom: 20px;">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-info-circle me-3" style="font-size: 20px; margin-top: 2px;"></i>
+                            <div>
+                                <strong>RPKI/IRR Validation</strong><br>
+                                <small>
+                                    • <strong>RPKI:</strong> Resource Public Key Infrastructure - Valida origem de anúncios BGP<br>
+                                    • <strong>IRR:</strong> Internet Routing Registry - Registros de rotas em bases de dados públicas<br>
+                                    • Validação automática executada diariamente às 02:00 AM
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Blocos -->
+                    <div id="listaBlocosIP">
+                        <div class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                            <p class="mt-3 text-muted">Carregando blocos IP...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Cadastrar Bloco IP -->
+        <div id="modalCadastrarBloco" class="modal-overlay" style="display: none;">
+            <div class="modal-acesso" style="max-width: 600px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Cadastrar Bloco IP</h2>
+                    <button class="btn-close-modal" onclick="fecharModalCadastrarBloco()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body-acesso">
+                    <form id="formCadastrarBloco" method="POST" action="{% url 'cadastrar_bloco_ip' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="cliente" value="{{ cliente.id }}">
+
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Tipo de IP</label>
+                            <select name="tipo" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <option value="IPV4">IPv4</option>
+                                <option value="IPV6">IPv6</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Bloco IP/CIDR</label>
+                            <input type="text" name="bloco" class="form-control" 
+                                placeholder="Ex: 200.100.50.0/24 ou 2801:80:1234::/48" required>
+                            <small class="form-text text-muted">Formato: IP/máscara (CIDR notation)</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">&gt;</span> ASN</label>
+                                    <input type="text" name="asn" class="form-control" 
+                                        placeholder="Ex: AS12345 ou 12345">
+                                    <small class="form-text text-muted">Autonomous System Number</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">&gt;</span> IRR Registry</label>
+                                    <select name="irr_registry" class="form-control">
+                                        <option value="">Selecione...</option>
+                                        <option value="LACNIC">LACNIC</option>
+                                        <option value="RIPE">RIPE NCC</option>
+                                        <option value="ARIN">ARIN</option>
+                                        <option value="APNIC">APNIC</option>
+                                        <option value="AFRINIC">AFRINIC</option>
+                                        <option value="RADB">RADB</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="terminal-status">
+                            <span class="status-indicator"></span>
+                            <span class="status-text">Validação automática será executada após cadastro</span>
+                        </div>
+
+                        <div class="modal-footer-acesso">
+                            <button type="button" class="btn-cancel-modal" onclick="fecharModalCadastrarBloco()">
+                                <i class="fas fa-times me-2"></i> Cancelar
+                            </button>
+                            <button type="submit" class="btn-submit-modal">
+                                <i class="fas fa-save me-2"></i> Cadastrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Editar Bloco IP -->
+        <div id="modalEditarBloco" class="modal-overlay" style="display: none;">
+            <div class="modal-acesso" style="max-width: 600px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Editar Bloco IP</h2>
+                    <button class="btn-close-modal" onclick="fecharModalEditarBloco()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body-acesso">
+                    <form id="formEditarBloco" method="POST" action="">
+                        {% csrf_token %}
+
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Tipo de IP</label>
+                            <select id="edit_tipo" name="tipo" class="form-control" required>
+                                <option value="IPV4">IPv4</option>
+                                <option value="IPV6">IPv6</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group-modal">
+                            <label><span class="label-prefix">&gt;</span> Bloco IP/CIDR</label>
+                            <input type="text" id="edit_bloco" name="bloco" class="form-control" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">&gt;</span> ASN</label>
+                                    <input type="text" id="edit_asn" name="asn" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modal">
+                                    <label><span class="label-prefix">&gt;</span> IRR Registry</label>
+                                    <select id="edit_irr_registry" name="irr_registry" class="form-control">
+                                        <option value="">Selecione...</option>
+                                        <option value="LACNIC">LACNIC</option>
+                                        <option value="RIPE">RIPE NCC</option>
+                                        <option value="ARIN">ARIN</option>
+                                        <option value="APNIC">APNIC</option>
+                                        <option value="AFRINIC">AFRINIC</option>
+                                        <option value="RADB">RADB</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer-acesso">
+                            <button type="button" class="btn-cancel-modal" onclick="fecharModalEditarBloco()">
+                                <i class="fas fa-times me-2"></i> Cancelar
+                            </button>
+                            <button type="submit" class="btn-submit-modal">
+                                <i class="fas fa-save me-2"></i> Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Visualizar Validação -->
+        <div id="modalVisualizarValidacao" class="modal-overlay" style="display: none;">
+            <div class="modal-acesso" style="max-width: 700px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Detalhes da Validação</h2>
+                    <button class="btn-close-modal" onclick="fecharModalVisualizarValidacao()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body-acesso">
+                    <div id="conteudoValidacao">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                    
+                    <div class="modal-footer-acesso">
+                        <button type="button" class="btn-cancel-modal" onclick="fecharModalVisualizarValidacao()">
+                            <i class="fas fa-check me-2"></i> Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>      
 
   <!-- ABA BACKUPS -->
     <div id="tab-backups" class="tab-content-main" style="display: none;">
@@ -1059,6 +1262,233 @@ function toggleTunelStatus(proxyId) {
 <script src="{% static 'js/main.js' %}"></script>
 <script src="{% static 'js/listar_acesso.js' %}"></script>
 
+
+<script>
+// ============================================
+// FUNÇÕES RPKI/IRR
+// ============================================
+
+function carregarBlocosIP() {
+    const clienteId = '{{ cliente.id }}';
+    const container = document.getElementById('listaBlocosIP');
+    
+    container.innerHTML = `
+        <div class="text-center py-5">
+            <i class="fas fa-spinner fa-spin" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+            <p class="mt-3 text-muted">Carregando blocos IP...</p>
+        </div>
+    `;
+    
+    fetch(`/clientes/blocos/listar/?id=${clienteId}`)
+        .then(response => response.json())
+        .then(data => {
+            renderizarBlocosIP(data.blocos);
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Erro ao carregar blocos IP</p>
+                    <button class="btn btn-primary mt-3" onclick="carregarBlocosIP()">
+                        <i class="fas fa-sync-alt me-2"></i> Tentar Novamente
+                    </button>
+                </div>
+            `;
+        });
+}
+
+function renderizarBlocosIP(blocos) {
+    const container = document.getElementById('listaBlocosIP');
+    
+    if (!blocos || blocos.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-network-wired" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                <p class="mt-3 text-muted">Nenhum bloco IP cadastrado</p>
+                <button class="btn btn-primary mt-3" onclick="abrirModalCadastrarBloco()">
+                    <i class="fas fa-plus me-2"></i> Adicionar Primeiro Bloco
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Bloco IP/CIDR</th>
+                        <th>ASN</th>
+                        <th>IRR Registry</th>
+                        <th>RPKI</th>
+                        <th>IRR</th>
+                        <th>Última Validação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    blocos.forEach(bloco => {
+        const rpkiClass = bloco.rpki_valido ? 'badge-success' : 'badge-danger';
+        const rpkiIcon = bloco.rpki_valido ? 'fa-check-circle' : 'fa-exclamation-circle';
+        
+        const irrClass = bloco.irr_valido ? 'badge-success' : 'badge-danger';
+        const irrIcon = bloco.irr_valido ? 'fa-check-circle' : 'fa-exclamation-circle';
+        
+        html += `
+            <tr>
+                <td>
+                    <span class="badge ${bloco.tipo_code === 'IPV4' ? 'badge-primary' : 'badge-info'}">
+                        ${bloco.tipo}
+                    </span>
+                </td>
+                <td style="font-family: 'Courier New', monospace; color: var(--primary-green); font-weight: 700;">
+                    ${bloco.bloco}
+                </td>
+                <td>${bloco.asn}</td>
+                <td>${bloco.irr_registry}</td>
+                <td>
+                    <span class="badge ${rpkiClass}" style="padding: 6px 10px; cursor: pointer;" 
+                          onclick="mostrarDetalhesValidacao('${bloco.bloco}', 'RPKI', '${bloco.rpki_status}', '${bloco.rpki_mensagem}')">
+                        <i class="fas ${rpkiIcon} me-1"></i>${bloco.rpki_status}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge ${irrClass}" style="padding: 6px 10px; cursor: pointer;"
+                          onclick="mostrarDetalhesValidacao('${bloco.bloco}', 'IRR', '${bloco.irr_status}', '${bloco.irr_mensagem}')">
+                        <i class="fas ${irrIcon} me-1"></i>${bloco.irr_status}
+                    </span>
+                </td>
+                <td style="font-size: 12px;">${bloco.ultima_validacao}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-info" onclick="validarBlocoManual(${bloco.id}, '${bloco.bloco}')" title="Validar Agora">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn-action btn-view" onclick="abrirModalEditarBloco(${bloco.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        {% if not is_cliente %}
+                        <form method="POST" action="/clientes/blocos/deletar/${bloco.id}/" style="display: inline;" 
+                              onsubmit="return confirm('Tem certeza que deseja excluir o bloco ${bloco.bloco}?')">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+                            <button type="submit" class="btn-action btn-delete" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function abrirModalCadastrarBloco() {
+    document.getElementById('modalCadastrarBloco').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalCadastrarBloco() {
+    document.getElementById('modalCadastrarBloco').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('formCadastrarBloco').reset();
+}
+
+function abrirModalEditarBloco(blocoId) {
+    fetch(`/clientes/blocos/buscar/${blocoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit_tipo').value = data.tipo;
+            document.getElementById('edit_bloco').value = data.bloco;
+            document.getElementById('edit_asn').value = data.asn;
+            document.getElementById('edit_irr_registry').value = data.irr_registry;
+            
+            document.getElementById('formEditarBloco').action = `/clientes/blocos/editar/${blocoId}/`;
+            document.getElementById('modalEditarBloco').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Não foi possível carregar os dados do bloco.', 5000);
+        });
+}
+
+function fecharModalEditarBloco() {
+    document.getElementById('modalEditarBloco').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function validarBlocoManual(blocoId, blocoTexto) {
+    showInfo('VALIDANDO', `Validando ${blocoTexto}...`, 3000);
+    
+    fetch(`/clientes/blocos/validar/${blocoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const rpkiStatus = data.rpki_valido ? '✅' : '❌';
+                const irrStatus = data.irr_valido ? '✅' : '❌';
+                
+                showSuccess('VALIDAÇÃO CONCLUÍDA', 
+                    `${blocoTexto}\n\n` +
+                    `RPKI: ${rpkiStatus} ${data.rpki_status}\n` +
+                    `${data.rpki_mensagem}\n\n` +
+                    `IRR: ${irrStatus} ${data.irr_status}\n` +
+                    `${data.irr_mensagem}`,
+                    8000);
+                
+                carregarBlocosIP();
+            } else {
+                showError('ERRO', data.error, 5000);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showError('ERRO', 'Erro ao validar bloco', 5000);
+        });
+}
+
+function mostrarDetalhesValidacao(bloco, tipo, status, mensagem) {
+    const titulo = `${tipo} - ${bloco}`;
+    const icone = status.includes('Valid') || status.includes('Found') ? '✅' : '❌';
+    
+    showInfo(titulo, `${icone} Status: ${status}\n\n${mensagem}`, 6000);
+}
+
+// Carregar blocos ao abrir aba
+document.addEventListener('DOMContentLoaded', function() {
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            const tabRPKI = document.getElementById('tab-rpki-irr');
+            if (tabRPKI && tabRPKI.style.display === 'block') {
+                setTimeout(() => {
+                    carregarBlocosIP();
+                }, 100);
+            }
+        });
+    });
+    
+    const tabRPKI = document.getElementById('tab-rpki-irr');
+    if (tabRPKI) {
+        observer.observe(tabRPKI, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+    }
+});
+</script>
 
 
 <script>

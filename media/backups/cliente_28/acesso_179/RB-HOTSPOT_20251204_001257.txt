@@ -1,0 +1,20 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: RB-HOTSPOT
+Host: 10.255.255.25:22
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 04/12/2025 00:12:57
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+set colors=never[admin@RB-HOTSPOT] > set colors=never
+syntax error (line 1 column 5)
+[admin@RB-HOTSPOT] >                                                           [admin@RB-HOTSPOT] > 

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import os
+from celery.schedules import crontab
 
 # Diretório base do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -176,3 +177,12 @@ INSTALLED_APPS += [
     'django_celery_beat',
     'django_celery_results',
 ]
+
+CELERY_BEAT_SCHEDULE = {
+    'validar-rpki-irr-agendado': {
+        'task': 'clientes.tasks.validar_blocos_rpki_irr_agendado',
+        'schedule': crontab(hour=4, minute=0),
+    },
+}
+
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

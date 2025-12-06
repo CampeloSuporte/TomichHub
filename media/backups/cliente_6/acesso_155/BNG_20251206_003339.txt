@@ -1,0 +1,767 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
+Equipamento: BNG
+Host: 128.201.240.225:22334
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M4
+Template: Backup Huawei
+Data: 06/12/2025 00:33:39
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<PPPoE_AGILIZA>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V800R012C10SPC300
+!Last configuration was updated at 2025-11-11 19:17:23-03:00 by danilo
+!Last configuration was saved at 2025-11-11 19:08:46-03:00 by danilo
+#
+clock timezone America/Sao_Paulo minus 03:00:00
+#
+sysname PPPoE_AGILIZA
+#
+set neid 7dfb8f
+#
+undo FTP server-source all-interface
+undo FTP ipv6 server-source all-interface
+#
+undo user-security-policy enable
+#
+service-template template-default0
+#
+service-template template-default1
+#
+service-template template-default2
+#
+service-template template-default3
+#
+service-template template-default4
+#
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+ntp-service sync-interval 180
+ntp-service unicast-peer 200.160.0.8
+#
+slot 10
+ ip netstream sampler to slot self
+ ipv6 netstream sampler to slot self
+#
+ecc peer-public-key 172.31.56.2
+ public-key-code begin
+  04FAB067 6A7D8FF6 8C95E37F B4654079 D899C2A0 29D708B5 19735CCD 7994F078
+  A0DA7948 3AE9AA08 661E4504 BBC0307C FCE89C55 A80C46C1 346C3265 78259714
+  09
+ public-key-code end
+ peer-public-key end
+#
+undo icmp name timestamp-reply send
+#
+router id 10.255.255.253
+#
+as-notation plain
+#
+undo telnet server enable
+undo telnet ipv6 server enable
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+radius-attribute delegated-ipv6-prefix encapsulation-method version2
+radius-attribute framed-ip-address encapsulation-method version2
+#
+diffserv domain default
+#
+diffserv domain 5p3d
+#
+soc
+#
+ip vpn-instance __LOCAL_OAM_VPN__
+ ipv4-family
+ ipv6-family
+#
+radius-server group ixcprovedor
+ radius-server shared-key-cipher %^%#w.)^N"t}g%)K{jOl+m&9uD/}Chk6G9;YWwDopjlT%^%#
+ radius-server shared-key-cipher %^%#5^#l<K&S,&5_P8,'O8>J04xJABtH~T+,)[3}AS3S%^%# authentication 128.201.240.66 source ip-address 128.201.240.225 1812 weight 0
+ radius-server shared-key-cipher %^%#ivM=+IGD*F2<r`3vIy)Vq95qM/tTxXS2Gj('u412%^%# accounting 128.201.240.66 source ip-address 128.201.240.225 1813 weight 0
+ radius-server source interface LoopBack1
+ radius-server nas-ip-address 128.201.240.225
+ radius-server attribute translate
+ radius-server user-name original
+ radius-server user-name trust-server-request 
+ radius-attribute include HW-Auth-Type
+ radius-attribute include Reply-Message coa-nak
+ radius-attribute include edsg-service-name accounting-request
+ radius-attribute include Event-Timestamp accounting-on accounting-off 
+ radius-attribute include NAS-Port-Id
+ radius-server nas-port-id include ce-vlan delimiter - pe-vlan delimiter - interface-description
+ radius-attribute disable CISCO-AVPair receive
+ radius-attribute translate extend HW-Auth-Type vendor-specific 2011 109 access-request account 
+ radius-attribute assign hw-mng-ipv6 pppoe motm 
+ radius-attribute case-sensitive qos-profile-name
+ radius-attribute apply user-name match user-type ipoe
+ radius-attribute apply framed-ipv6-pool match pool-type
+ radius-attribute service-type value outbound user-type ipoe 
+ radius-attribute hw-user-password simple coa-request
+#
+radius local-ip 128.201.240.225
+undo radius local-ip all
+radius-server authorization 128.201.240.66 destination-port 3799 shared-key-cipher %^%#nfP_2+-a*$2#,hQg/0WQTG0O(YHpfV(fl[A}p;2D%^%# server-group ixcprovedor
+#
+mpls
+#
+mpls l2vpn
+#
+dhcp server request-packet all-interface disable
+#
+ipv6 prefix ndra-wan local
+ prefix 2804:3FAC:1200::/40
+#
+ipv6 prefix dhcp-pd-lan delegation
+ prefix 2804:3FAC:1300::/40 delegating-prefix-length 56
+ pd-unshare-only
+#
+ipv6 prefix pre-pool_aviso_bloqueio_ipv6 delegation
+ prefix 2001:DB8:3003::/56
+#
+ipv6 pool pool_aviso_bloqueio_ipv6 bas delegation
+ prefix pre-pool_aviso_bloqueio_ipv6
+#
+ipv6 pool pool_v6_lan bas delegation
+ dns-server 2606:4700:4700::1111
+ prefix dhcp-pd-lan
+#
+ipv6 pool pool_v6_wan bas local
+ dns-server 2001:4860:4860::8888 2606:4700:4700::1111
+ prefix ndra-wan
+#
+radius-server coa-request hw-policy-name daa same-policy reply-ack
+#
+dot1x-template 1
+#
+ip pool invalido bas local
+ gateway 100.64.0.1 255.255.248.0
+ section 0 100.64.0.2 100.64.7.254
+ dns-server 10.100.100.2 10.200.200.2
+ lease 0 12 0
+#
+ip pool pool_aguardando_assinatura bas local
+ gateway 172.22.1.1 255.255.255.0
+ section 0 172.22.1.2 172.22.1.254
+ lease 0 12 0
+#
+ip pool pool_aviso_atraso bas local
+ gateway 172.20.1.1 255.255.255.0
+ section 0 172.20.1.2 172.20.1.254
+ lease 0 12 0
+#
+ip pool pool_bloqueio bas local
+ gateway 172.21.1.1 255.255.255.0
+ section 0 172.21.1.2 172.21.1.254
+ lease 0 12 0
+#
+acl number 2000
+ description Permite Consulta SNMP
+ rule 1 permit source 10.200.200.3 0
+ rule 15 deny
+#
+acl number 3001
+#
+dhcpv6 duid 000100012b991f21048c169fb85f
+#
+traffic classifier CL-PBR-IP-PUBLICO operator or
+ if-match acl 3001
+#
+traffic behavior B-PBR-IP-PUBLICO
+ redirect ip-nexthop 172.31.50.1
+#
+traffic policy PBR-ACCESS-PUBLICO
+ share-mode
+ statistics enable
+ classifier CL-PBR-IP-PUBLICO behavior B-PBR-IP-PUBLICO precedence 1
+#
+security password
+ #
+ rule admin
+  forbidden word changeme_123
+#
+aaa
+ ppp username check
+ pure-user-name no-exist-policy online
+ acct-session-id-version version3
+ user-name minimum-length 4
+ domain-name-delimiter <
+ local-user robertor password irreversible-cipher $1c$#}[5+\Vt$W$uFTUR8<BN6XYLf3xbu91HbIJ5L9nE=+Uj$CCQRRK$
+ local-user robertor service-type ssh
+ local-user robertor level 3
+ local-user robertor state block fail-times 3 interval 5
+ local-user danilo password irreversible-cipher $1c$)'y23x#g:+$z.b|RBR!g6a_d#Yftf]U8OA04wjmX6;y9:5``+>P$
+ local-user danilo service-type ssh
+ local-user danilo level 3
+ local-user danilo state block fail-times 3 interval 5
+ local-user backup password irreversible-cipher $1c$vCK.&H>gRA${UB0%ChNqI~`Mv>sPbYBHgXt>-Z=:Lt&(,1!LDDD$
+ local-user backup service-type ssh
+ local-user backup level 3
+ local-user backup state block fail-times 3 interval 5
+ local-user ixcsoft password irreversible-cipher $1c$[J"t/r4~-.$Q)d-$Tp|R@wjxPW>;4Y%`R)sVEXr=:V#u$V9JI^B$
+ local-user ixcsoft service-type ssh
+ local-user ixcsoft level 3
+ local-user ixcsoft state block fail-times 3 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local radius
+ #
+ authentication-scheme ixcprovedor
+  authentication-mode radius local
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ accounting-scheme ixcprovedor
+  accounting interim interval 1200 second traffic hash
+  accounting send-update
+ #
+ accounting-scheme radius-pppoe
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+ #
+ domain ixcprovedor
+  authentication-scheme ixcprovedor
+  accounting-scheme ixcprovedor
+  radius-server group ixcprovedor
+  ip-pool invalido
+  ipv6-pool pool_v6_lan
+  ipv6-pool pool_v6_wan
+  dns primary-ip 10.100.100.2
+  dns second-ip 10.200.200.2
+  dns primary-ipv6 2804:3FAC:1000:1::6
+  dns second-ipv6 2804:3FAC:1000::6
+  accounting-start-delay 10 online user-type ppp ipoe static
+  accounting dual-stack identical
+  user-basic-service-ip-type ipv4
+#
+license
+#
+ospfv3 1
+ router-id 10.255.255.253
+ import-route direct
+ import-route unr
+ area 0.0.0.0
+#
+interface Eth-Trunk0
+ description PPPoE SERVER
+ mode lacp-static
+ lacp preempt enable
+ max active-linknumber 2
+ lacp preempt delay 20
+ statistic enable
+#
+interface Eth-Trunk0.1
+ vlan-type dot1q 1
+#
+interface Eth-Trunk0.11
+#
+interface Eth-Trunk0.100
+ vlan-type dot1q 100
+ description GERENCIA OLT 1 - VILLAGGIO BUSINESS
+ ip address 172.31.2.1 255.255.255.252
+#
+interface Eth-Trunk0.101
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 101
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.102
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 102
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.103
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 103
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.104
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 104
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.105
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 105
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.106
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 106
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.107
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 107
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.108
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 108
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.109
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 109
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.110
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 110
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.111
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 111
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.112
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 112
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.113
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 113
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.114
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 114
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.115
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 115
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.116
+ description - PPPoE OLT VILLAGGIO BUSINESS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 116
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.150
+ vlan-type dot1q 150
+#
+interface Eth-Trunk0.171
+ description PPPoE Test
+ statistic enable
+ user-vlan 171
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.200
+ vlan-type dot1q 200
+ description GERENCIA OLT 2 -
+ ip address 172.31.2.5 255.255.255.252
+#
+interface Eth-Trunk0.201
+ description - PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 201
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.202
+ description - PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 202
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.203
+ description - PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 203
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.204
+ description - PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 204
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.205
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 205
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.206
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 206
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.207
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 207
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.208
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 208
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.209
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 209
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.210
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 210
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.211
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 211
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.212
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 212
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.213
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 213
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.214
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 214
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.215
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 215
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.216
+ description - PPPoE OLT - VENTURA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 216
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.300
+ vlan-type dot1q 300
+ description GERENCA OLT 3 - BOULEVARD LAGOA
+ ip address 172.31.2.9 255.255.255.252
+ ip address 192.168.10.1 255.255.255.0 sub
+#
+interface Eth-Trunk0.301
+ description PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 301
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.302
+ description - PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 302
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcprovedor
+ #
+#
+interface Eth-Trunk0.303
+ description - PPPoE OLT - BOULEVARD LAGOA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 303
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication ixcproved

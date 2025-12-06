@@ -1,0 +1,29 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: RT-PE-CASARAO
+Host: 10.255.0.54:22002
+Acesso: VIA PROXY SSH
+Modelo: RB3011
+Template: Backup Mikrotik
+Data: 06/12/2025 00:35:22
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[suporte@RT-PE-CASARAO] > /                                                    [K[suporte@RT-PE-CASARAO] > /e[suporte@RT-PE-CASARAO] > /e                                                   [K[suporte@RT-PE-CASARAO] > /ex[suporte@RT-PE-CASARAO] > /ex                                                  [K[suporte@RT-PE-CASARAO] > /exp[suporte@RT-PE-CASARAO] > /exp                                                 [K[suporte@RT-PE-CASARAO] > /expo[suporte@RT-PE-CASARAO] > /expo                                                [K[suporte@RT-PE-CASARAO] > /expor[suporte@RT-PE-CASARAO] > /expor                                               [K[suporte@RT-PE-CASARAO] > /export[suporte@RT-PE-CASARAO] > /export                                              [K[suporte@RT-PE-CASARAO] > /export [suporte@RT-PE-CASARAO] > /export                                              [K[suporte@RT-PE-CASARAO] > /export t[suporte@RT-PE-CASARAO] > /export t                                            [K[suporte@RT-PE-CASARAO] > /export te[suporte@RT-PE-CASARAO] > /export te                                           [K[suporte@RT-PE-CASARAO] > /export ter[suporte@RT-PE-CASARAO] > /export ter                                          [K[suporte@RT-PE-CASARAO] > /export ters[suporte@RT-PE-CASARAO] > /export ters                                         [K[suporte@RT-PE-CASARAO] > /export terse[suporte@RT-PE-CASARAO] > /export terse                                        [K[suporte@RT-PE-CASARAO] > /export terse[suporte@RT-PE-CASARAO] > /export terse
+# nov/22/2025 01:30:35 by RouterOS 6.49.18
+# software id = 0TVK-Q9PK
+#
+# model = RB3011UiAS
+# serial number = B8950BB0B16D
+/interface bridge add name=br-acesso
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=ether1 ] l2mtu=8156 mtu=7000
+/interface ethernet set [ find default-name=ether2 ] l2mtu=8156 mtu=7000 name=eth
+er2_SWIT
+

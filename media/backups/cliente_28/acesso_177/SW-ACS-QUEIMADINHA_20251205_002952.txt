@@ -1,0 +1,120 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: SW-ACS-QUEIMADINHA
+Host: 10.100.100.9:22002
+Acesso: VIA PROXY SSH
+Modelo: SW MIKROTIK CSS326-24G-2S+
+Template: Backup Mikrotik
+Data: 05/12/2025 00:29:52
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[admin@SW-ACESSO-QUEIMADINHA] > /                                              [K[admin@SW-ACESSO-QUEIMADINHA] > /e[admin@SW-ACESSO-QUEIMADINHA] > /e                                             [K[admin@SW-ACESSO-QUEIMADINHA] > /ex[admin@SW-ACESSO-QUEIMADINHA] > /ex                                            [K[admin@SW-ACESSO-QUEIMADINHA] > /exp[admin@SW-ACESSO-QUEIMADINHA] > /exp                                           [K[admin@SW-ACESSO-QUEIMADINHA] > /expo[admin@SW-ACESSO-QUEIMADINHA] > /expo                                          [K[admin@SW-ACESSO-QUEIMADINHA] > /expor[admin@SW-ACESSO-QUEIMADINHA] > /expor                                         [K[admin@SW-ACESSO-QUEIMADINHA] > /export[admin@SW-ACESSO-QUEIMADINHA] > /export                                        [K[admin@SW-ACESSO-QUEIMADINHA] > /export [admin@SW-ACESSO-QUEIMADINHA] > /export                                        [K[admin@SW-ACESSO-QUEIMADINHA] > /export t[admin@SW-ACESSO-QUEIMADINHA] > /export t                                      [K[admin@SW-ACESSO-QUEIMADINHA] > /export te[admin@SW-ACESSO-QUEIMADINHA] > /export te                                     [K[admin@SW-ACESSO-QUEIMADINHA] > /export ter[admin@SW-ACESSO-QUEIMADINHA] > /export ter                                    [K[admin@SW-ACESSO-QUEIMADINHA] > /export ters[admin@SW-ACESSO-QUEIMADINHA] > /export ters                                   [K[admin@SW-ACESSO-QUEIMADINHA] > /export terse[admin@SW-ACESSO-QUEIMADINHA] > /export terse                                  [K[admin@SW-ACESSO-QUEIMADINHA] > /export terse[admin@SW-ACESSO-QUEIMADINHA] > /export terse
+# aug/16/1971 12:14:38 by RouterOS 6.49.3
+# software id = VU04-98XN
+#
+# model = CRS310-1G-5S-4S+
+# serial number = HCQ0843FGFN
+/interface bridge add admin-mac=18:FD:74:2B:47:C3 auto-mac=no comment=defconf nam
+e=bridge vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] l2mtu=10218 mtu=10000 name="
+ether1 -  SW-ACS-QUEIMADINHA2-P1" speed=10Mbps
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] l2mtu=10218 mtu=10000 
+name="sfp-sfpplus1 - SW-CORE-SFP+3"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] auto-negotiation=no l2
+mtu=10218 mtu=10000 name="sfp-sfpplus2 - LACP-OLT-FB-P1"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] auto-negotiation=no l2
+mtu=10218 mtu=10000 name="sfp-sfpplus3 - LACP-OLT-FB-P2"
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] auto-negotiation=no l2
+mtu=10218 mtu=10000 name="sfp-sfpplus4 - OLT-VSOL-LARAN-P5" speed=10Gbps
+/interface ethernet set [ find default-name=sfp1 ] auto-negotiation=no l2mtu=1021
+8 mtu=10000 name="sfp1 - SWITCH-ACS-2"
+/interface ethernet set [ find default-name=sfp2 ] auto-negotiation=no l2mtu=1021
+8 mtu=10000 name="sfp2 - SW-ACS-JACU"
+/interface ethernet set [ find default-name=sfp3 ] l2mtu=10218 mtu=10000 name="sf
+p3 "
+/interface ethernet set [ find default-name=sfp4 ] auto-negotiation=no l2mtu=1021
+8 mtu=10000
+/interface ethernet set [ find default-name=sfp5 ] l2mtu=10218 mtu=10000
+/interface bonding add mode=802.3ad name=bonding-OLT-FIBERHOME slaves="sfp-sfpplu
+s2 - LACP-OLT-FB-P1,sfp-sfpplus3 - LACP-OLT-FB-P2"
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/snmp community set [ find default=yes ] name=ConectaISP-ro
+/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
+ntagged-and-priority-tagged interface="ether1 -  SW-ACS-QUEIMADINHA2-P1" pvid=24
+ tag-stacking=yes
+/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus1 
+- SW-CORE-SFP+3"
+/interface bridge port add bridge=bridge comment=defconf disabled=yes frame-types
+=admit-only-untagged-and-priority-tagged interface="sfp-sfpplus2 - LACP-OLT-FB-P
+1" pvid=24 tag-stacking=yes
+/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
+ntagged-and-priority-tagged interface=bonding-OLT-FIBERHOME pvid=24 tag-stacking
+=yes
+/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus4 
+- OLT-VSOL-LARAN-P5"
+/interface bridge port add bridge=bridge comment=defconf disabled=yes frame-types
+=admit-only-untagged-and-priority-tagged interface="sfp1 - SWITCH-ACS-2" pvid=24
+ tag-stacking=yes
+/interface bridge port add bridge=bridge comment=defconf interface="sfp2 - SW-ACS
+-JACU"
+/interface bridge port add bridge=bridge comment=defconf interface="sfp3 "
+/interface bridge port add bridge=bridge comment=defconf interface=sfp4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp5
+/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - SW-CORE-SFP+3" un
+tagged="ether1 -  SW-ACS-QUEIMADINHA2-P1,bonding-OLT-FIBERHOME" vlan-ids=24
+/interface bridge vlan add bridge=bridge disabled=yes tagged="sfp-sfpplus1 - SW-C
+ORE-SFP+3" untagged="ether1 -  SW-ACS-QUEIMADINHA2-P1" vlan-ids=2031
+/interface bridge vlan add bridge=bridge comment=VLANS-ZELIA tagged="sfp-sfpplus1
+ - SW-CORE-SFP+3,sfp2 - SW-ACS-JACU,sfp-sfpplus4 - OLT-VSOL-LARAN-P5" vlan-ids=1
+16,27
+/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - SW-CORE-SFP+3,sfp
+2 - SW-ACS-JACU" vlan-ids=30
+/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - SW-CORE-SFP+3,sfp
+-sfpplus4 - OLT-VSOL-LARAN-P5" vlan-ids=33,2054
+/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - SW-CORE-SFP+3,sfp
+1 - SWITCH-ACS-2" vlan-ids=400
+/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - SW-CORE-SFP+3,sfp
+-sfpplus4 - OLT-VSOL-LARAN-P5" vlan-ids=113-115
+/interface bridge vlan add bridge=bridge tagged="sfp-sfpplus1 - SW-CORE-SFP+3,bri
+dge" vlan-ids=41
+/interface pppoe-server server add disabled=no service-name=service1
+/ip address add address=10.100.100.9/24 interface=bridge network=10.100.100.0
+/ip address add address=10.11.104.1/24 disabled=yes interface="ether1 -  SW-ACS-Q
+UEIMADINHA2-P1" network=10.11.104.0
+/ip route add distance=1 gateway=10.100.100.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-generators=interfaces trap-version=2
+/system identity set name=SW-ACESSO-QUEIMADINHA
+/system routerboard settings set boot-os=router-os
+/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
+,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
+art-time=03:00:00
+/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
+,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
+kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
+em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
+m identity get name] . \".rsc\")\r\
+    \n\r\
+    \n# Cria o backup\r\
+    \n/export file=\$backupFileName\r\
+    \n\r\
+    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
+th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
+    \ndelay 10s\r\
+    \n/file remove \$backupFileName"
+#error exporting /system swos
+/tool romon set enabled=yes secrets=Conecta@2023
+[admin@SW-ACESSO-QUEIMADINHA] >                                                [admin@SW-ACESSO-QUEIMADINHA] > 

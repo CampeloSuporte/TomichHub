@@ -27,12 +27,15 @@ import paramiko
 import socket
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.conf import settings
 from django.http import FileResponse
 import time
 from .models import BackupTemplate
-
+from .models import BlocoIP, ValidacaoRPKI_IRR_Log
+import requests
+import ipaddress
+from .models import BlocoIP, ValidacaoRPKI_IRR_Log
 # Instalar: pip install netmiko
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
@@ -2422,3 +2425,817 @@ def parsear_output_ping(output, host, return_code):
             'mensagem': f'Erro ao parsear resultado: {str(e)}',
             'output': output[:300]
         }
+    
+
+@login_required(login_url='login')
+def cadastrar_bloco_ip(request):
+    """Cadastra um novo bloco de IP"""
+    if request.method == 'POST':
+        cliente_id = request.POST.get('cliente')
+        tipo = request.POST.get('tipo')
+        bloco = request.POST.get('bloco')
+        asn = request.POST.get('asn')
+        irr_registry = request.POST.get('irr_registry')
+        
+        # Validações básicas
+        if not all([cliente_id, tipo, bloco]):
+            messages.error(request, 'Preencha todos os campos obrigatórios.')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+        
+        # Validar formato do bloco IP
+        try:
+            ipaddress.ip_network(bloco)
+        except ValueError:
+            messages.error(request, f'Formato de bloco IP inválido: {bloco}')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+        
+        # Criar bloco
+        try:
+            BlocoIP.objects.create(
+                cliente_id=cliente_id,
+                tipo=tipo,
+                bloco=bloco,
+                asn=asn,
+                irr_registry=irr_registry
+            )
+            messages.success(request, f'Bloco {bloco} cadastrado com sucesso!')
+        except Exception as e:
+            messages.error(request, f'Erro ao cadastrar bloco: {str(e)}')
+        
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def buscar_bloco_ip(request, bloco_id):
+    """Busca dados de um bloco IP específico (AJAX)"""
+    try:
+        bloco = BlocoIP.objects.get(id=bloco_id)
+        
+        # Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                cliente = Cliente.objects.get(usuario=request.user)
+                if bloco.cliente.id != cliente.id:
+                    return JsonResponse({'error': 'Sem permissão'}, status=403)
+            except Cliente.DoesNotExist:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        
+        data = {
+            'id': bloco.id,
+            'tipo': bloco.tipo,
+            'bloco': bloco.bloco,
+            'asn': bloco.asn or '',
+            'irr_registry': bloco.irr_registry or '',
+            'rpki_valido': bloco.rpki_valido,
+            'irr_valido': bloco.irr_valido,
+            'rpki_status': bloco.get_status_rpki_display(),
+            'irr_status': bloco.get_status_irr_display(),
+            'ultima_validacao': bloco.ultima_validacao.strftime('%d/%m/%Y %H:%M:%S') if bloco.ultima_validacao else 'Nunca',
+            'rpki_mensagem': bloco.rpki_mensagem or '',
+            'irr_mensagem': bloco.irr_mensagem or ''
+        }
+        
+        return JsonResponse(data)
+        
+    except BlocoIP.DoesNotExist:
+        return JsonResponse({'error': 'Bloco não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def editar_bloco_ip(request, bloco_id):
+    """Edita um bloco IP existente"""
+    if request.method == 'POST':
+        try:
+            bloco = get_object_or_404(BlocoIP, id=bloco_id)
+            
+            # Verificar permissão
+            if not request.user.is_staff and not request.user.is_superuser:
+                try:
+                    cliente = Cliente.objects.get(usuario=request.user)
+                    if bloco.cliente.id != cliente.id:
+                        messages.error(request, 'Sem permissão')
+                        return redirect('listar_clientes')
+                except Cliente.DoesNotExist:
+                    messages.error(request, 'Sem permissão')
+                    return redirect('listar_clientes')
+            
+            bloco.bloco = request.POST.get('bloco')
+            bloco.tipo = request.POST.get('tipo')
+            bloco.asn = request.POST.get('asn')
+            bloco.irr_registry = request.POST.get('irr_registry')
+            
+            # Validar formato do bloco IP
+            try:
+                ipaddress.ip_network(bloco.bloco)
+            except ValueError:
+                messages.error(request, f'Formato de bloco IP inválido: {bloco.bloco}')
+                return redirect(reverse('listar_clientes') + f'?id={bloco.cliente.id}')
+            
+            bloco.save()
+            
+            messages.success(request, f'Bloco {bloco.bloco} atualizado com sucesso!')
+            return redirect(reverse('listar_clientes') + f'?id={bloco.cliente.id}')
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao editar bloco: {str(e)}')
+            return redirect('listar_clientes')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def deletar_bloco_ip(request, bloco_id):
+    """Deleta um bloco IP"""
+    if request.method == 'POST':
+        bloco = get_object_or_404(BlocoIP, id=bloco_id)
+        cliente_id = bloco.cliente.id
+        bloco_texto = bloco.bloco
+        
+        # Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            messages.error(request, 'Apenas administradores podem deletar blocos IP')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+        
+        bloco.delete()
+        
+        messages.success(request, f'Bloco {bloco_texto} excluído com sucesso!')
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+    
+    return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+def validar_bloco_rpki_irr(request, bloco_id):
+    """Executa validação RPKI/IRR manual para um bloco"""
+    try:
+        bloco = BlocoIP.objects.get(id=bloco_id)
+        
+        # Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                cliente = Cliente.objects.get(usuario=request.user)
+                if bloco.cliente.id != cliente.id:
+                    return JsonResponse({'error': 'Sem permissão'}, status=403)
+            except Cliente.DoesNotExist:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        
+        # Executar validação
+        resultado = executar_validacao_rpki_irr(bloco)
+        
+        if resultado['sucesso']:
+            return JsonResponse({
+                'success': True,
+                'rpki_status': bloco.get_status_rpki_display(),
+                'rpki_valido': bloco.rpki_valido,
+                'rpki_mensagem': bloco.rpki_mensagem or '',
+                'irr_status': bloco.get_status_irr_display(),
+                'irr_valido': bloco.irr_valido,
+                'irr_mensagem': bloco.irr_mensagem or '',
+                'ultima_validacao': bloco.ultima_validacao.strftime('%d/%m/%Y %H:%M:%S')
+            })
+        else:
+            return JsonResponse({
+                'error': resultado['erro']
+            }, status=500)
+            
+    except BlocoIP.DoesNotExist:
+        return JsonResponse({'error': 'Bloco não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def listar_blocos_cliente(request):
+    """Lista blocos IP de um cliente (AJAX)"""
+    cliente_id = request.GET.get('id')
+    
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+    
+    # Verificar permissão
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if str(cliente.id) != str(cliente_id):
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    
+    # Buscar blocos
+    blocos = BlocoIP.objects.filter(cliente=cliente).order_by('tipo', 'bloco')
+    
+    return JsonResponse({
+        'blocos': [{
+            'id': bloco.id,
+            'tipo': bloco.get_tipo_display(),
+            'tipo_code': bloco.tipo,
+            'bloco': bloco.bloco,
+            'asn': bloco.asn or 'N/A',
+            'irr_registry': bloco.irr_registry or 'N/A',
+            'rpki_valido': bloco.rpki_valido,
+            'rpki_status': bloco.get_status_rpki_display(),
+            'rpki_mensagem': bloco.rpki_mensagem or '',
+            'irr_valido': bloco.irr_valido,
+            'irr_status': bloco.get_status_irr_display(),
+            'irr_mensagem': bloco.irr_mensagem or '',
+            'ultima_validacao': bloco.ultima_validacao.strftime('%d/%m/%Y %H:%M:%S') if bloco.ultima_validacao else 'Nunca',
+            'data_criacao': bloco.data_criacao.strftime('%d/%m/%Y %H:%M')
+        } for bloco in blocos]
+    })
+
+
+# ============================================
+# FUNÇÕES DE VALIDAÇÃO RPKI/IRR
+# ============================================
+
+def executar_validacao_rpki_irr(bloco):
+    """
+    Executa validação RPKI e IRR para um bloco IP
+    """
+    import time
+    inicio = time.time()
+    
+    try:
+        print(f"\n{'='*80}")
+        print(f"🔍 INICIANDO VALIDAÇÃO RPKI/IRR")
+        print(f"{'='*80}")
+        print(f"Bloco: {bloco.bloco}")
+        print(f"Tipo: {bloco.get_tipo_display()}")
+        print(f"ASN: {bloco.asn}")
+        print(f"IRR Registry: {bloco.irr_registry}")
+        
+        # ✅ VALIDAÇÃO RPKI
+        rpki_resultado = validar_rpki(bloco.bloco, bloco.asn)
+        
+        # ✅ VALIDAÇÃO IRR
+        irr_resultado = validar_irr(bloco.bloco, bloco.asn, bloco.irr_registry)
+        
+        # ✅ Atualizar bloco
+        bloco.rpki_valido = rpki_resultado['valido']
+        bloco.rpki_status = rpki_resultado['status']
+        bloco.rpki_mensagem = rpki_resultado['mensagem']
+        
+        bloco.irr_valido = irr_resultado['valido']
+        bloco.irr_status = irr_resultado['status']
+        bloco.irr_mensagem = irr_resultado['mensagem']
+        
+        bloco.ultima_validacao = datetime.now()
+        bloco.save()
+        
+        duracao = time.time() - inicio
+        
+        # ✅ Registrar log
+        ValidacaoRPKI_IRR_Log.objects.create(
+            bloco=bloco,
+            rpki_valido=rpki_resultado['valido'],
+            rpki_status=rpki_resultado['status'],
+            rpki_detalhes=rpki_resultado['detalhes'],
+            irr_valido=irr_resultado['valido'],
+            irr_status=irr_resultado['status'],
+            irr_detalhes=irr_resultado['detalhes'],
+            duracao_segundos=duracao
+        )
+        
+        print(f"\n{'='*80}")
+        print(f"✅ VALIDAÇÃO CONCLUÍDA!")
+        print(f"{'='*80}")
+        print(f"RPKI: {rpki_resultado['status']} - {rpki_resultado['mensagem']}")
+        print(f"IRR: {irr_resultado['status']} - {irr_resultado['mensagem']}")
+        print(f"Duração: {duracao:.2f}s")
+        print(f"{'='*80}\n")
+        
+        return {
+            'sucesso': True,
+            'rpki': rpki_resultado,
+            'irr': irr_resultado,
+            'duracao': duracao
+        }
+        
+    except Exception as e:
+        erro = f"Erro na validação: {str(e)}"
+        print(f"\n❌ {erro}\n")
+        return {'sucesso': False, 'erro': erro}
+
+def validar_rpki(bloco, asn):
+    """
+    ✅ CORRIGIDO v6: Usa RIPE Stat RPKI Validation
+    
+    API: https://stat.ripe.net/data/rpki-validation/data.json
+    Parâmetros:
+      - resource: ASN (ex: 268858)
+      - prefix: Bloco IP (ex: 45.174.160.0/23)
+    
+    Resposta:
+      - status: "valid", "invalid", "unknown"
+      - validating_roas: lista de ROAs que cobrem o prefixo
+    
+    🔑 Simples, eficiente e funciona!
+    """
+    print(f"\n{'='*60}")
+    print(f"📡 VALIDANDO RPKI: {bloco} (AS{asn})")
+    print(f"{'='*60}")
+    
+    if not asn:
+        return {
+            'valido': False,
+            'status': 'NotChecked',
+            'mensagem': 'ASN não informado',
+            'detalhes': 'ASN é necessário para validação'
+        }
+    
+    asn_limpo = asn.replace('AS', '').replace('as', '').strip()
+    print(f"ASN limpo: {asn_limpo}")
+    
+    # ==========================
+    # API PRIMÁRIA: RIPE Stat RPKI Validation
+    # ==========================
+    print(f"\n[1/2] 🌐 RIPE Stat RPKI Validation...")
+    try:
+        url = f"https://stat.ripe.net/data/rpki-validation/data.json?resource=AS{asn_limpo}&prefix={bloco}"
+        print(f"      URL: {url}")
+        print(f"      Conectando...", end=" ", flush=True)
+        
+        resp = requests.get(url, timeout=15, headers={'User-Agent': 'CONEXA-CRM/1.0'})
+        print(f"✅ {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            
+            # Extrair informações
+            dados = data.get('data', {})
+            status = dados.get('status', 'unknown').lower()
+            validating_roas = dados.get('validating_roas', [])
+            
+            print(f"      📋 Status: {status}")
+            print(f"      📋 ROAs encontradas: {len(validating_roas)}")
+            
+            # ==========================
+            # Processar Status
+            # ==========================
+            
+            # ✅ VÁLIDO
+            if status == 'valid':
+                print(f"      ✅ ROA VÁLIDA!")
+                
+                # Detalhar ROAs
+                detalhes_roas = []
+                for roa in validating_roas:
+                    origin = roa.get('origin', '?')
+                    prefix = roa.get('prefix', '?')
+                    max_length = roa.get('max_length', '?')
+                    validity = roa.get('validity', '?')
+                    detalhes_roas.append(f"{prefix} AS{origin} (/{max_length})")
+                
+                detalhes_texto = "\n   ".join(detalhes_roas) if detalhes_roas else "ROA válido"
+                
+                return {
+                    'valido': True,
+                    'status': 'Valid',
+                    'mensagem': 'ROA válido encontrado',
+                    'detalhes': f'{bloco} é coberto por ROA válida:\n   {detalhes_texto}'
+                }
+            
+            # ❌ INVÁLIDO
+            elif status == 'invalid':
+                print(f"      ❌ ROA INVÁLIDA!")
+                
+                # Detalhar conflito
+                conflitos = []
+                if validating_roas:
+                    for roa in validating_roas:
+                        origin = roa.get('origin', '?')
+                        prefix = roa.get('prefix', '?')
+                        conflitos.append(f"AS{origin} para {prefix}")
+                else:
+                    conflitos.append("Conflito não especificado")
+                
+                detalhes_texto = " ou ".join(conflitos)
+                
+                return {
+                    'valido': False,
+                    'status': 'Invalid',
+                    'mensagem': 'ROA inválido - conflito detectado',
+                    'detalhes': f'{bloco} entra em conflito com ROA(s): {detalhes_texto}'
+                }
+            
+            # ⏳ DESCONHECIDO
+            elif status == 'unknown':
+                print(f"      ⏳ ROA NÃO ENCONTRADO")
+                
+                return {
+                    'valido': False,
+                    'status': 'Unknown',
+                    'mensagem': 'ROA não encontrado',
+                    'detalhes': f'{bloco} / AS{asn_limpo} não possui ROA publicado. Publique em: https://my.lacnic.net'
+                }
+            
+            else:
+                print(f"      ❓ Status desconhecido: {status}")
+                return {
+                    'valido': False,
+                    'status': 'Unknown',
+                    'mensagem': f'Status desconhecido: {status}',
+                    'detalhes': f'Resposta: {data}'
+                }
+        
+        else:
+            print(f"❌ Status HTTP: {resp.status_code}")
+            return {
+                'valido': False,
+                'status': 'Error',
+                'mensagem': f'Erro HTTP {resp.status_code}',
+                'detalhes': f'RIPE Stat retornou erro: {resp.text[:200]}'
+            }
+    
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout")
+        return {
+            'valido': False,
+            'status': 'Error',
+            'mensagem': 'Timeout ao conectar ao RIPE Stat',
+            'detalhes': 'Conexão com RIPE Stat expirou. Tente novamente mais tarde.'
+        }
+    except Exception as e:
+        print(f"❌ {type(e).__name__}: {e}")
+    
+    # ==========================
+    # FALLBACK: Cloudflare RPKI (se RIPE falhar)
+    # ==========================
+    print(f"\n[2/2] 🌐 Cloudflare RPKI (fallback)...")
+    try:
+        url = f"https://rpki.cloudflare.com/api/v1/validity/{asn_limpo}/{bloco}"
+        print(f"      URL: {url}")
+        print(f"      Conectando...", end=" ", flush=True)
+        
+        resp = requests.get(url, timeout=10, headers={'User-Agent': 'CONEXA-CRM/1.0'})
+        print(f"✅ {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            validity = data.get('validity', {})
+            state = validity.get('state', '').upper()
+            
+            print(f"      📋 State: {state}")
+            
+            if state == 'VALID':
+                print(f"      ✅ ROA VÁLIDA")
+                return {
+                    'valido': True,
+                    'status': 'Valid',
+                    'mensagem': 'ROA válido encontrado',
+                    'detalhes': f'{bloco} possui ROA válida para AS{asn_limpo} (Cloudflare RPKI)'
+                }
+            elif state == 'INVALID':
+                print(f"      ❌ ROA INVÁLIDA")
+                return {
+                    'valido': False,
+                    'status': 'Invalid',
+                    'mensagem': 'ROA inválido',
+                    'detalhes': f'ROA conflita para {bloco} e AS{asn_limpo}'
+                }
+    
+    except Exception as e:
+        print(f"      ⚠️ Indisponível")
+    
+    # ==========================
+    # Nenhuma API funcionou
+    # ==========================
+    print(f"\n❌ Validação não disponível")
+    return {
+        'valido': False,
+        'status': 'Unknown',
+        'mensagem': 'Validação RPKI não disponível',
+        'detalhes': f'Não foi possível validar {bloco} / AS{asn_limpo}. Verifique em: https://routinator.lacnic.net'
+    }
+
+
+def consultar_lacnic_whois(bloco, asn):
+    """
+    Consulta LACNIC whois APENAS para verificar se bloco está registrado
+    NÃO para inferir status de ROA (isso é responsabilidade de APIs RPKI)
+    """
+    print(f"      Consultando whois.lacnic.net:43...")
+    
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(15)
+        
+        sock.connect(('whois.lacnic.net', 43))
+        sock.send(f"{bloco}\n".encode())
+        
+        response = b""
+        sock.settimeout(5)
+        try:
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break
+                response += data
+        except socket.timeout:
+            pass
+        
+        sock.close()
+        
+        output = response.decode('utf-8', errors='ignore')
+        output_lower = output.lower()
+        
+        resultado = {
+            'encontrado': False,
+            'inetnum': None,
+            'asn': None,
+            'owner': None,
+            'raw': output
+        }
+        
+        if 'inetnum:' in output_lower or 'inet6num:' in output_lower:
+            resultado['encontrado'] = True
+            
+            # Extrair informações
+            for linha in output.split('\n'):
+                linha_lower = linha.lower()
+                
+                if linha_lower.startswith('inetnum:') or linha_lower.startswith('inet6num:'):
+                    resultado['inetnum'] = linha.split(':', 1)[1].strip()
+                
+                if linha_lower.startswith('aut-num:'):
+                    resultado['asn'] = linha.split(':', 1)[1].strip()
+                
+                if linha_lower.startswith('owner:'):
+                    resultado['owner'] = linha.split(':', 1)[1].strip()
+        
+        return resultado
+        
+    except Exception as e:
+        print(f"      ⚠️ Erro: {type(e).__name__}")
+        return {'encontrado': False}
+
+
+def descobrir_status_roa(bloco, asn, dados_lacnic):
+    """
+    Tenta descobrir se a ROA existe baseado em dados do LACNIC
+    
+    Lógica:
+    1. Se ASN no LACNIC == ASN da query → provável que tenha ROA ou está em processo
+    2. Se ASN diferente → ROA pode ter conflito
+    3. Se não tem ASN → ainda pode estar em processo
+    """
+    print(f"\n   Analisando dados LACNIC para ROA...")
+    
+    asn_lacnic = dados_lacnic.get('asn', '').replace('AS', '').replace('as', '').strip()
+    
+    # Caso 1: ASN coincide
+    if asn_lacnic and asn_lacnic == asn:
+        print(f"      ✅ ASN coincide: {asn}")
+        return {
+            'valido': True,
+            'status': 'Valid',
+            'mensagem': 'ASN confirmado no LACNIC',
+            'detalhes': f'{bloco} registrado para AS{asn} no LACNIC. ROA provavelmente válido.'
+        }
+    
+    # Caso 2: ASN diferente
+    elif asn_lacnic:
+        print(f"      ⚠️ ASN diferente: esperado AS{asn}, encontrado AS{asn_lacnic}")
+        return {
+            'valido': False,
+            'status': 'Invalid',
+            'mensagem': 'ASN não coincide',
+            'detalhes': f'{bloco} está registrado para AS{asn_lacnic} no LACNIC, não AS{asn}. ROA pode ter conflito.'
+        }
+    
+    # Caso 3: Bloco registrado mas sem ASN
+    else:
+        print(f"      ℹ️ Bloco registrado mas sem ASN específico")
+        return {
+            'valido': False,
+            'status': 'Unknown',
+            'mensagem': 'Status ROA indeterminado',
+            'detalhes': f'{bloco} está registrado no LACNIC. Se ROA foi criada recentemente, verifique em 24h ou consulte https://my.lacnic.net'
+        }
+
+
+def validar_irr(bloco, asn, irr_registry):
+    """
+    ✅ VERSÃO FINAL TESTADA: Valida IRR com queries corretas
+    - LACNIC usa inetnum (TESTADO - FUNCIONA)
+    - Suporta blocos agregados
+    """
+    try:
+        print(f"\n{'='*60}")
+        print(f"📡 VALIDANDO IRR")
+        print(f"{'='*60}")
+        print(f"Bloco: {bloco}")
+        print(f"ASN: {asn}")
+        print(f"Registry: {irr_registry}")
+        
+        if not irr_registry:
+            irr_registry = 'LACNIC'
+        
+        asn_limpo = asn.replace('AS', '').replace('as', '').strip() if asn else ''
+        
+        # Lista de servidores para tentar
+        servidores = []
+        
+        # ✅ LACNIC tem formato especial (TESTADO)
+        if irr_registry.upper() == 'LACNIC':
+            servidores.append(('whois.lacnic.net', 'LACNIC', 'inetnum'))
+        
+        # Adicionar servidor primário padrão
+        servidor_primario = get_whois_server(irr_registry)
+        if servidor_primario != 'whois.lacnic.net':
+            servidores.append((servidor_primario, irr_registry, 'route'))
+        
+        # Adicionar RADB como fallback
+        if servidor_primario != 'whois.radb.net':
+            servidores.append(('whois.radb.net', 'RADB', 'route'))
+        
+        # Adicionar RIPE como segundo fallback
+        if servidor_primario != 'whois.ripe.net':
+            servidores.append(('whois.ripe.net', 'RIPE', 'route'))
+        
+        # Tentar cada servidor
+        for idx, (whois_server, registry_name, tipo_query) in enumerate(servidores, 1):
+            print(f"\n[{idx}/{len(servidores)}] Tentando {registry_name} ({whois_server})...")
+            
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(15)
+                sock.connect((whois_server, 43))
+                
+                # ✅ Queries diferentes para LACNIC vs outros
+                if tipo_query == 'inetnum':
+                    # LACNIC: consultar inetnum/inet6num
+                    queries = [
+                        f"{bloco}\n",                    # Query simples (TESTADA - FUNCIONA)
+                        f"-T inetnum {bloco}\n",         # Query específica
+                        f"-T inet6num {bloco}\n",        # IPv6
+                    ]
+                else:
+                    # Outros IRRs: consultar route objects
+                    queries = [
+                        f"-r -T route {bloco}\n",      # Query específica para route
+                        f"-r -T route6 {bloco}\n",     # Query para route6 (IPv6)
+                        f"-i origin AS{asn_limpo}\n" if asn_limpo else f"{bloco}\n",  # Por origin
+                        f"{bloco}\n",                   # Query simples
+                    ]
+                
+                for query_idx, query in enumerate(queries, 1):
+                    print(f"   Query {query_idx}: {query.strip()}")
+                    
+                    sock.send(query.encode())
+                    
+                    response = b""
+                    sock.settimeout(5)
+                    
+                    try:
+                        while True:
+                            data = sock.recv(4096)
+                            if not data:
+                                break
+                            response += data
+                    except socket.timeout:
+                        pass
+                    
+                    output = response.decode('utf-8', errors='ignore').lower()
+                    
+                    print(f"   Recebido: {len(output)} bytes")
+                    
+                    # ✅ Padrões diferentes para LACNIC vs outros
+                    if tipo_query == 'inetnum':
+                        # LACNIC: procurar inetnum/inet6num
+                        padroes = ['inetnum:', 'inet6num:', 'owner:', 'ownerid:', 'aut-num:']
+                        encontrou = any(padrao in output for padrao in padroes)
+                        
+                        if encontrou:
+                            print(f"   ✅ Prefixo encontrado no LACNIC!")
+                            
+                            # Extrair inetnum e ASN
+                            linhas = output.split('\n')
+                            inetnum_encontrado = None
+                            asn_encontrado = None
+                            
+                            for linha in linhas:
+                                if 'inetnum:' in linha or 'inet6num:' in linha:
+                                    inetnum_encontrado = linha.split(':', 1)[1].strip()
+                                if 'aut-num:' in linha:
+                                    asn_encontrado = linha.split(':', 1)[1].strip().replace('as', '')
+                            
+                            # Verificar se tem AS
+                            if asn_limpo and asn_encontrado == asn_limpo:
+                                print(f"   ✅ ASN encontrado e confere!")
+                                sock.close()
+                                return {
+                                    'valido': True,
+                                    'status': 'Found',
+                                    'mensagem': f'Prefixo registrado em {registry_name}',
+                                    'detalhes': f'{bloco} encontrado em {registry_name} (bloco: {inetnum_encontrado}) com AS{asn_limpo}'
+                                }
+                            elif asn_limpo and asn_encontrado and asn_encontrado != asn_limpo:
+                                print(f"   ⚠️ ASN diferente! Esperado: AS{asn_limpo}, Encontrado: AS{asn_encontrado}")
+                                sock.close()
+                                return {
+                                    'valido': False,
+                                    'status': 'ASN_Mismatch',
+                                    'mensagem': f'Prefixo registrado mas ASN diferente',
+                                    'detalhes': f'{bloco} está em {inetnum_encontrado} com AS{asn_encontrado}, não AS{asn_limpo}'
+                                }
+                            else:
+                                sock.close()
+                                return {
+                                    'valido': True,
+                                    'status': 'Found',
+                                    'mensagem': f'Prefixo registrado em {registry_name}',
+                                    'detalhes': f'{bloco} encontrado em {registry_name} (bloco: {inetnum_encontrado}) - ASN não verificado'
+                                }
+                    else:
+                        # Outros IRRs: procurar route objects
+                        padroes_route = ['route:', 'route6:', 'origin:']
+                        encontrou_route = any(padrao in output for padrao in padroes_route)
+                        encontrou_asn = asn_limpo and (f'as{asn_limpo}' in output or asn_limpo in output)
+                        
+                        if encontrou_route:
+                            print(f"   ✅ Route encontrado!")
+                            
+                            if encontrou_asn:
+                                print(f"   ✅ ASN encontrado!")
+                                sock.close()
+                                return {
+                                    'valido': True,
+                                    'status': 'Found',
+                                    'mensagem': f'Route encontrado em {registry_name}',
+                                    'detalhes': f'Route {bloco} com AS{asn_limpo} em {registry_name}'
+                                }
+                            elif asn_limpo:
+                                print(f"   ⚠️ Route encontrado mas ASN diferente")
+                                sock.close()
+                                return {
+                                    'valido': False,
+                                    'status': 'ASN_Mismatch',
+                                    'mensagem': f'Route encontrado mas ASN não confere',
+                                    'detalhes': f'{bloco} existe em {registry_name} mas com ASN diferente de AS{asn_limpo}'
+                                }
+                            else:
+                                sock.close()
+                                return {
+                                    'valido': True,
+                                    'status': 'Found',
+                                    'mensagem': f'Route encontrado em {registry_name}',
+                                    'detalhes': f'{bloco} encontrado (ASN não verificado)'
+                                }
+                    
+                    # Resetar socket para próxima query
+                    if query_idx < len(queries):
+                        sock.close()
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(15)
+                        sock.connect((whois_server, 43))
+                
+                sock.close()
+                
+            except socket.timeout:
+                print(f"   ⏱️ Timeout")
+                continue
+            except socket.error as e:
+                print(f"   ❌ Erro de conexão: {str(e)}")
+                continue
+            except Exception as e:
+                print(f"   ❌ Erro: {str(e)}")
+                continue
+        
+        # Se não encontrou em nenhum servidor
+        print(f"\n❌ Route/Inetnum não encontrado em nenhum servidor")
+        return {
+            'valido': False,
+            'status': 'NotFound',
+            'mensagem': f'Route não encontrado',
+            'detalhes': f'Nenhum route/inetnum encontrado para {bloco} em {irr_registry}, RADB ou RIPE'
+        }
+        
+    except Exception as e:
+        print(f"\n❌ ERRO CRÍTICO: {str(e)}")
+        return {
+            'valido': False,
+            'status': 'Error',
+            'mensagem': f'Erro na validação',
+            'detalhes': str(e)
+        }
+
+
+def get_whois_server(irr_registry):
+    """Retorna servidor whois apropriado"""
+    servidores = {
+        'LACNIC': 'whois.lacnic.net',
+        'RIPE': 'whois.ripe.net',
+        'ARIN': 'whois.arin.net',
+        'APNIC': 'whois.apnic.net',
+        'AFRINIC': 'whois.afrinic.net',
+        'RADB': 'whois.radb.net',
+    }
+    
+    return servidores.get(irr_registry.upper(), 'whois.radb.net')

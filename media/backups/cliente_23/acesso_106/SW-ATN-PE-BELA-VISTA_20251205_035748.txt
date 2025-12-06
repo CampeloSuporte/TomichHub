@@ -1,0 +1,1059 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: SW-ATN-PE-BELA-VISTA
+Host: 10.1.1.2:2299
+Acesso: VIA PROXY SSH
+Modelo: HUAWEI ATN 910C-G
+Template: Backup Huawei
+Data: 05/12/2025 03:57:48
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<ATN910-HUAWEI-BV-ASN-64527>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V300R006C00SPC300
+!Last configuration was updated at 2025-12-04 14:28:16+00:00 by backup
+!Last configuration was saved at 2025-12-04 14:29:17+00:00
+#
+loop-detect trigger enable
+#
+sysname ATN910-HUAWEI-BV-ASN-64527
+#
+set neid babcae
+lldp enable-dcn authentication %^%#/vH]8;MUZ$kCQ=R-i!<-CADoCJ*zC3k]UwY)bg($%^%#
+#
+FTP server-source all-interface
+FTP ipv6 server-source all-interface
+#
+FTP client-source -a 192.140.67.245
+#
+undo user-security-policy enable
+#
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+#
+vlan batch 101 to 108 111 to 118 121 to 128 500 521 604 1101 to 1111 1115 to 1116 2215 to 2216 3101 to 3108
+vlan batch 3111 to 3118 3201 to 3208 3301 to 3308 3464 3559 3946 3962 to 3964 3967 to 3970
+#
+ecc peer-public-key 45.228.38.254
+ public-key-code begin
+  0400BD49 3C6B5CF8 54AB35DF 914FC3D1 B5F86EC5 623E0835 911F6F13 803318EC
+  7212439A 6B70D7C9 3E86128D 8874B387 A86A8857 A4FFF78F 547CEC62 11FBBADE
+  7680C400 A57F10B2 BA07442A F6D5E302 140FF0D0 44090D81 2A83B65F 0A8CF9FD
+  C38F3095 3AC5A0A5 A6E998EF E879C830 3BC140A0 D68D12FB 31DDEEBE 166AE93A
+  F5279235 CE
+ public-key-code end
+ peer-public-key end
+#
+undo icmp name timestamp-reply send
+#
+as-notation plain
+#
+set save-configuration delay 1
+set save-configuration backup-to-server server 172.20.36.2 transport-type ftp user callfran password %^%#+hROQTpH2PM0N!/{<%eF=2`HC@V7&7Ktj<8g+z#@%^%# path /home/huawei
+#
+undo telnet server enable
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+diffserv domain default
+#
+soc
+#
+priority-template default
+#
+ip vpn-instance __LOCAL_OAM_VPN__
+ ipv4-family
+ ipv6-family
+#
+ip dcn vpn-instance __dcn_vpn__
+ ipv4-family
+#
+undo pnp enable
+#
+bfd
+ mpls-passive
+#
+vlan 101
+ description vlan101_O1/P1/NLT/Nilton
+#
+vlan 102
+ description vlan102_O1/P2/NLT/Nilton
+#
+vlan 103
+ description vlan103_O1/P3/NLT/Nilton
+#
+vlan 104
+ description vlan104_O1/P4/NLT/Nilton
+#
+vlan 105
+ description vlan105_O1/P5/NLT/Nilton
+#
+vlan 106
+ description vlan106_O1/P6/NLT/Nilton
+#
+vlan 107
+ description vlan107_O1/P7/NLT/Nilton
+#
+vlan 108
+ description vlan108_O1/P8/NLT/Nilton
+#
+vlan 111
+ description vlan111_O2/P1/NLT/Nilton
+#
+vlan 112
+ description vlan112_O2/P2/NLT/Nilton
+#
+vlan 113
+ description vlan113_O2/P3/NLT/Nilton
+#
+vlan 114
+ description vlan114_O2/P4/NLT/Nilton
+#
+vlan 115
+ description vlan115_O2/P5/NLT/Nilton
+#
+vlan 116
+ description vlan116_O2/P6/NLT/Nilton
+#
+vlan 117
+ description vlan117_O2/P7/NLT/Nilton
+#
+vlan 118
+ description vlan118_O2/P8/NLT/Nilton
+#
+vlan 121
+ description vlan121_O3/P1/NLT/Nilton
+#
+vlan 122
+ description vlan122_O3/P2/NLT/Nilton
+#
+vlan 123
+ description vlan123_O3/P3/NLT/Nilton
+#
+vlan 124
+ description vlan124_O3/P4/NLT/Nilton
+#
+vlan 125
+ description vlan125_O3/P5/NLT/Nilton
+#
+vlan 126
+ description vlan126_O3/P6/NLT/Nilton
+#
+vlan 127
+ description vlan127_O3/P7/NLT/Nilton
+#
+vlan 128
+ description vlan128_O3/P8/NLT/Nilton
+#
+vlan 500
+ description vlan500_MGMT
+#
+vlan 521
+ description VGRNET-IP-PUBLICO
+#
+vlan 604
+ description GERENCIA
+#
+vlan 1101
+ description vlan1101_Cabo
+#
+vlan 1102
+ description vlan1102_Cabo
+#
+vlan 1103
+ description vlan1103_Cabo
+#
+vlan 1104
+ description vlan1104_Cabo
+#
+vlan 1105
+ description vlan1105_Cabo
+#
+vlan 1106
+ description vlan1106_Cabo
+#
+vlan 1107
+ description vlan1107_Cabo
+#
+vlan 1108
+ description vlan1108_Cabo
+#
+vlan 1109
+ description vlan1109_Cabo_POSTO_DE_MOLAS
+#
+vlan 1110
+ description vlan1110_Cabo
+#
+vlan 1111
+ description vlan1111_Cabo
+#
+vlan 1115
+ description vlan1115_FLASHNET/RN/NILTON
+#
+vlan 1116
+ description FLASHNET/RN/CLAUDIO
+#
+vlan 2215
+ description vlan2215-FLASHNET-NILTON
+#
+vlan 2216
+ description FLASHNET/RN/CLAUDIO
+#
+vlan 3201
+ description vlan3201_O1/P1/ALC/RN/Nilton
+#
+vlan 3202
+ description vlan3202_O1/P2/ALC/RN/Nilton
+#
+vlan 3203
+ description vlan3203_O1/P3/ALC/RN/Nilton
+#
+vlan 3204
+ description vlan3204_O1/P4/ALC/RN/Nilton
+#
+vlan 3205
+ description vlan3205_O1/P5/ALC/RN/Nilton
+#
+vlan 3206
+ description vlan3206_O1/P6/ALC/RN/Nilton
+#
+vlan 3207
+ description vlan3207_O1/P7/ALC/RN/Nilton
+#
+vlan 3208
+ description vlan3208_O1/P8/ALC/RN/Nilton
+#
+vlan 3301
+ description vlan3301_O1/P1/BV/RN/Nilton
+#
+vlan 3302
+ description vlan3302_O1/P2/BV/RN/Nilton
+#
+vlan 3303
+ description vlan3303_O1/P3/BV/RN/Nilton
+#
+vlan 3304
+ description vlan3304_O1/P4/BV/RN/Nilton
+#
+vlan 3305
+ description vlan3305_O1/P5/BV/RN/Nilton
+#
+vlan 3306
+ description vlan3306_O1/P6/BV/RN/Nilton
+#
+vlan 3307
+ description vlan3307_O1/P7/BV/RN/Nilton
+#
+vlan 3308
+ description vlan3308_O1/P8/BV/RN/Nilton
+#
+vlan 3464
+#
+vlan 3559
+ description MGMT_OLT_01
+#
+vlan 3946
+ name ROTA-02-VGRNET-IPIRANGA-CDN
+#
+vlan 3962
+ description VGRNET-LINK-IP-PIRANGA
+#
+vlan 3963
+ description VGRNET-LINK_CDN-PIRANGA
+#
+vlan 3964
+ description IBGP-RB4011-BELA-VISTA
+#
+vlan 3967
+ name ISP.CALLFRAN-ROTA-NILTON
+#
+vlan 3968
+ name ISP.CALLFRAN-ROTA-NILTON-IPV6
+#
+vlan 3969
+ name ISP.CALLFRAN-ROTA-NILTON-CDN
+#
+vlan 3970
+ name CALLFRAN-ROTA-NILTON-CDN-IPV6
+#
+mpls lsr-id 10.1.1.2
+#
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+ mpls bfd enable
+#
+mpls l2vpn
+#
+vsi 1050-FRANCIVALDO-BELA-VISTA
+ pwsignal ldp
+  vsi-id 1050
+  peer 10.1.1.1
+ mtu 1550
+#
+vsi 1053-A-INTELBRAS-BELA-VISTA
+ pwsignal ldp
+  vsi-id 1053
+  peer 10.1.1.1
+ mtu 1550
+#
+vsi 1057-A-PIRANGA-BELA-VISTA
+ pwsignal ldp
+  vsi-id 1057
+  peer 10.1.1.1
+ mtu 1550
+#
+vsi 895-REDE_NEUTRA_RAPIDUS
+ pwsignal ldp
+  vsi-id 895
+  flow-label both
+  peer 10.1.1.1
+ mtu 1550
+#
+vsi cliente
+ pwsignal ldp
+  vsi-id 1
+  peer 10.1.1.1
+#
+mpls ldp
+ #
+ ipv4-family
+#
+mpls ldp remote-peer 10.1.1.1
+ remote-ip 10.1.1.1
+#
+mpls ldp remote-peer 10.255.255.2
+ remote-ip 10.255.255.2
+#
+mpls ldp remote-peer 10.1.1.3
+ remote-ip 10.1.1.3
+#
+dhcp server request-packet all-interface disable
+#
+dot1x-template 1
+#
+security password
+ #
+ rule admin
+  forbidden word changeme_123
+#
+aaa
+ local-user root password irreversible-cipher $1c$PXq94'L-U#$Pu&2Q6C"&B1Ls1P-.D*N*okzNm=8&'$=b&%H_x&B$
+ local-user root service-type ssh
+ local-user root state block fail-times 3 interval 5
+ local-user root user-group manage-ug
+ local-user penetw password irreversible-cipher $1c$L[d0:b0n<-$CI^8E>4A0/pM.D=/1gXVipOUYi6H$/@.VT(CLAz-$
+ local-user penetw service-type ssh
+ local-user penetw level 3
+ local-user penetw state block fail-times 3 interval 5
+ local-user penetw expire 2041-01-01
+ local-user callfran password irreversible-cipher $1c$zn8QC\|Ya6$:7<""JgWv8P\L$'Kd%%*FE8hXO{^J"T@yF5awz,S$
+ local-user callfran service-type ssh
+ local-user callfran level 3
+ local-user callfran state block fail-times 3 interval 5
+ local-user callfran expire 2051-01-01
+ local-user claudio password irreversible-cipher $1c$C69.1(~XA$$umkf;qo!,~_)*'0si{N@zKL1X#j;0W,*HR$5@#KL$
+ local-user claudio service-type ssh
+ local-user claudio level 3
+ local-user claudio state block fail-times 3 interval 5
+ local-user claudio expire 2051-01-01
+ local-user backup password irreversible-cipher $1c$j,g&J6%<~)$"sn*Os),]*g}"'KTk8M=d5%9Q=P<ySM,M<*},b^N$
+ local-user backup service-type ssh
+ local-user backup level 3
+ local-user backup state block fail-times 3 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local radius
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+#
+license
+ active port-basic slot 2 port 0-31
+#
+interface Vlanif3559
+ ip address 192.168.244.1 255.255.255.252
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk1
+ portswitch
+ description LACP-ALIANCA
+ port link-type trunk
+ port trunk allow-pass vlan 521
+ stp disable
+ mode lacp-static
+#
+interface Eth-Trunk1.3500
+ vlan-type dot1q 3500
+ description PTP-BELA-VISTA X ALIANCA
+ ip address 172.20.20.2 255.255.255.252
+ statistic enable
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Eth-Trunk1.3964
+ vlan-type dot1q 3964
+ description IBGP-RB4011-BELA-VISTA
+ ipv6 enable
+ ip address 172.20.35.6 255.255.255.252
+ ipv6 address FC00::2/126
+ statistic enable
+#
+interface Eth-Trunk2
+ portswitch
+ description LACP-CCR1009-BV-AUTH01
+ port link-type trunk
+ stp disable
+#
+interface Eth-Trunk2.3462
+ vlan-type dot1q 3462
+ description PTP-CGNAT-AUTH01-BELA-VISTA
+ statistic enable
+ mpls l2vc 10.1.1.1 3462 raw
+#
+interface Eth-Trunk2.3556
+ vlan-type dot1q 3556
+ description PTP-IPV6-PPPOE-AUTH01-BELA-VISTA
+ statistic enable
+ mpls l2vc 10.1.1.1 3556 raw
+#
+interface Eth-Trunk3
+ portswitch
+ description LACP-CCR1009-BV-AUTH01-ANTIGA
+ port link-type trunk
+ port trunk allow-pass vlan 101 to 108 111 to 118 121 to 128 500 521 1101 to 1111 1115 to 1116 2215 to 2216 3101 to 3108 3111 to 3118
+ port trunk allow-pass vlan 3201 to 3208 3301 to 3308
+ stp disable
+ load-balance src-dst-ip
+#
+interface Eth-Trunk3.3464
+ vlan-type dot1q 3464
+ description PTP-CGNAT-AUTH01-BELA-VISTA-CCR-ANTIGA
+ statistic enable
+ mpls l2vc 10.1.1.1 3464 raw
+#
+interface Eth-Trunk3.3560
+ vlan-type dot1q 3560
+ description PTP-IPV6-PPPOE-AUTH01-BELA-VISTA-VELHA
+ statistic enable
+ mpls l2vc 10.1.1.1 3560 raw
+#
+interface Ethernet0/0/0
+ undo shutdown
+ ip binding vpn-instance __LOCAL_OAM_VPN__
+ ip address 192.168.0.1 255.255.255.0
+#
+interface GigabitEthernet0/2/0
+ portswitch
+ description PTP-CRS305
+ undo shutdown
+ port link-type trunk
+ undo dcn
+#
+interface GigabitEthernet0/2/0.1991
+ vlan-type dot1q 1991
+ mtu 9000
+ description ISP-NILTON-RT-BELA-VISTA-LINK-IP-VGRNET-V4
+ mpls l2vc 10.1.1.3 1991 raw
+#
+interface GigabitEthernet0/2/0.1993
+ vlan-type dot1q 1993
+ mtu 9000
+ description ISP-NILTON-RT-BELA-VISTA-LINK-IP-VGRNET-V6
+ mpls l2vc 10.1.1.3 1993 raw
+#
+interface GigabitEthernet0/2/0.1995
+ vlan-type dot1q 1995
+ mtu 9000
+ description ISP-NILTON-RT-BELA-VISTA-LINK-CDN-VGRNET-V4
+ mpls l2vc 10.1.1.3 1995 raw
+#
+interface GigabitEthernet0/2/0.1997
+ vlan-type dot1q 1997
+ mtu 9000
+ description ISP-NILTON-RT-BELA-VISTA-LINK-CDN-VGRNET-V6
+ mpls l2vc 10.1.1.3 1997 raw
+#
+interface GigabitEthernet0/2/0.3790
+ vlan-type dot1q 3790
+ description PTP-POP-WTD-ROTA-4-VIA-CRS305
+ ip address 172.20.20.90 255.255.255.252
+ statistic enable
+ ospf cost 10000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface GigabitEthernet0/2/0.3945
+ vlan-type dot1q 3945
+ mtu 9000
+ description VGRNET-LINK-IP-PIRANGA/F.BRILHA
+ mpls l2vc 10.255.255.2 3945 raw
+#
+interface GigabitEthernet0/2/0.3946
+ vlan-type dot1q 3946
+ mtu 9000
+ description VGRNET-LINK_CDN-PIRANGA/F.BRILH
+ mpls l2vc 10.255.255.2 3946 raw
+#
+interface GigabitEthernet0/2/0.3962
+ vlan-type dot1q 3962
+ mtu 9000
+ description VGRNET-LINK-IP-PIRANGA/F.BRILHANTE-IPV6-ROTA2
+ mpls l2vc 10.255.255.2 3962 raw
+#
+interface GigabitEthernet0/2/0.3963
+ vlan-type dot1q 3963
+ mtu 9000
+ description VGRNET-LINK_CDN-PIRANGA/F.BRILHANTE-IPV6-ROTA2
+ mpls l2vc 10.255.255.2 3963 raw
+#
+interface GigabitEthernet0/2/1
+ description ROTA-FRANGO-BRILHANTE
+ undo shutdown
+ eth-trunk 1
+ undo dcn
+#
+interface GigabitEthernet0/2/2
+ description ROTA-PIRANGA
+ undo shutdown
+ eth-trunk 1
+ undo dcn
+#
+interface GigabitEthernet0/2/3
+ portswitch
+ description CRS309-NILTON
+ undo shutdown
+ port link-type trunk
+ port trunk allow-pass vlan 101 to 108 111 to 118 121 to 128 500 1101 to 1111 1115 to 1116 2215 to 2216 3101 to 3108 3111 to 3118 3201 to 3208
+ port trunk allow-pass vlan 3967 to 3970
+ undo dcn
+#
+interface GigabitEthernet0/2/3.3480
+ vlan-type dot1q 3480
+ description GERENCIA-CRS309-SW-CORE-NLT01
+ mpls l2vc 10.1.1.1 3480 raw
+#
+interface GigabitEthernet0/2/3.3502
+ vlan-type dot1q 3502
+ mpls l2vc 10.1.1.1 3502 raw
+#
+interface GigabitEthernet0/2/3.3503
+ vlan-type dot1q 3503
+ mpls l2vc 10.1.1.1 3503 raw
+#
+interface GigabitEthernet0/2/3.3555
+ vlan-type dot1q 3555
+ description PTP-IPV4-PPPOE-AUTH01-BELA-VISTA
+ statistic enable
+ mpls l2vc 10.1.1.1 3555 raw
+#
+interface GigabitEthernet0/2/3.3701
+ vlan-type dot1q 3701
+ description PTP-BELA-VISTA X HW-NILTON
+ ip address 172.20.20.5 255.255.255.252
+ statistic enable
+ ospf cost 8000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface GigabitEthernet0/2/3.3965
+ vlan-type dot1q 3965
+ description PTP-BGP-V4-PRIVADO-ALICANCA
+ ip address 172.20.35.46 255.255.255.252
+ statistic enable
+#
+interface GigabitEthernet0/2/3.3966
+ vlan-type dot1q 3966
+ description PTP-BGP-V6-PRIVADO-ALIANCA
+ ipv6 enable
+ ipv6 address FC00::1E/126
+#
+interface GigabitEthernet0/2/4
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/2/5
+ description LACP-CCR1009-ANTIGA-P5
+ undo shutdown
+ eth-trunk 3
+ dcn
+#
+interface GigabitEthernet0/2/6
+ description LACP-CCR1009-ANTIGA-P6
+ undo shutdown
+ eth-trunk 3
+ dcn
+#
+interface GigabitEthernet0/2/7
+ description LACP-CCR1009-ANTIGA-P7
+ undo shutdown
+ eth-trunk 3
+ dcn
+#
+interface GigabitEthernet0/2/8
+ portswitch
+ undo shutdown
+ port link-type trunk
+ dcn
+ negotiation auto
+#
+interface GigabitEthernet0/2/9
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/10
+ portswitch
+ description REDE-NEUTRA-RAPIDUS
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/10.295
+ vlan-type dot1q 295
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 295 raw
+#
+interface GigabitEthernet0/2/10.395
+ vlan-type dot1q 395
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 395 raw
+#
+interface GigabitEthernet0/2/10.495
+ vlan-type dot1q 495
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 495 raw
+#
+interface GigabitEthernet0/2/10.595
+ vlan-type dot1q 595
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 595 raw
+#
+interface GigabitEthernet0/2/10.695
+ vlan-type dot1q 695
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 695 raw
+#
+interface GigabitEthernet0/2/10.795
+ vlan-type dot1q 795
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 795 raw
+#
+interface GigabitEthernet0/2/10.895
+ vlan-type dot1q 895
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ l2 binding vsi 895-REDE_NEUTRA_RAPIDUS
+#
+interface GigabitEthernet0/2/10.983
+ vlan-type dot1q 983
+ mtu 9000
+ description REDE_NEUTRA_RAPIDUS
+ mpls l2vc 10.1.1.1 983 raw
+#
+interface GigabitEthernet0/2/11
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/12
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/2/13
+ portswitch
+ description CRS326-CLAUDIO_SW02-BV
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/2/13.501
+ vlan-type dot1q 501
+ mtu 9000
+ description GERENCIA-CRS326-BV-CLAUDIO-CLIENTES
+ statistic enable
+ mpls l2vc 10.1.1.1 501 raw
+#
+interface GigabitEthernet0/2/13.1050
+ vlan-type dot1q 1050
+ mtu 9000
+ description Antena_Francivaldo_bela vista
+ l2 binding vsi 1050-FRANCIVALDO-BELA-VISTA
+#
+interface GigabitEthernet0/2/13.1053
+ vlan-type dot1q 1053
+ mtu 9000
+ description Antena intelbras_ bela vista
+ l2 binding vsi 1053-A-INTELBRAS-BELA-VISTA
+#
+interface GigabitEthernet0/2/13.1057
+ vlan-type dot1q 1057
+ mtu 9000
+ description Antena_Piranga_bela vista
+ l2 binding vsi 1057-A-PIRANGA-BELA-VISTA
+#
+interface GigabitEthernet0/2/14
+ description LACP-CCR1009-BV-AUTH01-G02
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/15
+ description LACP-CCR1009-BV-AUTH01-G01
+ undo shutdown
+ eth-trunk 2
+ dcn
+#
+interface GigabitEthernet0/2/16
+ portswitch
+ description PTP-OLT-BV-CLAUDIO
+ undo shutdown
+ undo dcn
+ negotiation auto
+#
+interface GigabitEthernet0/2/16.301
+ vlan-type dot1q 301
+ mtu 9000
+ description O1/P1/BV/Claudio
+ mpls l2vc 10.1.1.1 301 raw
+#
+interface GigabitEthernet0/2/16.302
+ vlan-type dot1q 302
+ mtu 9000
+ description O1/P2/BV/Claudio
+ mpls l2vc 10.1.1.1 302 raw
+#
+interface GigabitEthernet0/2/16.303
+ vlan-type dot1q 303
+ mtu 9000
+ description O1/P3/BV/Claudio
+ mpls l2vc 10.1.1.1 303 raw
+#
+interface GigabitEthernet0/2/16.304
+ vlan-type dot1q 304
+ mtu 9000
+ description O1/P4/BV/Claudio
+ mpls l2vc 10.1.1.1 304 raw
+#
+interface GigabitEthernet0/2/16.305
+ vlan-type dot1q 305
+ mtu 9000
+ description O1/P5/BV/Claudio
+ mpls l2vc 10.1.1.1 305 raw
+#
+interface GigabitEthernet0/2/16.306
+ vlan-type dot1q 306
+ mtu 9000
+ description O1/P6/BV/Claudio
+ mpls l2vc 10.1.1.1 306 raw
+#
+interface GigabitEthernet0/2/16.307
+ vlan-type dot1q 307
+ mtu 9000
+ description O1/P7/BV/Claudio
+ mpls l2vc 10.1.1.1 307 raw
+#
+interface GigabitEthernet0/2/16.308
+ vlan-type dot1q 308
+ mtu 9000
+ description O1/P8/BV/Claudio
+ mpls l2vc 10.1.1.1 308 raw
+#
+interface GigabitEthernet0/2/17
+ portswitch
+ description PTP-CRS328
+ undo shutdown
+ port trunk allow-pass vlan 3301 to 3308
+ dcn
+#
+interface GigabitEthernet0/2/17.3463
+ vlan-type dot1q 3463
+ description PTP-CGNAT-AUTH02-BELA-VISTA
+ statistic enable
+ mpls l2vc 10.1.1.1 3463 raw
+#
+interface GigabitEthernet0/2/17.3557
+ vlan-type dot1q 3557
+ description PTP-IPV4-PPPOE-AUTH02-BELA-VISTA
+ statistic enable
+ mpls l2vc 10.1.1.1 3557 raw
+#
+interface GigabitEthernet0/2/17.3558
+ vlan-type dot1q 3558
+ description PTP-IPV6-PPPOE-AUTH02-BELA-VISTA
+ statistic enable
+ mpls l2vc 10.1.1.1 3558 raw
+#
+interface GigabitEthernet0/2/18
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/19
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/20
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/21
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/22
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/23
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/24
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/25
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/26
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/27
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/28
+ portswitch
+ description MGMT_OLT_01
+ undo shutdown
+ port link-type access
+ port default vlan 3559
+ undo dcn
+#
+interface GigabitEthernet0/2/29
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/29.3561
+ vlan-type dot1q 3561
+ description GERENCIA-SW328-CORE-BV-02-DISTRIBUICAO
+ ip address 172.20.35.41 255.255.255.252
+ statistic enable
+#
+interface GigabitEthernet0/2/30
+ undo shutdown
+ dcn
+#
+interface GigabitEthernet0/2/31
+ undo shutdown
+ dcn
+#
+interface LoopBack0
+ ip address 192.140.67.245 255.255.255.252
+#
+interface LoopBack1
+ description LOOPBACK-REDE-MPLS
+ ip address 10.1.1.2 255.255.255.255
+#
+interface LoopBack1023
+ description DCN loopback interface
+ ip binding vpn-instance __dcn_vpn__
+ ip address 128.186.188.174 255.255.0.0
+#
+interface NULL0
+#
+bgp 64527
+ peer 172.20.35.5 as-number 266550
+ peer 172.20.35.5 description BGP-ALIANCA
+ peer 172.20.35.45 as-number 266550
+ peer 172.20.35.45 description BGP-ALIANCA-ROTA-NILTON
+ peer FC00::1 as-number 266550
+ peer FC00::1 description BGP-ALIANCA
+ peer FC00::1D as-number 266550
+ peer FC00::1D description BGP-ALIANCA-ROTA-NILTON
+ #
+ ipv4-family unicast
+  undo synchronization
+  network 192.140.67.244 255.255.255.252
+  peer 172.20.35.5 enable
+  peer 172.20.35.5 route-policy BGP_PRIVADO_IPV4_IN import
+  peer 172.20.35.5 route-policy BGP_PRIVADO_IPV4_OUT export
+  peer 172.20.35.45 enable
+  peer 172.20.35.45 route-policy BGP_PRIVADO_IPV4_IN import
+  peer 172.20.35.45 route-policy BGP_PRIVADO_IPV4_OUT export
+ #
+ ipv6-family unicast
+  undo synchronization
+  peer FC00::1 enable
+  peer FC00::1 route-policy BGP_PRIVADO_IPV6_IN import
+  peer FC00::1 route-policy BGP_PRIVADO_IPV6_OUT export
+  peer FC00::1D enable
+  peer FC00::1D route-policy BGP_PRIVADO_IPV6_IN import
+  peer FC00::1D route-policy BGP_PRIVADO_IPV6_OUT export
+#
+ospf 1 router-id 10.1.1.2
+ import-route direct
+ import-route static
+ spf-schedule-interval millisecond 10
+ opaque-capability enable
+ graceful-restart
+ enable traffic-adjustment advertise
+ area 0.0.0.0
+  network 10.1.1.2 0.0.0.0
+  network 172.20.20.0 0.0.0.3
+  network 172.20.20.4 0.0.0.3
+  mpls-te enable
+#
+ospf 65534 vpn-instance __dcn_vpn__
+ description DCN ospf create by default
+ opaque-capability enable
+ hostname
+ vpn-instance-capability simple
+ area 0.0.0.0
+  network 0.0.0.0 255.255.255.255
+#
+!The DCN function implements the capability of plug-and-play for this device.
+!A NE IP address based on the unique NE ID is automatically generated in VPN
+!of DCN. It is recommended that the NE IP address be changed to the planned
+!one by running the ne-ip X.X.X.X <MASK> command after the device being online.
+dcn
+#
+route-policy BGP_PRIVADO_IPV4_IN permit node 10
+ if-match ip-prefix BGP_PRIVADO_IPV4_IN
+#
+route-policy BGP_PRIVADO_IPV4_OUT permit node 10
+ if-match ip-prefix BGP_PRIVADO_IPV4_OUT
+#
+route-policy BGP_PRIVADO_IPV6_IN permit node 10
+ if-match ipv6 address prefix-list BGP_PRIVADO_IPV6_IN
+#
+route-policy BGP_PRIVADO_IPV6_OUT permit node 10
+ if-match ipv6 address prefix-list BGP_PRIVADO_IPV6_OUT
+#
+ip ip-prefix BGP_PRIVADO_IPV4_IN index 10 permit 0.0.0.0 0
+ip ip-prefix BGP_PRIVADO_IPV4_IN index 11 deny 192.140.67.0 24 greater-equal 24 less-equal 32
+ip ip-prefix BGP_PRIVADO_IPV4_OUT index 10 permit 192.140.67.244 30
+ip ip-prefix BGP_PRIVADO_IPV4_OUT index 11 permit 192.140.67.208 28
+ip ip-prefix BGP_PRIVADO_IPV4_OUT index 12 permit 192.140.67.192 28
+#
+ip route-static 192.140.67.244 255.255.255.252 NULL0 preference 255
+#
+ip ipv6-prefix BGP_PRIVADO_IPV6_IN index 10 permit :: 0
+ip ipv6-prefix BGP_PRIVADO_IPV6_IN index 11 deny 2804:7FA0:4000:: 34 greater-equal 34 less-equal 126
+ip ipv6-prefix BGP_PRIVADO_IPV6_IN index 12 deny 2804:7FA0:8000:: 34 greater-equal 34 less-equal 126
+ip ipv6-prefix BGP_PRIVADO_IPV6_OUT index 10 permit 2804:7FA0:5050:: 44
+ip ipv6-prefix BGP_PRIVADO_IPV6_OUT index 11 permit 2804:7FA0:5040:: 44
+ip ipv6-prefix BGP_PRIVADO_IPV6_OUT index 20 deny :: 0 less-equal 126
+#
+snmp-agent
+snmp-agent local-engineid 800007DB03C4FBAA0B1E05
+snmp-agent community read cipher %^%#J]0[HQVz%2pq\7**"]0OebIN$Tl/'@h6O@/o%Sr(h9{@7:5PA6`(PN9S<FpN\5l~H'~R>KZVQ#Zx6.94%^%#
+snmp-agent community read cipher %^%#x85z)kTXh(9yIiMM/EAKEepmG(0Z7$q:TC>\:}PJc*>O5MA>lXeVOfYo.\%'e85>/3.R\)mI60A!"x7Z%^%#
+snmp-agent community read cipher %^%#,7JD*FXf4TUUG%-8]sKXix[H+/wY;UgMt3Vmte8<)]hSH@w*K>lrZjK@Rzh.-~7X28IdrOK9LtRdZ#!"%^%#
+#
+snmp-agent sys-info version v2c v3
+#
+snmp-agent protocol source-status all-interface
+undo snmp-agent protocol source-status ipv6 all-interface
+#
+undo snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+lldp enable
+#
+stelnet server enable
+snetconf server enable
+ssh ipv4 server port 2299
+ssh ipv6 server port 2299
+ssh user callfran
+ssh user callfran authentication-type password
+ssh user callfran service-type snetconf stelnet
+ssh user claudio
+ssh user claudio authentication-type password
+ssh user claudio service-type snetconf stelnet
+ssh user penetw
+ssh user penetw authentication-type password
+ssh user penetw service-type snetconf stelnet
+ssh user root
+ssh user root authentication-type password
+ssh user root service-type stelnet
+ssh server-source all-interface
+ssh ipv6 server-source all-interface
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh server hmac sha2_512 sha2_256
+ssh server key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+ssh server publickey ecc rsa
+#
+ssh server dh-exchange min-len 2048
+#
+ssh client first-time enable
+ssh client peer 45.228.38.254 assign ecc-key 45.228.38.254
+#
+ssh client publickey ecc rsa
+#
+ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh client hmac sha2_512 sha2_256
+ssh client key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+user-interface maximum-vty 21
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$~[%k<>tZv+$#n\x.L5XaNCZY@T[%eEBW!XCCiS+u$=o_7Wi]Y<4$
+#
+user-interface vty 0 4
+ authentication-mode aaa
+ protocol inbound ssh
+#
+netconf
+ activate module huawei-ip
+#
+local-aaa-server
+#
+return
+<ATN910-HUAWEI-BV-ASN-64527>

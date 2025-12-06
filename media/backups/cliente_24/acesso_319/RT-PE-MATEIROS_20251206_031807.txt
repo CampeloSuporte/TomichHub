@@ -1,0 +1,82 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: RT-PE-MATEIROS
+Host: 10.255.0.119:22002
+Acesso: VIA PROXY SSH
+Modelo: RB3011
+Template: Backup Mikrotik
+Data: 06/12/2025 03:18:07
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[suporte@RT-REP-MATEIROS] > /export terse
+# jun/01/1970 08:05:17 by RouterOS 6.48.6
+# software id = UBJQ-IFI2
+#
+# model = RouterBOARD 3011UiAS
+# serial number = B88D0A2055C9
+/interface bridge add admin-mac=74:4D:28:6B:A3:E0 auto-mac=no comment=defconf nam
+e=bridge
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=ether8 ] comment=RT-SANTA-MARIA
+/interface ethernet set [ find default-name=ether9 ] comment=RT-MATEIROS
+/interface vlan add interface=ether8 name=vlan56-pppoe vlan-id=56
+/interface vlan add interface=ether9 name=vlan56-pppoe-out vlan-id=56
+/interface list add comment=defconf name=WAN
+/interface list add comment=defconf name=LAN
+/ip pool add name=default-dhcp ranges=192.168.88.10-192.168.88.254
+/ip dhcp-server add address-pool=default-dhcp disabled=no interface=bridge name=d
+efconf
+/routing ospf instance set [ find default=yes ] router-id=10.255.0.119
+/snmp community set [ find default=yes ] name=jmatelecom-ro
+/interface bridge port add bridge=bridge comment=defconf interface=ether2
+/interface bridge port add bridge=bridge comment=defconf interface=ether3
+/interface bridge port add bridge=bridge comment=defconf interface=ether4
+/interface bridge port add bridge=bridge comment=defconf interface=ether5
+/interface bridge port add bridge=bridge comment=defconf interface=ether6
+/interface bridge port add bridge=bridge comment=defconf interface=ether7
+/interface bridge port add bridge=bridge comment=defconf interface=vlan56-pppoe-o
+ut
+/interface bridge port add bridge=bridge comment=defconf interface=ether10
+/interface bridge port add bridge=bridge comment=defconf interface=sfp1
+/interface bridge port add bridge=bridge interface=vlan56-pppoe
+/ip firewall connection tracking set enabled=no
+/ip neighbor discovery-settings set discover-interface-list=LAN
+/interface list member add comment=defconf interface=bridge list=LAN
+/interface list member add comment=defconf interface=ether1 list=WAN
+/ip address add address=10.255.0.119 interface=loopback network=10.255.0.119
+/ip address add address=172.27.118.116/29 interface=ether8 network=172.27.118.112
+
+/ip address add address=172.27.119.1/29 interface=ether9 network=172.27.119.0
+/ip dhcp-client add comment=defconf disabled=no interface=ether1
+/ip dhcp-server network add address=192.168.88.0/24 comment=defconf gateway=192.1
+68.88.1
+/ip dns set allow-remote-requests=yes
+/ip dns static add address=192.168.88.1 comment=defconf name=router.lan
+/ip firewall nat
+# masquerade action is not possible when connection tracking is disabled
+add action=masquerade chain=srcnat comment="defconf: masquerade" ipsec-policy=out
+,none out-interface-list=WAN
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/routing ospf interface add interface=ether8 network-type=point-to-point
+/routing ospf interface add interface=ether9 network-type=point-to-point
+/routing ospf network add area=backbone network=172.27.118.112/29
+/routing ospf network add area=backbone network=10.255.0.119/32
+/routing ospf network add area=backbone network=172.27.119.0/29
+/snmp set enabled=yes trap-version=2
+/system identity set name=RT-REP-MATEIROS
+/tool mac-server set allowed-interface-list=LAN
+/tool mac-server mac-winbox set allowed-interface-list=LAN
+/tool romon set enabled=yes secrets=jma
+[suporte@RT-REP-MATEIROS] >                                                    [suporte@RT-REP-MATEIROS] > 

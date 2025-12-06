@@ -1,0 +1,2348 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: DEANGELES MOURÃO PIMENTA 
+Equipamento: Servidor-Pppoe-Radius Canaa 2
+Host: 10.9.1.6:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 05/12/2025 01:41:07
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@Servidor-Pppoe-Radius Canaa 2] > /                                     [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /e[tomich@Servidor-Pppoe-Radius Canaa 2] > /e                                    [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /ex[tomich@Servidor-Pppoe-Radius Canaa 2] > /ex                                   [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /exp[tomich@Servidor-Pppoe-Radius Canaa 2] > /exp                                  [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /expo[tomich@Servidor-Pppoe-Radius Canaa 2] > /expo                                 [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /expor[tomich@Servidor-Pppoe-Radius Canaa 2] > /expor                                [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export[tomich@Servidor-Pppoe-Radius Canaa 2] > /export                               [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export [tomich@Servidor-Pppoe-Radius Canaa 2] > /export                               [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export t[tomich@Servidor-Pppoe-Radius Canaa 2] > /export t                             [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export te[tomich@Servidor-Pppoe-Radius Canaa 2] > /export te                            [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ter[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ter                           [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ters[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ters                          [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse                         [K[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse
+# dec/05/2025 01:41:01 by RouterOS 6.49.18
+# software id = 20BH-FJKY
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 7AEE0708800F
+/interface bridge add name=loopback protocol-mode=none
+/interface ethernet set [ find default-name=ether1 ] comment="LINK LOCAL"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment=LINK
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-500- RUA HORTE
+NCIA " vlan-id=500
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-501-RUA CENTRA
+L " vlan-id=501
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-502- RUA MIRIM
+ " vlan-id=502
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-503-RUA BARRA 
+SECA" vlan-id=503
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-504- RUA CIRCU
+LAR" vlan-id=504
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-505- RUA TANCR
+EDO NEVES " vlan-id=505
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-506- RUA VALE 
+ALEGRE " vlan-id=506
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-507- RUA JOSE 
+DE SOUZA" vlan-id=507
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-508-RUA  BOA S
+ORTE  " vlan-id=508
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-509-RUA ELDORA
+DO " vlan-id=509
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-510-RUA AMAZON
+AS " vlan-id=510
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-511 - RUA  SAN
+TA CATARINA " vlan-id=511
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-512 - RUA  COR
+ITIBA " vlan-id=512
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-513 - RUA SANT
+OS DUMONT  " vlan-id=513
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-514 - RUA MUTU
+M " vlan-id=514
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-515 - RUA SAO 
+FRANCISCO " vlan-id=515
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-516 - RUA VALE
+ ENCANTADO  " vlan-id=516
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-517 - RUA GERA
+LDINO INACIO  " vlan-id=517
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-518 - RUA SALV
+ADOR  " vlan-id=518
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-519 - RUA NITE
+ROI" vlan-id=519
+/interface vlan add interface=sfp-sfpplus1 name=vlan101-WAN-IPv4 vlan-id=101
+/interface vlan add interface=sfp-sfpplus1 name=vlan201-WAN-IPv6 vlan-id=201
+/interface vlan add comment=RAMAL-04 disabled=yes interface=sfp-sfpplus1 name="vl
+an257-TANCREDO NEVES" vlan-id=257
+/interface vlan add interface=sfp-sfpplus1 name="vlan520 " vlan-id=520
+/interface vlan add interface=sfp-sfpplus1 name=vlan521 vlan-id=521
+/interface vlan add interface=sfp-sfpplus1 name=vlan522 vlan-id=522
+/interface vlan add interface=sfp-sfpplus1 name=vlan523 vlan-id=523
+/interface vlan add interface=sfp-sfpplus1 name=vlan524 vlan-id=524
+/interface vlan add interface=sfp-sfpplus1 name=vlan525 vlan-id=525
+/interface vlan add interface=sfp-sfpplus1 name=vlan526 vlan-id=526
+/interface vlan add interface=sfp-sfpplus1 name=vlan527 vlan-id=527
+/interface vlan add interface=sfp-sfpplus1 name=vlan528 vlan-id=528
+/interface vlan add interface=sfp-sfpplus1 name=vlan529 vlan-id=529
+/interface vlan add interface=sfp-sfpplus1 name=vlan530 vlan-id=530
+/interface vlan add interface=sfp-sfpplus1 name=vlan531 vlan-id=531
+/interface vlan add interface=sfp-sfpplus1 name=vlan532 vlan-id=532
+/interface vlan add interface=sfp-sfpplus1 name=vlan533 vlan-id=533
+/interface vlan add interface=sfp-sfpplus1 name=vlan534 vlan-id=534
+/interface vlan add interface=sfp-sfpplus1 name=vlan535 vlan-id=535
+/interface vlan add interface=sfp-sfpplus1 name=vlan536 vlan-id=536
+/interface vlan add interface=sfp-sfpplus1 name=vlan537 vlan-id=537
+/interface vlan add interface=sfp-sfpplus1 name=vlan538 vlan-id=538
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan539 vlan-id=539
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip pool add name=Remoto-1 ranges=100.64.4.0/22
+/ip pool add name=Local-1 ranges=10.64.4.0/22
+/ip pool add comment=SGP-BLOQUEADOS name=bloqueados ranges=10.24.0.0/20
+/ipv6 pool add name=PD1-LAN prefix=2804:2e7c:2408::/46 prefix-length=56
+/ipv6 pool add name=PREFIX1-WAN prefix=2804:2e7c:240c::/48 prefix-length=64
+/ipv6 pool add name=bloqueiov6pd prefix=2001:db9:100::/40 prefix-length=64
+/ipv6 pool add name=bloqueiov6prefix prefix=2001:dba:900::/40 prefix-length=64
+/ppp profile set *0 local-address=Local-1 remote-address=Remoto-1
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PD1-LAN local-address=Local-1 
+name=profile1-servidor-01 on-down=":local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server binding remove [find server=\$servername]\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server remove [find numbers=\$user]" on-up=":local TOKEN \"31f01
+836-c974-4ca9-a5cc-0b755e46299c\"\r\
+    \n:local ipnas \"10.9.1.6\"\r\
+    \n:local linksgp \"https://hmtelecom.sgplocal.com.br\"\r\
+    \n:local prefixo\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n:delay 30s\r\
+    \n:foreach binding in=[/ipv6 dhcp-server binding find status=\"bound\" server
+=\"\$servername\"] do={\r\
+    \n:set prefixo [/ipv6 dhcp-server binding get \$binding address]\r\
+    \n:log info \"IPV6 enviado para o SGP - Login: \$user \$linksgp/ws/radius/ipv
+6/update/\\\?token=\$TOKEN&username=\$user&app=mikrotik&nasip=\$ipnas&pd=\$prefi
+xo\"\r\
+    \n/tool fetch url=\"\$linksgp/ws/radius/ipv6/update/\\\?token=\$TOKEN&usernam
+e=\$user&app=mikrotik&nasip=\$ipnas&pd=\$prefixo\" mode=http as-value output=use
+r\r\
+    \n}\r\
+    \n" only-one=yes remote-address=Remoto-1 remote-ipv6-prefix-pool=PREFIX1-WAN 
+use-upnp=yes
+/ppp profile add name=Profile-1Mb rate-limit=1000k/512k
+/ppp profile add dns-server=208.67.222.222 name=profile2 use-upnp=yes
+/ppp profile add local-address=Local-1 name=profile-5Mb rate-limit=800k/6000k rem
+ote-address=Remoto-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name=profile-10Mb rate-limit=1200k/10300k 
+remote-address=Remoto-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name=profile-12Mb rate-limit=10000k/20000k
+ remote-address=Remoto-1 use-upnp=yes
+/ppp profile add change-tcp-mss=yes local-address=Local-1 name="50 Mbps" only-one
+=yes rate-limit=51200k/51200k remote-address=Remoto-1 use-upnp=yes
+/ppp profile add change-tcp-mss=yes local-address=Local-1 name="150 Mbps" only-on
+e=yes rate-limit=153600k/153600k remote-address=Remoto-1 use-upnp=yes
+/ppp profile add change-tcp-mss=yes local-address=Local-1 name="350 Mbps" only-on
+e=yes rate-limit=358400k/358400k remote-address=Remoto-1 use-upnp=yes
+/ppp profile add change-tcp-mss=yes local-address=Local-1 name="600 Mbps" only-on
+e=yes rate-limit=600800k/600800k remote-address=Remoto-1 use-upnp=yes
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=cliente_sabido only-one=yes rate-limit="1000k/1000k 0/0 0/0 0/0 8 0/0" remo
+te-address=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=60mb only-one=yes rate-limit="150000k/150000k 0/0 0/0 0/0 8 0/0" remote-add
+ress=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=5mb only-one=yes rate-limit="80000k/80000k 0/0 0/0 0/0 8 0/0" remote-addres
+s=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=500mb only-one=yes rate-limit="700000k/700000k 0/0 0/0 0/0 8 0/0" remote-ad
+dress=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=350mb only-one=yes rate-limit="380000k/380000k 0/0 0/0 0/0 8 0/0" remote-ad
+dress=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add comment=mkauth dns-server=8.8.8.8,8.8.4.4 local-address=Local-1 
+name=600mb only-one=yes rate-limit="900000k/900000k 0/0 0/0 0/0 8 0/0" remote-ad
+dress=Remoto-1 use-encryption=yes use-mpls=no
+/ppp profile add name=SGP-PLANO-ID2 rate-limit=800000k/800000k
+/ppp profile add name=SGP-PLANO-ID1 rate-limit=400000k/400000k
+/ppp profile add name=SGP-PLANO-ID5 rate-limit=150000k/150000k
+/ppp profile add name=SGP-PLANO-ID4 rate-limit=900000k/900000k
+/ppp profile add name=SGP-BLOQUEADOS rate-limit=1k/1k remote-address=bloqueados
+/ppp profile set *FFFFFFFE change-tcp-mss=default local-address=Local-1 remote-ad
+dress=Remoto-1
+/routing ospf area add area-id=100.64.4.0 name=area1-PPPoE
+/routing ospf instance set [ find default=yes ] name=R2 redistribute-connected=as
+-type-1 redistribute-static=as-type-1 router-id=2.2.2.3
+/snmp community set [ find default=yes ] disabled=yes
+/snmp community add addresses=::/0 name=TOMICH write-access=yes
+/snmp community add addresses=179.191.35.147/32,179.191.35.147/32 name=SGP-GRAPHI
+Cs
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-501-RUA CENTRAL " max-mru=1492 max-mt
+u=1492 one-session-per-host=yes service-name=service-vlan501
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-502- RUA MIRIM " max-mru=1492 max-mtu
+=1492 one-session-per-host=yes service-name=service-vlan502
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-503-RUA BARRA SECA" max-mru=1492 max-
+mtu=1492 one-session-per-host=yes service-name=service-vlan503
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-504- RUA CIRCULAR" max-mru=1492 max-m
+tu=1492 one-session-per-host=yes service-name=service-vlan504
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-505- RUA TANCREDO NEVES " max-mru=149
+2 max-mtu=1492 one-session-per-host=yes service-name=service-vlan505
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-506- RUA VALE ALEGRE " max-mru=1492 m
+ax-mtu=1492 one-session-per-host=yes service-name=service-vlan506
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-507- RUA JOSE DE SOUZA" max-mru=1492 
+max-mtu=1492 one-session-per-host=yes service-name=service-vlan507
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-508-RUA  BOA SORTE  " max-mru=1492 ma
+x-mtu=1492 one-session-per-host=yes service-name=service-vlan508
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-509-RUA ELDORADO " max-mru=1492 max-m
+tu=1492 one-session-per-host=yes service-name=service-vlan509
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-510-RUA AMAZONAS " max-mru=1492 max-m
+tu=1492 one-session-per-host=yes service-name=service-vlan510
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-511 - RUA  SANTA CATARINA " max-mru=1
+492 max-mtu=1492 one-session-per-host=yes service-name=service-vlan511
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-512 - RUA  CORITIBA " max-mru=1492 ma
+x-mtu=1492 one-session-per-host=yes service-name=service-vlan512
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-513 - RUA SANTOS DUMONT  " max-mru=14
+92 max-mtu=1492 one-session-per-host=yes service-name=service-vlan513
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-514 - RUA MUTUM " max-mru=1492 max-mt
+u=1492 one-session-per-host=yes service-name=service-vlan514
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-515 - RUA SAO FRANCISCO " max-mru=149
+2 max-mtu=1492 one-session-per-host=yes service-name=service-vlan515
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-516 - RUA VALE ENCANTADO  " max-mru=1
+492 max-mtu=1492 one-session-per-host=yes service-name=service-vlan516
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-517 - RUA GERALDINO INACIO  " max-mru
+=1492 max-mtu=1492 one-session-per-host=yes service-name=service-vlan517
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-518 - RUA SALVADOR  " max-mru=1492 ma
+x-mtu=1492 one-session-per-host=yes service-name=service-vlan518
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface="vlan-519 - RUA NITEROI" max-mru=1492 max-m
+tu=1492 one-session-per-host=yes service-name=service-vlan519
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface="vlan520 " max-mru=1492 max-mtu=1492 one-session
+-per-host=yes service-name=service2
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan521 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service3
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan522 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service4
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan523 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service5
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan524 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service6
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan525 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service7
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan526 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service8
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan527 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service9
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan528 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service10
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan529 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service11
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan530 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service12
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan531 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service13
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan532 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service14
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan533 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service15
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan534 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service16
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan535 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service17
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan536 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service18
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan537 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service19
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=vlan538 max-mru=1492 max-mtu=1492 one-session-pe
+r-host=yes service-name=service20
+/interface pppoe-server server add authentication=pap,chap default-profile=profil
+e1-servidor-01 disabled=no interface=vlan539 max-mru=1492 max-mtu=1492 one-sessi
+on-per-host=yes service-name=service21
+/interface pppoe-server server add authentication=pap default-profile=profile1-se
+rvidor-01 disabled=no interface=ether1 max-mru=1492 max-mtu=1492 one-session-per
+-host=yes service-name=service1
+/ip address add address=10.9.1.6/30 interface=vlan101-WAN-IPv4 network=10.9.1.4
+/ip address add address=2.2.2.3 interface=loopback network=2.2.2.3
+/ip dns set servers=1.1.1.1,8.8.8.8,2001:4860:4860::8888,2001:4860:4860::8844
+/ip firewall address-list add address=179.191.35.147 list=SITES-LIBERADOS
+/ip firewall address-list add address=208.67.222.222 list=SITES-LIBERADOS
+/ip firewall address-list add address=208.67.222.220 list=SITES-LIBERADOS
+/ip firewall address-list add address=8.8.8.8 list=SITES-LIBERADOS
+/ip firewall address-list add address=8.8.4.4 list=SITES-LIBERADOS
+/ip firewall address-list add address=1.1.1.1 list=SITES-LIBERADOS
+/ip firewall address-list add address=10.24.0.0/20 list=BLOQUEADOS
+/ip firewall filter add action=drop chain=forward comment=CORTE dst-port=!53 prot
+ocol=udp src-address-list=pgcorte
+/ip firewall filter add action=drop chain=forward comment=CORTE dst-port=!80,85,4
+43,445 protocol=tcp src-address-list=pgcorte
+/ip firewall filter add action=drop chain=forward disabled=yes src-address=192.16
+8.112.0/24
+/ip firewall filter add action=drop chain=input disabled=yes protocol=icmp
+/ip firewall filter add action=add-src-to-address-list address-list=BLOQUEIO-AVIS
+ADOS address-list-timeout=1m chain=forward comment="SGP REGRAS" connection-mark=
+BLOQUEIO-AVISAR dst-address=179.191.35.147 dst-port=6402 protocol=tcp
+/ip firewall mangle add action=mark-connection chain=prerouting comment="SGP REGR
+AS" connection-state=new dst-port=80,443 new-connection-mark=BLOQUEIO-VERIFICAR 
+passthrough=yes protocol=tcp src-address-list=BLOQUEIO-AVISAR
+/ip firewall mangle add action=mark-connection chain=prerouting comment="SGP REGR
+AS" connection-mark=BLOQUEIO-VERIFICAR new-connection-mark=BLOQUEIO-AVISAR src-a
+ddress-list=!BLOQUEIO-AVISADOS
+/ip firewall nat add action=dst-nat chain=dstnat comment=CORTE_HTTPS dst-address=
+!198.27.91.173 dst-port=443 protocol=tcp src-address-list=pgcorte to-addresses=1
+72.28.4.6 to-ports=85
+/ip firewall nat add action=dst-nat chain=dstnat comment=CORTE_HTTP dst-address=!
+198.27.91.173 dst-port=80 protocol=tcp src-address-list=pgcorte to-addresses=172
+.28.4.6 to-ports=85
+/ip firewall nat add action=masquerade chain=srcnat disabled=yes protocol=icmp
+/ip firewall nat add action=masquerade chain=srcnat comment=Internet disabled=yes
+
+/ip firewall nat add action=masquerade chain=srcnat disabled=yes
+/ip firewall nat add action=masquerade chain=srcnat comment=Internet disabled=yes
+
+/ip firewall nat add action=masquerade chain=srcnat comment="masq. vpn traffic" d
+isabled=yes
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=8443 proto
+col=tcp to-addresses=10.202.100.1 to-ports=8443
+/ip firewall nat add action=masquerade chain=srcnat comment="SGP REGRAS" dst-addr
+ess-list=SITES-LIBERADOS src-address-list=BLOQUEADOS
+/ip firewall nat add action=dst-nat chain=dstnat comment="SGP REGRAS" dst-address
+-list=!SITES-LIBERADOS dst-port=80,443 protocol=tcp src-address-list=BLOQUEADOS 
+to-addresses=179.191.35.147 to-ports=6403
+/ip firewall nat add action=dst-nat chain=dstnat comment="SGP REGRAS" connection-
+mark=BLOQUEIO-AVISAR protocol=tcp to-addresses=179.191.35.147 to-ports=6402
+/ip firewall raw add action=notrack chain=output comment="SGP NAO FAZER NAT PARA 
+O RADIUS" dst-address=179.191.35.147 dst-port=1812-1813,3799 protocol=udp
+/ip firewall raw add action=drop chain=prerouting comment="SGP BLOQUEIO" dst-addr
+ess-list=!SITES-LIBERADOS src-address-list=BLOQUEADOS
+/ip route add check-gateway=ping distance=111 gateway=10.9.1.5
+/ip service set telnet disabled=yes
+/ip service set ftp address=172.31.255.1/32 disabled=yes
+/ip service set www disabled=yes port=8387
+/ip service set ssh port=22002
+/ip service set api address=179.191.35.147/32,179.191.35.147/32 port=3540
+/ip service set winbox port=8897
+/ip service set api-ssl disabled=yes
+/ipv6 address add address=fd00:0:1:500::2/126 advertise=no comment=WAN interface=
+vlan201-WAN-IPv6
+/ipv6 address add address=2804:2e7c:240d::1/128 advertise=no comment="LOOPBACK TE
+ST" interface=loopback
+/ipv6 route add check-gateway=ping distance=1 gateway=fd00:0:1:500::1
+/ppp aaa set interim-update=5m use-radius=yes
+/ppp secret add comment=mkauth disabled=yes name=adeniziasilvafibra password=6541
+23 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=adrianacocofibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=adrianaprodencino password=65432
+1 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alanassisfibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alaor password=123456 profile=35
+0mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alcidespereirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alessandrasalgadofibra password=
+321654 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alexpapinefibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alicedapenhacunha password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alicenunesfibra password=987456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alinefreirefibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=almerindabussfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anacarolinafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anamendoncafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andressareisfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=angelaramosfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antonioamorimfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniocarlosfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antonioribeirofibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniosantos password=12345678 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ariellygomes password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ArmystondeMenezes password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aurinetecunhafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=bertilfibra password=654789 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=brendasouzafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=bressiabentofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=brunamonicafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=brunoferreirafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=brunosilvafibra password=123654 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=camilamelofibra password=9863201
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carloseduardo password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosferrarifibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosrobertofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carmempoletofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carmemyarafibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carmenluciafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carolinebuss password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carolineneves password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carvalhofibra password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cileialuzfibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ciomarabuenofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudiaamorim password=456321 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudiasoaresfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudioalmeidafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudiosilvafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cleidianesouzafibra password=654
+789 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=clementelopesfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cleunicecoutinho password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cleversonassisfibra password=654
+321 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristianerebulifibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristianonascimentofibra passwor
+d=123456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristinavieirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=daianegoncalvesfibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=daianeoliveirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danielacostafibra password=98765
+4 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danielsabinofibra password=65412
+3 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danielsenafibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danilopereirafibra password=1234
+567 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dayanenascimentofibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=deisetoledoviera password=123456
+7 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=denisereis password=123456 profi
+le=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=deuselybravinfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=diogofernandesfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=djaniramoreirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=donatoluizfibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dorvalinasantosfibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=douglasboninifibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=douglasgrijofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=douglasjesusfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=douglassancaofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=duda password=123 profile=350mb 
+service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dulcilenedaconceicao password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dyonatatoledofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edelmirofibra password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edimarlopesfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edionegomesfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edsonsantos password=654321 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eduardanevesfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elanesilvafibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eleazarfibra password=123654 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elianapereirafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elianesilvafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elianespavierfibra password=3214
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eliasmende password=123456 profi
+le=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elidaziosilvafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elielmaria password=123456 profi
+le=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elienepradofibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elifasaprigiofibra password=3216
+54 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elisangelalameira password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elivaniasilva password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elizabethsouzafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elzeniboninifibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=emillybritofibra password=321456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eneafeliciofibra password=987654
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=EnedinaMaria password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eneiafelicio password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=erikavieirafibra password=658320
+1 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ernandeslimafibra password=65412
+3 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eucileiafolhagem password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=evaldoanholetifibra password=321
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=everaldoazevedofibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=evertonluisfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ezequielduqfibra password=654321
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabianafirme password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabianagoncalvesfibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabieneferreirafibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabioantoniofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabiobenficafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabiodosreisfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabiodossantosfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabiomartinsfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabriciadarochafibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabriciojosefibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabriciorochafibra password=1234
+567 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabricioromanhafibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fcampanharofibra password=123654
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fermianofibra password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fernandaleite password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=flaviaferranifibra password=1234
+567 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=flaviaferreirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=flaviofariasfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=flaviomartinsfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=franciellymendesfibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=francisleidberud password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gabrielateixeira password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=geicykellisantos password=123456
+7 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=geiversonfibra password=123654 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=georgeteixeirafibra password=654
+123 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gessicanevesfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gildopereirafibra password=12345
+67 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gilmaraandriaofibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gilsonpereirafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=giovanipereirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=girlenefibra password=1234567 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=giselasantos password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=glauciomoraofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=glaycekellyfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gleicianenascimento password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gleidisonfibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=glendalascolla password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gorettptaqfibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=graziellirezendes password=12345
+67 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=greizianisoares password=8765432
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=GustavoFrancisco password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=helcionunes password=654321 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=iarazanoni password=123456 profi
+le=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=igrejaagapefibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ingridigrijofibra password=12345
+67 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=IngridKelly password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ingridnevesfibra password=654987
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=iranysoaresfibra password=123456
+78 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=irislainepoletofibra password=65
+4789 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=isabelasiqueirafibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=isabelmariafibra password=654123
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ivanlealfibra password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ivonesantosfibra password=987654
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jackellineodrigues password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jacksonfariasfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jadilsonviana password=654321 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jadilsonvianafibra password=3216
+54 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jailsonlimafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jairopereirafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jakelinelyrafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jandiralourdesfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jandrianaferreirafibra password=
+123456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=janivialima password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jaquelineferreira password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jasianealvesfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jeanepereirafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jefersonlopesfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jenifersoaresfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jessicacarvalhofibra password=98
+7456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jessicapereirasfibra password=65
+4321 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jhonlennonferreirafibra password
+=1234567 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joaokleinfibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joaoplimafibra password=654123 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth name=joaovictorfibra password=1234 profile=350mb s
+ervice=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jociarapereirafibra password=123
+4567 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jocileiaoliveirafibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joenifibra password=12345 profil
+e=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jonasjuniorfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jordaniadeoliveira password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joseantoniofibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name="Jos\C3\A9carlosquirino" passwor
+d=123456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josedacruzfibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josefechilifibra password=654321
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joselinesilva password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josemarsilvafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josenazarethfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josenunesfibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josesebastiaofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josianesilvafibra password=12345
+67 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joyceborgesfibra password=321456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jozeliofidelisfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juansaymon password=123456 profi
+le=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jucineimaximofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=julianamendesfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=julianasantosbfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=juliavitoriadossantos password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=katielejesusfibra password=12365
+4 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=keidsonpagungfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=keilarosafibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kellydefreitasfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=KerolaynneRodrigues password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=largenovevafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=larissaalves password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leandrobravimfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lenipaulafibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leonardogomesfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leticiaferreirafibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name="Lilianecrisostimo " password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lorenaoliveirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luanaavilafibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luanrguettii password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luanriguetti password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucasdacunhafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucaspereirafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucianabispofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luisfernandofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizfelipereisfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizfibra password=123456 profil
+e=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizmerisiofibra password=684235
+01 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lusiatoledofibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=macildoquitinofibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ManoelFernando password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelarosafibra password=654123
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marceloluisfibra password=654123
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelosimoesfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marciaaparecidafibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marciapereirafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcionelimafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marciopintofibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marciosilva password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcosantoniofibra password=3265
+401 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcosnogueirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcosoliveirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariaangelicafibra password=6547
+889 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariaaparecida password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariafariasfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marialuciafibra password=987456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariamendesfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariaoliveira password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariarodriguesfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariasilvafibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marieredacosta password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marinaldojuniorfibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marinetejesusfibra password=6541
+23 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marlondealmeida password=1234567
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marlonjesusfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=martarosafibra password=987654 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=matiasvalerianofibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mayaraberudfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mayconassisfibra password=654123
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=merielizabethfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=michaelcarminatifibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=miquelangelofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=miriamcampos password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=monicacorreafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nathansantosfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nayarasantos password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=neuzafreitasfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nilsonfibra password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=osmaroliveirafibra password=3216
+54 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=palomabussfibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=pamelladasilva password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rafaelsilvafibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=railsonsousafibra password=98745
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raimundamoraes password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ramonduque password=123456 profi
+le=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ranikelreis password=1234567 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rayanelopesfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rebecagomesfibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renancandidofibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renanvitoriafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renatameirelesfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renatoigreja password=654987 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renatoramalhosfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=robsonengelhardtfibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=robsonjosefibra password=321456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rodrigolacerdafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosamariafibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosanacardosofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosangelaalmeidafibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosangelarosafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosimarycorreia password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosimeridestefani password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rozaniapereirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rozilenecunha password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ryanrosadeoliveira password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=samuelhanertfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=samuelmatiasfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sandrapimentelfibra password=456
+123 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sarahpereirafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sergiomachadofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sheilasilvafibra password=987654
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sidineiagloriafibra password=321
+065 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sidirleylemosfibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=silvafrancismeire password=34567
+8 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=silviaoliveirafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silviavitoria password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=soniaferrarifibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sorayadiasfibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=suelenplantkow password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=suelylimafibra password=123654 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=suzanabento password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tainaassisfibra password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=taizisevafibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tamiresdemonerfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tatianepaulino password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=terezadutra password=321654 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thaisoliveirafibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thalisonmariano password=123456 
+profile=350mb remote-address=179.191.35.252 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thalysoncarlosfibra password=654
+789 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thamiriscostafibra password=6549
+87 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thaynaramendes password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tiagogarcia password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tiagomelofibra password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=uandersoncostafibra password=654
+123 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdeirasarmentofibra password=1
+23456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdiradionisio password=123456 
+profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valerianabarbierifibra password=
+123456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanderleiarosafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanderlifreitasfibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=veraluciasantofibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=viniciuscavaleirofibra password=
+123456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=viniciuscorreafibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vivianesilvafibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vivianevicente password=123456 p
+rofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vivianpereira password=123456 pr
+ofile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wagnerolimpiofibra password=6547
+89 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wagnersantos password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wallacejesusfibra password=12345
+6 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=washingtongomesfibra password=12
+3456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleysilvafibra password=654123
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wevertonbuenofibra password=1234
+56 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wevertonmendesfibra password=123
+456 profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=whablasfibra password=123456 pro
+file=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=willianjosefibra password=123456
+ profile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wiltonneves password=123456 prof
+ile=350mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=abelmagnofibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=acacioavilafibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AdeirAlvesfibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AdemilsonPrates password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=adrianasiqueirafibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=adrianomoraesfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AericaLiphaus password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aericaliphausfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=afraniofilhofibra password=98745
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AgniescaBarros password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aisenrauerlimafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alcidesmarcos password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alcirochafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aldecydossantosfibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alessandrasantosfibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alexsilvafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aloisiohellfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alzenylira password=123456 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=amandaoassisfibra password=12345
+67 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anamariamaciel password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ananerivargasfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ananiasnascimentofibra password=
+123456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andersoncunhafibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andersonpitterfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andressaseverinafibra password=6
+54321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andretavaresfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=angelomaximofibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AnselmoEduardo password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniofernando password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniomarianofibra password=987
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniorosalinofibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anunciojosefibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=arianesouzafibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ariellysilvafibra password=65412
+3 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=assembleiadedeus password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=bernardosilvafibra password=1234
+567 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=brazcocofibra password=321456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=brunaspavier password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=camilamartinsfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=camilytortelotefibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosbelonifibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosrobertosilva password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cayquesantosfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=celiosatirofibra password=654321
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=christianecoimbrafibra password=
+654789 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudiajustofibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ClaudimarCardosofibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudineikefferfibra password=98
+7123 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudiorobertofibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claydebergerfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=CleriaBarbosa password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth name=construindosonhos password=123456 profile=500
+mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=costaadriel password=2345678 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristianoceliofibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danielapimenta password=234567 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danielpratesfibra password=45632
+1 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=davipinto password=123456 profil
+e=500mb remote-address=179.191.35.250 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dayanamenentifibra password=6541
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=denizargomesfibra password=65432
+1 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=devidbrasilfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=DivaldoVenancio password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=douglassimiaofibra password=6541
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ednasnevesfibra password=654987 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edneamoreira password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edpocunhafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edsonsilvafibra password=987456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elainecristinafibra password=321
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elianegracafibra password=123987
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elianeramosfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eliasadrianofibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elieberthfibra password=753620 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elisabrinafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elsonalvesfibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=endlichifelipe password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eneiasnevesfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=enoscunhafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=enyleilafibra password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=erasmooperofibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ericaaignerfibra password=654321
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ericaleal password=123456 profil
+e=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=espacodocfibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=evandogomes password=1234567 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ezequielamarofibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabianalinofibra password=654123
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabriciofreitasfibra password=98
+7654 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fatimaluziafibra password=654123
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fatimaplacidino password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=felipemirandafibra password=6543
+21 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fernandacristinafibra password=6
+54123 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fernandagarcia password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fernandatonolifibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=flaviosantosfibra password=98745
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=florenildocostafibra password=65
+4321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=francieliagomesfibra password=98
+7456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=francieligomesfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fredericooliozifibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gabrielfibra password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gilantoniofibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=giseleboazi password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gleisoncostafibra password=65432
+1 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gustavoalmeidafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gustavofixelfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gustavopratesfibra password=3214
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=hailtoncoimbrafibra password=321
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=hansmuller password=123456 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=heloizamoreirafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=hyancruzfibra password=865983 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=iasminlyrafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=igrejaassembleiafibra password=6
+54321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ilzamatiasfibra password=123654 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=isadoraalves password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=isaqueferreirafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=italoramosfibra password=321654 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=IvaneteAleixo password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jaconiasbuenofibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jaildopereirafibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jandersonmazocofibra password=32
+1456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=janenevesfibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jeanebertodofibra password=98765
+4 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jeanmanoelfibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jefersonssilvafibra password=123
+4567 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jhonatanpaulinofibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joanamariafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joaokleberalves password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joaopaulofibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joaosantanafibra password=123654
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jocirlenenevesfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jordanbastosfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josebuggerfibra password=123654 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josecostafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joseemerentinofibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joseferreirafibra password=98745
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joselitobatistafibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joselitosantosfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josianiateixeirafibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josiaraottfrancafibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josielpedro password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josimargomesfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josimarportugualfibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josuesantosfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jovanamoraesfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joycianesilvafibra password=6541
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jucianapratafibra password=12365
+4 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=julianarochafibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kairolimafibra password=654321 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=karenresendetrancosofibra passwo
+rd=123456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=karinycardosofibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=karlacristinafibra password=6547
+89 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=katiazocafibra password=987654 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=keilacristinafibra password=6541
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kellymirandafibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kessyastheffany password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kethelicasa password=2345678 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leandroassisfibra password=65412
+3 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leandrohenriquefibra password=65
+4321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leiandrorodriguesfibra password=
+123456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leidianesantosfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leilasouzafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lenicorreafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leonardosouzafibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leonnardregiofibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leticiafibra password=12345678 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leticiagavafibra password=654321
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=loecisoares password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luanafurtadofibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucasbritofibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucianofirmefibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucianogamafibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucietegrijofibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=LucineidedeOliveira password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ludmillalimafibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizclaudiofibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizmariafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luzineiareis password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=manrrykfibra password=987654 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelaarrudafibra password=6541
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelolacerdafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelopereira password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcemirovalcherfibra password=6
+54789 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcionefernandesfibra password=
+123456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcosbarbosafibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcoslimafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcospaulofibra password=654321
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcosviniciosfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=margaretsiqueirafibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariaandrade password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariadaconceicao password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariajulia password=123456 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marialucia password=123456 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marialyrafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marianantesfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariaprechedefibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariarosafibra password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marildaarletefibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marinaguariza password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marinamartinsfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marinetecandidofibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marizarosa password=654123 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marlisilvafibra password=1234567
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maryhelencasafibra password=6543
+21 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=matheuscoco password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=matheuscocofibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=matheusfelipefibra password=9871
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=matheusfibra password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maurodioniziofibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mickaelycoelho password=987456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mileidefernandesfibra password=6
+54321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mileidesantosfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=minimercadofibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=miriamsantosdeoliveira password=
+123456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mitraarquidiocesanafibra passwor
+d=123456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=monallylucasfibra password=98765
+4 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=monickfibra password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=monizesmacedo password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=naquelycoutinhofibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nayaracoutinho password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=neidefalchettofibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=neidemarafibra password=321456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nelsonemanuelfibra password=6541
+23 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nicolerodriguesfibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=nilvanadelourdesfibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=odetelucia password=123456 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=patricialeitefibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=PaulinhoCezar password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=paulocesarfibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=paulomendoncafibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=paulovitorfibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=pedropaulofibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=polgosluisfibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=primeiraigrejafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=priscilapratesfibra password=321
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rafaeladesouza password=1234567 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rafaelchristofibra password=9874
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raianeoliveira password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raiellicostafibra password=32145
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ranielesoares password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raquelnevesfibra password=654123
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raqueltostes password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raqueltostesfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rayxakhelly password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renataloyola password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renatarodriguesFIBRA password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renzofrancacosta password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=RitadeCassia password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=riversantanafibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=robertorosafibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rodrigocarlosfibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rodrigopereirafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sabrinaconceicao password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sabrinadias password=123456 prof
+ile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sabrinadioniziofibra password=65
+32014 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sandrasantosfibra password=32145
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=saulosamuelrodrigues password=12
+34567 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sergioassisfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sergiocostafibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=shielalirafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=shirleimariafibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sidneysantiagofibra password=654
+321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=silvanazekelfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=silviamarafibra password=123654 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=simonemirandafibra password=1234
+56 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=soniafejolifibra password=456321
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=soniamsilvafibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=stelalangafibra password=123456 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=stephaniealvesfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=suelensoaresfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=taniarosa password=123456 profil
+e=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tatianarochafibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=taynanbrener password=1234567 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=taynarapereira password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thainatiengo password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=thiagoahnertfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdenidecostafibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdirsantosfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valeriafibra password=123456 pro
+file=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valtairodriguesfibra password=65
+4321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vandafibra password=123456 profi
+le=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanuziadiasfibra password=123456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vargnocoutinhofibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vericleicesilvafibra password=65
+4321 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=veronicaJulia password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vipetransportes password=654123 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wandersonfraga password=123456 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=watsonjeanfibra password=654321 
+profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=weldersantosfibra password=12345
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=welhidiaofibra password=654987 p
+rofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=welingtoncaetanofibra password=1
+23456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=weltonduartefibra password=65412
+3 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleybuenofibra password=123654
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleycontarelifibra password=12
+3456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleyfernandes password=1213456
+ profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleyfrancofibra password=32165
+4 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=williandouglasfibra password=123
+456 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=zarabeneditafibra password=98745
+6 profile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=zilenizanetti password=123456 pr
+ofile=500mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ademildesfibra password=123456 p
+rofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=agliceiaberudfibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aldetecristfibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aleandrodias password=123456 pro
+file=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alessandromirandafibra password=
+123456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alinevilelafibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anapaulabernardo password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anapaulafranciscofibra password=
+123456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andreialopesfibra password=32145
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andressagrassifibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ariellycandidofibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=arlansouzafibra password=123456 
+profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=barbaracoelho password=234567 pr
+ofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=camiladasilvafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosantoniofibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth name=cilmarvieira password=123456 profile=5mb serv
+ice=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristianebindafibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristianeoliveirafibra password=
+123456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristinadossantos password=12345
+67 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=daianepaulinofibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=daichellelimafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dilenejardimfibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dmitrepereirafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dulceconceicaofibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edgardocarlos password=123456 pr
+ofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elietecorreiafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elionetefelix password=123456 pr
+ofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabianabarbosafibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabiodalsiorfibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabriciagomesfibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabriciobarrosfibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=genilcaassisfibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=glaucionimartins password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=grazieleizidoriofibra password=3
+21456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=itaissilvafibra password=123456 
+profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jamairacarolinafibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jesuinosouza password=7654321 pr
+ofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jheniffernevesfibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jhenniffersilvafibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jorgetonellifibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joseaneramosfibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joselinonunesfibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josemarcosfibra password=123456 
+profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josemarianofibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth name=josielmadasilvafibra password=1234567 profile
+=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jovaneteconceicaofibra password=
+123456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=julianaferreirafibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leomarpereirafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lohannyferreirafibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lorenaramosfibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luanaadriafibra password=321456 
+profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luanaolivefibra password=123456 
+profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucianacoutinhofibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucineiascandianfibra password=1
+23456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maiconbatistafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelacostafibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth name=marcosrogeriofibra password=123456 profile=5m
+b service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=margaridapereirafibra password=1
+23456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariaameliafibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariacandidafibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariacostafibra password=123654 
+profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marialeiafibra password=123456 p
+rofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariamathiasvicentefibra passwor
+d=123456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marileianascimentofibra password
+=123456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marileneoliveirafibra password=1
+23456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marlenecarmofibra password=32145
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marlenepereirafibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=martasandisfibra password=123654
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=miriamsuzeliafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mirianramosfibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=neuzabussfibra password=123456 p
+rofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=olindamariarodfibra password=832
+775 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=patriciabatistafibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=patriciacorreiafibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=patriciaoliveirafibra password=1
+23456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=regilanediasfibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=reginamartinsfibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renandossantos password=123456 p
+rofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renanmachadofibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ricardosantosfibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rodrigolimafibra password=123456
+ profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=salvadorsilvafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=schirleypaivafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sinariagomesfibra password=12345
+6 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=soniabussfibra password=123456 p
+rofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=taniacarla password=123456 profi
+le=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tatianavieirafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valeriorodriguesfibra password=1
+23456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vancleviasantosfibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanderlucilial password=123654 p
+rofile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanesiodasilvafibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=veraluciaessgenfibra password=12
+3456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=viktorgabrielfibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleyfigueirafibra password=123
+456 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=zelitabatistafibra password=1234
+56 profile=5mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alexandresilvafibra password=123
+456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=arthurdaziliofibra password=1234
+56 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosbatistafibra password=9876
+54 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cfcardoso password=123457 profil
+e=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dalvamariafibra password=1234567
+ profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=decezallisfibra password=123456 
+profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edionemotta password=123456 prof
+ile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eliveltonkelerfibra password=654
+321 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=erickdavelfibra password=321456 
+profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=evaldomartinsfibra password=1236
+54 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=filippygarciafibra password=1236
+54 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=flavianomartinsfibra password=12
+3456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gabrielypenhafibra password=1234
+56 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gelsonmartinsfibra password=1234
+56 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jaquelinefereira password=123456
+ profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josecarlostenoriofibra password=
+321456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luzianabigatte password=123456 p
+rofile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=manoelaquinelato password=123456
+ profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=manoelbarbosafibra password=1234
+56 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcelobicalhofibra password=123
+456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariagfallerfibra password=65432
+1 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mauriciosilvafibra password=7654
+32 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maxssuelsoaresfibra password=123
+456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=neuzasouzafibra password=654123 
+profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=raquelvaladaresfibra password=12
+3456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rayaneribeirofibra password=1234
+56 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ronaldoadrianofibra password=123
+456 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=weksonjosefibra password=123456 
+profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=zionifranciscofibra password=654
+321 profile=600mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=abdenegomenezesfibra password=12
+3456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=adeliavieira password=123456 pro
+file=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=agliceiaanjosfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alangomesfibra password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=aleandrosantos password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alessandromaximofibra password=9
+87456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alexyaqueirozfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alinebarcelosfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=almeidaclaudio password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=amandajesusfibra password=987456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anaildediasfibra password=321456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=anastaciosantos password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=andreafazolofibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=angelamariafibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=angelanossafibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=angelicacoutinhofibra password=1
+23456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniosergiofibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=antoniovitor password=123456 pro
+file=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=arildomartinsfibra password=6541
+23 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=beatrizveiga password=123456 pro
+file=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=beniditodorozario password=12345
+67 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=carlosbritofibra password=321654
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=celinoaguiarfibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudiaavilafibra password=65412
+3 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=claudioalmeida password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=clemildajanuariofibra password=1
+23456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cleusineteaguiarfibra password=6
+54789 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=clovessartoriofibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=corinamarquesfibra password=3214
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristianogomesfibra password=654
+321 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=daianeborges password=123456 pro
+file=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danieldemourafibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danieljesusfibra password=123456
+ profile=60mb remote-address=100.64.7.112 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=danitiellydutrafibra password=12
+3456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=davidbastofibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dayanegarciafibra password=98765
+4 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=delcimarasantosfibra password=65
+4123 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=diesimagnafibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dirleiluziafibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edersonlimafibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=edisoniamariafibra password=6541
+23 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elcileiafolhagem password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elianecaetanofibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eliseuneves password=123456 prof
+ile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elisjosefibra password=123456 pr
+ofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elizabethnevesfibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elizangelalangafibra password=12
+3456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=elizeteoliveirafibra password=12
+3456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eloanaalvesfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=endersonsantosfibra password=654
+123 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=eneiassouzafibra password=654123
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ericanevesfibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ericpaulafibra password=654789 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=erlaneguilhermefibra password=12
+3456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=evandroluizfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fabiodreisfibra password=123654 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=fhilipisantosfibra password=6541
+23 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=filiperissofibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=franciscanetafibra password=6543
+21 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Francisleidemerelesfibra passwor
+d=123456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=francyelebatistafibra password=1
+23456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=geancarla password=123654 profil
+e=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gethuliocostafibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=gleisamatiasfibra password=32165
+4 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=hailasantosfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=hericaoliveirafibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=honoriogavafibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=iarapereirafibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=igrejabetelfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=indianafibra password=123456 pro
+file=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ingridgomes password=234567 prof
+ile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ivisonloja password=123456 profi
+le=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ivisonmeireles password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ivonefirme password=123654 profi
+le=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=izaiasfibra password=123456 prof
+ile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=izauracristinafibra password=123
+654 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jackellineoliveirafibra password
+=987456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jairrobertofibra password=654123
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=janainalopesfibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jandiraoliveira password=1234567
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jaquelinevieirafibra password=32
+1654 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jessicaaparecidafibra password=6
+54123 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jesualdovieirafibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jhenniferpintofibra password=654
+321 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jhonatalembranci password=123456
+7 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joaohonoriofibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joelizidoriofibra password=65432
+1 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jordanasilvafibra password=32198
+7 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joseluizfibra password=123456 pr
+ofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josesartoriofibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josianafurtadofibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josimarpaulafibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=joziellesouzafibra password=6543
+21 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=julianaliquerfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=julianatavaresfibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kaiogomesfibra password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=kelsondavelfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=larissavieirafibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=laudediraonofre password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ledianebussfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leiandrooliveirafibra password=6
+54789 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leidianeferreirafibra password=1
+23456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=leidianesilvafibra password=9874
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lindamarisabreufibra password=12
+3456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucianadaconceicaofibra password
+=654123 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucianomachadofibra password=456
+789 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucienemoraofibra password=65432
+1 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucimarsantosfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=lucymarquesfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luiscarlossena password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luisfernando password=654123 pro
+file=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luisfmartinsfibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizcarlosfibra password=321456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizgomesfibra password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luizhenriquefibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=luziaramosfibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marcosrobertofibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariadelurdes password=123456 pr
+ofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariahelena password=123456 prof
+ile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=marialuizafibra password=654321 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mariapsouzafibra password=654321
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=MariaReginasilva password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=matheusmoreirafibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mauriciomatosfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maurinaferreirafibra password=32
+1456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maurovarejaofibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maxsuelramosfibra password=65432
+1 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=maycongomesfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=micaelycardoso password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=mirellycostafibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=noveliramosfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=pamelaaraujofibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=paulovictorfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=renatamloja password=321456 prof
+ile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=robertadesouza password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rodrigoferreirafibra password=12
+3654 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=romariofibra password=12345678 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=romariosteixeira password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ronaldoribeiro password=123456 p
+rofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ronaltyoficinafibra password=654
+321 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ronildoventurafibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rosianiaramosfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=rozaliabressafibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sandroluizdesouza password=12345
+67 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=schayanibrunalima password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sebastiaofelizfibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sergiocarlosfibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=silvanalemesfibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=simoneviana password=123456 prof
+ile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=soniamariafibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=soniamendesfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=suliersilvafibra password=654321
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tanialopesfibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=tatianefaustinofibra password=65
+4123 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=terezinhacostafibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdeniasouzafibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdirenecardosofibra password=1
+23456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=valdirvieirafibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanclevisonfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vanderneiaendlich password=12345
+67 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vandersonluizfibra password=1234
+56 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vaneifreitasfibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vaniasouzafibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=vivianeathaidefibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wagnerdiasfibra password=654321 
+profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wagnerodriguesfibra password=123
+456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wandersondias password=987654 pr
+ofile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wasterlucasfibra password=123789
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wellingtonfallerfibra password=1
+23456 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=wesleygomesfibra password=123456
+ profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=weversonlimafibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=zildacaliarifibra password=12345
+6 profile=60mb service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=zilmagomesfibra password=123456 
+profile=60mb service=pppoe
+/ppp secret add disabled=yes name=davidpinto password=123456 profile=500mb servic
+e=pppoe
+/ppp secret add disabled=yes name=davidoliveira password=123456 profile=600mb ser
+vice=pppoe
+/ppp secret add name=gdg password=123456 profile=500mb service=pppoe
+/ppp secret add disabled=yes name=brunocardozo password=123456 profile=500mb serv
+ice=pppoe
+/ppp secret add disabled=yes name=tainarosa password=123456 profile=500mb service
+=pppoe
+/ppp secret add disabled=yes name=josianecaldeira password=123456 profile=350mb s
+ervice=pppoe
+/ppp secret add disabled=yes name=josianedacruz password=123456 profile=350mb ser
+vice=pppoe
+/ppp secret add disabled=yes name=marcelobicalho password=123456 profile=500mb se
+rvice=pppoe
+/ppp secret add disabled=yes name=marieledacosta password=123456 profile=350mb se
+rvice=pppoe
+/ppp secret add disabled=yes name=elianepradofibra password=123456 profile=350mb 
+service=pppoe
+/ppp secret add disabled=yes name=erikalima password=123456 profile=350mb service
+=pppoe
+/ppp secret add disabled=yes name=tassiacaliman password=123456 profile=350mb ser
+vice=pppoe
+/ppp secret add disabled=yes name=anacarolinapereira password=123456 profile=60mb
+ service=pppoe
+/ppp secret add disabled=yes name=pabloneivesfibra password=123456 profile=500mb 
+service=pppoe
+/ppp secret add disabled=yes name=erciliamaria password=123456 profile=350mb serv
+ice=pppoe
+/ppp secret add disabled=yes name=erciliadejesus password=123456 profile=350mb se
+rvice=pppoe
+/ppp secret add disabled=yes name=glaycekelly password=123456 profile=350mb servi
+ce=pppoe
+/ppp secret add disabled=yes name=brenocardosofibra password=123456 profile=500mb
+ service=pppoe
+/ppp secret add disabled=yes name=marialeitefibra password=321456 profile=350mb s
+ervice=pppoe
+/ppp secret add disabled=yes name=thaynaracardoso password=123456 profile=500mb
+/ppp secret add name=tarcisofibra password=123456 profile=600mb
+/ppp secret add name=teste password=123456 profile="600 Mbps"
+/radius add address=179.191.35.147 comment="RADIUS SGP" require-message-auth=no s
+ecret=sgp@radius service=ppp,dhcp src-address=10.9.1.6 timeout=3s
+/radius add address=169.57.162.197 comment="RADIUS EMERGENCIAL" disabled=yes requ
+ire-message-auth=no secret=vigo service=ppp timeout=3s
+/radius add address=179.191.35.146 comment=MK-AUTH disabled=yes require-message-a
+uth=no secret=102030 service=ppp timeout=3s
+/radius incoming set accept=yes
+/routing ospf area range add area=area1-PPPoE range=100.64.4.0/22
+/routing ospf interface add authentication=md5 authentication-key=Net.10 interfac
+e=vlan101-WAN-IPv4 network-type=point-to-point
+/routing ospf network add area=backbone network=2.2.2.3/32
+/routing ospf network add area=backbone network=10.10.1.0/24
+/routing ospf network add area=backbone network=10.10.10.0/24
+/routing ospf network add area=backbone disabled=yes network=10.100.0.0/21
+/routing ospf network add area=backbone disabled=yes network=10.105.0.0/21
+/routing ospf network add area=backbone disabled=yes network=10.104.0.0/21
+/routing ospf network add area=backbone disabled=yes network=10.103.0.0/21
+/routing ospf network add area=backbone disabled=yes network=10.102.0.0/21
+/routing ospf network add area=backbone disabled=yes network=10.101.0.0/21
+/routing ospf network add area=backbone disabled=yes network=10.100.1.0/24
+/routing ospf network add area=area1-PPPoE network=100.64.4.0/22
+/routing ospf network add area=backbone disabled=yes network=10.100.0.0/23
+/routing ospf network add area=backbone network=10.99.0.0/24
+/routing ospf network add area=backbone disabled=yes network=10.100.4.0/24
+/routing ospf network add area=backbone disabled=yes network=10.100.5.0/24
+/routing ospf network add area=backbone network=10.9.1.4/30
+/snmp set contact="Tomich Tecnologia" enabled=yes location=Viana-ES trap-communit
+y=SGP-GRAPHICs trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name="Servidor-Pppoe-Radius Canaa 2"
+/system logging set 0 topics=info,!account
+/system logging add disabled=yes topics=debug,pppoe
+/system ntp client set enabled=yes primary-ntp=200.160.0.8
+/system scheduler add interval=1d name=enviar-backup-automatico on-event=":log in
+fo message=\"enviando backup por email\"\r\
+    \n:global data [/system clock get date]\r\
+    \n:global hora [/system clock get time]\r\
+    \n/tool e-mail send to=\"hminfornet@gmail.com\" subject=\"POP-GDG-UNIVERSAL \
+$data \$hora\" file=POP-GDG-UNIVERSAL.backup" policy=reboot,read,write,policy,te
+st,password,sniff,sensitive start-date=dec/25/2018 start-time=23:59:00
+/system scheduler add interval=1d name=salvar-backup-automatico on-event="/system
+ backup save name=POP-GDG-UNIVERSAL.backup" policy=reboot,read,write,policy,test
+,password,sniff,sensitive start-date=dec/25/2018 start-time=23:55:00
+/system scheduler add disabled=yes interval=13h name=ler_pppoe on-event=":execute
+ script=ler_pppoe;" policy=ftp,reboot,read,write,policy,test,password,sniff,sens
+itive,romon start-time=startup
+/system scheduler add disabled=yes interval=4h name=sgp-aviso on-event=sgp-aviso 
+policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive start-date=aug
+/07/2024 start-time=01:00:00
+/system scheduler add interval=6h name=sgp_login_local on-event=sgp_login_local p
+olicy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-dat
+e=aug/07/2024 start-time=12:00:00
+/system script add dont-require-permissions=no name=sgp-aviso owner=SGP policy=ft
+p,reboot,read,write,policy,test,password,sniff,sensitive source=":log info \"sgp
+ aviso\";\r\
+    \n/file remove [find where name=sgp_aviso.rsc]\r\
+    \n/tool fetch url=\"https://hmtelecom.sgplocal.com.br/ws/mikrotik/aviso/pende
+ncia/\\\?token=31f01836-c974-4ca9-a5cc-0b755e46299c&app=mikrotik\" dst-path=sgp_
+aviso.rsc;\r\
+    \n:delay 30s\r\
+    \nimport file-name=sgp_aviso.rsc;\r\
+    \n:delay 10s;\r\
+    \n/ip firewall address-list set timeout=00:15:00 [/ip firewall address-list f
+ind list=BLOQUEIO-AVISAR]"
+/system script add dont-require-permissions=no name=sgp_login_local owner=SGP pol
+icy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":gl
+obal filename \"sgp_login_local.txt\";\r\
+    \n/file remove [/file find name=\$filename]\r\
+    \n/tool fetch url=\"https://hmtelecom.sgplocal.com.br/ws/mikrotik/login/local
+/\\\?token=31f01836-c974-4ca9-a5cc-0b755e46299c&app=mikrotik&nas=10.9.1.6&disabl
+ed=1\" duration=30 dst-path=\$filename;\r\
+    \n:delay 32s;\r\
+    \n/import file-name=\$filename;"
+/tool e-mail set address=smtp.zoho.com from=backup@consultcom.inf.br password=Con
+sultcom@2022 port=587 start-tls=yes user=backup@consultcom.inf.br
+/tool netwatch add comment="PING PARA MK-AUTH" disabled=yes down-script="ppp secr
+et set [/ppp secret find comment=mkauth] disabled=no" host=10.191.35.146 interva
+l=10s timeout=3s up-script="ppp secret set [/ppp secret find comment=mkauth] dis
+abled=yes"
+/tool netwatch add comment="ATIVAR O SECRETS CASO O RADIUS PARE" down-script="/pp
+p secret ; :foreach i in [ find comment~\"SGP:\" ] do={ enable \$i }; /ppp activ
+e; :foreach p in [find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1}
+;" host=179.191.35.147 interval=3m timeout=10s up-script="/ppp secret ; :foreach
+ i in [ find comment~\"SGP:\" ] do={ disable \$i }; /ppp active; :foreach p in [
+find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1};"
+/tool romon set enabled=yes secrets=Net.10
+/user aaa set use-radius=yes
+[tomich@Servidor-Pppoe-Radius Canaa 2] >                                       [tomich@Servidor-Pppoe-Radius Canaa 2] > 

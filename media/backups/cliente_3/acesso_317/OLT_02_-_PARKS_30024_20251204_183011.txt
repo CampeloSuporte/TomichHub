@@ -1,0 +1,800 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: A2+ INTERNET TELECOMUNICACOES LTDA
+Equipamento: OLT 02 - PARKS 30024
+Host: 172.26.0.2:22
+Acesso: VIA PROXY SSH
+Modelo: OLT PARKS 30024
+Template: Backup Completo
+Data: 04/12/2025 18:30:11
+Executado por: danilotomich
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+PARKS# 
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+Building configuration...
+
+Current configuration:
+!
+version 1.0
+aaa username guest level viewer password hash $1$qF31yob$aDLZxvF9N850JTLK3LUcT1
+aaa username admin level priviledged password hash $1$FgG24U$qEWcU8IVu4qiPBl2XiN.w.
+aaa accounting exec default none
+aaa authorization exec default none
+aaa authentication login default local
+rstp shutdown
+hostname PARKS
+vlan database
+ vlan 1,40,109-112,120
+ vlan 40 in-band-mgmt 
+ vlan 109 isolated 
+ vlan 110 isolated 
+ vlan 111 isolated 
+ vlan 112 isolated 
+ vlan 120 isolated 
+!
+gpon profile bandwidth Internet
+ traffic-type internet maximum-bandwidth 1024000
+!
+gpon profile flow Router_vlan_109_pon1
+ add flow # Router_vlan_109_pon1-1
+ Router_vlan_109_pon1-1 encryption disable
+ Router_vlan_109_pon1-1 flow-type veip
+ Router_vlan_109_pon1-1 vlan 109 service Internet
+!
+gpon profile flow Router_vlan_110_pon2
+ add flow # Router_vlan_110_pon2-1
+ Router_vlan_110_pon2-1 encryption disable
+ Router_vlan_110_pon2-1 flow-type veip
+ Router_vlan_110_pon2-1 vlan 110 service Internet
+!
+gpon profile flow Router_vlan_111_pon3
+ add flow # Router_vlan_111_pon3-1
+ Router_vlan_111_pon3-1 encryption disable
+ Router_vlan_111_pon3-1 flow-type veip
+ Router_vlan_111_pon3-1 vlan 111 service Internet
+!
+gpon profile flow Router_vlan_112_pon4
+ add flow # Router_vlan_112_pon4-1
+ Router_vlan_112_pon4-1 encryption disable
+ Router_vlan_112_pon4-1 flow-type veip
+ Router_vlan_112_pon4-1 vlan 112 service Internet
+!
+gpon profile flow VLAN_REMOTA_PPPOE
+ add flow # VLAN_REMOTA_PPPOE-1
+ VLAN_REMOTA_PPPOE-1 encryption disable
+ VLAN_REMOTA_PPPOE-1 flow-type iphost 1
+ VLAN_REMOTA_PPPOE-1 vlan 120 service Internet
+!
+gpon profile flow onu_bridge_vlan_109_pon1
+ add flow # onu_bridge_vlan_109_pon1-1
+ onu_bridge_vlan_109_pon1-1 encryption disable
+ onu_bridge_vlan_109_pon1-1 flow-type pbmp 1
+ onu_bridge_vlan_109_pon1-1 vlan 109 service Internet
+!
+gpon profile flow onu_bridge_vlan_110_pon2
+ add flow # onu_bridge_vlan_110_pon2-1
+ onu_bridge_vlan_110_pon2-1 encryption disable
+ onu_bridge_vlan_110_pon2-1 flow-type pbmp 1
+ onu_bridge_vlan_110_pon2-1 vlan 110 service Internet
+!
+gpon profile flow onu_bridge_vlan_111_pon3
+ add flow # onu_bridge_vlan_111_pon3-1
+ onu_bridge_vlan_111_pon3-1 encryption disable
+ onu_bridge_vlan_111_pon3-1 flow-type pbmp 1
+ onu_bridge_vlan_111_pon3-1 vlan 111 service Internet
+!
+gpon profile flow onu_bridge_vlan_112_pon4
+ add flow # onu_bridge_vlan_112_pon4-1
+ onu_bridge_vlan_112_pon4-1 encryption disable
+ onu_bridge_vlan_112_pon4-1 flow-type pbmp 1
+ onu_bridge_vlan_112_pon4-1 vlan 112 service Internet
+!
+gpon profile flow remota
+ add flow # remota-1
+ remota-1 encryption disable
+ remota-1 flow-type iphost 1
+ remota-1 vlan 120 service Internet
+!
+gpon profile vlan-translation 120
+ add translation access 120
+!
+gpon profile vlan-translation _109
+ add translation access 109
+!
+gpon profile vlan-translation _110
+ add translation access 110
+!
+gpon profile vlan-translation _111
+ add translation access 111
+!
+gpon profile vlan-translation _112
+ add translation access 112
+!
+interface 10giga-ethernet0/0
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 40,109-112,120
+ uplink isolated vlan 109-112
+ no shutdown
+!
+interface 10giga-ethernet0/1
+ autonegotiation enabled
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/0
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/1
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 40,109-112,120
+ uplink isolated vlan 109-112
+ no shutdown
+!
+interface giga-ethernet0/2
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/3
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/4
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/5
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/6
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/7
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface gpon1/1
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ mac-address-table learning-mode move
+ onu add serial-number cmsz3b4568b5
+ onu add serial-number cmsz3b4e1495
+ onu add serial-number cmsz3b4e1d55
+ onu add serial-number cmsz3b4e8915
+ onu add serial-number cmsz3b4e9155
+ onu add serial-number cmsz3b4ea1f5
+ onu add serial-number cmsz3b4fcde5
+ onu add serial-number gpon00b5bfc0
+ onu add serial-number gpon00f9c6cf
+ onu add serial-number gpon00feda1f
+ onu add serial-number gpon00ff6a5f
+ onu add serial-number prks00d21edc
+ onu add serial-number prks00d25e20
+ onu add serial-number prks00d25ec9
+ onu add serial-number prks00d25fa2
+ onu add serial-number vsol002e3566
+ onu add serial-number vsol00355ab6
+ onu add serial-number vsol00363236
+ onu add serial-number vsol00367446
+ onu add serial-number vsol005f01f4
+ onu add serial-number vsol005f62d4
+ onu add serial-number vsol008d50a9
+ onu add serial-number vsol008d50b9
+ onu add serial-number vsol00c2a9f7
+ onu cmsz3b4568b5 alias ALCIDESVEIGAP2
+ onu cmsz3b4568b5 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4568b5 upstream-fec disabled
+ onu cmsz3b4e1495 alias MARISAGPSILVA
+ onu cmsz3b4e1495 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4e1495 upstream-fec disabled
+ onu cmsz3b4e1d55 alias JORGESD
+ onu cmsz3b4e1d55 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4e1d55 upstream-fec disabled
+ onu cmsz3b4e8915 alias FABIOSDUTRA
+ onu cmsz3b4e8915 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4e8915 upstream-fec disabled
+ onu cmsz3b4e9155 alias PAULALUZG
+ onu cmsz3b4e9155 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4e9155 upstream-fec disabled
+ onu cmsz3b4ea1f5 alias CARLOSOFRONTIN
+ onu cmsz3b4ea1f5 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4ea1f5 upstream-fec disabled
+ onu cmsz3b4fcde5 alias ANTONIOMSCOUTO
+ onu cmsz3b4fcde5 flow-profile Router_vlan_109_pon1
+ onu cmsz3b4fcde5 upstream-fec disabled
+ onu gpon00b5bfc0 alias DANIELAPASCHOAL
+ onu gpon00b5bfc0 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b5bfc0 flow-profile Router_vlan_109_pon1
+ onu gpon00b5bfc0 upstream-fec disabled
+ onu gpon00f9c6cf alias VITORBW
+ onu gpon00f9c6cf ethernet-profile auto-on uni-port 1-2
+ onu gpon00f9c6cf flow-profile Router_vlan_109_pon1
+ onu gpon00f9c6cf upstream-fec disabled
+ onu gpon00feda1f alias ROSENYGROSA
+ onu gpon00feda1f ethernet-profile auto-on uni-port 1-4
+ onu gpon00feda1f flow-profile onu_bridge_vlan_109_pon1
+ onu gpon00feda1f upstream-fec disabled
+ onu gpon00ff6a5f alias MANUELCUFRE
+ onu gpon00ff6a5f ethernet-profile auto-on uni-port 1-4
+ onu gpon00ff6a5f flow-profile Router_vlan_109_pon1
+ onu gpon00ff6a5f upstream-fec disabled
+ onu prks00d21edc alias IZAMARA2
+ onu prks00d21edc ethernet-profile auto-on uni-port 1-2
+ onu prks00d21edc flow-profile Router_vlan_109_pon1
+ onu prks00d21edc iphost 1 pppoe auth auto
+ onu prks00d21edc iphost 1 pppoe contrigger alwayson idletimer 0
+ onu prks00d21edc iphost 1 pppoe nat enable
+ onu prks00d21edc iphost 1 pppoe username izamara2 password 123
+ onu prks00d21edc upstream-fec disabled
+ onu prks00d25e20 alias SIMONEQSILVA
+ onu prks00d25e20 ethernet-profile auto-on uni-port 1-2
+ onu prks00d25e20 flow-profile Router_vlan_109_pon1
+ onu prks00d25e20 upstream-fec disabled
+ onu prks00d25ec9 alias VITORIABMORELLI
+ onu prks00d25ec9 ethernet-profile auto-on uni-port 1-2
+ onu prks00d25ec9 flow-profile Router_vlan_109_pon1
+ onu prks00d25ec9 upstream-fec disabled
+ onu prks00d25fa2 alias IZAMARA
+ onu prks00d25fa2 ethernet-profile auto-on uni-port 1-2
+ onu prks00d25fa2 flow-profile Router_vlan_109_pon1
+ onu prks00d25fa2 upstream-fec disabled
+ onu vsol002e3566 alias DOUGLASREIS
+ onu vsol002e3566 ethernet-profile auto-on uni-port 1-4
+ onu vsol002e3566 flow-profile onu_bridge_vlan_109_pon1
+ onu vsol002e3566 upstream-fec disabled
+ onu vsol00355ab6 alias ADRIANAMPEREIRA
+ onu vsol00355ab6 ethernet-profile auto-on uni-port 1-2
+ onu vsol00355ab6 flow-profile Router_vlan_109_pon1
+ onu vsol00355ab6 upstream-fec disabled
+ onu vsol00363236 alias ADEMARCS
+ onu vsol00363236 ethernet-profile auto-on uni-port 1-2
+ onu vsol00363236 flow-profile Router_vlan_109_pon1
+ onu vsol00363236 upstream-fec disabled
+ onu vsol00367446 alias CRISTINACORREIAS
+ onu vsol00367446 ethernet-profile auto-on uni-port 1-2
+ onu vsol00367446 flow-profile Router_vlan_109_pon1
+ onu vsol00367446 upstream-fec disabled
+ onu vsol005f01f4 alias BRUNAFA
+ onu vsol005f01f4 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f01f4 flow-profile Router_vlan_109_pon1
+ onu vsol005f01f4 upstream-fec disabled
+ onu vsol005f62d4 alias JCRAGAZZI
+ onu vsol005f62d4 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f62d4 flow-profile Router_vlan_109_pon1
+ onu vsol005f62d4 upstream-fec disabled
+ onu vsol008d50a9 alias DANILOPA
+ onu vsol008d50a9 ethernet-profile auto-on uni-port 1-2
+ onu vsol008d50a9 flow-profile Router_vlan_109_pon1
+ onu vsol008d50a9 upstream-fec disabled
+ onu vsol008d50b9 alias RODRIGOREISF
+ onu vsol008d50b9 ethernet-profile auto-on uni-port 1-2
+ onu vsol008d50b9 flow-profile onu_bridge_vlan_109_pon1
+ onu vsol008d50b9 upstream-fec disabled
+ onu vsol00c2a9f7 alias JOAOVHUCKS
+ onu vsol00c2a9f7 ethernet-profile auto-on uni-port 1-2
+ onu vsol00c2a9f7 flow-profile Router_vlan_109_pon1
+ onu vsol00c2a9f7 upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 109,120
+ no shutdown
+!
+interface gpon1/2
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ mac-address-table learning-mode move
+ onu add serial-number cmsz3b453285
+ onu add serial-number cmsz3b4e1005
+ onu add serial-number cmsz3b4e42c5
+ onu add serial-number cmsz3b4e82b5
+ onu add serial-number cmsz3b4e8b75
+ onu add serial-number cmsz3b4e8d15
+ onu add serial-number cmsz3b4e8d45
+ onu add serial-number cmsz3b4e9e45
+ onu add serial-number cmsz3b4f1025
+ onu add serial-number cmsz3b4f1895
+ onu add serial-number cmsz3b4f8a05
+ onu add serial-number cmsz3b4f9105
+ onu add serial-number cmsz3b4fbbd5
+ onu add serial-number cmsz3b4fe7f5
+ onu add serial-number cmsz3b500335
+ onu add serial-number gpon00b56190
+ onu add serial-number gpon00b56b00
+ onu add serial-number gpon00b56c60
+ onu add serial-number gpon00b570b0
+ onu add serial-number gpon00b5bd30
+ onu add serial-number gpon00f7f590
+ onu add serial-number gpon00f81088
+ onu add serial-number gpon00f81218
+ onu add serial-number gpon00f9baef
+ onu add serial-number gpon00fa250f
+ onu add serial-number gpon00fe0cff
+ onu add serial-number prks00d21f61
+ onu add serial-number prks00d224d7
+ onu add serial-number prks00d224e9
+ onu add serial-number prks00d22503
+ onu add serial-number prks00d22510
+ onu add serial-number prks00d22526
+ onu add serial-number prks00d2258c
+ onu add serial-number prks00d25f46
+ onu add serial-number prks00d25f5f
+ onu add serial-number prks00d25f88
+ onu add serial-number prks00d25f98
+ onu add serial-number prks00d25fca
+ onu add serial-number vsol002d3b86
+ onu add serial-number vsol002d4e76
+ onu add serial-number vsol002d6496
+ onu add serial-number vsol002d73e6
+ onu add serial-number vsol002dbc56
+ onu add serial-number vsol002dbcd6
+ onu add serial-number vsol00353aa6
+ onu add serial-number vsol003586b6
+ onu add serial-number vsol0035a2e6
+ onu add serial-number vsol0035a576
+ onu add serial-number vsol0035adf6
+ onu add serial-number vsol0035baf6
+ onu add serial-number vsol003606c6
+ onu add serial-number vsol00364416
+ onu add serial-number vsol00364586
+ onu add serial-number vsol00364ea6
+ onu add serial-number vsol003662a6
+ onu add serial-number vsol00367376
+ onu add serial-number vsol00368516
+ onu add serial-number vsol005f38a4
+ onu add serial-number vsol005f4c04
+ onu add serial-number vsol005f6124
+ onu add serial-number vsol005fa8d4
+ onu add serial-number vsol008cb439
+ onu add serial-number vsol008ce9d9
+ onu add serial-number vsol008d2959
+ onu add serial-number vsol00c2ab57
+ onu add serial-number vsol00c3adb7
+ onu cmsz3b453285 alias GABRIELGUEDESS
+ onu cmsz3b453285 flow-profile Router_vlan_110_pon2
+ onu cmsz3b453285 upstream-fec disabled
+ onu cmsz3b4e1005 alias CLAYSONHLEMOS
+ onu cmsz3b4e1005 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e1005 upstream-fec disabled
+ onu cmsz3b4e42c5 alias CAROLINACONCEICAO
+ onu cmsz3b4e42c5 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e42c5 upstream-fec disabled
+ onu cmsz3b4e82b5 alias MARCELOGVARGENS
+ onu cmsz3b4e82b5 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e82b5 upstream-fec disabled
+ onu cmsz3b4e8b75 alias REINALDOG
+ onu cmsz3b4e8b75 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e8b75 upstream-fec disabled
+ onu cmsz3b4e8d15 alias WIGORPC
+ onu cmsz3b4e8d15 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e8d15 upstream-fec disabled
+ onu cmsz3b4e8d45 alias RICARDOCROCHA
+ onu cmsz3b4e8d45 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e8d45 upstream-fec disabled
+ onu cmsz3b4e9e45 alias LUCIANACLEMOS
+ onu cmsz3b4e9e45 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4e9e45 upstream-fec disabled
+ onu cmsz3b4f1025 alias ROBSONSBOM
+ onu cmsz3b4f1025 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4f1025 upstream-fec disabled
+ onu cmsz3b4f1895 alias JORGENASRI
+ onu cmsz3b4f1895 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4f1895 upstream-fec disabled
+ onu cmsz3b4f8a05 alias MARCELOPROSA
+ onu cmsz3b4f8a05 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4f8a05 upstream-fec disabled
+ onu cmsz3b4f9105 alias VINICIUSGRIPP
+ onu cmsz3b4f9105 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4f9105 upstream-fec disabled
+ onu cmsz3b4fbbd5 alias SILVANAPSILVA
+ onu cmsz3b4fbbd5 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4fbbd5 upstream-fec disabled
+ onu cmsz3b4fe7f5 alias JUVERLANDO
+ onu cmsz3b4fe7f5 flow-profile Router_vlan_110_pon2
+ onu cmsz3b4fe7f5 upstream-fec disabled
+ onu cmsz3b500335 alias MICHELLEMS
+ onu cmsz3b500335 flow-profile Router_vlan_110_pon2
+ onu cmsz3b500335 upstream-fec disabled
+ onu gpon00b56190 alias MARCOALS2
+ onu gpon00b56190 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b56190 flow-profile Router_vlan_110_pon2
+ onu gpon00b56190 upstream-fec disabled
+ onu gpon00b56b00 alias IGREJA
+ onu gpon00b56b00 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b56b00 flow-profile Router_vlan_110_pon2
+ onu gpon00b56b00 upstream-fec disabled
+ onu gpon00b56c60 alias ANAPAULASAP
+ onu gpon00b56c60 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b56c60 flow-profile Router_vlan_110_pon2
+ onu gpon00b56c60 upstream-fec disabled
+ onu gpon00b570b0 alias SERGIOMPEDRADA
+ onu gpon00b570b0 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b570b0 flow-profile Router_vlan_110_pon2
+ onu gpon00b570b0 upstream-fec disabled
+ onu gpon00b5bd30 alias JOSEASCOUTO
+ onu gpon00b5bd30 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b5bd30 flow-profile Router_vlan_110_pon2
+ onu gpon00b5bd30 upstream-fec disabled
+ onu gpon00f7f590 alias JANAIRAOS
+ onu gpon00f7f590 ethernet-profile auto-on uni-port 1
+ onu gpon00f7f590 flow-profile Router_vlan_110_pon2
+ onu gpon00f7f590 upstream-fec disabled
+ onu gpon00f81088 alias ISMAELOS
+ onu gpon00f81088 ethernet-profile auto-on uni-port 1
+ onu gpon00f81088 flow-profile Router_vlan_110_pon2
+ onu gpon00f81088 upstream-fec disabled
+ onu gpon00f81218 alias ROGERIOCPCOSTA
+ onu gpon00f81218 ethernet-profile auto-on uni-port 1
+ onu gpon00f81218 flow-profile Router_vlan_110_pon2
+ onu gpon00f81218 upstream-fec disabled
+ onu gpon00f9baef alias VICTORMA
+ onu gpon00f9baef ethernet-profile auto-on uni-port 1-2
+ onu gpon00f9baef flow-profile Router_vlan_110_pon2
+ onu gpon00f9baef upstream-fec disabled
+ onu gpon00fa250f alias THIAGOSRAMOS
+ onu gpon00fa250f ethernet-profile auto-on uni-port 1-2
+ onu gpon00fa250f flow-profile Router_vlan_110_pon2
+ onu gpon00fa250f upstream-fec disabled
+ onu gpon00fe0cff alias LUCASANDRESO
+ onu gpon00fe0cff ethernet-profile auto-on uni-port 1-4
+ onu gpon00fe0cff flow-profile Router_vlan_110_pon2
+ onu gpon00fe0cff upstream-fec disabled
+ onu prks00d21f61 alias ALUISIODS
+ onu prks00d21f61 ethernet-profile auto-on uni-port 1-2
+ onu prks00d21f61 flow-profile Router_vlan_110_pon2
+ onu prks00d21f61 upstream-fec disabled
+ onu prks00d224d7 alias MARCIOMM
+ onu prks00d224d7 ethernet-profile auto-on uni-port 1-2
+ onu prks00d224d7 flow-profile Router_vlan_110_pon2
+ onu prks00d224d7 upstream-fec disabled
+ onu prks00d224e9 alias KELLYCOROCHA
+ onu prks00d224e9 ethernet-profile auto-on uni-port 1-2
+ onu prks00d224e9 flow-profile Router_vlan_110_pon2
+ onu prks00d224e9 upstream-fec disabled
+ onu prks00d22503 alias EDUARDOSILVA
+ onu prks00d22503 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22503 flow-profile Router_vlan_110_pon2
+ onu prks00d22503 upstream-fec disabled
+ onu prks00d22510 alias FABIOQSILVA
+ onu prks00d22510 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22510 flow-profile Router_vlan_110_pon2
+ onu prks00d22510 upstream-fec disabled
+ onu prks00d22526 alias ALBERTOPDO
+ onu prks00d22526 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22526 flow-profile Router_vlan_110_pon2
+ onu prks00d22526 upstream-fec disabled
+ onu prks00d2258c alias GRACIENERS
+ onu prks00d2258c ethernet-profile auto-on uni-port 1-2
+ onu prks00d2258c flow-profile Router_vlan_110_pon2
+ onu prks00d2258c upstream-fec disabled
+ onu prks00d25f46 alias REGINALDOOCOSTA
+ onu prks00d25f46 ethernet-profile auto-on uni-port 1-2
+ onu prks00d25f46 flow-profile Router_vlan_110_pon2
+ onu prks00d25f46 upstream-fec disabled
+ onu prks00d25f5f alias AFONSOMMORAES
+ onu prks00d25f5f ethernet-profile auto-on uni-port 1-2
+ onu prks00d25f5f flow-profile Router_vlan_110_pon2
+ onu prks00d25f5f upstream-fec disabled
+ onu prks00d25f88 alias SORAIATDS
+ onu prks00d25f88 ethernet-profile auto-on uni-port 1-2
+ onu prks00d25f88 flow-profile Router_vlan_110_pon2
+ onu prks00d25f88 upstream-fec disabled
+ onu prks00d25f98 alias FERCUMO2
+ onu prks00d25f98 ethernet-profile auto-on uni-port 1-2
+ onu prks00d25f98 flow-profile Router_vlan_110_pon2
+ onu prks00d25f98 upstream-fec disabled
+ onu prks00d25fca alias LARISSASO
+ onu prks00d25fca ethernet-profile auto-on uni-port 1-2
+ onu prks00d25fca flow-profile Router_vlan_110_pon2
+ onu prks00d25fca upstream-fec disabled
+ onu vsol002d3b86 alias FERCUMO
+ onu vsol002d3b86 ethernet-profile auto-on uni-port 1-4
+ onu vsol002d3b86 flow-profile Router_vlan_110_pon2
+ onu vsol002d3b86 upstream-fec disabled
+ onu vsol002d4e76 alias REGINALUCIALOPES
+ onu vsol002d4e76 flow-profile Router_vlan_110_pon2
+ onu vsol002d4e76 upstream-fec disabled
+ onu vsol002d6496 alias BEATRIZRGOMES
+ onu vsol002d6496 ethernet-profile auto-on uni-port 1-4
+ onu vsol002d6496 flow-profile Router_vlan_110_pon2
+ onu vsol002d6496 upstream-fec disabled
+ onu vsol002d73e6 alias JUANMACAPE
+ onu vsol002d73e6 ethernet-profile auto-on uni-port 1-4
+ onu vsol002d73e6 flow-profile Router_vlan_110_pon2
+ onu vsol002d73e6 upstream-fec disabled
+ onu vsol002dbc56 alias SERGIOLEITEPF
+ onu vsol002dbc56 ethernet-profile auto-on uni-port 1-4
+ onu vsol002dbc56 flow-profile Router_vlan_110_pon2
+ onu vsol002dbc56 upstream-fec disabled
+ onu vsol002dbcd6 alias PAULOSERGIOSSC
+ onu vsol002dbcd6 ethernet-profile auto-on uni-port 1-4
+ onu vsol002dbcd6 flow-profile Router_vlan_110_pon2
+ onu vsol002dbcd6 upstream-fec disabled
+ onu vsol00353aa6 alias RADHARANI
+ onu vsol00353aa6 ethernet-profile auto-on uni-port 1-2
+ onu vsol00353aa6 flow-profile Router_vlan_110_pon2
+ onu vsol00353aa6 upstream-fec disabled
+ onu vsol003586b6 alias BRENOMABRANTES
+ onu vsol003586b6 ethernet-profile auto-on uni-port 1-2
+ onu vsol003586b6 flow-profile Router_vlan_110_pon2
+ onu vsol003586b6 upstream-fec disabled
+ onu vsol0035a2e6 alias ADRIANACSOBRAL
+ onu vsol0035a2e6 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035a2e6 flow-profile Router_vlan_110_pon2
+ onu vsol0035a2e6 upstream-fec disabled
+ onu vsol0035a576 alias ARTHUROLAUREANO
+ onu vsol0035a576 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035a576 flow-profile Router_vlan_110_pon2
+ onu vsol0035a576 upstream-fec disabled
+ onu vsol0035adf6 alias JANETEMBRAZ
+ onu vsol0035adf6 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035adf6 flow-profile Router_vlan_110_pon2
+ onu vsol0035adf6 upstream-fec disabled
+ onu vsol0035baf6 alias ARTURFP
+ onu vsol0035baf6 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035baf6 flow-profile Router_vlan_110_pon2
+ onu vsol0035baf6 upstream-fec disabled
+ onu vsol003606c6 alias RAFAELBRITOK
+ onu vsol003606c6 ethernet-profile auto-on uni-port 1-2
+ onu vsol003606c6 flow-profile Router_vlan_110_pon2
+ onu vsol003606c6 upstream-fec disabled
+ onu vsol00364416 alias ROSIMERIORS
+ onu vsol00364416 ethernet-profile auto-on uni-port 1-2
+ onu vsol00364416 flow-profile Router_vlan_110_pon2
+ onu vsol00364416 upstream-fec disabled
+ onu vsol00364586 alias ANABCASAMASSO
+ onu vsol00364586 ethernet-profile auto-on uni-port 1-2
+ onu vsol00364586 flow-profile Router_vlan_110_pon2
+ onu vsol00364586 upstream-fec disabled
+ onu vsol00364ea6 alias ADILSONBRANCODO
+ onu vsol00364ea6 ethernet-profile auto-on uni-port 1-2
+ onu vsol00364ea6 flow-profile Router_vlan_110_pon2
+ onu vsol00364ea6 upstream-fec disabled
+ onu vsol003662a6 alias MARIALUIZA
+ onu vsol003662a6 ethernet-profile auto-on uni-port 1-2
+ onu vsol003662a6 flow-profile Router_vlan_110_pon2
+ onu vsol003662a6 upstream-fec disabled
+ onu vsol00367376 alias MAICOJOELLF
+ onu vsol00367376 ethernet-profile auto-on uni-port 1-2
+ onu vsol00367376 flow-profile Router_vlan_110_pon2
+ onu vsol00367376 upstream-fec disabled
+ onu vsol00368516 alias JOANASS
+ onu vsol00368516 ethernet-profile auto-on uni-port 1-2
+ onu vsol00368516 flow-profile Router_vlan_110_pon2
+ onu vsol00368516 upstream-fec disabled
+ onu vsol005f38a4 alias DESIREEMT
+ onu vsol005f38a4 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f38a4 flow-profile Router_vlan_110_pon2
+ onu vsol005f38a4 upstream-fec disabled
+ onu vsol005f4c04 alias BIANCADM
+ onu vsol005f4c04 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f4c04 flow-profile Router_vlan_110_pon2
+ onu vsol005f4c04 upstream-fec disabled
+ onu vsol005f6124 alias EMILYJC
+ onu vsol005f6124 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f6124 flow-profile Router_vlan_110_pon2
+ onu vsol005f6124 upstream-fec disabled
+ onu vsol005fa8d4 alias DENISEMORAES
+ onu vsol005fa8d4 ethernet-profile auto-on uni-port 1-2
+ onu vsol005fa8d4 flow-profile Router_vlan_110_pon2
+ onu vsol005fa8d4 upstream-fec disabled
+ onu vsol008cb439 alias ELIETEGN
+ onu vsol008cb439 ethernet-profile auto-on uni-port 1-2
+ onu vsol008cb439 flow-profile Router_vlan_110_pon2
+ onu vsol008cb439 upstream-fec disabled
+ onu vsol008ce9d9 alias QUELIQUI
+ onu vsol008ce9d9 ethernet-profile auto-on uni-port 1-2
+ onu vsol008ce9d9 flow-profile onu_bridge_vlan_110_pon2
+ onu vsol008ce9d9 upstream-fec disabled
+ onu vsol008d2959 alias albertopdo2
+ onu vsol008d2959 ethernet-profile auto-on uni-port 1-2
+ onu vsol008d2959 flow-profile Router_vlan_110_pon2
+ onu vsol008d2959 upstream-fec disabled
+ onu vsol00c2ab57 alias RADHARANI2
+ onu vsol00c2ab57 ethernet-profile auto-on uni-port 1-2
+ onu vsol00c2ab57 flow-profile Router_vlan_110_pon2
+ onu vsol00c2ab57 upstream-fec disabled
+ onu vsol00c3adb7 alias MARCOALS
+ onu vsol00c3adb7 ethernet-profile auto-on uni-port 1-2
+ onu vsol00c3adb7 flow-profile Router_vlan_110_pon2
+ onu vsol00c3adb7 upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 110,120
+ no shutdown
+!
+interface gpon1/3
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ mac-address-table learning-mode move
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 111,120
+ no shutdown
+!
+interface gpon1/4
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ mac-address-table learning-mode move
+ onu add serial-number cmsz3b4e3a85
+ onu add serial-number cmsz3b4e49f5
+ onu add serial-number cmsz3b4e8695
+ onu add serial-number cmsz3b4e8cf5
+ onu add serial-number cmsz3b4ec1b5
+ onu add serial-number cmsz3b4ef835
+ onu add serial-number cmsz3b4f9265
+ onu add serial-number gpon00b56bb0
+ onu add serial-number gpon00ff294f
+ onu add serial-number vsol00358c76
+ onu add serial-number vsol0035a586
+ onu add serial-number vsol0035f696
+ onu add serial-number vsol0035fcf6
+ onu add serial-number vsol00364e06
+ onu add serial-number vsol00367426
+ onu add serial-number vsol00367556
+ onu add serial-number vsol003675a6
+ onu add serial-number vsol005f15d4
+ onu add serial-number vsol005f3f64
+ onu add serial-number vsol005f6364
+ onu add serial-number vsol005f7164
+ onu add serial-number vsol005fd624
+ onu add serial-number vsol008cad59
+ onu add serial-number vsol008cec99
+ onu add serial-number vsol008d2589
+ onu cmsz3b4e3a85 alias DENIZEWBIZETTI
+ onu cmsz3b4e3a85 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4e3a85 upstream-fec disabled
+ onu cmsz3b4e49f5 alias BRAINERJLIMAA
+ onu cmsz3b4e49f5 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4e49f5 upstream-fec disabled
+ onu cmsz3b4e8695 alias VALDINEIASXPAIVA
+ onu cmsz3b4e8695 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4e8695 upstream-fec disabled
+ onu cmsz3b4e8cf5 alias MARCELIFS
+ onu cmsz3b4e8cf5 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4e8cf5 upstream-fec disabled
+ onu cmsz3b4ec1b5 alias ALELOVAZMOMO
+ onu cmsz3b4ec1b5 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4ec1b5 upstream-fec disabled
+ onu cmsz3b4ef835 alias RICARDOCDS
+ onu cmsz3b4ef835 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4ef835 upstream-fec disabled
+ onu cmsz3b4f9265 alias CLAUDIOJOSES
+ onu cmsz3b4f9265 flow-profile Router_vlan_112_pon4
+ onu cmsz3b4f9265 upstream-fec disabled
+ onu gpon00b56bb0 alias BRUNOSMBARROS
+ onu gpon00b56bb0 ethernet-profile auto-on uni-port 1-4
+ onu gpon00b56bb0 flow-profile Router_vlan_112_pon4
+ onu gpon00b56bb0 upstream-fec disabled
+ onu gpon00ff294f alias ALEXSF
+ onu gpon00ff294f ethernet-profile auto-on uni-port 1-4
+ onu gpon00ff294f flow-profile Router_vlan_112_pon4
+ onu gpon00ff294f upstream-fec disabled
+ onu vsol00358c76 alias MARCIASOUTOMMSA
+ onu vsol00358c76 ethernet-profile auto-on uni-port 1-2
+ onu vsol00358c76 flow-profile Router_vlan_112_pon4
+ onu vsol00358c76 upstream-fec disabled
+ onu vsol0035a586 alias ANDRESSABVM
+ onu vsol0035a586 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035a586 flow-profile Router_vlan_112_pon4
+ onu vsol0035a586 upstream-fec disabled
+ onu vsol0035f696 alias ROSANEGC
+ onu vsol0035f696 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035f696 flow-profile Router_vlan_112_pon4
+ onu vsol0035f696 upstream-fec disabled
+ onu vsol0035fcf6 alias RONALDOCAROUCA
+ onu vsol0035fcf6 ethernet-profile auto-on uni-port 1-2
+ onu vsol0035fcf6 flow-profile Router_vlan_112_pon4
+ onu vsol0035fcf6 upstream-fec disabled
+ onu vsol00364e06 alias KETELLENCANDRADE
+ onu vsol00364e06 ethernet-profile auto-on uni-port 1-2
+ onu vsol00364e06 flow-profile Router_vlan_112_pon4
+ onu vsol00364e06 upstream-fec disabled
+ onu vsol00367426 alias QUEILARCAMPOS
+ onu vsol00367426 ethernet-profile auto-on uni-port 1-2
+ onu vsol00367426 flow-profile Router_vlan_112_pon4
+ onu vsol00367426 upstream-fec disabled
+ onu vsol00367556 alias TEREVEST
+ onu vsol00367556 ethernet-profile auto-on uni-port 1-2
+ onu vsol00367556 flow-profile Router_vlan_112_pon4
+ onu vsol00367556 upstream-fec disabled
+ onu vsol003675a6 alias ALFREDOMSBARBOSA
+ onu vsol003675a6 ethernet-profile auto-on uni-port 1-2
+ onu vsol003675a6 flow-profile Router_vlan_112_pon4
+ onu vsol003675a6 upstream-fec disabled
+ onu vsol005f15d4 alias VALDINEIA2PONTO
+ onu vsol005f15d4 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f15d4 flow-profile onu_bridge_vlan_112_pon4
+ onu vsol005f15d4 upstream-fec disabled
+ onu vsol005f3f64 alias LEONARDOCALDAS
+ onu vsol005f3f64 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f3f64 flow-profile Router_vlan_112_pon4
+ onu vsol005f3f64 upstream-fec disabled
+ onu vsol005f6364 alias MARKSKK
+ onu vsol005f6364 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f6364 flow-profile onu_bridge_vlan_112_pon4
+ onu vsol005f6364 upstream-fec disabled
+ onu vsol005f7164 alias ANTONIONUNES
+ onu vsol005f7164 ethernet-profile auto-on uni-port 1-2
+ onu vsol005f7164 flow-profile Router_vlan_112_pon4
+ onu vsol005f7164 upstream-fec disabled
+ onu vsol005fd624 alias EVALDOMOUZINHO
+ onu vsol005fd624 ethernet-profile auto-on uni-port 1-2
+ onu vsol005fd624 flow-profile Router_vlan_112_pon4
+ onu vsol005fd624 upstream-fec disabled
+ onu vsol008cad59 alias JOSECARLOSMS
+ onu vsol008cad59 ethernet-profile auto-on uni-port 1-2
+ onu vsol008cad59 flow-profile Router_vlan_112_pon4
+ onu vsol008cad59 upstream-fec disabled
+ onu vsol008cec99 alias SARAGO
+ onu vsol008cec99 ethernet-profile auto-on uni-port 1-2
+ onu vsol008cec99 flow-profile Router_vlan_112_pon4
+ onu vsol008cec99 upstream-fec disabled
+ onu vsol008d2589 alias VICTORHOPIRES
+ onu vsol008d2589 ethernet-profile auto-on uni-port 1-2
+ onu vsol008d2589 flow-profile Router_vlan_112_pon4
+ onu vsol008d2589 upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 112,120
+ no shutdown
+!
+interface loopback0
+!
+interface mgmt
+ ip address 192.168.1.1/24
+ no shutdown
+!
+interface mgmt1
+!
+interface mgmt1.40
+ ip address 172.26.0.2/30
+ no shutdown
+!
+ip route 0.0.0.0/0 172.26.0.1
+ip ssh server
+ip telnet server
+mac-address-table aging-time 300
+snmp-server community parks rw
+snmp-server community TOMICH rw
+snmp-server enable traps snmp
+temperature threshold 70
+fan duty-cycle autocontrol
+!
+PARKS# 

@@ -57,5 +57,12 @@ urlpatterns = [
     path('backups/templates/', views.buscar_templates_backup, name='buscar_templates_backup'),
     path('terminal/', views.terminal_page, name='terminal_page'),
     path('acessos/ping/<int:acesso_id>/', views.ping_acesso, name='ping_acesso'),
+    # RPKI/IRR
+    path('blocos/cadastrar/', views.cadastrar_bloco_ip, name='cadastrar_bloco_ip'),
+    path('blocos/buscar/<int:bloco_id>/', views.buscar_bloco_ip, name='buscar_bloco_ip'),
+    path('blocos/editar/<int:bloco_id>/', views.editar_bloco_ip, name='editar_bloco_ip'),
+    path('blocos/deletar/<int:bloco_id>/', views.deletar_bloco_ip, name='deletar_bloco_ip'),
+    path('blocos/validar/<int:bloco_id>/', views.validar_bloco_rpki_irr, name='validar_bloco_rpki_irr'),
+    path('blocos/listar/', views.listar_blocos_cliente, name='listar_blocos_cliente'),
     
 ]

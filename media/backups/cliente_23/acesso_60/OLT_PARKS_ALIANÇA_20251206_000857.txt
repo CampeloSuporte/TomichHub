@@ -1,0 +1,2621 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: OLT PARKS ALIANÇA
+Host: 192.168.245.6:22
+Acesso: VIA PROXY SSH
+Modelo: OLT PARKS FIBERLINK 30028
+Template: Backup Completo
+Data: 06/12/2025 00:08:57
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+OLT01_ALIANCA# 
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+Building configuration...
+
+Current configuration:
+!
+version 1.0
+aaa username guest level viewer password hash $1$qF31yob$aDLZxvF9N850JTLK3LUcT1
+aaa username admin level priviledged password hash $1$r.u/f26R$mD.s.D0udqCGuTWt8loI5.
+aaa username ixcsoft level priviledged password hash $1$xlMKQvUW$.a2kN1t2mt7PikOGhNzVE0
+aaa accounting exec default none
+aaa authorization exec default none
+aaa authentication login default local
+rstp shutdown
+hostname OLT01_ALIANCA
+vlan database
+ vlan 1,100,201-208,500,2201-2202,3118,3201-3208
+ vlan 100 in-band-mgmt 
+ vlan 500 in-band-mgmt 
+ vlan 201 isolated 
+ vlan 202 isolated 
+ vlan 203 isolated 
+ vlan 204 isolated 
+ vlan 205 isolated 
+ vlan 206 isolated 
+ vlan 207 isolated 
+ vlan 208 isolated 
+ vlan 2201 isolated 
+ vlan 2202 isolated 
+ vlan 3118 isolated 
+ vlan 3201 isolated 
+ vlan 3202 isolated 
+ vlan 3203 isolated 
+ vlan 3204 isolated 
+ vlan 3205 isolated 
+ vlan 3206 isolated 
+ vlan 3207 isolated 
+ vlan 3208 isolated 
+!
+gpon onu blacklist-action disable-serial
+gpon onu remove-action disable-serial
+gpon profile bandwidth D10_U10
+ traffic-type internet maximum-bandwidth 10240
+!
+gpon profile bandwidth Gerencia
+ traffic-type management assured-bandwidth 1024 maximum-bandwidth 2048
+!
+gpon profile bandwidth Internet
+ traffic-type internet maximum-bandwidth 1024000
+!
+gpon profile flow bridge_vlan_201
+ add flow # bridge_vlan_201-1
+ bridge_vlan_201-1 encryption disable
+ bridge_vlan_201-1 flow-type pbmp 1
+ bridge_vlan_201-1 vlan 201 service Internet
+!
+gpon profile flow bridge_vlan_202
+ add flow # bridge_vlan_202-1
+ bridge_vlan_202-1 encryption disable
+ bridge_vlan_202-1 flow-type pbmp 1
+ bridge_vlan_202-1 vlan 202 service Internet
+!
+gpon profile flow bridge_vlan_203
+ add flow # bridge_vlan_203-1
+ bridge_vlan_203-1 encryption disable
+ bridge_vlan_203-1 flow-type pbmp 1
+ bridge_vlan_203-1 vlan 203 service Internet
+!
+gpon profile flow bridge_vlan_204
+ add flow # bridge_vlan_204-1
+ bridge_vlan_204-1 encryption disable
+ bridge_vlan_204-1 flow-type pbmp 1
+ bridge_vlan_204-1 vlan 204 service Internet
+!
+gpon profile flow bridge_vlan_205
+ add flow # bridge_vlan_205-1
+ bridge_vlan_205-1 encryption disable
+ bridge_vlan_205-1 flow-type pbmp 1
+ bridge_vlan_205-1 vlan 205 service Internet
+!
+gpon profile flow bridge_vlan_206
+ add flow # bridge_vlan_206-1
+ bridge_vlan_206-1 encryption disable
+ bridge_vlan_206-1 flow-type pbmp 1
+ bridge_vlan_206-1 vlan 206 service Internet
+!
+gpon profile flow bridge_vlan_207
+ add flow # bridge_vlan_207-1
+ bridge_vlan_207-1 encryption disable
+ bridge_vlan_207-1 flow-type pbmp 1
+ bridge_vlan_207-1 vlan 207 service Internet
+!
+gpon profile flow bridge_vlan_208
+ add flow # bridge_vlan_208-1
+ bridge_vlan_208-1 encryption disable
+ bridge_vlan_208-1 flow-type pbmp 1
+ bridge_vlan_208-1 vlan 208 service Internet
+!
+gpon profile flow bridge_vlan_2201
+ add flow # bridge_vlan_2201-1
+ bridge_vlan_2201-1 encryption disable
+ bridge_vlan_2201-1 flow-type pbmp 1
+ bridge_vlan_2201-1 vlan 2201 service Internet
+!
+gpon profile flow bridge_vlan_2202
+ add flow # bridge_vlan_2202-1
+ bridge_vlan_2202-1 encryption disable
+ bridge_vlan_2202-1 flow-type pbmp 1
+ bridge_vlan_2202-1 vlan 2202 service Internet
+!
+gpon profile flow bridge_vlan_3118
+ add flow # bridge_vlan_3118-1
+ bridge_vlan_3118-1 encryption disable
+ bridge_vlan_3118-1 flow-type pbmp 1
+ bridge_vlan_3118-1 vlan 3118 service Internet
+!
+gpon profile flow bridge_vlan_3201
+ add flow # bridge_vlan_3201-1
+ bridge_vlan_3201-1 encryption disable
+ bridge_vlan_3201-1 flow-type pbmp 1
+ bridge_vlan_3201-1 vlan 3201 service Internet
+!
+gpon profile flow bridge_vlan_3202
+ add flow # bridge_vlan_3202-1
+ bridge_vlan_3202-1 encryption disable
+ bridge_vlan_3202-1 flow-type pbmp 1
+ bridge_vlan_3202-1 vlan 3202 service Internet
+!
+gpon profile flow bridge_vlan_3203
+ add flow # bridge_vlan_3203-1
+ bridge_vlan_3203-1 encryption disable
+ bridge_vlan_3203-1 flow-type pbmp 1
+ bridge_vlan_3203-1 vlan 3203 service Internet
+!
+gpon profile flow bridge_vlan_3204
+ add flow # bridge_vlan_3204-1
+ bridge_vlan_3204-1 encryption disable
+ bridge_vlan_3204-1 flow-type pbmp 1
+ bridge_vlan_3204-1 vlan 3204 service Internet
+!
+gpon profile flow bridge_vlan_3205
+ add flow # bridge_vlan_3205-1
+ bridge_vlan_3205-1 encryption disable
+ bridge_vlan_3205-1 flow-type pbmp 1
+ bridge_vlan_3205-1 vlan 3205 service Internet
+!
+gpon profile flow bridge_vlan_3206
+ add flow # bridge_vlan_3206-1
+ bridge_vlan_3206-1 encryption disable
+ bridge_vlan_3206-1 flow-type pbmp 1
+ bridge_vlan_3206-1 vlan 3206 service Internet
+!
+gpon profile flow bridge_vlan_3207
+ add flow # bridge_vlan_3207-1
+ bridge_vlan_3207-1 encryption disable
+ bridge_vlan_3207-1 flow-type pbmp 1
+ bridge_vlan_3207-1 vlan 3207 service Internet
+!
+gpon profile flow bridge_vlan_3208
+ add flow # bridge_vlan_3208-1
+ bridge_vlan_3208-1 encryption disable
+ bridge_vlan_3208-1 flow-type pbmp 1
+ bridge_vlan_3208-1 vlan 3208 service Internet
+!
+gpon profile flow vlan201_router
+ add flow # vlan201_router-1
+ vlan201_router-1 encryption disable
+ vlan201_router-1 flow-type iphost 1
+ vlan201_router-1 vlan 201 service Internet
+!
+gpon profile flow vlan202_router
+ add flow # vlan202_router-1
+ vlan202_router-1 encryption disable
+ vlan202_router-1 flow-type iphost 1
+ vlan202_router-1 vlan 202 service Internet
+!
+gpon profile flow vlan203_router
+ add flow # vlan203_router-1
+ vlan203_router-1 encryption disable
+ vlan203_router-1 flow-type iphost 1
+ vlan203_router-1 vlan 203 service Internet
+!
+gpon profile flow vlan203_veip
+ add flow # vlan203_veip-1
+ vlan203_veip-1 encryption disable
+ vlan203_veip-1 flow-type veip
+ vlan203_veip-1 vlan 203 service Internet
+!
+gpon profile flow vlan204_router
+ add flow # vlan204_router-1
+ vlan204_router-1 encryption disable
+ vlan204_router-1 flow-type iphost 1
+ vlan204_router-1 vlan 204 service Internet
+!
+gpon profile flow vlan205_router
+ add flow # vlan205_router-1
+ vlan205_router-1 encryption disable
+ vlan205_router-1 flow-type iphost 1
+ vlan205_router-1 vlan 205 service Internet
+!
+gpon profile flow vlan206_router
+ add flow # vlan206_router-1
+ vlan206_router-1 encryption disable
+ vlan206_router-1 flow-type iphost 1
+ vlan206_router-1 vlan 206 service Internet
+!
+gpon profile flow vlan207_router
+ add flow # vlan207_router-1
+ vlan207_router-1 encryption disable
+ vlan207_router-1 flow-type iphost 1
+ vlan207_router-1 vlan 207 service Internet
+!
+gpon profile flow vlan208_router
+ add flow # vlan208_router-1
+ vlan208_router-1 encryption disable
+ vlan208_router-1 flow-type iphost 1
+ vlan208_router-1 vlan 208 service Internet
+!
+gpon profile flow vlan2201_router
+ add flow # vlan2201_router-1
+ vlan2201_router-1 encryption disable
+ vlan2201_router-1 flow-type iphost 1
+ vlan2201_router-1 vlan 2201 service Internet
+!
+gpon profile flow vlan2202_router
+ add flow # vlan2202_router-1
+ vlan2202_router-1 encryption disable
+ vlan2202_router-1 flow-type iphost 1
+ vlan2202_router-1 vlan 2202 service Internet
+!
+gpon profile flow vlan3118_router
+ add flow # vlan3118_router-1
+ vlan3118_router-1 encryption disable
+ vlan3118_router-1 flow-type iphost 1
+ vlan3118_router-1 vlan 3118 service Internet
+!
+gpon profile flow vlan3201_router
+ add flow # vlan3201_router-1
+ vlan3201_router-1 encryption disable
+ vlan3201_router-1 flow-type iphost 1
+ vlan3201_router-1 vlan 3201 service Internet
+!
+gpon profile flow vlan3202_router
+ add flow # vlan3202_router-1
+ vlan3202_router-1 encryption disable
+ vlan3202_router-1 flow-type iphost 1
+ vlan3202_router-1 vlan 3202 service Internet
+!
+gpon profile flow vlan3203_router
+ add flow # vlan3203_router-1
+ vlan3203_router-1 encryption disable
+ vlan3203_router-1 flow-type iphost 1
+ vlan3203_router-1 vlan 3203 service Internet
+!
+gpon profile flow vlan3204_router
+ add flow # vlan3204_router-1
+ vlan3204_router-1 encryption disable
+ vlan3204_router-1 flow-type iphost 1
+ vlan3204_router-1 vlan 3204 service Internet
+!
+gpon profile flow vlan3205_router
+ add flow # vlan3205_router-1
+ vlan3205_router-1 encryption disable
+ vlan3205_router-1 flow-type iphost 1
+ vlan3205_router-1 vlan 3205 service Internet
+!
+gpon profile flow vlan3206_router
+ add flow # vlan3206_router-1
+ vlan3206_router-1 encryption disable
+ vlan3206_router-1 flow-type iphost 1
+ vlan3206_router-1 vlan 3206 service Internet
+!
+gpon profile flow vlan3207_router
+ add flow # vlan3207_router-1
+ vlan3207_router-1 encryption disable
+ vlan3207_router-1 flow-type iphost 1
+ vlan3207_router-1 vlan 3207 service Internet
+!
+gpon profile flow vlan3208_router
+ add flow # vlan3208_router-1
+ vlan3208_router-1 encryption disable
+ vlan3208_router-1 flow-type iphost 1
+ vlan3208_router-1 vlan 3208 service Internet
+!
+gpon profile vlan-translation vlan_201
+ add translation access 201
+!
+gpon profile vlan-translation vlan_202
+ add translation access 202
+!
+gpon profile vlan-translation vlan_203
+ add translation access 203
+!
+gpon profile vlan-translation vlan_204
+ add translation access 204
+!
+gpon profile vlan-translation vlan_205
+ add translation access 205
+!
+gpon profile vlan-translation vlan_206
+ add translation access 206
+!
+gpon profile vlan-translation vlan_207
+ add translation access 207
+!
+gpon profile vlan-translation vlan_208
+ add translation access 208
+!
+gpon profile vlan-translation vlan_2201
+ add translation access 2201
+!
+gpon profile vlan-translation vlan_2202
+ add translation access 2202
+!
+gpon profile vlan-translation vlan_3118
+ add translation access 3118
+!
+gpon profile vlan-translation vlan_3201
+ add translation access 3201
+!
+gpon profile vlan-translation vlan_3202
+ add translation access 3202
+!
+gpon profile vlan-translation vlan_3203
+ add translation access 3203
+!
+gpon profile vlan-translation vlan_3204
+ add translation access 3204
+!
+gpon profile vlan-translation vlan_3205
+ add translation access 3205
+!
+gpon profile vlan-translation vlan_3206
+ add translation access 3206
+!
+gpon profile vlan-translation vlan_3207
+ add translation access 3207
+!
+gpon profile vlan-translation vlan_3208
+ add translation access 3208
+!
+interface 10giga-ethernet0/0
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 201-208,500,2201-2202,3118,3201-3208
+ uplink isolated vlan 201-208,2201-2202,3118,3201-3208
+ no shutdown
+!
+interface 10giga-ethernet0/1
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 201-208,500,2201-2202,3118,3201-3208
+ uplink isolated vlan 201-208,2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/0
+ lacp channel-group 0 mode active
+ lacp actor admin-key 32768
+ lacp actor admin-state activity
+ lacp actor admin-state aggregation
+ lacp actor admin-state timeout
+ lacp admin-status enable
+ lacp agg-link-down-notification enable
+ lacp agg-link-up-notification enable
+ lacp enable
+ lacp port-channel-name LACP
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 201-208,500,2201-2202,3118,3201-3208
+ uplink isolated vlan 201-208,2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/1
+ lacp channel-group 0 mode active
+ lacp actor admin-key 32768
+ lacp actor admin-state activity
+ lacp actor admin-state aggregation
+ lacp actor admin-state timeout
+ lacp admin-status enable
+ lacp agg-link-down-notification enable
+ lacp agg-link-up-notification enable
+ lacp enable
+ lacp port-channel-name LACP
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 201-208,500,2201-2202,3118,3201-3208
+ uplink isolated vlan 201-208,2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/2
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 500,2201-2202,3118,3201-3208
+ uplink isolated vlan 2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/3
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 500,2201-2202,3118,3201-3208
+ uplink isolated vlan 2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/4
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 500,2201-2202,3118,3201-3208
+ uplink isolated vlan 2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/5
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 500,2201-2202,3118,3201-3208
+ uplink isolated vlan 2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/6
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 500,2201-2202,3118,3201-3208
+ uplink isolated vlan 2201-2202,3118,3201-3208
+ no shutdown
+!
+interface giga-ethernet0/7
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 500,2201-2202,3118,3201-3208
+ uplink isolated vlan 2201-2202,3118,3201-3208
+ no shutdown
+!
+interface gpon1/1
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00cb7ba2
+ onu add serial-number prks00d09d40
+ onu add serial-number prks00cb9560
+ onu add serial-number prks00cb8f44
+ onu add serial-number prks00cdff95
+ onu add serial-number prks00cb92b4
+ onu add serial-number prks00d09e0c
+ onu add serial-number prks00cdd592
+ onu add serial-number prks00cb78b0
+ onu add serial-number prks00cb7c7d
+ onu add serial-number prks00cc44cb
+ onu add serial-number prks00cc4683
+ onu add serial-number prks00cc5e4c
+ onu add serial-number prks00cdd356
+ onu add serial-number prks00cc454c
+ onu add serial-number prks00cb9158
+ onu add serial-number prks00cc7b36
+ onu add serial-number prks00d09f5e
+ onu add serial-number prks00cdd295
+ onu add serial-number prks00cde7f9
+ onu add serial-number prks00cde800
+ onu add serial-number prks00cdd023
+ onu add serial-number prks00cdd3fc
+ onu add serial-number prks00cb9da4
+ onu add serial-number hwtc320373b8
+ onu add serial-number prks00cdbd48
+ onu add serial-number prks00cdd087
+ onu add serial-number prks00cb8d33
+ onu add serial-number prks00cdd39f
+ onu add serial-number prks00d09cb3
+ onu add serial-number prks00c93850
+ onu add serial-number prks00cdd401
+ onu add serial-number prks00cdd358
+ onu add serial-number prks00cb9760
+ onu add serial-number prks00cb7c11
+ onu add serial-number prks00cdd360
+ onu add serial-number prks00cdbd41
+ onu add serial-number prks00cdd2c3
+ onu add serial-number prks00cdd02b
+ onu add serial-number prks00d09d3b
+ onu add serial-number prks00d09e0e
+ onu add serial-number prks00c935ba
+ onu add serial-number prks00cb99d5
+ onu add serial-number prks00c9373b
+ onu add serial-number prks00cdd39d
+ onu add serial-number prks00cdcf74
+ onu add serial-number prks00d09cbe
+ onu add serial-number prks00d09cc4
+ onu add serial-number prks00cdcf77
+ onu add serial-number prks00cb8f66
+ onu add serial-number prks00cb927c
+ onu add serial-number prks00cb9610
+ onu add serial-number prks00cb7c93
+ onu add serial-number prks00cb929a
+ onu add serial-number prks00d09d37
+ onu add serial-number prks00d09ca3
+ onu add serial-number prks00cc5e55
+ onu add serial-number prks00cc7b34
+ onu add serial-number prks00cdff98
+ onu add serial-number prks00cdd084
+ onu add serial-number prks00c58846
+ onu prks00cb7ba2 ethernet-profile auto-on uni-port 1
+ onu prks00cb7ba2 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb7ba2 upstream-fec disabled
+ onu prks00cb7ba2 flow-profile bridge_vlan_201
+ onu prks00cb7ba2 alias solange_al
+ onu prks00d09d40 ethernet-profile auto-on uni-port 1
+ onu prks00d09d40 iphost 1 pppoe nat enable
+ onu prks00d09d40 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09d40 iphost 1 pppoe auth auto
+ onu prks00d09d40 iphost 1 pppoe username eliana_al password 123
+ onu prks00d09d40 upstream-fec disabled
+ onu prks00d09d40 flow-profile vlan201_router
+ onu prks00d09d40 alias eliana_al
+ onu prks00cb9560 ethernet-profile auto-on uni-port 1
+ onu prks00cb9560 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb9560 upstream-fec disabled
+ onu prks00cb9560 flow-profile bridge_vlan_201
+ onu prks00cb9560 alias socorrofreitas_al
+ onu prks00cb8f44 ethernet-profile auto-on uni-port 1
+ onu prks00cb8f44 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb8f44 upstream-fec disabled
+ onu prks00cb8f44 flow-profile bridge_vlan_201
+ onu prks00cb8f44 alias silvano_al
+ onu prks00cdff95 ethernet-profile auto-on uni-port 1
+ onu prks00cdff95 iphost 1 pppoe nat enable
+ onu prks00cdff95 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdff95 iphost 1 pppoe auth auto
+ onu prks00cdff95 iphost 1 pppoe username ciceraaraujo_al password 123
+ onu prks00cdff95 upstream-fec disabled
+ onu prks00cdff95 flow-profile vlan201_router
+ onu prks00cdff95 alias ciceraaraujo_al
+ onu prks00cb92b4 ethernet-profile auto-on uni-port 1
+ onu prks00cb92b4 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb92b4 upstream-fec disabled
+ onu prks00cb92b4 flow-profile bridge_vlan_201
+ onu prks00cb92b4 alias adrianasouza_al
+ onu prks00d09e0c ethernet-profile auto-on uni-port 1
+ onu prks00d09e0c iphost 1 pppoe nat enable
+ onu prks00d09e0c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e0c iphost 1 pppoe auth auto
+ onu prks00d09e0c iphost 1 pppoe username pedrogama_al password 123
+ onu prks00d09e0c upstream-fec disabled
+ onu prks00d09e0c flow-profile vlan201_router
+ onu prks00d09e0c alias pedrogama_al
+ onu prks00cdd592 ethernet-profile auto-on uni-port 1
+ onu prks00cdd592 iphost 1 pppoe nat enable
+ onu prks00cdd592 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd592 iphost 1 pppoe auth auto
+ onu prks00cdd592 iphost 1 pppoe username leonardovictor_al password 123
+ onu prks00cdd592 upstream-fec disabled
+ onu prks00cdd592 flow-profile vlan201_router
+ onu prks00cdd592 alias leonardovictor_al
+ onu prks00cb78b0 ethernet-profile auto-on uni-port 1
+ onu prks00cb78b0 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb78b0 upstream-fec disabled
+ onu prks00cb78b0 flow-profile bridge_vlan_201
+ onu prks00cb78b0 alias tereza_al
+ onu prks00cb7c7d ethernet-profile auto-on uni-port 1
+ onu prks00cb7c7d vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb7c7d upstream-fec disabled
+ onu prks00cb7c7d flow-profile bridge_vlan_201
+ onu prks00cb7c7d alias joseadeildo_al
+ onu prks00cc44cb ethernet-profile auto-on uni-port 1
+ onu prks00cc44cb iphost 1 pppoe nat enable
+ onu prks00cc44cb iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc44cb iphost 1 pppoe auth auto
+ onu prks00cc44cb iphost 1 pppoe username anakuelly_al password 123
+ onu prks00cc44cb upstream-fec disabled
+ onu prks00cc44cb flow-profile vlan201_router
+ onu prks00cc44cb alias anakuely_al
+ onu prks00cc4683 ethernet-profile auto-on uni-port 1
+ onu prks00cc4683 iphost 1 pppoe nat enable
+ onu prks00cc4683 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc4683 iphost 1 pppoe auth auto
+ onu prks00cc4683 iphost 1 pppoe username leonardo_al_agro password 123
+ onu prks00cc4683 upstream-fec disabled
+ onu prks00cc4683 flow-profile vlan201_router
+ onu prks00cc4683 alias leonardo_al_agro
+ onu prks00cc5e4c ethernet-profile auto-on uni-port 1
+ onu prks00cc5e4c iphost 1 pppoe nat enable
+ onu prks00cc5e4c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5e4c iphost 1 pppoe auth auto
+ onu prks00cc5e4c iphost 1 pppoe username rafaelapaula_al password 123
+ onu prks00cc5e4c upstream-fec disabled
+ onu prks00cc5e4c flow-profile vlan201_router
+ onu prks00cc5e4c alias rafaelapaula_al
+ onu prks00cdd356 ethernet-profile auto-on uni-port 1
+ onu prks00cdd356 iphost 1 pppoe nat enable
+ onu prks00cdd356 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd356 iphost 1 pppoe auth auto
+ onu prks00cdd356 iphost 1 pppoe username gideonemartins_al password 123
+ onu prks00cdd356 upstream-fec disabled
+ onu prks00cdd356 flow-profile vlan201_router
+ onu prks00cdd356 alias gideone_alianca
+ onu prks00cc454c ethernet-profile auto-on uni-port 1
+ onu prks00cc454c iphost 1 pppoe nat enable
+ onu prks00cc454c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc454c iphost 1 pppoe auth auto
+ onu prks00cc454c iphost 1 pppoe username elisangela_al password 123
+ onu prks00cc454c upstream-fec disabled
+ onu prks00cc454c flow-profile vlan201_router
+ onu prks00cc454c alias elisangela_al
+ onu prks00cb9158 ethernet-profile auto-on uni-port 1
+ onu prks00cb9158 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb9158 upstream-fec disabled
+ onu prks00cb9158 flow-profile bridge_vlan_201
+ onu prks00cb9158 alias rozenilda_al
+ onu prks00cc7b36 ethernet-profile auto-on uni-port 1
+ onu prks00cc7b36 iphost 1 pppoe nat enable
+ onu prks00cc7b36 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7b36 iphost 1 pppoe auth auto
+ onu prks00cc7b36 iphost 1 pppoe username luizantonio_al password 123
+ onu prks00cc7b36 upstream-fec disabled
+ onu prks00cc7b36 flow-profile vlan201_router
+ onu prks00cc7b36 alias luisantonio_al
+ onu prks00d09f5e ethernet-profile auto-on uni-port 1
+ onu prks00d09f5e iphost 1 pppoe nat enable
+ onu prks00d09f5e iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f5e iphost 1 pppoe auth auto
+ onu prks00d09f5e iphost 1 pppoe username socorro_al password 123
+ onu prks00d09f5e upstream-fec disabled
+ onu prks00d09f5e flow-profile vlan201_router
+ onu prks00d09f5e alias socorro_al
+ onu prks00cdd295 ethernet-profile auto-on uni-port 1
+ onu prks00cdd295 iphost 1 pppoe nat enable
+ onu prks00cdd295 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd295 iphost 1 pppoe auth auto
+ onu prks00cdd295 iphost 1 pppoe username claudiana_al password 123
+ onu prks00cdd295 upstream-fec disabled
+ onu prks00cdd295 flow-profile vlan201_router
+ onu prks00cdd295 alias claudiana_al
+ onu prks00cde7f9 ethernet-profile auto-on uni-port 1
+ onu prks00cde7f9 iphost 1 pppoe nat enable
+ onu prks00cde7f9 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde7f9 iphost 1 pppoe auth auto
+ onu prks00cde7f9 iphost 1 pppoe username gilmarmartins_al password 123
+ onu prks00cde7f9 upstream-fec disabled
+ onu prks00cde7f9 flow-profile vlan201_router
+ onu prks00cde7f9 alias gilmarmartins_al
+ onu prks00cde800 ethernet-profile auto-on uni-port 1
+ onu prks00cde800 iphost 1 pppoe nat enable
+ onu prks00cde800 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde800 iphost 1 pppoe auth auto
+ onu prks00cde800 iphost 1 pppoe username raqueliris_al password 123
+ onu prks00cde800 upstream-fec disabled
+ onu prks00cde800 flow-profile vlan201_router
+ onu prks00cde800 alias raqueliris_al
+ onu prks00cdd023 ethernet-profile auto-on uni-port 1
+ onu prks00cdd023 iphost 1 pppoe nat enable
+ onu prks00cdd023 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd023 iphost 1 pppoe auth auto
+ onu prks00cdd023 iphost 1 pppoe username neide_al password 123
+ onu prks00cdd023 upstream-fec disabled
+ onu prks00cdd023 flow-profile vlan201_router
+ onu prks00cdd023 alias neide_al
+ onu prks00cdd3fc ethernet-profile auto-on uni-port 1
+ onu prks00cdd3fc vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cdd3fc upstream-fec disabled
+ onu prks00cdd3fc flow-profile bridge_vlan_201
+ onu prks00cdd3fc alias josecicero_al
+ onu prks00cb9da4 ethernet-profile auto-on uni-port 1
+ onu prks00cb9da4 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb9da4 upstream-fec disabled
+ onu prks00cb9da4 flow-profile bridge_vlan_201
+ onu prks00cb9da4 alias jose_al
+ onu hwtc320373b8 ethernet-profile auto-on uni-port 1
+ onu hwtc320373b8 vlan-translation-profile vlan_201 uni-port 1 
+ onu hwtc320373b8 upstream-fec disabled
+ onu hwtc320373b8 flow-profile bridge_vlan_201
+ onu hwtc320373b8 alias nadia_al
+ onu prks00cdbd48 ethernet-profile auto-on uni-port 1
+ onu prks00cdbd48 iphost 1 pppoe nat enable
+ onu prks00cdbd48 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdbd48 iphost 1 pppoe auth auto
+ onu prks00cdbd48 iphost 1 pppoe username rosiely_al password 123
+ onu prks00cdbd48 upstream-fec disabled
+ onu prks00cdbd48 flow-profile vlan201_router
+ onu prks00cdbd48 alias rosiely_al
+ onu prks00cdd087 ethernet-profile auto-on uni-port 1
+ onu prks00cdd087 iphost 1 pppoe nat enable
+ onu prks00cdd087 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd087 iphost 1 pppoe auth auto
+ onu prks00cdd087 iphost 1 pppoe username edilsonjose_al password 123
+ onu prks00cdd087 upstream-fec disabled
+ onu prks00cdd087 flow-profile vlan201_router
+ onu prks00cdd087 alias edilsonjose_al
+ onu prks00cb8d33 ethernet-profile auto-on uni-port 1
+ onu prks00cb8d33 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb8d33 upstream-fec disabled
+ onu prks00cb8d33 flow-profile bridge_vlan_201
+ onu prks00cb8d33 alias iraci
+ onu prks00cdd39f ethernet-profile auto-on uni-port 1
+ onu prks00cdd39f iphost 1 pppoe nat enable
+ onu prks00cdd39f iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd39f iphost 1 pppoe auth auto
+ onu prks00cdd39f iphost 1 pppoe username j.paulohercilio_al password 123
+ onu prks00cdd39f upstream-fec disabled
+ onu prks00cdd39f flow-profile vlan201_router
+ onu prks00cdd39f alias j.paulohercilio_al
+ onu prks00d09cb3 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb3 iphost 1 pppoe nat enable
+ onu prks00d09cb3 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb3 iphost 1 pppoe auth auto
+ onu prks00d09cb3 iphost 1 pppoe username ingrid_al password 123
+ onu prks00d09cb3 upstream-fec disabled
+ onu prks00d09cb3 flow-profile vlan201_router
+ onu prks00d09cb3 alias ingrid_al
+ onu prks00c93850 ethernet-profile auto-on uni-port 1
+ onu prks00c93850 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00c93850 upstream-fec disabled
+ onu prks00c93850 flow-profile bridge_vlan_201
+ onu prks00c93850 alias beto_al
+ onu prks00cdd401 ethernet-profile auto-on uni-port 1
+ onu prks00cdd401 iphost 1 pppoe nat enable
+ onu prks00cdd401 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd401 iphost 1 pppoe auth auto
+ onu prks00cdd401 iphost 1 pppoe username joseluiz_al password 123
+ onu prks00cdd401 upstream-fec disabled
+ onu prks00cdd401 flow-profile vlan201_router
+ onu prks00cdd401 alias joseluiz_al
+ onu prks00cdd358 ethernet-profile auto-on uni-port 1
+ onu prks00cdd358 iphost 1 pppoe nat enable
+ onu prks00cdd358 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd358 iphost 1 pppoe auth auto
+ onu prks00cdd358 iphost 1 pppoe username brunakarinny_al password 123
+ onu prks00cdd358 upstream-fec disabled
+ onu prks00cdd358 flow-profile vlan201_router
+ onu prks00cdd358 alias brunakarinny_al
+ onu prks00cb9760 ethernet-profile auto-on uni-port 1
+ onu prks00cb9760 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb9760 upstream-fec disabled
+ onu prks00cb9760 flow-profile bridge_vlan_201
+ onu prks00cb9760 alias viviane_al
+ onu prks00cb7c11 ethernet-profile auto-on uni-port 1
+ onu prks00cb7c11 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb7c11 upstream-fec disabled
+ onu prks00cb7c11 flow-profile bridge_vlan_201
+ onu prks00cb7c11 alias sebastiana_al
+ onu prks00cdd360 ethernet-profile auto-on uni-port 1
+ onu prks00cdd360 iphost 1 pppoe nat enable
+ onu prks00cdd360 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd360 iphost 1 pppoe auth auto
+ onu prks00cdd360 iphost 1 pppoe username mariagraca_al password 123
+ onu prks00cdd360 upstream-fec disabled
+ onu prks00cdd360 flow-profile vlan201_router
+ onu prks00cdd360 alias mariagraca_al
+ onu prks00cdbd41 ethernet-profile auto-on uni-port 1
+ onu prks00cdbd41 iphost 1 pppoe nat enable
+ onu prks00cdbd41 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdbd41 iphost 1 pppoe auth auto
+ onu prks00cdbd41 iphost 1 pppoe username mariajose_al password 123
+ onu prks00cdbd41 upstream-fec disabled
+ onu prks00cdbd41 flow-profile vlan201_router
+ onu prks00cdbd41 alias mariajose_al
+ onu prks00cdd2c3 ethernet-profile auto-on uni-port 1
+ onu prks00cdd2c3 iphost 1 pppoe nat enable
+ onu prks00cdd2c3 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd2c3 iphost 1 pppoe auth auto
+ onu prks00cdd2c3 iphost 1 pppoe username oscardistribuidora_al password 123
+ onu prks00cdd2c3 upstream-fec disabled
+ onu prks00cdd2c3 flow-profile vlan201_router
+ onu prks00cdd2c3 alias oscardistribuidora_al
+ onu prks00cdd02b ethernet-profile auto-on uni-port 1
+ onu prks00cdd02b iphost 1 pppoe nat enable
+ onu prks00cdd02b iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd02b iphost 1 pppoe auth auto
+ onu prks00cdd02b iphost 1 pppoe username paulofrancisco_al password 123
+ onu prks00cdd02b upstream-fec disabled
+ onu prks00cdd02b flow-profile vlan201_router
+ onu prks00cdd02b alias paulofrancisco_al
+ onu prks00d09d3b ethernet-profile auto-on uni-port 1
+ onu prks00d09d3b iphost 1 pppoe nat enable
+ onu prks00d09d3b iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09d3b iphost 1 pppoe auth auto
+ onu prks00d09d3b iphost 1 pppoe username dhenifer_al password 123
+ onu prks00d09d3b upstream-fec disabled
+ onu prks00d09d3b flow-profile vlan201_router
+ onu prks00d09d3b alias dhenifer_al
+ onu prks00d09e0e ethernet-profile auto-on uni-port 1
+ onu prks00d09e0e iphost 1 pppoe nat enable
+ onu prks00d09e0e iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e0e iphost 1 pppoe auth auto
+ onu prks00d09e0e iphost 1 pppoe username auzenir_al password 123
+ onu prks00d09e0e upstream-fec disabled
+ onu prks00d09e0e flow-profile vlan201_router
+ onu prks00d09e0e alias auzenir_al
+ onu prks00c935ba ethernet-profile auto-on uni-port 1
+ onu prks00c935ba vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00c935ba upstream-fec disabled
+ onu prks00c935ba flow-profile bridge_vlan_201
+ onu prks00c935ba alias naedya_al
+ onu prks00cb99d5 ethernet-profile auto-on uni-port 1
+ onu prks00cb99d5 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb99d5 upstream-fec disabled
+ onu prks00cb99d5 flow-profile bridge_vlan_201
+ onu prks00cb99d5 alias naaliel_al
+ onu prks00c9373b ethernet-profile auto-on uni-port 1
+ onu prks00c9373b vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00c9373b upstream-fec disabled
+ onu prks00c9373b flow-profile bridge_vlan_201
+ onu prks00c9373b alias ylaria_al
+ onu prks00cdd39d ethernet-profile auto-on uni-port 1
+ onu prks00cdd39d iphost 1 pppoe nat enable
+ onu prks00cdd39d iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd39d iphost 1 pppoe auth auto
+ onu prks00cdd39d iphost 1 pppoe username liliane_al password 123
+ onu prks00cdd39d upstream-fec disabled
+ onu prks00cdd39d flow-profile vlan201_router
+ onu prks00cdd39d alias liliane_al
+ onu prks00cdcf74 ethernet-profile auto-on uni-port 1
+ onu prks00cdcf74 iphost 1 pppoe nat enable
+ onu prks00cdcf74 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdcf74 iphost 1 pppoe auth auto
+ onu prks00cdcf74 iphost 1 pppoe username galego_loja password 123
+ onu prks00cdcf74 upstream-fec disabled
+ onu prks00cdcf74 flow-profile vlan201_router
+ onu prks00cdcf74 alias galego_loja
+ onu prks00d09cbe ethernet-profile auto-on uni-port 1
+ onu prks00d09cbe iphost 1 pppoe nat enable
+ onu prks00d09cbe iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cbe iphost 1 pppoe auth auto
+ onu prks00d09cbe iphost 1 pppoe username lusimar_al password 123
+ onu prks00d09cbe upstream-fec disabled
+ onu prks00d09cbe flow-profile vlan201_router
+ onu prks00d09cbe alias lusimar_al
+ onu prks00d09cc4 ethernet-profile auto-on uni-port 1
+ onu prks00d09cc4 iphost 1 pppoe nat enable
+ onu prks00d09cc4 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cc4 iphost 1 pppoe auth auto
+ onu prks00d09cc4 iphost 1 pppoe username alaine_al password 123
+ onu prks00d09cc4 upstream-fec disabled
+ onu prks00d09cc4 flow-profile vlan201_router
+ onu prks00d09cc4 alias alaine_al
+ onu prks00cdcf77 ethernet-profile auto-on uni-port 1
+ onu prks00cdcf77 iphost 1 pppoe nat enable
+ onu prks00cdcf77 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdcf77 iphost 1 pppoe auth auto
+ onu prks00cdcf77 iphost 1 pppoe username cleane_al password 123
+ onu prks00cdcf77 upstream-fec disabled
+ onu prks00cdcf77 flow-profile vlan201_router
+ onu prks00cdcf77 alias cleane_al
+ onu prks00cb8f66 ethernet-profile auto-on uni-port 1
+ onu prks00cb8f66 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb8f66 upstream-fec disabled
+ onu prks00cb8f66 flow-profile bridge_vlan_201
+ onu prks00cb8f66 alias zenilda_al
+ onu prks00cb927c ethernet-profile auto-on uni-port 1
+ onu prks00cb927c vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb927c upstream-fec disabled
+ onu prks00cb927c flow-profile bridge_vlan_201
+ onu prks00cb927c alias hercilia_al
+ onu prks00cb9610 ethernet-profile auto-on uni-port 1
+ onu prks00cb9610 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb9610 upstream-fec disabled
+ onu prks00cb9610 flow-profile bridge_vlan_201
+ onu prks00cb9610 alias amanda_al
+ onu prks00cb7c93 ethernet-profile auto-on uni-port 1
+ onu prks00cb7c93 vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb7c93 upstream-fec disabled
+ onu prks00cb7c93 flow-profile bridge_vlan_201
+ onu prks00cb7c93 alias jaime_al
+ onu prks00cb929a ethernet-profile auto-on uni-port 1
+ onu prks00cb929a vlan-translation-profile vlan_201 uni-port 1 
+ onu prks00cb929a upstream-fec disabled
+ onu prks00cb929a flow-profile bridge_vlan_201
+ onu prks00cb929a alias igrejapleno_al
+ onu prks00d09d37 ethernet-profile auto-on uni-port 1
+ onu prks00d09d37 iphost 1 pppoe nat enable
+ onu prks00d09d37 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09d37 iphost 1 pppoe auth auto
+ onu prks00d09d37 iphost 1 pppoe username fernanda_al password 123
+ onu prks00d09d37 upstream-fec disabled
+ onu prks00d09d37 flow-profile vlan201_router
+ onu prks00d09d37 alias fernanda_al
+ onu prks00d09ca3 ethernet-profile auto-on uni-port 1
+ onu prks00d09ca3 iphost 1 pppoe nat enable
+ onu prks00d09ca3 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09ca3 iphost 1 pppoe auth auto
+ onu prks00d09ca3 iphost 1 pppoe username marcelo_al password 123
+ onu prks00d09ca3 upstream-fec disabled
+ onu prks00d09ca3 flow-profile vlan201_router
+ onu prks00d09ca3 alias marcelo_al
+ onu prks00cc5e55 ethernet-profile auto-on uni-port 1
+ onu prks00cc5e55 iphost 1 pppoe nat enable
+ onu prks00cc5e55 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5e55 iphost 1 pppoe auth auto
+ onu prks00cc5e55 iphost 1 pppoe username lucasbezerra_al password 123
+ onu prks00cc5e55 upstream-fec disabled
+ onu prks00cc5e55 flow-profile vlan201_router
+ onu prks00cc5e55 alias lucasbezerra_al
+ onu prks00cc7b34 ethernet-profile auto-on uni-port 1
+ onu prks00cc7b34 iphost 1 pppoe nat enable
+ onu prks00cc7b34 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7b34 iphost 1 pppoe auth auto
+ onu prks00cc7b34 iphost 1 pppoe username lararaiane_al password 123
+ onu prks00cc7b34 upstream-fec disabled
+ onu prks00cc7b34 flow-profile vlan201_router
+ onu prks00cc7b34 alias lararaiane_al
+ onu prks00cdff98 ethernet-profile auto-on uni-port 1
+ onu prks00cdff98 iphost 1 pppoe nat enable
+ onu prks00cdff98 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdff98 iphost 1 pppoe auth auto
+ onu prks00cdff98 iphost 1 pppoe username jovisvaldo_al password 123
+ onu prks00cdff98 upstream-fec disabled
+ onu prks00cdff98 flow-profile vlan201_router
+ onu prks00cdff98 alias jovisvaldo_al
+ onu prks00cdd084 ethernet-profile auto-on uni-port 1
+ onu prks00cdd084 iphost 1 pppoe nat enable
+ onu prks00cdd084 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd084 iphost 1 pppoe auth auto
+ onu prks00cdd084 iphost 1 pppoe username franciscavieira_al password 123
+ onu prks00cdd084 upstream-fec disabled
+ onu prks00cdd084 flow-profile vlan201_router
+ onu prks00cdd084 alias franciscavieira_al
+ onu prks00c58846 iphost 1 pppoe nat enable
+ onu prks00c58846 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00c58846 iphost 1 pppoe auth auto
+ onu prks00c58846 iphost 1 pppoe username raissa_al password 123
+ onu prks00c58846 upstream-fec disabled
+ onu prks00c58846 flow-profile vlan201_router
+ onu prks00c58846 alias raissa_al
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 201,2201-2202,3201
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/2
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00d09e1c
+ onu add serial-number prks00cdd01c
+ onu add serial-number prks00cb9734
+ onu add serial-number prks00c5884b
+ onu add serial-number prks00cdd396
+ onu add serial-number prks00cb9605
+ onu add serial-number prks00cc5e66
+ onu add serial-number prks00c935c6
+ onu add serial-number prks00d09cab
+ onu add serial-number prks00d09f50
+ onu add serial-number prks00c93fd0
+ onu add serial-number prks00d09cb0
+ onu add serial-number prks00cb9602
+ onu add serial-number prks00cdd02a
+ onu add serial-number prks00cdff9a
+ onu add serial-number prks00cb92f2
+ onu add serial-number prks00d09f4c
+ onu add serial-number prks00d09cbc
+ onu add serial-number prks00d09cc0
+ onu add serial-number prks00d09f4e
+ onu add serial-number prks00c937c2
+ onu add serial-number 42061d5c9ac0
+ onu add serial-number prks00cde804
+ onu add serial-number prks00cdd08d
+ onu add serial-number prks00cdcf7a
+ onu add serial-number hwtcb4deb1eb
+ onu add serial-number prks00cdd342
+ onu add serial-number prks00cdd363
+ onu add serial-number prks00cdd357
+ onu add serial-number prks00c92ff4
+ onu add serial-number prks00cdd4d0
+ onu add serial-number prks00cc4798
+ onu add serial-number prks00cb96fa
+ onu add serial-number prks00cc5e65
+ onu add serial-number prks00cb7a55
+ onu add serial-number prks00c94a36
+ onu add serial-number prks00cb8f12
+ onu add serial-number prks00cdd00c
+ onu add serial-number prks00cdbd40
+ onu add serial-number prks00c92d63
+ onu add serial-number prks00c58849
+ onu add serial-number prks00cc7ade
+ onu prks00d09e1c ethernet-profile auto-on uni-port 1
+ onu prks00d09e1c iphost 1 pppoe nat enable
+ onu prks00d09e1c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e1c iphost 1 pppoe auth auto
+ onu prks00d09e1c iphost 1 pppoe username carmem_al password 123
+ onu prks00d09e1c upstream-fec disabled
+ onu prks00d09e1c flow-profile vlan202_router
+ onu prks00d09e1c alias carmem_al
+ onu prks00cdd01c ethernet-profile auto-on uni-port 1
+ onu prks00cdd01c iphost 1 pppoe nat enable
+ onu prks00cdd01c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd01c iphost 1 pppoe auth auto
+ onu prks00cdd01c iphost 1 pppoe username melicia_al_agro password 123
+ onu prks00cdd01c upstream-fec disabled
+ onu prks00cdd01c flow-profile vlan202_router
+ onu prks00cdd01c alias melicia_al_agro
+ onu prks00cb9734 ethernet-profile auto-on uni-port 1
+ onu prks00cb9734 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb9734 upstream-fec disabled
+ onu prks00cb9734 flow-profile bridge_vlan_202
+ onu prks00cb9734 alias oscarbar_al
+ onu prks00c5884b iphost 1 pppoe nat enable
+ onu prks00c5884b iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00c5884b iphost 1 pppoe auth auto
+ onu prks00c5884b iphost 1 pppoe username jean_al_agro password 123
+ onu prks00c5884b upstream-fec disabled
+ onu prks00c5884b flow-profile vlan202_router
+ onu prks00c5884b alias jean_al_agro
+ onu prks00cdd396 ethernet-profile auto-on uni-port 1
+ onu prks00cdd396 iphost 1 pppoe nat enable
+ onu prks00cdd396 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd396 iphost 1 pppoe auth auto
+ onu prks00cdd396 iphost 1 pppoe username fabiosantos_al password 123
+ onu prks00cdd396 upstream-fec disabled
+ onu prks00cdd396 flow-profile vlan202_router
+ onu prks00cdd396 alias fabiosantos_al
+ onu prks00cb9605 ethernet-profile auto-on uni-port 1
+ onu prks00cb9605 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb9605 upstream-fec disabled
+ onu prks00cb9605 flow-profile bridge_vlan_202
+ onu prks00cb9605 alias rosineide_al_agro
+ onu prks00cc5e66 ethernet-profile auto-on uni-port 1
+ onu prks00cc5e66 iphost 1 pppoe nat enable
+ onu prks00cc5e66 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5e66 iphost 1 pppoe auth auto
+ onu prks00cc5e66 iphost 1 pppoe username francisco_al_agro password 123
+ onu prks00cc5e66 upstream-fec disabled
+ onu prks00cc5e66 flow-profile vlan202_router
+ onu prks00cc5e66 alias francisco_al_agro
+ onu prks00c935c6 ethernet-profile auto-on uni-port 1
+ onu prks00c935c6 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00c935c6 upstream-fec disabled
+ onu prks00c935c6 flow-profile bridge_vlan_202
+ onu prks00c935c6 alias jailma_al_agro
+ onu prks00d09cab ethernet-profile auto-on uni-port 1
+ onu prks00d09cab iphost 1 pppoe nat enable
+ onu prks00d09cab iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cab iphost 1 pppoe auth auto
+ onu prks00d09cab iphost 1 pppoe username elianamaria_al password 123
+ onu prks00d09cab upstream-fec disabled
+ onu prks00d09cab flow-profile vlan202_router
+ onu prks00d09cab alias elianamaria_al
+ onu prks00d09f50 ethernet-profile auto-on uni-port 1
+ onu prks00d09f50 iphost 1 pppoe nat enable
+ onu prks00d09f50 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f50 iphost 1 pppoe auth auto
+ onu prks00d09f50 iphost 1 pppoe username lucivaldo_al password 123
+ onu prks00d09f50 upstream-fec disabled
+ onu prks00d09f50 flow-profile vlan202_router
+ onu prks00d09f50 alias lucivaldo_al
+ onu prks00c93fd0 ethernet-profile auto-on uni-port 1
+ onu prks00c93fd0 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00c93fd0 upstream-fec disabled
+ onu prks00c93fd0 flow-profile bridge_vlan_202
+ onu prks00c93fd0 alias antoniaeliane_al
+ onu prks00d09cb0 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb0 iphost 1 pppoe nat enable
+ onu prks00d09cb0 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb0 iphost 1 pppoe auth auto
+ onu prks00d09cb0 iphost 1 pppoe username ezequielpinheiro_al password 123
+ onu prks00d09cb0 upstream-fec disabled
+ onu prks00d09cb0 flow-profile vlan202_router
+ onu prks00d09cb0 alias ezequielpinheiro_al
+ onu prks00cb9602 ethernet-profile auto-on uni-port 1
+ onu prks00cb9602 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb9602 upstream-fec disabled
+ onu prks00cb9602 flow-profile bridge_vlan_202
+ onu prks00cb9602 alias guigui_loja
+ onu prks00cdd02a ethernet-profile auto-on uni-port 1
+ onu prks00cdd02a iphost 1 pppoe nat enable
+ onu prks00cdd02a iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd02a iphost 1 pppoe auth auto
+ onu prks00cdd02a iphost 1 pppoe username samara_al password 123
+ onu prks00cdd02a upstream-fec disabled
+ onu prks00cdd02a flow-profile vlan202_router
+ onu prks00cdd02a alias samara_al
+ onu prks00cdff9a ethernet-profile auto-on uni-port 1
+ onu prks00cdff9a iphost 1 pppoe nat enable
+ onu prks00cdff9a iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdff9a iphost 1 pppoe auth auto
+ onu prks00cdff9a iphost 1 pppoe username ducicleide_al password 123
+ onu prks00cdff9a upstream-fec disabled
+ onu prks00cdff9a flow-profile vlan202_router
+ onu prks00cdff9a alias ducicleide_al
+ onu prks00cb92f2 ethernet-profile auto-on uni-port 1
+ onu prks00cb92f2 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb92f2 upstream-fec disabled
+ onu prks00cb92f2 flow-profile bridge_vlan_202
+ onu prks00cb92f2 alias vilmar_al
+ onu prks00d09f4c ethernet-profile auto-on uni-port 1
+ onu prks00d09f4c iphost 1 pppoe nat enable
+ onu prks00d09f4c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f4c iphost 1 pppoe auth auto
+ onu prks00d09f4c iphost 1 pppoe username erica_al password 123
+ onu prks00d09f4c upstream-fec disabled
+ onu prks00d09f4c flow-profile vlan202_router
+ onu prks00d09f4c alias erica_al
+ onu prks00d09cbc ethernet-profile auto-on uni-port 1
+ onu prks00d09cbc iphost 1 pppoe nat enable
+ onu prks00d09cbc iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cbc iphost 1 pppoe auth auto
+ onu prks00d09cbc iphost 1 pppoe username fabio_al_agro password 123
+ onu prks00d09cbc upstream-fec disabled
+ onu prks00d09cbc flow-profile vlan202_router
+ onu prks00d09cbc alias fabio_al_agro
+ onu prks00d09cc0 ethernet-profile auto-on uni-port 1
+ onu prks00d09cc0 iphost 1 pppoe nat enable
+ onu prks00d09cc0 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cc0 iphost 1 pppoe auth auto
+ onu prks00d09cc0 iphost 1 pppoe username franciane_al password 123
+ onu prks00d09cc0 upstream-fec disabled
+ onu prks00d09cc0 flow-profile vlan202_router
+ onu prks00d09cc0 alias franciane_al
+ onu prks00d09f4e ethernet-profile auto-on uni-port 1
+ onu prks00d09f4e iphost 1 pppoe nat enable
+ onu prks00d09f4e iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f4e iphost 1 pppoe auth auto
+ onu prks00d09f4e iphost 1 pppoe username herbert_al password 123
+ onu prks00d09f4e upstream-fec disabled
+ onu prks00d09f4e flow-profile vlan202_router
+ onu prks00d09f4e alias herbert_al
+ onu prks00c937c2 ethernet-profile auto-on uni-port 1
+ onu prks00c937c2 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00c937c2 upstream-fec disabled
+ onu prks00c937c2 flow-profile bridge_vlan_202
+ onu prks00c937c2 alias izaiane_al
+ onu 42061d5c9ac0 ethernet-profile auto-on uni-port 1
+ onu 42061d5c9ac0 vlan-translation-profile vlan_202 uni-port 1 
+ onu 42061d5c9ac0 upstream-fec disabled
+ onu 42061d5c9ac0 flow-profile bridge_vlan_202
+ onu 42061d5c9ac0 alias ari_al
+ onu prks00cde804 ethernet-profile auto-on uni-port 1
+ onu prks00cde804 iphost 1 pppoe nat enable
+ onu prks00cde804 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde804 iphost 1 pppoe auth auto
+ onu prks00cde804 iphost 1 pppoe username edalva_al password 123
+ onu prks00cde804 upstream-fec disabled
+ onu prks00cde804 flow-profile vlan202_router
+ onu prks00cde804 alias edalva_al
+ onu prks00cdd08d ethernet-profile auto-on uni-port 1
+ onu prks00cdd08d iphost 1 pppoe nat enable
+ onu prks00cdd08d iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd08d iphost 1 pppoe auth auto
+ onu prks00cdd08d iphost 1 pppoe username oscar_casa password 123
+ onu prks00cdd08d upstream-fec disabled
+ onu prks00cdd08d flow-profile vlan202_router
+ onu prks00cdd08d alias oscarcasa_al
+ onu prks00cdcf7a ethernet-profile auto-on uni-port 1
+ onu prks00cdcf7a iphost 1 pppoe nat enable
+ onu prks00cdcf7a iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdcf7a iphost 1 pppoe auth auto
+ onu prks00cdcf7a iphost 1 pppoe username pauloroberto1_alianca password 123
+ onu prks00cdcf7a upstream-fec disabled
+ onu prks00cdcf7a flow-profile vlan202_router
+ onu prks00cdcf7a alias pauloroberto1_alianca
+ onu hwtcb4deb1eb ethernet-profile auto-on uni-port 1-4
+ onu hwtcb4deb1eb iphost 1 pppoe nat enable
+ onu hwtcb4deb1eb iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu hwtcb4deb1eb iphost 1 pppoe auth auto
+ onu hwtcb4deb1eb iphost 1 pppoe username mario_al password 123
+ onu hwtcb4deb1eb upstream-fec disabled
+ onu hwtcb4deb1eb flow-profile vlan202_router
+ onu hwtcb4deb1eb alias mario_al
+ onu prks00cdd342 ethernet-profile auto-on uni-port 1
+ onu prks00cdd342 iphost 1 pppoe nat enable
+ onu prks00cdd342 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd342 iphost 1 pppoe auth auto
+ onu prks00cdd342 iphost 1 pppoe username luiscarlos_al password 123
+ onu prks00cdd342 upstream-fec disabled
+ onu prks00cdd342 flow-profile vlan202_router
+ onu prks00cdd342 alias luiscarlos_al
+ onu prks00cdd363 ethernet-profile auto-on uni-port 1
+ onu prks00cdd363 iphost 1 pppoe nat enable
+ onu prks00cdd363 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd363 iphost 1 pppoe auth auto
+ onu prks00cdd363 iphost 1 pppoe username jonas_alianca password 123
+ onu prks00cdd363 upstream-fec disabled
+ onu prks00cdd363 flow-profile vlan202_router
+ onu prks00cdd363 alias jonas_alianca
+ onu prks00cdd357 ethernet-profile auto-on uni-port 1
+ onu prks00cdd357 iphost 1 pppoe nat enable
+ onu prks00cdd357 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd357 iphost 1 pppoe auth auto
+ onu prks00cdd357 iphost 1 pppoe username josefa_al password 123
+ onu prks00cdd357 upstream-fec disabled
+ onu prks00cdd357 flow-profile vlan202_router
+ onu prks00cdd357 alias josefa_al
+ onu prks00c92ff4 ethernet-profile auto-on uni-port 1
+ onu prks00c92ff4 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00c92ff4 upstream-fec disabled
+ onu prks00c92ff4 flow-profile bridge_vlan_202
+ onu prks00c92ff4 alias genilda_ag
+ onu prks00cdd4d0 ethernet-profile auto-on uni-port 1
+ onu prks00cdd4d0 iphost 1 pppoe nat enable
+ onu prks00cdd4d0 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd4d0 iphost 1 pppoe auth auto
+ onu prks00cdd4d0 iphost 1 pppoe username elma_al password 123
+ onu prks00cdd4d0 upstream-fec disabled
+ onu prks00cdd4d0 flow-profile vlan202_router
+ onu prks00cdd4d0 alias elma
+ onu prks00cc4798 ethernet-profile auto-on uni-port 1
+ onu prks00cc4798 iphost 1 pppoe nat enable
+ onu prks00cc4798 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc4798 iphost 1 pppoe auth auto
+ onu prks00cc4798 iphost 1 pppoe username gilmara_al password 123
+ onu prks00cc4798 upstream-fec disabled
+ onu prks00cc4798 flow-profile vlan202_router
+ onu prks00cc4798 alias gilmara_al
+ onu prks00cb96fa ethernet-profile auto-on uni-port 1
+ onu prks00cb96fa vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb96fa upstream-fec disabled
+ onu prks00cb96fa flow-profile bridge_vlan_202
+ onu prks00cb96fa alias ereneide_al
+ onu prks00cc5e65 ethernet-profile auto-on uni-port 1
+ onu prks00cc5e65 iphost 1 pppoe nat enable
+ onu prks00cc5e65 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5e65 iphost 1 pppoe auth auto
+ onu prks00cc5e65 iphost 1 pppoe username adriana_al password 123
+ onu prks00cc5e65 upstream-fec disabled
+ onu prks00cc5e65 flow-profile vlan202_router
+ onu prks00cc5e65 alias adriana_al
+ onu prks00cb7a55 ethernet-profile auto-on uni-port 1
+ onu prks00cb7a55 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb7a55 upstream-fec disabled
+ onu prks00cb7a55 flow-profile bridge_vlan_202
+ onu prks00cb7a55 alias nataniel_al
+ onu prks00c94a36 ethernet-profile auto-on uni-port 1
+ onu prks00c94a36 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00c94a36 upstream-fec disabled
+ onu prks00c94a36 flow-profile bridge_vlan_202
+ onu prks00c94a36 alias carlosroberio_alianca
+ onu prks00cb8f12 ethernet-profile auto-on uni-port 1
+ onu prks00cb8f12 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00cb8f12 upstream-fec disabled
+ onu prks00cb8f12 flow-profile bridge_vlan_202
+ onu prks00cb8f12 alias juscimar_al
+ onu prks00cdd00c ethernet-profile auto-on uni-port 1
+ onu prks00cdd00c iphost 1 pppoe nat enable
+ onu prks00cdd00c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd00c iphost 1 pppoe auth auto
+ onu prks00cdd00c iphost 1 pppoe username ivonete_al password 123
+ onu prks00cdd00c upstream-fec disabled
+ onu prks00cdd00c flow-profile vlan202_router
+ onu prks00cdd00c alias ivonete_al
+ onu prks00cdbd40 ethernet-profile auto-on uni-port 1
+ onu prks00cdbd40 iphost 1 pppoe nat enable
+ onu prks00cdbd40 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdbd40 iphost 1 pppoe auth auto
+ onu prks00cdbd40 iphost 1 pppoe username jeane_al password 123
+ onu prks00cdbd40 upstream-fec disabled
+ onu prks00cdbd40 flow-profile vlan202_router
+ onu prks00cdbd40 alias jeane_al
+ onu prks00c92d63 ethernet-profile auto-on uni-port 1
+ onu prks00c92d63 vlan-translation-profile vlan_202 uni-port 1 
+ onu prks00c92d63 upstream-fec disabled
+ onu prks00c92d63 flow-profile bridge_vlan_202
+ onu prks00c92d63 alias vania_al
+ onu prks00c58849 iphost 1 pppoe nat enable
+ onu prks00c58849 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00c58849 iphost 1 pppoe auth auto
+ onu prks00c58849 iphost 1 pppoe username joseteodoro_al password 123
+ onu prks00c58849 upstream-fec disabled
+ onu prks00c58849 flow-profile vlan202_router
+ onu prks00c58849 alias joseteodoro_al
+ onu prks00cc7ade ethernet-profile auto-on uni-port 1
+ onu prks00cc7ade iphost 1 pppoe nat enable
+ onu prks00cc7ade iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7ade iphost 1 pppoe auth auto
+ onu prks00cc7ade iphost 1 pppoe username ezequiel_al password 123
+ onu prks00cc7ade upstream-fec disabled
+ onu prks00cc7ade flow-profile vlan202_router
+ onu prks00cc7ade alias ezequiel_al
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 202,2201-2202,3202
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/3
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00cc49ca
+ onu add serial-number prks00cc44e4
+ onu add serial-number prks00cc7aa6
+ onu add serial-number prks00cc7832
+ onu add serial-number prks00cc488b
+ onu add serial-number prks00cb962b
+ onu add serial-number prks00cb9517
+ onu add serial-number prks00d09f51
+ onu add serial-number hwtc3823b8a5
+ onu add serial-number prks00d09cbd
+ onu add serial-number prks00c937d3
+ onu add serial-number prks00cb9923
+ onu add serial-number prks00cc7074
+ onu add serial-number hwtcb4deb32b
+ onu add serial-number prks00cc44dc
+ onu add serial-number prks00cdd39e
+ onu add serial-number prks00d09f5c
+ onu add serial-number prks00cdd092
+ onu add serial-number prks00cb8f1e
+ onu add serial-number prks00cdd3a0
+ onu add serial-number prks00c5884c
+ onu prks00cc49ca ethernet-profile auto-on uni-port 1
+ onu prks00cc49ca iphost 1 pppoe nat enable
+ onu prks00cc49ca iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc49ca iphost 1 pppoe auth auto
+ onu prks00cc49ca iphost 1 pppoe username fatimapereira_al password 123
+ onu prks00cc49ca upstream-fec disabled
+ onu prks00cc49ca flow-profile vlan203_router
+ onu prks00cc49ca alias fatimapereira_al
+ onu prks00cc44e4 ethernet-profile auto-on uni-port 1
+ onu prks00cc44e4 iphost 1 pppoe nat enable
+ onu prks00cc44e4 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc44e4 iphost 1 pppoe auth auto
+ onu prks00cc44e4 iphost 1 pppoe username vitoria_al password 123
+ onu prks00cc44e4 upstream-fec disabled
+ onu prks00cc44e4 flow-profile vlan203_router
+ onu prks00cc44e4 alias vitoria_al
+ onu prks00cc7aa6 ethernet-profile auto-on uni-port 1
+ onu prks00cc7aa6 iphost 1 pppoe nat enable
+ onu prks00cc7aa6 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7aa6 iphost 1 pppoe auth auto
+ onu prks00cc7aa6 iphost 1 pppoe username marcelojoaquim_al password 123
+ onu prks00cc7aa6 upstream-fec disabled
+ onu prks00cc7aa6 flow-profile vlan203_router
+ onu prks00cc7aa6 alias marcelojoaquim_al
+ onu prks00cc7832 ethernet-profile auto-on uni-port 1
+ onu prks00cc7832 iphost 1 pppoe nat enable
+ onu prks00cc7832 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7832 iphost 1 pppoe auth auto
+ onu prks00cc7832 iphost 1 pppoe username maiane_al password 123
+ onu prks00cc7832 upstream-fec disabled
+ onu prks00cc7832 flow-profile vlan203_router
+ onu prks00cc7832 alias maiane_al
+ onu prks00cc488b ethernet-profile auto-on uni-port 1
+ onu prks00cc488b iphost 1 pppoe nat enable
+ onu prks00cc488b iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc488b iphost 1 pppoe auth auto
+ onu prks00cc488b iphost 1 pppoe username severino_al password 123
+ onu prks00cc488b upstream-fec disabled
+ onu prks00cc488b flow-profile vlan203_router
+ onu prks00cc488b alias severino_al
+ onu prks00cb962b ethernet-profile auto-on uni-port 1
+ onu prks00cb962b vlan-translation-profile vlan_203 uni-port 1 
+ onu prks00cb962b upstream-fec disabled
+ onu prks00cb962b flow-profile bridge_vlan_203
+ onu prks00cb962b alias silvani_al
+ onu prks00cb9517 ethernet-profile auto-on uni-port 1
+ onu prks00cb9517 vlan-translation-profile vlan_203 uni-port 1 
+ onu prks00cb9517 upstream-fec disabled
+ onu prks00cb9517 flow-profile bridge_vlan_203
+ onu prks00cb9517 alias luciana_al
+ onu prks00d09f51 ethernet-profile auto-on uni-port 1
+ onu prks00d09f51 iphost 1 pppoe nat enable
+ onu prks00d09f51 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f51 iphost 1 pppoe auth auto
+ onu prks00d09f51 iphost 1 pppoe username gabriel_al password 123
+ onu prks00d09f51 upstream-fec disabled
+ onu prks00d09f51 flow-profile vlan203_router
+ onu prks00d09f51 alias gabriel_al
+ onu hwtc3823b8a5 ethernet-profile auto-on uni-port 1-4
+ onu hwtc3823b8a5 upstream-fec disabled
+ onu hwtc3823b8a5 flow-profile vlan203_router
+ onu hwtc3823b8a5 alias gilmaac_al
+ onu prks00d09cbd ethernet-profile auto-on uni-port 1
+ onu prks00d09cbd iphost 1 pppoe nat enable
+ onu prks00d09cbd iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cbd iphost 1 pppoe auth auto
+ onu prks00d09cbd iphost 1 pppoe username iraneide_al password 123
+ onu prks00d09cbd upstream-fec disabled
+ onu prks00d09cbd flow-profile vlan203_router
+ onu prks00d09cbd alias iraneide_al
+ onu prks00c937d3 ethernet-profile auto-on uni-port 1
+ onu prks00c937d3 vlan-translation-profile vlan_203 uni-port 1 
+ onu prks00c937d3 upstream-fec disabled
+ onu prks00c937d3 flow-profile bridge_vlan_203
+ onu prks00c937d3 alias janiel_al_agro
+ onu prks00cb9923 ethernet-profile auto-on uni-port 1
+ onu prks00cb9923 vlan-translation-profile vlan_203 uni-port 1 
+ onu prks00cb9923 upstream-fec disabled
+ onu prks00cb9923 flow-profile bridge_vlan_203
+ onu prks00cb9923 alias valdeci_al
+ onu prks00cc7074 ethernet-profile auto-on uni-port 1
+ onu prks00cc7074 iphost 1 pppoe nat enable
+ onu prks00cc7074 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7074 iphost 1 pppoe auth auto
+ onu prks00cc7074 iphost 1 pppoe username cicero_al password 123
+ onu prks00cc7074 upstream-fec disabled
+ onu prks00cc7074 flow-profile vlan203_router
+ onu prks00cc7074 alias cicero_al
+ onu hwtcb4deb32b ethernet-profile auto-on uni-port 1-4
+ onu hwtcb4deb32b vlan-translation-profile vlan_203 uni-port 1 
+ onu hwtcb4deb32b upstream-fec disabled
+ onu hwtcb4deb32b flow-profile bridge_vlan_203
+ onu hwtcb4deb32b alias batistaespetinho_al
+ onu prks00cc44dc ethernet-profile auto-on uni-port 1
+ onu prks00cc44dc iphost 1 pppoe nat enable
+ onu prks00cc44dc iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc44dc iphost 1 pppoe auth auto
+ onu prks00cc44dc iphost 1 pppoe username sabrinabezerra_al password 123
+ onu prks00cc44dc upstream-fec disabled
+ onu prks00cc44dc flow-profile vlan203_router
+ onu prks00cc44dc alias sabrinabezerra_al
+ onu prks00cdd39e ethernet-profile auto-on uni-port 1
+ onu prks00cdd39e iphost 1 pppoe nat enable
+ onu prks00cdd39e iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd39e iphost 1 pppoe auth auto
+ onu prks00cdd39e iphost 1 pppoe username fernando_al password 123
+ onu prks00cdd39e upstream-fec disabled
+ onu prks00cdd39e flow-profile vlan203_router
+ onu prks00cdd39e alias fernando_al
+ onu prks00d09f5c ethernet-profile auto-on uni-port 1
+ onu prks00d09f5c iphost 1 pppoe nat enable
+ onu prks00d09f5c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f5c iphost 1 pppoe auth auto
+ onu prks00d09f5c iphost 1 pppoe username ratinho_al password 123
+ onu prks00d09f5c upstream-fec disabled
+ onu prks00d09f5c flow-profile vlan203_router
+ onu prks00d09f5c alias ratinho_al
+ onu prks00cdd092 ethernet-profile auto-on uni-port 1
+ onu prks00cdd092 iphost 1 pppoe nat enable
+ onu prks00cdd092 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd092 iphost 1 pppoe auth auto
+ onu prks00cdd092 iphost 1 pppoe username andreia_alianca password 123
+ onu prks00cdd092 upstream-fec disabled
+ onu prks00cdd092 flow-profile vlan203_router
+ onu prks00cdd092 alias andreia_alianca
+ onu prks00cb8f1e ethernet-profile auto-on uni-port 1
+ onu prks00cb8f1e vlan-translation-profile vlan_203 uni-port 1 
+ onu prks00cb8f1e upstream-fec disabled
+ onu prks00cb8f1e flow-profile bridge_vlan_203
+ onu prks00cb8f1e alias avllen_al
+ onu prks00cdd3a0 ethernet-profile auto-on uni-port 1
+ onu prks00cdd3a0 iphost 1 pppoe nat enable
+ onu prks00cdd3a0 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd3a0 iphost 1 pppoe auth auto
+ onu prks00cdd3a0 iphost 1 pppoe username leonardo_al password 123
+ onu prks00cdd3a0 upstream-fec disabled
+ onu prks00cdd3a0 flow-profile vlan203_router
+ onu prks00cdd3a0 alias leonardo_al
+ onu prks00c5884c iphost 1 pppoe nat enable
+ onu prks00c5884c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00c5884c iphost 1 pppoe auth auto
+ onu prks00c5884c iphost 1 pppoe username selma_al password 123
+ onu prks00c5884c upstream-fec disabled
+ onu prks00c5884c flow-profile vlan203_router
+ onu prks00c5884c alias selma_al
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 203,2201-2202,3203
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/4
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00cb8f70
+ onu add serial-number prks00cb8f0f
+ onu add serial-number prks00cc5fa8
+ onu add serial-number prks00d09cc1
+ onu add serial-number prks00cb81b6
+ onu add serial-number prks00cc4699
+ onu add serial-number prks00d09e15
+ onu add serial-number prks00cb7b16
+ onu add serial-number prks00cdcf7e
+ onu add serial-number hwtcb4deaaf3
+ onu add serial-number hwtc9540e9a7
+ onu add serial-number prks00cde7fa
+ onu add serial-number prks00d09e17
+ onu add serial-number prks00cc7792
+ onu add serial-number prks00cb7ac8
+ onu add serial-number prks00cc5eb5
+ onu prks00cb8f70 ethernet-profile auto-on uni-port 1
+ onu prks00cb8f70 vlan-translation-profile vlan_204 uni-port 1 
+ onu prks00cb8f70 upstream-fec disabled
+ onu prks00cb8f70 flow-profile bridge_vlan_204
+ onu prks00cb8f70 alias sergio_al
+ onu prks00cb8f0f ethernet-profile auto-on uni-port 1
+ onu prks00cb8f0f vlan-translation-profile vlan_204 uni-port 1 
+ onu prks00cb8f0f upstream-fec disabled
+ onu prks00cb8f0f flow-profile bridge_vlan_204
+ onu prks00cb8f0f alias jluiz_al
+ onu prks00cc5fa8 ethernet-profile auto-on uni-port 1
+ onu prks00cc5fa8 iphost 1 pppoe nat enable
+ onu prks00cc5fa8 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5fa8 iphost 1 pppoe auth auto
+ onu prks00cc5fa8 iphost 1 pppoe username jamile_al password 123
+ onu prks00cc5fa8 upstream-fec disabled
+ onu prks00cc5fa8 flow-profile vlan204_router
+ onu prks00cc5fa8 alias jamile_al
+ onu prks00d09cc1 ethernet-profile auto-on uni-port 1
+ onu prks00d09cc1 iphost 1 pppoe nat enable
+ onu prks00d09cc1 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cc1 iphost 1 pppoe auth auto
+ onu prks00d09cc1 iphost 1 pppoe username jo_alianca password 123
+ onu prks00d09cc1 upstream-fec disabled
+ onu prks00d09cc1 flow-profile vlan204_router
+ onu prks00d09cc1 alias jo_alianca
+ onu prks00cb81b6 ethernet-profile auto-on uni-port 1
+ onu prks00cb81b6 vlan-translation-profile vlan_204 uni-port 1 
+ onu prks00cb81b6 upstream-fec disabled
+ onu prks00cb81b6 flow-profile bridge_vlan_204
+ onu prks00cb81b6 alias lucas_al
+ onu prks00cc4699 ethernet-profile auto-on uni-port 1
+ onu prks00cc4699 iphost 1 pppoe nat enable
+ onu prks00cc4699 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc4699 iphost 1 pppoe auth auto
+ onu prks00cc4699 iphost 1 pppoe username veinho_al password 123
+ onu prks00cc4699 upstream-fec disabled
+ onu prks00cc4699 flow-profile vlan204_router
+ onu prks00cc4699 alias veinho_al
+ onu prks00d09e15 ethernet-profile auto-on uni-port 1
+ onu prks00d09e15 iphost 1 pppoe nat enable
+ onu prks00d09e15 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e15 iphost 1 pppoe auth auto
+ onu prks00d09e15 iphost 1 pppoe username emanuella_al password 123
+ onu prks00d09e15 upstream-fec disabled
+ onu prks00d09e15 flow-profile vlan204_router
+ onu prks00d09e15 alias emanuella_al
+ onu prks00cb7b16 ethernet-profile auto-on uni-port 1
+ onu prks00cb7b16 vlan-translation-profile vlan_204 uni-port 1 
+ onu prks00cb7b16 upstream-fec disabled
+ onu prks00cb7b16 flow-profile bridge_vlan_204
+ onu prks00cb7b16 alias auzeneide_al
+ onu prks00cdcf7e ethernet-profile auto-on uni-port 1
+ onu prks00cdcf7e iphost 1 pppoe nat enable
+ onu prks00cdcf7e iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdcf7e iphost 1 pppoe auth auto
+ onu prks00cdcf7e iphost 1 pppoe username henrique_al password 123
+ onu prks00cdcf7e upstream-fec disabled
+ onu prks00cdcf7e flow-profile vlan204_router
+ onu prks00cdcf7e alias henrique_al
+ onu hwtcb4deaaf3 ethernet-profile auto-on uni-port 1-4
+ onu hwtcb4deaaf3 vlan-translation-profile vlan_204 uni-port 1 
+ onu hwtcb4deaaf3 upstream-fec disabled
+ onu hwtcb4deaaf3 flow-profile bridge_vlan_204
+ onu hwtcb4deaaf3 alias vt_al
+ onu hwtc9540e9a7 ethernet-profile auto-on uni-port 1
+ onu hwtc9540e9a7 vlan-translation-profile vlan_204 uni-port 1 
+ onu hwtc9540e9a7 upstream-fec disabled
+ onu hwtc9540e9a7 flow-profile bridge_vlan_204
+ onu hwtc9540e9a7 alias vanessavieira-alianca_gssnet
+ onu prks00cde7fa ethernet-profile auto-on uni-port 1
+ onu prks00cde7fa iphost 1 pppoe nat enable
+ onu prks00cde7fa iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde7fa iphost 1 pppoe auth auto
+ onu prks00cde7fa iphost 1 pppoe username geovane_al password 123
+ onu prks00cde7fa upstream-fec disabled
+ onu prks00cde7fa flow-profile vlan204_router
+ onu prks00cde7fa alias geovane_al
+ onu prks00d09e17 ethernet-profile auto-on uni-port 1
+ onu prks00d09e17 iphost 1 pppoe nat enable
+ onu prks00d09e17 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e17 iphost 1 pppoe auth auto
+ onu prks00d09e17 iphost 1 pppoe username elienesantos_al password 123
+ onu prks00d09e17 upstream-fec disabled
+ onu prks00d09e17 flow-profile vlan204_router
+ onu prks00d09e17 alias elienesantos_al
+ onu prks00cc7792 ethernet-profile auto-on uni-port 1
+ onu prks00cc7792 iphost 1 pppoe nat enable
+ onu prks00cc7792 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7792 iphost 1 pppoe auth auto
+ onu prks00cc7792 iphost 1 pppoe username mauricio_al password 123
+ onu prks00cc7792 upstream-fec disabled
+ onu prks00cc7792 flow-profile vlan204_router
+ onu prks00cc7792 alias mauricio_al
+ onu prks00cb7ac8 ethernet-profile auto-on uni-port 1
+ onu prks00cb7ac8 vlan-translation-profile vlan_204 uni-port 1 
+ onu prks00cb7ac8 upstream-fec disabled
+ onu prks00cb7ac8 flow-profile bridge_vlan_204
+ onu prks00cb7ac8 alias guiguicasa_al
+ onu prks00cc5eb5 ethernet-profile auto-on uni-port 1
+ onu prks00cc5eb5 vlan-translation-profile vlan_204 uni-port 1 
+ onu prks00cc5eb5 upstream-fec disabled
+ onu prks00cc5eb5 flow-profile bridge_vlan_204
+ onu prks00cc5eb5 alias Itamara
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 204,2201-2202,3204
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/5
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number 42061d5c9b20
+ onu add serial-number prks00cb9290
+ onu add serial-number prks00d09d42
+ onu add serial-number prks00cdd014
+ onu add serial-number prks00cdd031
+ onu add serial-number prks00cdd394
+ onu add serial-number prks00d09e1b
+ onu add serial-number prks00cc4080
+ onu add serial-number prks00cb9614
+ onu 42061d5c9b20 ethernet-profile auto-on uni-port 1
+ onu 42061d5c9b20 vlan-translation-profile vlan_205 uni-port 1 
+ onu 42061d5c9b20 upstream-fec disabled
+ onu 42061d5c9b20 flow-profile bridge_vlan_205
+ onu 42061d5c9b20 alias josecarlos_al
+ onu prks00cb9290 ethernet-profile auto-on uni-port 1
+ onu prks00cb9290 vlan-translation-profile vlan_205 uni-port 1 
+ onu prks00cb9290 upstream-fec disabled
+ onu prks00cb9290 flow-profile bridge_vlan_205
+ onu prks00cb9290 alias agnaldo_al
+ onu prks00d09d42 ethernet-profile auto-on uni-port 1
+ onu prks00d09d42 iphost 1 pppoe nat enable
+ onu prks00d09d42 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09d42 iphost 1 pppoe auth auto
+ onu prks00d09d42 iphost 1 pppoe username joseedson_al password 123
+ onu prks00d09d42 upstream-fec disabled
+ onu prks00d09d42 flow-profile vlan205_router
+ onu prks00d09d42 alias joseedson_al
+ onu prks00cdd014 ethernet-profile auto-on uni-port 1
+ onu prks00cdd014 iphost 1 pppoe nat enable
+ onu prks00cdd014 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd014 iphost 1 pppoe auth auto
+ onu prks00cdd014 iphost 1 pppoe username rosielma_al password 123
+ onu prks00cdd014 upstream-fec disabled
+ onu prks00cdd014 flow-profile vlan205_router
+ onu prks00cdd014 alias rosielma_al
+ onu prks00cdd031 ethernet-profile auto-on uni-port 1
+ onu prks00cdd031 iphost 1 pppoe nat enable
+ onu prks00cdd031 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd031 iphost 1 pppoe auth auto
+ onu prks00cdd031 iphost 1 pppoe username simone_ja password 123
+ onu prks00cdd031 upstream-fec disabled
+ onu prks00cdd031 flow-profile vlan205_router
+ onu prks00cdd031 alias simone_ja
+ onu prks00cdd394 ethernet-profile auto-on uni-port 1
+ onu prks00cdd394 iphost 1 pppoe nat enable
+ onu prks00cdd394 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd394 iphost 1 pppoe auth auto
+ onu prks00cdd394 iphost 1 pppoe username deivid_al password 123
+ onu prks00cdd394 upstream-fec disabled
+ onu prks00cdd394 flow-profile vlan205_router
+ onu prks00cdd394 alias deivid_al
+ onu prks00d09e1b ethernet-profile auto-on uni-port 1
+ onu prks00d09e1b iphost 1 pppoe nat enable
+ onu prks00d09e1b iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e1b iphost 1 pppoe auth auto
+ onu prks00d09e1b iphost 1 pppoe username etevaldo_al password 123
+ onu prks00d09e1b upstream-fec disabled
+ onu prks00d09e1b flow-profile vlan205_router
+ onu prks00d09e1b alias etevaldo_al
+ onu prks00cc4080 ethernet-profile auto-on uni-port 1
+ onu prks00cc4080 iphost 1 pppoe nat enable
+ onu prks00cc4080 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc4080 iphost 1 pppoe auth auto
+ onu prks00cc4080 iphost 1 pppoe username milena_al password 123
+ onu prks00cc4080 upstream-fec disabled
+ onu prks00cc4080 flow-profile vlan205_router
+ onu prks00cc4080 alias milena_al
+ onu prks00cb9614 ethernet-profile auto-on uni-port 1
+ onu prks00cb9614 vlan-translation-profile vlan_205 uni-port 1 
+ onu prks00cb9614 upstream-fec disabled
+ onu prks00cb9614 flow-profile bridge_vlan_205
+ onu prks00cb9614 alias quiteria_al
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 205,2201-2202,3205
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/6
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00cb9244
+ onu add serial-number 42061d5caca0
+ onu add serial-number 42061d5ca100
+ onu add serial-number prks00cdd2c1
+ onu add serial-number prks00c92f1c
+ onu add serial-number hwtcb4dd4aa3
+ onu add serial-number prks00c930fc
+ onu add serial-number prks00cde7f7
+ onu add serial-number prks00cdd589
+ onu add serial-number prks00cc45bb
+ onu add serial-number prks00cb7b2e
+ onu add serial-number prks00c92a97
+ onu add serial-number prks00cde7ff
+ onu add serial-number prks00d09f53
+ onu add serial-number prks00cb9b94
+ onu add serial-number prks00cb962a
+ onu add serial-number prks00cb8005
+ onu add serial-number prks00d0aec6
+ onu add serial-number prks00cb96cd
+ onu add serial-number prks00cb7cca
+ onu add serial-number prks00cc77e7
+ onu add serial-number prks00c94865
+ onu add serial-number prks00c9371a
+ onu add serial-number prks00c9365f
+ onu add serial-number rtkg11111111
+ onu add serial-number prks00c92b06
+ onu add serial-number prks00c92a09
+ onu add serial-number prks00cb7f3b
+ onu prks00cb9244 ethernet-profile auto-on uni-port 1
+ onu prks00cb9244 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb9244 upstream-fec disabled
+ onu prks00cb9244 flow-profile bridge_vlan_206
+ onu prks00cb9244 alias amandacleciane_al
+ onu 42061d5caca0 ethernet-profile auto-on uni-port 1
+ onu 42061d5caca0 vlan-translation-profile vlan_206 uni-port 1 
+ onu 42061d5caca0 upstream-fec disabled
+ onu 42061d5caca0 flow-profile bridge_vlan_206
+ onu 42061d5caca0 alias edenilton_al
+ onu 42061d5ca100 ethernet-profile auto-on uni-port 1
+ onu 42061d5ca100 vlan-translation-profile vlan_206 uni-port 1 
+ onu 42061d5ca100 upstream-fec disabled
+ onu 42061d5ca100 flow-profile bridge_vlan_206
+ onu 42061d5ca100 alias taiane_al
+ onu prks00cdd2c1 ethernet-profile auto-on uni-port 1
+ onu prks00cdd2c1 iphost 1 pppoe nat enable
+ onu prks00cdd2c1 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd2c1 iphost 1 pppoe auth auto
+ onu prks00cdd2c1 iphost 1 pppoe username cleitonbruno_al password 123
+ onu prks00cdd2c1 upstream-fec disabled
+ onu prks00cdd2c1 flow-profile vlan206_router
+ onu prks00cdd2c1 alias cleitonbruno_al
+ onu prks00c92f1c ethernet-profile auto-on uni-port 1
+ onu prks00c92f1c vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c92f1c upstream-fec disabled
+ onu prks00c92f1c flow-profile bridge_vlan_206
+ onu prks00c92f1c alias agnaldo_loja
+ onu hwtcb4dd4aa3 ethernet-profile auto-on uni-port 1-4
+ onu hwtcb4dd4aa3 vlan-translation-profile vlan_206 uni-port 1 
+ onu hwtcb4dd4aa3 upstream-fec disabled
+ onu hwtcb4dd4aa3 flow-profile bridge_vlan_206
+ onu hwtcb4dd4aa3 alias lucicleide_al
+ onu prks00c930fc ethernet-profile auto-on uni-port 1
+ onu prks00c930fc vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c930fc upstream-fec disabled
+ onu prks00c930fc flow-profile bridge_vlan_206
+ onu prks00c930fc alias francisco_al
+ onu prks00cde7f7 ethernet-profile auto-on uni-port 1
+ onu prks00cde7f7 iphost 1 pppoe nat enable
+ onu prks00cde7f7 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde7f7 iphost 1 pppoe auth auto
+ onu prks00cde7f7 iphost 1 pppoe username jacilene_al password 123
+ onu prks00cde7f7 upstream-fec disabled
+ onu prks00cde7f7 flow-profile vlan206_router
+ onu prks00cde7f7 alias jacilene_al
+ onu prks00cdd589 ethernet-profile auto-on uni-port 1
+ onu prks00cdd589 iphost 1 pppoe nat enable
+ onu prks00cdd589 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd589 iphost 1 pppoe auth auto
+ onu prks00cdd589 iphost 1 pppoe username bartolomeu_al password 123
+ onu prks00cdd589 upstream-fec disabled
+ onu prks00cdd589 flow-profile vlan206_router
+ onu prks00cdd589 alias bartolomeu_al
+ onu prks00cc45bb ethernet-profile auto-on uni-port 1
+ onu prks00cc45bb vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cc45bb upstream-fec disabled
+ onu prks00cc45bb flow-profile bridge_vlan_206
+ onu prks00cc45bb alias eleonildo_alianca_redeneutra
+ onu prks00cb7b2e ethernet-profile auto-on uni-port 1
+ onu prks00cb7b2e vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb7b2e upstream-fec disabled
+ onu prks00cb7b2e flow-profile bridge_vlan_206
+ onu prks00cb7b2e alias thiago_al
+ onu prks00c92a97 ethernet-profile auto-on uni-port 1
+ onu prks00c92a97 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c92a97 upstream-fec disabled
+ onu prks00c92a97 flow-profile bridge_vlan_206
+ onu prks00c92a97 alias danton_jsp
+ onu prks00cde7ff ethernet-profile auto-on uni-port 1
+ onu prks00cde7ff iphost 1 pppoe nat enable
+ onu prks00cde7ff iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde7ff iphost 1 pppoe auth auto
+ onu prks00cde7ff iphost 1 pppoe username beatriz_al password 123
+ onu prks00cde7ff upstream-fec disabled
+ onu prks00cde7ff flow-profile vlan206_router
+ onu prks00cde7ff alias beatriz_al
+ onu prks00d09f53 ethernet-profile auto-on uni-port 1
+ onu prks00d09f53 iphost 1 pppoe nat enable
+ onu prks00d09f53 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f53 iphost 1 pppoe auth auto
+ onu prks00d09f53 iphost 1 pppoe username anacleide_al password 123
+ onu prks00d09f53 upstream-fec disabled
+ onu prks00d09f53 flow-profile vlan206_router
+ onu prks00d09f53 alias anacleide_al
+ onu prks00cb9b94 ethernet-profile auto-on uni-port 1
+ onu prks00cb9b94 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb9b94 upstream-fec disabled
+ onu prks00cb9b94 flow-profile bridge_vlan_206
+ onu prks00cb9b94 alias francilene_al
+ onu prks00cb962a ethernet-profile auto-on uni-port 1
+ onu prks00cb962a vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb962a upstream-fec disabled
+ onu prks00cb962a flow-profile bridge_vlan_206
+ onu prks00cb962a alias marivaldo_al
+ onu prks00cb8005 ethernet-profile auto-on uni-port 1
+ onu prks00cb8005 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb8005 upstream-fec disabled
+ onu prks00cb8005 flow-profile bridge_vlan_206
+ onu prks00cb8005 alias mariacristiane_al
+ onu prks00d0aec6 ethernet-profile auto-on uni-port 1
+ onu prks00d0aec6 iphost 1 pppoe nat enable
+ onu prks00d0aec6 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d0aec6 iphost 1 pppoe auth auto
+ onu prks00d0aec6 iphost 1 pppoe username josivan_al password 123
+ onu prks00d0aec6 upstream-fec disabled
+ onu prks00d0aec6 flow-profile vlan206_router
+ onu prks00d0aec6 alias josivan_al
+ onu prks00cb96cd ethernet-profile auto-on uni-port 1
+ onu prks00cb96cd vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb96cd upstream-fec disabled
+ onu prks00cb96cd flow-profile bridge_vlan_206
+ onu prks00cb96cd alias carla_al
+ onu prks00cb7cca ethernet-profile auto-on uni-port 1
+ onu prks00cb7cca vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb7cca upstream-fec disabled
+ onu prks00cb7cca flow-profile bridge_vlan_206
+ onu prks00cb7cca alias geidiane_ag
+ onu prks00cc77e7 ethernet-profile auto-on uni-port 1
+ onu prks00cc77e7 iphost 1 pppoe nat enable
+ onu prks00cc77e7 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc77e7 iphost 1 pppoe auth auto
+ onu prks00cc77e7 iphost 1 pppoe username werles_jsp password 123
+ onu prks00cc77e7 upstream-fec disabled
+ onu prks00cc77e7 flow-profile vlan206_router
+ onu prks00cc77e7 alias werles_jsp
+ onu prks00c94865 ethernet-profile auto-on uni-port 1
+ onu prks00c94865 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c94865 upstream-fec disabled
+ onu prks00c94865 flow-profile bridge_vlan_206
+ onu prks00c94865 alias leo1_al
+ onu prks00c9371a ethernet-profile auto-on uni-port 1
+ onu prks00c9371a vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c9371a upstream-fec disabled
+ onu prks00c9371a flow-profile bridge_vlan_206
+ onu prks00c9371a alias neto_al
+ onu prks00c9365f ethernet-profile auto-on uni-port 1
+ onu prks00c9365f vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c9365f upstream-fec disabled
+ onu prks00c9365f flow-profile bridge_vlan_206
+ onu prks00c9365f alias natanael_al
+ onu rtkg11111111 ethernet-profile auto-on uni-port 1
+ onu rtkg11111111 vlan-translation-profile vlan_206 uni-port 1 
+ onu rtkg11111111 upstream-fec disabled
+ onu rtkg11111111 flow-profile bridge_vlan_206
+ onu rtkg11111111 alias gildemara_al
+ onu prks00c92b06 ethernet-profile auto-on uni-port 1
+ onu prks00c92b06 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c92b06 upstream-fec disabled
+ onu prks00c92b06 flow-profile bridge_vlan_206
+ onu prks00c92b06 alias marcio_al
+ onu prks00c92a09 ethernet-profile auto-on uni-port 1
+ onu prks00c92a09 vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00c92a09 upstream-fec disabled
+ onu prks00c92a09 flow-profile bridge_vlan_206
+ onu prks00c92a09 alias lucasferreira_al
+ onu prks00cb7f3b ethernet-profile auto-on uni-port 1
+ onu prks00cb7f3b vlan-translation-profile vlan_206 uni-port 1 
+ onu prks00cb7f3b upstream-fec disabled
+ onu prks00cb7f3b flow-profile bridge_vlan_206
+ onu prks00cb7f3b alias cristiane_al
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 206,2201-2202,3206
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/7
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00d09cb4
+ onu add serial-number prks00cde7f4
+ onu add serial-number prks00cdd39c
+ onu add serial-number prks00d09cbf
+ onu add serial-number hwtc096ebca4
+ onu add serial-number prks00d09cb7
+ onu add serial-number prks00c9370f
+ onu add serial-number prks00d09ca6
+ onu add serial-number prks00cdd0e2
+ onu add serial-number prks00c94935
+ onu add serial-number prks00cb854e
+ onu add serial-number prks00d0aeca
+ onu add serial-number prks00d09e11
+ onu add serial-number prks00cb80c1
+ onu add serial-number prks00d09cb5
+ onu add serial-number prks00cb82ef
+ onu add serial-number prks00d09f5d
+ onu add serial-number prks00cdff8c
+ onu add serial-number prks00cb7bd0
+ onu add serial-number prks00cb99d6
+ onu add serial-number prks00cdd397
+ onu add serial-number prks00cdd365
+ onu add serial-number prks00d09d3f
+ onu add serial-number prks00cdd2a7
+ onu add serial-number prks00cb7abf
+ onu add serial-number prks00c93828
+ onu add serial-number prks00cb9db1
+ onu add serial-number prks00d09cad
+ onu add serial-number prks00cb9728
+ onu add serial-number prks00cb9723
+ onu add serial-number prks00cb9720
+ onu add serial-number prks00d09f58
+ onu add serial-number prks00cb95cb
+ onu add serial-number prks00d09cb6
+ onu add serial-number prks00cdd016
+ onu add serial-number prks00cc5b98
+ onu add serial-number prks00d09ca5
+ onu add serial-number prks00cb9568
+ onu add serial-number prks00cdd3a1
+ onu add serial-number prks00cb8d45
+ onu add serial-number prks00cdd80b
+ onu add serial-number prks00c92f3e
+ onu add serial-number prks00cdbd46
+ onu add serial-number prks00d09e12
+ onu add serial-number prks00cb7ec1
+ onu add serial-number prks00cb7cfb
+ onu add serial-number prks00cb816f
+ onu add serial-number prks00d09f57
+ onu add serial-number prks00cb95ab
+ onu add serial-number prks00cb7adc
+ onu add serial-number prks00d09cac
+ onu add serial-number prks00cb77b9
+ onu add serial-number prks00c949af
+ onu add serial-number prks00cc5fd1
+ onu add serial-number prks00cde803
+ onu add serial-number prks00c936d6
+ onu add serial-number prks00cb99d2
+ onu add serial-number prks00c92e79
+ onu add serial-number prks00cc7a62
+ onu add serial-number prks00c92936
+ onu add serial-number prks00c5884d
+ onu add serial-number prks00d09f56
+ onu prks00d09cb4 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb4 iphost 1 pppoe nat enable
+ onu prks00d09cb4 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb4 iphost 1 pppoe auth auto
+ onu prks00d09cb4 iphost 1 pppoe username marcio_ag password 123
+ onu prks00d09cb4 upstream-fec disabled
+ onu prks00d09cb4 flow-profile vlan207_router
+ onu prks00d09cb4 alias marcio_ag
+ onu prks00cde7f4 ethernet-profile auto-on uni-port 1
+ onu prks00cde7f4 iphost 1 pppoe nat enable
+ onu prks00cde7f4 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde7f4 iphost 1 pppoe auth auto
+ onu prks00cde7f4 iphost 1 pppoe username amanda_ag password 123
+ onu prks00cde7f4 upstream-fec disabled
+ onu prks00cde7f4 flow-profile vlan207_router
+ onu prks00cde7f4 alias amanda_ag
+ onu prks00cdd39c ethernet-profile auto-on uni-port 1
+ onu prks00cdd39c iphost 1 pppoe nat enable
+ onu prks00cdd39c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd39c iphost 1 pppoe auth auto
+ onu prks00cdd39c iphost 1 pppoe username lilia_pr password 123
+ onu prks00cdd39c upstream-fec disabled
+ onu prks00cdd39c flow-profile vlan207_router
+ onu prks00cdd39c alias lilia_pr
+ onu prks00d09cbf ethernet-profile auto-on uni-port 1
+ onu prks00d09cbf iphost 1 pppoe nat enable
+ onu prks00d09cbf iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cbf iphost 1 pppoe auth auto
+ onu prks00d09cbf iphost 1 pppoe username pauloricardo_al password 123
+ onu prks00d09cbf upstream-fec disabled
+ onu prks00d09cbf flow-profile vlan207_router
+ onu prks00d09cbf alias pauloricardo_al
+ onu hwtc096ebca4 ethernet-profile auto-on uni-port 1-4
+ onu hwtc096ebca4 upstream-fec disabled
+ onu hwtc096ebca4 flow-profile vlan207_router
+ onu hwtc096ebca4 alias catia_al
+ onu prks00d09cb7 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb7 iphost 1 pppoe nat enable
+ onu prks00d09cb7 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb7 iphost 1 pppoe auth auto
+ onu prks00d09cb7 iphost 1 pppoe username thales_al password 123
+ onu prks00d09cb7 upstream-fec disabled
+ onu prks00d09cb7 flow-profile vlan207_router
+ onu prks00d09cb7 alias thales_al
+ onu prks00c9370f ethernet-profile auto-on uni-port 1
+ onu prks00c9370f vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c9370f upstream-fec disabled
+ onu prks00c9370f flow-profile bridge_vlan_207
+ onu prks00c9370f alias edson_al
+ onu prks00d09ca6 ethernet-profile auto-on uni-port 1
+ onu prks00d09ca6 iphost 1 pppoe nat enable
+ onu prks00d09ca6 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09ca6 iphost 1 pppoe auth auto
+ onu prks00d09ca6 iphost 1 pppoe username jussa_al password 123
+ onu prks00d09ca6 upstream-fec disabled
+ onu prks00d09ca6 flow-profile vlan207_router
+ onu prks00d09ca6 alias jussa_al
+ onu prks00cdd0e2 ethernet-profile auto-on uni-port 1
+ onu prks00cdd0e2 iphost 1 pppoe nat enable
+ onu prks00cdd0e2 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd0e2 iphost 1 pppoe auth auto
+ onu prks00cdd0e2 iphost 1 pppoe username marciano_ag password 123
+ onu prks00cdd0e2 upstream-fec disabled
+ onu prks00cdd0e2 flow-profile vlan207_router
+ onu prks00cdd0e2 alias marciano_ag
+ onu prks00c94935 ethernet-profile auto-on uni-port 1
+ onu prks00c94935 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c94935 upstream-fec disabled
+ onu prks00c94935 flow-profile bridge_vlan_207
+ onu prks00c94935 alias antonio_jua4
+ onu prks00cb854e ethernet-profile auto-on uni-port 1
+ onu prks00cb854e vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb854e upstream-fec disabled
+ onu prks00cb854e flow-profile bridge_vlan_207
+ onu prks00cb854e alias sidney_al
+ onu prks00d0aeca ethernet-profile auto-on uni-port 1
+ onu prks00d0aeca iphost 1 pppoe nat enable
+ onu prks00d0aeca iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d0aeca iphost 1 pppoe auth auto
+ onu prks00d0aeca iphost 1 pppoe username franciscachagas_al password 123
+ onu prks00d0aeca upstream-fec disabled
+ onu prks00d0aeca flow-profile vlan207_router
+ onu prks00d0aeca alias franciscachagas_al
+ onu prks00d09e11 ethernet-profile auto-on uni-port 1
+ onu prks00d09e11 iphost 1 pppoe nat enable
+ onu prks00d09e11 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e11 iphost 1 pppoe auth auto
+ onu prks00d09e11 iphost 1 pppoe username galego_casa password 123
+ onu prks00d09e11 upstream-fec disabled
+ onu prks00d09e11 flow-profile vlan207_router
+ onu prks00d09e11 alias galego_casa
+ onu prks00cb80c1 ethernet-profile auto-on uni-port 1
+ onu prks00cb80c1 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb80c1 upstream-fec disabled
+ onu prks00cb80c1 flow-profile bridge_vlan_207
+ onu prks00cb80c1 alias gilberto_ag
+ onu prks00d09cb5 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb5 iphost 1 pppoe nat enable
+ onu prks00d09cb5 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb5 iphost 1 pppoe auth auto
+ onu prks00d09cb5 iphost 1 pppoe username izaque_ag password 123
+ onu prks00d09cb5 upstream-fec disabled
+ onu prks00d09cb5 flow-profile vlan207_router
+ onu prks00d09cb5 alias izaque_ag
+ onu prks00cb82ef ethernet-profile auto-on uni-port 1
+ onu prks00cb82ef vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb82ef upstream-fec disabled
+ onu prks00cb82ef flow-profile bridge_vlan_207
+ onu prks00cb82ef alias francisco_ag
+ onu prks00d09f5d ethernet-profile auto-on uni-port 1
+ onu prks00d09f5d iphost 1 pppoe nat enable
+ onu prks00d09f5d iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f5d iphost 1 pppoe auth auto
+ onu prks00d09f5d iphost 1 pppoe username mariaaudenir_ag password 123
+ onu prks00d09f5d upstream-fec disabled
+ onu prks00d09f5d flow-profile vlan207_router
+ onu prks00d09f5d alias mariaaudenir_ag
+ onu prks00cdff8c ethernet-profile auto-on uni-port 1
+ onu prks00cdff8c iphost 1 pppoe nat enable
+ onu prks00cdff8c iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdff8c iphost 1 pppoe auth auto
+ onu prks00cdff8c iphost 1 pppoe username cicera_al password 123
+ onu prks00cdff8c upstream-fec disabled
+ onu prks00cdff8c flow-profile vlan207_router
+ onu prks00cdff8c alias cicera_al
+ onu prks00cb7bd0 ethernet-profile auto-on uni-port 1
+ onu prks00cb7bd0 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb7bd0 upstream-fec disabled
+ onu prks00cb7bd0 flow-profile bridge_vlan_207
+ onu prks00cb7bd0 alias geraldo_al
+ onu prks00cb99d6 ethernet-profile auto-on uni-port 1
+ onu prks00cb99d6 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb99d6 upstream-fec disabled
+ onu prks00cb99d6 flow-profile bridge_vlan_207
+ onu prks00cdd397 ethernet-profile auto-on uni-port 1
+ onu prks00cdd397 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cdd397 iphost 1 pppoe nat enable
+ onu prks00cdd397 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd397 iphost 1 pppoe auth auto
+ onu prks00cdd397 iphost 1 pppoe username ze_al password 123
+ onu prks00cdd397 upstream-fec disabled
+ onu prks00cdd397 flow-profile vlan207_router
+ onu prks00cdd397 alias ze_al
+ onu prks00cdd365 ethernet-profile auto-on uni-port 1
+ onu prks00cdd365 iphost 1 pppoe nat enable
+ onu prks00cdd365 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd365 iphost 1 pppoe auth auto
+ onu prks00cdd365 iphost 1 pppoe username paulogomes_al password 123
+ onu prks00cdd365 upstream-fec disabled
+ onu prks00cdd365 flow-profile vlan207_router
+ onu prks00cdd365 alias paulogomes_al
+ onu prks00d09d3f ethernet-profile auto-on uni-port 1
+ onu prks00d09d3f iphost 1 pppoe nat enable
+ onu prks00d09d3f iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09d3f iphost 1 pppoe auth auto
+ onu prks00d09d3f iphost 1 pppoe username auxiliadora_ag password 123
+ onu prks00d09d3f upstream-fec disabled
+ onu prks00d09d3f flow-profile vlan207_router
+ onu prks00d09d3f alias auxiliadora_ag
+ onu prks00cdd2a7 ethernet-profile auto-on uni-port 1
+ onu prks00cdd2a7 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cdd2a7 upstream-fec disabled
+ onu prks00cdd2a7 flow-profile bridge_vlan_207
+ onu prks00cdd2a7 alias patricia_al
+ onu prks00cb7abf ethernet-profile auto-on uni-port 1
+ onu prks00cb7abf vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb7abf upstream-fec disabled
+ onu prks00cb7abf flow-profile bridge_vlan_207
+ onu prks00cb7abf alias rosangela_ag
+ onu prks00c93828 ethernet-profile auto-on uni-port 1
+ onu prks00c93828 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c93828 upstream-fec disabled
+ onu prks00c93828 flow-profile bridge_vlan_207
+ onu prks00c93828 alias maciel_ag
+ onu prks00cb9db1 ethernet-profile auto-on uni-port 1
+ onu prks00cb9db1 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb9db1 upstream-fec disabled
+ onu prks00cb9db1 flow-profile bridge_vlan_207
+ onu prks00cb9db1 alias zegrude_al
+ onu prks00d09cad ethernet-profile auto-on uni-port 1
+ onu prks00d09cad iphost 1 pppoe nat enable
+ onu prks00d09cad iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cad iphost 1 pppoe auth auto
+ onu prks00d09cad iphost 1 pppoe username nenem_ag password 123
+ onu prks00d09cad upstream-fec disabled
+ onu prks00d09cad flow-profile vlan207_router
+ onu prks00d09cad alias nenem_ag
+ onu prks00cb9728 ethernet-profile auto-on uni-port 1
+ onu prks00cb9728 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb9728 upstream-fec disabled
+ onu prks00cb9728 flow-profile bridge_vlan_207
+ onu prks00cb9728 alias manoel_al
+ onu prks00cb9723 ethernet-profile auto-on uni-port 1
+ onu prks00cb9723 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb9723 upstream-fec disabled
+ onu prks00cb9723 flow-profile bridge_vlan_207
+ onu prks00cb9723 alias vini_al
+ onu prks00cb9720 ethernet-profile auto-on uni-port 1
+ onu prks00cb9720 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb9720 upstream-fec disabled
+ onu prks00cb9720 flow-profile bridge_vlan_207
+ onu prks00cb9720 alias marilene_al
+ onu prks00d09f58 ethernet-profile auto-on uni-port 1
+ onu prks00d09f58 iphost 1 pppoe nat enable
+ onu prks00d09f58 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f58 iphost 1 pppoe auth auto
+ onu prks00d09f58 iphost 1 pppoe username manuela_al password 123
+ onu prks00d09f58 upstream-fec disabled
+ onu prks00d09f58 flow-profile vlan207_router
+ onu prks00d09f58 alias manuela_al
+ onu prks00cb95cb ethernet-profile auto-on uni-port 1
+ onu prks00cb95cb vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb95cb upstream-fec disabled
+ onu prks00cb95cb flow-profile bridge_vlan_207
+ onu prks00cb95cb alias raquel_al
+ onu prks00d09cb6 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb6 iphost 1 pppoe nat enable
+ onu prks00d09cb6 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb6 iphost 1 pppoe auth auto
+ onu prks00d09cb6 iphost 1 pppoe username natascha_ag password 123
+ onu prks00d09cb6 upstream-fec disabled
+ onu prks00d09cb6 flow-profile vlan207_router
+ onu prks00d09cb6 alias natascha_ag
+ onu prks00cdd016 ethernet-profile auto-on uni-port 1
+ onu prks00cdd016 iphost 1 pppoe nat enable
+ onu prks00cdd016 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd016 iphost 1 pppoe auth auto
+ onu prks00cdd016 iphost 1 pppoe username franciscoirmao_al password 123
+ onu prks00cdd016 upstream-fec disabled
+ onu prks00cdd016 flow-profile vlan207_router
+ onu prks00cdd016 alias franciscoirmao_al
+ onu prks00cc5b98 ethernet-profile auto-on uni-port 1
+ onu prks00cc5b98 iphost 1 pppoe nat enable
+ onu prks00cc5b98 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5b98 iphost 1 pppoe auth auto
+ onu prks00cc5b98 iphost 1 pppoe username eudes_al password 123
+ onu prks00cc5b98 upstream-fec disabled
+ onu prks00cc5b98 flow-profile vlan207_router
+ onu prks00cc5b98 alias eudes_al
+ onu prks00d09ca5 ethernet-profile auto-on uni-port 1
+ onu prks00d09ca5 iphost 1 pppoe nat enable
+ onu prks00d09ca5 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09ca5 iphost 1 pppoe auth auto
+ onu prks00d09ca5 iphost 1 pppoe username leo_al password 123
+ onu prks00d09ca5 upstream-fec disabled
+ onu prks00d09ca5 flow-profile vlan207_router
+ onu prks00d09ca5 alias leo_al
+ onu prks00cb9568 ethernet-profile auto-on uni-port 1
+ onu prks00cb9568 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb9568 upstream-fec disabled
+ onu prks00cb9568 flow-profile bridge_vlan_207
+ onu prks00cb9568 alias josivan_ag
+ onu prks00cdd3a1 ethernet-profile auto-on uni-port 1
+ onu prks00cdd3a1 iphost 1 pppoe nat enable
+ onu prks00cdd3a1 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd3a1 iphost 1 pppoe auth auto
+ onu prks00cdd3a1 iphost 1 pppoe username lucas_j4 password 123
+ onu prks00cdd3a1 upstream-fec disabled
+ onu prks00cdd3a1 flow-profile vlan207_router
+ onu prks00cdd3a1 alias lucas_j4
+ onu prks00cb8d45 ethernet-profile auto-on uni-port 1
+ onu prks00cb8d45 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb8d45 upstream-fec disabled
+ onu prks00cb8d45 flow-profile bridge_vlan_207
+ onu prks00cb8d45 alias valeria_al
+ onu prks00cdd80b ethernet-profile auto-on uni-port 1
+ onu prks00cdd80b iphost 1 pppoe nat enable
+ onu prks00cdd80b iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd80b iphost 1 pppoe auth auto
+ onu prks00cdd80b iphost 1 pppoe username israel_ag password 123
+ onu prks00cdd80b upstream-fec disabled
+ onu prks00cdd80b flow-profile vlan207_router
+ onu prks00cdd80b alias israel_ag
+ onu prks00c92f3e ethernet-profile auto-on uni-port 1
+ onu prks00c92f3e vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c92f3e upstream-fec disabled
+ onu prks00c92f3e flow-profile bridge_vlan_207
+ onu prks00c92f3e alias pradriano_jua4
+ onu prks00cdbd46 ethernet-profile auto-on uni-port 1
+ onu prks00cdbd46 iphost 1 pppoe nat enable
+ onu prks00cdbd46 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdbd46 iphost 1 pppoe auth auto
+ onu prks00cdbd46 iphost 1 pppoe username tamires_al password 123
+ onu prks00cdbd46 upstream-fec disabled
+ onu prks00cdbd46 flow-profile vlan207_router
+ onu prks00cdbd46 alias tamires_al
+ onu prks00d09e12 ethernet-profile auto-on uni-port 1
+ onu prks00d09e12 iphost 1 pppoe nat enable
+ onu prks00d09e12 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09e12 iphost 1 pppoe auth auto
+ onu prks00d09e12 iphost 1 pppoe username caila_al password 123
+ onu prks00d09e12 upstream-fec disabled
+ onu prks00d09e12 flow-profile vlan207_router
+ onu prks00d09e12 alias caila_al
+ onu prks00cb7ec1 ethernet-profile auto-on uni-port 1
+ onu prks00cb7ec1 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb7ec1 upstream-fec disabled
+ onu prks00cb7ec1 flow-profile bridge_vlan_207
+ onu prks00cb7ec1 alias ziquiel_al
+ onu prks00cb7cfb ethernet-profile auto-on uni-port 1
+ onu prks00cb7cfb vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb7cfb upstream-fec disabled
+ onu prks00cb7cfb flow-profile bridge_vlan_207
+ onu prks00cb7cfb alias silvana_al
+ onu prks00cb816f ethernet-profile auto-on uni-port 1
+ onu prks00cb816f vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb816f upstream-fec disabled
+ onu prks00cb816f flow-profile bridge_vlan_207
+ onu prks00cb816f alias igorferreira_al
+ onu prks00d09f57 ethernet-profile auto-on uni-port 1
+ onu prks00d09f57 iphost 1 pppoe nat enable
+ onu prks00d09f57 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f57 iphost 1 pppoe auth auto
+ onu prks00d09f57 iphost 1 pppoe username franciscoalmeida_al password 123
+ onu prks00d09f57 upstream-fec disabled
+ onu prks00d09f57 flow-profile vlan207_router
+ onu prks00d09f57 alias franciscoalmeida_al
+ onu prks00cb95ab ethernet-profile auto-on uni-port 1
+ onu prks00cb95ab vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb95ab upstream-fec disabled
+ onu prks00cb95ab flow-profile bridge_vlan_207
+ onu prks00cb95ab alias teovane_j4_ren
+ onu prks00cb7adc ethernet-profile auto-on uni-port 1
+ onu prks00cb7adc vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb7adc upstream-fec disabled
+ onu prks00cb7adc flow-profile bridge_vlan_207
+ onu prks00cb7adc alias antonia_al
+ onu prks00d09cac ethernet-profile auto-on uni-port 1
+ onu prks00d09cac iphost 1 pppoe nat enable
+ onu prks00d09cac iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cac iphost 1 pppoe auth auto
+ onu prks00d09cac iphost 1 pppoe username angela_al password 123
+ onu prks00d09cac upstream-fec disabled
+ onu prks00d09cac flow-profile vlan207_router
+ onu prks00d09cac alias angela_al
+ onu prks00cb77b9 ethernet-profile auto-on uni-port 1
+ onu prks00cb77b9 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb77b9 upstream-fec disabled
+ onu prks00cb77b9 flow-profile bridge_vlan_207
+ onu prks00cb77b9 alias elaine
+ onu prks00c949af ethernet-profile auto-on uni-port 1
+ onu prks00c949af vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c949af upstream-fec disabled
+ onu prks00c949af flow-profile bridge_vlan_207
+ onu prks00c949af alias carlin_ag
+ onu prks00cc5fd1 ethernet-profile auto-on uni-port 1
+ onu prks00cc5fd1 iphost 1 pppoe nat enable
+ onu prks00cc5fd1 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc5fd1 iphost 1 pppoe auth auto
+ onu prks00cc5fd1 iphost 1 pppoe username joao_alianca password 123
+ onu prks00cc5fd1 upstream-fec disabled
+ onu prks00cc5fd1 flow-profile vlan207_router
+ onu prks00cc5fd1 alias joao_alianca
+ onu prks00cde803 ethernet-profile auto-on uni-port 1
+ onu prks00cde803 iphost 1 pppoe nat enable
+ onu prks00cde803 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cde803 iphost 1 pppoe auth auto
+ onu prks00cde803 iphost 1 pppoe username feliciano_al password 123
+ onu prks00cde803 upstream-fec disabled
+ onu prks00cde803 flow-profile vlan207_router
+ onu prks00cde803 alias feliciano_al
+ onu prks00c936d6 ethernet-profile auto-on uni-port 1
+ onu prks00c936d6 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c936d6 upstream-fec disabled
+ onu prks00c936d6 flow-profile bridge_vlan_207
+ onu prks00c936d6 alias eliene_al
+ onu prks00cb99d2 ethernet-profile auto-on uni-port 1
+ onu prks00cb99d2 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00cb99d2 upstream-fec disabled
+ onu prks00cb99d2 flow-profile bridge_vlan_207
+ onu prks00cb99d2 alias luzinete_pr
+ onu prks00c92e79 ethernet-profile auto-on uni-port 1
+ onu prks00c92e79 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c92e79 upstream-fec disabled
+ onu prks00c92e79 flow-profile bridge_vlan_207
+ onu prks00c92e79 alias valdelice_al
+ onu prks00cc7a62 ethernet-profile auto-on uni-port 1
+ onu prks00cc7a62 iphost 1 pppoe nat enable
+ onu prks00cc7a62 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc7a62 iphost 1 pppoe auth auto
+ onu prks00cc7a62 iphost 1 pppoe username testenoc_al password 123
+ onu prks00cc7a62 upstream-fec disabled
+ onu prks00cc7a62 flow-profile vlan207_router
+ onu prks00cc7a62 alias testenoc_al
+ onu prks00c92936 ethernet-profile auto-on uni-port 1
+ onu prks00c92936 vlan-translation-profile vlan_207 uni-port 1 
+ onu prks00c92936 upstream-fec disabled
+ onu prks00c92936 flow-profile bridge_vlan_207
+ onu prks00c92936 alias josiane_al
+ onu prks00c5884d iphost 1 pppoe nat enable
+ onu prks00c5884d iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00c5884d iphost 1 pppoe auth auto
+ onu prks00c5884d iphost 1 pppoe username ronivon_al password 123
+ onu prks00c5884d upstream-fec disabled
+ onu prks00c5884d flow-profile vlan207_router
+ onu prks00c5884d alias ronivon_al
+ onu prks00d09f56 ethernet-profile auto-on uni-port 1
+ onu prks00d09f56 iphost 1 pppoe nat enable
+ onu prks00d09f56 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09f56 iphost 1 pppoe auth auto
+ onu prks00d09f56 iphost 1 pppoe username fagno_al password 123
+ onu prks00d09f56 upstream-fec disabled
+ onu prks00d09f56 flow-profile vlan207_router
+ onu prks00d09f56 alias fagno_al
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 207,2201-2202,3207
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/8
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number prks00cc76df
+ onu add serial-number prks00d09cb2
+ onu add serial-number prks00d09ca7
+ onu add serial-number prks00d09327
+ onu add serial-number prks00cb80af
+ onu add serial-number hwtc51fc849f
+ onu add serial-number 42061d5c9aa0
+ onu add serial-number prks00d09ca4
+ onu add serial-number prks00cdd35e
+ onu add serial-number prks00cdd243
+ onu add serial-number prks00cdd2c2
+ onu add serial-number prks00cc49c9
+ onu add serial-number prks00cb82fa
+ onu add serial-number prks00cdd4dd
+ onu add serial-number prks00cb7dbb
+ onu add serial-number prks00cb9718
+ onu add serial-number prks00cb9274
+ onu add serial-number prks00cdff96
+ onu add serial-number prks00cc44d1
+ onu add serial-number prks00d09cc3
+ onu add serial-number prks00cdff8d
+ onu add serial-number prks00cdd366
+ onu add serial-number prks00cc4515
+ onu add serial-number prks00cdcf6f
+ onu add serial-number prks00cb7c97
+ onu add serial-number prks00c9293f
+ onu add serial-number prks00c93e82
+ onu prks00cc76df ethernet-profile auto-on uni-port 1
+ onu prks00cc76df iphost 1 pppoe nat enable
+ onu prks00cc76df iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc76df iphost 1 pppoe auth auto
+ onu prks00cc76df iphost 1 pppoe username evanilson_ja password 123
+ onu prks00cc76df upstream-fec disabled
+ onu prks00cc76df flow-profile vlan208_router
+ onu prks00cc76df alias evanilson_ja
+ onu prks00d09cb2 ethernet-profile auto-on uni-port 1
+ onu prks00d09cb2 iphost 1 pppoe nat enable
+ onu prks00d09cb2 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cb2 iphost 1 pppoe auth auto
+ onu prks00d09cb2 iphost 1 pppoe username joyce_ja password 123
+ onu prks00d09cb2 upstream-fec disabled
+ onu prks00d09cb2 flow-profile vlan208_router
+ onu prks00d09cb2 alias joyce_ja
+ onu prks00d09ca7 ethernet-profile auto-on uni-port 1
+ onu prks00d09ca7 iphost 1 pppoe nat enable
+ onu prks00d09ca7 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09ca7 iphost 1 pppoe auth auto
+ onu prks00d09ca7 iphost 1 pppoe username ederson_ja password 123
+ onu prks00d09ca7 upstream-fec disabled
+ onu prks00d09ca7 flow-profile vlan208_router
+ onu prks00d09ca7 alias ederson_ja
+ onu prks00d09327 ethernet-profile auto-on uni-port 1
+ onu prks00d09327 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00d09327 upstream-fec disabled
+ onu prks00d09327 flow-profile bridge_vlan_208
+ onu prks00d09327 alias MariaAparecida-Acacias
+ onu prks00cb80af ethernet-profile auto-on uni-port 1
+ onu prks00cb80af vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cb80af upstream-fec disabled
+ onu prks00cb80af flow-profile bridge_vlan_208
+ onu prks00cb80af alias patriciarosa_ja
+ onu hwtc51fc849f ethernet-profile auto-on uni-port 1-4
+ onu hwtc51fc849f upstream-fec disabled
+ onu hwtc51fc849f flow-profile vlan208_router
+ onu hwtc51fc849f alias josedasilva_jdacacias_zn
+ onu 42061d5c9aa0 ethernet-profile auto-on uni-port 1
+ onu 42061d5c9aa0 vlan-translation-profile vlan_208 uni-port 1 
+ onu 42061d5c9aa0 upstream-fec disabled
+ onu 42061d5c9aa0 flow-profile bridge_vlan_208
+ onu 42061d5c9aa0 alias edjane_ja
+ onu prks00d09ca4 ethernet-profile auto-on uni-port 1
+ onu prks00d09ca4 iphost 1 pppoe nat enable
+ onu prks00d09ca4 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09ca4 iphost 1 pppoe auth auto
+ onu prks00d09ca4 iphost 1 pppoe username cicero_ja password 123
+ onu prks00d09ca4 upstream-fec disabled
+ onu prks00d09ca4 flow-profile vlan208_router
+ onu prks00d09ca4 alias cicero_ja
+ onu prks00cdd35e ethernet-profile auto-on uni-port 1
+ onu prks00cdd35e vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cdd35e upstream-fec disabled
+ onu prks00cdd35e flow-profile bridge_vlan_208
+ onu prks00cdd35e alias andreza_ja
+ onu prks00cdd243 ethernet-profile auto-on uni-port 1
+ onu prks00cdd243 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cdd243 upstream-fec disabled
+ onu prks00cdd243 flow-profile bridge_vlan_208
+ onu prks00cdd243 alias graca_ja
+ onu prks00cdd2c2 ethernet-profile auto-on uni-port 1
+ onu prks00cdd2c2 iphost 1 pppoe nat enable
+ onu prks00cdd2c2 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd2c2 iphost 1 pppoe auth auto
+ onu prks00cdd2c2 iphost 1 pppoe username cleiton_ja password 123
+ onu prks00cdd2c2 upstream-fec disabled
+ onu prks00cdd2c2 flow-profile vlan208_router
+ onu prks00cdd2c2 alias cleiton_ja
+ onu prks00cc49c9 ethernet-profile auto-on uni-port 1
+ onu prks00cc49c9 iphost 1 pppoe nat enable
+ onu prks00cc49c9 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc49c9 iphost 1 pppoe auth auto
+ onu prks00cc49c9 iphost 1 pppoe username boaventura_ja password 123
+ onu prks00cc49c9 upstream-fec disabled
+ onu prks00cc49c9 flow-profile vlan208_router
+ onu prks00cc49c9 alias boaventura_ja
+ onu prks00cb82fa ethernet-profile auto-on uni-port 1
+ onu prks00cb82fa vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cb82fa upstream-fec disabled
+ onu prks00cb82fa flow-profile bridge_vlan_208
+ onu prks00cb82fa alias mariaperpetuo_ja
+ onu prks00cdd4dd ethernet-profile auto-on uni-port 1
+ onu prks00cdd4dd vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cdd4dd upstream-fec disabled
+ onu prks00cdd4dd flow-profile bridge_vlan_208
+ onu prks00cdd4dd alias cristiana_ja
+ onu prks00cb7dbb ethernet-profile auto-on uni-port 1
+ onu prks00cb7dbb vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cb7dbb upstream-fec disabled
+ onu prks00cb7dbb flow-profile bridge_vlan_208
+ onu prks00cb7dbb alias pedrosantana_ja
+ onu prks00cb9718 ethernet-profile auto-on uni-port 1
+ onu prks00cb9718 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cb9718 upstream-fec disabled
+ onu prks00cb9718 flow-profile bridge_vlan_208
+ onu prks00cb9718 alias monique_ja
+ onu prks00cb9274 ethernet-profile auto-on uni-port 1
+ onu prks00cb9274 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cb9274 upstream-fec disabled
+ onu prks00cb9274 flow-profile bridge_vlan_208
+ onu prks00cb9274 alias maiane_ja
+ onu prks00cdff96 ethernet-profile auto-on uni-port 1
+ onu prks00cdff96 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cdff96 upstream-fec disabled
+ onu prks00cdff96 flow-profile bridge_vlan_208
+ onu prks00cdff96 alias gildeilson_ja
+ onu prks00cc44d1 ethernet-profile auto-on uni-port 1
+ onu prks00cc44d1 iphost 1 pppoe nat enable
+ onu prks00cc44d1 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc44d1 iphost 1 pppoe auth auto
+ onu prks00cc44d1 iphost 1 pppoe username josefa_ja password 123
+ onu prks00cc44d1 upstream-fec disabled
+ onu prks00cc44d1 flow-profile vlan208_router
+ onu prks00cc44d1 alias josefa_ja
+ onu prks00d09cc3 ethernet-profile auto-on uni-port 1
+ onu prks00d09cc3 iphost 1 pppoe nat enable
+ onu prks00d09cc3 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00d09cc3 iphost 1 pppoe auth auto
+ onu prks00d09cc3 iphost 1 pppoe username mjuscilene_ja password 123
+ onu prks00d09cc3 upstream-fec disabled
+ onu prks00d09cc3 flow-profile vlan208_router
+ onu prks00d09cc3 alias mjuscilene_ja
+ onu prks00cdff8d ethernet-profile auto-on uni-port 1
+ onu prks00cdff8d iphost 1 pppoe nat enable
+ onu prks00cdff8d iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdff8d iphost 1 pppoe auth auto
+ onu prks00cdff8d iphost 1 pppoe username franklin_ja password 123
+ onu prks00cdff8d upstream-fec disabled
+ onu prks00cdff8d flow-profile vlan208_router
+ onu prks00cdff8d alias franklin_ja
+ onu prks00cdd366 ethernet-profile auto-on uni-port 1
+ onu prks00cdd366 iphost 1 pppoe nat enable
+ onu prks00cdd366 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdd366 iphost 1 pppoe auth auto
+ onu prks00cdd366 iphost 1 pppoe username lucineide_ja password 123
+ onu prks00cdd366 upstream-fec disabled
+ onu prks00cdd366 flow-profile vlan208_router
+ onu prks00cdd366 alias lucineide_ja
+ onu prks00cc4515 ethernet-profile auto-on uni-port 1
+ onu prks00cc4515 iphost 1 pppoe nat enable
+ onu prks00cc4515 iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cc4515 iphost 1 pppoe auth auto
+ onu prks00cc4515 iphost 1 pppoe username rodrigo_ja password 123
+ onu prks00cc4515 upstream-fec disabled
+ onu prks00cc4515 flow-profile vlan208_router
+ onu prks00cc4515 alias rodrigo_ja
+ onu prks00cdcf6f ethernet-profile auto-on uni-port 1
+ onu prks00cdcf6f iphost 1 pppoe nat enable
+ onu prks00cdcf6f iphost 1 pppoe contrigger alwayson idletimer 1200
+ onu prks00cdcf6f iphost 1 pppoe auth auto
+ onu prks00cdcf6f iphost 1 pppoe username tiago_pi password 123
+ onu prks00cdcf6f upstream-fec disabled
+ onu prks00cdcf6f flow-profile vlan208_router
+ onu prks00cdcf6f alias tiago_pi
+ onu prks00cb7c97 ethernet-profile auto-on uni-port 1
+ onu prks00cb7c97 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00cb7c97 upstream-fec disabled
+ onu prks00cb7c97 flow-profile bridge_vlan_208
+ onu prks00cb7c97 alias sabrina_pi
+ onu prks00c9293f ethernet-profile auto-on uni-port 1
+ onu prks00c9293f vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00c9293f upstream-fec disabled
+ onu prks00c9293f flow-profile bridge_vlan_208
+ onu prks00c9293f alias joseana_ja
+ onu prks00c93e82 ethernet-profile auto-on uni-port 1
+ onu prks00c93e82 vlan-translation-profile vlan_208 uni-port 1 
+ onu prks00c93e82 upstream-fec disabled
+ onu prks00c93e82 flow-profile bridge_vlan_208
+ onu prks00c93e82 alias maristela_pi
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 208,2201-2202,3118,3208
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface loopback0
+!
+interface mgmt
+ ip address 192.168.245.6/30
+ no shutdown
+!
+interface mgmt1
+!
+interface mgmt1.100
+ ip address 192.168.2.1/24
+ no shutdown
+!
+interface mgmt1.500
+ no shutdown
+!
+ip dhcp l2relay option sp
+ip route 0.0.0.0/0 192.168.245.5
+ip ssh server
+ip telnet server
+ipv6 dhcpv6 l2relay option sp
+lacp aggregation-limit 2
+lacp port-channel 0
+ actor admin-key 32768
+ actor system-priority 32768
+ load-balance src-dst-mac
+!
+mac-address-table aging-time 300
+snmp-server community callfraninfonet rw
+snmp-server community parks rw
+snmp-server enable traps snmp
+snmp-server host 192.168.65.254 public transport udp port 162
+snmp-server host 10.170.255.18 public transport udp port 162
+temperature threshold 70
+fan duty-cycle autocontrol
+!
+OLT01_ALIANCA# 

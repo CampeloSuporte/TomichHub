@@ -1,0 +1,25 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: CGNAT-BORDA-BACKUP
+Host: 201.77.148.0:22025
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 04/12/2025 00:26:35
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@BORDA_CGNAT_FRIENDS_148] > /                                           [K[tomich@BORDA_CGNAT_FRIENDS_148] > /e[tomich@BORDA_CGNAT_FRIENDS_148] > /e                                          [K[tomich@BORDA_CGNAT_FRIENDS_148] > /ex[tomich@BORDA_CGNAT_FRIENDS_148] > /ex                                         [K[tomich@BORDA_CGNAT_FRIENDS_148] > /exp[tomich@BORDA_CGNAT_FRIENDS_148] > /exp                                        [K[tomich@BORDA_CGNAT_FRIENDS_148] > /expo[tomich@BORDA_CGNAT_FRIENDS_148] > /expo                                       [K[tomich@BORDA_CGNAT_FRIENDS_148] > /expor[tomich@BORDA_CGNAT_FRIENDS_148] > /expor                                      [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export[tomich@BORDA_CGNAT_FRIENDS_148] > /export                                     [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export [tomich@BORDA_CGNAT_FRIENDS_148] > /export                                     [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export t[tomich@BORDA_CGNAT_FRIENDS_148] > /export t                                   [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export te[tomich@BORDA_CGNAT_FRIENDS_148] > /export te                                  [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export ter[tomich@BORDA_CGNAT_FRIENDS_148] > /export ter                                 [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export ters[tomich@BORDA_CGNAT_FRIENDS_148] > /export ters                                [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export terse[tomich@BORDA_CGNAT_FRIENDS_148] > /export terse                               [K[tomich@BORDA_CGNAT_FRIENDS_148] > /export terse[tomich@BORDA_CGNAT_FRIENDS_148] > /export terse
+# dec/02/2025 23:31:32 by RouterOS 6.49.8
+# software id = WY2G-LR1Q
+#
+# model = CCR1036-8G-2S+
+# serial number = C6CC0C5E0287
+/interface bridge add name=loopback
+

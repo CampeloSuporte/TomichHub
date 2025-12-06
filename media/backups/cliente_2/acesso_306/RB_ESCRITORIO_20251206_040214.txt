@@ -1,0 +1,178 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: RB ESCRITORIO
+Host: 186.0.149.150:22002
+Acesso: DIRETO
+Modelo: RB3011
+Template: Backup Mikrotik
+Data: 06/12/2025 04:02:14
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@Escritorio S1] > /                                                     [K[tomich@Escritorio S1] > /e[tomich@Escritorio S1] > /e                                                    [K[tomich@Escritorio S1] > /ex[tomich@Escritorio S1] > /ex                                                   [K[tomich@Escritorio S1] > /exp[tomich@Escritorio S1] > /exp                                                  [K[tomich@Escritorio S1] > /expo[tomich@Escritorio S1] > /expo                                                 [K[tomich@Escritorio S1] > /expor[tomich@Escritorio S1] > /expor                                                [K[tomich@Escritorio S1] > /export[tomich@Escritorio S1] > /export                                               [K[tomich@Escritorio S1] > /export [tomich@Escritorio S1] > /export                                               [K[tomich@Escritorio S1] > /export t[tomich@Escritorio S1] > /export t                                             [K[tomich@Escritorio S1] > /export te[tomich@Escritorio S1] > /export te                                            [K[tomich@Escritorio S1] > /export ter[tomich@Escritorio S1] > /export ter                                           [K[tomich@Escritorio S1] > /export ters[tomich@Escritorio S1] > /export ters                                          [K[tomich@Escritorio S1] > /export terse[tomich@Escritorio S1] > /export terse                                         [K[tomich@Escritorio S1] > /export terse[tomich@Escritorio S1] > /export terse
+# dec/06/2025 04:02:10 by RouterOS 6.49.11
+# software id = BB3U-BYKZ
+#
+# model = 433AH
+# serial number = 2803014BC648
+/interface bridge add fast-forward=no name=bridge1
+/interface ethernet set [ find default-name=ether1 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full name=ether1-Link
+/interface ethernet set [ find default-name=ether2 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full name="ether2-Cliente no Cabo"
+/interface ethernet set [ find default-name=ether3 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full name="ether3-Saida Escritorio"
+/interface pppoe-client add add-default-route=yes disabled=no interface=ether1-Li
+nk keepalive-timeout=60 max-mru=1480 max-mtu=1480 mrru=1600 name=pppoe-out1 pass
+word=setor1escritorio user=setor1escritorio
+/interface eoip add local-address=186.0.149.150 mac-address=02:C9:A6:6C:9E:29 nam
+e=eoip-tunnel1-ROUTER-G5 remote-address=186.0.151.65 tunnel-id=101
+/ip ipsec proposal set [ find default=yes ] enc-algorithms=aes-128-cbc
+/ip pool add name=dhcp_pool3 ranges=192.168.73.2-192.168.73.254
+/ip dhcp-server add address-pool=dhcp_pool3 disabled=no interface=bridge1 name=dh
+cp1
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0
+/tool user-manager customer set admin access=own-routers,own-users,own-profiles,o
+wn-limits,config-payment-gw
+/interface bridge port add bridge=bridge1 hw=no interface="ether2-Cliente no Cabo
+"
+/interface bridge port add bridge=bridge1 interface="ether3-Saida Escritorio"
+/interface pppoe-server server add interface=ether1-Link service-name=service1
+/interface pppoe-server server add disabled=no service-name=service1
+/ip address add address=192.168.73.1/24 interface=bridge1 network=192.168.73.0
+/ip address add address=192.168.97.2/30 disabled=yes interface=ether1-Link networ
+k=192.168.97.0
+/ip address add address=10.64.63.2/30 interface=eoip-tunnel1-ROUTER-G5 network=10
+.64.63.0
+/ip dhcp-server lease add address=192.168.73.116 address-lists=LIBERADO client-id
+=1:48:51:cf:15:8c:7c comment="####Ramal JOYCE 1002" mac-address=48:51:CF:15:8C:7
+C
+/ip dhcp-server lease add address=192.168.73.56 address-lists=LIBERADO client-id=
+1:48:51:cf:15:8c:7d comment="####Ramal JESSICA e B. KELLY 1003" mac-address=48:5
+1:CF:15:8C:7D
+/ip dhcp-server lease add address=192.168.73.4 address-lists=LIBERADO client-id=1
+:24:fd:d:5d:d8:fd comment="####Ramal interno sem user Jessica atual 1005 NAO SEI
+ A SENHA" mac-address=24:FD:0D:5D:D8:FD
+/ip dhcp-server lease add address=192.168.73.6 address-lists=LIBERADO client-id=1
+:58:91:cf:a6:2a:f2 mac-address=58:91:CF:A6:2A:F2
+/ip dhcp-server lease add address=192.168.73.36 address-lists=LIBERADO client-id=
+1:70:5a:f:69:6e:20 mac-address=70:5A:0F:69:6E:20
+/ip dhcp-server lease add address=192.168.73.3 address-lists=LIBERADO client-id=1
+:48:51:cf:3e:97:96 comment="####Ramal Yan 1004" mac-address=48:51:CF:3E:97:96
+/ip dhcp-server lease add address=192.168.73.24 address-lists=LIBERADO client-id=
+1:70:85:c2:c6:8a:95 mac-address=70:85:C2:C6:8A:95
+/ip dhcp-server lease add address=192.168.73.23 address-lists=LIBERADO client-id=
+1:d0:94:66:b8:f8:1b mac-address=D0:94:66:B8:F8:1B
+/ip dhcp-server lease add address=192.168.73.27 address-lists=LIBERADO client-id=
+1:b0:7b:25:17:83:e8 mac-address=B0:7B:25:17:83:E8
+/ip dhcp-server lease add address=192.168.73.42 address-lists=LIBERADO client-id=
+1:48:51:cf:3e:97:79 mac-address=48:51:CF:3E:97:79
+/ip dhcp-server lease add address=192.168.73.55 address-lists=LIBERADO client-id=
+1:80:8f:e8:84:e8:15 mac-address=80:8F:E8:84:E8:15
+/ip dhcp-server lease add address=192.168.73.10 address-lists=LIBERADO client-id=
+1:0:e0:4c:c3:1:5d mac-address=00:E0:4C:C3:01:5D
+/ip dhcp-server lease add address=192.168.73.75 address-lists=LIBERADO client-id=
+1:1c:6f:65:9c:cb:6a comment="PC HITALO" mac-address=1C:6F:65:9C:CB:6A
+/ip dhcp-server lease add address=192.168.73.67 address-lists=LIBERADO client-id=
+1:48:51:cf:15:8c:7e mac-address=48:51:CF:15:8C:7E
+/ip dhcp-server lease add address=192.168.73.58 address-lists=LIBERADO client-id=
+1:b8:4d:43:6c:24:9e comment="Notebook Roberta" disabled=yes mac-address=B8:4D:43
+:6C:24:9E
+/ip dhcp-server lease add address=192.168.73.172 client-id=1:24:fd:d:e:42:6a mac-
+address=24:FD:0D:0E:42:6A
+/ip dhcp-server lease add address=192.168.73.5 client-id=1:a:e0:af:a7:c:de mac-ad
+dress=0A:E0:AF:A7:0C:DE
+/ip dhcp-server lease add address=192.168.73.2 client-id=1:24:fd:d:5d:d8:f9 comme
+nt="####Ramal TAINARA#### 1002" mac-address=24:FD:0D:5D:D8:F9
+/ip dhcp-server lease add address=192.168.73.9 client-id=1:d8:36:5f:12:13:e0 comm
+ent="CAM S1 PORTA MADEIRA" mac-address=D8:36:5F:12:13:E0 server=dhcp1
+/ip dhcp-server lease add address=192.168.73.20 client-id=1:48:51:cf:15:8c:7e com
+ment="#### Ramal Hitalo 1013" mac-address=48:51:CF:15:8C:7E server=dhcp1
+/ip dhcp-server lease add address=192.168.73.29 client-id=1:48:51:cf:3e:97:79 com
+ment="####Ramal Bruna 1001" mac-address=48:51:CF:3E:97:79 server=dhcp1
+/ip dhcp-server lease add address=192.168.73.44 client-id=1:24:fd:d:87:a3:86 comm
+ent="CAM S1 INTERNO" mac-address=24:FD:0D:87:A3:86 server=dhcp1
+/ip dhcp-server lease add address=192.168.73.13 client-id=1:24:fd:d:38:b3:46 comm
+ent="CAM S1 BAIAS" mac-address=24:FD:0D:38:B3:46 server=dhcp1
+/ip dhcp-server lease add address=192.168.73.15 client-id=1:24:fd:d:87:a3:8d comm
+ent="CAM S1 CLIENTES CIMA PORTA VIDRO" mac-address=24:FD:0D:87:A3:8D server=dhcp
+1
+/ip dhcp-server lease add address=192.168.73.47 client-id=1:98:2a:a:2f:fc:2 comme
+nt="CAM S1 LADO FORA CIMA PORTAO" mac-address=98:2A:0A:2F:FC:02 server=dhcp1
+/ip dhcp-server lease add address=192.168.73.49 client-id=1:98:2a:a:2f:fc:b comme
+nt="CAM S1 COZINHA" mac-address=98:2A:0A:2F:FC:0B server=dhcp1
+/ip dhcp-server network add address=192.168.73.0/24 gateway=192.168.73.1
+/ip dns set servers=8.8.8.8,8.8.4.4
+/ip firewall address-list add list=LIBERADO
+/ip firewall address-list add address=192.168.73.5 list=LIBERADO
+/ip firewall filter add action=accept chain=forward disabled=yes src-address-list
+=LIBERADO
+/ip firewall filter add action=accept chain=forward disabled=yes dst-address-list
+=LIBERADO
+/ip firewall filter add action=drop chain=forward disabled=yes
+/ip firewall filter add action=add-dst-to-address-list address-list=SITES-BLOQUEA
+DOS address-list-timeout=none-dynamic chain=forward protocol=tcp tls-host=*faceb
+ook*
+/ip firewall filter add action=add-dst-to-address-list address-list=SITES-BLOQUEA
+DOS address-list-timeout=none-dynamic chain=forward protocol=tcp tls-host=*insta
+gram*
+/ip firewall filter add action=add-dst-to-address-list address-list=SITES-BLOQUEA
+DOS address-list-timeout=none-dynamic chain=forward protocol=tcp tls-host=*kwai*
+
+/ip firewall filter add action=add-dst-to-address-list address-list=SITES-BLOQUEA
+DOS address-list-timeout=none-dynamic chain=forward protocol=tcp tls-host=*tikto
+k*
+/ip firewall filter add action=add-dst-to-address-list address-list=SITES-BLOQUEA
+DOS address-list-timeout=none-dynamic chain=forward protocol=tcp tls-host=*twitt
+er*
+/ip firewall filter add action=drop chain=forward dst-address-list=SITES-BLOQUEAD
+OS protocol=tcp
+/ip firewall nat add action=src-nat chain=srcnat out-interface=pppoe-out1 to-addr
+esses=186.0.149.150
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes out-interface=pppoe
+-out1 to-addresses=132.255.229.1
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=37778 prot
+ocol=tcp to-addresses=192.168.73.3 to-ports=3777
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=37777 prot
+ocol=tcp to-addresses=192.168.73.2 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=37779 prot
+ocol=tcp to-addresses=192.168.73.159 to-ports=37779
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-port=37773 prot
+ocol=tcp to-addresses=192.168.73.15 to-ports=37773
+/ip route add check-gateway=ping comment="NVR NO ROUTER DA G5" distance=1 dst-add
+ress=192.168.188.0/24 gateway=10.64.63.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ipv6 nd set [ find default=yes ] advertise-dns=no
+/snmp set enabled=yes
+/system clock set time-zone-name=America/Belem
+/system gps set set-system-time=yes
+/system identity set name="Escritorio S1"
+/system lcd set contrast=0 enabled=no port=parallel type=24x4
+/system lcd page set time disabled=yes display-time=5s
+/system lcd page set resources disabled=yes display-time=5s
+/system lcd page set uptime disabled=yes display-time=5s
+/system lcd page set packets disabled=yes display-time=5s
+/system lcd page set bits disabled=yes display-time=5s
+/system lcd page set version disabled=yes display-time=5s
+/system lcd page set identity disabled=yes display-time=5s
+/system lcd page set pppoe-out1 disabled=yes display-time=5s
+/system lcd page set bridge1 disabled=yes display-time=5s
+/system lcd page set ether1-Link disabled=yes display-time=5s
+/system lcd page set "ether2-Cliente no Cabo" disabled=yes display-time=5s
+/system lcd page set "ether3-Saida Escritorio" disabled=yes display-time=5s
+/system lcd page set eoip-tunnel1-ROUTER-G5 disabled=yes display-time=5s
+/tool romon set enabled=yes secrets=g5telecom.2020
+/tool user-manager database set db-path=user-manager
+[tomich@Escritorio S1] >                                                       [tomich@Escritorio S1] > 

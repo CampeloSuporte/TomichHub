@@ -1,0 +1,32 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: STA-NOVA-OLINDAxZELIA
+Host: 172.26.74.3:22002
+Acesso: VIA PROXY SSH
+Modelo: RB921
+Template: Backup Mikrotik
+Data: 04/12/2025 00:29:53
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[admin@STA-NOVA-OLINDAxZELIA] > /export terse
+# jul/21/1971 10:19:50 by RouterOS 6.48.6
+# software id = E0RX-BGIN
+#
+# model = RB922UAGS-5HPacD
+# serial number = HEG08MG70WR
+/interface bridge add admin-mac=48:A9:8A:C9:DD:30 auto-mac=no comment=defconf nam
+e=bridge
+/interface wireless set [ find default-name=wlan1 ] adaptive-noise-immunity=clien
+t-mode ampdu-priorities="" band=5ghz-onlyac basic-rates-a/g="" channel-width=20/
+40/80mhz-Ceee country=no_country_set disabled=no frequency=5225 frequency-mode=s
+uperchannel ht-basic-mcs=mcs-0,mcs-1,mcs-2,mcs-3,mcs-4,mcs-5,mcs-6,mcs-7,mcs-8,m
+cs-9,mcs-10,mcs-11,mcs-12,mcs-13,mcs-14,mcs-15,mcs-16,mcs-17,mcs-18,mcs-19,mcs-2
+0,mcs-21,mcs-22,mcs-23 hw-retries=4 l2mtu=2000 mode=station-bridge mtu=2000 nv2-
+preshared-key=10203

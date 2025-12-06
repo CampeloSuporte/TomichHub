@@ -290,3 +290,75 @@ class BackupLog(models.Model):
             return f"{self.tamanho_bytes / 1024:.2f} KB"
         else:
             return f"{self.tamanho_bytes / (1024 * 1024):.2f} MB"
+
+
+
+class BlocoIP(models.Model):
+    """Blocos de IP IPv4 e IPv6 do cliente"""
+    TIPO_CHOICES = [
+        ('IPV4', 'IPv4'),
+        ('IPV6', 'IPv6'),
+    ]
+    
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='blocos_ip')
+    tipo = models.CharField(max_length=4, choices=TIPO_CHOICES)
+    bloco = models.CharField(max_length=100, help_text="Ex: 200.100.50.0/24 ou 2801:80:1234::/48")
+    asn = models.CharField(max_length=20, help_text="Ex: AS12345", blank=True, null=True)
+    irr_registry = models.CharField(max_length=50, help_text="Ex: LACNIC, RIPE, ARIN", blank=True, null=True)
+    
+    # Status de validação
+    rpki_valido = models.BooleanField(default=False)
+    irr_valido = models.BooleanField(default=False)
+    
+    # Informações da última validação
+    ultima_validacao = models.DateTimeField(blank=True, null=True)
+    rpki_status = models.CharField(max_length=20, blank=True, null=True)
+    rpki_mensagem = models.TextField(blank=True, null=True)
+    irr_status = models.CharField(max_length=20, blank=True, null=True)
+    irr_mensagem = models.TextField(blank=True, null=True)
+    
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Bloco de IP'
+        verbose_name_plural = 'Blocos de IP'
+        ordering = ['cliente', 'tipo', 'bloco']
+    
+    def __str__(self):
+        return f"{self.bloco} ({self.get_tipo_display()}) - {self.cliente.nome_empresa}"
+    
+    def get_status_rpki_display(self):
+        if not self.rpki_status:
+            return 'Não Validado'
+        return self.rpki_status
+    
+    def get_status_irr_display(self):
+        if not self.irr_status:
+            return 'Não Validado'
+        return self.irr_status
+
+
+class ValidacaoRPKI_IRR_Log(models.Model):
+    """Log de validações RPKI/IRR"""
+    bloco = models.ForeignKey('BlocoIP', on_delete=models.CASCADE, related_name='logs_validacao')
+    
+    data_validacao = models.DateTimeField(auto_now_add=True)
+    
+    rpki_valido = models.BooleanField(default=False)
+    rpki_status = models.CharField(max_length=20, blank=True, null=True)
+    rpki_detalhes = models.TextField(blank=True, null=True)
+    
+    irr_valido = models.BooleanField(default=False)
+    irr_status = models.CharField(max_length=20, blank=True, null=True)
+    irr_detalhes = models.TextField(blank=True, null=True)
+    
+    duracao_segundos = models.FloatField(default=0)
+    
+    class Meta:
+        verbose_name = 'Log de Validação RPKI/IRR'
+        verbose_name_plural = 'Logs de Validação RPKI/IRR'
+        ordering = ['-data_validacao']
+    
+    def __str__(self):
+        return f"Validação {self.bloco.bloco} - {self.data_validacao.strftime('%d/%m/%Y %H:%M')}"

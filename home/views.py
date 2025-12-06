@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from datetime import datetime, timedelta
-from clientes.models import Chamado, Cliente
+from clientes.models import Chamado, Cliente, BlocoIP
 from django.contrib.auth.models import User
 from clientes.decorators import admin_required 
 
@@ -81,11 +81,29 @@ def quadro_geral(request):
     # Total geral para cálculo de percentual
     total_chamados_geral = Chamado.objects.count()
     
+    # ✅ NOVO: Blocos IP com validação RPKI não bem-sucedida
+    blocos_rpki_invalidos = BlocoIP.objects.filter(
+        Q(rpki_valido=False) | Q(rpki_status__in=['Invalid', 'Unknown', 'Error', 'NotChecked'])
+    ).select_related('cliente').order_by('-ultima_validacao')[:10]
+    
+    total_blocos_rpki_invalidos = BlocoIP.objects.filter(
+        Q(rpki_valido=False) | Q(rpki_status__in=['Invalid', 'Unknown', 'Error', 'NotChecked'])
+    ).count()
+    
+    # ✅ NOVO: Blocos IP com validação IRR não bem-sucedida
+    blocos_irr_invalidos = BlocoIP.objects.filter(
+        Q(irr_valido=False) | Q(irr_status__in=['NotFound', 'ASN_Mismatch', 'Error'])
+    ).select_related('cliente').order_by('-ultima_validacao')[:10]
+    
+    total_blocos_irr_invalidos = BlocoIP.objects.filter(
+        Q(irr_valido=False) | Q(irr_status__in=['NotFound', 'ASN_Mismatch', 'Error'])
+    ).count()
+
     context = {
         'total_chamados': total_chamados_hoje,
-        'chamados_abertos': chamados_abertos,  # ✅ ALTERADO
-        'chamados_em_andamento': chamados_em_andamento,  # ✅ ALTERADO
-        'chamados_aguardando': chamados_aguardando,  # ✅ ALTERADO
+        'chamados_abertos': chamados_abertos,
+        'chamados_em_andamento': chamados_em_andamento,
+        'chamados_aguardando': chamados_aguardando,
         'chamados_resolvidos': chamados_resolvidos_hoje,
         'chamados_fechados': chamados_fechados_hoje,
         'urgentes': urgentes_hoje,
@@ -96,6 +114,11 @@ def quadro_geral(request):
         'por_departamento': por_departamento,
         'total_chamados_geral': total_chamados_geral,
         'data_hoje': hoje,
+        # ✅ NOVO: Dados RPKI/IRR
+        'blocos_rpki_invalidos': blocos_rpki_invalidos,
+        'total_blocos_rpki_invalidos': total_blocos_rpki_invalidos,
+        'blocos_irr_invalidos': blocos_irr_invalidos,
+        'total_blocos_irr_invalidos': total_blocos_irr_invalidos,
     }
     
     return render(request, 'quadro_geral.html', context)

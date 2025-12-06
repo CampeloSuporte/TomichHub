@@ -11,6 +11,148 @@
                 <h4 class="mb-0">Dashboard - Visão Geral</h4>
             </div>
         </div>
+
+        <!-- ✅ RPKI/IRR NO INÍCIO -->
+        <div class="row mb-4">
+            <!-- RPKI Inválidos -->
+            <div class="col-lg-6 mb-3">
+                <div class="card">
+                    <div class="card-header" style="border-bottom: 2px solid #ff6b6b; padding: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h5 class="mb-0" style="color: #ff6b6b;">
+                                    <i class="fas fa-exclamation-circle"></i> RPKI Inválidos
+                                </h5>
+                                <small style="color: #8b949e;">Total: {{ total_blocos_rpki_invalidos }} bloco(s)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if blocos_rpki_invalidos %}
+                            <div class="table-responsive">
+                                <table class="custom-table" style="font-size: 0.85rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>Bloco</th>
+                                            <th>Cliente</th>
+                                            <th>Status</th>
+                                            <th>Mensagem</th>
+                                            <th>Última Validação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bloco in blocos_rpki_invalidos %}
+                                            <tr style="border-left: 3px solid #ff6b6b;">
+                                                <td>
+                                                    <code style="background: rgba(255,107,107,0.1); padding: 2px 6px; border-radius: 3px;">
+                                                        {{ bloco.bloco }}
+                                                    </code>
+                                                </td>
+                                                <td>
+                                                    <small>{{ bloco.cliente.nome_empresa|truncatechars:20 }}</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge" style="background-color: #ff6b6b; color: white; font-size: 0.75rem;">
+                                                        {{ bloco.get_status_rpki_display }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <small style="color: #8b949e;">{{ bloco.rpki_mensagem|truncatechars:30 }}</small>
+                                                </td>
+                                                <td>
+                                                    <small>
+                                                        {% if bloco.ultima_validacao %}
+                                                            {{ bloco.ultima_validacao|date:"d/m H:i" }}
+                                                        {% else %}
+                                                            <span style="color: #ff6b6b;">Nunca</span>
+                                                        {% endif %}
+                                                    </small>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div style="text-align: center; padding: 2rem; color: #00ff88;">
+                                <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                                <p>Todos os blocos RPKI foram validados com sucesso! ✅</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- IRR Inválidos -->
+            <div class="col-lg-6 mb-3">
+                <div class="card">
+                    <div class="card-header" style="border-bottom: 2px solid #ffa94d; padding: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h5 class="mb-0" style="color: #ffa94d;">
+                                    <i class="fas fa-exclamation-triangle"></i> IRR Inválidos
+                                </h5>
+                                <small style="color: #8b949e;">Total: {{ total_blocos_irr_invalidos }} bloco(s)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if blocos_irr_invalidos %}
+                            <div class="table-responsive">
+                                <table class="custom-table" style="font-size: 0.85rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>Bloco</th>
+                                            <th>Cliente</th>
+                                            <th>Status</th>
+                                            <th>Mensagem</th>
+                                            <th>Última Validação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bloco in blocos_irr_invalidos %}
+                                            <tr style="border-left: 3px solid #ffa94d;">
+                                                <td>
+                                                    <code style="background: rgba(255,169,77,0.1); padding: 2px 6px; border-radius: 3px;">
+                                                        {{ bloco.bloco }}
+                                                    </code>
+                                                </td>
+                                                <td>
+                                                    <small>{{ bloco.cliente.nome_empresa|truncatechars:20 }}</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge" style="background-color: #ffa94d; color: white; font-size: 0.75rem;">
+                                                        {{ bloco.get_status_irr_display }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <small style="color: #8b949e;">{{ bloco.irr_mensagem|truncatechars:30 }}</small>
+                                                </td>
+                                                <td>
+                                                    <small>
+                                                        {% if bloco.ultima_validacao %}
+                                                            {{ bloco.ultima_validacao|date:"d/m H:i" }}
+                                                        {% else %}
+                                                            <span style="color: #ffa94d;">Nunca</span>
+                                                        {% endif %}
+                                                    </small>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div style="text-align: center; padding: 2rem; color: #00ff88;">
+                                <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                                <p>Todos os blocos IRR foram validados com sucesso! ✅</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Cards de Estatísticas -->
         <div class="row mb-4">
             <!-- Total de Chamados -->

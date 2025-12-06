@@ -1,0 +1,2165 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: OLT1 GPON PILAR
+Host: 10.10.0.70:22
+Acesso: VIA PROXY SSH
+Modelo: ZTE C610 TITAN
+Template: Backup Completo
+Data: 05/12/2025 03:25:06
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+OLT_ZTE_PILAR1#
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+!<mim>
+!configuration saved at 00:10:06 Fri Dec 5 2025 by write zdb
+!configuration saved at 00:10:09 Fri Dec 5 2025 by write txt
+!last configuration change at 00:10:05 Fri Dec 5 2025 by friends
+!</mim>
+!<system-config>
+hostname OLT_ZTE_PILAR1
+!</system-config>
+!<if-intf>
+interface gei-1/1/5
+  no shutdown
+$
+interface gei-1/1/6
+  no shutdown
+$
+interface xgei-1/1/1
+  no shutdown
+$
+interface xgei-1/1/2
+$
+interface xgei-1/1/3
+$
+interface xgei-1/1/4
+$
+interface gpon_olt-1/3/1
+$
+interface gpon_olt-1/3/2
+$
+interface gpon_olt-1/3/3
+$
+interface gpon_olt-1/3/4
+$
+interface gpon_olt-1/3/5
+$
+interface gpon_olt-1/3/6
+$
+interface gpon_olt-1/3/7
+$
+interface gpon_olt-1/3/8
+$
+interface gpon_olt-1/3/9
+$
+interface gpon_olt-1/3/10
+$
+interface gpon_olt-1/3/11
+$
+interface gpon_olt-1/3/12
+$
+interface gpon_olt-1/3/13
+$
+interface gpon_olt-1/3/14
+$
+interface gpon_olt-1/3/15
+$
+interface gpon_olt-1/3/16
+$
+interface gpon_onu-1/3/1:1
+$
+interface gpon_onu-1/3/1:2
+$
+interface gpon_onu-1/3/1:3
+$
+interface gpon_onu-1/3/1:4
+$
+interface gpon_onu-1/3/1:5
+$
+interface gpon_onu-1/3/1:6
+$
+interface gpon_onu-1/3/1:7
+$
+interface gpon_onu-1/3/1:8
+$
+interface gpon_onu-1/3/1:9
+$
+interface gpon_onu-1/3/1:10
+$
+interface gpon_onu-1/3/1:11
+$
+interface gpon_onu-1/3/1:12
+$
+interface gpon_onu-1/3/1:13
+$
+interface gpon_onu-1/3/1:14
+$
+interface gpon_onu-1/3/1:15
+$
+interface gpon_onu-1/3/1:16
+$
+interface gpon_onu-1/3/1:17
+$
+interface gpon_onu-1/3/1:18
+$
+interface gpon_onu-1/3/1:19
+$
+interface gpon_onu-1/3/1:20
+$
+interface gpon_onu-1/3/1:21
+$
+interface gpon_onu-1/3/1:22
+$
+interface gpon_onu-1/3/1:23
+$
+interface gpon_onu-1/3/1:24
+$
+interface gpon_onu-1/3/1:25
+$
+interface gpon_onu-1/3/1:26
+$
+interface gpon_onu-1/3/1:27
+$
+interface gpon_onu-1/3/1:28
+$
+interface gpon_onu-1/3/1:29
+$
+interface gpon_onu-1/3/1:30
+$
+interface gpon_onu-1/3/1:31
+$
+interface gpon_onu-1/3/1:32
+$
+interface gpon_onu-1/3/1:33
+$
+interface gpon_onu-1/3/1:34
+$
+interface gpon_onu-1/3/1:35
+$
+interface gpon_onu-1/3/1:36
+$
+interface gpon_onu-1/3/1:37
+$
+interface gpon_onu-1/3/1:38
+$
+interface gpon_onu-1/3/1:39
+$
+interface gpon_onu-1/3/1:40
+$
+interface gpon_onu-1/3/1:41
+$
+interface gpon_onu-1/3/1:42
+$
+interface gpon_onu-1/3/1:43
+$
+interface gpon_onu-1/3/1:44
+$
+interface gpon_onu-1/3/1:45
+$
+interface gpon_onu-1/3/1:46
+$
+interface gpon_onu-1/3/1:47
+$
+interface gpon_onu-1/3/1:48
+$
+interface gpon_onu-1/3/1:49
+$
+interface gpon_onu-1/3/1:50
+$
+interface gpon_onu-1/3/1:51
+$
+interface gpon_onu-1/3/1:52
+$
+interface gpon_onu-1/3/2:1
+$
+interface gpon_onu-1/3/2:3
+$
+interface gpon_onu-1/3/2:4
+$
+interface gpon_onu-1/3/2:5
+$
+interface gpon_onu-1/3/2:6
+$
+interface gpon_onu-1/3/2:7
+$
+interface gpon_onu-1/3/2:8
+$
+interface gpon_onu-1/3/2:9
+$
+interface gpon_onu-1/3/2:10
+$
+interface gpon_onu-1/3/2:11
+$
+interface gpon_onu-1/3/2:12
+$
+interface gpon_onu-1/3/2:13
+$
+interface gpon_onu-1/3/2:14
+$
+interface gpon_onu-1/3/2:15
+$
+interface gpon_onu-1/3/2:16
+$
+interface gpon_onu-1/3/2:17
+$
+interface gpon_onu-1/3/2:18
+$
+interface gpon_onu-1/3/2:19
+$
+interface gpon_onu-1/3/2:20
+$
+interface gpon_onu-1/3/2:21
+$
+interface gpon_onu-1/3/2:22
+$
+interface gpon_onu-1/3/2:23
+$
+interface gpon_onu-1/3/2:24
+$
+interface gpon_onu-1/3/2:25
+$
+interface gpon_onu-1/3/2:26
+$
+interface gpon_onu-1/3/2:27
+$
+interface gpon_onu-1/3/2:28
+$
+interface gpon_onu-1/3/2:29
+$
+interface gpon_onu-1/3/2:30
+$
+interface gpon_onu-1/3/2:31
+$
+interface gpon_onu-1/3/2:32
+$
+interface gpon_onu-1/3/2:33
+$
+interface gpon_onu-1/3/2:34
+$
+interface gpon_onu-1/3/2:35
+$
+interface gpon_onu-1/3/2:36
+$
+interface gpon_onu-1/3/2:37
+$
+interface gpon_onu-1/3/2:38
+$
+interface gpon_onu-1/3/2:39
+$
+interface gpon_onu-1/3/2:40
+$
+interface gpon_onu-1/3/2:41
+$
+interface gpon_onu-1/3/2:42
+$
+interface gpon_onu-1/3/2:43
+$
+interface gpon_onu-1/3/2:44
+$
+interface gpon_onu-1/3/2:45
+$
+interface gpon_onu-1/3/2:46
+$
+interface gpon_onu-1/3/2:47
+$
+interface gpon_onu-1/3/2:48
+$
+interface gpon_onu-1/3/2:49
+$
+interface gpon_onu-1/3/2:50
+$
+interface gpon_onu-1/3/2:51
+$
+interface gpon_onu-1/3/2:52
+$
+interface gpon_onu-1/3/2:53
+$
+interface gpon_onu-1/3/2:54
+$
+interface gpon_onu-1/3/2:55
+$
+interface gpon_onu-1/3/2:56
+$
+interface gpon_onu-1/3/2:57
+$
+interface gpon_onu-1/3/2:58
+$
+interface gpon_onu-1/3/2:59
+$
+interface gpon_onu-1/3/2:60
+$
+interface gpon_onu-1/3/2:61
+$
+interface gpon_onu-1/3/2:62
+$
+interface gpon_onu-1/3/2:63
+$
+interface gpon_onu-1/3/2:64
+$
+interface gpon_onu-1/3/2:65
+$
+interface gpon_onu-1/3/2:66
+$
+interface gpon_onu-1/3/2:67
+$
+interface gpon_onu-1/3/2:68
+$
+interface gpon_onu-1/3/2:69
+$
+interface gpon_onu-1/3/2:70
+$
+interface gpon_onu-1/3/2:71
+$
+interface gpon_onu-1/3/2:72
+$
+interface gpon_onu-1/3/2:73
+$
+interface gpon_onu-1/3/2:74
+$
+interface gpon_onu-1/3/2:75
+$
+interface gpon_onu-1/3/2:76
+$
+interface gpon_onu-1/3/2:77
+$
+interface gpon_onu-1/3/2:78
+$
+interface gpon_onu-1/3/2:79
+$
+interface gpon_onu-1/3/2:80
+$
+interface gpon_onu-1/3/2:81
+$
+interface gpon_onu-1/3/2:82
+$
+interface gpon_onu-1/3/2:83
+$
+interface gpon_onu-1/3/2:84
+$
+interface gpon_onu-1/3/2:85
+$
+interface gpon_onu-1/3/2:86
+$
+interface gpon_onu-1/3/2:88
+$
+interface gpon_onu-1/3/2:89
+$
+interface gpon_onu-1/3/2:91
+$
+interface gpon_onu-1/3/3:1
+$
+interface gpon_onu-1/3/3:2
+$
+interface gpon_onu-1/3/3:3
+$
+interface gpon_onu-1/3/3:4
+$
+interface gpon_onu-1/3/3:5
+$
+interface gpon_onu-1/3/3:6
+$
+interface gpon_onu-1/3/3:7
+$
+interface gpon_onu-1/3/3:8
+$
+interface gpon_onu-1/3/3:9
+$
+interface gpon_onu-1/3/3:10
+$
+interface gpon_onu-1/3/3:11
+$
+interface gpon_onu-1/3/3:12
+$
+interface gpon_onu-1/3/3:13
+$
+interface gpon_onu-1/3/3:14
+$
+interface gpon_onu-1/3/3:15
+$
+interface gpon_onu-1/3/3:16
+$
+interface gpon_onu-1/3/3:17
+$
+interface gpon_onu-1/3/3:18
+$
+interface gpon_onu-1/3/3:19
+$
+interface gpon_onu-1/3/3:20
+$
+interface gpon_onu-1/3/3:21
+$
+interface gpon_onu-1/3/3:22
+$
+interface gpon_onu-1/3/3:23
+$
+interface gpon_onu-1/3/3:24
+$
+interface gpon_onu-1/3/3:25
+$
+interface gpon_onu-1/3/3:26
+$
+interface gpon_onu-1/3/3:27
+$
+interface gpon_onu-1/3/3:28
+$
+interface gpon_onu-1/3/3:29
+$
+interface gpon_onu-1/3/3:30
+$
+interface gpon_onu-1/3/3:31
+$
+interface gpon_onu-1/3/3:32
+$
+interface gpon_onu-1/3/3:33
+$
+interface gpon_onu-1/3/3:34
+$
+interface gpon_onu-1/3/3:35
+$
+interface gpon_onu-1/3/3:36
+$
+interface gpon_onu-1/3/3:37
+$
+interface gpon_onu-1/3/3:38
+$
+interface gpon_onu-1/3/3:39
+$
+interface gpon_onu-1/3/3:40
+$
+interface gpon_onu-1/3/3:41
+$
+interface gpon_onu-1/3/3:42
+$
+interface gpon_onu-1/3/3:43
+$
+interface gpon_onu-1/3/3:44
+$
+interface gpon_onu-1/3/4:1
+$
+interface gpon_onu-1/3/4:2
+$
+interface gpon_onu-1/3/4:3
+$
+interface gpon_onu-1/3/4:4
+$
+interface gpon_onu-1/3/4:5
+$
+interface gpon_onu-1/3/4:6
+$
+interface gpon_onu-1/3/4:7
+$
+interface gpon_onu-1/3/4:8
+$
+interface gpon_onu-1/3/4:10
+$
+interface gpon_onu-1/3/4:11
+$
+interface gpon_onu-1/3/4:12
+$
+interface gpon_onu-1/3/4:15
+$
+interface gpon_onu-1/3/4:16
+$
+interface gpon_onu-1/3/4:17
+$
+interface gpon_onu-1/3/4:18
+$
+interface gpon_onu-1/3/4:19
+$
+interface gpon_onu-1/3/4:20
+$
+interface gpon_onu-1/3/4:21
+$
+interface gpon_onu-1/3/4:22
+$
+interface gpon_onu-1/3/4:23
+$
+interface gpon_onu-1/3/4:24
+$
+interface gpon_onu-1/3/4:25
+$
+interface gpon_onu-1/3/4:26
+$
+interface gpon_onu-1/3/4:27
+$
+interface gpon_onu-1/3/4:28
+$
+interface gpon_onu-1/3/4:29
+$
+interface gpon_onu-1/3/4:30
+$
+interface gpon_onu-1/3/5:1
+$
+interface gpon_onu-1/3/5:2
+$
+interface gpon_onu-1/3/5:3
+$
+interface gpon_onu-1/3/5:4
+$
+interface gpon_onu-1/3/5:5
+$
+interface gpon_onu-1/3/5:6
+$
+interface gpon_onu-1/3/5:7
+$
+interface gpon_onu-1/3/5:9
+$
+interface gpon_onu-1/3/5:10
+$
+interface gpon_onu-1/3/5:11
+$
+interface gpon_onu-1/3/5:12
+$
+interface gpon_onu-1/3/5:13
+$
+interface gpon_onu-1/3/5:14
+$
+interface gpon_onu-1/3/5:15
+$
+interface gpon_onu-1/3/5:16
+$
+interface gpon_onu-1/3/5:17
+$
+interface gpon_onu-1/3/5:18
+$
+interface gpon_onu-1/3/5:19
+$
+interface gpon_onu-1/3/5:20
+$
+interface gpon_onu-1/3/5:21
+$
+interface gpon_onu-1/3/5:22
+$
+interface gpon_onu-1/3/5:23
+$
+interface gpon_onu-1/3/5:24
+$
+interface gpon_onu-1/3/5:25
+$
+interface gpon_onu-1/3/5:26
+$
+interface gpon_onu-1/3/5:27
+$
+interface gpon_onu-1/3/5:28
+$
+interface gpon_onu-1/3/5:29
+$
+interface gpon_onu-1/3/5:30
+$
+interface gpon_onu-1/3/5:32
+$
+interface gpon_onu-1/3/5:33
+$
+interface gpon_onu-1/3/5:34
+$
+interface gpon_onu-1/3/5:35
+$
+interface gpon_onu-1/3/5:36
+$
+interface gpon_onu-1/3/5:37
+$
+interface gpon_onu-1/3/5:38
+$
+interface gpon_onu-1/3/5:39
+$
+interface gpon_onu-1/3/5:40
+$
+interface gpon_onu-1/3/5:41
+$
+interface gpon_onu-1/3/5:42
+$
+interface gpon_onu-1/3/7:1
+$
+interface gpon_onu-1/3/7:2
+$
+interface gpon_onu-1/3/7:3
+$
+interface gpon_onu-1/3/8:1
+$
+interface gpon_onu-1/3/8:2
+$
+interface gpon_onu-1/3/8:3
+$
+interface gpon_onu-1/3/8:4
+$
+interface gpon_onu-1/3/8:5
+$
+interface gpon_onu-1/3/8:6
+$
+interface gpon_onu-1/3/8:7
+$
+interface gpon_onu-1/3/8:8
+$
+interface gpon_onu-1/3/8:9
+$
+interface gpon_onu-1/3/8:10
+$
+interface gpon_onu-1/3/8:11
+$
+interface gpon_onu-1/3/8:12
+$
+interface gpon_onu-1/3/8:13
+$
+interface gpon_onu-1/3/8:14
+$
+interface gpon_onu-1/3/8:15
+$
+interface gpon_onu-1/3/8:16
+$
+interface gpon_onu-1/3/8:17
+$
+interface gpon_onu-1/3/8:18
+$
+interface gpon_onu-1/3/8:19
+$
+interface gpon_onu-1/3/8:20
+$
+interface gpon_onu-1/3/8:21
+$
+interface gpon_onu-1/3/8:22
+$
+interface gpon_onu-1/3/8:23
+$
+interface gpon_onu-1/3/8:24
+$
+interface gpon_onu-1/3/8:25
+$
+interface gpon_onu-1/3/8:26
+$
+interface gpon_onu-1/3/8:27
+$
+interface gpon_onu-1/3/8:28
+$
+interface gpon_onu-1/3/8:29
+$
+interface gpon_onu-1/3/8:30
+$
+interface gpon_onu-1/3/8:31
+$
+interface gpon_onu-1/3/8:32
+$
+interface gpon_onu-1/3/8:33
+$
+interface gpon_onu-1/3/8:34
+$
+interface gpon_onu-1/3/8:35
+$
+interface gpon_onu-1/3/8:36
+$
+interface gpon_onu-1/3/8:37
+$
+interface gpon_onu-1/3/8:38
+$
+interface gpon_onu-1/3/8:39
+$
+interface gpon_onu-1/3/8:40
+$
+interface gpon_onu-1/3/8:41
+$
+interface gpon_onu-1/3/8:42
+$
+interface gpon_onu-1/3/8:43
+$
+interface gpon_onu-1/3/8:44
+$
+interface gpon_onu-1/3/8:45
+$
+interface gpon_onu-1/3/9:1
+$
+interface gpon_onu-1/3/9:3
+$
+interface gpon_onu-1/3/10:1
+$
+interface gpon_onu-1/3/10:2
+$
+interface gpon_onu-1/3/10:3
+$
+interface gpon_onu-1/3/10:4
+$
+interface gpon_onu-1/3/10:5
+$
+interface gpon_onu-1/3/10:6
+$
+interface gpon_onu-1/3/10:7
+$
+interface gpon_onu-1/3/10:8
+$
+interface gpon_onu-1/3/10:9
+$
+interface gpon_onu-1/3/10:10
+$
+interface gpon_onu-1/3/10:11
+$
+interface gpon_onu-1/3/10:12
+$
+interface gpon_onu-1/3/10:13
+$
+interface gpon_onu-1/3/10:14
+$
+interface gpon_onu-1/3/10:15
+$
+interface gpon_onu-1/3/10:16
+$
+interface gpon_onu-1/3/10:17
+$
+interface gpon_onu-1/3/10:18
+$
+interface gpon_onu-1/3/10:19
+$
+interface gpon_onu-1/3/10:20
+$
+interface gpon_onu-1/3/10:21
+$
+interface gpon_onu-1/3/10:22
+$
+interface gpon_onu-1/3/10:23
+$
+interface gpon_onu-1/3/10:24
+$
+interface gpon_onu-1/3/10:25
+$
+interface gpon_onu-1/3/10:26
+$
+interface gpon_onu-1/3/10:27
+$
+interface gpon_onu-1/3/10:28
+$
+interface gpon_onu-1/3/10:29
+$
+interface gpon_onu-1/3/10:30
+$
+interface gpon_onu-1/3/10:31
+$
+interface gpon_onu-1/3/10:32
+$
+interface gpon_onu-1/3/10:33
+$
+interface gpon_onu-1/3/10:34
+$
+interface gpon_onu-1/3/10:35
+$
+interface gpon_onu-1/3/10:36
+$
+interface gpon_onu-1/3/11:1
+$
+interface gpon_onu-1/3/11:2
+$
+interface gpon_onu-1/3/11:3
+$
+interface gpon_onu-1/3/11:4
+$
+interface gpon_onu-1/3/11:5
+$
+interface gpon_onu-1/3/11:6
+$
+interface gpon_onu-1/3/11:7
+$
+interface gpon_onu-1/3/11:8
+$
+interface gpon_onu-1/3/11:9
+$
+interface gpon_onu-1/3/11:10
+$
+interface gpon_onu-1/3/11:11
+$
+interface gpon_onu-1/3/11:12
+$
+interface gpon_onu-1/3/11:13
+$
+interface gpon_onu-1/3/11:14
+$
+interface gpon_onu-1/3/11:15
+$
+interface gpon_onu-1/3/11:16
+$
+interface gpon_onu-1/3/11:17
+$
+interface gpon_onu-1/3/11:18
+$
+interface gpon_onu-1/3/11:19
+$
+interface gpon_onu-1/3/11:20
+$
+interface gpon_onu-1/3/11:21
+$
+interface gpon_onu-1/3/11:22
+$
+interface gpon_onu-1/3/11:23
+$
+interface gpon_onu-1/3/11:24
+$
+interface gpon_onu-1/3/11:25
+$
+interface gpon_onu-1/3/11:26
+$
+interface gpon_onu-1/3/11:27
+$
+interface gpon_onu-1/3/11:28
+$
+interface gpon_onu-1/3/11:29
+$
+interface gpon_onu-1/3/11:30
+$
+interface gpon_onu-1/3/11:31
+$
+interface gpon_onu-1/3/11:32
+$
+interface gpon_onu-1/3/11:33
+$
+interface gpon_onu-1/3/11:34
+$
+interface gpon_onu-1/3/11:35
+$
+interface gpon_onu-1/3/11:36
+$
+interface gpon_onu-1/3/11:37
+$
+interface gpon_onu-1/3/11:38
+$
+interface gpon_onu-1/3/11:39
+$
+interface gpon_onu-1/3/11:40
+$
+interface gpon_onu-1/3/11:41
+$
+interface gpon_onu-1/3/11:42
+$
+interface gpon_onu-1/3/11:43
+$
+interface gpon_onu-1/3/11:44
+$
+interface gpon_onu-1/3/11:45
+$
+interface gpon_onu-1/3/11:47
+$
+interface gpon_onu-1/3/11:48
+$
+interface gpon_onu-1/3/11:49
+$
+interface gpon_onu-1/3/11:50
+$
+interface gpon_onu-1/3/11:51
+$
+interface gpon_onu-1/3/11:52
+$
+interface gpon_onu-1/3/11:53
+$
+interface gpon_onu-1/3/12:1
+$
+interface gpon_onu-1/3/12:2
+$
+interface gpon_onu-1/3/12:3
+$
+interface gpon_onu-1/3/12:4
+$
+interface gpon_onu-1/3/12:5
+$
+interface gpon_onu-1/3/12:6
+$
+interface gpon_onu-1/3/12:7
+$
+interface gpon_onu-1/3/12:8
+$
+interface gpon_onu-1/3/12:9
+$
+interface gpon_onu-1/3/12:10
+$
+interface gpon_onu-1/3/12:11
+$
+interface gpon_onu-1/3/12:12
+$
+interface gpon_onu-1/3/12:13
+$
+interface gpon_onu-1/3/12:14
+$
+interface gpon_onu-1/3/12:15
+$
+interface gpon_onu-1/3/12:16
+$
+interface gpon_onu-1/3/12:17
+$
+interface gpon_onu-1/3/12:18
+$
+interface gpon_onu-1/3/12:19
+$
+interface gpon_onu-1/3/12:20
+$
+interface gpon_onu-1/3/12:21
+$
+interface gpon_onu-1/3/12:22
+$
+interface gpon_onu-1/3/12:23
+$
+interface gpon_onu-1/3/12:24
+$
+interface gpon_onu-1/3/12:25
+$
+interface gpon_onu-1/3/13:1
+$
+interface gpon_onu-1/3/13:2
+$
+interface gpon_onu-1/3/13:3
+$
+interface gpon_onu-1/3/13:4
+$
+interface gpon_onu-1/3/13:5
+$
+interface gpon_onu-1/3/13:6
+$
+interface gpon_onu-1/3/13:7
+$
+interface gpon_onu-1/3/13:8
+$
+interface gpon_onu-1/3/13:9
+$
+interface gpon_onu-1/3/13:10
+$
+interface gpon_onu-1/3/13:11
+$
+interface gpon_onu-1/3/13:12
+$
+interface gpon_onu-1/3/13:13
+$
+interface gpon_onu-1/3/13:14
+$
+interface gpon_onu-1/3/13:15
+$
+interface gpon_onu-1/3/13:16
+$
+interface gpon_onu-1/3/13:17
+$
+interface gpon_onu-1/3/13:18
+$
+interface gpon_onu-1/3/13:19
+$
+interface gpon_onu-1/3/13:20
+$
+interface gpon_onu-1/3/13:21
+$
+interface gpon_onu-1/3/13:22
+$
+interface gpon_onu-1/3/13:23
+$
+interface gpon_onu-1/3/13:24
+$
+interface gpon_onu-1/3/13:25
+$
+interface gpon_onu-1/3/13:26
+$
+interface gpon_onu-1/3/13:27
+$
+interface gpon_onu-1/3/13:28
+$
+interface gpon_onu-1/3/13:29
+$
+interface gpon_onu-1/3/13:30
+$
+interface gpon_onu-1/3/13:31
+$
+interface gpon_onu-1/3/13:32
+$
+interface gpon_onu-1/3/13:33
+$
+interface gpon_onu-1/3/14:1
+$
+interface gpon_onu-1/3/14:2
+$
+interface gpon_onu-1/3/14:3
+$
+interface gpon_onu-1/3/14:4
+$
+interface gpon_onu-1/3/14:5
+$
+interface gpon_onu-1/3/14:6
+$
+interface gpon_onu-1/3/14:7
+$
+interface gpon_onu-1/3/14:8
+$
+interface gpon_onu-1/3/14:9
+$
+interface gpon_onu-1/3/14:10
+$
+interface gpon_onu-1/3/14:11
+$
+interface gpon_onu-1/3/14:12
+$
+interface gpon_onu-1/3/14:13
+$
+interface gpon_onu-1/3/14:14
+$
+interface gpon_onu-1/3/14:15
+$
+interface gpon_onu-1/3/14:16
+$
+interface gpon_onu-1/3/14:17
+$
+interface gpon_onu-1/3/14:18
+$
+interface gpon_onu-1/3/14:19
+$
+interface gpon_onu-1/3/14:20
+$
+interface gpon_onu-1/3/14:21
+$
+interface gpon_onu-1/3/14:22
+$
+interface gpon_onu-1/3/15:1
+$
+interface gpon_onu-1/3/15:2
+$
+interface gpon_onu-1/3/15:3
+$
+interface gpon_onu-1/3/15:5
+$
+interface gpon_onu-1/3/15:7
+$
+interface gpon_onu-1/3/15:9
+$
+interface gpon_onu-1/3/15:10
+$
+interface gpon_onu-1/3/15:11
+$
+interface gpon_onu-1/3/15:12
+$
+interface gpon_onu-1/3/15:13
+$
+interface gpon_onu-1/3/16:1
+$
+interface gpon_onu-1/3/16:2
+$
+interface gpon_onu-1/3/16:3
+$
+interface gpon_onu-1/3/16:4
+$
+interface gpon_onu-1/3/16:5
+$
+interface gpon_onu-1/3/16:6
+$
+interface gpon_onu-1/3/16:7
+$
+interface gpon_onu-1/3/16:8
+$
+interface gpon_onu-1/3/16:9
+$
+interface gpon_onu-1/3/16:10
+$
+interface gpon_onu-1/3/16:11
+$
+interface gpon_onu-1/3/16:12
+$
+interface gpon_onu-1/3/16:13
+$
+interface gpon_onu-1/3/16:14
+$
+interface gpon_onu-1/3/16:15
+$
+interface gpon_onu-1/3/16:17
+$
+interface gpon_onu-1/3/16:18
+$
+interface gpon_onu-1/3/16:19
+$
+interface gpon_onu-1/3/16:20
+$
+interface gpon_onu-1/3/16:21
+$
+interface gpon_onu-1/3/16:22
+$
+interface gpon_onu-1/3/16:23
+$
+interface gpon_onu-1/3/16:24
+$
+interface gpon_onu-1/3/16:25
+$
+interface gpon_onu-1/3/16:27
+$
+interface gpon_onu-1/3/16:28
+$
+interface gpon_onu-1/3/16:29
+$
+interface gpon_onu-1/3/16:30
+$
+interface vport-1/3/1.1:1
+$
+interface vport-1/3/1.2:1
+$
+interface vport-1/3/1.3:1
+$
+interface vport-1/3/1.4:1
+$
+interface vport-1/3/1.5:1
+$
+interface vport-1/3/1.6:1
+$
+interface vport-1/3/1.7:1
+$
+interface vport-1/3/1.8:1
+$
+interface vport-1/3/1.9:1
+$
+interface vport-1/3/1.10:1
+$
+interface vport-1/3/1.11:1
+$
+interface vport-1/3/1.12:1
+$
+interface vport-1/3/1.13:1
+$
+interface vport-1/3/1.14:1
+$
+interface vport-1/3/1.15:1
+$
+interface vport-1/3/1.16:1
+$
+interface vport-1/3/1.17:1
+$
+interface vport-1/3/1.18:1
+$
+interface vport-1/3/1.19:1
+$
+interface vport-1/3/1.20:1
+$
+interface vport-1/3/1.21:1
+$
+interface vport-1/3/1.22:1
+$
+interface vport-1/3/1.23:1
+$
+interface vport-1/3/1.24:1
+$
+interface vport-1/3/1.25:1
+$
+interface vport-1/3/1.26:1
+$
+interface vport-1/3/1.27:1
+$
+interface vport-1/3/1.28:1
+$
+interface vport-1/3/1.29:1
+$
+interface vport-1/3/1.30:1
+$
+interface vport-1/3/1.31:1
+$
+interface vport-1/3/1.32:1
+$
+interface vport-1/3/1.33:1
+$
+interface vport-1/3/1.34:1
+$
+interface vport-1/3/1.35:1
+$
+interface vport-1/3/1.36:1
+$
+interface vport-1/3/1.37:1
+$
+interface vport-1/3/1.38:1
+$
+interface vport-1/3/1.39:1
+$
+interface vport-1/3/1.40:1
+$
+interface vport-1/3/1.41:1
+$
+interface vport-1/3/1.42:1
+$
+interface vport-1/3/1.43:1
+$
+interface vport-1/3/1.44:1
+$
+interface vport-1/3/1.45:1
+$
+interface vport-1/3/1.46:1
+$
+interface vport-1/3/1.47:1
+$
+interface vport-1/3/1.48:1
+$
+interface vport-1/3/1.49:1
+$
+interface vport-1/3/1.50:1
+$
+interface vport-1/3/1.51:1
+$
+interface vport-1/3/1.52:1
+$
+interface vport-1/3/2.1:1
+$
+interface vport-1/3/2.3:1
+$
+interface vport-1/3/2.4:1
+$
+interface vport-1/3/2.5:1
+$
+interface vport-1/3/2.6:1
+$
+interface vport-1/3/2.7:1
+$
+interface vport-1/3/2.8:1
+$
+interface vport-1/3/2.9:1
+$
+interface vport-1/3/2.10:1
+$
+interface vport-1/3/2.11:1
+$
+interface vport-1/3/2.12:1
+$
+interface vport-1/3/2.13:1
+$
+interface vport-1/3/2.14:1
+$
+interface vport-1/3/2.15:1
+$
+interface vport-1/3/2.16:1
+$
+interface vport-1/3/2.17:1
+$
+interface vport-1/3/2.18:1
+$
+interface vport-1/3/2.19:1
+$
+interface vport-1/3/2.20:1
+$
+interface vport-1/3/2.21:1
+$
+interface vport-1/3/2.22:1
+$
+interface vport-1/3/2.23:1
+$
+interface vport-1/3/2.24:1
+$
+interface vport-1/3/2.25:1
+$
+interface vport-1/3/2.26:1
+$
+interface vport-1/3/2.27:1
+$
+interface vport-1/3/2.28:1
+$
+interface vport-1/3/2.29:1
+$
+interface vport-1/3/2.30:1
+$
+interface vport-1/3/2.31:1
+$
+interface vport-1/3/2.32:1
+$
+interface vport-1/3/2.33:1
+$
+interface vport-1/3/2.34:1
+$
+interface vport-1/3/2.35:1
+$
+interface vport-1/3/2.36:1
+$
+interface vport-1/3/2.37:1
+$
+interface vport-1/3/2.38:1
+$
+interface vport-1/3/2.39:1
+$
+interface vport-1/3/2.40:1
+$
+interface vport-1/3/2.41:1
+$
+interface vport-1/3/2.42:1
+$
+interface vport-1/3/2.43:1
+$
+interface vport-1/3/2.44:1
+$
+interface vport-1/3/2.45:1
+$
+interface vport-1/3/2.46:1
+$
+interface vport-1/3/2.47:1
+$
+interface vport-1/3/2.48:1
+$
+interface vport-1/3/2.49:1
+$
+interface vport-1/3/2.50:1
+$
+interface vport-1/3/2.51:1
+$
+interface vport-1/3/2.52:1
+$
+interface vport-1/3/2.53:1
+$
+interface vport-1/3/2.54:1
+$
+interface vport-1/3/2.55:1
+$
+interface vport-1/3/2.56:1
+$
+interface vport-1/3/2.57:1
+$
+interface vport-1/3/2.58:1
+$
+interface vport-1/3/2.59:1
+$
+interface vport-1/3/2.60:1
+$
+interface vport-1/3/2.61:1
+$
+interface vport-1/3/2.62:1
+$
+interface vport-1/3/2.63:1
+$
+interface vport-1/3/2.64:1
+$
+interface vport-1/3/2.65:1
+$
+interface vport-1/3/2.66:1
+$
+interface vport-1/3/2.67:1
+$
+interface vport-1/3/2.68:1
+$
+interface vport-1/3/2.69:1
+$
+interface vport-1/3/2.70:1
+$
+interface vport-1/3/2.71:1
+$
+interface vport-1/3/2.72:1
+$
+interface vport-1/3/2.73:1
+$
+interface vport-1/3/2.74:1
+$
+interface vport-1/3/2.75:1
+$
+interface vport-1/3/2.76:1
+$
+interface vport-1/3/2.77:1
+$
+interface vport-1/3/2.78:1
+$
+interface vport-1/3/2.79:1
+$
+interface vport-1/3/2.80:1
+$
+interface vport-1/3/2.81:1
+$
+interface vport-1/3/2.82:1
+$
+interface vport-1/3/2.83:1
+$
+interface vport-1/3/2.84:1
+$
+interface vport-1/3/2.85:1
+$
+interface vport-1/3/2.86:1
+$
+interface vport-1/3/2.88:1
+$
+interface vport-1/3/2.89:1
+$
+interface vport-1/3/2.91:1
+$
+interface vport-1/3/3.1:1
+$
+interface vport-1/3/3.2:1
+$
+interface vport-1/3/3.3:1
+$
+interface vport-1/3/3.4:1
+$
+interface vport-1/3/3.5:1
+$
+interface vport-1/3/3.6:1
+$
+interface vport-1/3/3.7:1
+$
+interface vport-1/3/3.8:1
+$
+interface vport-1/3/3.9:1
+$
+interface vport-1/3/3.10:1
+$
+interface vport-1/3/3.11:1
+$
+interface vport-1/3/3.12:1
+$
+interface vport-1/3/3.13:1
+$
+interface vport-1/3/3.14:1
+$
+interface vport-1/3/3.15:1
+$
+interface vport-1/3/3.16:1
+$
+interface vport-1/3/3.17:1
+$
+interface vport-1/3/3.18:1
+$
+interface vport-1/3/3.19:1
+$
+interface vport-1/3/3.20:1
+$
+interface vport-1/3/3.21:1
+$
+interface vport-1/3/3.22:1
+$
+interface vport-1/3/3.23:1
+$
+interface vport-1/3/3.24:1
+$
+interface vport-1/3/3.25:1
+$
+interface vport-1/3/3.26:1
+$
+interface vport-1/3/3.27:1
+$
+interface vport-1/3/3.28:1
+$
+interface vport-1/3/3.29:1
+$
+interface vport-1/3/3.30:1
+$
+interface vport-1/3/3.31:1
+$
+interface vport-1/3/3.32:1
+$
+interface vport-1/3/3.33:1
+$
+interface vport-1/3/3.34:1
+$
+interface vport-1/3/3.35:1
+$
+interface vport-1/3/3.36:1
+$
+interface vport-1/3/3.37:1
+$
+interface vport-1/3/3.38:1
+$
+interface vport-1/3/3.39:1
+$
+interface vport-1/3/3.40:1
+$
+interface vport-1/3/3.41:1
+$
+interface vport-1/3/3.42:1
+$
+interface vport-1/3/3.43:1
+$
+interface vport-1/3/3.44:1
+$
+interface vport-1/3/4.1:1
+$
+interface vport-1/3/4.2:1
+$
+interface vport-1/3/4.3:1
+$
+interface vport-1/3/4.4:1
+$
+interface vport-1/3/4.5:1
+$
+interface vport-1/3/4.6:1
+$
+interface vport-1/3/4.7:1
+$
+interface vport-1/3/4.8:1
+$
+interface vport-1/3/4.10:1
+$
+interface vport-1/3/4.11:1
+$
+interface vport-1/3/4.12:1
+$
+interface vport-1/3/4.15:1
+$
+interface vport-1/3/4.16:1
+$
+interface vport-1/3/4.17:1
+$
+interface vport-1/3/4.18:1
+$
+interface vport-1/3/4.19:1
+$
+interface vport-1/3/4.20:1
+$
+interface vport-1/3/4.21:1
+$
+interface vport-1/3/4.22:1
+$
+interface vport-1/3/4.23:1
+$
+interface vport-1/3/4.24:1
+$
+interface vport-1/3/4.25:1
+$
+interface vport-1/3/4.26:1
+$
+interface vport-1/3/4.27:1
+$
+interface vport-1/3/4.28:1
+$
+interface vport-1/3/4.29:1
+$
+interface vport-1/3/4.30:1
+$
+interface vport-1/3/5.1:1
+$
+interface vport-1/3/5.2:1
+$
+interface vport-1/3/5.3:1
+$
+interface vport-1/3/5.4:1
+$
+interface vport-1/3/5.5:1
+$
+interface vport-1/3/5.6:1
+$
+interface vport-1/3/5.7:1
+$
+interface vport-1/3/5.9:1
+$
+interface vport-1/3/5.10:1
+$
+interface vport-1/3/5.11:1
+$
+interface vport-1/3/5.12:1
+$
+interface vport-1/3/5.13:1
+$
+interface vport-1/3/5.14:1
+$
+interface vport-1/3/5.15:1
+$
+interface vport-1/3/5.16:1
+$
+interface vport-1/3/5.17:1
+$
+interface vport-1/3/5.18:1
+$
+interface vport-1/3/5.19:1
+$
+interface vport-1/3/5.20:1
+$
+interface vport-1/3/5.21:1
+$
+interface vport-1/3/5.22:1
+$
+interface vport-1/3/5.23:1
+$
+interface vport-1/3/5.24:1
+$
+interface vport-1/3/5.25:1
+$
+interface vport-1/3/5.26:1
+$
+interface vport-1/3/5.27:1
+$
+interface vport-1/3/5.28:1
+$
+interface vport-1/3/5.29:1
+$
+interface vport-1/3/5.30:1
+$
+interface vport-1/3/5.32:1
+$
+interface vport-1/3/5.33:1
+$
+interface vport-1/3/5.34:1
+$
+interface vport-1/3/5.35:1
+$
+interface vport-1/3/5.36:1
+$
+interface vport-1/3/5.37:1
+$
+interface vport-1/3/5.38:1
+$
+interface vport-1/3/5.39:1
+$
+interface vport-1/3/5.40:1
+$
+interface vport-1/3/5.41:1
+$
+interface vport-1/3/5.42:1
+$
+interface vport-1/3/7.1:1
+$
+interface vport-1/3/7.2:1
+$
+interface vport-1/3/7.3:1
+$
+interface vport-1/3/8.1:1
+$
+interface vport-1/3/8.2:1
+$
+interface vport-1/3/8.3:1
+$
+interface vport-1/3/8.4:1
+$
+interface vport-1/3/8.5:1
+$
+interface vport-1/3/8.6:1
+$
+interface vport-1/3/8.7:1
+$
+interface vport-1/3/8.8:1
+$
+interface vport-1/3/8.9:1
+$
+interface vport-1/3/8.10:1
+$
+interface vport-1/3/8.11:1
+$
+interface vport-1/3/8.12:1
+$
+interface vport-1/3/8.13:1
+$
+interface vport-1/3/8.14:1
+$
+interface vport-1/3/8.15:1
+$
+interface vport-1/3/8.16:1
+$
+interface vport-1/3/8.17:1
+$
+interface vport-1/3/8.18:1
+$
+interface vport-1/3/8.19:1
+$
+interface vport-1/3/8.20:1
+$
+interface vport-1/3/8.21:1
+$
+interface vport-1/3/8.22:1
+$
+interface vport-1/3/8.23:1
+$
+interface vport-1/3/8.24:1
+$
+interface vport-1/3/8.25:1
+$
+interface vport-1/3/8.26:1
+$
+interface vport-1/3/8.27:1
+$
+interface vport-1/3/8.28:1
+$
+interface vport-1/3/8.29:1
+$
+interface vport-1/3/8.30:1
+$
+interface vport-1/3/8.31:1
+$
+interface vport-1/3/8.32:1
+$
+interface vport-1/3/8.33:1
+$
+interface vport-1/3/8.34:1
+$
+interface vport-1/3/8.35:1
+$
+interface vport-1/3/8.36:1
+$
+interface vport-1/3/8.37:1
+$
+interface vport-1/3/8.38:1
+$
+interface vport-1/3/8.39:1
+$
+interface vport-1/3/8.40:1
+$
+interface vport-1/3/8.41:1
+$
+interface vport-1/3/8.42:1
+$
+interface vport-1/3/8.43:1
+$
+interface vport-1/3/8.44:1
+$
+interface vport-1/3/8.45:1
+$
+interface vport-1/3/9.1:1
+$
+interface vport-1/3/9.3:1
+$
+interface vport-1/3/10.1:1
+$
+interface vport-1/3/10.2:1
+$
+interface vport-1/3/10.3:1
+$
+interface vport-1/3/10.4:1
+$
+interface vport-1/3/10.5:1
+$
+interface vport-1/3/10.6:1
+$
+interface vport-1/3/10.7:1
+$
+interface vport-1/3/10.8:1
+$
+interface vport-1/3/10.9:1
+$
+interface vport-1/3/10.10:1
+$
+interface vport-1/3/10.11:1
+$
+interface vport-1/3/10.12:1
+$
+interface vport-1/3/10.13:1
+$
+interface vport-1/3/10.14:1
+$
+interface vport-1/3/10.15:1
+$
+interface vport-1/3/10.16:1
+$
+interface vport-1/3/10.17:1
+$
+interface vport-1/3/10.18:1
+$
+interface vport-1/3/10.19:1
+$
+interface vport-1/3/10.20:1
+$
+interface vport-1/3/10.21:1
+$
+interface vport-1/3/10.22:1
+$
+interface vport-1/3/10.23:1
+$
+interface vport-1/3/10.24:1
+$
+interface vport-1/3/10.25:1
+$
+interface vport-1/3/10.26:1
+$
+interface vport-1/3/10.27:1
+$
+interface vport-1/3/10.28:1
+$
+interface vport-1/3/10.29:1
+$
+interface vport-1/3/10.30:1
+$
+interface vport-1/3/10.31:1
+$
+interface vport-1/3/10.32:1
+$
+interface vport-1/3/10.33:1
+$
+interface vport-1/3/10.34:1
+$
+interface vport-1/3/10.35:1
+$
+interface vport-1/3/10.36:1
+$
+interface vport-1/3/11.1:1
+$
+interface vport-1/3/11.2:1
+$
+interface vport-1/3/11.3:1
+$
+interface vport-1/3/11.4:1
+$
+interface vport-1/3/11.5:1
+$
+interface vport-1/3/11.6:1
+$
+interface vport-1/3/11.7:1
+$
+interface vport-1/3/11.8:1
+$
+interface vport-1/3/11.9:1
+$
+interface vport-1/3/11.10:1
+$
+interface vport-1/3/11.11:1
+$
+interface vport-1/3/11.12:1
+$
+interface vport-1/3/11.13:1
+$
+interface vport-1/3/11.14:1
+$
+interface vport-1/3/11.15:1
+$
+interface vport-1/3/11.16:1
+$
+interface vport-1/3/11.17:1
+$
+interface vport-1/3/11.18:1
+$
+interface vport-1/3/11.19:1
+$
+interface vport-1/3/11.20:1
+$
+interface vport-1/3/11.21:1
+$
+interface vport-1/3/11.22:1
+$
+interface vport-1/3/11.23:1
+$
+interface vport-1/3/11.24:1
+$
+interface vport-1/3/11.25:1
+$
+interface vport-1/3/11.26:1
+$
+interface vport-1/3/11.27:1
+$
+interface vport-1/3/11.28:1
+$
+interface vport-1/3/11.29:1
+$
+interface vport-1/3/11.30:1
+$
+interface vport-1/3/11.31:1
+$
+interface vport-1/3/11.32:1
+$
+interface vport-1/3/11.33:1
+$
+interface vport-1/3/11.34:1
+$
+interface vport-1/3/11.35:1
+$
+interface vport-1/3/11.36:1
+$
+interface vport-1/3/11.37:1
+$
+interface vport-1/3/11.38:1
+$
+interface vport-1/3/11.39:1
+$
+interface vport-1/3/11.40:1
+$
+interface vport-1/3/11.41:1
+$
+interface vport-1/3/11.42:1
+$
+interface vport-1/3/11.43:1
+$
+interface vport-1/3/11.44:1
+$
+interface vport-1/3/11.45:1
+$
+interface vport-1/3/11.47:1
+$
+interface vport-1/3/11.48:1
+$
+interface vport-1/3/11.49:1
+$
+interface vport-1/3/11.50:1
+$
+interface vport-1/3/11.51:1
+$
+interface vport-1/3/11.52:1
+$
+interface vport-1/3/11.53:1
+$
+interface vport-1/3/12.1:1
+$
+interface vport-1/3/12.2:1
+$
+interface vport-1/3/12.3:1
+$
+interface vport-1/3/12.4:1
+$
+interface vport-1/3/12.5:1
+$
+interface vport-1/3/12.6:1
+$
+interface vport-1/3/12.7:1
+$
+interface vport-1/3/12.8:1
+$
+interface vport-1/3/12.9:1
+$
+interface vport-1/3/12.10:1
+$
+interface vport-1/3/12.11:1
+$
+interface vport-1/3/12.12:1
+$
+interface vport-1/3/12.13:1
+$
+interface vport-1/3/12.14:1
+$
+interface vport-1/3/12.15:1
+$
+interface vport-1/3/12.16:1
+$
+interface vport-1/3/12.17:1
+$
+interface vport-1/3/12.18:1
+$
+interface vport-1/3/12.19:1
+$
+interface vport-1/3/12.20:1
+$
+interface vport-1/3/12.21:1
+$
+interface vport-1/3/12.22:1
+$
+interface vport-1/3/12.23:1
+$
+interface vport-1/3/12.24:1
+$
+interface vport-1/3/12.25:1
+$
+interface vport-1/3/13.1:1
+$
+interface vport-1/3/13.2:1
+$
+interface vport-1/3/13.3:1
+$
+interface vport-1/3/13.4:1
+$
+interface vport-1/3/13.5:1
+$
+interface vport-1/3/13.6:1
+$
+interface vport-1/3/13.7:1
+$
+interface vport-1/3/13.8:1
+$
+interface vport-1/3/13.9:1
+$
+interface vport-1/3/13.10:1
+$
+interface vport-1/3/13.11:1
+$
+interface vport-1/3/13.12:1
+$
+interface vport-1/3/13.13:1
+$
+interface vport-1/3/13.14:1
+$
+interface vport-1/3/13.15:1
+$
+interface vport-1/3/13.16:1
+$
+interface vport-1/3/13.17:1
+$
+interface vport-1/3/13.18:1
+$
+interface vport-1/3/13.19:1
+$
+interface vport-1/3/13.20:1
+$
+interface vport-1/3/13.21:1
+$
+interface vport-1/3/13.22:1
+$
+interface vport-1/3/13.23:1
+$
+interface vport-1/3/13.24:1
+$
+interface vport-1/3/13.25:1
+$
+interface vport-1/3/13.26:1
+$
+interface vport-1/3/13.27:1
+$
+interface vport-1/3/13.28:1
+$
+interface vport-1/3/13.29:1
+$
+interface vport-1/3/13.30:1
+$
+interface vport-1/3/13.31:1
+$
+interface vport-1/3/13.32:1
+$
+interface vport-1/3/13.33:1
+$
+interface vport-1/3/14.1:1
+$
+interface vport-1/3/14.2:1
+$
+interface vport-1/3/14.3:1
+$
+interface vport-1/3/14.4:1
+$
+interface vport-1/3/14.5:1
+$
+interface vport-1/3/14.6:1
+$
+interface vport-1/3/14.7:1
+$
+interface vport-1/3/14.8:1
+$
+interface vport-1/3/14.9:1
+$
+interface vport-1/3/14.10:1
+$
+interface vport-1/3/14.11:1
+$
+interface vport-1/3/14.12:1
+$
+interface vport-1/3/14.13:1
+$
+interface vport-1/3/14.14:1
+$
+interface vport-1/3/14.15:1
+$
+interface vport-1/3/14.16:1
+$
+interface vport-1/3/14.17:1
+$
+interface vport-1/3/14.18:1
+$
+interface vport-1/3/14.19:1
+$
+interface vport-1/3/14.20:1
+$
+interface vport-1/3/14.21:1
+$
+interface vport-1/3/14.22:1
+$
+interface vport-1/3/15.1:1
+$
+interface vport-1/3/15.2:1
+$
+interface vport-1/3/15.3:1
+$
+interface vport-1/3/15.5:1
+$
+interface vport-1/3/15.7:1
+$
+interface vport-1/3/15.9:1
+$
+interface vport-1/3/15.10:1
+$
+interface vport-1/3/15.11:1
+$
+interface vport-1/3/15.12:1
+$
+interface vport-1/3/15.13:1
+$
+interface vport-1/3/16.1:1
+$
+interface vport-1/3/16.2:1
+$
+interface vport-1/3/16.3:1
+$
+interface vport-1/3/16.4:1
+$
+interface vport-1/3/16.5:1
+$
+interface vport-1/3/16.6:1
+$
+interface vport-1/3/16.7:1
+$
+interface vport-1/3/16.8:1
+$
+interface vport-1/3/16.9:1
+$
+interface vport-1/3/16.10:1
+$
+interface vport-1/3/16.11:1
+$
+interface vport-1/3/16.12:1
+$
+interface vport-1/3/16.13:1
+$
+interface vport-1/3/16.14:1
+$
+interface vport-1/3/16.15:1
+$
+interface vport-1/3/16.17:1
+$
+interface vport-1/3/16.18:1
+$
+interface vport-1/3/16.19:1
+$
+interface vport-1/3/16.20:1
+$
+interface vport-1/3/16.21:1
+$
+interface vport-1/3/16.22:1
+$
+interface vport-1/3/16.23:1
+$
+interface vport-1/3/16.24:1
+$
+interface vport-1/3/16.25:1
+$
+interface vport-1/3/16.27:1
+$
+interface vport-1/3/16.28:1
+$
+interface vport-1/3/16.29:1
+$
+interface vport-1/3/16.30:1
+$
+interface mgmt_eth
+  ip address 192.168.200.129 255.255.255.0
+$
+interface vlan1650
+  ip address 10.10.0.70 255.255.255.252
+$
+interface null1
+$
+!</if-intf>
+!<system-user>
+login block 900 attempts 30 within 120
+login on-failure alarm
+system-user
+  authorization-template 1
+    bind aaa-authorization-template 2001
+    local-privilege-level 15
+  $
+  authentication-template 1
+    bind aaa-authentication-template 2001
+  $
+  global-user-aging day 90
+  user-authen-restriction fail-time 10 lock-minute 15
+  user-name friends
+    bind authentication-template 1
+    bind authorization-template 1
+    password encrypted $2$58487791f5067abca6be4f3ca0d5d600ec66f5f1b7b20b2449bf41
+e31368cc3d
+  $
+  user-name zte
+    once-password
+    bind authentication-template 1
+    bind authorization-template 1
+    password encrypted 5b575f6693f60c09ccb127aab031077886dc39dc2e938496ea08d6d62
+cda37a9
+  $
+  strong-username min-len 3
+  strong-password length 8 character-set-num 3
+  strong-password date-check enable
+  strong-password username-related-chk substring inverse
+$
+!</system-user>
+!<aaa>
+aaa-authentication-template 2001
+  aaa-authentication-type local
+$
+aaa-authorization-template 2001
+  aaa-authorization-type local
+$
+!</aaa>
+!<stp>
+spantree
+$
+!</stp>
+!<ssh>
+ssh server enable
+!</ssh>
+
