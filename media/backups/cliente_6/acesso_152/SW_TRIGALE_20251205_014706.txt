@@ -1,84 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
-Equipamento: SW TRIGALE
-Host: 172.31.1.6:22002
-Acesso: VIA PROXY SSH
-Modelo: MIKROTIK CRS326-24s+2Q+
-Template: Backup Mikrotik
-Data: 05/12/2025 01:47:06
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[tomich@SWITCH TRIGALI] > /                                                    [K[tomich@SWITCH TRIGALI] > /e[tomich@SWITCH TRIGALI] > /e                                                   [K[tomich@SWITCH TRIGALI] > /ex[tomich@SWITCH TRIGALI] > /ex                                                  [K[tomich@SWITCH TRIGALI] > /exp[tomich@SWITCH TRIGALI] > /exp                                                 [K[tomich@SWITCH TRIGALI] > /expo[tomich@SWITCH TRIGALI] > /expo                                                [K[tomich@SWITCH TRIGALI] > /expor[tomich@SWITCH TRIGALI] > /expor                                               [K[tomich@SWITCH TRIGALI] > /export[tomich@SWITCH TRIGALI] > /export                                              [K[tomich@SWITCH TRIGALI] > /export [tomich@SWITCH TRIGALI] > /export                                              [K[tomich@SWITCH TRIGALI] > /export t[tomich@SWITCH TRIGALI] > /export t                                            [K[tomich@SWITCH TRIGALI] > /export te[tomich@SWITCH TRIGALI] > /export te                                           [K[tomich@SWITCH TRIGALI] > /export ter[tomich@SWITCH TRIGALI] > /export ter                                          [K[tomich@SWITCH TRIGALI] > /export ters[tomich@SWITCH TRIGALI] > /export ters                                         [K[tomich@SWITCH TRIGALI] > /export terse[tomich@SWITCH TRIGALI] > /export terse                                        [K[tomich@SWITCH TRIGALI] > /export terse[tomich@SWITCH TRIGALI] > /export terse
-# dec/03/2025 21:19:31 by RouterOS 6.49.13
-# software id = 7GMD-YM5Z
-#
-# model = CRS305-1G-4S+
-# serial number = HEC08VF3RYA
-/interface bridge add admin-mac=48:A9:8A:AC:1F:8D auto-mac=no comment=defconf nam
-e=bridge priority=0x5000 protocol-mode=mstp vlan-filtering=yes
-/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M
--full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="ROTA POR SW
-ITCH PDV"
-/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-half,10M
--full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="ROTA POR SW
-ITCH UNESC"
-/interface ethernet set [ find default-name=sfp-sfpplus3 ] comment="CLIENTE TRIGA
-LI"
-/interface vlan add interface=bridge name="vlan3010-GERENCIA SWITCHS" vlan-id=301
-0
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/snmp community set [ find default=yes ] name=TOMICH
-/interface bridge port add bridge=bridge comment=defconf interface=ether1
-/interface bridge port add bridge=bridge comment="SIERRA LOG" interface=sfp-sfppl
-us1
-/interface bridge port add bridge=bridge comment="BOULEVARD LAGOA" interface=sfp-
-sfpplus2
-/interface bridge port add bridge=bridge comment=TRIGALI interface=sfp-sfpplus3 p
-vid=1102
-/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus4
-/interface bridge vlan add bridge=bridge comment="VLANS PORTAS PON OLT BOULEVARD 
-LAGOA" tagged=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=301-316,3004,610,1110,609,300
-/interface bridge vlan add bridge=bridge comment="PPPoE CLIENTE TRIGALI" tagged=s
-fp-sfpplus1,sfp-sfpplus2 untagged=sfp-sfpplus3 vlan-ids=1102
-/interface bridge vlan add bridge=bridge comment="PPPOE SIERRA LOG MATRIZ" tagged
-=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=1101
-/interface bridge vlan add bridge=bridge comment="PPPOE PDV" tagged=sfp-sfpplus1,
-sfp-sfpplus2 vlan-ids=1104,1201
-/interface bridge vlan add bridge=bridge comment="PPPOE MARKET" tagged=sfp-sfpplu
-s1,sfp-sfpplus2 vlan-ids=1105
-/interface bridge vlan add bridge=bridge comment="VENTURA MORADA" tagged=sfp-sfpp
-lus2,sfp-sfpplus3 vlan-ids=200-216
-/interface bridge vlan add bridge=bridge comment=UNESC tagged=sfp-sfpplus1,sfp-sf
-pplus2 vlan-ids=1106
-/interface bridge vlan add bridge=bridge comment="PPPOE SIERRA LOG FILIAL" tagged
-=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=1107
-/interface bridge vlan add bridge=bridge comment="PPPoE ABR-TOPMAX" tagged=sfp-sf
-pplus2,sfp-sfpplus1 vlan-ids=1108
-/interface bridge vlan add bridge=bridge comment="GERECNAI SWITCHS" tagged=sfp-sf
-pplus1,sfp-sfpplus2,bridge vlan-ids=3010
-/interface bridge vlan add bridge=bridge comment="CLIENTE NACIONAL GAS" tagged=sf
-p-sfpplus1,sfp-sfpplus2 vlan-ids=1109
-/ip address add address=172.31.1.6/24 interface="vlan3010-GERENCIA SWITCHS" netwo
-rk=172.31.1.0
-/ip route add check-gateway=ping distance=1 gateway=172.31.1.1
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=9291
-/ip service set api-ssl disabled=yes
-/snmp set enabled=yes trap-version=2
-/system clock manual set time-zone=+03:00
-/system identity set name="SWITCH TRIGALI"
-/system routerboard settings set boot-os=router-os
-/tool romon set enabled=yes secrets=Net.10
-[tomich@SWITCH TRIGALI] >                                                      [tomich@SWITCH TRIGALI] > 

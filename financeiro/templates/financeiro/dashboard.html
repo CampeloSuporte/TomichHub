@@ -1,0 +1,1685 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    {% if not cliente %}
+    <!-- ============================================ -->
+    <!-- DASHBOARD INICIAL - VISÃO EXECUTIVA -->
+    <!-- ============================================ -->
+    
+    <!-- Header -->
+    <div class="mb-5">
+        <h1 class="display-6 fw-bold mb-2">💰 Financeiro</h1>
+        <p class="text-white fw-500">Visão geral da saúde financeira</p>
+    </div>
+    
+    <!-- GRÁFICO: FATURAMENTO POR MÊS -->
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0 text-dark fw-bold">
+                        <i class="fas fa-chart-bar text-info me-2"></i> Faturamento por Mês
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 280px;">
+                        <canvas id="graficoFaturamento"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CARDS DE RESUMO -->
+    <div class="row mb-5">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-2" style="color: white;">Faturamento (Mês)</h6>
+                            <h3 class="mb-0">R$ <span id="total-faturamento">0,00</span></h3>
+                        </div>
+                        <i class="fas fa-chart-line" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                    </div>
+                    <small class="mt-2 d-block" style="color: white;" id="info-faturamento">Carregando...</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-2" style="color: white;">Saldo em Aberto</h6>
+                            <h3 class="mb-0">R$ <span id="total-em-aberto">0,00</span></h3>
+                        </div>
+                        <i class="fas fa-exclamation-circle" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                    </div>
+                    <small class="mt-2 d-block" style="color: white;" id="info-aberto">Carregando...</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-2" style="color: white;">Clientes c/ Boleto</h6>
+                            <h3 class="mb-0"><span id="count-clientes-aberto">0</span></h3>
+                        </div>
+                        <i class="fas fa-users" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                    </div>
+                    <small class="mt-2 d-block" style="color: white;" id="info-clientes">Carregando...</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-2" style="color: white;">Faturas em Aberto</h6>
+                            <h3 class="mb-0"><span id="count-faturas-aberto">0</span></h3>
+                        </div>
+                        <i class="fas fa-file-invoice" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                    </div>
+                    <small class="mt-2 d-block" style="color: white;" id="info-faturas">Carregando...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SEÇÃO DE PESQUISA -->
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-4 text-dark fw-bold">
+                        <i class="fas fa-search me-2"></i> Pesquisar Cliente
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-group input-group-lg">
+                                <input type="text" class="form-control" 
+                                    id="pesquisaCliente" placeholder="Digite nome, CNPJ ou email..." 
+                                    onkeyup="pesquisarClientes(event)">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Resultado da pesquisa -->
+                    <div id="resultado-pesquisa" style="margin-top: 25px; display: none;">
+                        <h6 class="mb-3 text-dark fw-bold">Resultados da busca</h6>
+                        <div id="lista-clientes-pesquisa"></div>
+                    </div>
+                    
+                    <!-- Mensagem vazia -->
+                    <div id="msg-nenhum-cliente" class="alert alert-info mt-4" style="display: none;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Digite no mínimo 2 caracteres para pesquisar.</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TABELA DE CLIENTES COM BOLETO EM ABERTO -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0 text-dark fw-bold">
+                        <i class="fas fa-clock text-danger me-2"></i> Clientes com Boletos em Aberto
+                    </h5>
+                </div>
+                
+                <div class="card-body" id="tabela-clientes-aberto">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    
+    <!-- ============================================ -->
+    <!-- DASHBOARD DO CLIENTE -->
+    <!-- ============================================ -->
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0 text-dark fw-bold">💰 Financeiro - {{ cliente.nome_empresa }}</h2>
+            <small class="text-dark fw-500">CNPJ: {{ cliente.cnpj }}</small>
+        </div>
+        <a href="{% url 'dashboard_financeiro' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+    
+    <!-- Cards de Resumo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h6 class="text-dark fw-bold">📊 Consultorias</h6>
+                    <h3 class="text-primary">R$ <span id="card-consultorias">{{ total_consultorias|floatformat:2 }}</span></h3>
+                    <small class="text-dark"><span id="count-consultorias">{{ consultorias.count }}</span> item(ns)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h6 class="text-dark fw-bold">🌐 Alugueis IPv4</h6>
+                    <h3 class="text-info">R$ <span id="card-alugueis">{{ total_alugueis|floatformat:2 }}</span></h3>
+                    <small class="text-dark"><span id="count-alugueis">{{ alugueis.count }}</span> item(ns)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h6 class="text-dark fw-bold">✅ Total Recebido</h6>
+                    <h3 class="text-success">R$ <span id="card-recebido">{{ total_pago|floatformat:2 }}</span></h3>
+                    <small class="text-dark" id="count-pagos">0 pagos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <h6 class="text-dark fw-bold">💳 Saldo Aberto</h6>
+                    <h3 class="text-danger">R$ <span id="card-saldo">{{ saldo_aberto|floatformat:2 }}</span></h3>
+                    <small class="text-dark">À receber</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active text-dark fw-bold" data-bs-toggle="tab" href="#consultorias-tab">
+                        <i class="fas fa-briefcase me-1"></i> Consultorias
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-dark fw-bold" data-bs-toggle="tab" href="#alugueis-tab">
+                        <i class="fas fa-network-wired me-1"></i> Alugueis IPv4
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-dark fw-bold" data-bs-toggle="tab" href="#vendas-tab">
+                        <i class="fas fa-shopping-bag me-1"></i> Vendas de Equipamento
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-dark fw-bold" data-bs-toggle="tab" href="#faturas-tab">
+                        <i class="fas fa-file-invoice me-1"></i> Faturas
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body">
+            <div class="tab-content">
+                
+                <!-- TAB: CONSULTORIAS -->
+                <div id="consultorias-tab" class="tab-pane fade show active">
+                    <div class="mb-3">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaConsultoria">
+                            <i class="fas fa-plus me-1"></i> Nova Consultoria
+                        </button>
+                    </div>
+                    
+                    <div id="lista-consultorias">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: ALUGUEIS IPv4 -->
+                <div id="alugueis-tab" class="tab-pane fade">
+                    <div class="mb-3">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoAluguel">
+                            <i class="fas fa-plus me-1"></i> Novo Aluguel IPv4
+                        </button>
+                    </div>
+                    
+                    <div id="lista-alugueis">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: VENDAS DE EQUIPAMENTO -->
+                <div id="vendas-tab" class="tab-pane fade">
+                    <div class="mb-3">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaVenda">
+                            <i class="fas fa-plus me-1"></i> Nova Venda de Equipamento
+                        </button>
+                    </div>
+                    
+                    <div id="lista-vendas">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: FATURAS -->
+                <div id="faturas-tab" class="tab-pane fade">
+                    <div class="mb-3">
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovaFatura">
+                            <i class="fas fa-plus me-1"></i> Nova Fatura
+                        </button>
+                    </div>
+                    
+                    <div id="lista-faturas">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: NOVA CONSULTORIA -->
+<!-- ============================================ -->
+<div class="modal fade" id="modalNovaConsultoria" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-dark fw-bold">
+                    <i class="fas fa-briefcase me-2"></i> Nova Consultoria
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form id="formNovaConsultoria" method="POST" onsubmit="enviarNovaConsultoria(event)">
+                {% csrf_token %}
+                <div class="modal-body">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Descrição *</label>
+                        <input type="text" class="form-control" name="descricao" 
+                            placeholder="Ex: Consultoria de Redes" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Valor Unitário (R$) *</label>
+                        <input type="number" class="form-control" name="valor_unitario" 
+                            placeholder="Ex: 1000.00" step="0.01" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Quantidade de Meses *</label>
+                        <input type="number" class="form-control" name="quantidade_meses" 
+                            value="1" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Periodicidade</label>
+                        <select class="form-select" name="periodicidade">
+                            <option value="MENSAL">Mensal</option>
+                            <option value="TRIMESTRAL">Trimestral</option>
+                            <option value="SEMESTRAL">Semestral</option>
+                            <option value="ANUAL">Anual</option>
+                            <option value="UNICA">Única</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Data de Início *</label>
+                        <input type="date" class="form-control" name="data_inicio" required>
+                    </div>
+                    
+                    <div id="msgErroConsultoria" class="alert alert-danger d-none"></div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnSalvarConsultoria">
+                        <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerConsultoria"></span>
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: NOVO ALUGUEL IPv4 -->
+<!-- ============================================ -->
+<div class="modal fade" id="modalNovoAluguel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-dark fw-bold">
+                    <i class="fas fa-network-wired me-2"></i> Novo Aluguel IPv4
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form id="formNovoAluguel" method="POST" onsubmit="enviarNovoAluguel(event)">
+                {% csrf_token %}
+                <div class="modal-body">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Descrição do Bloco *</label>
+                        <input type="text" class="form-control" name="bloco_descricao" 
+                            placeholder="Ex: 200.100.50.0/24" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Quantidade de IPs *</label>
+                        <input type="number" class="form-control" name="quantidade_ips" 
+                            placeholder="Ex: 256" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Valor Mensal (R$) *</label>
+                        <input type="number" class="form-control" name="valor_mensal" 
+                            placeholder="Ex: 500.00" step="0.01" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Associar a um Bloco Existente</label>
+                        <select class="form-select" name="bloco_ip">
+                            <option value="">-- Nenhum --</option>
+                            {% for bloco in blocos_ip %}
+                            <option value="{{ bloco.id }}">{{ bloco.bloco }} ({{ bloco.descricao }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Data de Início *</label>
+                        <input type="date" class="form-control" name="data_inicio" required>
+                    </div>
+                    
+                    <div id="msgErroAluguel" class="alert alert-danger d-none"></div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnSalvarAluguel">
+                        <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerAluguel"></span>
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: NOVA VENDA DE EQUIPAMENTO -->
+<!-- ============================================ -->
+<div class="modal fade" id="modalNovaVenda" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-dark fw-bold">
+                    <i class="fas fa-shopping-bag me-2"></i> Nova Venda de Equipamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form id="formNovaVenda" method="POST" onsubmit="enviarNovaVenda(event)">
+                {% csrf_token %}
+                <div class="modal-body">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Nome do Equipamento *</label>
+                        <input type="text" class="form-control" name="descricao" 
+                            placeholder="Ex: Switch Cisco 48 portas" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Valor Total (R$) *</label>
+                        <input type="number" class="form-control" name="valor_total" 
+                            placeholder="Ex: 5000.00" step="0.01" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Quantidade de Parcelas *</label>
+                        <input type="number" class="form-control" name="quantidade_parcelas" 
+                            value="1" min="1" max="60" required
+                            onchange="atualizarValorParcela()">
+                        <small class="text-dark d-block mt-2">
+                            Valor por parcela: <strong id="valor-parcela">R$ 0,00</strong>
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Data de Início *</label>
+                        <input type="date" class="form-control" name="data_inicio" required>
+                    </div>
+                    
+                    <div id="msgErroVenda" class="alert alert-danger d-none"></div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnSalvarVenda">
+                        <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerVenda"></span>
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: NOVA FATURA -->
+<!-- ============================================ -->
+<div class="modal fade" id="modalNovaFatura" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-dark fw-bold">
+                    <i class="fas fa-file-invoice me-2"></i> Nova Fatura
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form id="formNovaFatura" method="POST" onsubmit="enviarNovaFatura(event)">
+                {% csrf_token %}
+                <div class="modal-body">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Tipo de Fatura *</label>
+                        <select class="form-select" id="tipoFatura" name="tipo" onchange="atualizarOpcoesFatura()" required>
+                            <option value="">-- Selecione --</option>
+                            <option value="CONSULTORIA">Apenas Consultorias</option>
+                            <option value="ALUGUEL_IPV4">Apenas Alugueis IPv4</option>
+                            <option value="MISTA">Consultorias + Alugueis</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Consultorias -->
+                    <div id="divConsultorias" class="mb-3 d-none">
+                        <label class="form-label text-dark fw-bold">Selecionar Consultorias</label>
+                        <div id="opcConsultorias" style="max-height: 200px; overflow-y: auto;">
+                            <p class="text-dark">Carregando...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Alugueis -->
+                    <div id="divAlugueis" class="mb-3 d-none">
+                        <label class="form-label text-dark fw-bold">Selecionar Alugueis IPv4</label>
+                        <div id="opcAlugueis" style="max-height: 200px; overflow-y: auto;">
+                            <p class="text-dark">Carregando...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Data de Vencimento *</label>
+                        <input type="date" class="form-control" name="data_vencimento" required>
+                    </div>
+                    
+                    <div id="msgErroFatura" class="alert alert-danger d-none"></div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btnSalvarFatura">
+                        <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerFatura"></span>
+                        Gerar Fatura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: VISUALIZAR BOLETO/FATURA -->
+<!-- ============================================ -->
+<div class="modal fade" id="modalVisualizarFatura" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="fas fa-file-invoice me-2"></i> Detalhes da Fatura
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body text-dark" id="conteudo-fatura">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+
+            <!-- SEÇÃO DE PAGAMENTOS REGISTRADOS -->
+            <div id="secaoPagamentosRegistrados" class="container-fluid px-3" style="display: none;">
+                <hr class="my-3">
+                <h6 class="mb-3 text-dark fw-bold">
+                    <i class="fas fa-history me-2"></i>Pagamentos Registrados
+                </h6>
+                
+                <div id="tabelaPagamentosContainer" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover" id="tabelaPagamentos">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-dark fw-bold">Recibo</th>
+                                <th class="text-dark fw-bold">Data</th>
+                                <th class="text-dark fw-bold">Valor</th>
+                                <th class="text-dark fw-bold">Comprovantes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoPagamentos">
+                            <!-- Preenchido por JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="mensagemSemPagamentos" class="alert alert-info" style="display: none;">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Nenhum pagamento registrado para esta fatura.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success btn-sm" onclick="abrirModalPagamento()">
+                    <i class="fas fa-money-bill me-1"></i> Registrar Pagamento
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: REGISTRAR PAGAMENTO -->
+<!-- ============================================ -->
+<div class="modal fade" id="modalRegistrarPagamento" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-dark fw-bold">
+                    <i class="fas fa-money-bill-wave me-2"></i> Registrar Pagamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form id="formRegistrarPagamento" method="POST" onsubmit="enviarRegistroPagamento(event)" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    
+                    <div class="alert alert-info">
+                        <small class="text-dark fw-bold">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Fatura: <strong id="pagto-numero-fatura">...</strong><br>
+                            Valor Total: <strong id="pagto-valor-total">R$ 0,00</strong>
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Data do Pagamento *</label>
+                        <input type="date" class="form-control" name="data_pagamento" 
+                            id="dataPagamento" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Valor Pagado (R$) *</label>
+                        <input type="number" class="form-control" name="valor_pagado" 
+                            placeholder="Ex: 1000.00" step="0.01" 
+                            id="valorPagado" required>
+                        <small class="text-dark d-block mt-2" id="alerta-valor"></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Tipo de Pagamento</label>
+                        <select class="form-select" name="tipo_pagamento">
+                            <option value="COMPROVANTE">Comprovante Upload</option>
+                            <option value="BOLETO">Boleto</option>
+                            <option value="PIX">PIX</option>
+                            <option value="TRANSFERENCIA">Transferência</option>
+                            <option value="CARTAO">Cartão</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Comprovante (Opcional)</label>
+                        <input type="file" class="form-control" name="comprovante" 
+                            accept=".pdf,.jpg,.jpeg,.png">
+                        <small class="text-dark fw-bold">PDF, JPG ou PNG (máx 5MB)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold">Observações</label>
+                        <textarea class="form-control" name="observacoes" rows="3" 
+                            placeholder="Ex: Referência do comprovante, detalhes do pagamento..."></textarea>
+                    </div>
+                    
+                    <div id="msgErroPagamento" class="alert alert-danger d-none"></div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btnRegistrarPagamento">
+                        <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerPagamento"></span>
+                        Registrar Pagamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- INCLUIR CHART.JS -->
+<!-- ============================================ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<!-- ============================================ -->
+<!-- JAVASCRIPT -->
+<!-- ============================================ -->
+<script>
+
+// ===== VARIÁVEIS GLOBAIS =====
+const urlParams = new URLSearchParams(window.location.search);
+const clienteId = "{{ cliente.id|default:'' }}";
+
+let faturaAtualId = null;
+let faturaAtualValor = 0;
+let faturaAtualNumero = '';
+let timeoutPesquisa;
+let chartFaturamento = null;
+
+console.log('✅ Dashboard carregado - Cliente ID:', clienteId);
+
+// ===== CARREGAR LISTAS AO INICIAR =====
+document.addEventListener('DOMContentLoaded', function() {
+    if (clienteId) {
+        console.log('📥 Carregando consultorias, alugueis, vendas e faturas...');
+        carregarConsultorias();
+        carregarAlugueis();
+        carregarVendas();
+        carregarFaturas();
+    } else {
+        console.log('📊 Carregando dashboard inicial...');
+        carregarDashboardInicial();
+        carregarGraficoFaturamento();
+    }
+    
+    // Validar valor em tempo real
+    validarValorPagamento();
+});
+
+// ===== CARREGAR GRÁFICO DE FATURAMENTO POR MÊS =====
+function carregarGraficoFaturamento() {
+    fetch("{% url 'api_faturamento_por_mes' %}")
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            console.log('📊 Dados do gráfico:', data);
+            
+            const ctx = document.getElementById('graficoFaturamento');
+            if (!ctx) return;
+            
+            // Destruir gráfico anterior se existir
+            if (chartFaturamento) {
+                chartFaturamento.destroy();
+            }
+            
+            chartFaturamento = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.meses,
+                    datasets: [
+                        {
+                            label: 'Faturamento (Pagas)',
+                            data: data.valores,
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                color: '#212529'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + value.toLocaleString('pt-BR', {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0
+                                    });
+                                },
+                                color: '#666'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#666'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    })
+    .catch(error => console.error('❌ Erro ao carregar gráfico:', error));
+}
+
+// ===== VALIDAÇÃO DE VALOR EM TEMPO REAL =====
+function validarValorPagamento() {
+    const inputValor = document.getElementById('valorPagado');
+    if (!inputValor) return;
+    
+    inputValor.addEventListener('input', function() {
+        const valor = parseFloat(this.value) || 0;
+        const alertaDiv = document.getElementById('alerta-valor');
+        
+        if (valor <= 0) {
+            alertaDiv.innerHTML = '';
+            return;
+        }
+        
+        if (!faturaAtualValor || faturaAtualValor <= 0) {
+            alertaDiv.innerHTML = '';
+            return;
+        }
+        
+        if (valor === faturaAtualValor) {
+            alertaDiv.innerHTML = '<span class="badge bg-success">✅ Pagamento completo</span>';
+        } else if (valor < faturaAtualValor) {
+            const saldo = faturaAtualValor - valor;
+            alertaDiv.innerHTML = `<span class="badge bg-warning">⚠️ Pagamento parcial (saldo: R$ ${saldo.toFixed(2)})</span>`;
+        } else {
+            const excesso = valor - faturaAtualValor;
+            alertaDiv.innerHTML = `<span class="badge bg-danger">❌ Valor maior que fatura (excesso: R$ ${excesso.toFixed(2)})</span>`;
+        }
+    });
+}
+
+// ===== DASHBOARD INICIAL =====
+function carregarDashboardInicial() {
+    fetch("{% url 'api_dashboard_financeiro' %}")
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            document.getElementById('total-faturamento').textContent = data.total_faturamento.toFixed(2).replace('.', ',');
+            document.getElementById('total-em-aberto').textContent = data.total_em_aberto.toFixed(2).replace('.', ',');
+            document.getElementById('count-clientes-aberto').textContent = data.clientes_devendo;
+            document.getElementById('count-faturas-aberto').textContent = data.faturas_vencidas;
+            document.getElementById('info-faturamento').textContent = `${data.total_faturas} faturas pagas neste mês`;
+            document.getElementById('info-aberto').textContent = `${data.faturas_vencidas} faturas vencidas aguardando`;
+            document.getElementById('info-clientes').textContent = `${data.clientes_devendo} cliente(s) em atraso`;
+            document.getElementById('info-faturas').textContent = `Valor total em atraso: R$ ${data.total_em_aberto.toFixed(2)}`;
+            
+            const tabelaDiv = document.getElementById('tabela-clientes-aberto');
+            if (data.clientes_abertos.length > 0) {
+                let html = `<div class="table-responsive"><table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th class="text-dark fw-bold">Cliente</th><th class="text-dark fw-bold">CNPJ</th><th class="text-end text-dark fw-bold">Boletos em Aberto</th><th class="text-end text-dark fw-bold">Valor Total</th><th class="text-dark fw-bold">Ação</th></tr>
+                    </thead><tbody>`;
+                
+                data.clientes_abertos.forEach(cliente => {
+                    html += `<tr>
+                        <td><strong class="text-dark">${cliente.nome_empresa}</strong></td>
+                        <td class="text-dark">${cliente.cnpj}</td>
+                        <td class="text-end"><span class="badge bg-danger">${cliente.boletos_abertos}</span></td>
+                        <td class="text-end"><strong class="text-dark">R$ ${cliente.valor_total.toFixed(2)}</strong></td>
+                        <td><a href="?cliente_id=${cliente.id}" class="btn btn-sm btn-primary"><i class="fas fa-arrow-right"></i> Acessar</a></td>
+                    </tr>`;
+                });
+                
+                html += `</tbody></table></div>`;
+                tabelaDiv.innerHTML = html;
+            } else {
+                tabelaDiv.innerHTML = `<div class="text-center py-5">
+                    <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                    <p class="text-white fw-bold"><strong>Parabéns!</strong><br>Todos os clientes estão em dia com as faturas.</p>
+                </div>`;
+            }
+        }
+    })
+    .catch(error => console.error('❌ Erro ao carregar dashboard:', error));
+}
+
+// ===== PESQUISA DE CLIENTES =====
+function pesquisarClientes(event) {
+    clearTimeout(timeoutPesquisa);
+    
+    const termo = document.getElementById('pesquisaCliente').value.trim();
+    const resultadoDiv = document.getElementById('resultado-pesquisa');
+    const listaDiv = document.getElementById('lista-clientes-pesquisa');
+    const msgDiv = document.getElementById('msg-nenhum-cliente');
+    
+    if (termo.length < 2) {
+        resultadoDiv.style.display = 'none';
+        msgDiv.style.display = 'block';
+        return;
+    }
+    
+    msgDiv.style.display = 'none';
+    listaDiv.innerHTML = '<div class="spinner-border" role="status"></div>';
+    resultadoDiv.style.display = 'block';
+    
+    timeoutPesquisa = setTimeout(() => {
+        fetch(`{% url 'api_pesquisar_clientes' %}?termo=${encodeURIComponent(termo)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.sucesso) {
+                if (data.total === 0) {
+                    listaDiv.innerHTML = '<p class="text-dark fw-bold">Nenhum cliente encontrado.</p>';
+                } else {
+                    let html = '<div class="row">';
+                    data.clientes.forEach(cliente => {
+                        const statusBoleto = cliente.boletos_abertos > 0 ? 
+                            `<span class="badge bg-danger ms-2">${cliente.boletos_abertos} boleto(s)</span>` : 
+                            `<span class="badge bg-success ms-2">Ok</span>`;
+                        
+                        html += `<div class="col-md-6 mb-3">
+                            <a href="?cliente_id=${cliente.id}" class="card text-decoration-none h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-dark fw-bold">${cliente.nome_empresa}</h6>
+                                    <small class="text-dark fw-bold">CNPJ: ${cliente.cnpj}</small>
+                                    <div class="mt-2">${statusBoleto}</div>
+                                </div>
+                            </a>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    listaDiv.innerHTML = html;
+                }
+            }
+        });
+    }, 300);
+}
+
+// ===== CONSULTORIAS =====
+function enviarNovaConsultoria(event) {
+    event.preventDefault();
+    const form = document.getElementById('formNovaConsultoria');
+    const formData = new FormData(form);
+    if (clienteId) formData.append('cliente_id', clienteId);
+    
+    const spinner = document.getElementById('spinnerConsultoria');
+    const btnSalvar = document.getElementById('btnSalvarConsultoria');
+    const msgErro = document.getElementById('msgErroConsultoria');
+    
+    spinner.classList.remove('d-none');
+    btnSalvar.disabled = true;
+    msgErro.classList.add('d-none');
+    
+    console.log('📤 Enviando consultoria...', Object.fromEntries(formData));
+    
+    fetch("{% url 'api_criar_consultoria' %}", { method: 'POST', body: formData })
+    .then(response => {
+        console.log(`📊 Status: ${response.status}`);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Resposta recebida:', data);
+        
+        if (data.sucesso) {
+            console.log('✅ Sucesso! Fechando modal...');
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaConsultoria'));
+            modal.hide();
+            
+            form.reset();
+            spinner.classList.add('d-none');
+            btnSalvar.disabled = false;
+            
+            carregarConsultorias();
+            carregarFaturas();
+            
+            alert(`✅ Consultoria criada com sucesso!\n\n${data.mensagem}`);
+        } else {
+            throw new Error(data.erro || 'Erro desconhecido');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro:', error);
+        msgErro.textContent = `❌ ${error.message}`;
+        msgErro.classList.remove('d-none');
+        spinner.classList.add('d-none');
+        btnSalvar.disabled = false;
+    });
+}
+
+function carregarConsultorias() {
+    const url = clienteId ? 
+        `{% url 'api_listar_consultorias' %}?cliente_id=${clienteId}` : 
+        `{% url 'api_listar_consultorias' %}`;
+    
+    fetch(url)
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            document.getElementById('lista-consultorias').innerHTML = data.html;
+            if (document.getElementById('card-consultorias'))
+                document.getElementById('card-consultorias').textContent = data.total_valor.toFixed(2);
+        }
+    });
+}
+
+// ===== ALUGUEIS =====
+function enviarNovoAluguel(event) {
+    event.preventDefault();
+    const form = document.getElementById('formNovoAluguel');
+    const formData = new FormData(form);
+    if (clienteId) formData.append('cliente_id', clienteId);
+    
+    const spinner = document.getElementById('spinnerAluguel');
+    const btnSalvar = document.getElementById('btnSalvarAluguel');
+    const msgErro = document.getElementById('msgErroAluguel');
+    
+    spinner.classList.remove('d-none');
+    btnSalvar.disabled = true;
+    msgErro.classList.add('d-none');
+    
+    console.log('📤 Enviando aluguel...');
+    
+    fetch("{% url 'api_criar_aluguel_ipv4' %}", { method: 'POST', body: formData })
+    .then(response => {
+        console.log(`📊 Status: ${response.status}`);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Resposta recebida:', data);
+        
+        if (data.sucesso) {
+            console.log('✅ Sucesso! Fechando modal...');
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoAluguel'));
+            modal.hide();
+            
+            form.reset();
+            spinner.classList.add('d-none');
+            btnSalvar.disabled = false;
+            
+            carregarAlugueis();
+            carregarFaturas();
+            
+            alert(`✅ Aluguel criado com sucesso!\n\n${data.mensagem}`);
+        } else {
+            throw new Error(data.erro || 'Erro desconhecido');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro:', error);
+        msgErro.textContent = `❌ ${error.message}`;
+        msgErro.classList.remove('d-none');
+        spinner.classList.add('d-none');
+        btnSalvar.disabled = false;
+    });
+}
+
+function carregarAlugueis() {
+    const url = clienteId ? 
+        `{% url 'api_listar_alugueis' %}?cliente_id=${clienteId}` : 
+        `{% url 'api_listar_alugueis' %}`;
+    
+    fetch(url)
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            document.getElementById('lista-alugueis').innerHTML = data.html;
+            if (document.getElementById('card-alugueis'))
+                document.getElementById('card-alugueis').textContent = data.total_valor_mensal.toFixed(2);
+        }
+    });
+}
+
+// ===== ATUALIZAR VALOR DA PARCELA EM TEMPO REAL =====
+function atualizarValorParcela() {
+    const valorTotal = parseFloat(document.querySelector('input[name="valor_total"]').value) || 0;
+    const quantidadeParcelas = parseInt(document.querySelector('input[name="quantidade_parcelas"]').value) || 1;
+    
+    const valorParcela = quantidadeParcelas > 0 ? (valorTotal / quantidadeParcelas) : 0;
+    
+    document.getElementById('valor-parcela').textContent = 
+        `R$ ${valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Atualizar quando valor ou parcelas mudam
+const inputValor = document.querySelector('input[name="valor_total"]');
+const inputParcelas = document.querySelector('input[name="quantidade_parcelas"]');
+
+if (inputValor) inputValor.addEventListener('input', atualizarValorParcela);
+if (inputParcelas) inputParcelas.addEventListener('input', atualizarValorParcela);
+
+// ===== CRIAR NOVA VENDA DE EQUIPAMENTO =====
+function enviarNovaVenda(event) {
+    event.preventDefault();
+    const form = document.getElementById('formNovaVenda');
+    const formData = new FormData(form);
+    if (clienteId) formData.append('cliente_id', clienteId);
+    
+    const spinner = document.getElementById('spinnerVenda');
+    const btnSalvar = document.getElementById('btnSalvarVenda');
+    const msgErro = document.getElementById('msgErroVenda');
+    
+    spinner.classList.remove('d-none');
+    btnSalvar.disabled = true;
+    msgErro.classList.add('d-none');
+    
+    console.log('📦 Enviando venda de equipamento...', Object.fromEntries(formData));
+    
+    fetch("{% url 'api_criar_venda_equipamento' %}", { method: 'POST', body: formData })
+    .then(response => {
+        console.log(`📊 Status: ${response.status}`);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Resposta recebida:', data);
+        
+        if (data.sucesso) {
+            console.log('✅ Sucesso! Fechando modal...');
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaVenda'));
+            modal.hide();
+            
+            form.reset();
+            spinner.classList.add('d-none');
+            btnSalvar.disabled = false;
+            
+            carregarVendas();
+            carregarFaturas();
+            
+            alert(`✅ Venda de equipamento criada com sucesso!\n\n${data.mensagem}`);
+        } else {
+            throw new Error(data.erro || 'Erro desconhecido');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro:', error);
+        msgErro.textContent = `❌ ${error.message}`;
+        msgErro.classList.remove('d-none');
+        spinner.classList.add('d-none');
+        btnSalvar.disabled = false;
+    });
+}
+
+// ===== CARREGAR VENDAS DE EQUIPAMENTO =====
+function carregarVendas() {
+    const url = clienteId ? 
+        `{% url 'api_listar_vendas_equipamentos' %}?cliente_id=${clienteId}` : 
+        `{% url 'api_listar_vendas_equipamentos' %}`;
+    
+    fetch(url)
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            const listDiv = document.getElementById('lista-vendas');
+            listDiv.innerHTML = data.html;
+            
+            if (document.getElementById('card-vendas'))
+                document.getElementById('card-vendas').textContent = data.total_valor.toFixed(2);
+        }
+    })
+    .catch(error => console.error('❌ Erro ao carregar vendas:', error));
+}
+
+// ===== EDITAR VENDA DE EQUIPAMENTO =====
+function editarVendaEquipamento(vendaId) {
+    console.log('🔧 Editando venda:', vendaId);
+    alert('⚠️ Função de edição em desenvolvimento');
+}
+
+// ===== DELETAR VENDA DE EQUIPAMENTO =====
+function deletarVendaEquipamento(vendaId) {
+    if (!confirm('Tem certeza que deseja deletar esta venda?')) return;
+    
+    console.log('🗑️ Deletando venda:', vendaId);
+    alert('⚠️ Função de exclusão em desenvolvimento');
+}
+
+// ===== FATURAS =====
+function atualizarOpcoesFatura() {
+    const tipo = document.getElementById('tipoFatura').value;
+    document.getElementById('divConsultorias').classList.toggle('d-none', tipo !== 'CONSULTORIA' && tipo !== 'MISTA');
+    document.getElementById('divAlugueis').classList.toggle('d-none', tipo !== 'ALUGUEL_IPV4' && tipo !== 'MISTA');
+}
+
+function enviarNovaFatura(event) {
+    event.preventDefault();
+    const form = document.getElementById('formNovaFatura');
+    const formData = new FormData(form);
+    if (clienteId) formData.append('cliente_id', clienteId);
+    
+    const spinner = document.getElementById('spinnerFatura');
+    const btnSalvar = document.getElementById('btnSalvarFatura');
+    const msgErro = document.getElementById('msgErroFatura');
+    
+    spinner.classList.remove('d-none');
+    btnSalvar.disabled = true;
+    msgErro.classList.add('d-none');
+    
+    console.log('📤 Enviando fatura...');
+    
+    fetch("{% url 'api_criar_fatura' %}", { method: 'POST', body: formData })
+    .then(response => {
+        console.log(`📊 Status: ${response.status}`);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Resposta recebida:', data);
+        
+        if (data.sucesso) {
+            console.log('✅ Sucesso! Fechando modal...');
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaFatura'));
+            modal.hide();
+            
+            form.reset();
+            spinner.classList.add('d-none');
+            btnSalvar.disabled = false;
+            
+            carregarFaturas();
+            
+            alert(`✅ Fatura criada com sucesso!\n\nNúmero: ${data.fatura.numero_fatura}`);
+        } else {
+            throw new Error(data.erro || 'Erro desconhecido');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro:', error);
+        msgErro.textContent = `❌ ${error.message}`;
+        msgErro.classList.remove('d-none');
+        spinner.classList.add('d-none');
+        btnSalvar.disabled = false;
+    });
+}
+
+function carregarFaturas() {
+    const url = clienteId ? 
+        `{% url 'api_listar_faturas' %}?cliente_id=${clienteId}` : 
+        `{% url 'api_listar_faturas' %}`;
+    
+    fetch(url)
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            document.getElementById('lista-faturas').innerHTML = `
+                <table class="table table-hover">
+                    <thead><tr><th class="text-dark fw-bold">Número</th><th class="text-dark fw-bold">Tipo</th><th class="text-dark fw-bold">Valor</th><th class="text-dark fw-bold">Vencimento</th><th class="text-dark fw-bold">Status</th><th class="text-dark fw-bold">Ações</th></tr></thead>
+                    <tbody>${data.html}</tbody>
+                </table>`;
+        }
+    });
+}
+
+// ===== VISUALIZAR FATURA =====
+function visualizarFatura(faturaId) {
+    faturaAtualId = faturaId;
+    
+    const conteudo = document.getElementById('conteudo-fatura');
+    conteudo.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p class="mt-2 text-dark fw-bold">Carregando...</p></div>';
+    
+    console.log(`📥 Buscando fatura ID: ${faturaId}`);
+    
+    fetch(`/financeiro/api/fatura/${faturaId}/`)
+    .then(response => {
+        console.log(`📊 Status da resposta: ${response.status}`);
+        console.log(`📋 Content-Type: ${response.headers.get('content-type')}`);
+        
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error(`❌ Erro HTTP ${response.status}:`, text);
+                throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+            });
+        }
+        
+        return response.text().then(text => {
+            console.log('📝 Resposta recebida:', text.substring(0, 500));
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('❌ Erro ao fazer parse JSON:', e);
+                console.error('Texto da resposta:', text);
+                throw new Error(`Resposta inválida: ${text.substring(0, 100)}`);
+            }
+        });
+    })
+    .then(data => {
+        console.log('✅ Dados parseados:', data);
+        
+        if (data.sucesso) {
+            const f = data.fatura;
+            faturaAtualValor = parseFloat(f.valor_total);
+            faturaAtualNumero = f.numero_fatura;
+            
+            let html = `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6 class="text-dark fw-bold">Número da Fatura</h6>
+                    <h5 class="text-primary">${f.numero_fatura}</h5>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-dark fw-bold">Status</h6>
+                    <h5><span class="badge ${f.status === 'PAGA' ? 'bg-success' : 'bg-danger'}">${f.status}</span></h5>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6 class="text-dark fw-bold">Valor Total</h6>
+                    <h5 class="text-success">R$ ${parseFloat(f.valor_total).toFixed(2)}</h5>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-dark fw-bold">Data de Vencimento</h6>
+                    <h5 class="text-dark fw-bold">${f.data_vencimento}</h5>
+                </div>
+            </div>
+            <hr>
+            <h6 class="mb-3 text-dark fw-bold"><i class="fas fa-building me-2"></i> Cliente</h6>
+            <div class="card mb-4 bg-light">
+                <div class="card-body">
+                    <p class="mb-1 text-dark fw-bold"><strong>${f.cliente.nome}</strong></p>
+                    <p class="mb-1 text-dark fw-bold">CNPJ: ${f.cliente.cnpj}</p>
+                </div>
+            </div>
+            <h6 class="mb-3 text-dark fw-bold"><i class="fas fa-receipt me-2"></i> Itens</h6>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm">
+                    <thead class="table-light">
+                        <tr><th class="text-dark fw-bold">Descrição</th><th class="text-dark fw-bold">Tipo</th><th class="text-end text-dark fw-bold">Valor</th></tr>
+                    </thead>
+                    <tbody>`;
+            
+            f.itens.forEach(item => {
+                html += `<tr><td class="text-dark fw-bold">${item.descricao}</td><td><small class="badge bg-secondary">${item.tipo}</small></td><td class="text-end"><strong class="text-dark fw-bold">R$ ${parseFloat(item.valor).toFixed(2)}</strong></td></tr>`;
+            });
+            
+            html += `</tbody></table></div>`;
+            conteudo.innerHTML = html;
+            
+            document.getElementById('pagto-numero-fatura').textContent = f.numero_fatura;
+            document.getElementById('pagto-valor-total').textContent = `R$ ${parseFloat(f.valor_total).toFixed(2)}`;
+            
+            carregarPagamentosRegistrados(faturaId);
+        } else {
+            conteudo.innerHTML = `<div class="alert alert-danger"><strong>❌ Erro:</strong> ${data.erro || 'Erro desconhecido'}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro completo:', error);
+        conteudo.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>❌ Erro ao carregar fatura:</strong>
+                <p class="mt-2 mb-0 text-dark fw-bold">${error.message}</p>
+                <hr>
+                <small class="text-dark fw-bold">
+                    <strong>Verificações:</strong>
+                    <ul class="mt-2 mb-0">
+                        <li>URL: <code>/financeiro/api/fatura/${faturaId}/</code></li>
+                        <li>Verifique se a rota existe em urls.py</li>
+                        <li>Verifique se a view retorna JSON</li>
+                        <li>Abra o console (F12) para mais detalhes</li>
+                    </ul>
+                </small>
+            </div>`;
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalVisualizarFatura'));
+    modal.show();
+}
+
+// ===== CARREGAR PAGAMENTOS REGISTRADOS =====
+function carregarPagamentosRegistrados(faturaId) {
+    fetch(`/financeiro/api/pagamento/${faturaId}/listar/`)
+    .then(response => response.json())
+    .then(data => {
+        console.log('✅ Dados de pagamentos carregados:', data);
+        
+        const secao = document.getElementById('secaoPagamentosRegistrados');
+        const mensagem = document.getElementById('mensagemSemPagamentos');
+        const tabela = document.getElementById('tabelaPagamentosContainer');
+        const corpo = document.getElementById('corpoPagamentos');
+        
+        if (data.sucesso && data.pagamentos && data.pagamentos.length > 0) {
+            console.log(`✅ Encontrados ${data.pagamentos.length} pagamento(s)`);
+            
+            secao.style.display = 'block';
+            mensagem.style.display = 'none';
+            tabela.style.display = 'block';
+            corpo.innerHTML = '';
+            
+            data.pagamentos.forEach(pag => {
+                console.log('📋 Processando pagamento:', pag);
+                
+                // ✅ NOVO: Preparar botões de comprovante
+                let botoesComprovantes = '';
+                
+                // Comprovante do usuário
+                if (pag.tem_comprovante_usuario && pag.comprovante_usuario_url) {
+                    botoesComprovantes += `
+                        <a href="${pag.comprovante_usuario_url}" 
+                           target="_blank" 
+                           class="btn btn-sm btn-warning me-2" 
+                           title="Comprovante enviado pelo usuário">
+                            <i class="fas fa-file-upload me-1"></i> Usuário
+                        </a>`;
+                }
+                
+                // PDF gerado
+                if (pag.tem_pdf_gerado && pag.comprovante_pdf_url) {
+                    botoesComprovantes += `
+                        <a href="${pag.comprovante_pdf_url}" 
+                           target="_blank" 
+                           class="btn btn-sm btn-info me-2" 
+                           title="PDF gerado automaticamente">
+                            <i class="fas fa-file-pdf me-1"></i> PDF
+                        </a>`;
+                }
+                
+                // Se não tem nenhum comprovante
+                if (!pag.tem_algum_comprovante) {
+                    botoesComprovantes = '<span class="text-muted small">Sem comprovante</span>';
+                }
+                
+                corpo.innerHTML += `
+                    <tr>
+                        <td><small class="badge bg-info text-dark">${pag.numero_recibo}</small></td>
+                        <td><small class="text-dark fw-bold">${pag.data_pagamento}</small></td>
+                        <td><strong class="text-dark fw-bold">R$ ${parseFloat(pag.valor).toFixed(2)}</strong></td>
+                        <td>${botoesComprovantes}</td>
+                    </tr>`;
+            });
+            
+            const rowTotal = document.createElement('tr');
+            rowTotal.className = 'table-light fw-bold';
+            rowTotal.innerHTML = `<td colspan="3" class="text-end text-dark fw-bold">Total Pago:</td><td class="text-dark fw-bold">R$ ${parseFloat(data.total_pago || 0).toFixed(2)}</td>`;
+            corpo.appendChild(rowTotal);
+            
+            if (parseFloat(data.saldo_fatura || 0) > 0) {
+                const rowSaldo = document.createElement('tr');
+                rowSaldo.className = 'text-danger fw-bold';
+                rowSaldo.innerHTML = `<td colspan="3" class="text-end text-dark fw-bold">Saldo Pendente:</td><td class="text-danger fw-bold">R$ ${parseFloat(data.saldo_fatura).toFixed(2)}</td>`;
+                corpo.appendChild(rowSaldo);
+            }
+        } else {
+            console.log('ℹ️ Nenhum pagamento encontrado ou erro na resposta');
+            console.log('Data recebida:', data);
+            
+            secao.style.display = 'block';
+            mensagem.style.display = 'block';
+            tabela.style.display = 'none';
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro ao carregar pagamentos:', error);
+        console.error('Stack:', error.stack);
+        
+        const secao = document.getElementById('secaoPagamentosRegistrados');
+        const msgErro = document.getElementById('mensagemSemPagamentos');
+        
+        secao.style.display = 'block';
+        msgErro.style.display = 'block';
+        msgErro.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i><strong>Erro ao carregar pagamentos:</strong> ${error.message}`;
+    });
+}
+
+// ===== ABRIR MODAL PAGAMENTO =====
+function abrirModalPagamento() {
+    if (!faturaAtualId) {
+        alert('⚠️ Nenhuma fatura selecionada!');
+        return;
+    }
+    
+    document.getElementById('formRegistrarPagamento').reset();
+    document.getElementById('dataPagamento').valueAsDate = new Date();
+    document.getElementById('msgErroPagamento').classList.add('d-none');
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalRegistrarPagamento'));
+    modal.show();
+}
+
+// ===== ENVIAR PAGAMENTO =====
+function enviarRegistroPagamento(event) {
+    event.preventDefault();
+    
+    const spinner = document.getElementById('spinnerPagamento');
+    const btnRegistrar = document.getElementById('btnRegistrarPagamento');
+    const msgErro = document.getElementById('msgErroPagamento');
+    const form = document.getElementById('formRegistrarPagamento');
+    
+    spinner.classList.remove('d-none');
+    btnRegistrar.disabled = true;
+    msgErro.classList.add('d-none');
+    
+    const formData = new FormData(form);
+    formData.append('fatura_id', faturaAtualId);
+    
+    fetch("{% url 'api_registrar_pagamento' %}", { method: 'POST', body: formData })
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            bootstrap.Modal.getInstance(document.getElementById('modalRegistrarPagamento')).hide();
+            
+            // ✅ NOVO: Construir mensagem com informações sobre comprovantes
+            let msgComprovantes = '';
+            
+            if (data.pagamento.tem_comprovante_usuario) {
+                msgComprovantes += '✅ Comprovante do usuário salvo\n';
+            }
+            if (data.pagamento.tem_pdf_gerado) {
+                msgComprovantes += '✅ PDF gerado automaticamente\n';
+            }
+            if (!data.pagamento.tem_comprovante_usuario && !data.pagamento.tem_pdf_gerado) {
+                msgComprovantes = '⚠️ Nenhum comprovante foi salvo\n';
+            }
+            
+            let msg = `✅ Pagamento registrado!\n\nRecibo: ${data.pagamento.numero_recibo}\nValor: R$ ${parseFloat(data.pagamento.valor).toFixed(2)}\n\n${msgComprovantes}`;
+            
+            if (data.pagamento.fatura_status === 'PAGA') {
+                msg += '\n🎉 Fatura marcada como PAGA!';
+            }
+            
+            alert(msg);
+            
+            visualizarFatura(faturaAtualId);
+            carregarGraficoFaturamento();
+            
+            form.reset();
+        } else {
+            msgErro.textContent = '❌ ' + (data.erro || 'Erro desconhecido');
+            msgErro.classList.remove('d-none');
+        }
+    })
+    .catch(error => {
+        msgErro.textContent = '❌ Erro: ' + error.message;
+        msgErro.classList.remove('d-none');
+    })
+    .finally(() => {
+        spinner.classList.add('d-none');
+        btnRegistrar.disabled = false;
+    });
+}
+
+
+</script>
+
+<style>
+/* Textos padrão em branco */
+.container-fluid,
+.card,
+.modal-body,
+.form-control,
+.form-select,
+table tbody,
+.alert,
+.badge,
+.btn {
+    --bs-body-color: #fff;
+}
+
+/* Inputs com tema escuro */
+.form-control, .form-select {
+    background-color: #2a2a2a !important;
+    color: #fff !important;
+    border-color: #00ff88 !important;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #2a2a2a !important;
+    color: #fff !important;
+    border-color: #00ff88 !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 255, 136, 0.25);
+}
+
+.form-control::placeholder {
+    color: #999 !important;
+}
+
+/* Tables */
+.table {
+    color: #fff;
+}
+
+.table thead {
+    border-color: #00ff88;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 255, 136, 0.1);
+}
+
+/* Text classes override */
+.text-dark {
+    color: #fff !important;
+}
+
+.text-muted {
+    color: #aaa !important;
+}
+
+/* Modais */
+.modal-content {
+    background-color: #1a1a1a;
+    color: #fff;
+    border-color: #00ff88;
+}
+
+.modal-header {
+    border-bottom-color: #00ff88;
+}
+
+.modal-footer {
+    border-top-color: #00ff88;
+}
+
+.nav-link {
+    color: #fff !important;
+}
+
+.nav-link.active {
+    color: #00ff88 !important;
+    border-bottom-color: #00ff88 !important;
+}
+
+/* Cards */
+.card {
+    background-color: #1a1a1a;
+    border-color: #00ff88;
+    color: #fff;
+}
+
+.card-header {
+    background-color: #2a2a2a !important;
+    border-color: #00ff88 !important;
+    color: #fff;
+}
+
+.card-body {
+    color: #fff;
+}
+
+/* Badges */
+.badge {
+    color: #1a1a1a;
+}
+
+.badge-info {
+    background-color: #00ffff;
+}
+</style>
+
+{% endblock %}

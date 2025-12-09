@@ -52,6 +52,7 @@
                     </button>
                 </div>
                 -->
+               
                 <div class="dropdown">
                     <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-cog me-1"></i> Sistema
@@ -61,8 +62,17 @@
                         <li><a class="dropdown-item" href="{%url 'cadastrar_cliente'%}">Clientes</a></li>
                         <li><a class="dropdown-item" href="{%url 'listar_funcoes'%}">Função de equipamento</a></li>
                         <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">Modelos de equipamento</a></li>
+                        
+                        <!-- ✅ FINANCEIRO - VERSÃO FINAL (SEM context_processors) -->
+                        {% if request.user.is_staff %}
+                            {% if request.user.id == 1 or request.user.id == 2 %}
+                            <li><a class="dropdown-item" href="{% url 'dashboard_financeiro' %}">
+                                <i class="fas fa-chart-line me-2"></i>Financeiro
+                            </a></li>
+                            {% endif %}
+                        {% endif %}
+                        
                         <li><hr class="dropdown-divider"></li>
-                         <!--<li><a class="dropdown-item" href="/configuracoes/">Configurações Gerais</a></li>-->
                     </ul>
                 </div>
             </div>
@@ -138,5 +148,19 @@
         });
         });
     </script>
+    <script>
+    // IDs DOS USUÁRIOS COM ACESSO AO FINANCEIRO
+    const USUARIOS_FINANCEIRO = [1, 2];  // ← MUDE PARA OS IDS REAIS
+    const USER_ID = {{ request.user.id }};
+    
+    // Se é staff e está na lista, mostra o link
+    window.pode_acessar_financeiro = function() {
+        return {{ request.user.is_staff|lower }} && USUARIOS_FINANCEIRO.includes(USER_ID);
+    };
+    
+    console.log('✅ Acesso Financeiro:', pode_acessar_financeiro() ? '✅ Permitido' : '❌ Negado');
+    </script>
+
+
 </body>
 </html>

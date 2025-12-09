@@ -17,75 +17,163 @@ import os
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+from django.core.cache import cache
 
 logger = get_task_logger(__name__)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=2)  # ✅ Reduzido de 3 para 2
 def executar_backup_agendado(self, acesso_id):
     """
     ✅ Task Celery para executar backup automaticamente
+    - Com proteção contra execução duplicada
+    - Com retry limitado
+    - Com limpeza de cache ao final
     """
+    task_key = f'backup_task_{acesso_id}'
+    
     try:
         acesso = Acesso.objects.get(id=acesso_id)
         
         if not acesso.backup_habilitado or not acesso.backup_automatico:
             logger.warning(
-                f"⚠️ Backup agendado desconsiderado para {acesso.tipo}"
+                f"⚠️ Backup agendado foi desabilitado para {acesso.tipo}"
             )
-            return
+            cache.delete(task_key)
+            return {
+                'status': 'ignorado',
+                'motivo': 'Backup desabilitado'
+            }
         
         if not acesso.backup_template:
-            logger.error(f"❌ Sem template para {acesso.tipo}")
-            return
+            logger.error(f"❌ Nenhum template configurado para {acesso.tipo}")
+            cache.delete(task_key)
+            return {
+                'status': 'erro',
+                'erro': 'Template não configurado'
+            }
         
-        logger.info(f"🔄 Backup agendado: {acesso.tipo} ({acesso.host})")
+        logger.info(f"🔄 Executando backup agendado: {acesso.tipo} ({acesso.host})")
         
+        # ✅ Executar backup
         resultado = realizar_backup(acesso, usuario=None)
         
         if resultado['sucesso']:
             logger.info(
-                f"✅ Backup OK: {acesso.tipo} ({resultado['tamanho']} bytes)"
+                f"✅ Backup bem-sucedido: {acesso.tipo} | "
+                f"Tamanho: {resultado['tamanho']} bytes | "
+                f"Duração: {resultado['duracao']}"
             )
+            cache.delete(task_key)  # ✅ Liberar task key
+            
+            return {
+                'status': 'sucesso',
+                'acesso_id': acesso_id,
+                'tamanho': resultado['tamanho'],
+                'duracao': resultado['duracao']
+            }
         else:
             logger.error(f"❌ Backup falhou: {resultado['erro']}")
+            cache.delete(task_key)
             raise Exception(resultado['erro'])
         
     except Acesso.DoesNotExist:
-        logger.error(f"❌ Acesso #{acesso_id} não encontrado")
+        logger.error(f"❌ Acesso #{acesso_id} não encontrado no banco")
+        cache.delete(task_key)
+        return {
+            'status': 'erro',
+            'erro': f'Acesso #{acesso_id} não encontrado'
+        }
+        
     except Exception as exc:
-        logger.error(f"❌ Erro: {str(exc)}")
-        self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
-
+        logger.error(f"❌ Erro ao executar backup: {str(exc)}")
+        cache.delete(task_key)
+        
+        # ✅ Retry apenas se não atingiu limite
+        if self.request.retries < self.max_retries:
+            retry_count = self.request.retries + 1
+            countdown_secs = 120  # 2 minutos
+            logger.info(
+                f"🔄 Agendando retry {retry_count}/{self.max_retries} "
+                f"em {countdown_secs}s para acesso #{acesso_id}"
+            )
+            self.retry(exc=exc, countdown=countdown_secs)
+        else:
+            logger.error(
+                f"❌ Máximo de retries ({self.max_retries}) atingido "
+                f"para acesso #{acesso_id} ({acesso_id})"
+            )
+            return {
+                'status': 'erro_final',
+                'acesso_id': acesso_id,
+                'erro': f'Falha após {self.max_retries} tentativas'
+            }
 
 @shared_task
 def agendar_backups_pendentes():
-    """✅ Task periódica para agendar backups"""
-    logger.info("🔍 Verificando backups agendados...")
+    """
+    ✅ VERSÃO SEM CELERY - Executa backups DIRETAMENTE (síncrono)
+    """
     
-    acessos_automaticos = Acesso.objects.filter(
-        backup_habilitado=True,
-        backup_automatico=True,
-        backup_template__isnull=False
-    ).select_related('cliente', 'backup_template')
+    logger.info("\n" + "="*80)
+    logger.info("🔄 AGENDADOR DE BACKUPS")
+    logger.info("="*80)
     
-    total = acessos_automaticos.count()
-    logger.info(f"📊 Total: {total}")
+    try:
+        # ✅ BUSCAR ACESSOS COM BACKUP AUTOMÁTICO
+        acessos = Acesso.objects.filter(
+            backup_habilitado=True,
+            backup_automatico=True,
+            backup_template__isnull=False
+        ).select_related('cliente', 'backup_template')
+        
+        total = acessos.count()
+        logger.info(f"📊 Total de acessos: {total}\n")
+        
+        if total == 0:
+            return {'status': 'ok', 'total': 0, 'agendados': 0}
+        
+        agendados = 0
+        erros = 0
+        
+        # ✅ EXECUTAR BACKUPS DIRETAMENTE (SEM CELERY)
+        for idx, acesso in enumerate(acessos, 1):
+            try:
+                logger.info(f"[{idx}/{total}] {acesso.tipo} ({acesso.host})")
+                
+                if not acesso.backup_template:
+                    logger.error(f"    ❌ Sem template")
+                    erros += 1
+                    continue
+                
+                # ✅ EXECUTAR BACKUP DIRETO
+                resultado = realizar_backup(acesso, usuario=None)
+                
+                if resultado['sucesso']:
+                    logger.info(f"    ✅ SUCESSO")
+                    agendados += 1
+                else:
+                    logger.error(f"    ❌ {resultado['erro']}")
+                    erros += 1
+            
+            except Exception as e:
+                logger.error(f"    ❌ ERRO: {str(e)}")
+                erros += 1
+        
+        logger.info(f"\n✅ Executados: {agendados}, Erros: {erros}\n")
+        
+        return {
+            'status': 'ok',
+            'total': total,
+            'agendados': agendados,
+            'erros': erros
+        }
     
-    agendados = 0
-    for acesso in acessos_automaticos:
-        try:
-            executar_backup_agendado.delay(acesso.id)
-            agendados += 1
-        except Exception as e:
-            logger.error(f"❌ Erro ao agendar {acesso.tipo}: {str(e)}")
-    
-    logger.info(f"✅ {agendados}/{total} agendados")
-    return {
-        'total': total,
-        'agendados': agendados,
-        'timestamp': datetime.now().isoformat()
-    }
+    except Exception as e:
+        logger.error(f"❌ ERRO CRÍTICO: {str(e)}")
+        return {'status': 'erro', 'motivo': str(e)}
+
+
 
 
 @shared_task
@@ -384,3 +472,108 @@ def validar_blocos_rpki_irr_agendado():
     }
     
     return resultado
+
+
+@shared_task
+def agendar_backups_pendentes_SEM_CELERY():
+    """
+    ✅ VERSÃO SEM CELERY - Executa backups diretamente via crontab
+    - Não usa .delay() (enfileiramento Celery)
+    - Executa direto e síncrono
+    - Perfeito para crontab
+    """
+    
+    logger.info("\n" + "="*80)
+    logger.info("🔄 AGENDADOR DE BACKUPS (SEM CELERY)")
+    logger.info("="*80)
+    logger.info(f"⏰ Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    
+    try:
+        # ✅ BUSCAR ACESSOS
+        acessos_automaticos = Acesso.objects.filter(
+            backup_habilitado=True,
+            backup_automatico=True,
+            backup_template__isnull=False
+        ).select_related('cliente', 'backup_template')
+        
+        total = acessos_automaticos.count()
+        logger.info(f"📊 Total de acessos: {total}\n")
+        
+        if total == 0:
+            logger.warning("⚠️ Nenhum acesso com backup automático")
+            return {
+                'status': 'ok',
+                'total': 0,
+                'agendados': 0,
+                'erro': 0,
+                'mensagem': 'Nenhum acesso com backup automático'
+            }
+        
+        agendados = 0
+        erros = 0
+        
+        # ✅ EXECUTAR BACKUPS DIRETAMENTE (SEM CELERY)
+        for idx, acesso in enumerate(acessos_automaticos, 1):
+            try:
+                cliente_nome = acesso.cliente.nome_empresa if acesso.cliente else "SEM_CLIENTE"
+                
+                logger.info(f"[{idx}/{total}] {acesso.tipo} ({acesso.host})", end=" ", flush=True)
+                logger.info(f"[{idx}/{total}] {acesso.tipo} ({acesso.host}) - {cliente_nome}")
+                
+                # ✅ VALIDAÇÕES
+                if not acesso.backup_habilitado:
+                    logger.warning(f"    ⚠️ Desabilitado")
+                    continue
+                
+                if not acesso.backup_template:
+                    logger.error(f"    ❌ Sem template")
+                    erros += 1
+                    continue
+                
+                # ✅ EXECUTAR BACKUP DIRETAMENTE (SÍNCRONO)
+                logger.info(f"    🔄 Iniciando backup...")
+                
+                resultado = realizar_backup(acesso, usuario=None)
+                
+                if resultado['sucesso']:
+                    logger.info(
+                        f"    ✅ SUCESSO - "
+                        f"Tamanho: {resultado['tamanho']} bytes, "
+                        f"Duração: {resultado['duracao']}"
+                    )
+                    agendados += 1
+                else:
+                    logger.error(f"    ❌ FALHA - {resultado['erro']}")
+                    erros += 1
+                
+            except Exception as e:
+                logger.error(f"    ❌ EXCEÇÃO: {str(e)}")
+                logger.error(f"       {traceback.format_exc()}")
+                erros += 1
+                continue
+        
+        # ✅ RESUMO
+        logger.info("\n" + "="*80)
+        logger.info("✅ CONCLUSÃO")
+        logger.info("="*80)
+        logger.info(f"  📊 Total: {total}")
+        logger.info(f"  ✅ Executados: {agendados}")
+        logger.info(f"  ❌ Erros: {erros}")
+        logger.info("="*80 + "\n")
+        
+        return {
+            'status': 'ok',
+            'total': total,
+            'agendados': agendados,
+            'erro': erros,
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        logger.error(f"\n❌ ERRO CRÍTICO: {str(e)}")
+        logger.error(f"{traceback.format_exc()}\n")
+        return {
+            'status': 'erro',
+            'motivo': str(e),
+            'traceback': traceback.format_exc()
+        }

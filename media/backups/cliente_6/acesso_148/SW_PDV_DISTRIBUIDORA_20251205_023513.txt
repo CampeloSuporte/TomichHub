@@ -1,77 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
-Equipamento: SW PDV DISTRIBUIDORA
-Host: 172.31.1.8:22002
-Acesso: VIA PROXY SSH
-Modelo: MIKROTIK CRS326-24s+2Q+
-Template: Backup Mikrotik
-Data: 05/12/2025 02:35:13
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[tomich@SWITCH PDV DISTRIBUIDORA] > /                                          [K[tomich@SWITCH PDV DISTRIBUIDORA] > /e[tomich@SWITCH PDV DISTRIBUIDORA] > /e                                         [K[tomich@SWITCH PDV DISTRIBUIDORA] > /ex[tomich@SWITCH PDV DISTRIBUIDORA] > /ex                                        [K[tomich@SWITCH PDV DISTRIBUIDORA] > /exp[tomich@SWITCH PDV DISTRIBUIDORA] > /exp                                       [K[tomich@SWITCH PDV DISTRIBUIDORA] > /expo[tomich@SWITCH PDV DISTRIBUIDORA] > /expo                                      [K[tomich@SWITCH PDV DISTRIBUIDORA] > /expor[tomich@SWITCH PDV DISTRIBUIDORA] > /expor                                     [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export[tomich@SWITCH PDV DISTRIBUIDORA] > /export                                    [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export [tomich@SWITCH PDV DISTRIBUIDORA] > /export                                    [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export t[tomich@SWITCH PDV DISTRIBUIDORA] > /export t                                  [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export te[tomich@SWITCH PDV DISTRIBUIDORA] > /export te                                 [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export ter[tomich@SWITCH PDV DISTRIBUIDORA] > /export ter                                [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export ters[tomich@SWITCH PDV DISTRIBUIDORA] > /export ters                               [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export terse[tomich@SWITCH PDV DISTRIBUIDORA] > /export terse                              [K[tomich@SWITCH PDV DISTRIBUIDORA] > /export terse[tomich@SWITCH PDV DISTRIBUIDORA] > /export terse
-# dec/04/2025 07:32:22 by RouterOS 6.49.13
-# software id = 3HE5-HBV9
-#
-# model = CRS305-1G-4S+
-# serial number = HEK08M55F5T
-/interface bridge add name=bridge1 vlan-filtering=yes
-/interface ethernet set [ find default-name=ether1 ] comment="CLIENTE PDV"
-/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment="ROTA 01 - POR
- NACIONAL G\C1S  Nao alarmou"
-/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment="ROTA 02 - POR
- TRIGALI"
-/interface vlan add interface=bridge1 name=vlan3010-GERENCIA-SWITCHS vlan-id=3010
-
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/snmp community set [ find default=yes ] name=TOMICH
-/interface bridge port add bridge=bridge1 interface=ether1 pvid=1104
-/interface bridge port add bridge=bridge1 interface=sfp-sfpplus1
-/interface bridge port add bridge=bridge1 interface=sfp-sfpplus2
-/interface bridge port add bridge=bridge1 interface=sfp-sfpplus3
-/interface bridge port add bridge=bridge1 interface=sfp-sfpplus4
-/ip neighbor discovery-settings set discover-interface-list=!dynamic
-/interface bridge vlan add bridge=bridge1 comment="CLIENTE PPPoE PDV" tagged=sfp-
-sfpplus1,sfp-sfpplus2 untagged=ether1 vlan-ids=1104
-/interface bridge vlan add bridge=bridge1 comment="PPPoE SIERRA LOG MATRIZ" tagge
-d=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=1101
-/interface bridge vlan add bridge=bridge1 comment="VLANs PORTAS PON OLT BOULEVARD
- LAGOA" tagged=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=301-316,3004,610,1110,609,300
-/interface bridge vlan add bridge=bridge1 comment="CLIENTE TRIGALI" tagged=sfp-sf
-pplus1,sfp-sfpplus2 vlan-ids=1102
-/interface bridge vlan add bridge=bridge1 comment="CLIENTE MARKET" tagged=sfp-sfp
-plus1,sfp-sfpplus2 vlan-ids=1105
-/interface bridge vlan add bridge=bridge1 comment="PPPoE UNESC" tagged=sfp-sfpplu
-s1,sfp-sfpplus2 vlan-ids=1106
-/interface bridge vlan add bridge=bridge1 comment="PPPoE SIERRA LOG FILIAL" tagge
-d=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=1107
-/interface bridge vlan add bridge=bridge1 comment="PPPoE ABR-TOPMAX" tagged=sfp-s
-fpplus1,sfp-sfpplus2 vlan-ids=1108
-/interface bridge vlan add bridge=bridge1 comment="GERECNAI SWITCHS" tagged=sfp-s
-fpplus1,sfp-sfpplus2,bridge1 vlan-ids=3010
-/interface bridge vlan add bridge=bridge1 comment="CLIENTE PPPoE PDV" tagged=sfp-
-sfpplus1,sfp-sfpplus2,ether1 vlan-ids=1201
-/interface bridge vlan add bridge=bridge1 comment="CLIENTE NACIONAL GAS" tagged=s
-fp-sfpplus1,sfp-sfpplus2 vlan-ids=1109
-/ip address add address=172.31.1.8/24 interface=vlan3010-GERENCIA-SWITCHS network
-=172.31.1.0
-/ip route add check-gateway=ping distance=1 gateway=172.31.1.1
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=9291
-/ip service set api-ssl disabled=yes
-/snmp set enabled=yes trap-version=2
-/system identity set name="SWITCH PDV DISTRIBUIDORA"
-/system routerboard settings set boot-os=router-os
-/tool romon set enabled=yes id=00:55:00:00:00:00 secrets=Net.10
-[tomich@SWITCH PDV DISTRIBUIDORA] >                                            [tomich@SWITCH PDV DISTRIBUIDORA] > 

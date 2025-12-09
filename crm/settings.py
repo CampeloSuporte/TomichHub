@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'channels',
     'rest_framework',
     'rest_framework.authtoken',
+    'financeiro'
 ]
 
 REST_FRAMEWORK = {
@@ -123,11 +124,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = 'pt-BR'
-
-USE_TZ = False
-TIME_ZONE = 'America/Sao_Paulo'
-
 USE_I18N = True
+TIME_ZONE = 'America/Sao_Paulo'
+USE_TZ = True  # ✅ MUDAR para True (timezone aware)
 
 
 
@@ -170,7 +169,7 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_TIMEZONE = 'America/Sao_Paulo'
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
-#CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
 
 # Adicione ao INSTALLED_APPS:
 INSTALLED_APPS += [
@@ -178,11 +177,23 @@ INSTALLED_APPS += [
     'django_celery_results',
 ]
 
-CELERY_BEAT_SCHEDULE = {
-    'validar-rpki-irr-agendado': {
-        'task': 'clientes.tasks.validar_blocos_rpki_irr_agendado',
-        'schedule': crontab(hour=4, minute=0),
-    },
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
 }
 
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+# ✅ FORÇAR timezone local em todos os DateTimeFields
+import os
+os.environ['TZ'] = 'America/Sao_Paulo'
+
+# ✅ Garantir que Django usa timezone local
+TIME_ZONE = 'America/Sao_Paulo'
+USE_TZ = True
+USE_L10N = True

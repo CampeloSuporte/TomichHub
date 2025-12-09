@@ -1,71 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Conecta ISP
-Equipamento: STA-NOVA-OLINDAxZELIA
-Host: 172.26.74.3:22002
-Acesso: VIA PROXY SSH
-Modelo: RB921
-Template: Backup Mikrotik
-Data: 06/12/2025 02:09:56
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/export terse[admin@STA-NOVA-OLINDAxZELIA] > /export terse
-# jul/23/1971 11:59:48 by RouterOS 6.48.6
-# software id = E0RX-BGIN
-#
-# model = RB922UAGS-5HPacD
-# serial number = HEG08MG70WR
-/interface bridge add admin-mac=48:A9:8A:C9:DD:30 auto-mac=no comment=defconf nam
-e=bridge
-/interface wireless set [ find default-name=wlan1 ] adaptive-noise-immunity=clien
-t-mode ampdu-priorities="" band=5ghz-onlyac basic-rates-a/g="" channel-width=20/
-40/80mhz-Ceee country=no_country_set disabled=no frequency=5225 frequency-mode=s
-uperchannel ht-basic-mcs=mcs-0,mcs-1,mcs-2,mcs-3,mcs-4,mcs-5,mcs-6,mcs-7,mcs-8,m
-cs-9,mcs-10,mcs-11,mcs-12,mcs-13,mcs-14,mcs-15,mcs-16,mcs-17,mcs-18,mcs-19,mcs-2
-0,mcs-21,mcs-22,mcs-23 hw-retries=4 l2mtu=2000 mode=station-bridge mtu=2000 nv2-
-preshared-key=102030 nv2-security=enabled radio-name="ST NOVA OLINDA" rate-set=c
-onfigured rx-chains=0,1 scan-list=5225,5040,5110,5235,5385,5535,5545,5620,5740,5
-800 ssid=PTP-ZELIA_X_N.OLINDA supported-rates-a/g="" tx-chains=0,1 vht-basic-mcs
-=mcs0-9 wireless-protocol=nv2-nstreme
-/interface ethernet set [ find default-name=ether1 ] l2mtu=4076 mtu=4076
-/interface wireless nstreme set wlan1 enable-nstreme=yes
-/interface wireless security-profiles set [ find default=yes ] authentication-typ
-es=wpa-psk,wpa2-psk,wpa-eap,wpa2-eap group-ciphers=tkip,aes-ccm mode=dynamic-key
-s supplicant-identity=MikroTik unicast-ciphers=tkip,aes-ccm wpa-pre-shared-key=1
-0203040 wpa2-pre-shared-key=10203040
-/interface bridge port add bridge=bridge comment=defconf interface=ether1
-/interface bridge port add bridge=bridge comment=defconf interface=sfp1
-/interface bridge port add bridge=bridge comment=defconf interface=wlan1
-/ip address add address=172.26.74.3/29 interface=bridge network=172.26.74.0
-/ip route add distance=1 gateway=172.26.74.1
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set api-ssl disabled=yes
-/system identity set name=STA-NOVA-OLINDAxZELIA
-/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
-,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
-art-time=03:00:00
-/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
-,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
-kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
-em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
-m identity get name] . \".rsc\")\r\
-    \n\r\
-    \n# Cria o backup\r\
-    \n/export file=\$backupFileName\r\
-    \n\r\
-    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
-th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
-    \ndelay 10s\r\
-    \n/file remove \$backupFileName"
-/tool romon set enabled=yes secrets=Conecta@2023
-[admin@STA-NOVA-OLINDAxZELIA] >                                                [admin@STA-NOVA-OLINDAxZELIA] > 

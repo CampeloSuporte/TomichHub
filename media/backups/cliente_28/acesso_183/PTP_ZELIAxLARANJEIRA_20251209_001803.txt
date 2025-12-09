@@ -1,0 +1,84 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: PTP_ZELIAxLARANJEIRA
+Host: 172.26.74.10:22002
+Acesso: VIA PROXY SSH
+Modelo: RB921
+Template: Backup Mikrotik
+Data: 09/12/2025 00:18:03
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[admin@PTP_ZELIAxLARANJEIRA] > /export terse
+# 2025-11-18 21:59:22 by RouterOS 7.15.2
+# software id = GPWG-5QJ2
+#
+# model = RB922UAGS-5HPacD
+# serial number = 95F60AD615F6
+/interface bridge add name=bridge port-cost-mode=short
+/interface wireless set [ find default-name=wlan1 ] adaptive-noise-immunity=clien
+t-mode ampdu-priorities="" band=5ghz-onlyac basic-rates-a/g=54Mbps channel-width
+=20/40/80mhz-Ceee country=no_country_set disabled=no frequency=5835 frequency-mo
+de=superchannel ht-basic-mcs=mcs-12 ht-supported-mcs=mcs-12 hw-retries=4 l2mtu=2
+000 mode=bridge mtu=2000 nv2-cell-radius=10 nv2-security=enabled radio-name=AP_Z
+ELIA rate-set=configured rx-chains=0,1 scan-list=5835 ssid=Link_MegasNet support
+ed-rates-a/g=54Mbps tx-chains=0,1 vht-basic-mcs=mcs0-8 vht-supported-mcs=mcs0-8,
+mcs0-8 wds-mode=dynamic wireless-protocol=nv2-nstreme
+/interface ethernet set [ find default-name=ether1 ] l2mtu=4076 mtu=4076
+/interface wireless nstreme set wlan1 disable-csma=yes enable-nstreme=yes
+/interface vlan add interface=bridge name=GERENCIA vlan-id=40
+/interface lte apn set [ find default=yes ] ip-type=ipv4 use-network-apn=no
+/interface wireless security-profiles set [ find default=yes ] authentication-typ
+es=wpa2-psk mode=dynamic-keys supplicant-identity=MikroTik
+/ip smb users set [ find default=yes ] disabled=yes
+/routing bgp template set default disabled=no output.network=bgp-networks
+/routing ospf instance add disabled=no name=default-v2
+/routing ospf area add disabled=yes instance=default-v2 name=backbone-v2
+/interface bridge port add bridge=bridge ingress-filtering=no interface=ether1 in
+ternal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge ingress-filtering=no interface=wlan1 int
+ernal-path-cost=10 path-cost=10
+/ip firewall connection tracking set udp-timeout=10s
+/ip settings set max-neighbor-entries=8192
+/ipv6 settings set disable-ipv6=yes max-neighbor-entries=8192
+/interface ovpn-server server set auth=sha1,md5
+/ip address add address=172.26.74.10/29 interface=bridge network=172.26.74.8
+/ip dns set servers=172.18.234.105
+/ip route add disabled=no distance=1 dst-address=0.0.0.0/0 gateway=172.26.74.9 ro
+uting-table=main scope=30 suppress-hw-offload=no target-scope=10
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set api-ssl disabled=yes
+/ip smb shares set [ find default=yes ] directory=/pub
+/routing bfd configuration add disabled=no interfaces=all min-rx=200ms min-tx=200
+ms multiplier=5
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name=PTP_ZELIAxLARANJEIRA
+/system note set show-at-login=no
+/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
+,read,write,policy,test,password,sniff,sensitive,romon start-date=2024-06-07 sta
+rt-time=03:00:00
+/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
+,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
+kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
+em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
+m identity get name] . \".rsc\")\r\
+    \n\r\
+    \n# Cria o backup\r\
+    \n/export file=\$backupFileName\r\
+    \n\r\
+    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
+th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
+    \ndelay 10s\r\
+    \n/file remove \$backupFileName"
+/tool romon set enabled=yes
+[admin@PTP_ZELIAxLARANJEIRA] >                                                 [admin@PTP_ZELIAxLARANJEIRA] > 

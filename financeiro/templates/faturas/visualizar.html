@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white fw-bold">📄 Fatura {{ fatura.numero_fatura }}</h2>
+        <div class="btn-group">
+            {% if request.user.is_staff and not fatura.boleto %}
+            <a href="{% url 'gerar_boleto_fatura' fatura.id %}" class="btn btn-success" onclick="return confirm('Gerar boleto?')">
+                <i class="fas fa-file-pdf me-1"></i> Gerar Boleto
+            </a>
+            {% endif %}
+            
+            {% if fatura.boleto.arquivo_pdf %}
+            <a href="{{ fatura.boleto.arquivo_pdf.url }}" class="btn btn-info" target="_blank">
+                <i class="fas fa-download me-1"></i> Download Boleto
+            </a>
+            {% endif %}
+            
+            {% if request.user.is_staff and fatura.status != 'PAGA' %}
+            <a href="{% url 'registrar_pagamento' fatura.id %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> Registrar Pagamento
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Detalhes da Fatura -->
+        <div class="col-lg-8">
+            <div class="card mb-4" style="background-color: #1a1a1a; border-color: #00ff88;">
+                <div class="card-header bg-dark" style="border-color: #00ff88;">
+                    <h5 class="mb-0 text-white fw-bold">Detalhes da Fatura</h5>
+                </div>
+                <div class="card-body" style="background-color: #1a1a1a;">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="text-white"><strong>Cliente:</strong><br>
+                            <span class="text-white">{{ fatura.cliente.nome_empresa }}<br>
+                            CNPJ: {{ fatura.cliente.cnpj }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-white"><strong>Data Emissão:</strong><br>
+                            <span class="text-white">{{ fatura.data_emissao|date:'d/m/Y' }}</span></p>
+                            <p class="text-white"><strong>Data Vencimento:</strong><br>
+                            <span class="{% if fatura.vencida %}text-danger{% else %}text-success{% endif %}">
+                                {{ fatura.data_vencimento|date:'d/m/Y' }}
+                            </span></p>
+                        </div>
+                    </div>
+
+                    <hr style="border-color: #00ff88;">
+
+                    <!-- Itens -->
+                    <h6 class="mb-3 text-white fw-bold">Itens da Fatura</h6>
+                    <table class="table table-sm" style="color: #fff;">
+                        <tbody>
+                            {% for consultoria in fatura.consultorias.all %}
+                            <tr>
+                                <td class="text-white">{{ consultoria.descricao }} ({{ consultoria.quantidade_meses }}m)</td>
+                                <td class="text-end text-white">R$ {{ consultoria.get_valor_total|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                            
+                            {% for aluguel in fatura.alugueis_ipv4.all %}
+                            <tr>
+                                <td class="text-white">{{ aluguel.bloco_descricao }} (aluguel mensal)</td>
+                                <td class="text-end text-white">R$ {{ aluguel.get_valor_total_mes|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <hr style="border-color: #00ff88;">
+
+                    <!-- Totalizações -->
+                    <div class="row">
+                        <div class="col-md-6 offset-md-6">
+                            <p class="d-flex justify-content-between text-white">
+                                <span>Subtotal:</span>
+                                <span>R$ {{ fatura.subtotal|floatformat:2 }}</span>
+                            </p>
+                            {% if fatura.desconto > 0 %}
+                            <p class="d-flex justify-content-between text-white">
+                                <span>Desconto:</span>
+                                <span>- R$ {{ fatura.desconto|floatformat:2 }}</span>
+                            </p>
+                            {% endif %}
+                            {% if fatura.juros > 0 %}
+                            <p class="d-flex justify-content-between text-danger fw-bold">
+                                <span>Juros (atraso):</span>
+                                <span>+ R$ {{ fatura.juros|floatformat:2 }}</span>
+                            </p>
+                            {% endif %}
+                            <p class="d-flex justify-content-between border-top pt-2" style="border-color: #00ff88;">
+                                <strong class="text-white">Total:</strong>
+                                <strong class="text-info">R$ {{ fatura.valor_total|floatformat:2 }}</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status e Pagamentos -->
+        <div class="col-lg-4">
+            <div class="card mb-4" style="background-color: #1a1a1a; border-color: #00ff88;">
+                <div class="card-header bg-dark" style="border-color: #00ff88;">
+                    <h5 class="mb-0 text-white fw-bold">Status</h5>
+                </div>
+                <div class="card-body text-center" style="background-color: #1a1a1a;">
+                    <h2 class="mb-3">
+                        <span class="badge {% if fatura.status == 'PAGA' %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ fatura.get_status_display }}
+                        </span>
+                    </h2>
+                    
+                    {% if fatura.status == 'ABERTA' %}
+                    <p class="text-white">
+                        {% if fatura.vencida %}
+                            <i class="fas fa-exclamation-triangle text-danger me-1"></i>
+                            <strong>Vencida há {{ fatura.dias_para_vencer|abs }} dias</strong>
+                        {% else %}
+                            <i class="fas fa-clock me-1"></i>
+                            Vence em {{ fatura.dias_para_vencer }} dias
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pagamentos Recebidos -->
+            {% if pagamentos %}
+            <div class="card" style="background-color: #1a1a1a; border-color: #00ff88;">
+                <div class="card-header bg-dark" style="border-color: #00ff88;">
+                    <h5 class="mb-0 text-white fw-bold">Pagamentos Recebidos</h5>
+                </div>
+                <div class="card-body" style="background-color: #1a1a1a;">
+                    {% for pagamento in pagamentos %}
+                    <div class="mb-3 pb-3" style="border-bottom: 1px solid #00ff88;">
+                        <p class="mb-1 text-white">
+                            <strong>{{ pagamento.get_tipo_display }}</strong>
+                            <span class="badge bg-success">{{ pagamento.data_pagamento|date:'d/m/Y' }}</span>
+                        </p>
+                        <p class="mb-0 text-success">
+                            <strong>R$ {{ pagamento.valor|floatformat:2 }}</strong>
+                        </p>
+                        <p class="small mb-0" style="color: #aaa;">{{ pagamento.numero_recibo }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Garantir textos em branco para o tema cyberpunk */
+.container-fluid, .card, .card-body {
+    color: #fff;
+}
+
+.text-white {
+    color: #fff !important;
+}
+
+.text-muted {
+    color: #aaa !important;
+}
+
+.table {
+    color: #fff;
+}
+
+.table tbody tr {
+    border-bottom-color: #00ff88;
+}
+
+.badge {
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.card {
+    background-color: #1a1a1a;
+    border-color: #00ff88;
+}
+
+.card-header {
+    background-color: #2a2a2a;
+    border-color: #00ff88;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #fff;
+}
+
+strong, .fw-bold {
+    color: #fff;
+}
+</style>
+{% endblock %}

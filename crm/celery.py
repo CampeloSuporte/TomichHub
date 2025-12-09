@@ -5,22 +5,33 @@ from celery.schedules import crontab
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm.settings')
 
 app = Celery('crm')
-app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
 
+# Carregar settings MAS remover scheduler
+app.config_from_object('django.conf:settings', namespace='CELERY')
+
+# 🚨 FORÇAR: Não usar nenhum scheduler persistente
+# Remover qualquer configuração que tente usar arquivo
+for key in ['beat_scheduler', 'beat_db', 'beat_schedule']:
+    if key in app.conf:
+        delattr(app.conf, key)
+
+# ✅ DEFINIR TUDO AQUI (em memória, sem arquivo)
 app.conf.beat_schedule = {
-    'agendar-backups-diariamente': {  # Nome melhor
+    'agendar-backups-diariamente': {
         'task': 'clientes.tasks.agendar_backups_pendentes',
-        'schedule': crontab(hour=0, minute=0),  # 00:00 apenas
-        'options': {'expires': 300}  # Task expira se não executar em 5 min
+        'schedule': crontab(hour=0, minute=0),
     },
     'limpar-backups-antigos-diariamente': {
         'task': 'clientes.tasks.limpar_backups_antigos',
-        'schedule': crontab(hour=3, minute=0),  # 03:00 apenas
+        'schedule': crontab(hour=3, minute=0),
         'kwargs': {'dias': 3},
-        'options': {'expires': 300}
+    },
+    'validar-rpki-irr-agendado': {
+        'task': 'clientes.tasks.validar_blocos_rpki_irr_agendado',
+        'schedule': crontab(hour=4, minute=0),
     },
 }
 
-# Adicione timezone explícito
-app.conf.timezone = 'America/Sao_Paulo'  # Ou sua timezone
+app.conf.timezone = 'America/Sao_Paulo'
+
+app.autodiscover_tasks()

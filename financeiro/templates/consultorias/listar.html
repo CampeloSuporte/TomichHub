@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white fw-bold">📋 Consultorias</h2>
+        {% if request.user.is_staff %}
+        <a href="{% url 'criar_consultoria' %}?id={{ cliente.id }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Nova Consultoria
+        </a>
+        {% endif %}
+    </div>
+    {% if consultorias %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover" style="color: #fff;">
+            <thead class="table-dark" style="background-color: #2a2a2a; border-color: #00ff88;">
+                <tr>
+                    <th class="text-white fw-bold">Descrição</th>
+                    <th class="text-white fw-bold">Valor Unitário</th>
+                    <th class="text-white fw-bold">Meses</th>
+                    <th class="text-white fw-bold">Valor Total</th>
+                    <th class="text-white fw-bold">Status</th>
+                    <th class="text-white fw-bold">Quitado</th>
+                    <th class="text-white fw-bold">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for consultoria in consultorias %}
+                <tr style="border-color: #00ff88;">
+                    <td class="text-white">{{ consultoria.descricao }}</td>
+                    <td class="text-white">R$ {{ consultoria.valor_unitario|floatformat:2 }}</td>
+                    <td class="text-white">{{ consultoria.quantidade_meses }}</td>
+                    <td class="text-white"><strong>R$ {{ consultoria.get_valor_total|floatformat:2 }}</strong></td>
+                    <td>
+                        <span class="badge {% if consultoria.status == 'ATIVO' %}bg-success{% elif consultoria.status == 'PAUSADO' %}bg-warning{% elif consultoria.status == 'CANCELADO' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ consultoria.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        {% if consultoria.quitado %}
+                            <i class="fas fa-check-circle text-success"></i>
+                        {% else %}
+                            <i class="fas fa-times-circle text-danger"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'editar_consultoria' consultoria.id %}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{% url 'deletar_consultoria' consultoria.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info" style="background-color: #2a2a2a; border-color: #00ff88; color: #fff;">
+        <i class="fas fa-info-circle me-2"></i>
+        Nenhuma consultoria cadastrada.
+        {% if request.user.is_staff %}
+        <a href="{% url 'criar_consultoria' %}?id={{ cliente.id }}" class="alert-link text-info">Criar primeira consultoria</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<style>
+/* Tema escuro para tabelas e alerts */
+.container-fluid {
+    color: #fff;
+}
+
+.text-white {
+    color: #fff !important;
+}
+
+.table {
+    color: #fff;
+    border-color: #00ff88;
+}
+
+.table thead {
+    background-color: #2a2a2a;
+    border-color: #00ff88;
+}
+
+.table tbody {
+    border-color: #00ff88;
+}
+
+.table tbody tr {
+    border-bottom-color: #00ff88;
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 255, 136, 0.1) !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.table-striped tbody tr:nth-of-type(even) {
+    background-color: rgba(0, 255, 136, 0.05);
+}
+
+.alert {
+    background-color: #2a2a2a;
+    border-color: #00ff88;
+    color: #fff;
+}
+
+.alert-link {
+    color: #00ff88;
+    font-weight: 600;
+}
+
+.badge {
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #fff;
+}
+
+strong, .fw-bold {
+    color: #fff;
+}
+</style>
+
+{% endblock %}

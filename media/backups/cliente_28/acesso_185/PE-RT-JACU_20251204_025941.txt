@@ -1,207 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Conecta ISP
-Equipamento: PE-RT-JACU
-Host: 10.255.255.97:22002
-Acesso: VIA PROXY SSH
-Modelo: RB3011
-Template: Backup Mikrotik
-Data: 04/12/2025 02:59:41
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[admin@PE-RT-JACU] > /                                                         [K[admin@PE-RT-JACU] > /e[admin@PE-RT-JACU] > /e                                                        [K[admin@PE-RT-JACU] > /ex[admin@PE-RT-JACU] > /ex                                                       [K[admin@PE-RT-JACU] > /exp[admin@PE-RT-JACU] > /exp                                                      [K[admin@PE-RT-JACU] > /expo[admin@PE-RT-JACU] > /expo                                                     [K[admin@PE-RT-JACU] > /expor[admin@PE-RT-JACU] > /expor                                                    [K[admin@PE-RT-JACU] > /export[admin@PE-RT-JACU] > /export                                                   [K[admin@PE-RT-JACU] > /export [admin@PE-RT-JACU] > /export                                                   [K[admin@PE-RT-JACU] > /export t[admin@PE-RT-JACU] > /export t                                                 [K[admin@PE-RT-JACU] > /export te[admin@PE-RT-JACU] > /export te                                                [K[admin@PE-RT-JACU] > /export ter[admin@PE-RT-JACU] > /export ter                                               [K[admin@PE-RT-JACU] > /export ters[admin@PE-RT-JACU] > /export ters                                              [K[admin@PE-RT-JACU] > /export terse[admin@PE-RT-JACU] > /export terse                                             [K[admin@PE-RT-JACU] > /export terse[admin@PE-RT-JACU] > /export terse
-# oct/26/2025 13:26:46 by RouterOS 6.49.7
-# software id = 602Z-UZ0M
-#
-# model = RouterBOARD 3011UiAS
-# serial number = 780E078AD223
-/interface bridge add name=br-acesso
-/interface bridge add name=bridge vlan-filtering=yes
-/interface bridge add name=bridge1-REDE-CORE vlan-filtering=yes
-/interface bridge add name=loopback
-/interface ethernet set [ find default-name=ether1 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000
-/interface ethernet set [ find default-name=ether2 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether2 - ONU"
-/interface ethernet set [ find default-name=ether3 ] auto-negotiation=no comment=
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*********************************************************** l2mtu=8156 mtu=2000 
-name="ether3  - GERENCIA PATHC PAINEL" speed=10Mbps
-/interface ethernet set [ find default-name=ether4 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether4 -  AP C
-ALUMBI"
-/interface ethernet set [ find default-name=ether5 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether5 - AP JA
-CU CX"
-/interface ethernet set [ find default-name=ether6 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether6 - AP JA
-CU LAGE DAS CABRAS"
-/interface ethernet set [ find default-name=ether7 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether7 - CAMER
-A" speed=10Mbps
-/interface ethernet set [ find default-name=ether8 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether8 "
-/interface ethernet set [ find default-name=ether9 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*************************************** l2mtu=8156 mtu=2000 name="ether9 - AP MI
-MOSA ZELIA"
-/interface ethernet set [ find default-name=ether10 ] comment=*******************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-**************************************** l2mtu=8156 mtu=2000 name="ether10 - AP 
-FUMA\C7A" poe-out=off
-/interface ethernet set [ find default-name=sfp1 ] advertise=10M-full,100M-full,1
-000M-full,2500M-full auto-negotiation=no l2mtu=8156 mtu=2000 name="sfp1 - LINK "
-
-/interface vpls add advertised-l2mtu=1508 cisco-style=yes cisco-style-id=35 disab
-led=no l2mtu=1508 mac-address=02:69:6F:BB:53:DC name=vpls-ne8k remote-peer=10.25
-5.255.15
-/interface vlan add interface="sfp1 - LINK " mtu=1520 name=vlan27-pppoe-olt vlan-
-id=27
-/interface vlan add interface="sfp1 - LINK " name=vlan30-ospf-ne8k vlan-id=30
-/interface vlan add interface="ether9 - AP MIMOSA ZELIA" name=vlan41-ospf-zelia v
-lan-id=41
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/ip pool add name=dhcp_pool0 ranges=172.29.200.2-172.29.200.254
-/routing ospf instance set [ find default=yes ] redistribute-connected=as-type-1 
-router-id=10.255.255.97
-/snmp community set [ find default=yes ] name=conectaisp-ro
-/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
-nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
-/interface bridge port add bridge=br-acesso interface="ether4 -  AP CALUMBI" pvid
-=27
-/interface bridge port add bridge=br-acesso frame-types=admit-only-untagged-and-p
-riority-tagged interface="ether5 - AP JACU CX" pvid=27
-/interface bridge port add bridge=br-acesso frame-types=admit-only-untagged-and-p
-riority-tagged interface="ether6 - AP JACU LAGE DAS CABRAS" pvid=27
-/interface bridge port add bridge=br-acesso frame-types=admit-only-untagged-and-p
-riority-tagged interface="ether7 - CAMERA" pvid=27
-/interface bridge port add bridge=br-acesso frame-types=admit-only-untagged-and-p
-riority-tagged interface="ether10 - AP FUMA\C7A" pvid=27
-/interface bridge port add bridge=br-acesso interface=vpls-ne8k
-/interface bridge port add bridge=br-acesso interface=vlan27-pppoe-olt
-/ip neighbor discovery-settings set discover-interface-list=none
-/interface pppoe-server server add interface=vlan27-pppoe-olt service-name=servic
-e1
-/ip address add address=172.26.1.5/30 interface="ether3  - GERENCIA PATHC PAINEL"
- network=172.26.1.4
-/ip address add address=172.20.0.97/30 comment=OSPF-JACU interface=vlan41-ospf-ze
-lia network=172.20.0.96
-/ip address add address=10.255.255.97 interface=loopback network=10.255.255.97
-/ip address add address=172.20.0.74/30 comment=OSPF-NE8K interface=vlan30-ospf-ne
-8k network=172.20.0.72
-/ip address add address=10.10.13.1/24 interface=br-acesso network=10.10.13.0
-/ip address add address=10.64.10.1/24 interface="ether9 - AP MIMOSA ZELIA" networ
-k=10.64.10.0
-/ip address add address=172.16.100.25/30 interface=vlan27-pppoe-olt network=172.1
-6.100.24
-/ip dhcp-server network add address=172.29.200.0/24 gateway=172.29.200.1
-/ip dns set servers=172.18.0.23
-/ip firewall nat add action=dst-nat chain=dstnat dst-address=10.255.255.97 dst-po
-rt=80,443 protocol=tcp to-addresses=192.168.1.80
-/ip firewall nat add action=src-nat chain=srcnat dst-address=192.168.1.80 to-addr
-esses=192.168.1.1
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=8283
-/ip service set api-ssl disabled=yes
-/ip ssh set forwarding-enabled=remote
-/mpls interface set [ find default=yes ] mpls-mtu=1570
-/mpls ldp set enabled=yes lsr-id=10.255.255.97 transport-address=10.255.255.97
-/mpls ldp interface add interface=vlan41-ospf-zelia
-/mpls ldp interface add interface=vlan30-ospf-ne8k
-/routing ospf interface add interface=vlan41-ospf-zelia network-type=point-to-poi
-nt
-/routing ospf interface add interface=vlan30-ospf-ne8k network-type=point-to-poin
-t
-/routing ospf network add area=backbone network=172.20.0.96/30
-/routing ospf network add area=backbone network=172.20.0.72/30
-/routing ospf network add area=backbone network=10.255.255.97/32
-/routing ospf network add area=backbone network=172.16.100.24/30
-/snmp set enabled=yes
-/system clock set time-zone-name=America/Bahia
-/system identity set name=PE-RT-JACU
-/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
-,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
-art-time=03:00:00
-/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
-,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
-kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
-em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
-m identity get name] . \".rsc\")\r\
-    \n\r\
-    \n# Cria o backup\r\
-    \n/export file=\$backupFileName\r\
-    \n\r\
-    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
-th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
-    \ndelay 10s\r\
-    \n/file remove \$backupFileName"
-/tool romon set enabled=yes secrets=Conecta@2023
-[admin@PE-RT-JACU] >                                                           [admin@PE-RT-JACU] > 

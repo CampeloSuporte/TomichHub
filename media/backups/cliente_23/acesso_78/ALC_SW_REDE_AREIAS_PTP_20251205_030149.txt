@@ -1,175 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: CALLFRAN
-Equipamento: ALC_SW_REDE_AREIAS_PTP
-Host: 172.20.35.94:22002
-Acesso: VIA PROXY SSH
-Modelo: MIKROTIK CRS309-1G-8S+IN
-Template: Backup Mikrotik
-Data: 05/12/2025 03:01:49
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /                                      [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /e[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /e                                     [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /ex[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /ex                                    [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /exp[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /exp                                   [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /expo[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /expo                                  [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /expor[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /expor                                 [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export                                [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export [lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export                                [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export t[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export t                              [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export te[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export te                             [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export ter[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export ter                            [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export ters[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export ters                           [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export terse[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export terse                          [K[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export terse[lucascampelo@ALC_SW_REDE_AREIAS_PTP] > /export terse
-# apr/13/1970 01:05:58 by RouterOS 6.49.7
-# software id = NM1P-ZMXQ
-#
-# model = RB4011iGS+
-# serial number = B8F30A6B0B13
-/interface bridge add admin-mac=74:4D:28:A5:12:E5 auto-mac=no name=bridge1 vlan-f
-iltering=yes
-/interface ethernet set [ find default-name=ether8 ] name="ether 8 - G08_155" spe
-ed=100Mbps
-/interface ethernet set [ find default-name=ether1 ] name="ether1 - G01_POE" spee
-d=100Mbps
-/interface ethernet set [ find default-name=ether2 ] name="ether2 - G02_LinkALIAN
-CA-MIMOSA" speed=100Mbps
-/interface ethernet set [ find default-name=ether3 ] name="ether3 - G03_150" spee
-d=100Mbps
-/interface ethernet set [ find default-name=ether4 ] name="ether4 - G04_151" spee
-d=100Mbps
-/interface ethernet set [ find default-name=ether5 ] name="ether5 - G05_152" spee
-d=100Mbps
-/interface ethernet set [ find default-name=ether6 ] loop-protect=off name="ether
-6 - G06_153" speed=100Mbps tx-flow-control=auto
-/interface ethernet set [ find default-name=ether7 ] name="ether7 - G07_154" spee
-d=100Mbps
-/interface ethernet set [ find default-name=ether9 ] name="ether9 - G09_156" spee
-d=100Mbps
-/interface ethernet set [ find default-name=ether10 ] name="ether10 - G10_157" po
-e-out=off speed=100Mbps
-/interface ethernet set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - S
-01_158-OLTVSOL"
-/interface vlan add interface="ether2 - G02_LinkALIANCA-MIMOSA" name="vlan149_GER
-ENCIA SW REDE AREIAS" vlan-id=149
-/interface ethernet switch port set 0 default-vlan-id=0
-/interface ethernet switch port set 1 default-vlan-id=0
-/interface ethernet switch port set 2 default-vlan-id=0
-/interface ethernet switch port set 3 default-vlan-id=0
-/interface ethernet switch port set 4 default-vlan-id=0
-/interface ethernet switch port set 5 default-vlan-id=0
-/interface ethernet switch port set 6 default-vlan-id=0
-/interface ethernet switch port set 7 default-vlan-id=0
-/interface ethernet switch port set 8 default-vlan-id=0
-/interface ethernet switch port set 9 default-vlan-id=0
-/interface ethernet switch port set 10 default-vlan-id=0
-/interface ethernet switch port set 11 default-vlan-id=0
-/interface list add comment=defconf name=WAN
-/interface list add comment=defconf name=LAN
-/interface list add name=links
-/interface list add name="lista de saida"
-/ip pool add name=default-dhcp ranges=192.168.88.10-192.168.88.254
-/ip dhcp-server add address-pool=default-dhcp disabled=no interface=bridge1 name=
-defconf
-/routing ospf area set [ find default=yes ] disabled=yes
-/routing ospf instance set [ find default=yes ] disabled=yes
-/routing ospf-v3 area set [ find default=yes ] disabled=yes
-/routing ospf-v3 instance set [ find default=yes ] disabled=yes
-/snmp community set [ find default=yes ] name=callfraninfonet
-/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
-nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
-/interface bridge port add bridge=bridge1 interface="ether2 - G02_LinkALIANCA-MIM
-OSA"
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether3
- - G03_150" pvid=150
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether4
- - G04_151" pvid=151
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether5
- - G05_152" pvid=152
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether6
- - G06_153" pvid=153
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether7
- - G07_154" pvid=154
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether 
-8 - G08_155" pvid=155
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether9
- - G09_156" pvid=156
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="ether1
-0 - G10_157" pvid=157
-/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="sfp-sf
-pplus1 - S01_158-OLTVSOL" pvid=158
-/interface bridge port add bridge=bridge1 interface="ether1 - G01_POE"
-/ip firewall connection tracking set enabled=no
-/ip neighbor discovery-settings set discover-interface-list=all
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether3 - G03_150" vlan-ids=150
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether4 - G04_151" vlan-ids=151
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether5 - G05_152" vlan-ids=152
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether6 - G06_153" vlan-ids=153
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether7 - G07_154" vlan-ids=154
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether 8 - G08_155" vlan-ids=155
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether9 - G09_156" vlan-ids=156
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-" untagged="ether10 - G10_157" vlan-ids=157
-/interface bridge vlan add bridge=bridge1 tagged="ether2 - G02_LinkALIANCA-MIMOSA
-,sfp-sfpplus1 - S01_158-OLTVSOL" vlan-ids=158-159
-/interface list member add comment=defconf interface=bridge1 list=LAN
-/interface list member add comment=defconf interface="ether1 - G01_POE" list=WAN
-/interface list member add disabled=yes interface="ether3 - G03_150" list="lista 
-de saida"
-/interface list member add disabled=yes interface="ether9 - G09_156" list="lista 
-de saida"
-/interface list member add disabled=yes interface="ether2 - G02_LinkALIANCA-MIMOS
-A" list=links
-/interface pptp-server server set authentication=pap,chap,mschap1,mschap2
-/ip address add address=172.20.35.94/30 interface="vlan149_GERENCIA SW REDE AREIA
-S" network=172.20.35.92
-/ip cloud set update-time=no
-/ip dhcp-client
-# DHCP client can not run on slave interface!
-add comment=defconf disabled=no interface="ether1 - G01_POE"
-/ip dhcp-server network add address=192.168.88.0/24 comment=defconf dns-server=19
-2.168.88.1 gateway=192.168.88.1
-/ip dns set cache-size=204800KiB max-concurrent-queries=30000 servers=192.168.250
-.6,192.168.250.10
-/ip route add distance=10 gateway=172.20.35.93
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox address=192.168.65.0/24 port=8296
-/ip service set api-ssl disabled=yes
-/ip ssh set allow-none-crypto=yes forwarding-enabled=remote
-/ip upnp set allow-disable-external-interface=yes
-/ppp aaa set interim-update=20m use-radius=yes
-/snmp set enabled=yes trap-version=2
-/system clock set time-zone-autodetect=no time-zone-name=America/Bahia
-/system identity set name=ALC_SW_REDE_AREIAS_PTP
-/system ntp client set enabled=yes primary-ntp=200.160.0.8 secondary-ntp=200.189.
-40.8
-/system resource irq rps set "ether1 - G01_POE" disabled=no
-/system resource irq rps set "ether2 - G02_LinkALIANCA-MIMOSA" disabled=no
-/system resource irq rps set "ether3 - G03_150" disabled=no
-/system resource irq rps set "ether4 - G04_151" disabled=no
-/system resource irq rps set "ether5 - G05_152" disabled=no
-/system resource irq rps set "ether6 - G06_153" disabled=no
-/system resource irq rps set "ether7 - G07_154" disabled=no
-/system resource irq rps set "ether9 - G09_156" disabled=no
-/system resource irq rps set "ether10 - G10_157" disabled=no
-/system routerboard settings set auto-upgrade=yes
-/system scheduler add interval=1d name=backup-ftp-penetwork on-event=backup-ftp-p
-enetwork policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
- start-date=jul/29/2023 start-time=21:09:26
-/system script add dont-require-permissions=no name=backup-ftp-penetwork owner=ca
-llfran policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon s
-ource=""
-/tool bandwidth-server set enabled=no
-/tool graphing interface add interface="ether5 - G05_152"
-/tool graphing interface add
-/tool graphing interface add interface="ether3 - G03_150"
-/tool mac-server set allowed-interface-list=LAN
-/tool mac-server mac-winbox set allowed-interface-list=LAN
-/tool romon set enabled=yes secrets=call2315@
-[lucascampelo@ALC_SW_REDE_AREIAS_PTP] >                                        [lucascampelo@ALC_SW_REDE_AREIAS_PTP] > 

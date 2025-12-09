@@ -1,72 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: JMA PROVEDOR DE INTERNET LTDA
-Equipamento: RT-PE-FAZENDA-TORRES
-Host: 10.255.0.122:22002
-Acesso: VIA PROXY SSH
-Modelo: RB750GR3
-Template: Backup Mikrotik
-Data: 06/12/2025 00:42:05
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[suporte@RT-PE-FAZENDA-TORRES] > /                                             [K[suporte@RT-PE-FAZENDA-TORRES] > /e[suporte@RT-PE-FAZENDA-TORRES] > /e                                            [K[suporte@RT-PE-FAZENDA-TORRES] > /ex[suporte@RT-PE-FAZENDA-TORRES] > /ex                                           [K[suporte@RT-PE-FAZENDA-TORRES] > /exp[suporte@RT-PE-FAZENDA-TORRES] > /exp                                          [K[suporte@RT-PE-FAZENDA-TORRES] > /expo[suporte@RT-PE-FAZENDA-TORRES] > /expo                                         [K[suporte@RT-PE-FAZENDA-TORRES] > /expor[suporte@RT-PE-FAZENDA-TORRES] > /expor                                        [K[suporte@RT-PE-FAZENDA-TORRES] > /export[suporte@RT-PE-FAZENDA-TORRES] > /export                                       [K[suporte@RT-PE-FAZENDA-TORRES] > /export [suporte@RT-PE-FAZENDA-TORRES] > /export                                       [K[suporte@RT-PE-FAZENDA-TORRES] > /export t[suporte@RT-PE-FAZENDA-TORRES] > /export t                                     [K[suporte@RT-PE-FAZENDA-TORRES] > /export te[suporte@RT-PE-FAZENDA-TORRES] > /export te                                    [K[suporte@RT-PE-FAZENDA-TORRES] > /export ter[suporte@RT-PE-FAZENDA-TORRES] > /export ter                                   [K[suporte@RT-PE-FAZENDA-TORRES] > /export ters[suporte@RT-PE-FAZENDA-TORRES] > /export ters                                  [K[suporte@RT-PE-FAZENDA-TORRES] > /export terse[suporte@RT-PE-FAZENDA-TORRES] > /export terse                                 [K[suporte@RT-PE-FAZENDA-TORRES] > /export terse[suporte@RT-PE-FAZENDA-TORRES] > /export terse
-# jan/10/1970 11:30:16 by RouterOS 6.49.10
-# software id = A4WE-I4SM
-#
-# model = RB760iGS
-# serial number = HCJ08B3M10T
-/interface bridge add name=br-acesso
-/interface bridge add name=loopback
-/interface ethernet set [ find default-name=ether1 ] l2mtu=2000 mtu=2000
-/interface ethernet set [ find default-name=ether2 ] l2mtu=2000 mtu=2000
-/interface ethernet set [ find default-name=ether3 ] l2mtu=2000 mtu=2000 name="et
-her3 - P2P-RT-SANTA-MARIA-P3"
-/interface ethernet set [ find default-name=ether4 ] l2mtu=2000 mtu=2000
-/interface ethernet set [ find default-name=ether5 ] l2mtu=2000 mtu=2000 name="et
-her5 - P2P-RT-CASARAO"
-/interface ethernet set [ find default-name=sfp1 ] l2mtu=2000 mtu=2000
-/interface vpls add advertised-l2mtu=1508 cisco-style=yes cisco-style-id=46 disab
-led=no l2mtu=1508 mac-address=02:B2:F4:7E:B9:AA name=vpls-bras remote-peer=10.25
-5.255.2
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/routing ospf instance set [ find default=yes ] router-id=10.255.0.61
-/interface bridge port add bridge=br-acesso interface=ether1
-/interface bridge port add bridge=br-acesso interface=ether2
-/interface bridge port add bridge=br-acesso interface=ether4
-/interface bridge port add bridge=br-acesso interface=vpls-bras
-/ip neighbor discovery-settings set discover-interface-list=!dynamic
-/interface pppoe-server server add interface=ether2 service-name=service1
-/ip address add address=172.18.100.125/30 comment="P2P-SANTA MARIA" interface="et
-her3 - P2P-RT-SANTA-MARIA-P3" network=172.18.100.124
-/ip address add address=10.255.0.122 interface=loopback network=10.255.0.122
-/ip address add address=172.18.100.233/30 comment="P2P CASARAO" interface="ether5
- - P2P-RT-CASARAO" network=172.18.100.232
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=9291
-/ip service set api-ssl disabled=yes
-/mpls interface set [ find default=yes ] mpls-mtu=1570
-/mpls ldp set enabled=yes lsr-id=10.255.0.122 transport-address=10.255.0.122
-/mpls ldp interface add interface="ether3 - P2P-RT-SANTA-MARIA-P3"
-/mpls ldp interface add interface="ether5 - P2P-RT-CASARAO"
-/routing ospf interface add interface="ether3 - P2P-RT-SANTA-MARIA-P3" network-ty
-pe=point-to-point
-/routing ospf interface add interface="ether5 - P2P-RT-CASARAO" network-type=poin
-t-to-point
-/routing ospf interface add passive=yes
-/routing ospf network add area=backbone network=172.18.100.124/30
-/routing ospf network add area=backbone network=10.255.0.122/32
-/routing ospf network add area=backbone network=172.18.100.232/30
-/system identity set name=RT-PE-FAZENDA-TORRES
-/tool romon set enabled=yes secrets=jma
-[suporte@RT-PE-FAZENDA-TORRES] >                                               [suporte@RT-PE-FAZENDA-TORRES] > 

@@ -1,72 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Conecta ISP
-Equipamento: ST_LARANJEIRAxZELIA
-Host: 172.26.74.11:22002
-Acesso: VIA PROXY SSH
-Modelo: RB921
-Template: Backup Mikrotik
-Data: 05/12/2025 01:27:27
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[admin@ST_LARANJEIRAxZELIA] > /                                                [K[admin@ST_LARANJEIRAxZELIA] > /e[admin@ST_LARANJEIRAxZELIA] > /e                                               [K[admin@ST_LARANJEIRAxZELIA] > /ex[admin@ST_LARANJEIRAxZELIA] > /ex                                              [K[admin@ST_LARANJEIRAxZELIA] > /exp[admin@ST_LARANJEIRAxZELIA] > /exp                                             [K[admin@ST_LARANJEIRAxZELIA] > /expo[admin@ST_LARANJEIRAxZELIA] > /expo                                            [K[admin@ST_LARANJEIRAxZELIA] > /expor[admin@ST_LARANJEIRAxZELIA] > /expor                                           [K[admin@ST_LARANJEIRAxZELIA] > /export[admin@ST_LARANJEIRAxZELIA] > /export                                          [K[admin@ST_LARANJEIRAxZELIA] > /export [admin@ST_LARANJEIRAxZELIA] > /export                                          [K[admin@ST_LARANJEIRAxZELIA] > /export t[admin@ST_LARANJEIRAxZELIA] > /export t                                        [K[admin@ST_LARANJEIRAxZELIA] > /export te[admin@ST_LARANJEIRAxZELIA] > /export te                                       [K[admin@ST_LARANJEIRAxZELIA] > /export ter[admin@ST_LARANJEIRAxZELIA] > /export ter                                      [K[admin@ST_LARANJEIRAxZELIA] > /export ters[admin@ST_LARANJEIRAxZELIA] > /export ters                                     [K[admin@ST_LARANJEIRAxZELIA] > /export terse[admin@ST_LARANJEIRAxZELIA] > /export terse                                    [K[admin@ST_LARANJEIRAxZELIA] > /export terse[admin@ST_LARANJEIRAxZELIA] > /export terse
-# dec/01/2025 05:33:53 by RouterOS 6.49.13
-# software id = 2XDJ-A6QU
-#
-# model = 921UAGS-5SHPacD
-# serial number = 8CE808B94DE8
-/interface bridge add name=bridge1 protocol-mode=none
-/interface wireless set [ find default-name=wlan1 ] adaptive-noise-immunity=clien
-t-mode ampdu-priorities="" band=5ghz-onlyac basic-rates-a/g="" channel-width=20/
-40/80mhz-Ceee country=no_country_set disabled=no frequency=5835 frequency-mode=s
-uperchannel ht-basic-mcs=mcs-12 ht-supported-mcs=mcs-12 hw-retries=4 l2mtu=2000 
-mode=station-bridge mtu=2000 nv2-preshared-key=19937Pjo7249 nv2-security=enabled
- radio-name=ST_LARANJEIRA rate-set=configured rx-chains=0,1 scan-list=5835,5290,
-5465,5675,5705,5710,5725,5935 ssid=Link_MegasNet supported-rates-a/g="" tx-chain
-s=0,1 vht-basic-mcs=mcs0-9 vht-supported-mcs=mcs0-9,mcs0-9 wds-mode=dynamic wire
-less-protocol=nv2-nstreme
-/interface ethernet set [ find default-name=ether1 ] l2mtu=4076 mtu=4076 speed=10
-0Mbps
-/interface wireless nstreme set wlan1 enable-nstreme=yes
-/interface wireless security-profiles set [ find default=yes ] authentication-typ
-es=wpa2-psk mode=dynamic-keys supplicant-identity=MikroTik wpa-pre-shared-key=63
-675@ht wpa2-pre-shared-key=63675@ht
-/interface bridge port add bridge=bridge1 interface=ether1
-/interface bridge port add bridge=bridge1 disabled=yes interface=sfp1
-/interface bridge port add bridge=bridge1 interface=wlan1
-/ip address add address=172.26.74.11/29 interface=bridge1 network=172.26.74.8
-/ip dns set servers=1.1.1.1,8.8.8.8
-/ip route add distance=1 gateway=172.26.74.9
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set api-ssl disabled=yes
-/system clock set time-zone-name=America/Sao_Paulo
-/system identity set name=ST_LARANJEIRAxZELIA
-/system package update set channel=long-term
-/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
-,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
-art-time=03:00:00
-/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
-,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
-kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
-em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
-m identity get name] . \".rsc\")\r\
-    \n\r\
-    \n# Cria o backup\r\
-    \n/export file=\$backupFileName\r\
-    \n\r\
-    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
-th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
-    \ndelay 10s\r\
-    \n/file remove \$backupFileName"
-/tool romon set enabled=yes secrets=Conecta@2023
-[admin@ST_LARANJEIRAxZELIA] >                                                  [admin@ST_LARANJEIRAxZELIA] > 

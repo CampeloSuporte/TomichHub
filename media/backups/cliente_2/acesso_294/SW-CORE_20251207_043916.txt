@@ -1,0 +1,430 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: SW-CORE
+Host: 10.255.0.50:22002
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI S6730
+Template: Backup Huawei
+Data: 07/12/2025 04:39:16
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<SW-CORE-G5>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R022C00SPC500
+#
+sysname SW-CORE-G5
+#
+vlan batch 50 to 52 100 to 105 130 140 301 395 to 396 512 1001 to 1003 1009 1013 to 1014
+vlan batch 1016 1018 1050 to 1054 1056 to 1058 1060 1066 1100 1113 1401 1473
+vlan batch 1476 1729 2003 to 2004 2020 2150 2525 2603 to 2604 2606 2612 2620
+vlan batch 3001 3011 3030 to 3031 3725 3760 4040 4073 4083 4093 to 4094
+#
+stp disable
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+http server-source -i MEth0/0/1
+#
+diffserv domain default
+#
+radius-server template default
+#
+pki realm default
+ certificate-check none
+#
+acl number 2000
+ description PERMITE CUNSULTA SNMP
+ rule 1 permit source 186.0.151.36 0
+ rule 2 permit source 10.100.100.2 0
+ rule 15 deny
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default
+#
+vlan 50
+ description OSPF-NE8K-BRAS
+vlan 51
+ description OSPFV3-CGNAT
+vlan 52
+ description P2P-RB_A7-REDE-NEUTRA
+vlan 104
+ description IPv6 - CORE-ZTE-01
+vlan 130
+ description OSPF-HU-BGP->CGNAT
+vlan 140
+ description OSPF-HU-CGNAT
+vlan 395
+ description UPSTREAM-COELHO
+vlan 396
+ description DOWNSTREAM-CONECTA
+vlan 512
+ description CONEXAO-PORTAS-PON-OLT-ZTE
+vlan 1001
+ description PPPOE-OLT-ZTE
+vlan 1002
+ description VLAN-SRV-PROXMOX
+vlan 1003
+ description LAN-TO-LAN-TORRES
+vlan 1009
+ description WAN-LINK
+vlan 1013
+ description DOWNSTREAM-CONECTA
+vlan 1014
+ description REDE-NEUTRA-CONECTA
+vlan 1016
+ description DOWNSTREAM-MEGA-LINK
+vlan 1018
+ description CLIENTE PROVEDOR SPACE WEB
+vlan 1050
+ description REDE-NEUTRA-MEGALINK
+vlan 1051
+ description REDE-NEUTRA-WIRELESS PROVEDOR
+vlan 1052
+ description CLIENTE-PROVEDOR-A7-TREE
+vlan 1053
+ description REDE-NEUTRA-ELLAN-WIRELESS
+vlan 1054
+ description CLIENTE PROVEDOR REDE NEUTRA - SPACE  WEB
+vlan 1056
+ description PPPOE-REDE-NEUTRA-A7-PARAUBEBAS
+vlan 1057
+ description 1057-PPPOE-REDE-NEUTRA-LINK-ONE
+vlan 1058
+ description REDE-NEUTRA-G5-LINK-ONE
+vlan 1060
+ description 1060-REDE-NEUTRA-EXTRANET
+vlan 1066
+ description UPSTREAM-CDN-COELHO
+vlan 1100
+ description PPPOE-PARAUPEBAS-TRANSPORTE
+vlan 1113
+ description UPSTREAM-ARANET
+vlan 1473
+ description REDE-NEUTRA-PARA-G5-A7-TREE
+ name REDE-NEUTRA-PARA-G5-ISPNET-A7
+vlan 1729
+ description UPSTREAM-COELHO
+vlan 2003
+ description IPv6 - CORE-ZTE-01
+vlan 2004
+ description IPv6-CGNAT-SERVIDORES
+vlan 2020
+ description PPPOE-TORRE-CDJ
+vlan 2603
+ description TORRE-OLT-ZTE
+vlan 2606
+ description PPPOE-CURIOANOPOLIS
+vlan 2612
+ description PPPOE-CURIOANOPOLIS
+vlan 2620
+ description DADOS-OLT2-DATACOM
+vlan 3001
+ description OSPF-CGNAT
+vlan 3011
+ description VIRTUAL NET- ELLAN
+vlan 3030
+ description TORRE-OLT-ZTE
+vlan 3031
+ description TORRE-OLT-ZTE
+vlan 3725
+ name UPSTREAM-GARRA
+vlan 4040
+ description PPPOE-CURIOANOPOLIS
+vlan 4094
+ description Gerencia-InBand-OLT-NETCENTER
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ local-aaa-user password policy administrator
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme radius
+  accounting-scheme default
+  radius-server default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ local-user backup password irreversible-cipher $1c$t]2zQhn,E-$D'8NPgk)*Qi-F'U~C9Y-ObYk~>8AL*[^_NC2GX_:$
+ local-user backup privilege level 15
+ local-user backup service-type ssh
+ local-user danilo password irreversible-cipher $1c$8~mo31]PQ.$nt*Q/-91SWxF:XJlI4kTF(b.!jpwtEar9R$/4]{O$
+ local-user danilo privilege level 15
+ local-user danilo service-type ssh http
+#
+interface Vlanif1
+#
+interface Vlanif50
+ description OSPF-NE8K-BRAS
+ ip address 172.18.100.13 255.255.255.252
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Vlanif52
+ description P2P-RB_A7-REDE-NEUTRA
+#
+interface Vlanif4094
+ description Gerencia-InBand-OLT-NETCENTER
+ ip address 10.10.2.33 255.255.255.252
+ ospf enable 1 area 0.0.0.0
+#
+interface MEth0/0/1
+ ip address 192.168.1.253 255.255.255.0
+#
+interface Eth-Trunk0
+ description LACP-NE8K-BDR
+ port link-type trunk
+ port trunk allow-pass vlan 50 to 52 100 to 103 130 140 395 to 396 1001 1009 1013 1016 1018
+ port trunk allow-pass vlan 1053 1058 1066 1100 1113 1401 1473 1729 2004 2020
+ port trunk allow-pass vlan 2603 2606 2612 2620 3011 3030 to 3031 3725 4040 4083
+ mode lacp
+#
+interface Eth-Trunk1
+ description LACP-CGNAT
+ port link-type trunk
+ port trunk allow-pass vlan 51 100 to 104 130 140 301 512 1001 to 1003 1013 to 1015 1056 1100
+ port trunk allow-pass vlan 1401 2003 to 2004 2020 2150 2606 3001 3031 4040
+ mode lacp
+#
+interface Eth-Trunk22
+#
+interface XGigabitEthernet0/0/1
+ description ROUTER-NE8K-P4
+ eth-trunk 0
+#
+interface XGigabitEthernet0/0/2
+ description ROUTER-NE8K-P5
+ eth-trunk 0
+#
+interface XGigabitEthernet0/0/3
+ description CLIENTE PROVEDOR A7 TREE
+ port link-type trunk
+ port trunk allow-pass vlan 1052 1473 1476 3760
+#
+interface XGigabitEthernet0/0/4
+ description LACP CGNAT-SFP01
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/5
+ description OLT-06-ZTE
+ port link-type trunk
+ port trunk allow-pass vlan 512 1001 1003 1014 1050 to 1052 1054 1056 to 1057 1060
+#
+interface XGigabitEthernet0/0/6
+ description SW 03 - OLT 02
+ port link-type trunk
+ port trunk allow-pass vlan 301 1014 1050 to 1052 1054 1056 to 1057 1060 2020 2620 4094
+#
+interface XGigabitEthernet0/0/7
+ description OLT-03-PARAUAPEBAS
+ port link-type trunk
+ port trunk allow-pass vlan 1014 1050 to 1052 1054 1056 to 1057 1060 2150 2525 2603 to 2604 2620 4073
+ port trunk allow-pass vlan 4083 4093
+#
+interface XGigabitEthernet0/0/8
+ description R1-A7TREE-PARAUAPEBAS-REDE-NEUTRA
+ port link-type trunk
+ port trunk allow-pass vlan 52 527 1056 1476 3760
+#
+interface XGigabitEthernet0/0/9
+ description WAN-LINK-ARANET
+ port link-type trunk
+ port trunk allow-pass vlan 1113
+#
+interface XGigabitEthernet0/0/10
+ description UPSTREAM-GARRA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 3725
+ stp disable
+#
+interface XGigabitEthernet0/0/11
+ description DOWNSTREAM-MEGALINK-DHONE
+ port link-type trunk
+ port trunk allow-pass vlan 1016 1050
+#
+interface XGigabitEthernet0/0/12
+ description DOWNSTREAM-REDE-NEUTRA-WIRELESS
+ port link-type trunk
+ port trunk allow-pass vlan 1009 1051 1053 1100 3011
+#
+interface XGigabitEthernet0/0/13
+ description ROUTER-NE8K-P1
+ eth-trunk 0
+#
+interface XGigabitEthernet0/0/14
+ description P2P-LINK-ONE
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 1057 to 1058
+ stp disable
+#
+interface XGigabitEthernet0/0/15
+ description LACP CGNAT-SFP02
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/16
+ description OLT-04-DATACOM
+ port link-type trunk
+ port trunk allow-pass vlan 1014 1050 to 1057 1060 2606 4040
+#
+interface XGigabitEthernet0/0/17
+ description OLT-05-DATACOM
+ port link-type trunk
+ port trunk allow-pass vlan 1050 to 1057 1060 3030 to 3031
+#
+interface XGigabitEthernet0/0/18
+ description SERVIDOR-PROXMOX-01
+ port link-type access
+ port default vlan 1002
+#
+interface XGigabitEthernet0/0/19
+ description WAN - COELHO - CDN - OLT CURIONOPOLIS E CLIENTE CANNA
+ port link-type trunk
+ port trunk allow-pass vlan 395 to 396 1013 1066 1401 1729 2612
+#
+interface XGigabitEthernet0/0/20
+#
+interface XGigabitEthernet0/0/21
+#
+interface XGigabitEthernet0/0/22
+ description SPACE WEB
+ port link-type trunk
+ port trunk allow-pass vlan 1018 1054
+#
+interface XGigabitEthernet0/0/23
+ description CCR10036-PPPOE-ZTE
+ port link-type trunk
+ port trunk allow-pass vlan 23 100 to 104 396 1001 1003 1013 to 1014 1056 1401 2003 2020
+ port trunk allow-pass vlan 4094
+#
+interface XGigabitEthernet0/0/24
+ description UPLINK-SW-MIKROTIK-P10
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 100 to 104 301 395 to 396 1001 to 1002 1013 to 1014 1050 to 1052 1054 1056 to 1057 1066 1401
+ port trunk allow-pass vlan 1729 2003 2150 2603 2606 2612 3001 3030 to 3031 4040
+#
+interface 40GE0/0/1
+#
+interface 40GE0/0/2
+#
+interface 40GE0/0/3
+#
+interface 40GE0/0/4
+#
+interface 40GE0/0/5
+#
+interface 40GE0/0/6
+#
+interface NULL0
+#
+interface LoopBack0
+ ip address 10.255.0.50 255.255.255.255
+ ospf enable 1 area 0.0.0.0
+#
+ospf 1 router-id 10.255.0.50
+ area 0.0.0.0
+#
+undo icmp name timestamp-request receive
+#
+ip route-static 0.0.0.0 0.0.0.0 192.168.1.1
+#
+snmp-agent
+snmp-agent acl 2000
+snmp-agent local-engineid 800007DB03084F0A233065
+snmp-agent community read cipher %^%#,e$[N,gA0<zv6c.p{{K*[i<LMc#G$7Hw:r>R`(c-`B6>4]&sA2u83GGy^ICEsP^=Uta9OV!!cbU,l5-O%^%#
+snmp-agent community complexity-check disable
+snmp-agent sys-info contact danilo@tomich.com.br
+snmp-agent sys-info location Datacenter
+snmp-agent sys-info version v2c
+undo snmp-agent sys-info version v3
+snmp-agent mib-view included mibvew mib-2
+snmp-agent mib-view included mib2view mib-2
+snmp-agent protocol source-status all-interface
+snmp-agent protocol source-status ipv6 all-interface
+#
+stelnet server enable
+ssh server port 22002
+ssh user danilo
+ssh user danilo authentication-type password
+ssh user danilo service-type stelnet
+ssh server-source all-interface
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh client key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh server dh-exchange min-len 2048
+ssh server publickey ecc dsa rsa
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$z4]w9:$Ya$$DgV&Z72\sV_-w"~];tU~F|4(S8Tjd1*(K_9`~xd@$
+user-interface vty 0 4
+ authentication-mode aaa
+user-interface vty 16 20
+#
+wlan
+ traffic-profile name default
+ security-profile name default
+ security-profile name default-wds
+ security-profile name default-mesh
+ ssid-profile name default
+ vap-profile name default
+ wds-profile name default
+ mesh-handover-profile name default
+ mesh-profile name default
+ regulatory-domain-profile name default
+ air-scan-profile name default
+ rrm-profile name default
+ radio-2g-profile name default
+ radio-5g-profile name default
+ wids-spoof-profile name default
+ wids-whitelist-profile name default
+ wids-profile name default
+ ap-system-profile name default
+ port-link-profile name default
+ wired-port-profile name default
+ ap-group name default
+ provision-ap
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+ops
+#
+remote-unit
+#
+return
+<SW-CORE-G5>

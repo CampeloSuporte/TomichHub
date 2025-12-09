@@ -1,120 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: JMA PROVEDOR DE INTERNET LTDA
-Equipamento: SW-AMPLIACAO-DNO
-Host: 172.27.2.2:22002
-Acesso: VIA PROXY SSH
-Modelo: MIKROTIK CRS309-1G-8S+IN
-Template: Backup Mikrotik
-Data: 05/12/2025 03:33:51
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[suporte@SW-CRS-AMPLICAO-DNO] > /                                              [K[suporte@SW-CRS-AMPLICAO-DNO] > /e[suporte@SW-CRS-AMPLICAO-DNO] > /e                                             [K[suporte@SW-CRS-AMPLICAO-DNO] > /ex[suporte@SW-CRS-AMPLICAO-DNO] > /ex                                            [K[suporte@SW-CRS-AMPLICAO-DNO] > /exp[suporte@SW-CRS-AMPLICAO-DNO] > /exp                                           [K[suporte@SW-CRS-AMPLICAO-DNO] > /expo[suporte@SW-CRS-AMPLICAO-DNO] > /expo                                          [K[suporte@SW-CRS-AMPLICAO-DNO] > /expor[suporte@SW-CRS-AMPLICAO-DNO] > /expor                                         [K[suporte@SW-CRS-AMPLICAO-DNO] > /export[suporte@SW-CRS-AMPLICAO-DNO] > /export                                        [K[suporte@SW-CRS-AMPLICAO-DNO] > /export [suporte@SW-CRS-AMPLICAO-DNO] > /export                                        [K[suporte@SW-CRS-AMPLICAO-DNO] > /export t[suporte@SW-CRS-AMPLICAO-DNO] > /export t                                      [K[suporte@SW-CRS-AMPLICAO-DNO] > /export te[suporte@SW-CRS-AMPLICAO-DNO] > /export te                                     [K[suporte@SW-CRS-AMPLICAO-DNO] > /export ter[suporte@SW-CRS-AMPLICAO-DNO] > /export ter                                    [K[suporte@SW-CRS-AMPLICAO-DNO] > /export ters[suporte@SW-CRS-AMPLICAO-DNO] > /export ters                                   [K[suporte@SW-CRS-AMPLICAO-DNO] > /export terse[suporte@SW-CRS-AMPLICAO-DNO] > /export terse                                  [K[suporte@SW-CRS-AMPLICAO-DNO] > /export terse[suporte@SW-CRS-AMPLICAO-DNO] > /export terse
-# dec/05/2025 00:31:17 by RouterOS 6.49.13
-# software id = YR2C-GXD7
-#
-# model = CRS317-1G-16S+
-# serial number = C0BA0CEEA692
-/interface bridge add name=br-acesso vlan-filtering=yes
-/interface ethernet set [ find default-name=ether1 ] l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment=P2P-RT-BRAS-NE
-8K-P3 l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment=P2P-OLT-ACESSO
--RIO l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus3 ] l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus4 ] comment=OLT-ACESSO-DNO
--01 l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus5 ] advertise=10M-half,10M
--full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment=OLT-ACESSO-D
-NO-02 l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus6 ] comment=OLT-ACESSO-DNO
--03 l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus7 ] comment=OLT-ACESSO-DNO
--04 l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus8 ] comment=OLT-ACESSO-DNO
--05-FB l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus9 ] comment=P2P-CRS-AMARAL
-INA l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus10 ] auto-negotiation=no c
-omment=P2P-SW-SIMTELECOM l2mtu=10218 mtu=10218
-/interface ethernet set [ find default-name=sfp-sfpplus11 ] l2mtu=10218 mtu=10218
-
-/interface ethernet set [ find default-name=sfp-sfpplus12 ] l2mtu=10218 mtu=10218
-
-/interface ethernet set [ find default-name=sfp-sfpplus13 ] l2mtu=10218 mtu=10218
-
-/interface ethernet set [ find default-name=sfp-sfpplus14 ] l2mtu=10218 mtu=10218
-
-/interface ethernet set [ find default-name=sfp-sfpplus15 ] l2mtu=10218 mtu=10218
-
-/interface ethernet set [ find default-name=sfp-sfpplus16 ] comment=P2P-CRS-106-A
-GRODEMARCHI l2mtu=10218 mtu=10218
-/interface vlan add interface=sfp-sfpplus1 name=VLAN-10-GERENCIA vlan-id=10
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/snmp community set [ find default=yes ] name=jmatelecom-ro
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus1
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus2 pvid=47
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus3
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus4
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus5
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus6
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus7
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus8
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus9
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus10
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus11
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus12
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus13
-/interface bridge port add bridge=br-acesso interface=sfp-sfpplus16 pvid=405
-/interface bridge vlan add bridge=br-acesso comment=VLAN-405-PPPOE-AGRODEMARCHI t
-agged=sfp-sfpplus1 untagged=sfp-sfpplus16 vlan-ids=405
-/interface bridge vlan add bridge=br-acesso comment="VLAN OLT-ACESSO-RIO" tagged=
-sfp-sfpplus1,sfp-sfpplus9,sfp-sfpplus2 vlan-ids=47,401-404,406-425,421-424
-/interface bridge vlan add bridge=br-acesso comment="GERENCIA OLTS" tagged=sfp-sf
-pplus1,sfp-sfpplus2,sfp-sfpplus4,sfp-sfpplus5,sfp-sfpplus6,sfp-sfpplus7 vlan-ids
-=77
-/interface bridge vlan add bridge=br-acesso comment="VLAN OLT-ACESSO-DNO-01" tagg
-ed=sfp-sfpplus1,sfp-sfpplus4,sfp-sfpplus8 vlan-ids=321-328,702,705,707
-/interface bridge vlan add bridge=br-acesso comment="VLAN OLT-ACESSO-DNO-02" tagg
-ed=sfp-sfpplus1,sfp-sfpplus5 vlan-ids=331-338
-/interface bridge vlan add bridge=br-acesso comment="VLANS OLT-01 OLT-02" tagged=
-sfp-sfpplus1,sfp-sfpplus4,sfp-sfpplus5,sfp-sfpplus7,sfp-sfpplus9,sfp-sfpplus8 vl
-an-ids=2702
-/interface bridge vlan add bridge=br-acesso comment="VLANS OLT-ACESSO-DNO-05-FB" 
-tagged=sfp-sfpplus1,sfp-sfpplus8,sfp-sfpplus4,sfp-sfpplus5,sfp-sfpplus6,sfp-sfpp
-lus7 vlan-ids=12,9
-/interface bridge vlan add bridge=br-acesso comment="VLANS OLT-ACESSO-DNO-03" tag
-ged=sfp-sfpplus1,sfp-sfpplus6 vlan-ids=301-308
-/interface bridge vlan add bridge=br-acesso comment="VLAN OLT-03 OLT-04" tagged=s
-fp-sfpplus1,sfp-sfpplus7,sfp-sfpplus6,sfp-sfpplus9 vlan-ids=2802
-/interface bridge vlan add bridge=br-acesso tagged=sfp-sfpplus1 vlan-ids=10
-/interface bridge vlan add bridge=br-acesso tagged=sfp-sfpplus1,sfp-sfpplus9 vlan
--ids=901,203,426-450,501-508
-/interface bridge vlan add bridge=br-acesso comment="TRANSPORTE SIM TELECOM" tagg
-ed=sfp-sfpplus1,sfp-sfpplus10 vlan-ids=3356
-/interface bridge vlan add bridge=br-acesso comment="VLANS OSPF " tagged=sfp-sfpp
-lus1,sfp-sfpplus9 vlan-ids=540-543
-/interface bridge vlan add bridge=br-acesso tagged=sfp-sfpplus10,sfp-sfpplus1,*14
- vlan-ids=3118
-/ip address add address=172.27.2.2/28 interface=br-acesso network=172.27.2.0
-/ip route add distance=1 gateway=172.27.2.1
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=9291
-/ip service set api-ssl disabled=yes
-/snmp set enabled=yes trap-version=2
-/system clock set time-zone-name=America/Bahia
-/system identity set name=SW-CRS-AMPLICAO-DNO
-/system routerboard settings set boot-os=router-os
-/tool romon set enabled=yes secrets=jma
-[suporte@SW-CRS-AMPLICAO-DNO] >                                                [suporte@SW-CRS-AMPLICAO-DNO] > 

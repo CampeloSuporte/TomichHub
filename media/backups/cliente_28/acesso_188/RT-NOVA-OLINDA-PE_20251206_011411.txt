@@ -1,220 +1,0 @@
-================================================================================
-BACKUP DE CONFIGURAÇÃO
-================================================================================
-Cliente: Conecta ISP
-Equipamento: RT-NOVA-OLINDA-PE
-Host: 10.255.255.98:22002
-Acesso: VIA PROXY SSH
-Modelo: RB3011
-Template: Backup Mikrotik
-Data: 06/12/2025 01:14:11
-Executado por: Sistema
-================================================================================
-
-
-============================================================
-Comando: /export terse
-============================================================
-/[admin@RT-NOVA-OLINDA-PE] > /                                                  [K[admin@RT-NOVA-OLINDA-PE] > /e[admin@RT-NOVA-OLINDA-PE] > /e                                                 [K[admin@RT-NOVA-OLINDA-PE] > /ex[admin@RT-NOVA-OLINDA-PE] > /ex                                                [K[admin@RT-NOVA-OLINDA-PE] > /exp[admin@RT-NOVA-OLINDA-PE] > /exp                                               [K[admin@RT-NOVA-OLINDA-PE] > /expo[admin@RT-NOVA-OLINDA-PE] > /expo                                              [K[admin@RT-NOVA-OLINDA-PE] > /expor[admin@RT-NOVA-OLINDA-PE] > /expor                                             [K[admin@RT-NOVA-OLINDA-PE] > /export[admin@RT-NOVA-OLINDA-PE] > /export                                            [K[admin@RT-NOVA-OLINDA-PE] > /export [admin@RT-NOVA-OLINDA-PE] > /export                                            [K[admin@RT-NOVA-OLINDA-PE] > /export t[admin@RT-NOVA-OLINDA-PE] > /export t                                          [K[admin@RT-NOVA-OLINDA-PE] > /export te[admin@RT-NOVA-OLINDA-PE] > /export te                                         [K[admin@RT-NOVA-OLINDA-PE] > /export ter[admin@RT-NOVA-OLINDA-PE] > /export ter                                        [K[admin@RT-NOVA-OLINDA-PE] > /export ters[admin@RT-NOVA-OLINDA-PE] > /export ters                                       [K[admin@RT-NOVA-OLINDA-PE] > /export terse[admin@RT-NOVA-OLINDA-PE] > /export terse                                      [K[admin@RT-NOVA-OLINDA-PE] > /export terse[admin@RT-NOVA-OLINDA-PE] > /export terse
-# aug/08/1970 17:42:14 by RouterOS 6.49.2
-# software id = G0QV-AHV6
-#
-# model = RouterBOARD 3011UiAS
-# serial number = 780E06AB7C74
-/interface bridge add name=br-acesso protocol-mode=none
-/interface bridge add comment=***************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************* name=bridg
-e1 protocol-mode=none vlan-filtering=yes
-/interface bridge add name=loopback
-/interface ethernet set [ find default-name=ether1 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether1 -ALIMENTA\C7\C3O POE"
-/interface ethernet set [ find default-name=ether2 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether2 - AP MESSIAS AC"
-/interface ethernet set [ find default-name=ether3 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether3 - AP ADIMEIRE"
-/interface ethernet set [ find default-name=ether4 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether4 - AP SANTA L"
-/interface ethernet set [ find default-name=ether5 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether5 - AP MESSIAS 01"
-/interface ethernet set [ find default-name=ether6 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** l2mtu=8156 mtu=2000 name="ether6- PTP SDG"
-/interface ethernet set [ find default-name=ether7 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** l2mtu=4000 mtu=2000 name="ether7 - PTP ZELIA"
-/interface ethernet set [ find default-name=ether8 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether8 - GERENCIA PATCH PAINEL" speed=10Mbps
-/interface ethernet set [ find default-name=ether9 ] comment=********************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-******************** name="ether9 - ROCKET" speed=100Mbps
-/interface ethernet set [ find default-name=ether10 ] comment=*******************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************* name="ether10 - CAMERA_IP 10.8.11.200" poe-out=off speed=1
-00Mbps
-/interface ethernet set [ find default-name=sfp1 ] advertise=10M-half,10M-full,10
-0M-half,100M-full,1000M-half,1000M-full auto-negotiation=no comment=************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-**************************** name="sfp1-OLT-NOVA OLINDA"
-/interface vpls add advertised-l2mtu=1550 cisco-style=yes cisco-style-id=34 disab
-led=no l2mtu=1550 mac-address=02:EC:64:8C:44:6E name=vpls-bras remote-peer=10.25
-5.255.15
-/interface vpls add advertised-l2mtu=1550 cisco-style=yes cisco-style-id=30 disab
-led=no l2mtu=1550 mac-address=02:EC:64:8C:44:6E name=vpls-bras2 remote-peer=10.2
-55.255.15
-/interface vlan add interface="sfp1-OLT-NOVA OLINDA" name=vlan28 vlan-id=28
-/interface wireless security-profiles set [ find default=yes ] supplicant-identit
-y=MikroTik
-/ip pool add name=dhcp_pool0 ranges=192.168.1.2-192.168.1.254
-/routing ospf instance set [ find default=yes ] router-id=10.255.255.98
-/snmp community set [ find default=yes ] name=conectaisp-ro
-/interface bridge port add bridge=bridge1 interface=vlan28
-/interface bridge port add bridge=bridge1 interface="ether2 - AP MESSIAS AC"
-/interface bridge port add bridge=bridge1 interface="ether3 - AP ADIMEIRE"
-/interface bridge port add bridge=bridge1 interface="ether4 - AP SANTA L"
-/interface bridge port add bridge=bridge1 interface="ether5 - AP MESSIAS 01"
-/interface bridge port add bridge=bridge1 interface=vpls-bras
-/interface bridge port add bridge=bridge1 interface="ether8 - GERENCIA PATCH PAIN
-EL"
-/interface bridge port add bridge=br-acesso interface="ether10 - CAMERA_IP 10.8.1
-1.200"
-/interface bridge port add bridge=br-acesso interface="ether9 - ROCKET"
-/interface bridge port add bridge=br-acesso interface=vpls-bras2
-/ip firewall connection tracking set enabled=yes
-/ip neighbor discovery-settings set discover-interface-list=!dynamic
-/interface bridge vlan add bridge=bridge1 disabled=yes tagged="ether7 - PTP ZELIA
-" untagged="ether6- PTP SDG" vlan-ids=102
-/ip address add address=10.8.9.237/24 interface=bridge1 network=10.8.9.0
-/ip address add address=172.16.100.37/30 interface=vlan28 network=172.16.100.36
-/ip address add address=172.26.86.12/29 interface="ether6- PTP SDG" network=172.2
-6.86.8
-/ip address add address=10.255.255.98 interface=loopback network=10.255.255.98
-/ip address add address=10.8.9.1/24 interface=bridge1 network=10.8.9.0
-/ip address add address=10.8.11.1/24 interface=br-acesso network=10.8.11.0
-/ip address add address=172.26.74.4/29 interface="ether7 - PTP ZELIA" network=172
-.26.74.0
-/ip address add address=10.9.8.1/24 disabled=yes interface=bridge1 network=10.9.8
-.0
-/ip firewall nat add action=dst-nat chain=dstnat dst-address=10.255.255.98 dst-po
-rt=80,443 protocol=tcp to-addresses=172.16.100.38
-/ip firewall nat add action=src-nat chain=srcnat dst-address=172.16.100.38 to-add
-resses=172.16.100.37
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set winbox port=8283
-/ip service set api-ssl disabled=yes
-/lcd set time-interval=daily
-/mpls interface set [ find default=yes ] mpls-mtu=1570
-/mpls ldp set enabled=yes lsr-id=10.255.255.98 transport-address=10.255.255.98
-/mpls ldp interface add interface="ether6- PTP SDG"
-/mpls ldp interface add interface="ether7 - PTP ZELIA"
-/routing ospf interface add interface="ether6- PTP SDG" network-type=point-to-poi
-nt
-/routing ospf interface add cost=1500 interface="ether7 - PTP ZELIA" network-type
-=point-to-point
-/routing ospf network add area=backbone network=10.255.255.98/32
-/routing ospf network add area=backbone network=172.26.86.8/29
-/routing ospf network add area=backbone network=10.8.9.0/24
-/routing ospf network add area=backbone network=10.8.11.0/24
-/routing ospf network add area=backbone network=172.26.74.0/29
-/routing ospf network add area=backbone network=172.16.100.36/30
-/snmp set enabled=yes
-/system identity set name=RT-NOVA-OLINDA-PE
-/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
-,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
-art-time=03:00:00
-/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
-,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
-kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
-em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
-m identity get name] . \".rsc\")\r\
-    \n\r\
-    \n# Cria o backup\r\
-    \n/export file=\$backupFileName\r\
-    \n\r\
-    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
-th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
-    \ndelay 10s\r\
-    \n/file remove \$backupFileName"
-/tool romon set enabled=yes secrets=Conecta@2023
-[admin@RT-NOVA-OLINDA-PE] >                                                    [admin@RT-NOVA-OLINDA-PE] > 

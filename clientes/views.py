@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.shortcuts import render,redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
@@ -1185,7 +1186,7 @@ def listar_backups_cliente(request):
             'status': backup.get_status_display(),
             'status_code': backup.status,
             'tamanho': backup.get_tamanho_formatado(),
-            'data': backup.data_backup.strftime('%d/%m/%Y %H:%M:%S'),
+            'data': backup.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S'),
             'duracao': f"{backup.duracao_segundos:.2f}s",
             'executado_por': backup.executado_por.username if backup.executado_por else 'Sistema',
             'mensagem': backup.mensagem or '',
@@ -2095,7 +2096,7 @@ def listar_backups_cliente(request):
             'status': backup.get_status_display(),
             'status_code': backup.status,
             'tamanho': backup.get_tamanho_formatado(),
-            'data': backup.data_backup.strftime('%d/%m/%Y %H:%M:%S'),
+            'data': backup.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S'),
             'duracao': f"{backup.duracao_segundos:.2f}s",
             'executado_por': backup.executado_por.username if backup.executado_por else 'Sistema',
             'mensagem': backup.mensagem or '',
