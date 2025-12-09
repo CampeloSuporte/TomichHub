@@ -1514,8 +1514,11 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         f"-o ConnectTimeout=30 "
         f"-o ServerAliveInterval=60 "
         f"-o LogLevel=ERROR "
-        f"-o HostKeyAlgorithms=+ssh-rsa "
+        f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+        f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
         f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
+        f"-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
+        f"-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512 "
         f"-p {porta} {usuario}@{host}"
     )
     
