@@ -9,7 +9,7 @@ from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso
 from .models import ProxyServer
 from .decorators import admin_required, cliente_login_required
 from .decorators import (
@@ -531,6 +531,7 @@ def upload_topologia(request):
         cliente_id = request.POST.get('cliente')
         imagem = request.FILES.get('imagem')
         nome = imagem.name if imagem else None
+        drawio_url = request.POST.get('drawio_url', '').strip()  # ✅ NOVO
 
         if not imagem:
             messages.error(request, "Nenhuma imagem selecionada.")
@@ -542,15 +543,34 @@ def upload_topologia(request):
             messages.error(request, "Apenas imagens são permitidas (JPG, PNG, GIF, SVG, WEBP).")
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
+        # ✅ NOVO: Criar com drawio_url
         ImagemTopologia.objects.create(
             cliente_id=cliente_id,
             nome=nome,
-            imagem=imagem
+            imagem=imagem,
+            drawio_url=drawio_url if drawio_url else None  # Aceita vazio
         )
         messages.success(request, f'Imagem de topologia "{nome}" enviada com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
     else:
         return redirect('listar_clientes')
+
+@login_required(login_url='login')
+def editar_topologia(request, topologia_id):
+    """Edita o link DrawIO de uma topologia"""
+    if request.method == 'POST':
+        topologia = get_object_or_404(ImagemTopologia, id=topologia_id)
+        
+        topologia.nome = request.POST.get('nome', topologia.nome)
+        topologia.drawio_url = request.POST.get('drawio_url', '').strip()
+        topologia.drawio_url = topologia.drawio_url if topologia.drawio_url else None
+        
+        topologia.save()
+        
+        messages.success(request, 'Topologia atualizada com sucesso!')
+        return redirect(reverse('listar_clientes') + f'?id={topologia.cliente.id}')
+    
+    return redirect('listar_clientes')
 
 
 @login_required(login_url='login')
@@ -565,6 +585,55 @@ def deletar_topologia(request, topologia_id):
     topologia.delete()
     messages.success(request, f'Imagem de topologia "{topologia.nome}" excluída com sucesso!')
     return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+
+
+@login_required(login_url='login')
+def editar_imagem_topologia(request, topologia_id):
+    """Edita a imagem de uma topologia (substitui a imagem existente)"""
+    if request.method == 'POST':
+        topologia = get_object_or_404(ImagemTopologia, id=topologia_id)
+        cliente_id = topologia.cliente.id
+        
+        # ✅ Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                cliente = Cliente.objects.get(usuario=request.user)
+                if cliente.id != cliente_id:
+                    messages.error(request, 'Sem permissão para editar esta topologia.')
+                    return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+            except Cliente.DoesNotExist:
+                messages.error(request, 'Sem permissão.')
+                return redirect('listar_clientes')
+        
+        # ✅ Obter a nova imagem
+        imagem = request.FILES.get('imagem')
+        
+        if not imagem:
+            messages.error(request, 'Nenhuma imagem selecionada.')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+        
+        # ✅ Validar se é imagem
+        nome_arquivo = imagem.name.lower()
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
+        
+        if not any(nome_arquivo.endswith(ext) for ext in valid_extensions):
+            messages.error(request, 'Apenas imagens são permitidas (JPG, PNG, GIF, SVG, WEBP).')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+        
+        # ✅ Deletar imagem antiga se existir
+        if topologia.imagem and topologia.imagem.storage.exists(topologia.imagem.name):
+            topologia.imagem.delete(save=False)
+        
+        # ✅ Atualizar com nova imagem
+        topologia.imagem = imagem
+        topologia.nome = request.POST.get('nome', imagem.name)
+        topologia.save()
+        
+        messages.success(request, f'Imagem de topologia atualizada com sucesso!')
+        return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
+    
+    return redirect('listar_clientes')
+
 
 @login_required(login_url='login')
 def buscar_vpn(request, vpn_id):
@@ -3243,3 +3312,128 @@ def get_whois_server(irr_registry):
     }
     
     return servidores.get(irr_registry.upper(), 'whois.radb.net')
+
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def listar_comentarios_acesso(request, acesso_id):
+    """Lista comentários de um acesso específico"""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    
+    # ✅ CORRIGIDO: Verificação de permissão CORRETA - staff/superuser são permitidos
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if cliente.id != acesso.cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    
+    comentarios = acesso.comentarios.all()
+    
+    dados = []
+    for com in comentarios:
+        dados.append({
+            'id': com.id,
+            'usuario': com.usuario.get_full_name() or com.usuario.username,
+            'comentario': com.comentario,
+            'data_criacao': com.data_criacao.strftime('%d/%m/%Y %H:%M:%S'),
+            'data_atualizacao': com.data_atualizacao.strftime('%d/%m/%Y %H:%M:%S') if com.data_atualizacao != com.data_criacao else None,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'comentarios': dados,
+        'total': len(dados)
+    })
+
+
+def adicionar_comentario_acesso(request, acesso_id):
+    """Adiciona um novo comentário ao acesso"""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    
+    # ✅ CORRIGIDO: Verificação de permissão CORRETA
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if cliente.id != acesso.cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    
+    comentario_texto = request.POST.get('comentario', '').strip()
+    
+    if not comentario_texto:
+        return JsonResponse({'error': 'Comentário não pode estar vazio'}, status=400)
+    
+    if len(comentario_texto) > 5000:
+        return JsonResponse({'error': 'Comentário muito longo (máximo 5000 caracteres)'}, status=400)
+    
+    comentario = ComentarioAcesso.objects.create(
+        acesso=acesso,
+        usuario=request.user,
+        comentario=comentario_texto
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Comentário adicionado com sucesso',
+        'comentario': {
+            'id': comentario.id,
+            'usuario': request.user.get_full_name() or request.user.username,
+            'comentario': comentario.comentario,
+            'data_criacao': comentario.data_criacao.strftime('%d/%m/%Y %H:%M:%S'),
+        }
+    })
+
+
+@login_required(login_url="login")
+@require_http_methods(["POST", "DELETE"])
+def deletar_comentario_acesso(request, comentario_id):
+    """Deleta um comentário do acesso"""
+    comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
+    
+    # Verificar permissão - apenas o autor ou admin pode deletar
+    if request.user != comentario.usuario and not request.user.is_staff:
+        return JsonResponse({'error': 'Sem permissão para deletar'}, status=403)
+    
+    acesso = comentario.acesso
+    comentario.delete()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Comentário deletado com sucesso'
+    })
+
+
+@login_required(login_url="login")
+@require_http_methods(["POST"])
+def editar_comentario_acesso(request, comentario_id):
+    """Edita um comentário existente"""
+    comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
+    
+    # Verificar permissão - apenas o autor ou admin pode editar
+    if request.user != comentario.usuario and not request.user.is_staff:
+        return JsonResponse({'error': 'Sem permissão para editar'}, status=403)
+    
+    novo_texto = request.POST.get('comentario', '').strip()
+    
+    if not novo_texto:
+        return JsonResponse({'error': 'Comentário não pode estar vazio'}, status=400)
+    
+    if len(novo_texto) > 5000:
+        return JsonResponse({'error': 'Comentário muito longo (máximo 5000 caracteres)'}, status=400)
+    
+    comentario.comentario = novo_texto
+    comentario.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Comentário atualizado com sucesso',
+        'comentario': {
+            'id': comentario.id,
+            'comentario': comentario.comentario,
+            'data_atualizacao': comentario.data_atualizacao.strftime('%d/%m/%Y %H:%M:%S'),
+        }
+    })

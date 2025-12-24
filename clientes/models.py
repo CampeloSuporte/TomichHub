@@ -67,6 +67,22 @@ class Acesso(models.Model):
         return f"{self.tipo} - {self.host}:{self.porta} ({self.cliente.nome_empresa})"
 
 
+class ComentarioAcesso(models.Model):
+    """Comentários para acessos de equipamento"""
+    acesso = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='comentarios')
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    comentario = models.TextField()
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Comentário de Acesso'
+        verbose_name_plural = 'Comentários de Acesso'
+        ordering = ['-data_criacao']
+
+    def __str__(self):
+        return f"Comentário de {self.usuario} em {self.acesso.tipo}"
+
 
 class Documento(models.Model):
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='documentos')
@@ -95,6 +111,12 @@ class ImagemTopologia(models.Model):
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='imagens_topologia')
     nome = models.CharField(max_length=255)
     imagem = models.ImageField(upload_to='topologia/')
+    drawio_url = models.URLField(
+        blank=True, 
+        null=True,
+        verbose_name="Link DrawIO",
+        help_text="URL da topologia editável no DrawIO (ex: draw.io/...)"
+    )
     data_upload = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

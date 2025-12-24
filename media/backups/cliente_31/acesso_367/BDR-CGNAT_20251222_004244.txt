@@ -1,0 +1,143 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: C & D ADMINISTRADORA
+Equipamento: BDR-CGNAT
+Host: 186.248.107.90:9191
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 22/12/2025 00:42:44
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@BORDA CARDNET] > /                                                     [K[tomich@BORDA CARDNET] > /e[tomich@BORDA CARDNET] > /e                                                    [K[tomich@BORDA CARDNET] > /ex[tomich@BORDA CARDNET] > /ex                                                   [K[tomich@BORDA CARDNET] > /exp[tomich@BORDA CARDNET] > /exp                                                  [K[tomich@BORDA CARDNET] > /expo[tomich@BORDA CARDNET] > /expo                                                 [K[tomich@BORDA CARDNET] > /expor[tomich@BORDA CARDNET] > /expor                                                [K[tomich@BORDA CARDNET] > /export[tomich@BORDA CARDNET] > /export                                               [K[tomich@BORDA CARDNET] > /export [tomich@BORDA CARDNET] > /export                                               [K[tomich@BORDA CARDNET] > /export t[tomich@BORDA CARDNET] > /export t                                             [K[tomich@BORDA CARDNET] > /export te[tomich@BORDA CARDNET] > /export te                                            [K[tomich@BORDA CARDNET] > /export ter[tomich@BORDA CARDNET] > /export ter                                           [K[tomich@BORDA CARDNET] > /export ters[tomich@BORDA CARDNET] > /export ters                                          [K[tomich@BORDA CARDNET] > /export terse[tomich@BORDA CARDNET] > /export terse                                         [K[tomich@BORDA CARDNET] > /export terse[tomich@BORDA CARDNET] > /export terse
+# dec/22/2025 00:42:39 by RouterOS 6.49.18
+# software id = KZX1-K3KD
+#
+# model = CCR1016-12S-1S+
+# serial number = HEC08ZCKSQN
+/interface bridge add name=Loopback
+/interface ethernet set [ find default-name=sfp1 ] advertise=10M-half,10M-full,10
+0M-half,100M-full,1000M-half,1000M-full,10000M-full auto-negotiation=no comment=
+LACP-BRAS-P1
+/interface ethernet set [ find default-name=sfp4 ] advertise=10M-half,10M-full,10
+0M-half,100M-full,1000M-half,1000M-full comment=LACP-BRAS-P4
+/interface ethernet set [ find default-name=sfpplus1 ] advertise=10M-half,10M-ful
+l,100M-half,100M-full,1000M-half,1000M-full comment="LINK ATC" speed=1Gbps
+/interface l2tp-client add connect-to=45.178.142.45 name=L2TP-SGP password=vRqaSE
+8MWVJAsIjMSg68 user=cardfacil02
+/interface gre add !keepalive local-address=186.248.107.90 name=GRE-HUBSOFT-1 rem
+ote-address=200.11.123.144
+/interface bonding add name=LACP-BRAS slaves=sfp1,sfp4 transmit-hash-policy=layer
+-2-and-3
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/routing ospf instance set [ find default=yes ] redistribute-connected=as-type-1 
+redistribute-static=as-type-1 router-id=10.255.255.1
+/snmp community set [ find default=yes ] name=cardnetV2
+/system logging action set 3 remote=170.245.127.4
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/user group add name=admin policy=local,ftp,reboot,read,write,test,winbox,passwor
+d,web,sniff,sensitive,romon,dude,tikapp,!telnet,!ssh,!policy,!api
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/ip address add address=10.10.89.6/30 interface=LACP-BRAS network=10.10.89.4
+/ip address add address=186.248.107.90/30 interface=sfpplus1 network=186.248.107.
+88
+/ip address add address=10.255.255.1 interface=Loopback network=10.255.255.1
+/ip address add address=186.248.165.193 comment="Bloco /28 do CGNAT" disabled=yes
+ interface=sfpplus1 network=186.248.165.193
+/ip address add address=206.0.25.7 comment="IP SAIDA ZOENET" disabled=yes network
+=206.0.25.7
+/ip address add address=10.10.89.10/30 disabled=yes interface=sfp4 network=10.10.
+89.8
+/ip address add address=172.16.20.1/30 interface=GRE-HUBSOFT-1 network=172.16.20.
+0
+/ip address add address=186.248.165.193 interface=Loopback network=186.248.165.19
+3
+/ip address add address=198.18.1.1/30 interface=LACP-BRAS network=198.18.1.0
+/ip address add address=186.248.165.206 interface=Loopback network=186.248.165.20
+6
+/ip dns set servers=200.150.4.66,200.150.4.74,8.8.8.8
+/ip firewall address-list add address=10.172.10.0/30 list=REDELOCAL
+/ip firewall address-list add address=10.255.255.1 list=REDELOCAL
+/ip firewall address-list add address=10.10.89.4/30 list=REDELOCAL
+/ip firewall address-list add address=172.16.20.0/30 list=REDELOCAL
+/ip firewall address-list add address=200.11.123.144 comment="IP DO HUBSOFT" list
+=REDELOCAL
+/ip firewall address-list add address=100.66.0.0/23 list=rede-privada-para-cgnat
+/ip firewall nat add action=same chain=srcnat comment="NAT BACKUP ZOENET" same-no
+t-by-dst=yes src-address=100.64.0.0/10 to-addresses=186.248.165.192/28
+/ip firewall nat add action=dst-nat chain=dstnat dst-address=186.248.165.193 dst-
+port=3799,8728 protocol=tcp to-addresses=10.10.89.5
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO SSH OL
+T HUAWEI" dst-address=186.248.107.90 dst-port=9095 protocol=tcp to-addresses=10.
+100.0.2 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO TELNET
+ OLT HUAWEI" dst-address=186.248.107.90 dst-port=9094 protocol=tcp to-addresses=
+10.100.0.2 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO SSH BR
+AS" dst-address=186.248.107.90 dst-port=9192 protocol=tcp to-addresses=10.10.89.
+5 to-ports=9192
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO WINBOX
+ BRAS" dst-address=186.248.107.90 dst-port=8278 protocol=tcp to-addresses=10.10.
+89.5 to-ports=8278
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO SSH OL
+T HUAWEI" dst-address=186.248.107.90 dst-port=9192 protocol=tcp to-addresses=10.
+10.89.5 to-ports=9191
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO TELNET
+ OLT HUAWEI" dst-address=186.248.107.90 dst-port=9096 protocol=tcp src-address=2
+00.11.123.144 to-addresses=10.100.0.2 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO SNMP O
+LT HUAWEI" dst-address=186.248.107.90 dst-port=9097 protocol=tcp to-addresses=10
+.100.0.2 to-ports=161
+/ip firewall nat add action=src-nat chain=srcnat dst-address-list=!REDELOCAL src-
+address-list=!REDELOCAL to-addresses=186.248.107.90
+/ip firewall service-port set ftp disabled=yes
+/ip firewall service-port set sip disabled=yes
+/ip firewall service-port set sctp disabled=yes
+/ip route add distance=1 gateway=186.248.107.89
+/ip route add distance=1 dst-address=10.50.0.1/32 gateway=172.16.20.2
+/ip route add distance=1 dst-address=10.50.0.2/32 gateway=172.16.20.2
+/ip route add distance=1 dst-address=10.100.0.2/32 gateway=10.10.89.5
+/ip route add distance=1 dst-address=100.64.0.0/10 gateway=10.10.89.5
+/ip route add distance=221 dst-address=100.66.0.0/22 gateway=10.10.89.5 scope=20
+/ip route add comment=PREFIX-CGNAT distance=1 dst-address=186.248.165.192/28 type
+=blackhole
+/ip service set telnet disabled=yes port=50
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=9191
+/ip service set api disabled=yes port=10992
+/ip service set winbox port=8277
+/ip service set api-ssl disabled=yes
+/ip traffic-flow set enabled=yes interfaces=sfpplus1,sfp1
+/ip traffic-flow target add dst-address=170.245.127.4
+/ipv6 address add address=2804:238:0:2::582/126 advertise=no comment=WAN interfac
+e=sfpplus1
+/ipv6 address add address=2804:238:79::1/48 advertise=no comment="IP OPERADORA" i
+nterface=Loopback
+/ipv6 route add distance=1 gateway=2804:238:0:2::581
+/radius add address=200.11.123.144 comment=HUBSOFT disabled=yes require-message-a
+uth=no secret=hubsoft123 service=ppp timeout=1s
+/routing ospf interface add disabled=yes interface=sfp4 network-type=point-to-poi
+nt
+/routing ospf interface add interface=LACP-BRAS network-type=point-to-point
+/routing ospf network add area=backbone network=10.255.255.1/32
+/routing ospf network add area=backbone network=10.10.89.4/30
+/snmp set enabled=yes trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name="BORDA CARDNET"
+/system logging add action=remote topics=info,event,error
+/system logging add action=remote topics=info
+/system logging add action=remote topics=error
+/system logging add action=remote topics=warning
+/system logging add action=remote topics=critical
+/system routerboard settings set auto-upgrade=yes
+/tool romon set enabled=yes id=00:00:00:00:12:00 secrets=1020304050
+[tomich@BORDA CARDNET] >                                                       [tomich@BORDA CARDNET] > 

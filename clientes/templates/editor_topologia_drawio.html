@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Topologia - Cytoscape.js</title>
+    
+    <!-- Cytoscape JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    
+    <!-- Cytoscape COSe Layout -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape-cose-bilkent/4.1.0/cytoscape-cose-bilkent.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+        
+        body {
+            background: #0d1117;
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+        
+        .navbar {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 52px;
+        }
+        
+        .navbar h4 {
+            font-size: 18px;
+            color: #58a6ff;
+            margin: 0;
+        }
+        
+        .navbar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn:hover {
+            background: #161b22;
+            border-color: #58a6ff;
+        }
+        
+        .btn.primary {
+            background: #238636;
+            border-color: #2ea043;
+            color: #fff;
+        }
+        
+        .btn.primary:hover {
+            background: #2ea043;
+        }
+        
+        .btn.danger {
+            background: #da3633;
+            border-color: #f85149;
+            color: #fff;
+        }
+        
+        .btn.danger:hover {
+            background: #f85149;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 52px);
+            gap: 15px;
+            padding: 15px;
+            overflow: hidden;
+        }
+        
+        #cy {
+            flex: 1;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #30363d;
+            background: #161b22;
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        
+        .panel-title {
+            color: #58a6ff;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .equipamento-item {
+            padding: 10px;
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid #58a6ff;
+            border-radius: 4px;
+            cursor: grab;
+            margin-bottom: 8px;
+            font-size: 11px;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        
+        .equipamento-item:hover {
+            background: rgba(88, 166, 255, 0.2);
+            border-color: #58a6ff;
+        }
+        
+        .equipamento-item:active {
+            cursor: grabbing;
+        }
+        
+        .equipamento-nome {
+            font-weight: bold;
+            color: #58a6ff;
+        }
+        
+        .equipamento-info {
+            font-size: 10px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+        
+        .info-box {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid #ffc107;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #8b949e;
+            line-height: 1.5;
+        }
+        
+        .info-box strong {
+            color: #ffc107;
+        }
+        
+        .divider {
+            height: 1px;
+            background: #30363d;
+        }
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            background: #161b22;
+            border: 1px solid #30363d;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .toast.success {
+            border-color: #4CAF50;
+        }
+        
+        .toast.success strong {
+            color: #4CAF50;
+        }
+        
+        .toast.error {
+            border-color: #ff6b6b;
+        }
+        
+        .toast.error strong {
+            color: #ff6b6b;
+        }
+        
+        .toast.info {
+            border-color: #58a6ff;
+        }
+        
+        .toast.info strong {
+            color: #58a6ff;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(48, 54, 61, 0.5);
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #58a6ff;
+            border-radius: 3px;
+        }
+        
+        /* Cytoscape customização */
+        #cy {
+            background: #0d1117;
+        }
+        
+        /* Overlay carregando */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .loading-overlay.hidden {
+            display: none;
+        }
+        
+        .loading-spinner {
+            text-align: center;
+            color: #58a6ff;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #30363d;
+            border-top: 4px solid #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .button-group .btn {
+            flex: 1;
+            font-size: 11px;
+            padding: 5px 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <h4>
+            <i class="fas fa-project-diagram" style="margin-right: 10px; color: #58a6ff;"></i>
+            Editor de Topologia - Cytoscape.js
+        </h4>
+        <div class="navbar-buttons">
+            <button class="btn" onclick="zoomFit()" title="Ajustar zoom ao diagrama">
+                <i class="fas fa-expand"></i> Ajustar
+            </button>
+            <button class="btn" onclick="limparSelecao()" title="Limpar seleção">
+                <i class="fas fa-times"></i> Limpar
+            </button>
+            <button class="btn" onclick="exportarJSON()" title="Exportar JSON">
+                <i class="fas fa-download"></i> JSON
+            </button>
+            <button class="btn" onclick="exportarPNG()" title="Exportar PNG">
+                <i class="fas fa-image"></i> PNG
+            </button>
+            <button class="btn primary" onclick="salvarTopologia()" title="Salvar topologia">
+                <i class="fas fa-save"></i> Salvar
+            </button>
+        </div>
+    </div>
+
+    <!-- Container Principal -->
+    <div class="main-container">
+        <!-- Canvas Cytoscape -->
+        <div id="cy"></div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="panel-title">
+                    <i class="fas fa-server"></i> Equipamentos
+                </div>
+                <p style="font-size: 10px; color: #8b949e; margin-top: 5px;">
+                    Arraste para o diagrama
+                </p>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Lista de Equipamentos -->
+                <div id="equipamentosList">
+                    <div class="info-box">
+                        <div class="spinner" style="width: 30px; height: 30px; border-width: 2px; margin: 10px auto;"></div>
+                        Carregando equipamentos...
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Ações -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-tools"></i> Ações
+                    </div>
+                    <div class="button-group">
+                        <button class="btn" onclick="layoutHierarchical()" title="Layout hierárquico">
+                            <i class="fas fa-sitemap"></i> Layout
+                        </button>
+                        <button class="btn danger" onclick="removerSelecionado()" title="Remover selecionado">
+                            <i class="fas fa-trash"></i> Remover
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ajuda -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-info-circle"></i> Ajuda
+                    </div>
+                    <div class="info-box" style="background: rgba(88, 166, 255, 0.1); border-color: #58a6ff; margin: 0;">
+                        <p><strong>Como usar:</strong></p>
+                        <p style="margin-top: 5px;">
+                            1. Arraste equipamentos<br>
+                            2. Clique para conectar<br>
+                            3. Salve a topologia
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Inicializando editor...</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ============================================
+        // VARIÁVEIS GLOBAIS
+        // ============================================
+
+        let cy;
+        const clienteId = window.location.pathname.split('/')[4]; // Extrair ID da URL
+        let equipamentosDisponibles = [];
+
+        // ============================================
+        // INICIALIZAÇÃO
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando Cytoscape.js Editor');
+            
+            // Inicializar Cytoscape
+            inicializarCytoscape();
+            
+            // Carregar equipamentos
+            carregarEquipamentos();
+        });
+
+        // ============================================
+        // CYTOSCAPE SETUP
+        // ============================================
+
+        function inicializarCytoscape() {
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'content': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'background-color': 'data(color)',
+                            'width': 80,
+                            'height': 80,
+                            'border-width': 2,
+                            'border-color': '#58a6ff',
+                            'font-size': 10,
+                            'color': '#fff',
+                            'text-background-color': '#0d1117',
+                            'text-background-padding': '4px',
+                            'text-background-opacity': 0.8,
+                            'text-wrap': 'wrap'
+                        }
+                    },
+                    {
+                        selector: 'node:selected',
+                        style: {
+                            'border-width': 3,
+                            'border-color': '#ffc107'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'line-color': '#30363d',
+                            'target-arrow-color': '#30363d',
+                            'target-arrow-shape': 'triangle',
+                            'width': 2,
+                            'curve-style': 'bezier'
+                        }
+                    },
+                    {
+                        selector: 'edge:selected',
+                        style: {
+                            'line-color': '#ffc107',
+                            'target-arrow-color': '#ffc107',
+                            'width': 3
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'cose',
+                    directed: false,
+                    animate: true,
+                    animationDuration: 500
+                },
+                wheelSensitivity: 0.1
+            });
+
+            // Eventos do mouse
+            cy.on('tap', 'node', function(e) {
+                console.log('Node clicado:', e.target.id());
+            });
+
+            // Drag and drop
+            cy.on('mouseover', 'node', function(e) {
+                e.target.style('cursor', 'grab');
+            });
+
+            cy.on('mouseout', 'node', function(e) {
+                e.target.style('cursor', 'default');
+            });
+
+            console.log('✅ Cytoscape inicializado');
+        }
+
+        // ============================================
+        // CARREGAR EQUIPAMENTOS DO BD
+        // ============================================
+
+        async function carregarEquipamentos() {
+            try {
+                const response = await fetch(`/api/equipamentos/${clienteId}/`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    mostrarNotificacao('❌ Erro ao carregar equipamentos', 'error');
+                    return;
+                }
+
+                equipamentosDisponibles = data.equipamentos;
+                renderizarEquipamentos();
+                mostrarNotificacao(`✅ ${data.total} equipamentos carregados`, 'success');
+
+                // Esconder loading
+                document.getElementById('loadingOverlay').classList.add('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarNotificacao('❌ Erro ao conectar com servidor', 'error');
+            }
+        }
+
+        // ============================================
+        // RENDERIZAR LISTA DE EQUIPAMENTOS
+        // ============================================
+
+        function renderizarEquipamentos() {
+            const container = document.getElementById('equipamentosList');
+            container.innerHTML = '';
+
+            // Agrupar por tipo
+            const grupos = {};
+            
+            equipamentosDisponibles.forEach(eq => {
+                const tipo = eq.tipo || 'outro';
+                if (!grupos[tipo]) grupos[tipo] = [];
+                grupos[tipo].push(eq);
+            });
+
+            // Renderizar grupos
+            Object.keys(grupos).forEach(tipo => {
+                const div = document.createElement('div');
+                div.innerHTML = `<div style="color: #58a6ff; font-size: 10px; font-weight: bold; margin-bottom: 8px; margin-top: 8px; text-transform: uppercase;">
+                    ${tipo}
+                </div>`;
+
+                grupos[tipo].forEach(eq => {
+                    const item = document.createElement('div');
+                    item.className = 'equipamento-item';
+                    item.draggable = true;
+                    item.innerHTML = `
+                        <div class="equipamento-nome">${eq.nome}</div>
+                        <div class="equipamento-info">
+                            ${eq.marca || ''} ${eq.modelo || ''}<br>
+                            ${eq.ip_gerencia || 'S/ IP'}
+                        </div>
+                    `;
+
+                    // Drag start
+                    item.addEventListener('dragstart', function(e) {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('equipamento', JSON.stringify(eq));
+                    });
+
+                    div.appendChild(item);
+                });
+
+                container.appendChild(div);
+            });
+        }
+
+        // ============================================
+        // DRAG & DROP NO CYTOSCAPE
+        // ============================================
+
+        document.getElementById('cy').addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        document.getElementById('cy').addEventListener('drop', function(e) {
+            e.preventDefault();
+            
+            const equipStr = e.dataTransfer.getData('equipamento');
+            if (!equipStr) return;
+
+            const eq = JSON.parse(equipStr);
+            
+            // Obter posição no canvas
+            const rect = document.getElementById('cy').getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Converter para coordenadas do Cytoscape
+            const posCy = cy.renderer().projectIntoViewport(x, y);
+
+            // Criar nó
+            const id = `node_${Date.now()}`;
+            
+            cy.add({
+                group: 'nodes',
+                data: {
+                    id: id,
+                    label: eq.nome,
+                    color: getColorByType(eq.tipo),
+                    equipamento_id: eq.id,
+                    tipo: eq.tipo,
+                    ip: eq.ip_gerencia
+                },
+                position: {
+                    x: posCy[0],
+                    y: posCy[1]
+                }
+            });
+
+            mostrarNotificacao(`✅ ${eq.nome} adicionado!`, 'success');
+            console.log('Nó adicionado:', id);
+        });
+
+        // ============================================
+        // FUNÇÕES DE COR
+        // ============================================
+
+        function getColorByType(tipo) {
+            const cores = {
+                'olt': '#58a6ff',
+                'switch': '#4CAF50',
+                'router': '#ff6b6b',
+                'firewall': '#ff9800',
+                'servidor': '#9c27b0',
+                'default': '#888888'
+            };
+            return cores[tipo?.toLowerCase()] || cores['default'];
+        }
+
+        // ============================================
+        // AÇÕES
+        // ============================================
+
+        function layoutHierarchical() {
+            const layout = cy.layout({
+                name: 'cose',
+                directed: true,
+                animate: true,
+                animationDuration: 500,
+                avoidOverlap: true,
+                nodeSpacing: 50
+            });
+            layout.run();
+            mostrarNotificacao('✅ Layout aplicado', 'success');
+        }
+
+        function limparSelecao() {
+            cy.elements().unselect();
+            mostrarNotificacao('✅ Seleção limpa', 'success');
+        }
+
+        function removerSelecionado() {
+            const selecionados = cy.elements(':selected');
+            if (selecionados.length === 0) {
+                mostrarNotificacao('⚠️ Selecione um elemento para remover', 'warning');
+                return;
+            }
+            selecionados.remove();
+            mostrarNotificacao(`✅ ${selecionados.length} elemento(s) removido(s)`, 'success');
+        }
+
+        function zoomFit() {
+            cy.fit(cy.elements(), 50);
+            mostrarNotificacao('✅ Zoom ajustado', 'success');
+        }
+
+        function exportarJSON() {
+            const json = cy.export();
+            const dataStr = JSON.stringify(json, null, 2);
+            
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `topologia_${clienteId}_${new Date().getTime()}.json`;
+            a.click();
+            
+            mostrarNotificacao('✅ JSON exportado', 'success');
+        }
+
+        function exportarPNG() {
+            const png = cy.png({
+                full: true,
+                scale: 2,
+                maxWidth: 4000,
+                maxHeight: 4000
+            });
+            
+            const a = document.createElement('a');
+            a.href = png;
+            a.download = `topologia_${clienteId}_${new Date().getTime()}.png`;
+            a.click();
+            
+            mostrarNotificacao('✅ PNG exportado', 'success');
+        }
+
+        async function salvarTopologia() {
+            try {
+                const topologia = cy.export();
+                
+                const response = await fetch(`/api/topologia/salvar/${clienteId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        topologia_json: JSON.stringify(topologia),
+                        descricao: 'Topologia salva via Cytoscape.js Editor'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarNotificacao('✅ Topologia salva com sucesso!', 'success');
+                } else {
+                    mostrarNotificacao('❌ Erro ao salvar', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarNotificacao('❌ Erro ao salvar', 'error');
+            }
+        }
+
+        // ============================================
+        // NOTIFICAÇÕES
+        // ============================================
+
+        function mostrarNotificacao(msg, tipo = 'info', duracao = 2000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            toast.className = `toast ${tipo}`;
+            toast.innerHTML = `<i class="fas fa-check-circle"></i><strong>${msg}</strong>`;
+            
+            container.appendChild(toast);
+            
+            if (duracao > 0) {
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, duracao);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -64,5 +64,11 @@ urlpatterns = [
     path('blocos/deletar/<int:bloco_id>/', views.deletar_bloco_ip, name='deletar_bloco_ip'),
     path('blocos/validar/<int:bloco_id>/', views.validar_bloco_rpki_irr, name='validar_bloco_rpki_irr'),
     path('blocos/listar/', views.listar_blocos_cliente, name='listar_blocos_cliente'),
+    path('topologias/editar-imagem/<int:topologia_id>/', views.editar_imagem_topologia, name='editar_imagem_topologia'),
+    path('acessos/<int:acesso_id>/comentarios/listar/', views.listar_comentarios_acesso, name='listar_comentarios_acesso'),
+    path('acessos/<int:acesso_id>/comentarios/adicionar/', views.adicionar_comentario_acesso, name='adicionar_comentario_acesso'),
+    path('comentarios/<int:comentario_id>/deletar/', views.deletar_comentario_acesso, name='deletar_comentario_acesso'),
+    path('comentarios/<int:comentario_id>/editar/', views.editar_comentario_acesso, name='editar_comentario_acesso'),
+
     
 ]

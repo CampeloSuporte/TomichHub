@@ -7,7 +7,7 @@ Host: 45.228.38.251:52288
 Acesso: DIRETO
 Modelo: MIKROTIK CCR1009-7G-1C-1S+
 Template: Backup Datacom
-Data: 27/11/2025 06:10:50
+Data: 23/12/2025 15:21:57
 Executado por: lucas
 ================================================================================
 
@@ -18,8 +18,11 @@ Comando: show running-config | nomore
 show running-config | nomore
 access-list callfran_clientes
  rule 1 permit ip source 100.64.16.0/21 destination any
- rule 2 permit ip source 192.168.65.0/24 destination any
- rule 4000 deny ip source any destination any
+ rule 3 permit ip source 192.168.65.0/24 destination any
+ rule 4 permit ip source 172.22.1.0/24 destination any
+exit
+access-list wtd-valido
+ rule 1 permit ip source 192.140.66.144/30 destination any
 exit
 access-list wtdtelecom_clientes
  rule 1 permit ip source 100.69.16.0/20 destination any
@@ -67,8 +70,9 @@ netconf-server in-band port 2022
 ssh-server in-band enable true
 ssh-server in-band port 52288
 ssh-server in-band bind interface loopback1
-host-server in-band enable false
-host-server in-band port 2222
+host-server in-band enable true
+host-server in-band port 52289
+host-server in-band bind interface loopback1
 l3vpn vrf callfran
  rd 266550:1
 exit
@@ -227,6 +231,7 @@ interface 100gei-1/1/0.3512
 exit
 interface 100gei-1/1/0.3513
  description GERENCIA
+ nat outside
  ipv4 address 172.30.30.18 30
  dot1q 3513
 exit
@@ -313,8 +318,9 @@ router static
  ip route vrf wtdtelecom 10.100.25.2 255.255.255.255 nexthop 172.18.100.73
  ip route vrf wtdtelecom 100.69.16.0 255.255.240.0 nexthop 172.18.100.73
  ip route vrf wtdtelecom 192.140.66.0 255.255.255.128 ifname null0
+ ip route vrf wtdtelecom 192.140.66.144 255.255.255.252 ifname null0
 exit
-snmp-server agent enabled
+snmp-server agent disabled
 snmp-server agent out-band enable true
 snmp-server agent out-band port 161
 snmp-server agent in-band enable true

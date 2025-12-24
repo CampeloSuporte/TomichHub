@@ -826,6 +826,26 @@
                     </div>
                 </div>
 
+                <!-- DrawIO (Opcional) -->
+                <div class="drawio-section mt-4" style="padding: 15px; background: rgba(0, 217, 255, 0.05); border: 1px solid var(--accent-cyan); border-radius: 4px;">
+                    <h6 style="color: var(--accent-cyan); font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 12px; margin-bottom: 15px; letter-spacing: 1px;">
+                        <i class="fas fa-diagram-project me-2"></i> DrawIO (Opcional)
+                    </h6>
+                    
+                    <div class="form-group-modal">
+                        <label><span class="label-prefix">//</span> Link da Topologia no DrawIO</label>
+                        <input 
+                            type="url" 
+                            name="drawio_url" 
+                            placeholder="https://draw.io/..." 
+                            class="form-control"
+                        >
+                        <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 8px;">
+                            📌 Cole aqui o link da sua topologia no DrawIO para edição rápida
+                        </small>
+                    </div>
+                </div>
+
                 <div class="terminal-status">
                     <span class="status-indicator"></span>
                     <span class="status-text">Sistema online - Pronto para upload de imagem</span>
@@ -844,6 +864,71 @@
     </div>
 </div>
 
+<!-- ✅ NOVO: MODAL EDITAR IMAGEM TOPOLOGIA -->
+<div id="modalEditarImagemTopologia" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 600px;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Substituir Imagem Topologia</h2>
+            <button class="btn-close-modal" onclick="fecharModalEditarImagemTopologia()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso">
+            <form id="formEditarImagemTopologia" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Área de Upload -->
+                <div class="upload-area" id="uploadAreaEditarTopologia">
+                    <input type="file" name="imagem" id="fileInputEditarTopologia" accept="image/*" required style="display: none;">
+                    <div class="upload-icon">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <div class="upload-text">
+                        <p class="upload-title">Clique ou arraste a nova imagem aqui</p>
+                        <p class="upload-subtitle">Formatos: JPG, PNG, GIF, SVG, WEBP</p>
+                    </div>
+                </div>
+
+                <!-- Preview da Imagem -->
+                <div class="image-preview-container" id="imagePreviewEditarTopologia" style="display: none;">
+                    <div class="image-preview-wrapper">
+                        <img id="previewImageEditarTopologia" src="" alt="Preview" class="preview-image">
+                        <button type="button" class="btn-remove-file btn-remove-image" onclick="removerArquivoEditarTopologia()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="file-details mt-3">
+                        <span class="file-name" id="fileNameEditarTopologia"></span>
+                        <span class="file-size" id="fileSizeEditarTopologia"></span>
+                    </div>
+                </div>
+
+                <!-- Nome da Topologia -->
+                <div class="form-group-modal mt-4">
+                    <label><span class="label-prefix">//</span> Nome da Topologia</label>
+                    <input type="text" name="nome" id="edit_nome_topologia" class="form-control" placeholder="Nome do arquivo">
+                    <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 5px;">
+                        Será preenchido automaticamente com o nome da imagem se deixado em branco
+                    </small>
+                </div>
+
+                <div class="terminal-status">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Pronto para substituir imagem</span>
+                </div>
+
+                <div class="modal-footer-acesso">
+                    <button type="button" class="btn-cancel-modal" onclick="fecharModalEditarImagemTopologia()">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn-submit-modal">
+                        <i class="fas fa-save me-2"></i> Substituir Imagem
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 
 
@@ -1189,8 +1274,270 @@
     </div>
 </div>
 
+<!-- MODAL COMENTÁRIOS DE ACESSO -->
+<div id="modalComentariosAcesso" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 700px; max-height: 80vh;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title">
+                <span class="terminal-prefix">&gt;</span> Comentários - <span id="nome_equipamento_comentario"></span>
+            </h2>
+            <button class="btn-close-modal" onclick="fecharModalComentariosAcesso()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body-acesso" style="display: flex; flex-direction: column; height: 100%;">
+            
+            <!-- AREA DE COMENTÁRIOS -->
+            <div id="listaComentariosAcesso" style="flex: 1; overflow-y: auto; margin-bottom: 20px;">
+                <div class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Carregando comentários...</p>
+                </div>
+            </div>
+            
+            <!-- FORMULÁRIO ADICIONAR COMENTÁRIO -->
+            <div class="comentario-form-container" style="border-top: 1px solid var(--border); padding-top: 20px;">
+                <div class="form-group-modal">
+                    <label style="margin-bottom: 10px; display: block;">
+                        <span class="label-prefix">//</span> Adicionar Comentário
+                    </label>
+                    <textarea 
+                        id="novoComentarioAcesso" 
+                        class="form-control" 
+                        rows="3" 
+                        placeholder="Digite seu comentário..."
+                        style="resize: vertical; margin-bottom: 10px;">
+                    </textarea>
+                    <small style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 10px;">
+                        <i class="fas fa-info-circle me-1"></i> Máximo 5000 caracteres
+                    </small>
+                    <button 
+                        type="button" 
+                        class="btn-submit-modal" 
+                        onclick="adicionarComentarioAcesso()"
+                        style="width: 100%;">
+                        <i class="fas fa-paper-plane me-2"></i> Enviar Comentário
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script>
+
+// ============================================
+// FUNÇÕES DRAWIO
+// ============================================
+
+/**
+ * Abre a topologia no DrawIO em uma nova aba
+ */
+function abrirDrawIO(url) {
+    if (!url) {
+        showError('ERRO', 'Link do DrawIO não configurado', 3000);
+        return;
+    }
+    
+    console.log('🔗 Abrindo DrawIO:', url);
+    window.open(url, '_blank');
+}
+
+// Fechar modal de upload de topologia
+function fecharModalUploadTopologia() {
+    document.getElementById('modalUploadTopologia').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    limparFormularioUploadTopologia();
+}
+
+// ============================================
+// FUNÇÕES PARA EDITAR IMAGEM TOPOLOGIA
+// ============================================
+
+function abrirModalEditarImagemTopologia(topologiaId) {
+    document.getElementById('edit_topologia_id').value = topologiaId;
+    document.getElementById('formEditarImagemTopologia').action = `/clientes/topologias/editar-imagem/${topologiaId}/`;
+    
+    document.getElementById('modalEditarImagemTopologia').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalEditarImagemTopologia() {
+    document.getElementById('modalEditarImagemTopologia').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    limparFormularioEditarTopologia();
+}
+
+function limparFormularioEditarTopologia() {
+    document.getElementById('formEditarImagemTopologia').reset();
+    document.getElementById('uploadAreaEditarTopologia').style.display = 'flex';
+    document.getElementById('imagePreviewEditarTopologia').style.display = 'none';
+}
+
+// Upload Area - Click e Drag & Drop para EDITAR
+const uploadAreaEditar = document.getElementById('uploadAreaEditarTopologia');
+const fileInputEditar = document.getElementById('fileInputEditarTopologia');
+
+if (uploadAreaEditar && fileInputEditar) {
+    uploadAreaEditar.addEventListener('click', () => {
+        fileInputEditar.click();
+    });
+
+    uploadAreaEditar.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadAreaEditar.classList.add('drag-over');
+    });
+
+    uploadAreaEditar.addEventListener('dragleave', () => {
+        uploadAreaEditar.classList.remove('drag-over');
+    });
+
+    uploadAreaEditar.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadAreaEditar.classList.remove('drag-over');
+        
+        if (e.dataTransfer.files.length > 0) {
+            fileInputEditar.files = e.dataTransfer.files;
+            mostrarPreviewEditarTopologia(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInputEditar.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            mostrarPreviewEditarTopologia(e.target.files[0]);
+        }
+    });
+}
+
+function mostrarPreviewEditarTopologia(file) {
+    document.getElementById('uploadAreaEditarTopologia').style.display = 'none';
+    document.getElementById('imagePreviewEditarTopologia').style.display = 'block';
+    
+    document.getElementById('fileNameEditarTopologia').textContent = file.name;
+    document.getElementById('fileSizeEditarTopologia').textContent = formatarTamanho(file.size);
+    document.getElementById('edit_nome_topologia').value = file.name;
+    
+    // Preview da imagem
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('previewImageEditarTopologia').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removerArquivoEditarTopologia() {
+    document.getElementById('fileInputEditarTopologia').value = '';
+    document.getElementById('uploadAreaEditarTopologia').style.display = 'flex';
+    document.getElementById('imagePreviewEditarTopologia').style.display = 'none';
+}
+// ============================================
+// FUNÇÕES PARA EDITAR IMAGEM TOPOLOGIA
+// ============================================
+
+function abrirModalEditarImagemTopologia(topologiaId) {
+    console.log('🔧 Abrindo modal de edição de imagem para topologia ID:', topologiaId);
+    
+    // ✅ Definir action do form com o ID da topologia
+    document.getElementById('formEditarImagemTopologia').action = `/clientes/topologias/editar-imagem/${topologiaId}/`;
+    
+    // ✅ Resetar o formulário e preview
+    limparFormularioEditarTopologia();
+    
+    // ✅ Abrir modal
+    document.getElementById('modalEditarImagemTopologia').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    console.log('✅ Modal aberto');
+}
+
+function fecharModalEditarImagemTopologia() {
+    document.getElementById('modalEditarImagemTopologia').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    limparFormularioEditarTopologia();
+}
+
+function limparFormularioEditarTopologia() {
+    document.getElementById('formEditarImagemTopologia').reset();
+    document.getElementById('uploadAreaEditarTopologia').style.display = 'flex';
+    document.getElementById('imagePreviewEditarTopologia').style.display = 'none';
+    document.getElementById('edit_nome_topologia').value = '';
+}
+
+// Upload Area - Click e Drag & Drop para EDITAR
+function inicializarUploadEditarTopologia() {
+    const uploadAreaEditar = document.getElementById('uploadAreaEditarTopologia');
+    const fileInputEditar = document.getElementById('fileInputEditarTopologia');
+    
+    if (!uploadAreaEditar || !fileInputEditar) {
+        console.warn('⚠️ Elementos de upload não encontrados');
+        return;
+    }
+    
+    uploadAreaEditar.addEventListener('click', () => {
+        fileInputEditar.click();
+    });
+
+    uploadAreaEditar.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadAreaEditar.classList.add('drag-over');
+    });
+
+    uploadAreaEditar.addEventListener('dragleave', () => {
+        uploadAreaEditar.classList.remove('drag-over');
+    });
+
+    uploadAreaEditar.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadAreaEditar.classList.remove('drag-over');
+        
+        if (e.dataTransfer.files.length > 0) {
+            fileInputEditar.files = e.dataTransfer.files;
+            mostrarPreviewEditarTopologia(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInputEditar.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            mostrarPreviewEditarTopologia(e.target.files[0]);
+        }
+    });
+}
+
+function mostrarPreviewEditarTopologia(file) {
+    document.getElementById('uploadAreaEditarTopologia').style.display = 'none';
+    document.getElementById('imagePreviewEditarTopologia').style.display = 'block';
+    
+    document.getElementById('fileNameEditarTopologia').textContent = file.name;
+    document.getElementById('fileSizeEditarTopologia').textContent = formatarTamanho(file.size);
+    document.getElementById('edit_nome_topologia').value = file.name;
+    
+    // Preview da imagem
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('previewImageEditarTopologia').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removerArquivoEditarTopologia() {
+    document.getElementById('fileInputEditarTopologia').value = '';
+    document.getElementById('uploadAreaEditarTopologia').style.display = 'flex';
+    document.getElementById('imagePreviewEditarTopologia').style.display = 'none';
+    document.getElementById('edit_nome_topologia').value = '';
+}
+
+// Inicializar ao carregar
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarUploadEditarTopologia();
+});
+
+function limparFormularioUploadTopologia() {
+    document.getElementById('formUploadTopologia').reset();
+    document.getElementById('uploadAreaTopologia').style.display = 'flex';
+    document.getElementById('imagePreviewTopologia').style.display = 'none';
+}
 // ============================================
 // FUNÇÕES DE BACKUP
 // ============================================
@@ -1372,5 +1719,271 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+
+
+let acessoAtualComentario = null;
+
+/**
+ * Abre o modal de comentários para um acesso específico
+ */
+function abrirModalComentariosAcesso(acessoId, nomeEquipamento) {
+    console.log('📝 Abrindo modal de comentários para acesso ID:', acessoId);
+    
+    acessoAtualComentario = acessoId;
+    
+    // Preencher nome do equipamento
+    document.getElementById('nome_equipamento_comentario').textContent = nomeEquipamento;
+    
+    // Limpar campo de novo comentário
+    document.getElementById('novoComentarioAcesso').value = '';
+    
+    // Abrir modal
+    document.getElementById('modalComentariosAcesso').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Carregar comentários
+    carregarComentariosAcesso(acessoId);
+}
+
+/**
+ * Fecha o modal de comentários
+ */
+function fecharModalComentariosAcesso() {
+    document.getElementById('modalComentariosAcesso').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    acessoAtualComentario = null;
+}
+
+/**
+ * Carrega comentários de um acesso
+ */
+function carregarComentariosAcesso(acessoId) {
+    const container = document.getElementById('listaComentariosAcesso');
+    
+    container.innerHTML = `
+        <div class="text-center py-5">
+            <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--accent-cyan); opacity: 0.3;"></i>
+            <p class="mt-3 text-muted">Carregando comentários...</p>
+        </div>
+    `;
+    
+    fetch(`/clientes/acessos/${acessoId}/comentarios/listar/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderizarComentariosAcesso(data.comentarios);
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--error-red); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Erro ao carregar comentários</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar comentários:', error);
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--error-red); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Erro na conexão</p>
+                </div>
+            `;
+        });
+}
+
+/**
+ * Renderiza comentários no modal
+ */
+function renderizarComentariosAcesso(comentarios) {
+    const container = document.getElementById('listaComentariosAcesso');
+    
+    if (comentarios.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-comments" style="font-size: 48px; color: var(--text-muted); opacity: 0.3;"></i>
+                <p class="mt-3 text-muted" style="font-size: 13px;">Nenhum comentário ainda</p>
+                <p class="text-muted" style="font-size: 12px; margin-top: 8px;">Seja o primeiro a comentar!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+    `;
+    
+    comentarios.forEach(com => {
+        html += `
+            <div class="comentario-item-acesso" style="
+                padding: 12px;
+                background: rgba(0, 217, 255, 0.05);
+                border-left: 3px solid var(--accent-cyan);
+                border-radius: 4px;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div>
+                        <span class="comentario-autor" style="
+                            color: var(--primary-green);
+                            font-weight: 700;
+                            font-family: 'Courier New', monospace;
+                            font-size: 12px;
+                        ">
+                            👤 ${com.usuario}
+                        </span>
+                        <br>
+                        <span class="comentario-data" style="
+                            color: var(--text-muted);
+                            font-size: 11px;
+                            font-family: 'Courier New', monospace;
+                        ">
+                            📅 ${com.data_criacao}
+                        </span>
+                        ${com.data_atualizacao ? `<span style="color: var(--text-muted); font-size: 10px;"> (editado)</span>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button 
+                            class="icon-btn btn-sm" 
+                            onclick="deletarComentarioAcesso(${com.id})" 
+                            title="Deletar comentário"
+                            style="color: var(--error-red);">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="comentario-texto" style="
+                    color: var(--text-light);
+                    font-size: 13px;
+                    line-height: 1.5;
+                    word-break: break-word;
+                    white-space: pre-wrap;
+                ">
+                    ${escapeHtml(com.comentario)}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `</div>`;
+    
+    container.innerHTML = html;
+}
+
+/**
+ * Adiciona um novo comentário
+ */
+function adicionarComentarioAcesso() {
+    if (!acessoAtualComentario) {
+        showError('ERRO', 'Acesso não identificado', 3000);
+        return;
+    }
+    
+    const textarea = document.getElementById('novoComentarioAcesso');
+    const comentarioTexto = textarea.value.trim();
+    
+    if (!comentarioTexto) {
+        showError('ERRO', 'Digite um comentário', 3000);
+        return;
+    }
+    
+    if (comentarioTexto.length > 5000) {
+        showError('ERRO', 'Comentário muito longo (máximo 5000 caracteres)', 4000);
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('comentario', comentarioTexto);
+    
+    fetch(`/clientes/acessos/${acessoAtualComentario}/comentarios/adicionar/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('SUCESSO', 'Comentário adicionado com sucesso!', 3000);
+            textarea.value = '';
+            carregarComentariosAcesso(acessoAtualComentario);
+        } else {
+            showError('ERRO', data.error || 'Erro ao adicionar comentário', 4000);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro ao adicionar comentário:', error);
+        showError('ERRO', 'Erro na conexão ao adicionar comentário', 4000);
+    });
+}
+
+/**
+ * Deleta um comentário
+ */
+function deletarComentarioAcesso(comentarioId) {
+    if (!confirm('Tem certeza que deseja deletar este comentário?')) {
+        return;
+    }
+    
+    showInfo('DELETANDO', 'Removendo comentário...', 2000);
+    
+    fetch(`/clientes/comentarios/${comentarioId}/deletar/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('DELETADO', 'Comentário removido com sucesso!', 3000);
+            carregarComentariosAcesso(acessoAtualComentario);
+        } else {
+            showError('ERRO', data.error || 'Erro ao deletar comentário', 4000);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro ao deletar comentário:', error);
+        showError('ERRO', 'Erro na conexão ao deletar comentário', 4000);
+    });
+}
+
+/**
+ * Função auxiliar para escapar HTML e evitar XSS
+ */
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Fecha modal ao pressionar ESC
+ */
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modalComentariosAcesso');
+        if (modal && modal.style.display === 'flex') {
+            fecharModalComentariosAcesso();
+        }
+    }
+});
+
+/**
+ * Fechar modal ao clicar no overlay
+ */
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('modalComentariosAcesso');
+    if (e.target === modal) {
+        fecharModalComentariosAcesso();
+    }
+});
+
+
 
 </script>
