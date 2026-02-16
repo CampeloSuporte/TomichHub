@@ -1383,7 +1383,7 @@ def realizar_backup(acesso, usuario=None):
                 
                 # ✅ LEITURA CONTÍNUA COM SILENCE DETECTION
                 print(f"    ⏳ Lendo resultado (silence detection)...")
-                resultado = ler_saida_comando(ssh_process)
+                resultado = ler_saida_comando(ssh_process,)
                 
                 # ✅ Adicionar ao output
                 if resultado and len(resultado) > 0:
@@ -1492,16 +1492,9 @@ def realizar_backup(acesso, usuario=None):
                 pass
 
 
-def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120):
+def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120,modelo=None):
     """
-    ✅ NOVO: Lê output até detectar silence (parou de chegar dados)
-    
-    Estratégia:
-    1. Lê dados continuamente
-    2. Se nenhum dado por 2 segundos = fim do comando
-    3. Timeout máximo de 120 segundos
-    
-    Retorna: string com TUDO que foi lido
+    ✅ MELHORADO: Lê output até detectar silence + pós-processamento de linhas
     """
     print(f"       🔍 Detectando fim do comando por silence...")
     
@@ -1514,28 +1507,23 @@ def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120):
     while True:
         tempo_decorrido = time.time() - tempo_inicio
         
-        # ✅ Timeout máximo: 120 segundos
         if tempo_decorrido > max_timeout:
             print(f"       ⚠️ Timeout máximo ({max_timeout}s) atingido")
             break
         
         try:
-            # ✅ Tentar ler com timeout muito curto
             dados = ssh_process.read_nonblocking(timeout=0.1, size=65536)
             
             if dados:
-                # ✅ Dados chegaram
                 resultado += dados
                 bytes_totais += len(dados)
                 ultimo_dado = time.time()
                 silence_count = 0
                 print(f"       📥 {len(dados)} bytes ({bytes_totais} total)")
             else:
-                # ✅ Nenhum dado, incremen silêncio
                 silence_count += 1
                 tempo_silencio = time.time() - ultimo_dado
                 
-                # Se ficou em silêncio por 2 segundos, assume que terminou
                 if tempo_silencio >= silence_timeout:
                     print(f"       ✅ Silence detectado ({tempo_silencio:.1f}s) - comando terminou")
                     break
@@ -1543,7 +1531,6 @@ def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120):
                 time.sleep(0.1)
         
         except pexpect.exceptions.TIMEOUT:
-            # ✅ Timeout normal do read_nonblocking
             tempo_silencio = time.time() - ultimo_dado
             
             if tempo_silencio >= silence_timeout:
@@ -1557,8 +1544,206 @@ def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120):
             break
     
     print(f"       ✅ Leitura completa: {bytes_totais} bytes, {time.time() - tempo_inicio:.1f}s")
-    return resultado
+    
+    # ✅ NOVO: Pós-processamento para limpar linhas quebradas
+    resultado_limpo = limpar_output_por_fabricante(resultado, modelo)
+    
+    return resultado_limpo
 
+
+def limpar_output_por_fabricante(texto, modelo):
+    """
+    ✅ NOVA FUNÇÃO: Aplica limpeza específica baseada no fabricante
+    """
+    # 1. Detectar fabricante
+    fabricante = detectar_fabricante(modelo)
+    print(f"       🏭 Fabricante detectado: {fabricante}")
+    
+    # 2. Aplicar limpeza básica (códigos ANSI) para todos
+    texto = remover_codigos_ansi(texto)
+    
+    # 3. Aplicar limpeza específica
+    if fabricante == 'MIKROTIK':
+        return limpar_output_mikrotik(texto)
+    elif fabricante in ['CISCO', 'HUAWEI', 'DATACOM', 'JUNIPER', 'EXTREME', 'HP', 'DELL']:
+        return limpar_output_generico(texto)
+    else:
+        return limpar_output_generico(texto)
+
+
+def detectar_fabricante(modelo):
+    """
+    Detecta fabricante baseado no modelo do equipamento
+    """
+    if not modelo:
+        return 'DESCONHECIDO'
+    
+    modelo_nome = ''
+    if hasattr(modelo, 'nome'):
+        modelo_nome = modelo.nome.upper()
+    elif isinstance(modelo, str):
+        modelo_nome = modelo.upper()
+    
+    if 'MIKROTIK' in modelo_nome or 'ROUTERBOARD' in modelo_nome:
+        return 'MIKROTIK'
+    elif 'CISCO' in modelo_nome:
+        return 'CISCO'
+    elif 'HUAWEI' in modelo_nome:
+        return 'HUAWEI'
+    elif 'DATACOM' in modelo_nome:
+        return 'DATACOM'
+    elif 'JUNIPER' in modelo_nome:
+        return 'JUNIPER'
+    elif 'EXTREME' in modelo_nome:
+        return 'EXTREME'
+    elif 'HP' in modelo_nome or 'ARUBA' in modelo_nome:
+        return 'HP'
+    elif 'DELL' in modelo_nome:
+        return 'DELL'
+    else:
+        return 'DESCONHECIDO'
+
+
+def remover_codigos_ansi(texto):
+    """
+    Remove códigos ANSI - aplica-se a TODOS os fabricantes
+    """
+    import re
+    
+    # Remover sequências ANSI
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    texto = ansi_escape.sub('', texto)
+    
+    # Remover caracteres de controle (exceto \n e \r)
+    texto = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', texto)
+    
+    # Remover [K
+    texto = texto.replace('[K', '')
+    
+    return texto
+
+
+def limpar_output_generico(texto):
+    """
+    ✅ NOVA FUNÇÃO: Limpeza conservadora para Cisco, Huawei, Datacom, etc.
+    MANTÉM quebras de linha originais!
+    """
+    import re
+    
+    print(f"       🔧 Aplicando limpeza genérica (mantém quebras de linha)...")
+    
+    # Normalizar line breaks
+    texto = texto.replace('\r\n', '\n').replace('\r', '\n')
+    
+    linhas = texto.split('\n')
+    linhas_limpas = []
+    linha_anterior = ''
+    
+    for linha in linhas:
+        linha_strip = linha.strip()
+        
+        # ✅ Manter linhas vazias (não mais de 3 consecutivas)
+        if not linha_strip:
+            if linha_anterior != '' or (linhas_limpas and linhas_limpas[-1] != ''):
+                linhas_limpas.append(linha)
+                linha_anterior = ''
+            continue
+        
+        # Remover apenas prompts duplicados óbvios
+        if linha_strip.endswith('#') or linha_strip.endswith('>'):
+            if linha_anterior and (linha_anterior.endswith('#') or linha_anterior.endswith('>')):
+                continue
+        
+        linhas_limpas.append(linha)
+        linha_anterior = linha_strip
+    
+    texto_final = '\n'.join(linhas_limpas)
+    
+    # Remover apenas 4+ linhas vazias consecutivas
+    texto_final = re.sub(r'\n{4,}', '\n\n\n', texto_final)
+    
+    return texto_final
+
+def limpar_output_mikrotik(texto):
+    """
+    ✅ NOVA FUNÇÃO: Remove códigos ANSI e reconstrói linhas quebradas
+    
+    Estratégia:
+    1. Remove códigos ANSI (escape sequences)
+    2. Remove caracteres de controle
+    3. Reconstrói linhas que foram quebradas incorretamente
+    """
+    import re
+    
+    # 1. Remover códigos de escape ANSI
+    # Padrão: ESC [ ... letras
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    texto = ansi_escape.sub('', texto)
+    
+    # 2. Remover caracteres de controle (exceto \n e \r)
+    texto = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', texto)
+    
+    # 3. Remover sequências [K (clear line)
+    texto = texto.replace('[K', '')
+    
+    # 4. Normalizar line breaks
+    texto = texto.replace('\r\n', '\n').replace('\r', '\n')
+    
+    # 5. Remover linhas duplicadas que aparecem durante digitação
+    linhas = texto.split('\n')
+    linhas_limpas = []
+    linha_anterior = None
+    
+    for linha in linhas:
+        linha_strip = linha.strip()
+        
+        # Pular linhas vazias excessivas
+        if not linha_strip:
+            if linha_anterior != '':
+                linhas_limpas.append('')
+                linha_anterior = ''
+            continue
+        
+        # Pular linhas que são apenas prompt
+        if linha_strip.startswith('[') and linha_strip.endswith(']'):
+            continue
+        
+        # Pular linhas que mostram comando sendo digitado caracter por caracter
+        if linha_strip.startswith('[') and '> /' in linha_strip:
+            # Extrair comando completo
+            if '/export terse' in linha_strip:
+                continue
+            elif linha_strip.count('>') > 0:
+                continue
+        
+        # ✅ CRÍTICO: Reconstrói linhas quebradas
+        # Se linha não começa com # ou / e a anterior não terminou "completa"
+        if linha_anterior is not None and linha_anterior != '':
+            ultima_linha = linhas_limpas[-1] if linhas_limpas else ''
+            
+            # Detectar linha quebrada: linha anterior não termina com padrão de fim
+            # e linha atual não começa com padrão de início de comando
+            if (ultima_linha and 
+                not ultima_linha.rstrip().endswith(('\\', '{', '}', ')', '"')) and
+                not linha_strip.startswith(('/interface', '/ip', '/routing', '/mpls', 
+                                           '/system', '/tool', '/snmp', '#', '/user',
+                                           '/queue', '/firewall', '/certificate'))):
+                # Juntar com linha anterior
+                linhas_limpas[-1] = ultima_linha.rstrip() + ' ' + linha_strip
+            else:
+                linhas_limpas.append(linha)
+        else:
+            linhas_limpas.append(linha)
+        
+        linha_anterior = linha_strip
+    
+    # 6. Reconstruir texto
+    texto_final = '\n'.join(linhas_limpas)
+    
+    # 7. Remover múltiplas linhas vazias consecutivas
+    texto_final = re.sub(r'\n{3,}', '\n\n', texto_final)
+    
+    return texto_final
 
 
 def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):

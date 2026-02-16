@@ -1,0 +1,506 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ARNALDO PEDRO DE LIMA
+Equipamento: bdr
+Host: 177.23.72.129:22
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M8
+Template: Backup Completo
+Data: 22/01/2026 00:41:36
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show configuration | display set | no-more
+============================================================
+show configuration | display set | no-more 
+set version 20200220.101816_builder.r1089300
+set groups REDE_LAN interfaces ae1 description LACP-LAN-SW-CORE-XE-0/0/20-21
+set groups REDE_LAN interfaces ae1 flexible-vlan-tagging
+set groups REDE_LAN interfaces ae1 native-vlan-id 1
+set groups REDE_LAN interfaces ae1 auto-configure stacked-vlan-ranges dynamic-profile SVLAN-PROFILE accept pppoe
+set groups REDE_LAN interfaces ae1 auto-configure stacked-vlan-ranges dynamic-profile SVLAN-PROFILE ranges any,any
+set groups REDE_LAN interfaces ae1 auto-configure stacked-vlan-ranges access-profile ACCESS-PROFILE
+set groups REDE_LAN interfaces ae1 auto-configure vlan-ranges dynamic-profile VLAN-PROFILE accept pppoe
+set groups REDE_LAN interfaces ae1 auto-configure vlan-ranges dynamic-profile VLAN-PROFILE ranges any
+set groups REDE_LAN interfaces ae1 auto-configure vlan-ranges access-profile ACCESS-PROFILE
+set groups REDE_LAN interfaces ae1 auto-configure remove-when-no-subscribers
+set groups REDE_LAN interfaces ae1 mtu 1522
+set groups REDE_LAN interfaces ae1 aggregated-ether-options load-balance per-packet
+set groups REDE_LAN interfaces ae1 aggregated-ether-options link-speed 10g
+set groups REDE_LAN interfaces ae1 aggregated-ether-options lacp active
+set groups REDE_LAN interfaces ae1 unit 1 description "REDE LOCAL"
+set groups REDE_LAN interfaces ae1 unit 1 vlan-id 1
+set groups REDE_LAN interfaces ae1 unit 1 family inet address 177.23.72.129/26
+set groups REDE_LAN interfaces ae1 unit 50 description P2P-CLI-BB
+set groups REDE_LAN interfaces ae1 unit 50 vlan-id 50
+set groups REDE_LAN interfaces ae1 unit 50 family inet address 10.64.72.1/30
+set groups REDE_LAN interfaces ae1 unit 50 family inet address 177.23.72.48/31
+set groups REDE_LAN interfaces ae1 unit 2907 vlan-id 2907
+set groups REDE_LAN interfaces xe-0/0/0 description LACP-LAN-SW-CORE-ETH1/20
+set groups REDE_LAN interfaces xe-0/0/0 speed 10g
+set groups REDE_LAN interfaces xe-0/0/0 gigether-options 802.3ad ae1
+set groups REDE_LAN interfaces xe-0/0/1 description LACP-LAN-SW-CORE-ETH1/21
+set groups REDE_LAN interfaces xe-0/0/1 speed 10g
+set groups REDE_LAN interfaces xe-0/0/1 gigether-options 802.3ad ae1
+set groups REDE_LAN protocols ospf area 0.0.0.0 interface ae1.1
+set groups LINK_TUDDO interfaces ge-1/0/0 description LINK-TUDDO
+set groups LINK_TUDDO interfaces ge-1/0/0 flexible-vlan-tagging
+set groups LINK_TUDDO interfaces ge-1/0/0 native-vlan-id 1
+set groups LINK_TUDDO interfaces ge-1/0/0 mtu 9000
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3605 description CDN_MRE3605
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3605 vlan-id 3605
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3605 family inet mtu 1500
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3605 family inet address 172.30.224.18/30
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3606 description CDN-CGS
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3606 vlan-id 3606
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3606 family inet mtu 1500
+set groups LINK_TUDDO interfaces ge-1/0/0 unit 3606 family inet address 172.30.230.6/30
+set groups LINK_TUDDO interfaces xe-0/0/3 description LINK-TUDDO
+set groups LINK_TUDDO interfaces xe-0/0/3 flexible-vlan-tagging
+set groups LINK_TUDDO interfaces xe-0/0/3 native-vlan-id 1
+set groups LINK_TUDDO interfaces xe-0/0/3 mtu 9000
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3577 description TUDO-CGS
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3577 vlan-id 3577
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3577 family inet mtu 1500
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3577 family inet address 172.30.230.2/30
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3514 description TUDO-CGS
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3514 vlan-id 3514
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3514 family inet mtu 1500
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3514 family inet sampling input
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3514 family inet sampling output
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 3514 family inet address 172.30.215.6/30
+set groups LINK_TUDDO interfaces xe-0/0/3 unit 2907 vlan-id 2907
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 5 from prefix-list IPV4-MARTIANS
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 5 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 10 from route-filter 177.23.72.0/21 exact
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 10 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 15 from protocol bgp
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 15 then local-preference 300
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 15 then accept
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-IM term 200 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-EX term 5 from route-filter 177.23.72.0/21 exact
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-EX term 5 then accept
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-EX term 15 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 5 from prefix-list IPV4-MARTIANS
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 5 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 10 from route-filter 177.23.72.0/21 exact
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 10 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 15 from protocol bgp
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 15 then accept
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-IM term 200 then reject
+set groups LINK_TUDDO policy-options policy-statement IPV4-LINK_TUDDO-RT-KTA-EX then accept
+set groups LINK_TUDDO protocols bgp group IPV4-TUDDO-BGP type external
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP type external
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP multihop ttl 10
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP import IPV4-LINK_TUDDO-IM
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP family inet unicast
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP export IPV4-LINK_TUDDO-EX
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP peer-as 268696
+set groups LINK_TUDDO protocols bgp group IPV4-LINK_TUDDO-BGP neighbor 172.30.215.5
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA type external
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA multihop ttl 10
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA import IPV4-LINK_TUDDO-RT-KTA-IM
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA family inet unicast
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA export IPV4-LINK_TUDDO-EX
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA peer-as 268696
+set groups LINK_TUDDO protocols bgp group IPV4-LINK-TUDO-RT-KTA neighbor 172.30.230.1
+set groups LINK-TUDDO routing-options static route 0.0.0.0/0 qualified-next-hop 172.30.230.1 metric 1
+set apply-groups REDE_LAN
+set apply-groups LINK_TUDDO
+set system host-name RT-BORDA
+set system root-authentication encrypted-password "$6$Zhmk56CR$3Oe7wRrVl6m/z7Z9BqC34S64K3CbBHzn4BWM/sy2CAVSK0DZ2y13hWB4SwmsAeNpVGZ/hZt3nHS6.PsSAfXz10"
+set system configuration-database max-db-size 104857600
+set system login user inova uid 2000
+set system login user inova class super-user
+set system login user inova authentication encrypted-password "$6$tIFDrKXJ$fxOYl79BrnUGM8wZZK.mLaeWYoX5YIZOEC5tiOEtIy/AfjTCNdhe8x20n9cpZlhUgfEKKSNG3n0iLG835SqYp/"
+set system login user ispfy uid 2002
+set system login user ispfy class read-only
+set system login user ispfy authentication encrypted-password "$6$qsYB5U7U$asDBfQYfl.emZKWcecUPEX05HY9yhFEnf4sl/c/bpXXQZS7XQmAIxtEjwiteHgL.WOPy9H0PveQtc4JbonsYu/"
+set system login user plinio uid 2001
+set system login user plinio class super-user
+set system login user plinio authentication encrypted-password "$6$FiU90YRZ$OGGPd4TxdKyYn.mLCjarfmZAFBqfIhLglTzcG1g2Dj21/73.plQcaHyMOB8lI6G6Q3lwFMoUITKdAzQZIjcpV."
+set system services ssh root-login deny
+set system services ssh connection-limit 10
+set system services ssh rate-limit 7
+set system services telnet
+set system services subscriber-management enable
+set system domain-name interminas.com.br
+set system time-zone America/Sao_Paulo
+set system no-multicast-echo
+set system no-redirects
+set system no-ping-record-route
+set system no-ping-time-stamp
+set system internet-options path-mtu-discovery
+set system internet-options tcp-drop-synfin-set
+set system internet-options ipv6-path-mtu-discovery
+set system internet-options no-tcp-reset drop-all-tcp
+set system location country-code BR
+set system name-server 172.31.100.10
+set system name-server 177.23.72.131
+set system dynamic-profile-options versioning
+set system syslog user * any emergency
+set system syslog file messages any notice
+set system syslog file messages authorization info
+set system syslog file interactive-commands interactive-commands any
+set system auto-configuration
+set system ddos-protection protocols pppoe padi bandwidth 250
+set system ddos-protection protocols pppoe padi burst 100
+set system ddos-protection protocols pppoe padi recover-time 30
+set system ddos-protection protocols pppoe padi priority high
+set system ntp boot-server 200.160.0.8
+set system ntp server 200.160.0.8
+set system ntp server 200.189.40.8
+set system ntp server 200.192.232.8
+set system ntp server 200.189.0.8
+set system ntp source-address 177.23.72.129
+set chassis aggregated-devices ethernet device-count 5
+set chassis fpc 0 inline-services flow-table-size ipv4-flow-table-size 15
+set chassis tfeb slot 0 sampling-instance ipfix
+set chassis network-services enhanced-ip
+set services flow-monitoring version-ipfix template ipv4 flow-active-timeout 10
+set services flow-monitoring version-ipfix template ipv4 flow-inactive-timeout 10
+set services flow-monitoring version-ipfix template ipv4 template-refresh-rate packets 1000
+set services flow-monitoring version-ipfix template ipv4 template-refresh-rate seconds 10
+set services flow-monitoring version-ipfix template ipv4 option-refresh-rate packets 1000
+set services flow-monitoring version-ipfix template ipv4 option-refresh-rate seconds 10
+set services flow-monitoring version-ipfix template ipv4 ipv4-template
+set access-profile ACCESS-PROFILE
+set interfaces xe-0/0/3 unit 2907
+set interfaces ae1 auto-configure stacked-vlan-ranges
+set interfaces ae1 auto-configure vlan-ranges
+set interfaces ae1 unit 50
+set interfaces lo0 unit 0 family inet filter input PROTECT-RE
+set interfaces lo0 unit 0 family inet address 192.168.15.10/32
+set interfaces lo0 unit 0 family inet6 address faca:cafe::1/128
+set snmp community INOVA_RO authorization read-only
+set snmp community INOVA_RO clients 177.23.72.190/32
+set snmp community INOVA_RO clients 172.31.100.18/32
+set snmp community interminas-ro authorization read-only
+set snmp community interminas-ro clients 172.31.100.18/32
+set snmp trap-group traps version v2
+set forwarding-options sampling instance ipfix input rate 1500
+set forwarding-options sampling instance ipfix family inet output flow-server 177.23.72.188 port 2055
+set forwarding-options sampling instance ipfix family inet output flow-server 177.23.72.188 version-ipfix template ipv4
+set forwarding-options sampling instance ipfix family inet output inline-jflow source-address 177.23.72.129
+set policy-options prefix-list ntp-servers apply-path "system ntp server <*>"
+set policy-options prefix-list bgp-peers apply-path "protocols bgp group <*> neighbor <*>"
+set policy-options prefix-list snmp-servers apply-path "snmp community <*> clients <*>"
+set policy-options prefix-list localhost 45.165.245.251/32
+set policy-options prefix-list localhost 177.23.72.129/32
+set policy-options prefix-list localhost 192.168.15.10/32
+set policy-options prefix-list IPV4-MARTIANS 0.0.0.0/8
+set policy-options prefix-list IPV4-MARTIANS 10.0.0.0/8
+set policy-options prefix-list IPV4-MARTIANS 100.64.0.0/10
+set policy-options prefix-list IPV4-MARTIANS 127.0.0.0/8
+set policy-options prefix-list IPV4-MARTIANS 169.254.0.0/16
+set policy-options prefix-list IPV4-MARTIANS 172.16.0.0/12
+set policy-options prefix-list IPV4-MARTIANS 192.0.0.0/24
+set policy-options prefix-list IPV4-MARTIANS 192.0.2.0/24
+set policy-options prefix-list IPV4-MARTIANS 192.168.0.0/16
+set policy-options prefix-list IPV4-MARTIANS 198.18.0.0/15
+set policy-options prefix-list IPV4-MARTIANS 198.51.100.0/24
+set policy-options prefix-list IPV4-MARTIANS 203.0.113.0/24
+set policy-options prefix-list IPV4-MARTIANS 224.0.0.0/3
+set policy-options prefix-list IPV6-MARTIANS ::/128
+set policy-options prefix-list IPV6-MARTIANS ::1/128
+set policy-options prefix-list IPV6-MARTIANS 2001:db8::/32
+set policy-options prefix-list IPV6-MARTIANS fe80::/10
+set policy-options prefix-list IPV6-MARTIANS fec0::/10
+set policy-options prefix-list IPV6-MARTIANS ff00::/8
+set policy-options prefix-list PL_GERENCIA 177.23.72.181/32
+set policy-options prefix-list PL_GERENCIA 177.23.73.206/32
+set policy-options prefix-list PL_GERENCIA 177.23.73.218/32
+set policy-options prefix-list PL_GERENCIA 177.23.75.24/32
+set policy-options prefix-list PL_GERENCIA 177.23.76.254/32
+set policy-options prefix-list PL_GERENCIA 179.0.110.0/24
+set policy-options prefix-list PL_GERENCIA 179.48.68.0/22
+set policy-options prefix-list PL_DEDICADO 177.23.72.40/30
+set policy-options prefix-list PL_DEDICADO 177.23.72.58/32
+set policy-options prefix-list PL_DEDICADO 177.23.72.60/30
+set policy-options prefix-list PL_DEDICADO 177.23.73.245/32
+set policy-options prefix-list PL_DEDICADO 177.23.74.201/32
+set policy-options prefix-list PL_DEDICADO 177.23.74.233/32
+set policy-options prefix-list PL_DEDICADO 177.23.75.237/32
+set policy-options prefix-list PL_DEDICADO 177.23.76.254/32
+set policy-options prefix-list PL_DEDICADO 177.23.77.22/32
+set policy-options prefix-list PL_BLOQUEIO 10.10.0.0/23
+set firewall family inet filter PROTECT-RE term loopback0 from source-address 192.168.15.10/32
+set firewall family inet filter PROTECT-RE term loopback0 from source-address 45.165.245.251/32
+set firewall family inet filter PROTECT-RE term loopback0 from source-address 177.23.72.129/32
+set firewall family inet filter PROTECT-RE term loopback0 then accept
+set firewall family inet filter PROTECT-RE term RADIUS from source-address 177.23.72.181/32
+set firewall family inet filter PROTECT-RE term RADIUS then accept
+set firewall family inet filter PROTECT-RE term aceita-bgp from prefix-list bgp-peers
+set firewall family inet filter PROTECT-RE term aceita-bgp from protocol tcp
+set firewall family inet filter PROTECT-RE term aceita-bgp from destination-port bgp
+set firewall family inet filter PROTECT-RE term aceita-bgp then accept
+set firewall family inet filter PROTECT-RE term aceita-snmp from prefix-list snmp-servers
+set firewall family inet filter PROTECT-RE term aceita-snmp from protocol udp
+set firewall family inet filter PROTECT-RE term aceita-snmp from destination-port 161
+set firewall family inet filter PROTECT-RE term aceita-snmp then policer limit-1m
+set firewall family inet filter PROTECT-RE term aceita-ntp from prefix-list ntp-servers
+set firewall family inet filter PROTECT-RE term aceita-ntp from protocol udp
+set firewall family inet filter PROTECT-RE term aceita-ntp from port ntp
+set firewall family inet filter PROTECT-RE term aceita-ntp then accept
+set firewall family inet filter PROTECT-RE term drop-ntp from protocol udp
+set firewall family inet filter PROTECT-RE term drop-ntp from port ntp
+set firewall family inet filter PROTECT-RE term drop-ntp then discard
+set firewall family inet filter PROTECT-RE term aceita-ospf from protocol ospf
+set firewall family inet filter PROTECT-RE term aceita-ospf then accept
+set firewall family inet filter PROTECT-RE term icmp-fragmentado from is-fragment
+set firewall family inet filter PROTECT-RE term icmp-fragmentado from protocol icmp
+set firewall family inet filter PROTECT-RE term icmp-fragmentado then discard
+set firewall family inet filter PROTECT-RE term aceita-icmp from icmp-type echo-request
+set firewall family inet filter PROTECT-RE term aceita-icmp from icmp-type echo-reply
+set firewall family inet filter PROTECT-RE term aceita-icmp from icmp-type unreachable
+set firewall family inet filter PROTECT-RE term aceita-icmp from icmp-type time-exceeded
+set firewall family inet filter PROTECT-RE term aceita-icmp then policer limit-10m
+set firewall family inet filter PROTECT-RE term aceita-ssh from source-address 177.23.72.128/26
+set firewall family inet filter PROTECT-RE term aceita-ssh from source-address 179.0.110.0/24
+set firewall family inet filter PROTECT-RE term aceita-ssh from source-address 179.48.68.0/22
+set firewall family inet filter PROTECT-RE term aceita-ssh from destination-port ssh
+set firewall family inet filter PROTECT-RE term aceita-ssh then policer limit-10m
+set firewall family inet filter PROTECT-RE term aceita-telnet from source-address 177.23.72.181/32
+set firewall family inet filter PROTECT-RE term aceita-telnet from source-address 200.7.0.47/32
+set firewall family inet filter PROTECT-RE term aceita-telnet from destination-port telnet
+set firewall family inet filter PROTECT-RE term aceita-telnet then policer limit-10m
+set firewall family inet filter PROTECT-RE term tcp-estabelecidas from protocol tcp
+set firewall family inet filter PROTECT-RE term tcp-estabelecidas from source-port ssh
+set firewall family inet filter PROTECT-RE term tcp-estabelecidas from source-port bgp
+set firewall family inet filter PROTECT-RE term tcp-estabelecidas from source-port telnet
+set firewall family inet filter PROTECT-RE term tcp-estabelecidas from tcp-established
+set firewall family inet filter PROTECT-RE term tcp-estabelecidas then accept
+set firewall family inet filter PROTECT-RE term descarta-resto then syslog
+set firewall family inet filter PROTECT-RE term descarta-resto then discard
+set firewall policer limit-10m if-exceeding bandwidth-limit 10m
+set firewall policer limit-10m if-exceeding burst-size-limit 625k
+set firewall policer limit-10m then discard
+set firewall policer limit-1m if-exceeding bandwidth-limit 1m
+set firewall policer limit-1m if-exceeding burst-size-limit 15k
+set firewall policer limit-1m then discard
+set firewall interface-set filter PROTEC-RE
+set access radius-server 177.23.72.181 port 1812
+set access radius-server 177.23.72.181 accounting-port 1813
+set access radius-server 177.23.72.181 secret "$9$gnojHmPQn6Ago9AuOcSrevM8724aiqmM8ik.PQzn/CABIrlM"
+set access radius-server 177.23.72.181 timeout 30
+set access radius-server 177.23.72.181 retry 3
+set access radius-server 177.23.72.181 source-address 177.23.72.129
+set access radius-disconnect-port 3799
+set access radius-disconnect 177.23.72.181 secret "$9$Y42ZjmPQn9pTz9p0IhcLxNd2a5T369pmf39tpEh"
+set access profile ACCESS-PROFILE authentication-order radius
+set access profile ACCESS-PROFILE domain-name-server 172.31.100.10
+set access profile ACCESS-PROFILE domain-name-server 177.23.72.131
+set access profile ACCESS-PROFILE radius authentication-server 177.23.72.181
+set access profile ACCESS-PROFILE radius accounting-server 177.23.72.181
+set access profile ACCESS-PROFILE radius options nas-port-extended-format slot-width 5
+set access profile ACCESS-PROFILE radius options nas-port-extended-format adapter-width 1
+set access profile ACCESS-PROFILE radius options nas-port-extended-format port-width 3
+set access profile ACCESS-PROFILE radius options calling-station-id-delimiter :
+set access profile ACCESS-PROFILE radius options calling-station-id-format mac-address
+set access profile ACCESS-PROFILE radius options revert-interval 0
+set access profile ACCESS-PROFILE radius options client-authentication-algorithm direct
+set access profile ACCESS-PROFILE accounting order radius
+set access profile ACCESS-PROFILE accounting accounting-stop-on-failure
+set access profile ACCESS-PROFILE accounting accounting-stop-on-access-deny
+set access profile ACCESS-PROFILE accounting immediate-update
+set access profile ACCESS-PROFILE accounting coa-immediate-update
+set access profile ACCESS-PROFILE accounting address-change-immediate-update
+set access profile ACCESS-PROFILE accounting update-interval 10
+set access profile ACCESS-PROFILE accounting statistics volume-time
+set access profile ACCESS-PROFILE accounting send-acct-status-on-config-change
+set access profile ACCESS-PROFILE accounting family-state-change-immediate-update
+set access address-assignment pool POOL-CGNAT family inet network 100.64.0.0/22
+set access address-assignment pool POOL-CGNAT family inet range PPPOE-POOL low 100.64.0.10
+set access address-assignment pool POOL-CGNAT family inet range PPPOE-POOL high 100.64.3.253
+set access address-assignment pool pool_bloqueio family inet network 10.10.0.0/23
+set access address-assignment pool pool_bloqueio family inet range BLOQUEIO-POOL low 10.10.0.10
+set access address-assignment pool pool_bloqueio family inet range BLOQUEIO-POOL high 10.10.1.254
+set access address-assignment pool pool_aguardando_assinatura family inet network 192.168.244.0/24
+set access address-assignment pool pool_aguardando_assinatura family inet range ASSINATURA-POOL low 192.168.244.1
+set access address-assignment pool pool_aguardando_assinatura family inet range ASSINATURA-POOL high 192.168.244.254
+set access domain map default access-profile ACCESS-PROFILE
+set access domain map default address-pool POOL-CGNAT
+set routing-instances BD-2907 instance-type virtual-switch
+set routing-instances BD-2907 bridge-domains VLAN2907 vlan-id 2907
+set routing-instances BD-2907 bridge-domains VLAN2907 interface xe-0/0/3.2907
+set routing-instances BD-2907 bridge-domains VLAN2907 interface ae1.2907
+set routing-options rib inet.0 static route 192.168.244.0/24 discard
+set routing-options rib inet.0 static route 10.10.0.0/23 discard
+set routing-options static route 177.23.72.0/21 discard
+set routing-options static route 177.23.72.0/23 discard
+set routing-options static route 177.23.74.0/23 discard
+set routing-options static route 177.23.76.0/23 discard
+set routing-options static route 177.23.78.0/23 discard
+set routing-options static route 177.23.72.0/24 discard
+set routing-options static route 177.23.73.0/24 discard
+set routing-options static route 177.23.74.0/24 discard
+set routing-options static route 177.23.75.0/24 discard
+set routing-options static route 177.23.76.0/24 discard
+set routing-options static route 177.23.77.0/24 discard
+set routing-options static route 177.23.78.0/24 discard
+set routing-options static route 177.23.79.0/24 discard
+set routing-options autonomous-system 263039
+set protocols bgp traceoptions file BGP-LOG
+set protocols bgp traceoptions file size 5m
+set protocols bgp traceoptions file files 5
+set protocols bgp traceoptions file world-readable
+set protocols bgp traceoptions flag state
+set protocols bgp traceoptions flag update
+set protocols bgp log-updown
+set dynamic-profiles VLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" no-traps
+set dynamic-profiles VLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" vlan-id "$junos-vlan-id"
+set dynamic-profiles VLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" demux-options underlying-interface "$junos-interface-ifd-name"
+set dynamic-profiles VLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" family pppoe dynamic-profile MAIN-PROFILE
+set dynamic-profiles VLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" family pppoe short-cycle-protection lockout-time-min 10
+set dynamic-profiles VLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" family pppoe short-cycle-protection lockout-time-max 20
+set dynamic-profiles MAIN-PROFILE routing-instances "$junos-routing-instance" interface "$junos-interface-name"
+set dynamic-profiles MAIN-PROFILE routing-instances "$junos-routing-instance" routing-options access-internal route $junos-subscriber-ip-address qualified-next-hop "$junos-interface-name"
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" actual-transit-statistics
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" no-traps
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" ppp-options chap
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" ppp-options pap
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" ppp-options mtu 1492
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" pppoe-options underlying-interface "$junos-underlying-interface"
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" pppoe-options server
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" keepalives interval 30
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet rpf-check
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet unnumbered-address "$junos-loopback-interface"
+set dynamic-profiles MAIN-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet6 unnumbered-address "$junos-loopback-interface"
+set dynamic-profiles BW-PROFILE variables VAR-BW-IN default-value 2m
+set dynamic-profiles BW-PROFILE variables VAR-BW-IN mandatory
+set dynamic-profiles BW-PROFILE variables VAR-BW-OUT default-value 2m
+set dynamic-profiles BW-PROFILE variables VAR-BW-OUT mandatory
+set dynamic-profiles BW-PROFILE variables VAR-BURST-IN default-value 2m
+set dynamic-profiles BW-PROFILE variables VAR-BURST-OUT default-value 2m
+set dynamic-profiles BW-PROFILE variables VAR-POLICER-IN uid
+set dynamic-profiles BW-PROFILE variables VAR-POLICER-OUT uid
+set dynamic-profiles BW-PROFILE variables VAR-FILTER-IN uid
+set dynamic-profiles BW-PROFILE variables VAR-FILTER-OUT uid
+set dynamic-profiles BW-PROFILE variables VAR-FILTER-V6-IN uid
+set dynamic-profiles BW-PROFILE variables VAR-FILTER-V6-OUT uid
+set dynamic-profiles BW-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" actual-transit-statistics
+set dynamic-profiles BW-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet filter input "$VAR-FILTER-IN"
+set dynamic-profiles BW-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet filter output "$VAR-FILTER-OUT"
+set dynamic-profiles BW-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet6 filter input "$VAR-FILTER-V6-IN"
+set dynamic-profiles BW-PROFILE interfaces "$junos-interface-ifd-name" unit "$junos-interface-unit" family inet6 filter output "$VAR-FILTER-V6-OUT"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" interface-specific
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term GERENCIA from source-prefix-list PL_GERENCIA
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term GERENCIA then policer "$VAR-POLICER-OUT"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term GERENCIA then accept
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-prefix-list PL_DEDICADO
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 0
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 19
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 135-139
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 389
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 445
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 1900
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO from destination-port-except 11211
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO then policer "$VAR-POLICER-OUT"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEDICADO then accept
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 0
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 19
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 25
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 135
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 136
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 137
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 138
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 139
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 445
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 1900
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 37810
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 11211
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 161
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 10001
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP from destination-port 111
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-UDP then discard
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from protocol tcp
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 0
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 19
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 25
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 135
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 136
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 137
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 138
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 139
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 445
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 1900
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 11211
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 443
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP from destination-port 80
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DST-PORT-TCP then discard
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term BANDA then policer "$VAR-POLICER-OUT"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term BANDA then accept
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-OUT" term DEFAULT then discard
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" interface-specific
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term GERENCIA from source-prefix-list PL_GERENCIA
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term GERENCIA then policer "$VAR-POLICER-IN"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term GERENCIA then accept
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from protocol udp
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 0
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 19
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 25
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 135
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 136
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 137
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 138
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 139
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 445
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 1900
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 37810
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP from destination-port 11211
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-UDP then discard
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from protocol tcp
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 0
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 19
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 25
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 135
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 136
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 137
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 138
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 139
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 445
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 1900
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP from destination-port 11211
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DST-PORT-TCP then discard
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term SEM-NAT from source-address 100.64.0.0/22
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term SEM-NAT from destination-prefix-list PL_GERENCIA
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term SEM-NAT then policer "$VAR-POLICER-IN"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term SEM-NAT then accept
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term BLOQUEIO from prefix-list PL_BLOQUEIO
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term BLOQUEIO then discard
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term CGNAT from source-address 100.64.0.0/22
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term CGNAT then policer "$VAR-POLICER-IN"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term CGNAT then next-ip 10.100.0.2/32
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term BANDA then policer "$VAR-POLICER-IN"
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term BANDA then accept
+set dynamic-profiles BW-PROFILE firewall family inet filter "$VAR-FILTER-IN" term DEFAULT then discard
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-OUT" term BANDA then policer "$VAR-POLICER-OUT"
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-OUT" term BANDA then service-filter-hit
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-OUT" term BANDA then accept
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-OUT" term DEFAULT then discard
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-IN" term BANDA then policer "$VAR-POLICER-IN"
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-IN" term BANDA then service-filter-hit
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-IN" term BANDA then accept
+set dynamic-profiles BW-PROFILE firewall family inet6 filter "$VAR-FILTER-V6-IN" term DEFAULT then discard
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-IN" filter-specific
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-IN" logical-interface-policer
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-IN" if-exceeding bandwidth-limit "$VAR-BW-IN"
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-IN" if-exceeding burst-size-limit "$VAR-BURST-IN"
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-IN" then discard
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-OUT" filter-specific
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-OUT" logical-interface-policer
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-OUT" if-exceeding bandwidth-limit "$VAR-BW-OUT"
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-OUT" if-exceeding burst-size-limit "$VAR-BURST-OUT"
+set dynamic-profiles BW-PROFILE firewall policer "$VAR-POLICER-OUT" then discard
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" no-traps
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" vlan-tags outer "$junos-stacked-vlan-id"
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" vlan-tags inner "$junos-vlan-id"
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" demux-options underlying-interface "$junos-interface-ifd-name"
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" family pppoe dynamic-profile MAIN-PROFILE
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" family pppoe short-cycle-protection lockout-time-min 10
+set dynamic-profiles SVLAN-PROFILE interfaces demux0 unit "$junos-interface-unit" family pppoe short-cycle-protection lockout-time-max 20
+
+plinio@RT-BORDA> 

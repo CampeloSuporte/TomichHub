@@ -1,0 +1,406 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: S-NET TELECOM LTDA
+Equipamento: SWITCH - PUTIRI
+Host: 10.150.0.3:22
+Acesso: VIA PROXY SSH
+Modelo: SW DATACOM DM4370
+Template: Backup Datacom
+Data: 07/02/2026 01:04:32
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+show running-config | nomore
+aaa authentication-order [ local ]
+aaa user admin
+ password $1$YF99BrXG$4EKTEtKfHJZu8OVxsCb/4.
+ group admin
+!
+aaa user monitor
+ password $1$RUk/Y5ok$udIjep1S7QvdCV0KeBIlB.
+!
+aaa user snet
+ password $1$uS5bCZSv$D/t0QTYmevyTeL4ZbU61C0
+ group admin
+!
+aaa user tomich
+ password $1$cIDHQJyf$.seJhpMKy4dTZKocAsAz50
+ group admin
+!
+mpls ldp
+ lsr-id loopback-0
+  interface l3-infra-OSPF-MPLS-SW26-OLT11
+  !
+  interface l3-infra-OSPF-MPLS-SW26-SW25
+  !
+  neighbor targeted 11.11.11.11
+  !
+  neighbor targeted 21.21.21.21
+  !
+  neighbor targeted 22.22.22.22
+  !
+  neighbor targeted 23.23.23.23
+  !
+  neighbor targeted 24.24.24.24
+  !
+  neighbor targeted 25.25.25.25
+  !
+ !
+!
+mpls l2vpn
+ vpws-group POP_PUTIRI
+  vpn CGNAT_NAS03_PUTIRI
+   description comunicacao_cgnat_nas03_putiri
+   qinq
+   neighbor 24.24.24.24
+    pw-type vlan 2400
+    pw-id 2400
+   !
+   access-interface gigabit-ethernet-1/1/3
+    encapsulation
+     dot1q 86
+    !
+   !
+  !
+ !
+ vpws-group SNET-SW21-VILLAGIO
+  vpn VPN929-B-RAS-POTIRI-SNET
+   description vpn929-b-ras-p-potiri-snet
+   neighbor 21.21.21.21
+    pw-type vlan 21
+    pw-id 929
+   !
+   access-interface gigabit-ethernet-1/1/3
+    dot1q 21
+   !
+  !
+ !
+!
+snmp system contact noc@tomich.com.br
+snmp system location VITORIA-ES
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent ip 10.150.0.3
+snmp agent version v2c
+snmp agent version v3
+snmp community TOMICH
+ sec-name TOMICH
+!
+snmp community datacom
+ sec-name datacom
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group TOMICH
+ member TOMICH
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ description GIGA01-PTP-RB1100
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/3
+ description GIGA03-UPLINK-OLT-EPON
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/4
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/5
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/6
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/7
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/8
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/1
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/2
+ description TEN02-PTP-OLT11-TIMBUI
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/3
+ description TEN03-PTP-SW25-NV-ALMEIDA
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/4
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface l3 Ger
+ lower-layer-if vlan 1000
+ ipv4 address 10.32.85.9/24
+!
+interface l3 Gerencia-snet
+ lower-layer-if vlan 2000
+ ipv4 address 10.150.0.3/24
+!
+interface l3 infra-OSPF-MPLS-SW26-OLT11
+ lower-layer-if vlan 2611
+ ipv4 address 10.26.11.1/31
+!
+interface l3 infra-OSPF-MPLS-SW26-SW25
+ lower-layer-if vlan 2625
+ ipv4 address 10.26.25.0/31
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.0.25/24
+!
+interface loopback 0
+ ipv4 address 26.26.26.26/32
+!
+clock timezone BRA -3
+hostname SW26-DM4370-PUTIRI
+telnet-server disabled
+oam
+ efm
+  interface gigabit-ethernet-1/1/1
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/2
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/3
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/4
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/5
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/6
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/7
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/8
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/1
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/2
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/3
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/4
+   mode passive
+  !
+ !
+!
+loopback-detection
+ destination-address alternative
+!
+mac-address-table
+ aging-time 600
+!
+layer2-control-protocol
+ tunnel-mac datacom
+ tunnel-priority 7
+!
+vrf global
+!
+vrf mgmt
+!
+router ospf 26 vrf global
+ router-id 26.26.26.26
+ maximum paths 2
+ redistribute connected
+ !
+ area 0
+  interface l3-infra-OSPF-MPLS-SW26-OLT11
+   bfd
+    session-type desired
+   !
+   network-type point-to-point
+  !
+  interface l3-infra-OSPF-MPLS-SW26-SW25
+   bfd
+    session-type desired
+   !
+   network-type point-to-point
+  !
+  interface loopback-0
+  !
+ !
+!
+router static
+ address-family ipv4
+  0.0.0.0/0 next-hop 10.150.0.1
+  !
+ !
+!
+assistant-task config-backup
+ enabled
+ schedule recursive minute 0
+ schedule recursive hour 3
+ action cli-file config-backup.cli
+!
+dot1q
+ vlan 1000
+  interface ten-gigabit-ethernet-1/1/3
+  !
+ !
+ vlan 2000
+  name Gerencia-snet
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2611
+  name v2611-ptp-olt11-timbui-ospf
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 2625
+  name v2625-ptp-sw25-nvalmeida-ospf
+  interface ten-gigabit-ethernet-1/1/3
+  !
+ !
+!
+license mpls enabled
+license mpls key ***
+remote-devices
+ interface gigabit-ethernet-1/1/1
+ !
+ interface gigabit-ethernet-1/1/2
+ !
+ interface gigabit-ethernet-1/1/3
+ !
+ interface gigabit-ethernet-1/1/4
+ !
+ interface gigabit-ethernet-1/1/5
+ !
+ interface gigabit-ethernet-1/1/6
+ !
+ interface gigabit-ethernet-1/1/7
+ !
+ interface gigabit-ethernet-1/1/8
+ !
+ interface ten-gigabit-ethernet-1/1/1
+ !
+ interface ten-gigabit-ethernet-1/1/2
+ !
+ interface ten-gigabit-ethernet-1/1/3
+ !
+ interface ten-gigabit-ethernet-1/1/4
+ !
+!
+SW26-DM4370-PUTIRI# 

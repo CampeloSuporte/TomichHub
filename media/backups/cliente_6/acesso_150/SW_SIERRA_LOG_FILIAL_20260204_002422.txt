@@ -1,0 +1,77 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
+Equipamento: SW SIERRA LOG FILIAL
+Host: 172.31.1.3:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS326-24s+2Q+
+Template: Backup Mikrotik
+Data: 04/02/2026 00:24:22
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@SWITCH SIERRA LOG FILIAL] > /                                          [K[tomich@SWITCH SIERRA LOG FILIAL] > /e[tomich@SWITCH SIERRA LOG FILIAL] > /e                                         [K[tomich@SWITCH SIERRA LOG FILIAL] > /ex[tomich@SWITCH SIERRA LOG FILIAL] > /ex                                        [K[tomich@SWITCH SIERRA LOG FILIAL] > /exp[tomich@SWITCH SIERRA LOG FILIAL] > /exp                                       [K[tomich@SWITCH SIERRA LOG FILIAL] > /expo[tomich@SWITCH SIERRA LOG FILIAL] > /expo                                      [K[tomich@SWITCH SIERRA LOG FILIAL] > /expor[tomich@SWITCH SIERRA LOG FILIAL] > /expor                                     [K[tomich@SWITCH SIERRA LOG FILIAL] > /export[tomich@SWITCH SIERRA LOG FILIAL] > /export                                    [K[tomich@SWITCH SIERRA LOG FILIAL] > /export [tomich@SWITCH SIERRA LOG FILIAL] > /export                                    [K[tomich@SWITCH SIERRA LOG FILIAL] > /export t[tomich@SWITCH SIERRA LOG FILIAL] > /export t                                  [K[tomich@SWITCH SIERRA LOG FILIAL] > /export te[tomich@SWITCH SIERRA LOG FILIAL] > /export te                                 [K[tomich@SWITCH SIERRA LOG FILIAL] > /export ter[tomich@SWITCH SIERRA LOG FILIAL] > /export ter                                [K[tomich@SWITCH SIERRA LOG FILIAL] > /export ters[tomich@SWITCH SIERRA LOG FILIAL] > /export ters                               [K[tomich@SWITCH SIERRA LOG FILIAL] > /export terse[tomich@SWITCH SIERRA LOG FILIAL] > /export terse                              [K[tomich@SWITCH SIERRA LOG FILIAL] > /export terse[tomich@SWITCH SIERRA LOG FILIAL] > /export terse
+# jan/13/2026 07:22:31 by RouterOS 6.49.13
+# software id = J8LD-R62R
+#
+# model = CRS305-1G-4S+
+# serial number = HF309D4CJJH
+/interface bridge add name=bridge1 vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] comment=CLIENTE
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full auto-negotiation=no 
+comment="ROTA-1 SIERRA LOG FILIAL 2 RUA 1-A PARA NORTE SUL MARINGA" speed=10Gbps
+
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full auto-negotiation=no 
+comment="ROTA-2 SIERRA LOG MATRIZ VIA RUA 1-B" speed=10Gbps
+/interface vlan add interface=bridge1 name="vlan3010-GERENCIA SWITCHS" vlan-id=30
+10
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/snmp community set [ find default=yes ] name=TOMICH
+/interface bridge port add bridge=bridge1 interface=ether1 pvid=1107
+/interface bridge port add bridge=bridge1 interface=sfp-sfpplus1
+/interface bridge port add bridge=bridge1 interface=sfp-sfpplus2
+/interface bridge port add bridge=bridge1 interface=sfp-sfpplus3
+/interface bridge port add bridge=bridge1 interface=sfp-sfpplus4
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface bridge vlan add bridge=bridge1 comment="PPPoE SIERRA LOG" tagged=sfp-s
+fpplus1,sfp-sfpplus2 vlan-ids=1101
+/interface bridge vlan add bridge=bridge1 comment="VLANS PORTAS PON OLT BOULEVARD
+ LAGOA" tagged=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=301-316,3004,610,1110,609,300,
+200-216
+/interface bridge vlan add bridge=bridge1 comment="CLIENTE TRIGALI NO SWITCH TRIG
+ALI" tagged=sfp-sfpplus1,sfp-sfpplus2 vlan-ids=1102
+/interface bridge vlan add bridge=bridge1 comment="CLIENTE PDV" tagged=sfp-sfpplu
+s1,sfp-sfpplus2 vlan-ids=1104,1201
+/interface bridge vlan add bridge=bridge1 comment="CLIENTE MARKET" tagged=sfp-sfp
+plus1,sfp-sfpplus2 vlan-ids=1105
+/interface bridge vlan add bridge=bridge1 comment="SIERRA LOG FILIAL PPPoE" tagge
+d=sfp-sfpplus1,sfp-sfpplus2 untagged=ether1 vlan-ids=1107
+/interface bridge vlan add bridge=bridge1 comment="PPPoE ABR-TOPMAX" tagged=sfp-s
+fpplus1,sfp-sfpplus2 vlan-ids=1108
+/interface bridge vlan add bridge=bridge1 comment="GERENCIA SWITCHS" tagged=sfp-s
+fpplus1,sfp-sfpplus2,bridge1 vlan-ids=3010
+/interface bridge vlan add bridge=bridge1 comment="CLIENTE NACIONAL GAS" tagged=s
+fp-sfpplus1,sfp-sfpplus2 vlan-ids=1109
+/ip address add address=172.31.1.3/24 interface="vlan3010-GERENCIA SWITCHS" netwo
+rk=172.31.1.0
+/ip route add check-gateway=ping distance=1 gateway=172.31.1.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-version=2
+/system identity set name="SWITCH SIERRA LOG FILIAL"
+/system routerboard settings set boot-os=router-os
+/tool romon set enabled=yes id=00:00:00:00:00:32 secrets=Net.10
+[tomich@SWITCH SIERRA LOG FILIAL] >                                            [tomich@SWITCH SIERRA LOG FILIAL] > 

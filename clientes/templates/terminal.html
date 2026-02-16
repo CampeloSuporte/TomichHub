@@ -275,6 +275,17 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 11px;
         }
+                /* BOTÃO RECONECTAR - DESTAQUE */
+        .btn-terminal.reconnecting {
+            border-color: #ffa500;
+            color: #ffa500;
+            animation: pulseOrange 1s infinite;
+        }
+
+        @keyframes pulseOrange {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
     </style>
 </head>
 <body>
@@ -282,7 +293,7 @@
         <!-- Header -->
         <div class="terminal-header">
             <div class="terminal-title">
-                ▶ Terminal SSH Múltiplo CONEXA
+                ▶ Terminal
             </div>
             <div class="terminal-status connected" id="terminalStatus">
                 <div class="status-dot connected"></div>
@@ -313,8 +324,8 @@
             <button class="btn-terminal" onclick="limparTela()">
                 ✕ Limpar Tela
             </button>
-            <button class="btn-terminal" onclick="window.location.reload()">
-                ↻ Atualizar
+            <button class="btn-terminal" onclick="reconectarTerminalAtivo()">
+                ↻ Reconectar
             </button>
             <button class="btn-terminal" onclick="fecharTodosTerminais()">
                 ⏻ Fechar Todos
@@ -336,6 +347,79 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
 
     <script>
+
+        // ============================================
+// RECONECTAR TERMINAL ATIVO
+// ============================================
+
+        function reconectarTerminalAtivo() {
+            if (!terminalManager.activeTerminal) {
+                addDebug('⚠️ Nenhum terminal ativo para reconectar');
+                alert('Nenhum terminal ativo. Abra uma conexão primeiro.');
+                return;
+            }
+            
+            const terminalId = terminalManager.activeTerminal;
+            const terminalObj = terminalManager.terminals.get(terminalId);
+            
+            if (!terminalObj) {
+                addDebug('❌ Terminal não encontrado: ' + terminalId);
+                return;
+            }
+            
+            addDebug('🔄 Iniciando reconexão do terminal: ' + terminalId);
+            
+            // ✅ Fechar WebSocket existente
+            if (terminalObj.socket) {
+                addDebug('🔌 Fechando WebSocket anterior...');
+                try {
+                    terminalObj.socket.close();
+                } catch (e) {
+                    addDebug('⚠️ Erro ao fechar socket: ' + e.message);
+                }
+                terminalObj.socket = null;
+            }
+            
+            // ✅ Resetar status
+            terminalObj.connected = false;
+            terminalObj.wsRetries = 0;
+            
+            // ✅ Atualizar aba (remover status conectado)
+            const tab = document.getElementById(`tab-${terminalId}`);
+            if (tab) {
+                const statusDot = tab.querySelector('.terminal-tab-status');
+                if (statusDot) {
+                    statusDot.classList.remove('connected');
+                }
+            }
+            
+            // ✅ Limpar terminal
+            terminalObj.terminal.clear();
+            
+            // ✅ Mensagem de reconexão
+            terminalObj.terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
+            terminalObj.terminal.writeln('\x1b[1;33m▶ Reconectando a ' + terminalObj.acesso.host + ':' + terminalObj.acesso.porta + '...\x1b[0m\n');
+            
+            addDebug('📝 Terminal limpo, iniciando reconexão...');
+            
+            // ✅ Reconectar após 500ms
+            setTimeout(() => {
+                terminalManager.conectarWebSocket(terminalId);
+                addDebug('✅ Reconexão iniciada');
+            }, 500);
+        }
+
+        // ============================================
+        // ATALHO DE TECLADO: CTRL+R PARA RECONECTAR
+        // ============================================
+
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+R ou Cmd+R
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault(); // Prevenir reload da página
+                reconectarTerminalAtivo();
+            }
+        });
         // ============================================
         // DEBUG HELPER - DESABILITADO
         // ============================================

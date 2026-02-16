@@ -1,0 +1,100 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-DST-FRIENDS-CONECTAISP-MS
+Host: 10.13.0.5:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 08/01/2026 14:13:58
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse[tomich@SW-DST-FRIENDS-CONECTAISP-MS] > /export terse
+# 2026-01-07 07:18:44 by RouterOS 7.11.3
+# software id = FJMP-HFPT
+#
+# model = CRS310-1G-5S-4S+
+# serial number = HFG09C8A328
+/interface bridge add admin-mac=78:9A:18:D7:6C:28 auto-mac=no name=bridge vlan-fi
+ltering=yes
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name=sfp-sfpplus1-SW-D
+ST-CSO-P3
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - P
+2P-FRIENDS-PEDRA-VERMELHA"
+/interface vlan add interface=bridge name=VLAN1651-GERENCIA vlan-id=1651
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip hotspot profile set [ find default=yes ] html-directory=hotspot
+/port set 0 name=serial0
+/snmp community set [ find default=yes ] name=friends*
+/interface bridge port add bridge=bridge comment=defconf interface=ether1
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=s
+fp-sfpplus1-SW-DST-CSO-P3
+/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus2 
+- P2P-FRIENDS-PEDRA-VERMELHA"
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus3
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp1
+/interface bridge port add bridge=bridge comment=defconf interface=sfp2
+/interface bridge port add bridge=bridge comment=defconf interface=sfp3
+/interface bridge port add bridge=bridge comment=defconf interface=sfp4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp5
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN QUICE" tagged="sfp-sfpplus2 - P2P-FRIENDS-PEDRA-V
+ERMELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=1660,1669,1662
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN PILAR" tagged="sfp-sfpplus2 - P2P-FRIENDS-PEDRA-V
+ERMELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=1650
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN ROMULO CAMPOS" tagged="sfp-sfpplus2 - P2P-FRIENDS
+-PEDRA-VERMELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=1655
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN MEDRADO" tagged="sfp-sfpplus2 - P2P-FRIENDS-PEDRA
+-VERMELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=1657
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN JGA" tagged="sfp-sfpplus2 - P2P-FRIENDS-PEDRA-VER
+MELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=1680
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN TRANSP-INFORNET" tagged="sfp-sfpplus2 - P2P-FRIEN
+DS-PEDRA-VERMELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=10
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment="VLAN PEDRA VERM" tagged="sfp-sfpplus2 - P2P-FRIENDS-PE
+DRA-VERMELHA,sfp-sfpplus1-SW-DST-CSO-P3" vlan-ids=1676
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge tagged="sfp-sfpplus1-SW-DST-CSO-P3,sfp-sfpplus2 - P2P-FRIENDS-P
+EDRA-VERMELHA" vlan-ids=60
+/interface bridge vlan
+# sfp-sfpplus1-SW-DST-CSO-P3 not a bridge port
+add bridge=bridge comment=GERENCIA tagged="sfp-sfpplus2 - P2P-FRIENDS-PEDRA-VERME
+LHA,sfp-sfpplus1-SW-DST-CSO-P3,bridge" vlan-ids=1651
+/ip address add address=10.13.0.5/24 interface=VLAN1651-GERENCIA network=10.13.0.
+0
+/ip route add disabled=no dst-address=0.0.0.0/0 gateway=10.13.0.1 routing-table=m
+ain suppress-hw-offload=no
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-version=2
+/system identity set name=SW-DST-FRIENDS-CONECTAISP-MS
+/system note set show-at-login=no
+/system routerboard settings set boot-os=router-os enter-setup-on=delete-key
+/tool romon set enabled=yes
+[tomich@SW-DST-FRIENDS-CONECTAISP-MS] >                                        [tomich@SW-DST-FRIENDS-CONECTAISP-MS] > 

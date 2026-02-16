@@ -1,0 +1,59 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ALTA RADIO LTDA
+Equipamento: ptp>>torre paulista>>torre reinaldo
+Host: 170.79.93.150:2324
+Acesso: DIRETO
+Modelo: MIKROTIK RB922
+Template: Backup Mikrotik
+Data: 27/01/2026 10:32:52
+Executado por: altaradio
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/<a@ptp-torre reinaldo>>torre paulista] > /                                     [K<a@ptp-torre reinaldo>>torre paulista] > /e<a@ptp-torre reinaldo>>torre paulista] > /e                                    [K<a@ptp-torre reinaldo>>torre paulista] > /ex<a@ptp-torre reinaldo>>torre paulista] > /ex                                   [K<a@ptp-torre reinaldo>>torre paulista] > /exp<a@ptp-torre reinaldo>>torre paulista] > /exp                                  [K<a@ptp-torre reinaldo>>torre paulista] > /expo<a@ptp-torre reinaldo>>torre paulista] > /expo                                 [K<a@ptp-torre reinaldo>>torre paulista] > /expor<a@ptp-torre reinaldo>>torre paulista] > /expor                                [K<a@ptp-torre reinaldo>>torre paulista] > /export<a@ptp-torre reinaldo>>torre paulista] > /export                               [K<a@ptp-torre reinaldo>>torre paulista] > /export <a@ptp-torre reinaldo>>torre paulista] > /export                               [K<a@ptp-torre reinaldo>>torre paulista] > /export t<a@ptp-torre reinaldo>>torre paulista] > /export t                             [K<a@ptp-torre reinaldo>>torre paulista] > /export te<a@ptp-torre reinaldo>>torre paulista] > /export te                            [K<a@ptp-torre reinaldo>>torre paulista] > /export ter<a@ptp-torre reinaldo>>torre paulista] > /export ter                           [K<a@ptp-torre reinaldo>>torre paulista] > /export ters<a@ptp-torre reinaldo>>torre paulista] > /export ters                          [K<a@ptp-torre reinaldo>>torre paulista] > /export terse<a@ptp-torre reinaldo>>torre paulista] > /export terse                         [K<a@ptp-torre reinaldo>>torre paulista] > /export terse<a@ptp-torre reinaldo>>torre paulista] > /export terse
+# jan/27/2026 10:32:45 by RouterOS 6.49.10
+# software id = PLEV-AKPG
+#
+# model = 912UAG-5HPnD
+# serial number = 720706DF5E01
+/interface bridge add admin-mac=6C:3B:6B:3C:EB:2F auto-mac=no comment=defconf nam
+e=bridge
+/interface wireless set [ find default-name=wlan1 ] band=5ghz-a/n basic-rates-a/g
+=24Mbps,36Mbps,48Mbps,54Mbps channel-width=20/40mhz-XX country=no_country_set di
+sabled=no frequency=5090 frequency-mode=superchannel mode=ap-bridge radio-name="
+" rx-chains=0,1 ssid=PTP-C200 station-roaming=enabled supported-rates-a/g=24Mbps
+,36Mbps,48Mbps,54Mbps tx-chains=0,1 wds-default-bridge=bridge wds-mode=dynamic
+/interface ethernet set [ find default-name=ether1 ] speed=100Mbps
+/interface vlan add comment=GERENCIA interface=bridge name=vlan10 vlan-id=10
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/interface wireless security-profiles add authentication-types=wpa-psk,wpa2-psk,w
+pa-eap,wpa2-eap eap-methods="" management-protection=allowed mode=dynamic-keys n
+ame=profile1 supplicant-identity="" wpa-pre-shared-key=qazwsx11 wpa2-pre-shared-
+key=qazwsx11
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge=bridge comment=defconf hw=no interface=ether1
+/interface bridge port add bridge=bridge comment=defconf interface=wlan1
+/ip address add address=172.18.18.9/24 interface=bridge network=172.18.18.0
+/ip address add address=10.60.60.2/24 interface=vlan10 network=10.60.60.0
+/ip dhcp-client add comment=defconf disabled=no interface=bridge
+/ip dns set servers=8.8.8.8
+/ip route add distance=1 gateway=10.60.60.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=2324
+/ip service set api disabled=yes
+/ip service set winbox port=8787
+/ip service set api-ssl disabled=yes
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name="ptp-torre reinaldo>>torre paulista"
+/tool romon set enabled=yes secrets=1212@Forte
+<a@ptp-torre reinaldo>>torre paulista] >                                       <a@ptp-torre reinaldo>>torre paulista] > 

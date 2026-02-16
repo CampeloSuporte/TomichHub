@@ -1,0 +1,61 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-CORE-FRIENDS-SBM
+Host: 10.13.0.2:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 05/02/2026 00:46:08
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@SW-CORE-FRIENDS-SBM] > /                                               [K[tomich@SW-CORE-FRIENDS-SBM] > /e[tomich@SW-CORE-FRIENDS-SBM] > /e                                              [K[tomich@SW-CORE-FRIENDS-SBM] > /ex[tomich@SW-CORE-FRIENDS-SBM] > /ex                                             [K[tomich@SW-CORE-FRIENDS-SBM] > /exp[tomich@SW-CORE-FRIENDS-SBM] > /exp                                            [K[tomich@SW-CORE-FRIENDS-SBM] > /expo[tomich@SW-CORE-FRIENDS-SBM] > /expo                                           [K[tomich@SW-CORE-FRIENDS-SBM] > /expor[tomich@SW-CORE-FRIENDS-SBM] > /expor                                          [K[tomich@SW-CORE-FRIENDS-SBM] > /export[tomich@SW-CORE-FRIENDS-SBM] > /export                                         [K[tomich@SW-CORE-FRIENDS-SBM] > /export [tomich@SW-CORE-FRIENDS-SBM] > /export                                         [K[tomich@SW-CORE-FRIENDS-SBM] > /export t[tomich@SW-CORE-FRIENDS-SBM] > /export t                                       [K[tomich@SW-CORE-FRIENDS-SBM] > /export te[tomich@SW-CORE-FRIENDS-SBM] > /export te                                      [K[tomich@SW-CORE-FRIENDS-SBM] > /export ter[tomich@SW-CORE-FRIENDS-SBM] > /export ter                                     [K[tomich@SW-CORE-FRIENDS-SBM] > /export ters[tomich@SW-CORE-FRIENDS-SBM] > /export ters                                    [K[tomich@SW-CORE-FRIENDS-SBM] > /export terse[tomich@SW-CORE-FRIENDS-SBM] > /export terse                                   [K[tomich@SW-CORE-FRIENDS-SBM] > /export terse[tomich@SW-CORE-FRIENDS-SBM] > /export terse
+# feb/05/2026 00:45:54 by RouterOS 6.49.8
+# software id = J6VG-VEXV
+#
+# model = CRS317-1G-16S+
+# serial number = HFB09AD704R
+/interface bridge add ingress-filtering=yes name=bridge1 vlan-filtering=yes
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - R
+OTA PASSARELA"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - R
+OTA UMBURANA"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] auto-negotiation=no
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-ful
+l
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] name="sfp-sfpplus5 - S
+W-DST-QUICE-P1"
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] name="sfp-sfpplus6 - S
+W-DST-ANDORINHA-P1"
+/interface ethernet set [ find default-name=sfp-sfpplus10 ] name="sfp-sfpplus10 -
+ CGNAT148"
+/interface ethernet set [ find default-name=sfp-sfpplus11 ] name="sfp-sfpplus11 -
+ CGNAT150"
+/interface ethernet set [ find default-name=sfp-sfpplus12 ] name="sfp-sfpplus12 -
+  P2P-SW-IGARA-P1"
+/interface ethernet set [ find default-name=sfp-sfpplus13 ] name="sfp-sfpplus13 -
+ TPLINK"
+/interface ethernet set [ find default-name=sfp-sfpplus14 ] name="sfp-sfpplus14 -
+ SW-ACS-TANQUINHO-P2"
+/interface ethernet set [ find default-name=sfp-sfpplus15 ] name="sfp-sfpplus15 -
+ HUAWEI PORT1"
+/interface ethernet set [ find default-name=sfp-sfpplus16 ] disabled=yes name="sf
+p-sfpplus16 - HUAWEI PORT2"
+/interface vlan add interface=bridge1 name=VLAN1651-GERENCIA vlan-id=1651
+/interface bonding add mode=802.3ad name="LACP - HUAWEI_NE8000" slaves="sfp-sfppl
+us15 - HUAWEI PORT1,sfp-sfpplus16 - HUAWEI PORT2" transmit-hash-policy=layer-2-a
+nd-3
+/interface bonding add mode=802.3ad name="LACP - INFORNET" slaves="sfp-sfpplus1 -
+ ROTA PASSARELA,sfp-sfpplus2 - ROTA UMBURANA" transmit-hash-policy=layer-2-and-3
+
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/snmp community set [ find default=yes ] name=friends*
+

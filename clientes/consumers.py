@@ -278,7 +278,9 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro SSH: {str(e)}')
     
     def connect_ssh_via_proxy(self, acesso):
-        """Conexão SSH via proxy - ✅ CORRIGIDO COM ESPAÇOS"""
+        """⚡ Conexão SSH via proxy - OTIMIZADO"""
+        tempo_inicio = time.time()  # ⚡ Medição de tempo
+        
         try:
             proxy = self.get_active_proxy(acesso.cliente)
             logger.info(f"🔗 SSH via proxy: {proxy.nome}")
@@ -290,39 +292,100 @@ class SSHConsumer(WebsocketConsumer):
             
             local_port = self.find_available_port()
             
-            # ✅ CORRIGIDO: Opções antes do -p para evitar erro de concatenação
+            # ========================================================
+            # ✅ PASSO 1: CRIAR TÚNEL SSH (OTIMIZADO)
+            # ========================================================
+            
             tunnel_cmd = (
-                f"ssh -N -L {local_port}:{acesso.host}:{acesso.porta} "
-                f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
-                f"-o ConnectTimeout=10 -o LogLevel=ERROR "
+                f"ssh -o StrictHostKeyChecking=no "
+                f"-o UserKnownHostsFile=/dev/null "
+                f"-o IdentitiesOnly=yes "
+                f"-o PubkeyAuthentication=no "
+                f"-o PreferredAuthentications=password "
+                f"-o ConnectTimeout=10 "  # ⚡ OTIMIZADO: 15 → 10
+                f"-o ServerAliveInterval=30 "
+                f"-o ServerAliveCountMax=3 "
+                f"-o LogLevel=ERROR "
+                f"-o NumberOfPasswordPrompts=1 "
                 f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
                 f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
                 f"-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
                 f"-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512 "
+                f"-N -L {local_port}:{acesso.host}:{acesso.porta} "
                 f"-p {proxy.porta} {proxy.usuario}@{proxy.host}"
             )
             
-            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)
+            logger.info(f"📤 Criando túnel SSH...")
+            logger.debug(f"Túnel: localhost:{local_port} → {acesso.host}:{acesso.porta}")
             
+            self.tunnel_process = pexpect.spawn(
+                tunnel_cmd, 
+                timeout=15,  # ⚡ OTIMIZADO: 30 → 15
+                encoding=None,
+                maxread=65536
+            )
+            
+            # ✅ Aguardar senha
             index = self.tunnel_process.expect([
                 b"password:",
                 b"Password:",
+                b"Are you sure",
                 pexpect.TIMEOUT,
                 pexpect.EOF
-            ], timeout=10)
+            ], timeout=12)  # ⚡ OTIMIZADO: 20 → 12
+            
+            if index == 2:  # Aceitar fingerprint
+                logger.info(f"🔑 Aceitando fingerprint do proxy...")
+                self.tunnel_process.sendline(b"yes")
+                index = self.tunnel_process.expect([
+                    b"password:",
+                    b"Password:",
+                    pexpect.TIMEOUT
+                ], timeout=10)  # ⚡ OTIMIZADO: 15 → 10
             
             if index == 0 or index == 1:
+                logger.info(f"🔐 Autenticando no proxy...")
                 self.tunnel_process.sendline(proxy.senha)
-                time.sleep(2)
+                time.sleep(2)  # ⚡ OTIMIZADO: 5 → 2
+                
+                # ✅ Verificar se túnel está ativo (OTIMIZADO - apenas 1 tentativa)
+                logger.info(f"🔍 Verificando túnel na porta {local_port}...")
+                import socket
+                
+                try:
+                    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    test_sock.settimeout(2)
+                    test_sock.connect(('127.0.0.1', local_port))
+                    test_sock.close()
+                    logger.info(f"✅ Túnel verificado!")
+                except socket.error as e:
+                    logger.error(f"❌ Túnel não respondeu: {e}")
+                    raise Exception(f"Túnel SSH não está ativo na porta {local_port}")
             
-            logger.info(f"✅ Túnel criado")
+            elif index == 3:
+                raise Exception("Timeout aguardando senha do proxy SSH")
+            elif index == 4:
+                raise Exception("Proxy SSH encerrou conexão")
+            
+            logger.info(f"✅ Túnel ativo: 127.0.0.1:{local_port} → {acesso.host}:{acesso.porta}")
+            
+            # ========================================================
+            # ✅ PASSO 2: CONECTAR AO EQUIPAMENTO VIA TÚNEL (OTIMIZADO)
+            # ========================================================
             
             terminal_type = "vt100" if self.is_huawei else "xterm-256color"
             
-            # ✅ CORRIGIDO: Todas as opções antes do -p
             ssh_cmd = (
-                f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
-                f"-o ConnectTimeout=10 -o ServerAliveInterval=60 -o LogLevel=ERROR "
+                f"ssh -o StrictHostKeyChecking=no "
+                f"-o UserKnownHostsFile=/dev/null "
+                f"-o IdentitiesOnly=yes "
+                f"-o PubkeyAuthentication=no "
+                f"-o PreferredAuthentications=password "
+                f"-o ConnectTimeout=10 "  # ⚡ OTIMIZADO: 15 → 10
+                f"-o ServerAliveInterval=60 "
+                f"-o ServerAliveCountMax=3 "
+                f"-o LogLevel=ERROR "
+                f"-o NumberOfPasswordPrompts=1 "
                 f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
                 f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
                 f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
@@ -338,36 +401,82 @@ class SSHConsumer(WebsocketConsumer):
             
             ssh_cmd += f"-p {local_port} {acesso.usuario}@127.0.0.1"
             
+            logger.info(f"📤 Conectando ao equipamento...")
+            
             env = os.environ.copy()
             env['TERM'] = terminal_type
             
-            self.ssh_process = pexpect.spawn(ssh_cmd, timeout=15, encoding=None, maxread=262144, env=env)
+            self.ssh_process = pexpect.spawn(
+                ssh_cmd, 
+                timeout=15,  # ⚡ OTIMIZADO: 30 → 15
+                encoding=None, 
+                maxread=262144, 
+                env=env
+            )
             
+            # ✅ Aguardar senha
             index = self.ssh_process.expect([
-                pexpect.TIMEOUT,
                 b"password:",
                 b"Password:",
-                pexpect.EOF
-            ], timeout=10)
-            
-            if index != 1 and index != 2:
-                raise Exception("Timeout ao conectar via proxy")
-            
-            logger.info(f"📤 Enviando senha")
-            self.ssh_process.sendline(acesso.senha)
-            
-            index = self.ssh_process.expect([
+                b"Are you sure",
+                rb".*[#>$\]].*",  # Já autenticado
                 pexpect.TIMEOUT,
-                b"Permission denied",
-                rb".*[#>$\]].*",
                 pexpect.EOF
-            ], timeout=10)
+            ], timeout=12)  # ⚡ OTIMIZADO: 20 → 12
             
-            if index != 2:
-                raise Exception("Erro de autenticação via proxy")
+            if index == 2:  # Aceitar fingerprint
+                logger.info(f"🔑 Aceitando fingerprint do equipamento...")
+                self.ssh_process.sendline(b"yes")
+                index = self.ssh_process.expect([
+                    b"password:",
+                    b"Password:",
+                    pexpect.TIMEOUT
+                ], timeout=10)  # ⚡ OTIMIZADO: 15 → 10
             
-            logger.info(f"✅ SSH via proxy: Conectado")
+            if index == 3:  # Já autenticado
+                logger.info(f"✅ Equipamento já autenticado")
             
+            elif index == 0 or index == 1:  # Pede senha
+                logger.info(f"🔐 Enviando senha do equipamento...")
+                self.ssh_process.sendline(acesso.senha)
+                
+                # ✅ Aguardar resultado
+                index = self.ssh_process.expect([
+                    b"Permission denied",
+                    b"Access denied",
+                    b"Authentication failed",
+                    b"Login incorrect",
+                    rb".*[#>$\]].*",  # Prompt
+                    pexpect.TIMEOUT,
+                    pexpect.EOF
+                ], timeout=12)  # ⚡ OTIMIZADO: 20 → 12
+                
+                if index in [0, 1, 2, 3]:
+                    # Capturar output para debug
+                    try:
+                        output = self.ssh_process.before.decode('utf-8', errors='ignore')
+                        logger.error(f"❌ Autenticação negada!")
+                        logger.error(f"Output: {output[-300:]}")
+                    except:
+                        pass
+                    raise Exception("Senha incorreta ou acesso negado no equipamento")
+                
+                elif index == 5:
+                    raise Exception("Timeout ao autenticar no equipamento")
+                elif index == 6:
+                    raise Exception("Equipamento encerrou conexão")
+                elif index != 4:
+                    raise Exception(f"Resposta inesperada (index={index})")
+            
+            elif index == 4:
+                raise Exception("Timeout ao conectar ao equipamento")
+            elif index == 5:
+                raise Exception("Equipamento encerrou conexão")
+            
+            tempo_total = time.time() - tempo_inicio  # ⚡ Cálculo do tempo
+            logger.info(f"✅ Conectado ao equipamento via proxy! ⏱️ Tempo: {tempo_total:.1f}s")
+            
+            # ✅ Desabilitar paginação Huawei
             if self.is_huawei:
                 try:
                     logger.info("⚙️ Desabilitando paginação Huawei...")
@@ -378,23 +487,31 @@ class SSHConsumer(WebsocketConsumer):
                     except:
                         pass
                 except Exception as e:
-                    logger.warning(f"⚠️ Não foi possível desabilitar paginação: {e}")
+                    logger.warning(f"⚠️ Erro ao desabilitar paginação: {e}")
             
             self.send_json({
                 'type': 'connected',
                 'message': f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome}' + (" [HUAWEI]" if self.is_huawei else "")
             })
             
-            # ✅ Iniciar thread de leitura
+            # ✅ Iniciar leitura
             self.is_reading = True
             self.read_thread = threading.Thread(target=self.read_ssh_output, daemon=True)
             self.read_thread.start()
         
         except Exception as e:
-            logger.error(f"❌ SSH via proxy: {str(e)}")
+            tempo_total = time.time() - tempo_inicio
+            logger.error(f"❌ SSH via proxy falhou: {str(e)} ⏱️ Tempo: {tempo_total:.1f}s")
             self.send_error(f'Erro SSH via proxy: {str(e)}')
             
-            if self.tunnel_process:
+            # Limpar recursos
+            if hasattr(self, 'ssh_process') and self.ssh_process:
+                try:
+                    self.ssh_process.close()
+                except:
+                    pass
+            
+            if hasattr(self, 'tunnel_process') and self.tunnel_process:
                 try:
                     self.tunnel_process.close()
                 except:
@@ -490,7 +607,9 @@ class SSHConsumer(WebsocketConsumer):
             raise
     
     def connect_telnet_via_proxy(self, acesso):
-        """Conexão Telnet via proxy SSH"""
+        """⚡ Conexão Telnet via proxy SSH - OTIMIZADO"""
+        tempo_inicio = time.time()  # ⚡ Medição de tempo
+        
         try:
             proxy = self.get_active_proxy(acesso.cliente)
             logger.info(f"🔗 Telnet via proxy: {proxy.nome}")
@@ -505,22 +624,22 @@ class SSHConsumer(WebsocketConsumer):
             tunnel_cmd = (
                 f"ssh -N -L {local_port}:{acesso.host}:{acesso.porta} "
                 f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
-                f"-o ConnectTimeout=10 -o LogLevel=ERROR "
+                f"-o ConnectTimeout=10 -o LogLevel=ERROR "  # ⚡ OTIMIZADO: 10
                 f"-p {proxy.porta} {proxy.usuario}@{proxy.host}"
             )
             
-            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)
+            self.tunnel_process = pexpect.spawn(tunnel_cmd, timeout=15, encoding=None)  # ⚡ OTIMIZADO: 15
             
             index = self.tunnel_process.expect([
                 b"password:",
                 b"Password:",
                 pexpect.TIMEOUT,
                 pexpect.EOF
-            ], timeout=10)
+            ], timeout=10)  # ⚡ OTIMIZADO: 10
             
             if index == 0 or index == 1:
                 self.tunnel_process.sendline(proxy.senha)
-                time.sleep(2)
+                time.sleep(2)  # ⚡ OTIMIZADO: 2
             
             logger.info(f"✅ Túnel Telnet criado")
             
@@ -529,6 +648,9 @@ class SSHConsumer(WebsocketConsumer):
             self.send_json({'type': 'info', 'message': f'Autenticando Telnet...'})
             
             self.authenticate_telnet(acesso.usuario, acesso.senha)
+            
+            tempo_total = time.time() - tempo_inicio
+            logger.info(f"✅ Conectado via proxy! ⏱️ Tempo: {tempo_total:.1f}s")
             
             self.send_json({
                 'type': 'connected',
@@ -541,7 +663,8 @@ class SSHConsumer(WebsocketConsumer):
             self.read_thread.start()
         
         except Exception as e:
-            logger.error(f"❌ Telnet via proxy: {str(e)}")
+            tempo_total = time.time() - tempo_inicio
+            logger.error(f"❌ Telnet via proxy: {str(e)} ⏱️ Tempo: {tempo_total:.1f}s")
             self.send_error(f'Erro Telnet via proxy: {str(e)}')
             
             if self.tunnel_process:

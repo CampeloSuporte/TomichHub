@@ -1,0 +1,89 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-DST-JGA-FRIENDS
+Host: 10.13.0.14:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 15/02/2026 00:45:20
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse
+
+# 2026-02-13 20:56:04 by RouterOS 7.17
+# software id = KN67-WXZJ
+#
+# model = CRS328-4C-20S-4S+
+# serial number = 8250080C988A
+/interface bridge add name=bridge1 port-cost-mode=short protocol-mode=none vlan-f iltering=yes
+/interface ethernet set [ find default-name=combo1 ] advertise=10M-baseT-half,10M -baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full,1G-baseX name="combo1 - IXC_WAN"
+/interface ethernet set [ find default-name=combo2 ] advertise=10M-baseT-half,10M -baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full,1G-baseX name="combo2 - BRAS_WAN"
+/interface ethernet set [ find default-name=combo3 ] advertise=10M-baseT-half,10M -baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full,1G-baseX name="combo3 - IXC_BKP_WAN"
+/interface ethernet set [ find default-name=combo4 ] advertise=10M-baseT-half,10M -baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full,1G-baseX name="combo4 - gerencia olt"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment=************** ******************************************************************************** ******************************************************************************** ******************************************************************************** **************************************************************************** nam e="sfp-sfpplus1 - LACP INFOR"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - L ACP INFOR"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] comment=************** ******************************************************************************** ******************************************************************************** ******************************************************************************** **************************************************************************** nam e="sfp-sfpplus3 - SERVIDOR"
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] comment=************** ******************************************************************************** ******************************************************************************** ******************************************************************************** **************************************************************************** nam e="sfp-sfpplus4 - BARRINHA"
+/interface ethernet set [ find default-name=sfp1 ] comment=********************** ******************************************************************************** ******************************************************************************** ******************************************************************************** ******************************************************************** name="sfp1 - GAMELEIRA"
+/interface ethernet set [ find default-name=sfp2 ] comment=********************** ******************************************************************************** ******************************************************************************** ******************************************************************************** ******************************************************************** name="sfp2 - PONTA DA SERRA"
+/interface ethernet set [ find default-name=sfp3 ] comment=********************** ******************************************************************************** ******************************************************************************** ******************************************************************************** ******************************************************************** loop-protec t=on name="sfp3 - VARZEA_GRANDE"
+/interface ethernet set [ find default-name=sfp4 ] comment=********************** ******************************************************************************** ******************************************************************************** ******************************************************************************** ********************************************************************
+/interface vlan add interface=bridge1 name=VLAN1651-GERENCIA vlan-id=1651
+/interface bonding add mode=802.3ad name="bonding1 - INFORNET" slaves="sfp-sfpplu s1 - LACP INFOR,sfp-sfpplus2 - LACP INFOR" transmit-hash-policy=layer-2-and-3
+/interface lte apn set [ find default=yes ] ip-type=ipv4 use-network-apn=no /port set 0 name=serial0
+/snmp community set [ find default=yes ] name=friends*
+/interface bridge port add bridge=bridge1 ingress-filtering=no interface="sfp-sfp plus3 - SERVIDOR" internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus4 - BARRINHA" int ernal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 ingress-filtering=no interface="sfp2 - PONTA DA SERRA" internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 ingress-filtering=no interface="combo2 - BRAS_WAN" internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 ingress-filtering=no interface="combo3 - IXC_BKP_WAN" internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 ingress-filtering=no interface="combo4 - gerencia olt" internal-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 interface="bonding1 - INFORNET" interna l-path-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 interface="sfp1 - GAMELEIRA" internal-p ath-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 interface="combo1 - IXC_WAN" internal-p ath-cost=10 path-cost=10
+/interface bridge port add bridge=bridge1 interface="sfp3 - VARZEA_GRANDE" intern al-path-cost=10 path-cost=10
+/ip firewall connection tracking set udp-timeout=10s
+/ip settings set max-neighbor-entries=8192
+/ipv6 settings set disable-ipv6=yes
+/interface bridge vlan add bridge=bridge1 tagged="bonding1 - INFORNET,sfp-sfpplus 3 - SERVIDOR,sfp1 - GAMELEIRA,sfp2 - PONTA DA SERRA,combo2 - BRAS_WAN,sfp-sfpplu s4 - BARRINHA,sfp3 - VARZEA_GRANDE" vlan-ids=1010
+/interface bridge vlan add bridge=bridge1 tagged="bonding1 - INFORNET,sfp-sfpplus 3 - SERVIDOR,sfp3 - VARZEA_GRANDE" vlan-ids=101-115
+/interface bridge vlan add bridge=bridge1 tagged="bonding1 - INFORNET,sfp-sfpplus 4 - BARRINHA,sfp3 - VARZEA_GRANDE,combo4 - gerencia olt,sfp1 - GAMELEIRA" vlan-i ds=10
+/interface bridge vlan add bridge=bridge1 tagged="bonding1 - INFORNET,sfp-sfpplus 4 - BARRINHA" vlan-ids=1652-1750
+/interface bridge vlan add bridge=bridge1 tagged="bonding1 - INFORNET,sfp-sfpplus 4 - BARRINHA" vlan-ids=2023,2046
+/interface bridge vlan add bridge=bridge1 tagged="bonding1 - INFORNET,sfp-sfpplus 4 - BARRINHA" vlan-ids=1650
+/interface bridge vlan add bridge=bridge1 comment=GERENCIA tagged="bonding1 - INF ORNET,sfp-sfpplus4 - BARRINHA,bridge1" vlan-ids=1651
+/interface ovpn-server server add mac-address=FE:FC:E0:36:00:19 name=ovpn-server1
+
+/ip address add address=192.168.1.101/24 disabled=yes interface="combo4 - gerenci a olt" network=192.168.1.0
+/ip address add address=10.13.0.14/24 interface=VLAN1651-GERENCIA network=10.13.0 .0
+/ip address add address=187.111.143.88/25 interface=bridge1 network=187.111.143.0
+
+/ip firewall nat add action=masquerade chain=srcnat src-address=192.168.1.0/24
+/ip firewall nat add action=masquerade chain=srcnat dst-address=192.168.1.0/24
+/ip firewall nat add action=dst-nat chain=dstnat dst-port=8080 protocol=tcp to-ad dresses=192.168.200.20 to-ports=80
+/ip hotspot profile set [ find default=yes ] html-directory=hotspot
+/ip ipsec profile set [ find default=yes ] dpd-interval=2m dpd-maximum-failures=5
+
+/ip route add disabled=no distance=1 dst-address=0.0.0.0/0 gateway=10.13.0.1 rout ing-table=main scope=30 suppress-hw-offload=no target-scope=10
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set contact=suporte@friends.tv.br enabled=yes location=Jaguarari trap-versi on=2
+/system identity set name=SW-DST-JGA-FRIENDS
+/system note set show-at-login=no
+/system swos set address-acquisition-mode=static identity=SW_AGON static-ip-addre ss=187.111.143.55
+/system watchdog set automatic-supout=no watchdog-timer=no
+/tool romon set enabled=yes
+
+[tomich@SW-DST-JGA-FRIENDS] > [tomich@SW-DST-JGA-FRIENDS] >

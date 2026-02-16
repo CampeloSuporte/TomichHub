@@ -107,7 +107,7 @@
                                         <h5 class="mb-0">{{ acesso.tipo }}</h5>
                                     </div>
                                     <div class="d-flex gap-2 flex-wrap">
-                                    {% if not is_cliente %}
+                                    
                                         <form method="POST" action="{% url 'deletar_acesso' acesso.id %}" 
                                               style="display: inline;" 
                                               onsubmit="return confirm('Tem certeza que deseja excluir: {{ acesso.tipo }}?')">
@@ -116,7 +116,7 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
-                                    {% endif %}
+                                    
                                         
                                         <button class="icon-btn btn-sm" 
                                                 onclick="realizarPing({{ acesso.id }}, '{{ acesso.host }}')" 
@@ -140,11 +140,11 @@
                                         <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
                                             <i class="fas fa-file"></i>
                                         </button>
-                                      {% if not is_cliente %}  
+                                       
                                         <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                      {% endif %}
+                                      
                                     </div>
                                 </div>
                                 <ul class="nav nav-tabs mb-3">

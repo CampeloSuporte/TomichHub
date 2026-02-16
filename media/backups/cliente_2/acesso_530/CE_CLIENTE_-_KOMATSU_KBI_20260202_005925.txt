@@ -1,0 +1,47 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: CE CLIENTE - KOMATSU KBI
+Host: 186.0.148.160:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 02/02/2026 00:59:25
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/[tomich@KOMATSU KBI] > /                                                       [K[tomich@KOMATSU KBI] > /e[tomich@KOMATSU KBI] > /e                                                      [K[tomich@KOMATSU KBI] > /ex[tomich@KOMATSU KBI] > /ex                                                     [K[tomich@KOMATSU KBI] > /exp[tomich@KOMATSU KBI] > /exp                                                    [K[tomich@KOMATSU KBI] > /expo[tomich@KOMATSU KBI] > /expo                                                   [K[tomich@KOMATSU KBI] > /expor[tomich@KOMATSU KBI] > /expor                                                  [K[tomich@KOMATSU KBI] > /export[tomich@KOMATSU KBI] > /export                                                 [K[tomich@KOMATSU KBI] > /export [tomich@KOMATSU KBI] > /export                                                 [K[tomich@KOMATSU KBI] > /export t[tomich@KOMATSU KBI] > /export t                                               [K[tomich@KOMATSU KBI] > /export te[tomich@KOMATSU KBI] > /export te                                              [K[tomich@KOMATSU KBI] > /export ter[tomich@KOMATSU KBI] > /export ter                                             [K[tomich@KOMATSU KBI] > /export ters[tomich@KOMATSU KBI] > /export ters                                            [K[tomich@KOMATSU KBI] > /export terse[tomich@KOMATSU KBI] > /export terse                                           [K[tomich@KOMATSU KBI] > /export terse[tomich@KOMATSU KBI] > /export terse
+# feb/02/2026 00:59:09 by RouterOS 6.49.8
+# software id = 6Y46-RYMS
+#
+# model = CCR1036-8G-2S+
+# serial number = 8A6107D6E874
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=ether1 ] comment=LINK-FIBRA-G5
+/interface ethernet set [ find default-name=ether2 ] comment=LINK-STARLINK
+/interface list add name=WAN
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface list member add interface=ether2 list=WAN
+/interface list member add interface=ether1 list=WAN
+/ip address add address=10.64.65.2/30 comment="WAN - G5" interface=ether1 network
+=10.64.65.0
+/ip address add address=186.0.148.160 comment=186.0.148.160/29 interface=loopback
+ network=186.0.148.160
+/ip dhcp-client add default-route-distance=2 disabled=no interface=ether2
+/ip route add check-gateway=ping distance=1 gateway=10.64.65.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/system clock set time-zone-name=America/Fortaleza
+/system identity set name="KOMATSU KBI"
+/system routerboard settings set auto-upgrade=yes
+[tomich@KOMATSU KBI] >                                                         [tomich@KOMATSU KBI] > 
