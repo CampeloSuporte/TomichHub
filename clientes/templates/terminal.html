@@ -3,997 +3,942 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminal SSH Múltiplo - CONEXA</title>
-    
-    <!-- XTerm CSS -->
+    <title>Terminal</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
-    
-    <!-- JetBrains Mono Font -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        html, body {
-            width: 100%;
-            height: 100%;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; }
         body {
-            background: #0a0a0a;
-            color: #ffffff;
+            background: #0a0a0a; color: #ffffff;
             font-family: 'JetBrains Mono', 'Courier New', monospace;
-            font-weight: 400;
-            font-size: 13px;
-            line-height: 1.2;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
+            font-weight: 400; font-size: 13px; line-height: 1.2;
+            overflow: hidden; height: 100vh; width: 100vw;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
-        
-        .terminal-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-        }
-        
+        .terminal-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+
         /* HEADER */
         .terminal-header {
-            background: rgba(0, 20, 10, 0.8);
-            border-bottom: 2px solid #00ff88;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            min-height: 60px;
-            flex-shrink: 0;
+            background: rgba(0, 20, 10, 0.8); border-bottom: 2px solid #00ff88;
+            padding: 12px 20px; display: flex; align-items: center; gap: 20px;
+            flex-wrap: wrap; min-height: 60px; flex-shrink: 0;
         }
-        
-        .terminal-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #00ff88;
-            flex: 1;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        
-        .terminal-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: #888;
-        }
-        
-        .terminal-status.connected {
-            color: #00ff88;
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #888;
-            animation: pulse 1s infinite;
-        }
-        
-        .status-dot.connected {
-            background: #00ff88;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
+        .terminal-title { font-size: 14px; font-weight: 600; color: #00ff88; flex: 1; font-family: 'JetBrains Mono', monospace; }
+        .terminal-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+        .terminal-status.connected { color: #00ff88; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; animation: pulse 1s infinite; }
+        .status-dot.connected { background: #00ff88; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
         /* TABS */
         .terminal-tabs {
-            display: flex;
-            background: #000;
-            border-bottom: 1px solid #222;
-            overflow-x: auto;
-            gap: 5px;
-            padding: 8px 10px;
-            min-height: 40px;
-            flex-shrink: 0;
+            display: flex; background: #000; border-bottom: 1px solid #222;
+            overflow-x: auto; gap: 5px; padding: 8px 10px; min-height: 40px; flex-shrink: 0;
         }
-        
         .terminal-tab {
-            background: rgba(50, 50, 50, 0.5);
-            border: 1px solid #333;
-            border-bottom: none;
-            color: #888;
-            padding: 8px 15px;
-            cursor: pointer;
-            font-size: 12px;
-            border-radius: 4px 4px 0 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            transition: all 0.2s;
-            font-family: 'JetBrains Mono', monospace;
+            background: rgba(50,50,50,0.5); border: 1px solid #333; border-bottom: none;
+            color: #888; padding: 8px 15px; cursor: pointer; font-size: 12px;
+            border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 8px;
+            white-space: nowrap; transition: all 0.2s; font-family: 'JetBrains Mono', monospace;
         }
-        
-        .terminal-tab:hover {
-            background: rgba(100, 100, 100, 0.5);
-            color: #00ff88;
-        }
-        
-        .terminal-tab.active {
-            background: #0a0a0a;
-            border: 1px solid #00ff88;
-            border-bottom: 1px solid #0a0a0a;
-            color: #00ff88;
-        }
-        
-        .terminal-tab-close {
-            cursor: pointer;
-            opacity: 0.6;
-            transition: 0.2s;
-        }
-        
-        .terminal-tab-close:hover {
-            color: #ff4444;
-            opacity: 1;
-        }
-        
-        .terminal-tab-status {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #888;
-        }
-        
-        .terminal-tab-status.connected {
-            background: #00ff88;
-        }
-        
-        /* CONTEÚDO - CRÍTICO */
-        .terminal-content {
-            flex: 1;
-            overflow: hidden;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            min-height: 0;
-        }
-        
-        .terminal-pane {
-            width: 100%;
-            height: 100%;
-            display: none;
-            flex-direction: column;
-            position: relative;
-            min-height: 0;
-            min-width: 0;
-        }
-        
-        .terminal-pane.active {
-            display: flex;
-        }
-        
-        /* ✅ CRÍTICO: xterm DEVE TER TAMANHO DEFINIDO */
-        .xterm {
-            flex: 1;
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            position: relative;
-            min-height: 0;
-            min-width: 0;
-        }
-        
-        .xterm-screen {
-            width: 100%;
-            height: 100%;
-        }
-        
-        /* Melhorar renderização do xterm */
-        .xterm-viewport {
-            background-color: #000;
-        }
-        
+        .terminal-tab:hover { background: rgba(100,100,100,0.5); color: #00ff88; }
+        .terminal-tab.active { background: #0a0a0a; border: 1px solid #00ff88; border-bottom: 1px solid #0a0a0a; color: #00ff88; }
+        .terminal-tab-close { cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        .terminal-tab-close:hover { color: #ff4444; opacity: 1; }
+        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: #888; }
+        .terminal-tab-status.connected { background: #00ff88; }
+
+        /* CONTEÚDO */
+        .terminal-content { flex: 1; overflow: hidden; background: #000; display: flex; flex-direction: column; position: relative; min-height: 0; }
+        .terminal-pane { width: 100%; height: 100%; display: none; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
+        .terminal-pane.active { display: flex; }
+        .xterm { flex: 1; overflow: hidden; width: 100%; height: 100%; position: relative; min-height: 0; min-width: 0; }
+        .xterm-screen { width: 100%; height: 100%; }
+        .xterm-viewport { background-color: #000; }
         .xterm-char-measure-element {
-            display: inline-block;
-            position: absolute;
-            visibility: hidden;
-            left: -9999px;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 400;
-            font-size: 13px;
-            line-height: 1.2;
-        }
-        
-        /* FOOTER */
-        .terminal-footer {
-            background: rgba(0, 20, 10, 0.5);
-            border-top: 1px solid #333;
-            padding: 12px 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            min-height: 50px;
-            flex-shrink: 0;
-        }
-        
-        .btn-terminal {
-            background: transparent;
-            border: 1px solid #555;
-            color: #aaa;
-            padding: 6px 12px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            font-weight: 500;
-            transition: 0.2s;
-            text-transform: uppercase;
-        }
-        
-        .btn-terminal:hover {
-            border-color: #00ff88;
-            color: #00ff88;
-        }
-        
-        /* ESTADO VAZIO */
-        .terminal-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #555;
-            font-size: 14px;
-            gap: 15px;
-        }
-        
-        .terminal-empty-text {
-            text-align: center;
-            line-height: 1.6;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        
-        /* DEBUG PANEL */
-        .debug-panel {
-            display: none !important;
-        }
-        
-        .debug-line {
-            margin: 2px 0;
-            padding: 2px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-        }
-                /* BOTÃO RECONECTAR - DESTAQUE */
-        .btn-terminal.reconnecting {
-            border-color: #ffa500;
-            color: #ffa500;
-            animation: pulseOrange 1s infinite;
+            display: inline-block; position: absolute; visibility: hidden; left: -9999px;
+            font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
         }
 
-        @keyframes pulseOrange {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+        /* FOOTER */
+        .terminal-footer {
+            background: rgba(0, 20, 10, 0.5); border-top: 1px solid #333;
+            padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap; min-height: 50px; flex-shrink: 0;
         }
+        .btn-terminal {
+            background: transparent; border: 1px solid #555; color: #aaa;
+            padding: 6px 12px; border-radius: 3px; cursor: pointer;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            font-weight: 500; transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-terminal:hover { border-color: #00ff88; color: #00ff88; }
+        .btn-terminal.btn-wiki { border-color: #00d9ff; color: #00d9ff; }
+        .btn-terminal.btn-wiki:hover { background: rgba(0, 217, 255, 0.1); }
+
+        /* ESTADO VAZIO */
+        .terminal-empty {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100%; color: #555; font-size: 14px; gap: 15px;
+        }
+        .terminal-empty-text { text-align: center; line-height: 1.6; font-family: 'JetBrains Mono', monospace; }
+        .debug-panel { display: none !important; }
+        .debug-line { margin: 2px 0; padding: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+        .btn-terminal.reconnecting { border-color: #ffa500; color: #ffa500; animation: pulseOrange 1s infinite; }
+        @keyframes pulseOrange { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        /* ============================================
+           WIKI SIDEBAR
+        ============================================ */
+        .wiki-sidebar {
+            position: fixed; top: 0; right: -500px; width: 480px; height: 100vh;
+            background: #111; border-left: 2px solid #00ff88;
+            display: flex; flex-direction: column; z-index: 9999;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.7); transition: right 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .wiki-sidebar.aberto { right: 0; }
+        .wiki-sidebar-header {
+            background: #0a0a0a; padding: 14px 18px; border-bottom: 2px solid #00ff88;
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+        }
+        .wiki-sidebar-header h3 { margin: 0; color: #00ff88; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+        .btn-close-wiki { background: transparent; border: none; color: #555; font-size: 18px; cursor: pointer; padding: 4px 8px; transition: 0.2s; line-height: 1; }
+        .btn-close-wiki:hover { color: #ff4444; }
+        .wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
+        .wiki-search-input {
+            width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
+            padding: 9px 13px; border-radius: 3px; font-family: 'JetBrains Mono', monospace;
+            font-size: 12px; outline: none; transition: border-color 0.2s;
+        }
+        .wiki-search-input:focus { border-color: #00ff88; }
+        .wiki-search-input::placeholder { color: #444; }
+        .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+        .wiki-sidebar-results::-webkit-scrollbar { width: 4px; }
+        .wiki-sidebar-results::-webkit-scrollbar-track { background: transparent; }
+        .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background 0.15s; }
+        .wiki-result-item:hover { background: rgba(0,255,136,0.04); }
+        .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #555; }
+        .wiki-result-categoria { color: #00d9ff; font-size: 10px; }
+        .wiki-favorito { color: #ffd700; margin-left: auto; font-size: 10px; }
+        .wiki-result-titulo { color: #00ff88; font-size: 13px; margin: 0 0 6px 0; font-weight: 600; }
+        .wiki-result-descricao { color: #888; font-size: 11px; margin: 0 0 8px 0; line-height: 1.5; }
+        .wiki-result-footer { display: flex; gap: 6px; }
+        .wiki-fabricante { background: rgba(0,217,255,0.12); color: #00d9ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: #555; font-size: 12px; }
+
+        /* ============================================
+           ARTIGO
+        ============================================ */
+        .wiki-artigo-view { color: #ccc; font-size: 12px; line-height: 1.6; }
+        .btn-voltar-wiki {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            background: #0a0a0a; border: none; border-bottom: 1px solid #1e1e1e;
+            color: #00d9ff; padding: 10px 16px; cursor: pointer;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: left; transition: background 0.15s;
+        }
+        .btn-voltar-wiki:hover { background: #141414; }
+        .wiki-artigo-header { padding: 16px; border-bottom: 1px solid #1e1e1e; background: #0e0e0e; }
+        .wiki-artigo-header h2 { color: #fff; font-size: 15px; margin: 0 0 10px 0; font-weight: 700; line-height: 1.4; }
+        .wiki-artigo-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+        .wiki-artigo-meta span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #888; }
+        .badge-cat { background: rgba(0,217,255,0.12); color: #00d9ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .badge-fab { background: rgba(0,255,136,0.12); color: #00ff88; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .wiki-artigo-conteudo { padding: 16px; }
+        .wiki-artigo-conteudo h2, .wiki-artigo-conteudo h3, .wiki-artigo-conteudo h4 {
+            display: flex; align-items: stretch; margin: 20px 0 12px 0;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .wiki-artigo-conteudo h2::before, .wiki-artigo-conteudo h3::before, .wiki-artigo-conteudo h4::before {
+            content: '\201C'; display: inline-flex; align-items: center; justify-content: center;
+            min-width: 30px; width: 30px; background: rgba(0,120,180,0.35); color: #00d9ff;
+            font-size: 18px; font-weight: 900; border-radius: 2px 0 0 2px; flex-shrink: 0;
+        }
+        .wiki-titulo-texto {
+            flex: 1; display: flex; align-items: center; padding: 0 12px;
+            background: rgba(0,80,120,0.2); color: #00d9ff; border-bottom: 2px solid #00d9ff;
+            text-transform: uppercase; min-height: 30px;
+        }
+        .wiki-artigo-conteudo p { margin: 8px 0; color: #bbb; font-size: 12px; }
+        .wiki-artigo-conteudo ul, .wiki-artigo-conteudo ol { padding-left: 18px; margin: 8px 0; }
+        .wiki-artigo-conteudo li { margin: 4px 0; color: #bbb; font-size: 12px; }
+        .wiki-artigo-conteudo code {
+            background: rgba(0,255,136,0.1); color: #00ff88; padding: 1px 5px;
+            border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+        }
+
+        /* ============================================
+           WRAPPER DE CÓDIGO — aparece em AMBOS os lugares
+           (conteudo_html e blocos_codigo)
+        ============================================ */
+        .wiki-code-wrapper {
+            background: #0a0a0a; border: 1px solid #1e1e1e;
+            border-radius: 3px; overflow: hidden; margin: 12px 0;
+        }
+
+        /* Barra de ações acima do código */
+        .wiki-code-toolbar {
+            background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e;
+            display: flex; align-items: center; justify-content: flex-end; gap: 5px;
+        }
+
+        .btn-bloco {
+            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            padding: 3px 9px; border-radius: 2px; cursor: pointer;
+            font-size: 10px; font-family: 'JetBrains Mono', monospace;
+            transition: 0.2s; white-space: nowrap; line-height: 1.5;
+        }
+        .btn-bloco:hover { color: #aaa; border-color: #444; }
+        .btn-bloco.btn-editar:hover  { color: #ffa500; border-color: #ffa500; }
+        .btn-bloco.btn-editar.ativo  { color: #ffa500; border-color: #ffa500; background: rgba(255,165,0,0.08); }
+        .btn-bloco.btn-copiar:hover  { color: #00d9ff; border-color: #00d9ff; }
+        .btn-bloco.btn-copiar.copiado { color: #00ff88; border-color: #00ff88; }
+        .btn-bloco.btn-enviar {
+            color: #00ff88; border-color: #00ff88;
+            background: rgba(0,255,136,0.07); font-weight: 600;
+        }
+        .btn-bloco.btn-enviar:hover { background: rgba(0,255,136,0.16); box-shadow: 0 0 8px rgba(0,255,136,0.2); }
+
+        /* Aviso modo edição */
+        .wiki-bloco-edit-aviso {
+            display: none; padding: 6px 12px;
+            background: rgba(255,165,0,0.05); border-bottom: 1px solid rgba(255,165,0,0.15);
+            color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
+        }
+        .wiki-bloco-edit-aviso.visivel { display: flex; }
+
+        /* Visualizador readonly */
+        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0a0a0a; border-left: 3px solid #00ff88; }
+        .wiki-codigo-pre code {
+            display: table; width: 100%; counter-reset: linhas;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0;
+        }
+        .wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
+        .wiki-codigo-pre code .ln::before {
+            content: counter(linhas); display: table-cell; width: 34px; min-width: 34px;
+            text-align: right; padding: 0 10px 0 6px; color: #3a3a3a;
+            border-right: 1px solid #1e1e1e; user-select: none; font-size: 10px;
+            vertical-align: top; padding-top: 1px;
+        }
+        .wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
+
+        /* Editor textarea */
+        .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0a0a0a; }
+        .wiki-codigo-editor-wrap.visivel { display: block; }
+        .wiki-codigo-editor {
+            width: 100%; min-height: 80px; max-height: 420px;
+            background: #0d0d0d; color: #e8e8e8;
+            border: none; outline: none; resize: vertical;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
+            padding: 10px 14px; tab-size: 4;
+            scrollbar-width: thin; scrollbar-color: #333 transparent;
+            caret-color: #ffa500;
+        }
+        .wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
+        .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .wiki-codigo-editor:focus { background: #0f0f0f; }
+
+        /* Rodapé do editor */
+        .wiki-bloco-footer {
+            display: none; padding: 8px 12px; background: #0e0e0e;
+            border-top: 1px solid #1e1e1e;
+            align-items: center; justify-content: space-between; gap: 8px;
+        }
+        .wiki-bloco-footer.visivel { display: flex; }
+        .wiki-bloco-footer-info { color: #3a3a3a; font-size: 10px; }
+        .wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
+        .btn-resetar {
+            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            padding: 4px 10px; border-radius: 2px; cursor: pointer;
+            font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s;
+        }
+        .btn-resetar:hover { color: #ff5555; border-color: #ff5555; }
+        .btn-enviar-grande {
+            background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;
+            padding: 5px 14px; border-radius: 2px; cursor: pointer;
+            font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+            transition: 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-enviar-grande:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 12px rgba(0,255,136,0.28); }
+        .btn-enviar-grande.enviado { animation: flashGreen 0.5s ease; }
+        @keyframes flashGreen {
+            0%   { box-shadow: 0 0 0   rgba(0,255,136,0); }
+            40%  { box-shadow: 0 0 20px rgba(0,255,136,0.55); }
+            100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
+        }
+
+        /* Blocos extras (blocos_codigo) */
+        .wiki-blocos-section-title {
+            padding: 10px 16px 4px; font-size: 10px; color: #444;
+            text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1a1a1a;
+        }
+        .wiki-bloco-extra {
+            margin: 0 16px 14px; background: #0a0a0a;
+            border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden;
+        }
+        .wiki-bloco-extra-header {
+            background: #111; padding: 8px 12px; border-bottom: 1px solid #1e1e1e;
+            display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .wiki-bloco-extra-header strong { color: #00d9ff; font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
+        .wiki-bloco-acoes { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+        .wiki-bloco-lang {
+            font-size: 9px; color: #444; background: #0a0a0a;
+            padding: 2px 7px; border-radius: 10px; border: 1px solid #222;
+        }
+        .wiki-bloco-descricao { padding: 8px 12px; color: #666; font-size: 11px; border-bottom: 1px solid #1e1e1e; margin: 0; }
+
+        /* Toast */
+        .wiki-toast {
+            position: fixed; bottom: 70px; right: 20px; background: #111;
+            border: 1px solid #00ff88; color: #00ff88; padding: 8px 16px;
+            border-radius: 3px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+            z-index: 99999; opacity: 0; transform: translateY(8px);
+            transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+        }
+        .wiki-toast.visivel { opacity: 1; transform: translateY(0); }
+        .wiki-toast.erro { border-color: #ff5555; color: #ff5555; }
     </style>
 </head>
 <body>
     <div class="terminal-container">
-        <!-- Header -->
         <div class="terminal-header">
-            <div class="terminal-title">
-                ▶ Terminal
-            </div>
+            <div class="terminal-title">▶ Terminal</div>
             <div class="terminal-status connected" id="terminalStatus">
                 <div class="status-dot connected"></div>
                 <span id="statusText">Pronto para conexões</span>
             </div>
         </div>
-        
-        <!-- Tabs -->
-        <div class="terminal-tabs" id="terminalTabs">
-            <!-- Tabs adicionadas aqui -->
-        </div>
-        
-        <!-- Conteúdo -->
-        <div class="terminal-content" id="terminalContent" style="flex: 1; min-height: 0;">
+        <div class="terminal-tabs" id="terminalTabs"></div>
+        <div class="terminal-content" id="terminalContent" style="flex:1;min-height:0;">
             <div class="terminal-pane active">
                 <div class="terminal-empty">
                     <div>⏳</div>
                     <div class="terminal-empty-text">
                         <p>Nenhum terminal conectado</p>
-                        <p style="font-size: 11px; color: #777;">Clique em "Acessar" na página principal para abrir um terminal</p>
+                        <p style="font-size:11px;color:#777;">Clique em "Acessar" na página principal para abrir um terminal</p>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Footer -->
         <div class="terminal-footer">
-            <button class="btn-terminal" onclick="limparTela()">
-                ✕ Limpar Tela
-            </button>
-            <button class="btn-terminal" onclick="reconectarTerminalAtivo()">
-                ↻ Reconectar
-            </button>
-            <button class="btn-terminal" onclick="fecharTodosTerminais()">
-                ⏻ Fechar Todos
-            </button>
-            <button class="btn-terminal" onclick="window.close()">
-                ✕ Fechar Aba
-            </button>
+            <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
+            <button class="btn-terminal" onclick="limparTela()">✕ Limpar Tela</button>
+            <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
+            <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
+            <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
         </div>
     </div>
-    
-    <!-- DEBUG PANEL -->
-    <div class="debug-panel" id="debugPanel" style="display: none;">
-        <div style="color: #00ff88; margin-bottom: 5px;"><strong>DEBUG</strong></div>
+
+    <div class="debug-panel" id="debugPanel" style="display:none;">
+        <div style="color:#00ff88;margin-bottom:5px;"><strong>DEBUG</strong></div>
         <div id="debugOutput"></div>
     </div>
-    
-    <!-- XTerm JS -->
+
+    <!-- WIKI SIDEBAR -->
+    <div id="wikiSidebar" class="wiki-sidebar">
+        <div class="wiki-sidebar-header">
+            <h3>📖 Wiki</h3>
+            <button class="btn-close-wiki" onclick="toggleWikiSidebar()">✕</button>
+        </div>
+        <div class="wiki-sidebar-search">
+            <input type="text" id="wikiSearchInput" class="wiki-search-input"
+                placeholder="Buscar artigos..."
+                oninput="debounceWikiBusca(this.value)">
+        </div>
+        <div class="wiki-sidebar-results" id="wikiResults">
+            <div class="wiki-loading">Aguardando busca...</div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="wikiToast" class="wiki-toast"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
-
     <script>
 
-        // ============================================
-// RECONECTAR TERMINAL ATIVO
-// ============================================
+    // ============================================================
+    // TOAST
+    // ============================================================
+    let _toastTimer = null;
+    function mostrarToast(msg, tipo) {
+        const el = document.getElementById('wikiToast');
+        el.textContent = msg;
+        el.className = 'wiki-toast' + (tipo === 'erro' ? ' erro' : '');
+        void el.offsetWidth;
+        el.classList.add('visivel');
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => el.classList.remove('visivel'), 2800);
+    }
 
-        function reconectarTerminalAtivo() {
-            if (!terminalManager.activeTerminal) {
-                addDebug('⚠️ Nenhum terminal ativo para reconectar');
-                alert('Nenhum terminal ativo. Abra uma conexão primeiro.');
-                return;
-            }
-            
-            const terminalId = terminalManager.activeTerminal;
-            const terminalObj = terminalManager.terminals.get(terminalId);
-            
-            if (!terminalObj) {
-                addDebug('❌ Terminal não encontrado: ' + terminalId);
-                return;
-            }
-            
-            addDebug('🔄 Iniciando reconexão do terminal: ' + terminalId);
-            
-            // ✅ Fechar WebSocket existente
-            if (terminalObj.socket) {
-                addDebug('🔌 Fechando WebSocket anterior...');
-                try {
-                    terminalObj.socket.close();
-                } catch (e) {
-                    addDebug('⚠️ Erro ao fechar socket: ' + e.message);
-                }
-                terminalObj.socket = null;
-            }
-            
-            // ✅ Resetar status
-            terminalObj.connected = false;
-            terminalObj.wsRetries = 0;
-            
-            // ✅ Atualizar aba (remover status conectado)
-            const tab = document.getElementById(`tab-${terminalId}`);
-            if (tab) {
-                const statusDot = tab.querySelector('.terminal-tab-status');
-                if (statusDot) {
-                    statusDot.classList.remove('connected');
-                }
-            }
-            
-            // ✅ Limpar terminal
-            terminalObj.terminal.clear();
-            
-            // ✅ Mensagem de reconexão
-            terminalObj.terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
-            terminalObj.terminal.writeln('\x1b[1;33m▶ Reconectando a ' + terminalObj.acesso.host + ':' + terminalObj.acesso.porta + '...\x1b[0m\n');
-            
-            addDebug('📝 Terminal limpo, iniciando reconexão...');
-            
-            // ✅ Reconectar após 500ms
-            setTimeout(() => {
-                terminalManager.conectarWebSocket(terminalId);
-                addDebug('✅ Reconexão iniciada');
-            }, 500);
+    // ============================================================
+    // WIKI — BUSCA / LISTAGEM
+    // ============================================================
+    let wikiDebounceTimer = null;
+    let wikiUltimosResultados = [];
+
+    function toggleWikiSidebar() {
+        const sb = document.getElementById('wikiSidebar');
+        if (sb.classList.toggle('aberto')) {
+            document.getElementById('wikiSearchInput').focus();
+            buscarWikiArtigos('');
+        }
+    }
+
+    function debounceWikiBusca(q) {
+        clearTimeout(wikiDebounceTimer);
+        wikiDebounceTimer = setTimeout(() => buscarWikiArtigos(q), 300);
+    }
+
+    function buscarWikiArtigos(q) {
+        const c = document.getElementById('wikiResults');
+        c.innerHTML = '<div class="wiki-loading">Buscando...</div>';
+        fetch('/wiki/api/buscar/?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(d => {
+                wikiUltimosResultados = d.artigos || [];
+                renderizarResultadosWiki(wikiUltimosResultados);
+            })
+            .catch(() => { c.innerHTML = '<div class="wiki-error">Erro ao carregar artigos</div>'; });
+    }
+
+    function renderizarResultadosWiki(artigos) {
+        const c = document.getElementById('wikiResults');
+        if (!artigos.length) { c.innerHTML = '<div class="wiki-no-results">Nenhum artigo encontrado</div>'; return; }
+        c.innerHTML = artigos.map(a => `
+            <div class="wiki-result-item" onclick="visualizarArtigoWiki('${a.slug}')">
+                <div class="wiki-result-header">
+                    <span class="wiki-result-categoria">${esc(a.categoria)}</span>
+                    ${a.favorito ? '<span class="wiki-favorito">★</span>' : ''}
+                </div>
+                <div class="wiki-result-titulo">${esc(a.titulo)}</div>
+                <div class="wiki-result-descricao">${esc(a.descricao || '')}</div>
+                <div class="wiki-result-footer"><span class="wiki-fabricante">${esc(a.fabricante)}</span></div>
+            </div>`).join('');
+    }
+
+    function visualizarArtigoWiki(slug) {
+        const c = document.getElementById('wikiResults');
+        c.innerHTML = '<div class="wiki-loading">Carregando artigo...</div>';
+        fetch('/wiki/api/artigo/' + slug + '/')
+            .then(r => r.json())
+            .then(a => renderizarArtigoWiki(a))
+            .catch(() => { c.innerHTML = '<div class="wiki-error">Erro ao carregar artigo</div>'; });
+    }
+
+    // ============================================================
+    // WIKI — RENDERIZAR ARTIGO
+    // ============================================================
+    // Contador global para IDs únicos de bloco (conteudo_html + blocos_codigo)
+    let _blocoCounter = 0;
+    // Mapa: id -> texto original (para resetar)
+    window._wikiBlocosMap = {};
+
+    function renderizarArtigoWiki(artigo) {
+        const c = document.getElementById('wikiResults');
+        _blocoCounter = 0;
+        window._wikiBlocosMap = {};
+
+        // Processar conteudo_html — injeta toolbar em cada <pre>
+        const bodyHtml = processarConteudoWiki(artigo.conteudo_html || '');
+
+        // Blocos extras (blocos_codigo)
+        let blocosHtml = '';
+        if (artigo.blocos_codigo && artigo.blocos_codigo.length > 0) {
+            blocosHtml = `<div class="wiki-blocos-section-title">Blocos de Código</div>`;
+            blocosHtml += artigo.blocos_codigo.map(b => {
+                const idx = _blocoCounter++;
+                window._wikiBlocosMap[idx] = b.codigo;
+                return `
+                <div class="wiki-bloco-extra" id="bw-${idx}">
+                    <div class="wiki-bloco-extra-header">
+                        <strong>${esc(b.titulo)}</strong>
+                        <div class="wiki-bloco-acoes">
+                            <span class="wiki-bloco-lang">${esc(b.linguagem)}</span>
+                            ${toolbarBtns(idx)}
+                        </div>
+                    </div>
+                    ${b.descricao ? `<p class="wiki-bloco-descricao">${esc(b.descricao)}</p>` : ''}
+                    ${avisoEditar(idx)}
+                    <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${renderLinhas(esc(b.codigo))}</code></pre>
+                    ${editorWrap(idx)}
+                    ${footerEditar(idx)}
+                </div>`;
+            }).join('');
         }
 
-        // ============================================
-        // ATALHO DE TECLADO: CTRL+R PARA RECONECTAR
-        // ============================================
+        const tagsHtml = artigo.tags && artigo.tags.length
+            ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+                ${artigo.tags.map(t => `<span class="badge-cat">🏷 ${esc(t)}</span>`).join('')}</div>` : '';
 
-        document.addEventListener('keydown', (e) => {
-            // Ctrl+R ou Cmd+R
-            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-                e.preventDefault(); // Prevenir reload da página
-                reconectarTerminalAtivo();
-            }
+        c.innerHTML = `
+            <div class="wiki-artigo-view">
+                <button class="btn-voltar-wiki" onclick="renderizarResultadosWiki(wikiUltimosResultados)">← Voltar</button>
+                <div class="wiki-artigo-header">
+                    <h2>${esc(artigo.titulo)}</h2>
+                    <div class="wiki-artigo-meta">
+                        <span class="badge-cat">${esc(artigo.categoria)}</span>
+                        <span class="badge-fab">${esc(artigo.fabricante)}</span>
+                        ${artigo.modelo ? `<span class="badge-cat">${esc(artigo.modelo)}</span>` : ''}
+                    </div>
+                    ${tagsHtml}
+                    <div style="color:#444;font-size:10px;margin-top:8px;">🕐 ${esc(artigo.data_atualizacao)}</div>
+                </div>
+                <div class="wiki-artigo-conteudo">${bodyHtml}</div>
+                ${blocosHtml}
+            </div>`;
+
+        // Preencher textareas com o código original
+        Object.entries(window._wikiBlocosMap).forEach(([idx, codigo]) => {
+            const ed = document.getElementById(`ed-${idx}`);
+            if (ed) { ed.value = codigo; autoResizeEditor(ed); }
         });
-        // ============================================
-        // DEBUG HELPER - DESABILITADO
-        // ============================================
-        
-        const DEBUG = false;
-        const debugLines = [];
-        
-        function addDebug(msg) {
-            if (DEBUG) {
-                debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-                
-                if (debugLines.length > 20) {
-                    debugLines.shift();
-                }
-                
-                const debugPanel = document.getElementById('debugPanel');
-                if (debugPanel) {
-                    debugPanel.style.display = 'block';
-                    const output = document.getElementById('debugOutput');
-                    if (output) {
-                        output.innerHTML = debugLines.map(l => 
-                            '<div class="debug-line">' + l.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>'
-                        ).join('');
-                        output.scrollTop = output.scrollHeight;
-                    }
-                }
-                
-                console.log(msg);
-            }
+
+        c.scrollTop = 0;
+    }
+
+    // ============================================================
+    // HELPERS DE HTML DOS BLOCOS (reutilizados nos dois contextos)
+    // ============================================================
+    function toolbarBtns(idx) {
+        return `
+            <button class="btn-bloco btn-editar" id="btn-edit-${idx}"
+                onclick="toggleEditorBloco(${idx})" title="Editar localmente (não salva na wiki)">✎ Editar</button>
+            <button class="btn-bloco btn-copiar" id="btn-copiar-${idx}"
+                onclick="copiarBloco(this,${idx})" title="Copiar código">⎘ Copiar</button>
+            <button class="btn-bloco btn-enviar"
+                onclick="enviarAoTerminal(${idx})" title="Enviar ao terminal ativo">▶ Terminal</button>`;
+    }
+
+    function avisoEditar(idx) {
+        return `<div class="wiki-bloco-edit-aviso" id="aviso-${idx}">
+            <span>✎</span>
+            <span>Modo edição — alterações são <strong>apenas locais</strong> e não serão salvas na wiki</span>
+        </div>`;
+    }
+
+    function editorWrap(idx) {
+        return `<div class="wiki-codigo-editor-wrap" id="ew-${idx}">
+            <textarea class="wiki-codigo-editor" id="ed-${idx}"
+                spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+                oninput="autoResizeEditor(this)" onkeydown="editorKeydown(event)"></textarea>
+        </div>`;
+    }
+
+    function footerEditar(idx) {
+        return `<div class="wiki-bloco-footer" id="footer-${idx}">
+            <span class="wiki-bloco-footer-info">💡 Edite o código acima e envie ao terminal</span>
+            <div class="wiki-bloco-footer-acoes">
+                <button class="btn-resetar" onclick="resetarBloco(${idx})">↺ Resetar</button>
+                <button class="btn-enviar-grande" id="beg-${idx}" onclick="enviarAoTerminal(${idx})">
+                    <span>▶</span> Enviar ao Terminal
+                </button>
+            </div>
+        </div>`;
+    }
+
+    // ============================================================
+    // PROCESSAR conteudo_html — injeta toolbar em cada <pre><code>
+    // ============================================================
+    function processarConteudoWiki(html) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+
+        // Transformar headings
+        tmp.querySelectorAll('h1,h2,h3,h4').forEach(h => {
+            const texto = h.textContent;
+            const novo = document.createElement('h2');
+            novo.innerHTML = `<span class="wiki-titulo-texto">${texto}</span>`;
+            h.replaceWith(novo);
+        });
+
+        // Envolver cada <pre> com wrapper + toolbar
+        tmp.querySelectorAll('pre').forEach(pre => {
+            const idx = _blocoCounter++;
+            const codeEl = pre.querySelector('code');
+            const codigoOriginal = codeEl ? codeEl.textContent : pre.textContent;
+            window._wikiBlocosMap[idx] = codigoOriginal;
+
+            // Numerar linhas
+            const linhas = codigoOriginal.split('\n');
+            if (linhas[linhas.length - 1] === '') linhas.pop();
+            const linhasHtml = linhas.map(l =>
+                `<span class="ln"><span class="lc">${escStr(l)}</span></span>`
+            ).join('');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'wiki-code-wrapper';
+            wrapper.id = `bw-${idx}`;
+            wrapper.innerHTML = `
+                <div class="wiki-code-toolbar">${toolbarBtns(idx)}</div>
+                ${avisoEditar(idx)}
+                <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${linhasHtml}</code></pre>
+                ${editorWrap(idx)}
+                ${footerEditar(idx)}`;
+
+            pre.replaceWith(wrapper);
+        });
+
+        return tmp.innerHTML;
+    }
+
+    function renderLinhas(codigoEsc) {
+        const linhas = codigoEsc.split('\n');
+        if (linhas[linhas.length - 1] === '') linhas.pop();
+        return linhas.map(l => `<span class="ln"><span class="lc">${l}</span></span>`).join('');
+    }
+
+    // ============================================================
+    // EDITOR — toggle, resetar, resize, tab
+    // ============================================================
+    function toggleEditorBloco(idx) {
+        const pre = document.getElementById(`pre-${idx}`);
+        const ew  = document.getElementById(`ew-${idx}`);
+        const ft  = document.getElementById(`footer-${idx}`);
+        const av  = document.getElementById(`aviso-${idx}`);
+        const btn = document.getElementById(`btn-edit-${idx}`);
+        const ed  = document.getElementById(`ed-${idx}`);
+        const aberto = ew.classList.contains('visivel');
+
+        if (aberto) {
+            ew.classList.remove('visivel'); ft.classList.remove('visivel');
+            av.classList.remove('visivel'); pre.style.display = '';
+            btn.classList.remove('ativo'); btn.textContent = '✎ Editar';
+        } else {
+            pre.style.display = 'none';
+            ew.classList.add('visivel'); ft.classList.add('visivel'); av.classList.add('visivel');
+            btn.classList.add('ativo'); btn.textContent = '✕ Fechar Ed.';
+            autoResizeEditor(ed); ed.focus();
         }
-        
-        // ============================================
-        // COLORIZAÇÃO SEGURA - SEM BUGAR O TERMINAL
-        // ============================================
-        
-        const COLORS = {
-            RESET: '\x1b[0m',
-            
-            // IPv4 e IPv6 - Azul Brilhante
-            IPV4: '\x1b[1;94m',     // Bold Bright Blue
-            IPV6: '\x1b[1;94m',     // Bold Bright Blue
-            
-            // Protocolos - Ciano
-            PROTOCOL: '\x1b[36m',   // Cyan
-            
-            // Estados BGP
-            ESTABLISHED: '\x1b[92m', // Bright Green
-            IDLE: '\x1b[93m',        // Bright Yellow
-            ACTIVE: '\x1b[91m',      // Bright Red
-            EXSTART: '\x1b[93m',     // Bright Yellow
-            EXCHANGE: '\x1b[96m',    // Bright Cyan
-            LOADING: '\x1b[94m',     // Bright Blue
-            INIT: '\x1b[91m',        // Bright Red
-            DOWN: '\x1b[31m',        // Red
-            TWOWAY: '\x1b[93m',      // Bright Yellow
-            OPEN_SENT: '\x1b[93m',   // Bright Yellow
-            OPEN_CONFIRM: '\x1b[96m', // Bright Cyan
-            
-            // UP - Verde Brilhante
-            UP: '\x1b[92m',          // Bright Green
-            
-            // Network - Cyan
-            NETWORK: '\x1b[36m',
-            
-            // BFD - Magenta
-            BFD: '\x1b[95m',
-            
-            // Keywords
-            KEYWORDS: '\x1b[36m',
-        };
-        
-        function colorizeOutput(text) {
-            if (!text) return text;
-            
-            // ✅ ESTRATÉGIA SEGURA: Usar .replace() simples
-            // Não usa loop, não modifica comprimento relativo
-            
-            let result = text;
-            
-            // 1️⃣ IPv4 - Azul Brilhante
-            result = result.replace(
-                /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/g,
-                match => COLORS.IPV4 + match + COLORS.RESET
-            );
-            
-            // 2️⃣ IPv6 - Azul Brilhante
-            result = result.replace(
-                /(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?/g,
-                match => COLORS.IPV6 + match + COLORS.RESET
-            );
-            
-            // 3️⃣ Protocolos - Ciano
-            result = result.replace(
-                /\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi,
-                match => COLORS.PROTOCOL + match + COLORS.RESET
-            );
-            
-            // 4️⃣ BFD - Magenta
-            result = result.replace(
-                /\b(BFD|bfd)\b/g,
-                match => COLORS.BFD + match + COLORS.RESET
-            );
-            
-            // 5️⃣ NETWORK - Cyan
-            result = result.replace(
-                /\b(network|Network|NETWORK)\b/g,
-                match => COLORS.NETWORK + match + COLORS.RESET
-            );
-            
-            // 6️⃣ Estados BGP - Diferentes cores
-            
-            // ESTABLISHED - Verde
-            result = result.replace(
-                /\b(Established|established|ESTABLISHED)\b/g,
-                match => COLORS.ESTABLISHED + match + COLORS.RESET
-            );
-            
-            // IDLE - Amarelo
-            result = result.replace(
-                /\b(Idle|idle|IDLE)(?!\()/g,
-                match => COLORS.IDLE + match + COLORS.RESET
-            );
-            
-            // ACTIVE - Vermelho
-            result = result.replace(
-                /\b(Active|active|ACTIVE)\b/g,
-                match => COLORS.ACTIVE + match + COLORS.RESET
-            );
-            
-            // ExStart - Amarelo
-            result = result.replace(
-                /\b(ExStart|exstart|EXSTART)\b/g,
-                match => COLORS.EXSTART + match + COLORS.RESET
-            );
-            
-            // Exchange - Ciano
-            result = result.replace(
-                /\b(Exchange|exchange|EXCHANGE)\b/g,
-                match => COLORS.EXCHANGE + match + COLORS.RESET
-            );
-            
-            // Loading - Azul
-            result = result.replace(
-                /\b(Loading|loading|LOADING)\b/g,
-                match => COLORS.LOADING + match + COLORS.RESET
-            );
-            
-            // Init - Vermelho
-            result = result.replace(
-                /\b(Init|init|INIT)\b/g,
-                match => COLORS.INIT + match + COLORS.RESET
-            );
-            
-            // Down - Vermelho
-            result = result.replace(
-                /\b(Down|down|DOWN)\b/g,
-                match => COLORS.DOWN + match + COLORS.RESET
-            );
-            
-            // 2-Way - Amarelo
-            result = result.replace(
-                /\b(2-Way|2-way|2WAY)\b/g,
-                match => COLORS.TWOWAY + match + COLORS.RESET
-            );
-            
-            // OpenSent - Amarelo
-            result = result.replace(
-                /\b(OpenSent|opensent|OPENSENT)\b/g,
-                match => COLORS.OPEN_SENT + match + COLORS.RESET
-            );
-            
-            // OpenConfirm - Ciano
-            result = result.replace(
-                /\b(OpenConfirm|openconfirm|OPENCONFIRM)\b/g,
-                match => COLORS.OPEN_CONFIRM + match + COLORS.RESET
-            );
-            
-            // 7️⃣ Keywords - Cyan
-            result = result.replace(
-                /\b(peer|Peer|PEER|neighbor|Neighbor|NEIGHBOR|neighbors|Neighbors|NEIGHBORS)\b/g,
-                match => COLORS.KEYWORDS + match + COLORS.RESET
-            );
-            
-            // 8️⃣ UP - Verde Brilhante
-            result = result.replace(
-                /\b(up|Up|UP)\b/g,
-                match => COLORS.UP + match + COLORS.RESET
-            );
-            
-            return result;
+    }
+
+    function resetarBloco(idx) {
+        const original = window._wikiBlocosMap[idx];
+        if (original === undefined) return;
+        const ed = document.getElementById(`ed-${idx}`);
+        if (ed) { ed.value = original; autoResizeEditor(ed); mostrarToast('↺ Código restaurado ao original'); }
+    }
+
+    function autoResizeEditor(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight + 2, 420) + 'px';
+    }
+
+    function editorKeydown(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const el = e.target, s = el.selectionStart, end = el.selectionEnd;
+            el.value = el.value.substring(0, s) + '    ' + el.value.substring(end);
+            el.selectionStart = el.selectionEnd = s + 4;
+            autoResizeEditor(el);
         }
-        
-        // ============================================
-        // TERMINAL MANAGER
-        // ============================================
-        
-        class TerminalManager {
-            constructor() {
-                this.terminals = new Map();
-                this.activeTerminal = null;
-                this.tabCounter = 0;
-                this.wsRetryCount = 0;
-                this.maxRetries = 3;
-                this.retryDelay = 2000;
-                
-                addDebug('🚀 TerminalManager inicializando...');
-                
-                this.verificarAcessoPendente();
-                
-                window.addEventListener('message', (e) => this.handleMessage(e));
-                
-                setInterval(() => this.limparTerminaisDesconectados(), 5000);
-                
-                addDebug('✅ TerminalManager pronto');
-            }
-            
-            verificarAcessoPendente() {
-                try {
-                    let acessoPendente = localStorage.getItem('acessoPendente');
-                    
-                    if (acessoPendente) {
-                        const acesso = JSON.parse(acessoPendente);
-                        localStorage.removeItem('acessoPendente');
-                        
-                        addDebug('📂 Acesso pendente encontrado: ' + acesso.tipo);
-                        
-                        setTimeout(() => {
-                            this.abrirTerminal(acesso);
-                        }, 500);
-                    } else {
-                        addDebug('⚠️ Nenhum acesso pendente');
-                    }
-                } catch (e) {
-                    addDebug('❌ Erro ao verificar acesso: ' + e.message);
-                }
-            }
-            
-            handleMessage(event) {
-                if (event.data && event.data.type === 'NOVA_CONEXAO') {
-                    addDebug('📬 Nova conexão via postMessage: ' + event.data.acesso.tipo);
-                    this.abrirTerminal(event.data.acesso);
-                    window.focus();
-                }
-            }
-            
-            abrirTerminal(acessoData) {
-                const terminalId = `terminal-${++this.tabCounter}`;
-                
-                addDebug(`📂 Abrindo terminal ${terminalId}: ${acessoData.tipo}`);
-                addDebug(`   Host: ${acessoData.host}:${acessoData.porta}`);
-                
-                try {
-                    // ✅ CRIAR TERMINAL XTERM COM JETBRAINS MONO
-                    const terminal = new Terminal({
-                        cursorBlink: true,
-                        fontSize: 13,
-                        fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-                        fontWeight: 400,
-                        fontWeightBold: 600,
-                        lineHeight: 1.2,
-                        letterSpacing: 0,
-                        theme: { 
-                            background: '#000000', 
-                            foreground: '#ffffff',
-                            cursor: '#ffffff',
-                            cursorAccent: '#000000'
-                        },
-                        scrollback: 5000,
-                        rows: 24,
-                        cols: 120,
-                        allowTransparency: true,
-                        windowsMode: false,
-                        convertEol: true
-                    });
-                    
-                    addDebug('✅ Terminal xterm criado com JetBrains Mono');
-                    
-                    const fitAddon = new FitAddon.FitAddon();
-                    terminal.loadAddon(fitAddon);
-                    
-                    addDebug('✅ FitAddon carregado');
-                    
-                    // ✅ CAPTURAR CTRL+W PARA NÃO FECHAR O TERMINAL WEB
-                    terminal.attachCustomKeyEventHandler((arg) => {
-                        // Se for Ctrl+W (W = 87), enviar ao terminal Linux
-                        if (arg.ctrlKey && arg.keyCode === 87) {
-                            addDebug('⌨️ Ctrl+W capturado - Enviando ao terminal Linux');
-                            // Retornar false para não processar no navegador
-                            return false;
-                        }
-                        // Deixar outros atalhos funcionarem normalmente
-                        return true;
-                    });
-                    
-                    // ✅ CRIAR PANE
-                    const pane = document.createElement('div');
-                    pane.className = 'terminal-pane';
-                    pane.id = `pane-${terminalId}`;
-                    pane.style.flex = '1';
-                    pane.style.overflow = 'hidden';
-                    pane.style.display = 'none';
-                    pane.style.minHeight = '0';
-                    pane.style.minWidth = '0';
-                    
-                    addDebug('✅ Pane criado: ' + pane.id);
-                    
-                    // ✅ ADICIONAR AO DOM
-                    const content = document.getElementById('terminalContent');
-                    
-                    const panesAnteriores = content.querySelectorAll('.terminal-pane.active');
-                    panesAnteriores.forEach(paneAnterior => {
-                        paneAnterior.classList.remove('active');
-                        paneAnterior.style.display = 'none';
-                    });
-                    
-                    content.appendChild(pane);
-                    
-                    addDebug('✅ Pane adicionado ao DOM');
-                    
-                    // ✅ ABRIR TERMINAL NO PANE
-                    terminal.open(pane);
-                    
-                    addDebug('✅ Terminal aberto no pane');
-                    
-                    // Armazenar
-                    const terminalObj = {
-                        id: terminalId,
-                        terminal: terminal,
-                        fitAddon: fitAddon,
-                        pane: pane,
-                        acesso: acessoData,
-                        socket: null,
-                        connected: false,
-                        wsRetries: 0
-                    };
-                    
-                    this.terminals.set(terminalId, terminalObj);
-                    
-                    // ✅ CRIAR ABA
-                    this.criarAba(terminalId, acessoData);
-                    
-                    // ✅ ATIVAR
-                    this.ativarTerminal(terminalId);
-                    
-                    // Welcome message
-                    terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
-                    terminal.writeln('\x1b[1;36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
-                    
-                    addDebug('✅ Mensagem de boas-vindas enviada');
-                    
-                    // Input do terminal
-                    terminal.onData((input) => {
-                        if (terminalObj.socket && terminalObj.socket.readyState === WebSocket.OPEN) {
-                            terminalObj.socket.send(JSON.stringify({
-                                action: 'command',
-                                command: input
-                            }));
-                        }
-                    });
-                    
-                    // Conectar WebSocket
-                    setTimeout(() => this.conectarWebSocket(terminalId), 200);
-                    
-                } catch (e) {
-                    addDebug('❌ Erro ao abrir terminal: ' + e.message);
-                    console.error(e);
-                }
-            }
-            
-            criarAba(terminalId, acessoData) {
-                const tabs = document.getElementById('terminalTabs');
-                
-                const tab = document.createElement('div');
-                tab.className = 'terminal-tab active';
-                tab.id = `tab-${terminalId}`;
-                
-                tab.innerHTML = `
-                    <div class="terminal-tab-status connected"></div>
-                    <span>${acessoData.tipo} - ${acessoData.host}</span>
-                    <span class="terminal-tab-close" onclick="event.stopPropagation(); terminalManager.fecharTerminal('${terminalId}')">✕</span>
-                `;
-                
-                tab.onclick = () => this.ativarTerminal(terminalId);
-                tabs.appendChild(tab);
-                
-                addDebug('✅ Aba criada: ' + terminalId);
-            }
-            
-            ativarTerminal(terminalId) {
-                if (this.activeTerminal) {
-                    const anterior = this.terminals.get(this.activeTerminal);
-                    if (anterior) {
-                        anterior.pane.classList.remove('active');
-                        anterior.pane.style.display = 'none';
-                        const tabAnterior = document.getElementById(`tab-${this.activeTerminal}`);
-                        if (tabAnterior) tabAnterior.classList.remove('active');
-                    }
-                }
-                
-                this.activeTerminal = terminalId;
-                const terminalObj = this.terminals.get(terminalId);
-                
-                if (terminalObj) {
-                    terminalObj.pane.classList.add('active');
-                    terminalObj.pane.style.display = 'flex';
-                    
-                    const tab = document.getElementById(`tab-${terminalId}`);
-                    if (tab) tab.classList.add('active');
-                    
-                    setTimeout(() => {
-                        try {
-                            terminalObj.fitAddon.fit();
-                            addDebug(`✅ Terminal ${terminalId} dimensionado e focado`);
-                        } catch (e) {
-                            addDebug('⚠️ Erro ao fazer fit: ' + e.message);
-                        }
-                        terminalObj.terminal.focus();
-                    }, 50);
-                    
-                    addDebug(`👁️ Terminal ativado: ${terminalId}`);
-                }
-            }
-            
-            conectarWebSocket(terminalId) {
-                const terminalObj = this.terminals.get(terminalId);
-                if (!terminalObj) return;
-                
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
-                
-                addDebug('🔌 Conectando WebSocket: ' + wsUrl);
-                
-                try {
-                    terminalObj.socket = new WebSocket(wsUrl);
-                    
-                    terminalObj.socket.onopen = () => {
-                        addDebug('✅ WebSocket conectado');
-                        terminalObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
-                        terminalObj.wsRetries = 0;
-                        
-                        terminalObj.socket.send(JSON.stringify({
-                            action: 'connect',
-                            acesso_id: terminalObj.acesso.id
-                        }));
-                        
-                        addDebug('📤 Enviado: action=connect, acesso_id=' + terminalObj.acesso.id);
-                    };
-                    
-                    terminalObj.socket.onmessage = (e) => {
-                        const data = JSON.parse(e.data);
-                        
-                        if (data.type === 'connected') {
-                            terminalObj.connected = true;
-                            const tab = document.getElementById(`tab-${terminalId}`);
-                            if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
-                            
-                            terminalObj.terminal.writeln('\x1b[1;32m✓ ' + data.message + '\x1b[0m\n');
-                            addDebug('✅ Conectado: ' + data.message);
-                            
-                        } else if (data.type === 'output' && data.data) {
-                            // ✅ ESCREVER OUTPUT COM COLORIZAÇÃO
-                            const colorizedData = colorizeOutput(data.data);
-                            terminalObj.terminal.write(colorizedData);
-                            
-                        } else if (data.type === 'error') {
-                            terminalObj.connected = false;
-                            terminalObj.terminal.writeln('\x1b[1;31m✕ ERRO: ' + data.message + '\x1b[0m\n');
-                            addDebug('❌ Erro: ' + data.message);
-                        }
-                    };
-                    
-                    terminalObj.socket.onerror = (error) => {
-                        addDebug('❌ WebSocket erro');
-                        terminalObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
-                    };
-                    
-                    terminalObj.socket.onclose = () => {
-                        addDebug('🔌 WebSocket fechado');
-                        terminalObj.connected = false;
-                        
-                        if (terminalObj.wsRetries < this.maxRetries) {
-                            terminalObj.wsRetries++;
-                            addDebug(`🔄 Reconectando (${terminalObj.wsRetries}/${this.maxRetries})...`);
-                            setTimeout(() => this.conectarWebSocket(terminalId), this.retryDelay);
-                        }
-                    };
-                    
-                } catch (e) {
-                    addDebug('❌ Erro ao criar WebSocket: ' + e.message);
-                }
-            }
-            
-            fecharTerminal(terminalId) {
-                const terminalObj = this.terminals.get(terminalId);
-                if (!terminalObj) return;
-                
-                if (terminalObj.socket) {
-                    terminalObj.socket.close();
-                }
-                
-                terminalObj.terminal.dispose();
-                terminalObj.pane.remove();
-                const tab = document.getElementById(`tab-${terminalId}`);
-                if (tab) tab.remove();
-                
-                this.terminals.delete(terminalId);
-                
-                if (this.activeTerminal === terminalId) {
-                    const proximoId = Array.from(this.terminals.keys())[0];
-                    if (proximoId) {
-                        this.ativarTerminal(proximoId);
-                    } else {
-                        this.activeTerminal = null;
-                    }
-                }
-                
-                addDebug('🔴 Terminal fechado: ' + terminalId);
-            }
-            
-            fecharTodos() {
-                Array.from(this.terminals.keys()).forEach(id => {
-                    this.fecharTerminal(id);
+    }
+
+    // ============================================================
+    // PEGAR CÓDIGO (editor aberto ou visualizador)
+    // ============================================================
+    function getCodigoBloco(idx) {
+        const ew = document.getElementById(`ew-${idx}`);
+        if (ew && ew.classList.contains('visivel')) {
+            const ed = document.getElementById(`ed-${idx}`);
+            return ed ? ed.value : '';
+        }
+        // Extrai do visualizador renderizado
+        const cv = document.getElementById(`cv-${idx}`);
+        if (cv) {
+            const linhas = cv.querySelectorAll('.ln .lc');
+            if (linhas.length) return Array.from(linhas).map(l => l.textContent).join('\n');
+            return cv.textContent;
+        }
+        return window._wikiBlocosMap[idx] || '';
+    }
+
+    // ============================================================
+    // COPIAR
+    // ============================================================
+    function copiarBloco(btn, idx) {
+        const codigo = getCodigoBloco(idx);
+        if (!codigo) return;
+        navigator.clipboard.writeText(codigo).then(() => {
+            const orig = btn.textContent;
+            btn.textContent = '✓ Copiado!';
+            btn.classList.add('copiado');
+            mostrarToast('⎘ Copiado para área de transferência');
+            setTimeout(() => { btn.textContent = orig; btn.classList.remove('copiado'); }, 2000);
+        });
+    }
+
+    // ============================================================
+    // ENVIAR AO TERMINAL
+    // ============================================================
+    function enviarAoTerminal(idx) {
+        if (!terminalManager.activeTerminal) { mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return; }
+        const tObj = terminalManager.terminals.get(terminalManager.activeTerminal);
+        if (!tObj) { mostrarToast('⚠ Terminal não encontrado', 'erro'); return; }
+
+        const codigo = getCodigoBloco(idx);
+        if (!codigo || !codigo.trim()) { mostrarToast('⚠ O código está vazio', 'erro'); return; }
+
+        if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
+            const linhas = codigo.split('\n');
+            linhas.forEach((linha, i) => {
+                const cmd = linha + (i < linhas.length - 1 ? '\n' : '');
+                if (cmd) tObj.socket.send(JSON.stringify({ action: 'command', command: cmd }));
+            });
+            mostrarToast('▶ Código enviado ao terminal!');
+        } else {
+            tObj.terminal.paste(codigo);
+            mostrarToast('▶ Código colado no terminal');
+        }
+
+        const btn = document.getElementById(`beg-${idx}`);
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span>✓</span> Enviado!';
+            btn.classList.add('enviado');
+            setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('enviado'); }, 2000);
+        }
+    }
+
+    // ============================================================
+    // HELPERS DE ESCAPE
+    // ============================================================
+    function esc(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escStr(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ============================================================
+    // RECONECTAR
+    // ============================================================
+    function reconectarTerminalAtivo() {
+        if (!terminalManager.activeTerminal) { alert('Nenhum terminal ativo.'); return; }
+        const id = terminalManager.activeTerminal;
+        const tObj = terminalManager.terminals.get(id);
+        if (!tObj) return;
+        if (tObj.socket) { try { tObj.socket.close(); } catch(e) {} tObj.socket = null; }
+        tObj.connected = false; tObj.wsRetries = 0;
+        const tab = document.getElementById(`tab-${id}`);
+        if (tab) { const d = tab.querySelector('.terminal-tab-status'); if (d) d.classList.remove('connected'); }
+        tObj.terminal.clear();
+        tObj.terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
+        tObj.terminal.writeln('\x1b[1;33m▶ Reconectando a ' + tObj.acesso.host + ':' + tObj.acesso.porta + '...\x1b[0m\n');
+        setTimeout(() => terminalManager.conectarWebSocket(id), 500);
+    }
+
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); reconectarTerminalAtivo(); }
+    });
+
+    // ============================================================
+    // DEBUG
+    // ============================================================
+    const DEBUG = false; const debugLines = [];
+    function addDebug(msg) {
+        if (!DEBUG) return;
+        debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
+        if (debugLines.length > 20) debugLines.shift();
+        const dp = document.getElementById('debugPanel');
+        if (dp) { dp.style.display = 'block'; const o = document.getElementById('debugOutput');
+            if (o) { o.innerHTML = debugLines.map(l => '<div class="debug-line">'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>').join(''); o.scrollTop = o.scrollHeight; } }
+        console.log(msg);
+    }
+
+    // ============================================================
+    // COLORIZAÇÃO
+    // ============================================================
+    const COLORS = {
+        RESET:'\x1b[0m', IPV4:'\x1b[1;94m', IPV6:'\x1b[1;94m', PROTOCOL:'\x1b[36m',
+        ESTABLISHED:'\x1b[92m', IDLE:'\x1b[93m', ACTIVE:'\x1b[91m', EXSTART:'\x1b[93m',
+        EXCHANGE:'\x1b[96m', LOADING:'\x1b[94m', INIT:'\x1b[91m', DOWN:'\x1b[31m',
+        TWOWAY:'\x1b[93m', OPEN_SENT:'\x1b[93m', OPEN_CONFIRM:'\x1b[96m',
+        UP:'\x1b[92m', NETWORK:'\x1b[36m', BFD:'\x1b[95m', KEYWORDS:'\x1b[36m',
+    };
+    function colorizeOutput(text) {
+        if (!text) return text;
+        let r = text;
+        r = r.replace(/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/g, m => COLORS.IPV4+m+COLORS.RESET);
+        r = r.replace(/(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?/g, m => COLORS.IPV6+m+COLORS.RESET);
+        r = r.replace(/\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi, m => COLORS.PROTOCOL+m+COLORS.RESET);
+        r = r.replace(/\b(BFD|bfd)\b/g, m => COLORS.BFD+m+COLORS.RESET);
+        r = r.replace(/\b(network|Network|NETWORK)\b/g, m => COLORS.NETWORK+m+COLORS.RESET);
+        r = r.replace(/\b(Established|established|ESTABLISHED)\b/g, m => COLORS.ESTABLISHED+m+COLORS.RESET);
+        r = r.replace(/\b(Idle|idle|IDLE)(?!\()/g, m => COLORS.IDLE+m+COLORS.RESET);
+        r = r.replace(/\b(Active|active|ACTIVE)\b/g, m => COLORS.ACTIVE+m+COLORS.RESET);
+        r = r.replace(/\b(ExStart|exstart|EXSTART)\b/g, m => COLORS.EXSTART+m+COLORS.RESET);
+        r = r.replace(/\b(Exchange|exchange|EXCHANGE)\b/g, m => COLORS.EXCHANGE+m+COLORS.RESET);
+        r = r.replace(/\b(Loading|loading|LOADING)\b/g, m => COLORS.LOADING+m+COLORS.RESET);
+        r = r.replace(/\b(Init|init|INIT)\b/g, m => COLORS.INIT+m+COLORS.RESET);
+        r = r.replace(/\b(Down|down|DOWN)\b/g, m => COLORS.DOWN+m+COLORS.RESET);
+        r = r.replace(/\b(2-Way|2-way|2WAY)\b/g, m => COLORS.TWOWAY+m+COLORS.RESET);
+        r = r.replace(/\b(OpenSent|opensent|OPENSENT)\b/g, m => COLORS.OPEN_SENT+m+COLORS.RESET);
+        r = r.replace(/\b(OpenConfirm|openconfirm|OPENCONFIRM)\b/g, m => COLORS.OPEN_CONFIRM+m+COLORS.RESET);
+        r = r.replace(/\b(peer|Peer|PEER|neighbor|Neighbor|NEIGHBOR|neighbors|Neighbors|NEIGHBORS)\b/g, m => COLORS.KEYWORDS+m+COLORS.RESET);
+        r = r.replace(/\b(up|Up|UP)\b/g, m => COLORS.UP+m+COLORS.RESET);
+        return r;
+    }
+
+    // ============================================================
+    // TERMINAL MANAGER
+    // ============================================================
+    class TerminalManager {
+        constructor() {
+            this.terminals = new Map(); this.activeTerminal = null;
+            this.tabCounter = 0; this.maxRetries = 3; this.retryDelay = 2000;
+            addDebug('🚀 TerminalManager inicializando...');
+            this.verificarAcessoPendente();
+            window.addEventListener('message', e => this.handleMessage(e));
+            setInterval(() => this.limparTerminaisDesconectados(), 5000);
+            addDebug('✅ TerminalManager pronto');
+        }
+        verificarAcessoPendente() {
+            try {
+                const p = localStorage.getItem('acessoPendente');
+                if (p) { const a = JSON.parse(p); localStorage.removeItem('acessoPendente'); setTimeout(() => this.abrirTerminal(a), 500); }
+                else { addDebug('⚠️ Nenhum acesso pendente'); }
+            } catch(e) { addDebug('❌ ' + e.message); }
+        }
+        handleMessage(event) {
+            if (event.data && event.data.type === 'NOVA_CONEXAO') { this.abrirTerminal(event.data.acesso); window.focus(); }
+        }
+        abrirTerminal(acessoData) {
+            const terminalId = `terminal-${++this.tabCounter}`;
+            try {
+                const terminal = new Terminal({
+                    cursorBlink:true, fontSize:13,
+                    fontFamily:"'JetBrains Mono','Courier New',monospace",
+                    fontWeight:400, fontWeightBold:600, lineHeight:1.2, letterSpacing:0,
+                    theme:{background:'#000000',foreground:'#ffffff',cursor:'#ffffff',cursorAccent:'#000000'},
+                    scrollback:5000, rows:24, cols:120, allowTransparency:true, windowsMode:false, convertEol:true
                 });
+                const fitAddon = new FitAddon.FitAddon();
+                terminal.loadAddon(fitAddon);
+                terminal.attachCustomKeyEventHandler(arg => { if (arg.ctrlKey && arg.keyCode===87) return false; return true; });
+                const pane = document.createElement('div');
+                pane.className='terminal-pane'; pane.id=`pane-${terminalId}`;
+                pane.style.flex='1'; pane.style.overflow='hidden';
+                pane.style.display='none'; pane.style.minHeight='0'; pane.style.minWidth='0';
+                const content = document.getElementById('terminalContent');
+                content.querySelectorAll('.terminal-pane.active').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
+                content.appendChild(pane); terminal.open(pane);
+                const tObj = { id:terminalId, terminal, fitAddon, pane, acesso:acessoData, socket:null, connected:false, wsRetries:0 };
+                this.terminals.set(terminalId, tObj);
+                this.criarAba(terminalId, acessoData);
+                this.ativarTerminal(terminalId);
+                terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
+                terminal.writeln('\x1b[1;36m▶ Conectando a '+acessoData.host+':'+acessoData.porta+'...\x1b[0m\n');
+                terminal.onData(input => {
+                    if (tObj.socket && tObj.socket.readyState===WebSocket.OPEN)
+                        tObj.socket.send(JSON.stringify({action:'command',command:input}));
+                });
+                setTimeout(() => this.conectarWebSocket(terminalId), 200);
+            } catch(e) { addDebug('❌ '+e.message); console.error(e); }
+        }
+        criarAba(terminalId, acessoData) {
+            const tabs = document.getElementById('terminalTabs');
+            const tab = document.createElement('div');
+            tab.className='terminal-tab active'; tab.id=`tab-${terminalId}`;
+            tab.innerHTML=`<div class="terminal-tab-status connected"></div>
+                <span>${acessoData.tipo} - ${acessoData.host}</span>
+                <span class="terminal-tab-close" onclick="event.stopPropagation();terminalManager.fecharTerminal('${terminalId}')">✕</span>`;
+            tab.onclick=()=>this.ativarTerminal(terminalId);
+            tabs.appendChild(tab);
+        }
+        ativarTerminal(terminalId) {
+            if (this.activeTerminal) {
+                const ant=this.terminals.get(this.activeTerminal);
+                if (ant) { ant.pane.classList.remove('active'); ant.pane.style.display='none';
+                    const tAnt=document.getElementById(`tab-${this.activeTerminal}`); if(tAnt) tAnt.classList.remove('active'); }
             }
-            
-            limparTerminaisDesconectados() {
-                // Implementação...
+            this.activeTerminal=terminalId;
+            const tObj=this.terminals.get(terminalId);
+            if (tObj) {
+                tObj.pane.classList.add('active'); tObj.pane.style.display='flex';
+                const tab=document.getElementById(`tab-${terminalId}`); if(tab) tab.classList.add('active');
+                setTimeout(()=>{ try{tObj.fitAddon.fit();}catch(e){} tObj.terminal.focus(); },50);
             }
         }
-        
-        // Inicializar
-        const terminalManager = new TerminalManager();
-        
-        function limparTela() {
-            if (terminalManager.activeTerminal) {
-                const terminalObj = terminalManager.terminals.get(terminalManager.activeTerminal);
-                if (terminalObj) {
-                    terminalObj.terminal.clear();
-                    addDebug('🧹 Tela do terminal ' + terminalManager.activeTerminal + ' foi limpa');
-                }
-            }
-        }
-        
-        function fecharTodosTerminais() {
-            terminalManager.fecharTodos();
-        }
-        
-        // Resize
-        window.addEventListener('resize', () => {
-            if (terminalManager.activeTerminal) {
-                const terminalObj = terminalManager.terminals.get(terminalManager.activeTerminal);
-                if (terminalObj) {
-                    try {
-                        terminalObj.fitAddon.fit();
-                    } catch (e) {
-                        console.error('Erro no resize:', e);
+        conectarWebSocket(terminalId) {
+            const tObj=this.terminals.get(terminalId); if(!tObj) return;
+            const protocol=window.location.protocol==='https:'?'wss:':'ws:';
+            const wsUrl=`${protocol}//${window.location.host}/ws/ssh/`;
+            addDebug('🔌 Conectando: '+wsUrl);
+            try {
+                tObj.socket=new WebSocket(wsUrl);
+                tObj.socket.onopen=()=>{
+                    addDebug('✅ WS conectado');
+                    tObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
+                    tObj.wsRetries=0;
+                    tObj.socket.send(JSON.stringify({action:'connect',acesso_id:tObj.acesso.id}));
+                };
+                tObj.socket.onmessage=e=>{
+                    const data=JSON.parse(e.data);
+                    if (data.type==='connected') {
+                        tObj.connected=true;
+                        const tab=document.getElementById(`tab-${terminalId}`);
+                        if(tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
+                        tObj.terminal.writeln('\x1b[1;32m✓ '+data.message+'\x1b[0m\n');
+                    } else if (data.type==='output'&&data.data) {
+                        tObj.terminal.write(colorizeOutput(data.data));
+                    } else if (data.type==='error') {
+                        tObj.connected=false;
+                        tObj.terminal.writeln('\x1b[1;31m✕ ERRO: '+data.message+'\x1b[0m\n');
                     }
-                }
+                };
+                tObj.socket.onerror=()=>tObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
+                tObj.socket.onclose=()=>{
+                    tObj.connected=false;
+                    if(tObj.wsRetries<this.maxRetries){tObj.wsRetries++;setTimeout(()=>this.conectarWebSocket(terminalId),this.retryDelay);}
+                };
+            } catch(e){addDebug('❌ '+e.message);}
+        }
+        fecharTerminal(terminalId) {
+            const tObj=this.terminals.get(terminalId); if(!tObj) return;
+            if(tObj.socket) tObj.socket.close();
+            tObj.terminal.dispose(); tObj.pane.remove();
+            const tab=document.getElementById(`tab-${terminalId}`); if(tab) tab.remove();
+            this.terminals.delete(terminalId);
+            if(this.activeTerminal===terminalId){
+                const next=Array.from(this.terminals.keys())[0];
+                if(next) this.ativarTerminal(next); else this.activeTerminal=null;
             }
-        });
-        
-        // Forçar fit ao carregar
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (terminalManager.activeTerminal) {
-                    const terminalObj = terminalManager.terminals.get(terminalManager.activeTerminal);
-                    if (terminalObj) {
-                        terminalObj.fitAddon.fit();
-                    }
-                }
-            }, 100);
-        });
-        
-        addDebug('🚀 Terminal SSH Múltiplo carregado com JetBrains Mono');
+        }
+        fecharTodos() { Array.from(this.terminals.keys()).forEach(id=>this.fecharTerminal(id)); }
+        limparTerminaisDesconectados() {}
+    }
+
+    const terminalManager = new TerminalManager();
+
+    function limparTela() {
+        if (terminalManager.activeTerminal) {
+            const t=terminalManager.terminals.get(terminalManager.activeTerminal);
+            if(t) t.terminal.clear();
+        }
+    }
+    function fecharTodosTerminais() { terminalManager.fecharTodos(); }
+
+    window.addEventListener('resize', () => {
+        if (terminalManager.activeTerminal) {
+            const t=terminalManager.terminals.get(terminalManager.activeTerminal);
+            if(t){try{t.fitAddon.fit();}catch(e){}}
+        }
+    });
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            if(terminalManager.activeTerminal){
+                const t=terminalManager.terminals.get(terminalManager.activeTerminal);
+                if(t) t.fitAddon.fit();
+            }
+        },100);
+    });
     </script>
 </body>
 </html>

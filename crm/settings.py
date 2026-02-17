@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'channels',
     'rest_framework',
     'rest_framework.authtoken',
-    'financeiro'
+    'financeiro',
+    'wiki',
+    'markdown',
 ]
 
 REST_FRAMEWORK = {

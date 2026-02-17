@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0">
+                <i class="fas fa-tag"></i> Tag: {{ tag.nome }}
+            </h4>
+            <div class="d-flex gap-2 align-items-center">
+                <!-- Busca expansível -->
+                <div class="search-wrapper">
+                    <div class="search-input-container" id="searchContainer" style="display: none;">
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            class="form-control form-control-sm search-field" 
+                            placeholder="Filtrar artigos..." 
+                            autocomplete="off"
+                        >
+                        <button class="btn-close-search" id="btnCloseSearch" title="Fechar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-outline-secondary" id="btnOpenSearch">
+                        <i class="fas fa-search me-1"></i> Buscar
+                    </button>
+                </div>
+                <a href="{% url 'wiki:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar
+                </a>
+                <a href="{% url 'wiki:cadastrar_artigo' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Novo Artigo
+                </a>
+            </div>
+        </div>
+
+        <!-- Info de resultados -->
+        <div id="searchResultInfo" style="display:none;" class="mb-3">
+            <small style="color: #888;"><span id="resultCount">0</span> artigo(s) encontrado(s)</small>
+        </div>
+
+        {% if artigos %}
+        <div class="row" id="listaArtigos">
+            {% for artigo in artigos %}
+            <div class="col-md-6 col-lg-4 mb-4 artigo-card"
+                 data-titulo="{{ artigo.titulo|lower }}"
+                 data-categoria="{{ artigo.categoria.nome|lower }}"
+                 data-fabricante="{{ artigo.get_fabricante_display|lower }}">
+                <div class="card h-100" style="background: var(--bg-dark); border: 1px solid #333;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title" style="color: var(--primary-green);">
+                                {{ artigo.titulo }}
+                            </h6>
+                            {% if artigo.favorito %}
+                            <i class="fas fa-star" style="color: #ffd700;"></i>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="card-text" style="color: #aaa; font-size: 13px; margin-bottom: 12px;">
+                            {{ artigo.descricao_curta|truncatewords:25 }}
+                        </p>
+
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <span class="badge" style="background: rgba(0, 217, 255, 0.2); color: var(--accent-cyan); font-size: 10px;">
+                                <i class="fas fa-folder me-1"></i>{{ artigo.categoria.nome }}
+                            </span>
+                            <span class="badge" style="background: rgba(0, 255, 136, 0.2); color: var(--primary-green); font-size: 10px;">
+                                <i class="fas fa-microchip me-1"></i>{{ artigo.get_fabricante_display }}
+                            </span>
+                            {% if artigo.modelo_especifico %}
+                            <span class="badge" style="background: rgba(255, 255, 255, 0.1); color: #ccc; font-size: 10px;">
+                                {{ artigo.modelo_especifico }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small style="color: #666;">
+                                <i class="fas fa-eye me-1"></i>{{ artigo.visualizacoes }} visualizações
+                            </small>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'wiki:visualizar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-primary" title="Visualizar">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                                <a href="{% url 'wiki:editar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-warning" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="{% url 'wiki:deletar_artigo' artigo.slug %}" class="d-inline" onsubmit="return confirmarDelete('{{ artigo.titulo }}')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Deletar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="mt-2" style="font-size: 11px; color: #555;">
+                            <i class="fas fa-clock me-1"></i>
+                            Atualizado em {{ artigo.data_atualizacao|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Sem resultados -->
+        <div id="semResultados" style="display:none; text-align:center; padding: 30px; color: #888;">
+            <i class="fas fa-search fa-2x mb-2"></i>
+            <p>Nenhum artigo encontrado para "<span id="termoBuscado"></span>"</p>
+        </div>
+
+        {% else %}
+        <div class="alert alert-info" style="background: rgba(0, 217, 255, 0.1); border: 1px solid rgba(0, 217, 255, 0.3); color: var(--accent-cyan);">
+            <i class="fas fa-info-circle me-2"></i>
+            Nenhum artigo encontrado com esta tag ainda.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include "wiki/_search_delete_styles.html" %}
+
+<script>
+function confirmarDelete(titulo) {
+    return confirm(`Tem certeza que deseja deletar o artigo "${titulo}"?\n\nEsta ação não pode ser desfeita.`);
+}
+
+const btnOpen    = document.getElementById('btnOpenSearch');
+const btnClose   = document.getElementById('btnCloseSearch');
+const container  = document.getElementById('searchContainer');
+const input      = document.getElementById('searchInput');
+const resultInfo = document.getElementById('searchResultInfo');
+const resultCount= document.getElementById('resultCount');
+const semResult  = document.getElementById('semResultados');
+const termoBusc  = document.getElementById('termoBuscado');
+const cards      = document.querySelectorAll('.artigo-card');
+
+btnOpen.addEventListener('click', () => {
+    btnOpen.style.display = 'none';
+    container.style.display = 'flex';
+    input.focus();
+});
+
+btnClose.addEventListener('click', fecharBusca);
+input.addEventListener('keydown', e => { if (e.key === 'Escape') fecharBusca(); });
+
+function fecharBusca() {
+    container.style.display = 'none';
+    btnOpen.style.display = '';
+    input.value = '';
+    filtrar('');
+    resultInfo.style.display = 'none';
+    semResult.style.display = 'none';
+}
+
+input.addEventListener('input', () => filtrar(input.value.trim().toLowerCase()));
+
+function filtrar(termo) {
+    let visiveis = 0;
+    cards.forEach(card => {
+        const match = !termo ||
+            (card.dataset.titulo     || '').includes(termo) ||
+            (card.dataset.categoria  || '').includes(termo) ||
+            (card.dataset.fabricante || '').includes(termo);
+        card.style.display = match ? '' : 'none';
+        if (match) visiveis++;
+    });
+
+    if (termo) {
+        resultInfo.style.display = '';
+        resultCount.textContent = visiveis;
+        termoBusc.textContent = termo;
+        semResult.style.display = visiveis === 0 ? '' : 'none';
+    } else {
+        resultInfo.style.display = 'none';
+        semResult.style.display = 'none';
+    }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,65 @@
+<style>
+/* ── Cards ──────────────────────────────────────────── */
+.card {
+    transition: all 0.3s ease;
+}
+.card:hover {
+    border-color: var(--primary-green) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.1);
+}
+
+/* ── Busca expansível ───────────────────────────────── */
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    animation: expandSearch 0.25s ease;
+}
+
+@keyframes expandSearch {
+    from { opacity: 0; transform: scaleX(0.7); }
+    to   { opacity: 1; transform: scaleX(1); }
+}
+
+.search-field {
+    width: 220px;
+    background: var(--bg-dark);
+    border: 1px solid #444;
+    color: var(--text-light);
+    transition: border-color 0.2s;
+}
+
+.search-field:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.15);
+    background: var(--bg-dark);
+    color: var(--text-light);
+}
+
+.btn-close-search {
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+.btn-close-search:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+/* ── Delete button ──────────────────────────────────── */
+.btn-outline-danger:hover {
+    background-color: rgba(231, 76, 60, 0.15);
+}
+</style>
