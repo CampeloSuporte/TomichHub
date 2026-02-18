@@ -100,6 +100,7 @@
     flex-direction:column;
     gap:0;
     border-right:1px solid var(--border);
+    min-height: 0;        /* ← impede o painel de crescer além do grid */
 }
 
 /* TÍTULO */
@@ -139,7 +140,7 @@
 .art-desc::placeholder { color:#222; }
 
 /* BLOCOS */
-.blocks { display:flex; flex-direction:column; gap:8px; min-height:40px; }
+.blocks { display:flex; flex-direction:column; gap:8px; min-height:40px; flex-shrink: 0; }
 
 .blk {
     background:var(--bg2);
@@ -147,6 +148,7 @@
     border-radius:4px;
     overflow:hidden;
     transition:border-color .15s;
+    flex-shrink: 0;   /* ← cada bloco mantém seu tamanho */
 }
 .blk:hover { border-color:#2a2a2a; }
 .blk.blk-focus { border-color:#333; }
@@ -356,7 +358,7 @@
 .div-line::before,.div-line::after { content:''; flex:1; height:1px; background:var(--border); }
 
 /* ADD BLOCOS */
-.add-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.add-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; flex-shrink: 0; }
 .add-btn {
     display:flex; align-items:center; gap:5px;
     background:var(--bg2); border:1px dashed var(--border2);
@@ -403,7 +405,7 @@
 .prev-code-num code .cl::before { content:counter(ln); position:absolute; left:0; width:32px; text-align:right; color:#3a3a3a; font-size:10px; border-right:1px solid #1a1a1a; padding-right:8px; }
 
 /* PAINEL DIREITO */
-.ew-right { overflow-y:auto; background:var(--bg2); display:flex; flex-direction:column; }
+.ew-right { overflow-y:auto; background:var(--bg2); display:flex; flex-direction:column; min-height: 0; }
 .ep-sec { padding:14px 16px; border-bottom:1px solid var(--border); }
 .ep-title { font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
 
