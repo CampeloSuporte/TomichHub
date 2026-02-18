@@ -1,0 +1,366 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW.DM.ITLV
+Host: 10.20.0.241:22
+Acesso: VIA PROXY SSH
+Modelo: SW DATACOM DM4370
+Template: Backup Datacom
+Data: 18/02/2026 00:55:28
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+show running-config | nomore
+aaa authentication-order [ local ]
+aaa user admin
+ password $1$RBmLuYEo$u2JTCsa4QCkkOgw3v1Yq2.
+ group admin
+!
+aaa user infoline
+ password $1$FQmjuyAt$GwsA20VC75En/UevSEf../
+ group admin
+!
+aaa user tomich
+ password $1$G72jCtHj$/fCs1fBnC6.UwE5JOTUsE/
+ group admin
+!
+mpls ldp
+ lsr-id loopback-1
+  interface l3-VLAN-ITLV-CORE-VIA-K2
+  !
+  interface l3-VLAN-PTP-ITLV-CDMR
+  !
+  neighbor targeted 10.20.0.243
+  !
+  neighbor targeted 10.20.0.250
+  !
+ !
+!
+mpls l2vpn
+ logging pw-status
+ vpls-group PPPOE-CORE
+  vpn VLAN-4000-PPPOE
+   vfi
+    pw-type vlan 4000
+    neighbor 10.20.0.250
+     pw-id 4000
+     pw-mtu 9000
+    !
+   !
+   bridge-domain
+    access-interface gigabit-ethernet-1/1/4
+    !
+    access-interface ten-gigabit-ethernet-1/1/1
+    !
+   !
+  !
+ !
+!
+snmp system contact noc@infoline.com.br
+snmp system location ITLV.ITLV.RJ
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent version v2c
+snmp agent version v3
+snmp community public
+ sec-name public
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group public
+ member public
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+  notify-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/3
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/4
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/5
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/6
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/7
+ description CNX.1G.DM.CDMR
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/8
+ description CNX.1G.DM.CDMR
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/1
+ description CNX.10G.OLT
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/2
+ description CNX.10G.SW.HW.CDMR
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/3
+ description CNX.10G.SW.HW.CORE.VIA.K2
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/4
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface l3 VLAN-ITLV-CORE-VIA-K2
+ ip-mtu 9000
+ lower-layer-if vlan 4028
+ ipv4 address 10.20.1.54/30
+!
+interface l3 VLAN-PTP-ITLV-CDMR
+ ip-mtu 9000
+ lower-layer-if vlan 4013
+ ipv4 address 10.20.0.138/30
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.0.25/24
+!
+interface loopback 1
+ ipv4 address 10.20.0.241/32
+!
+clock timezone BR -3
+hostname SW.DM.ITLV
+banner login "################################################################################\n#    #     ####    #         ##        ##    ######    #     ####    #         #\n#    #      ###    #         #     #    #    ######    #      ###    #         #\n#    #       ##    #    ######    ##    #    ######    #       ##    #    ######\n#    #        #    #    ######    ##    #    ######    #        #    #    ######\n#    #        #    #        ##    ##    #    ######    #        #    #        ##\n#    #    #        #        ##    ##    #    ######    #    #        #        ##\n#    #    #        #    ######    ##    #    ######    #    #        #    ######\n#    #    ##       #    ######    ##    #    ######    #    ##       #    ######\n#    #    ###      #    ######    #     #         #    #    ###      #         #\n#    #    ####     #    #######        ##         #    #    ####     #         #\n################################################################################\n"
+telnet-server disabled
+oam
+ efm
+  interface gigabit-ethernet-1/1/1
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/2
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/3
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/4
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/5
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/6
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/7
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/8
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/1
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/2
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/3
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/4
+   mode passive
+  !
+ !
+!
+loopback-detection
+ destination-address alternative
+!
+mac-address-table
+ aging-time 600
+!
+layer2-control-protocol
+ tunnel-mac datacom
+ tunnel-priority 7
+!
+sntp client
+sntp server 170.150.252.34
+vrf global
+!
+vrf mgmt
+!
+router ospf 1 vrf global
+ mpls-te router-id loopback-1
+ router-id 10.20.0.241
+ redistribute connected
+ !
+ area 0.0.0.0
+  interface l3-VLAN-ITLV-CORE-VIA-K2
+   cost 10
+   mtu-ignore
+   network-type point-to-point
+  !
+  interface l3-VLAN-PTP-ITLV-CDMR
+   mtu-ignore
+   network-type point-to-point
+  !
+  interface loopback-1
+  !
+ !
+!
+dot1q
+ vlan 4013
+  name VLAN-PTP-ITLV-CDMR
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 4028
+  name VLAN.ITLV.CORE.VIA.K2
+  interface ten-gigabit-ethernet-1/1/3
+  !
+ !
+!
+link-aggregation
+ interface lag 1
+  mode passive
+  interface gigabit-ethernet-1/1/7
+  !
+  interface gigabit-ethernet-1/1/8
+  !
+ !
+!
+license mpls enabled
+license mpls key ***
+remote-devices
+ interface gigabit-ethernet-1/1/1
+ !
+ interface gigabit-ethernet-1/1/2
+ !
+ interface gigabit-ethernet-1/1/3
+ !
+ interface gigabit-ethernet-1/1/4
+ !
+ interface gigabit-ethernet-1/1/5
+ !
+ interface gigabit-ethernet-1/1/6
+ !
+ interface gigabit-ethernet-1/1/7
+ !
+ interface gigabit-ethernet-1/1/8
+ !
+ interface ten-gigabit-ethernet-1/1/1
+ !
+ interface ten-gigabit-ethernet-1/1/2
+ !
+ interface ten-gigabit-ethernet-1/1/3
+ !
+ interface ten-gigabit-ethernet-1/1/4
+ !
+!
+SW.DM.ITLV# 

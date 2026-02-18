@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.db.models import Q
 from django.shortcuts import render,redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
@@ -922,9 +923,9 @@ def adicionar_comentario(request, chamado_id):
 def buscar_usuarios(request):
     query = request.GET.get('q', '')
     usuarios = User.objects.filter(
-        models.Q(username__icontains=query) |
-        models.Q(first_name__icontains=query) |
-        models.Q(last_name__icontains=query)
+        Q(username__icontains=query) |
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query)
     )[:10]
     
     results = [{
@@ -940,8 +941,8 @@ def buscar_usuarios(request):
 def buscar_clientes_chamado(request):
     query = request.GET.get('q', '')
     clientes = Cliente.objects.filter(
-        models.Q(nome_empresa__icontains=query) |
-        models.Q(cnpj__icontains=query)
+        Q(nome_empresa__icontains=query) |
+        Q(cnpj__icontains=query)
     )[:10]
     
     results = [{

@@ -23,35 +23,15 @@
 
     <!-- Top Navigation Bar -->
     <nav class="top-bar">
-        <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center justify-content-between w-100">
             <div class="d-flex align-items-center gap-4">
                 <div class="d-flex align-items-center">
                     <i class="fas fa-user-circle me-2"></i>
                     <strong>TOMICH HUB</strong>
                 </div>
-                <!-- ADICIONE ESTE BOTÃO -->
                 <a href="{% url 'quadro_geral' %}" class="btn btn-sm">
                     <i class="fas fa-chart-line me-1"></i> Dashboard
                 </a>
-
-                <!--
-                <div class="dropdown">
-                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-cog me-1"></i> Chamados
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{%url 'cadastrar_cliente'%}">Abrir chamado</a></li>
-                        <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">Listar</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="/configuracoes/">Configurações Gerais</a></li>
-                    </ul>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-chart-bar me-1"></i> Relatórios
-                    </button>
-                </div>
-                -->
                
                 <div class="dropdown">
                     <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -66,7 +46,6 @@
                             <i class="fas fa-book me-2"></i>Wiki
                         </a></li>
                         
-                        <!-- ✅ FINANCEIRO - VERSÃO FINAL (SEM context_processors) -->
                         {% if request.user.is_staff %}
                             {% if request.user.id == 1 or request.user.id == 2 %}
                             <li><a class="dropdown-item" href="{% url 'dashboard_financeiro' %}">
@@ -79,13 +58,42 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Direita: busca de cliente + menu usuário -->
             <div class="d-flex align-items-center gap-3">
-                <!--
-                <input type="text" class="form-control form-control-sm" placeholder="Buscar Cliente" style="width: 250px;">
-                <button class="btn btn-sm btn-light"><i class="fas fa-search"></i></button>
-                <button class="btn btn-sm btn-light"><i class="fas fa-star"></i></button>
-                <button class="btn btn-sm btn-light"><i class="fas fa-bell"></i></button>
-                 -->
+
+                <!-- ── BUSCA DE CLIENTE ─────────────────────────────── -->
+                <div class="client-search-wrapper" id="clientSearchWrapper">
+
+                    <!-- Botão fechado -->
+                    <button class="btn btn-sm btn-outline-secondary" id="btnAbrirBuscaCliente" title="Buscar Cliente">
+                        <i class="fas fa-search me-1"></i> Buscar Cliente
+                    </button>
+
+                    <!-- Campo expandido -->
+                    <div class="client-search-expanded" id="clientSearchExpanded" style="display:none;">
+                        <div class="d-flex align-items-center gap-1">
+                            <div class="position-relative">
+                                <input
+                                    type="text"
+                                    id="inputBuscaCliente"
+                                    class="form-control form-control-sm client-search-input"
+                                    placeholder="Nome ou CNPJ..."
+                                    autocomplete="off"
+                                >
+                                <!-- Dropdown de resultados -->
+                                <div class="client-search-results" id="clientSearchResults" style="display:none;"></div>
+                            </div>
+                            <button class="btn btn-sm btn-close-client-search" id="btnFecharBuscaCliente" title="Fechar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- ── FIM BUSCA DE CLIENTE ──────────────────────────── -->
+
+                <!-- Menu usuário -->
                 <div class="dropdown">
                     <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-user"></i>
@@ -110,7 +118,6 @@
                     <i class="fas fa-user-circle me-2"></i>
                     <strong>TOMICH HUB</strong>
                 </div>
-                <!-- Botão para voltar ao dashboard -->
                 <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='{% url 'cliente_dashboard' %}'">
                     <i class="fas fa-arrow-left me-2"></i> Voltar ao Dashboard
                 </button>
@@ -138,32 +145,291 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        // Dropdown ao hover
         document.querySelectorAll('.dropdown').forEach(function(dropdown) {
-        dropdown.addEventListener('mouseenter', function() {
-            const menu = dropdown.querySelector('.dropdown-menu');
-            const bsDropdown = new bootstrap.Dropdown(dropdown.querySelector('[data-bs-toggle="dropdown"]'));
-            bsDropdown.show();
-        });
-        dropdown.addEventListener('mouseleave', function() {
-            const menu = dropdown.querySelector('.dropdown-menu');
-            const bsDropdown = bootstrap.Dropdown.getInstance(dropdown.querySelector('[data-bs-toggle="dropdown"]'));
-            bsDropdown.hide();
-        });
+            dropdown.addEventListener('mouseenter', function() {
+                const bsDropdown = new bootstrap.Dropdown(dropdown.querySelector('[data-bs-toggle="dropdown"]'));
+                bsDropdown.show();
+            });
+            dropdown.addEventListener('mouseleave', function() {
+                const bsDropdown = bootstrap.Dropdown.getInstance(dropdown.querySelector('[data-bs-toggle="dropdown"]'));
+                if (bsDropdown) bsDropdown.hide();
+            });
         });
     </script>
+
     <script>
     // IDs DOS USUÁRIOS COM ACESSO AO FINANCEIRO
-    const USUARIOS_FINANCEIRO = [1, 2];  // ← MUDE PARA OS IDS REAIS
+    const USUARIOS_FINANCEIRO = [1, 2];
     const USER_ID = {{ request.user.id }};
     
-    // Se é staff e está na lista, mostra o link
     window.pode_acessar_financeiro = function() {
         return {{ request.user.is_staff|lower }} && USUARIOS_FINANCEIRO.includes(USER_ID);
     };
-    
-    console.log('✅ Acesso Financeiro:', pode_acessar_financeiro() ? '✅ Permitido' : '❌ Negado');
     </script>
 
+    <script>
+    const BUSCAR_CLIENTES_URL = "{% url 'buscar_clientes_chamado' %}";
+    </script>
+    <!-- ── BUSCA DE CLIENTE – SCRIPT ──────────────────────────────────── -->
+    <script>
+    (function () {
+        const btnAbrir  = document.getElementById('btnAbrirBuscaCliente');
+        const btnFechar = document.getElementById('btnFecharBuscaCliente');
+        const expanded  = document.getElementById('clientSearchExpanded');
+        const input     = document.getElementById('inputBuscaCliente');
+        const results   = document.getElementById('clientSearchResults');
+
+        if (!btnAbrir) return; // Não está presente na view de cliente
+
+        let debounceTimer = null;
+
+        // ── Abrir ──────────────────────────────────────────────────────
+        btnAbrir.addEventListener('click', () => {
+            btnAbrir.style.display = 'none';
+            expanded.style.display = '';
+            input.focus();
+        });
+
+        // ── Fechar ─────────────────────────────────────────────────────
+        btnFechar.addEventListener('click', fechar);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(); });
+
+        function fechar() {
+            expanded.style.display = 'none';
+            btnAbrir.style.display = '';
+            input.value = '';
+            esconderResultados();
+        }
+
+        // ── Fechar ao clicar fora ──────────────────────────────────────
+        document.addEventListener('click', e => {
+            const wrapper = document.getElementById('clientSearchWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                fechar();
+            }
+        });
+
+        // ── Busca com debounce ─────────────────────────────────────────
+        input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const q = input.value.trim();
+
+            if (q.length < 2) {
+                esconderResultados();
+                return;
+            }
+
+            debounceTimer = setTimeout(() => buscar(q), 250);
+        });
+
+        // ── Navegar com teclado ────────────────────────────────────────
+        input.addEventListener('keydown', e => {
+            const items = results.querySelectorAll('.client-result-item');
+            const active = results.querySelector('.client-result-item.active');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!active) {
+                    items[0]?.classList.add('active');
+                } else {
+                    const next = active.nextElementSibling;
+                    active.classList.remove('active');
+                    if (next) next.classList.add('active');
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (active) {
+                    const prev = active.previousElementSibling;
+                    active.classList.remove('active');
+                    if (prev) prev.classList.add('active');
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const current = results.querySelector('.client-result-item.active');
+                if (current) current.click();
+            }
+        });
+
+        // ── Fetch ──────────────────────────────────────────────────────
+        async function buscar(q) {
+            mostrarCarregando();
+
+            try {
+                const resp = await fetch(BUSCAR_CLIENTES_URL + '?q=' + encodeURIComponent(q), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!resp.ok) throw new Error('Erro na requisição');
+
+                const data = await resp.json();
+                renderizar(data.results || []);
+            } catch (err) {
+                results.innerHTML = '<div class="client-result-empty">Erro ao buscar clientes</div>';
+                results.style.display = '';
+            }
+        }
+
+        // ── Render ─────────────────────────────────────────────────────
+        function renderizar(clientes) {
+            if (!clientes.length) {
+                results.innerHTML = '<div class="client-result-empty"><i class="fas fa-search me-1"></i>Nenhum cliente encontrado</div>';
+                results.style.display = '';
+                return;
+            }
+
+            results.innerHTML = clientes.map(c => `
+                <div class="client-result-item" data-id="${c.id}" title="${c.cnpj || ''}">
+                    <div class="client-result-nome">
+                        <i class="fas fa-building me-1" style="color: var(--accent-cyan, #00d9ff); font-size:11px;"></i>
+                        ${highlight(c.nome, input.value.trim())}
+                    </div>
+                    ${c.cnpj ? `<div class="client-result-cnpj">${c.cnpj}</div>` : ''}
+                </div>
+            `).join('');
+
+            results.querySelectorAll('.client-result-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const id = item.dataset.id;
+                    window.location.href = `/clientes/listar/?id=${id}`;
+                });
+                item.addEventListener('mouseenter', () => {
+                    results.querySelectorAll('.client-result-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                });
+            });
+
+            results.style.display = '';
+        }
+
+        function mostrarCarregando() {
+            results.innerHTML = '<div class="client-result-empty"><i class="fas fa-spinner fa-spin me-1"></i>Buscando...</div>';
+            results.style.display = '';
+        }
+
+        function esconderResultados() {
+            results.style.display = 'none';
+            results.innerHTML = '';
+        }
+
+        // Destacar termo buscado
+        function highlight(texto, termo) {
+            if (!termo) return texto;
+            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return texto.replace(regex, '<mark>$1</mark>');
+        }
+    })();
+    </script>
+
+    <style>
+    /* ── Busca de cliente na top-bar ────────────────────────────────── */
+    .client-search-wrapper {
+        position: relative;
+    }
+
+    .client-search-expanded {
+        animation: fadeInSearch 0.2s ease;
+    }
+
+    @keyframes fadeInSearch {
+        from { opacity: 0; transform: scaleX(0.85); }
+        to   { opacity: 1; transform: scaleX(1); }
+    }
+
+    .client-search-input {
+        width: 210px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+        transition: border-color 0.2s, width 0.3s;
+    }
+
+    .client-search-input::placeholder { color: #aaa; }
+
+    .client-search-input:focus {
+        width: 250px;
+        background: rgba(255,255,255,0.12);
+        border-color: #00d9ff;
+        box-shadow: 0 0 0 2px rgba(0,217,255,0.2);
+        color: #fff;
+        outline: none;
+    }
+
+    .btn-close-client-search {
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #aaa;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        line-height: 1;
+        transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-close-client-search:hover {
+        border-color: #e74c3c;
+        color: #e74c3c;
+    }
+
+    /* ── Dropdown de resultados ─────────────────────────────────────── */
+    .client-search-results {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 280px;
+        max-height: 320px;
+        overflow-y: auto;
+        background: #1a1a2e;
+        border: 1px solid #333;
+        border-radius: 6px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 9999;
+    }
+
+    .client-result-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        transition: background 0.15s;
+    }
+
+    .client-result-item:last-child { border-bottom: none; }
+
+    .client-result-item:hover,
+    .client-result-item.active {
+        background: rgba(0,217,255,0.08);
+    }
+
+    .client-result-nome {
+        font-size: 13px;
+        color: #e0e0e0;
+        font-weight: 500;
+    }
+
+    .client-result-cnpj {
+        font-size: 11px;
+        color: #777;
+        margin-top: 2px;
+    }
+
+    .client-result-empty {
+        padding: 14px;
+        color: #777;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    .client-search-results mark {
+        background: rgba(0,217,255,0.25);
+        color: #00d9ff;
+        border-radius: 2px;
+        padding: 0 1px;
+    }
+
+    /* Scrollbar discreta */
+    .client-search-results::-webkit-scrollbar { width: 4px; }
+    .client-search-results::-webkit-scrollbar-track { background: transparent; }
+    .client-search-results::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+    </style>
 
 </body>
 </html>
