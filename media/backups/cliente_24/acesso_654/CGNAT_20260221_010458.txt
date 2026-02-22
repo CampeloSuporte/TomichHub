@@ -1,0 +1,876 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: CGNAT
+Host: 45.169.5.2:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 21/02/2026 01:04:58
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/
+
+[suporte@RT-CGNAT-DNO-01] > /                                                  
+[suporte@RT-CGNAT-DNO-01] > /e
+
+[suporte@RT-CGNAT-DNO-01] > /e                                                 
+[suporte@RT-CGNAT-DNO-01] > /ex
+
+[suporte@RT-CGNAT-DNO-01] > /ex                                                
+[suporte@RT-CGNAT-DNO-01] > /exp
+
+[suporte@RT-CGNAT-DNO-01] > /exp                                               
+[suporte@RT-CGNAT-DNO-01] > /expo
+
+[suporte@RT-CGNAT-DNO-01] > /expo                                              
+[suporte@RT-CGNAT-DNO-01] > /expor
+
+[suporte@RT-CGNAT-DNO-01] > /expor                                             
+[suporte@RT-CGNAT-DNO-01] > /export
+
+[suporte@RT-CGNAT-DNO-01] > /export                                            
+[suporte@RT-CGNAT-DNO-01] > /export 
+
+[suporte@RT-CGNAT-DNO-01] > /export                                            
+[suporte@RT-CGNAT-DNO-01] > /export t
+
+[suporte@RT-CGNAT-DNO-01] > /export t                                          
+[suporte@RT-CGNAT-DNO-01] > /export te
+
+[suporte@RT-CGNAT-DNO-01] > /export te                                         
+[suporte@RT-CGNAT-DNO-01] > /export ter
+
+[suporte@RT-CGNAT-DNO-01] > /export ter                                        
+[suporte@RT-CGNAT-DNO-01] > /export ters
+
+[suporte@RT-CGNAT-DNO-01] > /export ters                                       
+[suporte@RT-CGNAT-DNO-01] > /export terse
+
+[suporte@RT-CGNAT-DNO-01] > /export terse                                      
+[suporte@RT-CGNAT-DNO-01] > /export terse
+[suporte@RT-CGNAT-DNO-01] > /export terse
+
+# feb/21/2026 01:04:54 by RouterOS 6.49.13
+# software id = JTI6-DLKC
+#
+# model = CCR1036-8G-2S+
+# serial number = C6CC0CD2C5C2
+/interface bridge add admin-mac=00:00:00:00:00:01 auto-mac=no name=Loopback
+/interface ethernet set [ find default-name=ether1 ] speed=100Mbps
+/interface ethernet set [ find default-name=ether3 ] speed=100Mbps
+/interface ethernet set [ find default-name=ether4 ] disabled=yes speed=100Mbps
+/interface ethernet set [ find default-name=ether5 ] disabled=yes name=ether5-DEF
+EITO speed=100Mbps
+/interface ethernet set [ find default-name=ether6 ] disabled=yes speed=100Mbps
+/interface ethernet set [ find default-name=ether7 ] disabled=yes speed=100Mbps
+/interface ethernet set [ find default-name=ether8 ] disabled=yes
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full l2mtu=10000 mtu=9000
+
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-half,10M
+-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,10000M-full l2mtu=100
+00 mtu=9000
+/interface bonding add mode=802.3ad name=bonding-NE8000 slaves=sfp-sfpplus1,sfp-s
+fpplus2 transmit-hash-policy=layer-3-and-4
+/interface vlan add comment=OSPF-MAIN-NE8000 interface=bonding-NE8000 name=VLAN12
+-VRF-BGP vlan-id=12
+/interface vlan add interface=bonding-NE8000 name=VLAN77-GERENCIA-OLT-NDD vlan-id
+=77
+/interface vlan add interface=VLAN77-GERENCIA-OLT-NDD name=VLAN77-GERENCIA-OLT-ND
+D-01 vlan-id=77
+/interface vlan add comment=OSPF-BGP-NE8000 interface=bonding-NE8000 name=vlan10-
+ospf-bdr vlan-id=10
+/interface vlan add comment=OSPF-MAIN-NE8000 interface=bonding-NE8000 name=vlan10
+01 vlan-id=1001
+/ip ipsec peer add name=parceiro passive=yes
+/ip ipsec profile add dh-group=modp1024 name=profile_1
+/ip ipsec proposal set [ find default=yes ] enc-algorithms=3des
+/ip pool add name=vpn ranges=192.168.103.251-192.168.103.254
+/ip pool add comment=Pool-VPN name=Pool-VPN ranges=10.190.180.10-10.190.180.100
+/ip pool add name=dhcp_pool2 ranges=192.168.10.2-192.168.10.254
+/ip dhcp-server add address-pool=dhcp_pool2 disabled=no interface=ether3 name=dhc
+p1
+/ppp profile set *0 only-one=no
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=Pool-DHCP-PD local-address=45.
+169.4.17 name=vpn only-one=no remote-address=vpn remote-ipv6-prefix-pool=Pool-CP
+E
+/ppp profile add change-tcp-mss=yes local-address=10.190.180.1 name=VPN-Profile o
+nly-one=no remote-address=Pool-VPN use-compression=yes use-encryption=yes use-mp
+ls=no use-upnp=no
+/ppp profile set *FFFFFFFE only-one=no
+/routing bgp instance set default as=268080 redistribute-connected=yes redistribu
+te-ospf=yes redistribute-static=yes
+/routing ospf instance set [ find default=yes ] distribute-default=always-as-type
+-1 router-id=10.255.255.3
+/routing ospf-v3 instance set [ find default=yes ] distribute-default=if-installe
+d-as-type-1 redistribute-connected=as-type-1 redistribute-static=as-type-1 route
+r-id=10.255.0.10
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=jmatelecom-ro
+/system logging action set 0 memory-lines=3000
+/user group set read policy=local,telnet,ssh,ftp,reboot,read,test,winbox,password
+,web,sniff,sensitive,api,romon,dude,tikapp,!write,!policy
+/user group set write policy=local,telnet,ssh,reboot,read,write,test,winbox,passw
+ord,web,sniff,sensitive,api,romon,dude,tikapp,!ftp,!policy
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/dude set enabled=yes
+/interface bridge settings set use-ip-firewall=yes
+/ip firewall connection tracking set tcp-established-timeout=2h4s
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/ipv6 settings set accept-redirects=no
+/interface l2tp-server server set authentication=chap,mschap1,mschap2 default-pro
+file=vpn ipsec-secret="To!FjP%rw3@ku9\$#" max-mru=1460 max-mtu=1460
+/interface ovpn-server server set auth=sha1 certificate=server cipher=aes256 enab
+led=yes port=51194 require-client-certificate=yes
+/interface pptp-server server set default-profile=vpn
+/ip address add address=172.31.255.2/30 interface=vlan1001 network=172.31.255.0
+/ip address add address=192.168.100.179/28 interface=sfp-sfpplus2 network=192.168
+.100.176
+/ip address add address=10.255.1.2 interface=Loopback network=10.255.1.2
+/ip address add address=192.168.112.241/28 disabled=yes interface=VLAN77-GERENCIA
+-OLT-NDD-01 network=192.168.112.240
+/ip address add address=10.255.255.3 interface=Loopback network=10.255.255.3
+/ip address add address=10.64.65.2/30 interface=vlan10-ospf-bdr network=10.64.65.
+0
+/ip address add address=10.68.68.2/30 interface=VLAN12-VRF-BGP network=10.68.68.0
+
+/ip address add address=45.169.5.2 interface=Loopback network=45.169.5.2
+/ip address add address=172.16.30.1/30 comment="GERENCIA PROXMOX" disabled=yes in
+terface=ether2 network=172.16.30.0
+/ip address add address=192.168.0.1/24 interface=ether3 network=192.168.0.0
+/ip address add address=10.255.0.10 interface=Loopback network=10.255.0.10
+/ip address add address=172.27.10.1/28 comment=PREFIX-VMS-SERVIDOR interface=ethe
+r2 network=172.27.10.0
+/ip address add address=172.18.100.133/30 comment=GERENCIA-SW-CONCEICAO interface
+=VLAN77-GERENCIA-OLT-NDD network=172.18.100.132
+/ip cloud set ddns-enabled=yes
+/ip dhcp-client add default-route-distance=10 disabled=no use-peer-dns=no
+/ip dhcp-server network add address=192.168.10.0/24 gateway=192.168.10.1
+/ip dns set servers=45.169.7.83
+/ip firewall address-list add address=186.233.103.0/24 list=ips_validos
+/ip firewall address-list add address=45.169.4.0/22 list=ips_validos
+/ip firewall address-list add address=172.24.128.0/17 list=gerencia_clientes
+/ip firewall address-list add address=10.0.0.0/8 list=ips_protegidos
+/ip firewall address-list add address=172.16.0.0/12 list=ips_protegidos
+/ip firewall address-list add address=192.168.0.0/16 list=ips_protegidos
+/ip firewall address-list add address=192.168.103.251-192.168.103.254 comment="VP
+N BGP" list=gerencia
+/ip firewall address-list add address=192.168.103.228/30 comment="VPN DNO" list=g
+erencia
+/ip firewall address-list add address=192.168.103.224/30 comment="VPN RIO" list=g
+erencia
+/ip firewall address-list add address=45.169.4.184/29 list=ips_protegidos
+/ip firewall address-list add address=192.168.103.5 comment=DNO list=publicos
+/ip firewall address-list add address=192.168.103.27 comment=RIO list=publicos
+/ip firewall address-list add address=10.0.0.0/8 list=bgp_ips_privados
+/ip firewall address-list add address=172.16.0.0/12 list=bgp_ips_privados
+/ip firewall address-list add address=192.168.0.0/16 list=bgp_ips_privados
+/ip firewall address-list add address=192.168.255.1 list=bgp_ips_privados_permiti
+dos
+/ip firewall address-list add address=10.255.255.0/30 list=bgp_ips_privados_permi
+tidos
+/ip firewall address-list add address=45.169.5.0/24 list=low-port
+/ip firewall address-list add address=45.169.6.0/24 list=low-port
+/ip firewall address-list add address=168.228.184.0/22 disabled=yes list=prefix-p
+ermit
+/ip firewall address-list add address=192.168.103.251-192.168.103.254 comment=VPN
+ list=prefix-permit
+/ip firewall address-list add address=45.169.5.238 comment="Lucas - Supermercado 
+Izzo" list=prefix-permit
+/ip firewall address-list add address=186.233.103.0/24 list=no_nat
+/ip firewall address-list add address=45.169.4.0/22 list=no_nat
+/ip firewall address-list add address=172.24.125.0/24 list=no_nat
+/ip firewall address-list add address=172.24.126.0/24 list=no_nat
+/ip firewall address-list add address=172.24.119.0/24 list=no_nat
+/ip firewall address-list add address=172.24.122.0/24 list=no_nat
+/ip firewall address-list add address=45.169.4.0/22 list=prefix-permit
+/ip firewall address-list add address=10.255.255.0/30 list=prefix-permit
+/ip firewall address-list add address=66.175.209.15 list=prefix-permit
+/ip firewall address-list add address=45.169.4.99 list=prefix-permit
+/ip firewall address-list add address=100.80.0.10 comment="OSPF - RIO" list=net-a
+dmin
+/ip firewall address-list add address=100.80.0.6 comment="OSPF - 6G" list=net-adm
+in
+/ip firewall address-list add address=100.80.0.1 comment="OSPF - DNO" list=net-ad
+min
+/ip firewall address-list add address=10.0.0.0/8 comment=RFC1918 list=meus-destin
+os
+/ip firewall address-list add address=172.16.0.0/12 comment=RFC1918 list=meus-des
+tinos
+/ip firewall address-list add address=192.168.0.0/16 comment=RFC1918 list=meus-de
+stinos
+/ip firewall address-list add address=100.64.0.0/10 comment=RFC6598 list=meus-des
+tinos
+/ip firewall address-list add address=169.254.0.0/16 comment="RFC 3330-APIPA" lis
+t=meus-destinos
+/ip firewall address-list add address=10.0.10.0/24 list=Blocos_NAT
+/ip firewall address-list add address=172.24.129.0/24 comment="Avisados SVL" list
+=Blocos_NAT
+/ip firewall address-list add address=192.168.96.0/21 list=Blocos_NAT
+/ip firewall address-list add address=192.0.2.0/24 comment="RFC5737 - TEST-NET-1 
+" list=meus-destinos
+/ip firewall address-list add address=198.51.100.0/24 comment="RFC5737 - TEST-NET
+-2" list=meus-destinos
+/ip firewall address-list add address=203.0.113.0/24 comment="RFC5737 - TEST-NET-
+3" list=meus-destinos
+/ip firewall address-list add address=100.80.0.246 comment=SW01-SVL list=Equipame
+ntos
+/ip firewall address-list add address=100.80.0.250 comment=SW01-BAI list=Equipame
+ntos
+/ip firewall address-list add address=192.168.103.176/28 comment="Paineis dno" li
+st=Equipamentos
+/ip firewall address-list add address=192.168.3.10 comment=SW03-NDD list=Equipame
+ntos
+/ip firewall address-list add address=100.80.0.0/24 list=Blocos_NAT
+/ip firewall address-list add address=189.8.126.129 comment=Lucio list=prefix-per
+mit
+/ip firewall address-list add address=177.158.20.247 comment="Consultor Procyon" 
+list=net-admin
+/ip firewall address-list add address=172.18.0.1 comment=Radius list=net-admin
+/ip firewall address-list add address=10.5.0.0/24 list=Blocos_NAT
+/ip firewall address-list add address=172.24.125.0/24 comment="Avisados RIO" list
+=Blocos_NAT
+/ip firewall address-list add address=172.24.119.0/24 comment="Avisados DNO" list
+=Blocos_NAT
+/ip firewall address-list add address=172.24.111.0/24 comment="CLIENTES PEIXE" li
+st=Blocos_NAT
+/ip firewall address-list add address=172.24.132.0/24 comment="Usuario ou erro de
+ MAC SVL" list=Blocos_NAT
+/ip firewall address-list add address=100.80.0.50 list=ips_dude
+/ip firewall address-list add address=45.169.4.5 list=ips_dude
+/ip firewall address-list add address=192.168.64.0/18 list=ips_dude
+/ip firewall address-list add address=168.228.184.0/22 disabled=yes list=prefix-p
+ermit
+/ip firewall address-list add address=177.52.216.0/22 comment=IDCORP list=net-adm
+in
+/ip firewall address-list add address=191.241.20.122 comment=IDCORP list=net-admi
+n
+/ip firewall address-list add address=54.233.159.107 list=gerencia-L2
+/ip firewall address-list add address=18.229.58.101 list=gerencia-L2
+/ip firewall address-list add address=45.177.173.1 list=net-admin
+/ip firewall address-list add address=10.255.255.8 list=nat-loopback
+/ip firewall address-list add address=100.88.0.0/20 list=rede-privada-para-cgnat
+/ip firewall address-list add address=10.0.0.0/8 comment=REDE-INTERNA list=Permit
+idos
+/ip firewall address-list add address=100.64.0.0/10 comment=REDE-INTERNA list=Per
+mitidos
+/ip firewall address-list add address=172.16.0.0/12 comment=REDE-INTERNA list=Per
+mitidos
+/ip firewall address-list add address=179.0.110.0/24 comment=Lucas list=Permitido
+s
+/ip firewall address-list add address=179.48.72.0/24 comment=BLOCO-DO-CLIENTE lis
+t=Permitidos
+/ip firewall address-list add address=45.166.4.72/30 comment=Bloco-Prime list=Per
+mitidos
+/ip firewall address-list add address=168.121.179.184/30 list=Permitidos
+/ip firewall address-list add address=168.121.179.188/30 list=Permitidos
+/ip firewall address-list add address=168.121.179.216/30 list=Permitidos
+/ip firewall address-list add address=45.169.4.0/22 list=Permitidos
+/ip firewall address-list add address=201.131.142.0/24 list=Permitidos
+/ip firewall address-list add address=192.168.0.0/16 list=Permitidos
+/ip firewall address-list add address=192.168.112.240/28 list=NAT-INTERNO
+/ip firewall address-list add address=179.48.68.73 comment=Bloco-Prime list=Permi
+tidos
+/ip firewall filter add action=fasttrack-connection chain=forward connection-stat
+e=established,related
+/ip firewall filter add action=drop chain=input comment="Descarta conexoes invali
+das" connection-state=invalid
+/ip firewall filter add action=accept chain=input comment=Aceita-ICMP protocol=ic
+mp
+/ip firewall filter add action=accept chain=forward connection-state=established,
+related
+/ip firewall filter add action=accept chain=input comment="Aceita conexoes estabe
+lecidas e relacionadas" connection-state=established,related
+/ip firewall filter add action=accept chain=input comment="Aceita OVPN" dst-port=
+51194 protocol=tcp
+/ip firewall filter add action=drop chain=input disabled=yes dst-port=53 protocol
+=udp
+/ip firewall filter add action=drop chain=input disabled=yes dst-port=53 protocol
+=tcp
+/ip firewall filter add action=accept chain=input comment="Aceita SNMP" dst-port=
+161 protocol=udp
+/ip firewall filter add action=accept chain=input comment=Aceita-WINBOX dst-port=
+9291 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Aceita-OSPF protocol=os
+pf
+/ip firewall filter add action=accept chain=input comment=ACEITA-IPSEC protocol=i
+psec-esp
+/ip firewall filter add action=accept chain=input comment=ACEITA-IPSEC protocol=i
+psec-ah
+/ip firewall filter add action=accept chain=input comment=Aceita-BGP dst-port=179
+ protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Aceita-Servicos dst-por
+t=8222,8223,8282 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Libera-L2TP dst-port=17
+01 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Aceita-PPTP dst-port=17
+23 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=Libera-L2TP dst-port=50
+0,4500 protocol=udp
+/ip firewall filter add action=add-src-to-address-list address-list=Estagio1 addr
+ess-list-timeout=5s chain=input comment="Port Knocking Stage2 TCP 2987" dst-port
+=2987 protocol=tcp
+/ip firewall filter add action=add-src-to-address-list address-list=Estagio2 addr
+ess-list-timeout=10s chain=input comment="Port Knocking Stage3 TCP 5460" dst-por
+t=5460 protocol=tcp src-address-list=Estagio1
+/ip firewall filter add action=add-src-to-address-list address-list=Permitidos ad
+dress-list-timeout=2h chain=input comment="Port Knocking Stage3 TCP 5000" dst-po
+rt=5000 protocol=tcp src-address-list=Estagio2
+/ip firewall filter add action=drop chain=input src-address-list=!Permitidos
+/ip firewall nat add action=src-nat chain=srcnat comment=NAT-VMS src-address=172.
+27.10.0/28 to-addresses=45.169.5.2
+/ip firewall nat add action=src-nat chain=srcnat comment="MONITOR NAT" dst-addres
+s=45.169.5.12 src-address=10.190.180.0/24 to-addresses=172.31.255.2
+/ip firewall nat add action=src-nat chain=srcnat src-address=192.168.112.240/28 t
+o-addresses=45.169.5.2
+/ip firewall nat add action=src-nat chain=srcnat comment=NAT-OVPN dst-address=172
+.16.0.0/12 to-addresses=10.255.255.3
+/ip firewall nat add action=src-nat chain=srcnat dst-address=192.168.178.2 to-add
+resses=45.169.5.2
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-SW-NDD dst-address=4
+5.169.5.2 dst-port=6525 protocol=udp to-addresses=10.255.0.1 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-SW-NDD dst-address=4
+5.169.5.2 dst-port=6523 protocol=tcp to-addresses=10.255.0.1 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment=REDIRECT-DNS dst-address
+=10.255.0.11 dst-port=53 protocol=udp to-addresses=1.1.1.1 to-ports=53
+/ip firewall nat add action=dst-nat chain=dstnat comment=REDIRECT-DNS dst-address
+=10.255.0.12 dst-port=53 protocol=udp to-addresses=1.1.1.1 to-ports=53
+/ip firewall nat add action=dst-nat chain=dstnat comment=REDIRECT-DNS dst-address
+=10.255.0.12 dst-port=53 protocol=tcp to-addresses=1.1.1.1 to-ports=53
+/ip firewall nat add action=dst-nat chain=dstnat comment=REDIRECT-DNS dst-address
+=10.255.0.11 dst-port=53 protocol=tcp to-addresses=1.1.1.1 to-ports=53
+/ip firewall nat add action=dst-nat chain=dstnat comment=REDIRECT-DNS dst-port=53
+ protocol=tcp to-addresses=1.1.1.1 to-ports=53
+/ip firewall nat add action=src-nat chain=srcnat comment=NAT-OVPN dst-address=!10
+.0.0.0/8 src-address=10.190.180.0/24 to-addresses=45.169.5.2
+/ip firewall nat add action=same chain=srcnat same-not-by-dst=yes src-address=10.
+255.255.0/24 to-addresses=45.169.5.128/25
+/ip firewall nat add action=src-nat chain=srcnat dst-address=10.255.0.3 to-addres
+ses=45.169.5.2
+/ip firewall nat add action=src-nat chain=srcnat src-address=172.16.10.10 to-addr
+esses=45.169.5.2
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes dst-address=10.255.
+0.4 to-addresses=45.168.5.2
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_JMA_O
+LT_01 dst-address=45.169.6.1 dst-port=2222 protocol=tcp to-addresses=172.31.255.
+1 to-ports=2290
+/ip firewall nat add action=dst-nat chain=dstnat comment="Gerencia VPN" disabled=
+yes dst-address=45.169.4.17 dst-port=8022 protocol=tcp to-addresses=192.168.0.1 
+to-ports=22
+/ip firewall nat add action=src-nat chain=srcnat comment="MONITOR NAT" dst-addres
+s=10.255.0.119 to-addresses=10.255.0.10
+/ip firewall nat add action=dst-nat chain=dstnat comment="JMA FIBRA BAIANA/SVL" d
+st-address=45.169.4.17 dst-port=38252 protocol=tcp src-address-list=gerencia-L2 
+to-addresses=192.168.100.181 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="JMA FIBRA SVL/NDD" dst-
+address=45.169.4.17 dst-port=38253 protocol=tcp src-address-list=gerencia-L2 to-
+addresses=192.168.100.16 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="JMA FIBRA NDD/SERRA" ds
+t-address=45.169.4.17 dst-port=38254 protocol=tcp src-address-list=gerencia-L2 t
+o-addresses=192.168.100.8 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="JMA FIBRA NDD/ALMAS" ds
+t-address=45.169.4.17 dst-port=38255 protocol=tcp src-address-list=gerencia-L2 t
+o-addresses=192.168.100.9 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="JMA FIBRA ALMAS/DNO" ds
+t-address=45.169.4.17 dst-port=38256 protocol=tcp src-address-list=gerencia-L2 t
+o-addresses=192.168.100.1 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="JMA FIBRA ALMAS/PORTO A
+LEGRE" dst-address=45.169.4.17 dst-port=38257 protocol=tcp src-address-list=gere
+ncia-L2 to-addresses=192.168.100.3 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_ALMAS
+ dst-address=45.169.5.2 dst-port=8922 protocol=tcp to-addresses=192.168.178.2 to
+-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_MECNE
+T_01 dst-address=45.169.6.1 dst-port=8925 protocol=tcp to-addresses=192.168.161.
+3 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_MECNE
+T_02 dst-address=45.169.6.1 dst-port=8926 protocol=tcp to-addresses=192.168.161.
+8 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_NDD_0
+1 dst-address=45.169.5.2 dst-port=8928 protocol=tcp to-addresses=192.168.112.242
+ to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_NDD_0
+2 dst-address=45.169.5.2 dst-port=8927 protocol=tcp to-addresses=192.168.112.243
+ to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_NDD_0
+3 dst-address=45.169.5.2 dst-port=8929 protocol=tcp to-addresses=192.168.112.244
+ to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_JMA_O
+LT_02 dst-address=45.169.6.1 dst-port=8924 protocol=tcp to-addresses=192.168.97.
+137 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment=GERENCIA_OLT_8820i_JMA_O
+LT_01 dst-address=45.169.6.1 dst-port=8923 protocol=tcp to-addresses=192.168.97.
+131 to-ports=23
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-targe
+t=cgnat src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.0
+.0/25 portas=1024-3039" jump-target=100.88.0.0/25 src-address=100.88.0.0/25
+/ip firewall nat add action=netmap chain=100.88.0.0/25 comment="100.88.0.0/25 ==>
+ portas=1024-3039" protocol=tcp to-addresses=45.169.5.128/25 to-ports=1024-3039
+/ip firewall nat add action=netmap chain=100.88.0.0/25 comment="100.88.0.0/25 ==>
+ portas=1024-3039" protocol=udp to-addresses=45.169.5.128/25 to-ports=1024-3039
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.0
+.128/25 portas=3040-5055" jump-target=100.88.0.128/25 src-address=100.88.0.128/2
+5
+/ip firewall nat add action=netmap chain=100.88.0.128/25 comment="100.88.0.128/25
+ ==> portas=3040-5055" protocol=tcp to-addresses=45.169.5.128/25 to-ports=3040-5
+055
+/ip firewall nat add action=netmap chain=100.88.0.128/25 comment="100.88.0.128/25
+ ==> portas=3040-5055" protocol=udp to-addresses=45.169.5.128/25 to-ports=3040-5
+055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+.0/25 portas=5056-7071" jump-target=100.88.1.0/25 src-address=100.88.1.0/25
+/ip firewall nat add action=netmap chain=100.88.1.0/25 comment="100.88.1.0/25 ==>
+ portas=5056-7071" protocol=tcp to-addresses=45.169.5.128/25 to-ports=5056-7071
+/ip firewall nat add action=netmap chain=100.88.1.0/25 comment="100.88.1.0/25 ==>
+ portas=5056-7071" protocol=udp to-addresses=45.169.5.128/25 to-ports=5056-7071
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+.128/25 portas=7072-9087" jump-target=100.88.1.128/25 src-address=100.88.1.128/2
+5
+/ip firewall nat add action=netmap chain=100.88.1.128/25 comment="100.88.1.128/25
+ ==> portas=7072-9087" protocol=tcp to-addresses=45.169.5.128/25 to-ports=7072-9
+087
+/ip firewall nat add action=netmap chain=100.88.1.128/25 comment="100.88.1.128/25
+ ==> portas=7072-9087" protocol=udp to-addresses=45.169.5.128/25 to-ports=7072-9
+087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.2
+.0/25 portas=9088-11103" jump-target=100.88.2.0/25 src-address=100.88.2.0/25
+/ip firewall nat add action=netmap chain=100.88.2.0/25 comment="100.88.2.0/25 ==>
+ portas=9088-11103" protocol=tcp to-addresses=45.169.5.128/25 to-ports=9088-1110
+3
+/ip firewall nat add action=netmap chain=100.88.2.0/25 comment="100.88.2.0/25 ==>
+ portas=9088-11103" protocol=udp to-addresses=45.169.5.128/25 to-ports=9088-1110
+3
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.2
+.128/25 portas=11104-13119" jump-target=100.88.2.128/25 src-address=100.88.2.128
+/25
+/ip firewall nat add action=netmap chain=100.88.2.128/25 comment="100.88.2.128/25
+ ==> portas=11104-13119" protocol=tcp to-addresses=45.169.5.128/25 to-ports=1110
+4-13119
+/ip firewall nat add action=netmap chain=100.88.2.128/25 comment="100.88.2.128/25
+ ==> portas=11104-13119" protocol=udp to-addresses=45.169.5.128/25 to-ports=1110
+4-13119
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.3
+.0/25 portas=13120-15135" jump-target=100.88.3.0/25 src-address=100.88.3.0/25
+/ip firewall nat add action=netmap chain=100.88.3.0/25 comment="100.88.3.0/25 ==>
+ portas=13120-15135" protocol=tcp to-addresses=45.169.5.128/25 to-ports=13120-15
+135
+/ip firewall nat add action=netmap chain=100.88.3.0/25 comment="100.88.3.0/25 ==>
+ portas=13120-15135" protocol=udp to-addresses=45.169.5.128/25 to-ports=13120-15
+135
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.3
+.128/25 portas=15136-17151" jump-target=100.88.3.128/25 src-address=100.88.3.128
+/25
+/ip firewall nat add action=netmap chain=100.88.3.128/25 comment="100.88.3.128/25
+ ==> portas=15136-17151" protocol=tcp to-addresses=45.169.5.128/25 to-ports=1513
+6-17151
+/ip firewall nat add action=netmap chain=100.88.3.128/25 comment="100.88.3.128/25
+ ==> portas=15136-17151" protocol=udp to-addresses=45.169.5.128/25 to-ports=1513
+6-17151
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.4
+.0/25 portas=17152-19167" jump-target=100.88.4.0/25 src-address=100.88.4.0/25
+/ip firewall nat add action=netmap chain=100.88.4.0/25 comment="100.88.4.0/25 ==>
+ portas=17152-19167" protocol=tcp to-addresses=45.169.5.128/25 to-ports=17152-19
+167
+/ip firewall nat add action=netmap chain=100.88.4.0/25 comment="100.88.4.0/25 ==>
+ portas=17152-19167" protocol=udp to-addresses=45.169.5.128/25 to-ports=17152-19
+167
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.4
+.128/25 portas=19168-21183" jump-target=100.88.4.128/25 src-address=100.88.4.128
+/25
+/ip firewall nat add action=netmap chain=100.88.4.128/25 comment="100.88.4.128/25
+ ==> portas=19168-21183" protocol=tcp to-addresses=45.169.5.128/25 to-ports=1916
+8-21183
+/ip firewall nat add action=netmap chain=100.88.4.128/25 comment="100.88.4.128/25
+ ==> portas=19168-21183" protocol=udp to-addresses=45.169.5.128/25 to-ports=1916
+8-21183
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.5
+.0/25 portas=21184-23199" jump-target=100.88.5.0/25 src-address=100.88.5.0/25
+/ip firewall nat add action=netmap chain=100.88.5.0/25 comment="100.88.5.0/25 ==>
+ portas=21184-23199" protocol=tcp to-addresses=45.169.5.128/25 to-ports=21184-23
+199
+/ip firewall nat add action=netmap chain=100.88.5.0/25 comment="100.88.5.0/25 ==>
+ portas=21184-23199" protocol=udp to-addresses=45.169.5.128/25 to-ports=21184-23
+199
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.5
+.128/25 portas=23200-25215" jump-target=100.88.5.128/25 src-address=100.88.5.128
+/25
+/ip firewall nat add action=netmap chain=100.88.5.128/25 comment="100.88.5.128/25
+ ==> portas=23200-25215" protocol=tcp to-addresses=45.169.5.128/25 to-ports=2320
+0-25215
+/ip firewall nat add action=netmap chain=100.88.5.128/25 comment="100.88.5.128/25
+ ==> portas=23200-25215" protocol=udp to-addresses=45.169.5.128/25 to-ports=2320
+0-25215
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.6
+.0/25 portas=25216-27231" jump-target=100.88.6.0/25 src-address=100.88.6.0/25
+/ip firewall nat add action=netmap chain=100.88.6.0/25 comment="100.88.6.0/25 ==>
+ portas=25216-27231" protocol=tcp to-addresses=45.169.5.128/25 to-ports=25216-27
+231
+/ip firewall nat add action=netmap chain=100.88.6.0/25 comment="100.88.6.0/25 ==>
+ portas=25216-27231" protocol=udp to-addresses=45.169.5.128/25 to-ports=25216-27
+231
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.6
+.128/25 portas=27232-29247" jump-target=100.88.6.128/25 src-address=100.88.6.128
+/25
+/ip firewall nat add action=netmap chain=100.88.6.128/25 comment="100.88.6.128/25
+ ==> portas=27232-29247" protocol=tcp to-addresses=45.169.5.128/25 to-ports=2723
+2-29247
+/ip firewall nat add action=netmap chain=100.88.6.128/25 comment="100.88.6.128/25
+ ==> portas=27232-29247" protocol=udp to-addresses=45.169.5.128/25 to-ports=2723
+2-29247
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.7
+.0/25 portas=29248-31263" jump-target=100.88.7.0/25 src-address=100.88.7.0/25
+/ip firewall nat add action=netmap chain=100.88.7.0/25 comment="100.88.7.0/25 ==>
+ portas=29248-31263" protocol=tcp to-addresses=45.169.5.128/25 to-ports=29248-31
+263
+/ip firewall nat add action=netmap chain=100.88.7.0/25 comment="100.88.7.0/25 ==>
+ portas=29248-31263" protocol=udp to-addresses=45.169.5.128/25 to-ports=29248-31
+263
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.7
+.128/25 portas=31264-33279" jump-target=100.88.7.128/25 src-address=100.88.7.128
+/25
+/ip firewall nat add action=netmap chain=100.88.7.128/25 comment="100.88.7.128/25
+ ==> portas=31264-33279" protocol=tcp to-addresses=45.169.5.128/25 to-ports=3126
+4-33279
+/ip firewall nat add action=netmap chain=100.88.7.128/25 comment="100.88.7.128/25
+ ==> portas=31264-33279" protocol=udp to-addresses=45.169.5.128/25 to-ports=3126
+4-33279
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.8
+.0/25 portas=33280-35295" jump-target=100.88.8.0/25 src-address=100.88.8.0/25
+/ip firewall nat add action=netmap chain=100.88.8.0/25 comment="100.88.8.0/25 ==>
+ portas=33280-35295" protocol=tcp to-addresses=45.169.5.128/25 to-ports=33280-35
+295
+/ip firewall nat add action=netmap chain=100.88.8.0/25 comment="100.88.8.0/25 ==>
+ portas=33280-35295" protocol=udp to-addresses=45.169.5.128/25 to-ports=33280-35
+295
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.8
+.128/25 portas=35296-37311" jump-target=100.88.8.128/25 src-address=100.88.8.128
+/25
+/ip firewall nat add action=netmap chain=100.88.8.128/25 comment="100.88.8.128/25
+ ==> portas=35296-37311" protocol=tcp to-addresses=45.169.5.128/25 to-ports=3529
+6-37311
+/ip firewall nat add action=netmap chain=100.88.8.128/25 comment="100.88.8.128/25
+ ==> portas=35296-37311" protocol=udp to-addresses=45.169.5.128/25 to-ports=3529
+6-37311
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.9
+.0/25 portas=37312-39327" jump-target=100.88.9.0/25 src-address=100.88.9.0/25
+/ip firewall nat add action=netmap chain=100.88.9.0/25 comment="100.88.9.0/25 ==>
+ portas=37312-39327" protocol=tcp to-addresses=45.169.5.128/25 to-ports=37312-39
+327
+/ip firewall nat add action=netmap chain=100.88.9.0/25 comment="100.88.9.0/25 ==>
+ portas=37312-39327" protocol=udp to-addresses=45.169.5.128/25 to-ports=37312-39
+327
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.9
+.128/25 portas=39328-41343" jump-target=100.88.9.128/25 src-address=100.88.9.128
+/25
+/ip firewall nat add action=netmap chain=100.88.9.128/25 comment="100.88.9.128/25
+ ==> portas=39328-41343" protocol=tcp to-addresses=45.169.5.128/25 to-ports=3932
+8-41343
+/ip firewall nat add action=netmap chain=100.88.9.128/25 comment="100.88.9.128/25
+ ==> portas=39328-41343" protocol=udp to-addresses=45.169.5.128/25 to-ports=3932
+8-41343
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+0.0/25 portas=41344-43359" jump-target=100.88.10.0/25 src-address=100.88.10.0/25
+
+/ip firewall nat add action=netmap chain=100.88.10.0/25 comment="100.88.10.0/25 =
+=> portas=41344-43359" protocol=tcp to-addresses=45.169.5.128/25 to-ports=41344-
+43359
+/ip firewall nat add action=netmap chain=100.88.10.0/25 comment="100.88.10.0/25 =
+=> portas=41344-43359" protocol=udp to-addresses=45.169.5.128/25 to-ports=41344-
+43359
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+0.128/25 portas=43360-45375" jump-target=100.88.10.128/25 src-address=100.88.10.
+128/25
+/ip firewall nat add action=netmap chain=100.88.10.128/25 comment="100.88.10.128/
+25 ==> portas=43360-45375" protocol=tcp to-addresses=45.169.5.128/25 to-ports=43
+360-45375
+/ip firewall nat add action=netmap chain=100.88.10.128/25 comment="100.88.10.128/
+25 ==> portas=43360-45375" protocol=udp to-addresses=45.169.5.128/25 to-ports=43
+360-45375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+1.0/25 portas=45376-47391" jump-target=100.88.11.0/25 src-address=100.88.11.0/25
+
+/ip firewall nat add action=netmap chain=100.88.11.0/25 comment="100.88.11.0/25 =
+=> portas=45376-47391" protocol=tcp to-addresses=45.169.5.128/25 to-ports=45376-
+47391
+/ip firewall nat add action=netmap chain=100.88.11.0/25 comment="100.88.11.0/25 =
+=> portas=45376-47391" protocol=udp to-addresses=45.169.5.128/25 to-ports=45376-
+47391
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+1.128/25 portas=47392-49407" jump-target=100.88.11.128/25 src-address=100.88.11.
+128/25
+/ip firewall nat add action=netmap chain=100.88.11.128/25 comment="100.88.11.128/
+25 ==> portas=47392-49407" protocol=tcp to-addresses=45.169.5.128/25 to-ports=47
+392-49407
+/ip firewall nat add action=netmap chain=100.88.11.128/25 comment="100.88.11.128/
+25 ==> portas=47392-49407" protocol=udp to-addresses=45.169.5.128/25 to-ports=47
+392-49407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+2.0/25 portas=49408-51423" jump-target=100.88.12.0/25 src-address=100.88.12.0/25
+
+/ip firewall nat add action=netmap chain=100.88.12.0/25 comment="100.88.12.0/25 =
+=> portas=49408-51423" protocol=tcp to-addresses=45.169.5.128/25 to-ports=49408-
+51423
+/ip firewall nat add action=netmap chain=100.88.12.0/25 comment="100.88.12.0/25 =
+=> portas=49408-51423" protocol=udp to-addresses=45.169.5.128/25 to-ports=49408-
+51423
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+2.128/25 portas=51424-53439" jump-target=100.88.12.128/25 src-address=100.88.12.
+128/25
+/ip firewall nat add action=netmap chain=100.88.12.128/25 comment="100.88.12.128/
+25 ==> portas=51424-53439" protocol=tcp to-addresses=45.169.5.128/25 to-ports=51
+424-53439
+/ip firewall nat add action=netmap chain=100.88.12.128/25 comment="100.88.12.128/
+25 ==> portas=51424-53439" protocol=udp to-addresses=45.169.5.128/25 to-ports=51
+424-53439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+3.0/25 portas=53440-55455" jump-target=100.88.13.0/25 src-address=100.88.13.0/25
+
+/ip firewall nat add action=netmap chain=100.88.13.0/25 comment="100.88.13.0/25 =
+=> portas=53440-55455" protocol=tcp to-addresses=45.169.5.128/25 to-ports=53440-
+55455
+/ip firewall nat add action=netmap chain=100.88.13.0/25 comment="100.88.13.0/25 =
+=> portas=53440-55455" protocol=udp to-addresses=45.169.5.128/25 to-ports=53440-
+55455
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+3.128/25 portas=55456-57471" jump-target=100.88.13.128/25 src-address=100.88.13.
+128/25
+/ip firewall nat add action=netmap chain=100.88.13.128/25 comment="100.88.13.128/
+25 ==> portas=55456-57471" protocol=tcp to-addresses=45.169.5.128/25 to-ports=55
+456-57471
+/ip firewall nat add action=netmap chain=100.88.13.128/25 comment="100.88.13.128/
+25 ==> portas=55456-57471" protocol=udp to-addresses=45.169.5.128/25 to-ports=55
+456-57471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+4.0/25 portas=57472-59487" jump-target=100.88.14.0/25 src-address=100.88.14.0/25
+
+/ip firewall nat add action=netmap chain=100.88.14.0/25 comment="100.88.14.0/25 =
+=> portas=57472-59487" protocol=tcp to-addresses=45.169.5.128/25 to-ports=57472-
+59487
+/ip firewall nat add action=netmap chain=100.88.14.0/25 comment="100.88.14.0/25 =
+=> portas=57472-59487" protocol=udp to-addresses=45.169.5.128/25 to-ports=57472-
+59487
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+4.128/25 portas=59488-61503" jump-target=100.88.14.128/25 src-address=100.88.14.
+128/25
+/ip firewall nat add action=netmap chain=100.88.14.128/25 comment="100.88.14.128/
+25 ==> portas=59488-61503" protocol=tcp to-addresses=45.169.5.128/25 to-ports=59
+488-61503
+/ip firewall nat add action=netmap chain=100.88.14.128/25 comment="100.88.14.128/
+25 ==> portas=59488-61503" protocol=udp to-addresses=45.169.5.128/25 to-ports=59
+488-61503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+5.0/25 portas=61504-63519" jump-target=100.88.15.0/25 src-address=100.88.15.0/25
+
+/ip firewall nat add action=netmap chain=100.88.15.0/25 comment="100.88.15.0/25 =
+=> portas=61504-63519" protocol=tcp to-addresses=45.169.5.128/25 to-ports=61504-
+63519
+/ip firewall nat add action=netmap chain=100.88.15.0/25 comment="100.88.15.0/25 =
+=> portas=61504-63519" protocol=udp to-addresses=45.169.5.128/25 to-ports=61504-
+63519
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.88.1
+5.128/25 portas=63520-65535" jump-target=100.88.15.128/25 src-address=100.88.15.
+128/25
+/ip firewall nat add action=netmap chain=100.88.15.128/25 comment="100.88.15.128/
+25 ==> portas=63520-65535" protocol=tcp to-addresses=45.169.5.128/25 to-ports=63
+520-65535
+/ip firewall nat add action=netmap chain=100.88.15.128/25 comment="100.88.15.128/
+25 ==> portas=63520-65535" protocol=udp to-addresses=45.169.5.128/25 to-ports=63
+520-65535
+/ip firewall nat add action=netmap chain=srcnat comment="100.88.0.0/20 ==> 45.169
+.5.128/25" src-address=100.88.0.0/20 to-addresses=45.169.5.128/25
+/ip firewall nat add action=redirect chain=dstnat comment="REDIRECT WINBOX" dst-a
+ddress=45.169.5.128 dst-port=9291 protocol=tcp to-ports=8260
+/ip firewall nat add action=dst-nat chain=dstnat dst-address=45.169.5.2 dst-port=
+64200 protocol=tcp to-addresses=172.16.10.10 to-ports=8260
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-SW-ALMAS dst-address
+=45.169.5.2 dst-port=6526 protocol=udp to-addresses=10.255.0.2 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-SW-DNO dst-address=4
+5.169.5.2 dst-port=6527 protocol=tcp src-address-list=Permitidos to-addresses=10
+.255.0.3 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-SW-PONTE_ALTA dst-ad
+dress=45.169.5.2 dst-port=6528 protocol=tcp src-address-list=Permitidos to-addre
+sses=10.255.0.4 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT SRV PROXMOX" d
+st-address=45.169.5.2 dst-port=6535 protocol=tcp src-address-list=Permitidos to-
+addresses=172.16.30.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-CCR1009-DNO dst-addr
+ess=45.169.5.2 dst-port=6537 protocol=tcp src-address-list=Permitidos to-address
+es=10.255.0.38 to-ports=65522
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-RT-TORRES dst-addres
+s=45.169.5.2 dst-port=6538 protocol=tcp src-address-list=Permitidos to-addresses
+=10.255.0.46 to-ports=65522
+/ip firewall nat add action=dst-nat chain=dstnat comment=WINOX-RT-TORRES dst-addr
+ess=45.169.5.2 dst-port=65073 protocol=tcp to-addresses=10.255.0.46 to-ports=826
+0
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-RT-TAIPAS dst-addres
+s=45.169.5.2 dst-port=6539 protocol=tcp src-address-list=Permitidos to-addresses
+=10.255.0.50 to-ports=65522
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-RT-CASARAO dst-addre
+ss=45.169.5.2 dst-port=6540 protocol=tcp src-address-list=Permitidos to-addresse
+s=10.255.0.54 to-ports=65522
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-RT-GUARA dst-address
+=45.169.5.2 dst-port=6541 protocol=tcp src-address-list=Permitidos to-addresses=
+10.255.0.58 to-ports=65522
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-RT-TERRA-NOVA dst-ad
+dress=45.169.5.2 dst-port=6542 protocol=tcp src-address-list=Permitidos to-addre
+sses=10.255.0.122 to-ports=65522
+/ip firewall nat add action=dst-nat chain=dstnat comment=SSH-RT-SANTA-MARIA dst-a
+ddress=45.169.5.2 dst-port=6543 protocol=tcp src-address-list=Permitidos to-addr
+esses=10.255.0.118 to-ports=65522
+/ip firewall raw add action=accept chain=prerouting protocol=ospf
+/ip firewall raw add action=notrack chain=output protocol=ospf
+/ip firewall raw add action=accept chain=output protocol=ospf
+/ip firewall raw add action=drop chain=prerouting protocol=udp src-port=19,25,190
+0,1001,11211
+/ip firewall raw add action=drop chain=prerouting protocol=tcp src-port=19,25,190
+0,1001,11211
+/ip firewall raw add action=drop chain=prerouting dst-port=19,25,1900,1001,11211 
+protocol=udp
+/ip firewall raw add action=drop chain=prerouting dst-port=19,25,1900,1001,11211 
+protocol=tcp
+/ip firewall raw add action=notrack chain=prerouting comment=NO-TRACK src-address
+-list=no_track
+/ip ipsec identity add generate-policy=port-override peer=parceiro remote-id=igno
+re secret=241041
+/ip route add distance=1 gateway=10.64.65.1 pref-src=45.169.5.2
+/ip route add distance=1 dst-address=10.20.20.1/32 gateway=10.68.68.1
+/ip route add distance=1 dst-address=45.169.4.4/32 gateway=172.31.255.1 scope=20
+/ip route add comment=CGNAT distance=1 dst-address=45.169.5.128/25 type=blackhole
+
+/ip route add distance=1 dst-address=100.88.0.0/19 gateway=172.31.255.1 scope=20
+/ip service set telnet address=192.168.64.0/18 disabled=yes
+/ip service set www address=0.0.0.0/0 disabled=yes port=8099
+/ip service set ssh port=22002
+/ip service set api address=172.18.0.1/32,191.252.60.142/32,66.175.209.15/32 disa
+bled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip ssh set strong-crypto=yes
+/ip tftp add ip-addresses=0.0.0.0/0 read-only=no real-filename=olt8820plus-2.112.
+img req-filename=olt8820plus-2.112.img
+/ipv6 address add address=2804:57b0:c301:c000::1/126 advertise=no comment=VMS int
+erface=ether2
+/ipv6 firewall raw add action=accept chain=prerouting protocol=ospf
+/ipv6 firewall raw add action=notrack chain=output protocol=ospf
+/ipv6 firewall raw add action=accept chain=output protocol=ospf
+/mpls ldp set enabled=yes loop-detect=yes lsr-id=10.255.255.3 transport-address=1
+0.255.255.3 use-explicit-null=yes
+/mpls ldp interface add disabled=yes
+/mpls ldp interface add disabled=yes
+/mpls ldp interface add disabled=yes
+/mpls ldp interface add disabled=yes
+/mpls ldp interface add disabled=yes
+/mpls ldp interface add disabled=yes
+/mpls ldp interface add disabled=yes
+/ppp secret add name=ALAN password=241041 profile=VPN-Profile service=ovpn
+/ppp secret add name=ALAN password=241041 profile=vpn service=l2tp
+/ppp secret add name=lucascampelo password=824Gue1@ht profile=VPN-Profile service
+=ovpn
+/routing bgp peer add in-filter=FL-iBGP-BDR-PEIXES-IN name=iBGP-BDR-PEIXES nextho
+p-choice=force-self out-filter=FL-iBGP-BDR-PEIXES-OUT remote-address=10.64.65.1 
+remote-as=268080 update-source=vlan10-ospf-bdr
+/routing filter add action=discard chain=FL-iBGP-BDR-PEIXES-OUT prefix=45.169.5.8
+/29 prefix-length=29
+/routing filter add action=discard chain=ospf-out disabled=yes prefix=45.169.6.0/
+23 prefix-length=23-32
+/routing filter add action=accept chain=FL-iBGP-BDR-PEIXES-OUT prefix=45.169.4.0/
+23 prefix-length=24-32
+/routing filter add action=discard chain=FL-iBGP-BDR-PEIXES-OUT
+/routing filter add action=discard chain=FL-iBGP-BDR-PEIXES-IN prefix=!0.0.0.0/0
+/routing filter add action=discard chain=FL-iBGP-BDR-PEIXES-IN
+/routing ospf interface add interface=vlan1001 network-type=point-to-point
+/routing ospf interface add passive=yes
+/routing ospf interface add interface=ether2 network-type=point-to-point
+/routing ospf interface add cost=30000 network-type=point-to-point
+/routing ospf interface add interface=VLAN77-GERENCIA-OLT-NDD network-type=point-
+to-point
+/routing ospf network add area=backbone network=10.69.2.0/30
+/routing ospf network add area=backbone network=10.255.255.3/32
+/routing ospf network add area=backbone network=10.69.2.8/30
+/routing ospf network add area=backbone network=10.69.2.16/30
+/routing ospf network add area=backbone network=10.69.2.24/30
+/routing ospf network add area=backbone network=10.69.2.32/30
+/routing ospf network add area=backbone network=10.69.2.40/30
+/routing ospf network add area=backbone network=10.69.2.48/30
+/routing ospf network add area=backbone network=10.69.2.56/30
+/routing ospf network add area=backbone network=172.31.255.0/30
+/routing ospf network add area=backbone network=10.64.65.0/30
+/routing ospf network add area=backbone network=10.190.180.0/24
+/routing ospf network add area=backbone comment=loopback network=10.255.0.10/32
+/routing ospf network add area=backbone network=172.27.10.0/28
+/routing ospf network add area=backbone network=172.18.100.168/30
+/routing ospf network add area=backbone comment=OSPF-RT-CONCEICAO network=172.18.
+100.132/30
+/routing ospf-v3 interface add area=backbone interface=vlan10-ospf-bdr network-ty
+pe=point-to-point
+/routing ospf-v3 interface add area=backbone interface=ether2 network-type=point-
+to-point
+/snmp set contact=suporte@jmatelecom.com.br enabled=yes location=JMA-PXE-CGNAT-CC
+R1036-8G-2S+ trap-interfaces=all trap-version=2
+/system clock set time-zone-autodetect=no time-zone-name=America/Araguaina
+/system identity set name=RT-CGNAT-DNO-01
+/system ntp client set enabled=yes primary-ntp=200.160.0.8 secondary-ntp=200.189.
+40.8
+/system package update set channel=long-term
+/system resource irq rps set sfp-sfpplus1 disabled=no
+/system resource irq rps set sfp-sfpplus2 disabled=no
+/system resource irq rps set ether1 disabled=no
+/system resource irq rps set ether2 disabled=no
+/system resource irq rps set ether3 disabled=no
+/system resource irq rps set ether4 disabled=no
+/system resource irq rps set ether5-DEFEITO disabled=no
+/system resource irq rps set ether6 disabled=no
+/system resource irq rps set ether7 disabled=no
+/system resource irq rps set ether8 disabled=no
+/system script add dont-require-permissions=no name=EFETUAR_BACKUP_SISTEMA_LOCAL 
+owner=matso policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive so
+urce=":log info \"INICIANDO BACKUP\";\r\
+    \n\r\
+    \n:global filename;\r\
+    \n:global senha \"Je3m4eU@A\";\r\
+    \n\r\
+    \n:global date [/system clock get date];\r\
+    \n:global time [/system clock get time];\r\
+    \n:global name [/system identity get name];\r\
+    \n\r\
+    \n:global months (\"jan\",\"feb\",\"mar\",\"apr\",\"may\",\"jun\",\"jul\",\"a
+ug\",\"sep\",\"oct\",\"nov\",\"dec\");\r\
+    \n:global hour [:pick \$time 0 2];\r\
+    \n:global min [:pick \$time 3 5];\r\
+    \n:global sec [:pick \$time 6 8];\r\
+    \n:global month [:pick \$date 0 3];\r\
+    \n:set month ([ :find \$months \$month -1 ] + 1);\r\
+    \n\r\
+    \n:if (\$month < 10) do={ :set month (\"0\" . \$month); }\r\
+    \n\r\
+    \n:global day [:pick \$date 4 6];\r\
+    \n:global year [:pick \$date 7 11];\r\
+    \n:set filename (\"BACKUP_\".\$name. \"_\" .\$year.\"-\".\$month.\"-\".\$day.
+\"_\".\$hour.\"-\".\$min.\"-\".\$sec);\r\
+    \n\r\
+    \n/system backup save name=\$filename password=\$senha;\r\
+    \n\r\
+    \n\r\
+    \n:log info \"GERANDO RSC\";\r\
+    \n:global rsc \$filename;\r\
+    \n\r\
+    \n/export file=\$rsc;\r\
+    \n\r\
+    \n:log info \"BACKUP FINALIZADO\""
+/tool bandwidth-server set max-sessions=1000
+/tool e-mail set address=smtp.gmail.com from=backup.jmafibra@gmail.com password=!
+@#jma!@# port=587 start-tls=yes user=backup.jmafibra@gmail.com
+/tool graphing interface add
+/tool graphing queue add
+/tool graphing resource add
+/tool romon set enabled=yes secrets=jma
+
+[suporte@RT-CGNAT-DNO-01] >                                                    

@@ -171,15 +171,13 @@
         }
 
         /* ============================================
-           WRAPPER DE CÓDIGO — aparece em AMBOS os lugares
-           (conteudo_html e blocos_codigo)
+           WRAPPER DE CÓDIGO
         ============================================ */
         .wiki-code-wrapper {
             background: #0a0a0a; border: 1px solid #1e1e1e;
             border-radius: 3px; overflow: hidden; margin: 12px 0;
         }
 
-        /* Barra de ações acima do código */
         .wiki-code-toolbar {
             background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e;
             display: flex; align-items: center; justify-content: flex-end; gap: 5px;
@@ -224,6 +222,15 @@
             vertical-align: top; padding-top: 1px;
         }
         .wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
+
+        /* Highlight de variáveis no código */
+        .wiki-codigo-pre code .ln .lc .wiki-var-highlight {
+            background: rgba(255, 170, 0, 0.18);
+            color: #ffaa00;
+            border-radius: 2px;
+            padding: 0 2px;
+            border-bottom: 1px dashed #ffa500;
+        }
 
         /* Editor textarea */
         .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0a0a0a; }
@@ -270,6 +277,105 @@
             100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
         }
 
+        /* ============================================
+           PAINEL DE VARIÁVEIS  ← NOVO
+        ============================================ */
+        .wiki-vars-panel {
+            background: rgba(255, 170, 0, 0.03);
+            border-top: 1px solid rgba(255, 170, 0, 0.12);
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .wiki-vars-toggle {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 12px; cursor: pointer;
+            background: rgba(255, 170, 0, 0.05);
+            border-bottom: 1px solid rgba(255, 170, 0, 0.08);
+            transition: background 0.15s;
+        }
+        .wiki-vars-toggle:hover { background: rgba(255, 170, 0, 0.09); }
+
+        .wiki-vars-toggle-left {
+            display: flex; align-items: center; gap: 7px;
+            font-size: 10px; font-weight: 700; color: #ffa500;
+            text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .wiki-vars-badge {
+            background: rgba(255, 170, 0, 0.2); color: #ffa500;
+            padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800;
+        }
+        .wiki-vars-toggle-arrow {
+            color: #555; font-size: 11px; transition: transform 0.25s;
+            user-select: none;
+        }
+        .wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
+
+        .wiki-vars-body {
+            padding: 10px 12px; display: none;
+            flex-direction: column; gap: 8px;
+        }
+        .wiki-vars-body.visivel { display: flex; }
+
+        .wiki-vars-hint {
+            font-size: 10px; color: #555; padding: 4px 0;
+            border-bottom: 1px solid #1a1a1a; margin-bottom: 2px;
+            line-height: 1.5;
+        }
+        .wiki-vars-hint code {
+            background: rgba(255,170,0,0.12); color: #ffa500;
+            padding: 1px 4px; border-radius: 2px; font-size: 10px;
+        }
+
+        .wiki-vars-grid {
+            display: flex; flex-direction: column; gap: 6px;
+        }
+
+        .wiki-var-row {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .wiki-var-label {
+            background: rgba(255, 170, 0, 0.12);
+            color: #ffa500; font-size: 10px; font-weight: 700;
+            padding: 4px 8px; border-radius: 2px;
+            white-space: nowrap; min-width: 80px; text-align: center;
+            border: 1px solid rgba(255, 170, 0, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
+        .wiki-var-inp {
+            flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
+            padding: 5px 10px; border-radius: 2px;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            outline: none; transition: border-color 0.15s, background 0.15s;
+            min-width: 0;
+        }
+        .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
+        .wiki-var-inp::placeholder { color: #3a3a3a; }
+        .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
+
+        .wiki-vars-actions {
+            display: flex; gap: 6px; padding-top: 6px;
+            border-top: 1px solid #1a1a1a; flex-wrap: wrap;
+        }
+        .btn-vars-limpar {
+            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            padding: 4px 10px; border-radius: 2px; cursor: pointer;
+            font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s;
+        }
+        .btn-vars-limpar:hover { color: #ff5555; border-color: #ff5555; }
+        .wiki-vars-preview-wrap { display: none; }
+        .wiki-vars-preview-wrap.visivel { display: block; }
+        .wiki-vars-preview-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .wiki-vars-preview-pre {
+            background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1);
+            border-left: 3px solid rgba(0,255,136,0.4);
+            border-radius: 2px; padding: 8px 10px; overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace; font-size: 10px;
+            color: #b0e0b0; white-space: pre; line-height: 1.6;
+            max-height: 140px; overflow-y: auto;
+        }
+
         /* Blocos extras (blocos_codigo) */
         .wiki-blocos-section-title {
             padding: 10px 16px 4px; font-size: 10px; color: #444;
@@ -301,6 +407,7 @@
         }
         .wiki-toast.visivel { opacity: 1; transform: translateY(0); }
         .wiki-toast.erro { border-color: #ff5555; color: #ff5555; }
+        .wiki-toast.vars { border-color: #ffa500; color: #ffa500; }
     </style>
 </head>
 <body>
@@ -325,7 +432,9 @@
             </div>
         </div>
         <div class="terminal-footer">
+            {% if request.user.is_staff %}
             <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
+            {% endif %}
             <button class="btn-terminal" onclick="limparTela()">✕ Limpar Tela</button>
             <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
             <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
@@ -333,10 +442,7 @@
         </div>
     </div>
 
-    <div class="debug-panel" id="debugPanel" style="display:none;">
-        <div style="color:#00ff88;margin-bottom:5px;"><strong>DEBUG</strong></div>
-        <div id="debugOutput"></div>
-    </div>
+    <div class="debug-panel" id="debugPanel" style="display:none;"></div>
 
     <!-- WIKI SIDEBAR -->
     <div id="wikiSidebar" class="wiki-sidebar">
@@ -368,7 +474,7 @@
     function mostrarToast(msg, tipo) {
         const el = document.getElementById('wikiToast');
         el.textContent = msg;
-        el.className = 'wiki-toast' + (tipo === 'erro' ? ' erro' : '');
+        el.className = 'wiki-toast' + (tipo ? ` ${tipo}` : '');
         void el.offsetWidth;
         el.classList.add('visivel');
         clearTimeout(_toastTimer);
@@ -431,11 +537,207 @@
     }
 
     // ============================================================
+    // SISTEMA DE VARIÁVEIS  ← NOVO
+    // ============================================================
+    // Formato: #nomevariavel# dentro do código
+    const VAR_REGEX = /#([A-Za-z0-9_\-\.]+)#/g;
+
+    // Armazena valores: { "idx-varname": "valor" }
+    window._wikiVarsValues = {};
+
+    /**
+     * Detecta variáveis únicas no código.
+     * Retorna array de strings ex: ["vlan", "ip", "mask"]
+     */
+    function detectarVariaveis(codigo) {
+        const matches = [];
+        const seen = new Set();
+        let m;
+        const rx = new RegExp(VAR_REGEX.source, 'g');
+        while ((m = rx.exec(codigo)) !== null) {
+            if (!seen.has(m[1])) {
+                seen.add(m[1]);
+                matches.push(m[1]);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Aplica as variáveis salvas ao código.
+     * Substitui #varname# pelo valor definido.
+     * Variáveis sem valor são mantidas intactas.
+     */
+    function aplicarVariaveis(idx, codigo) {
+        let resultado = codigo;
+        const variaveis = detectarVariaveis(codigo);
+        variaveis.forEach(v => {
+            const chave = `${idx}-${v}`;
+            const valor = window._wikiVarsValues[chave];
+            if (valor !== undefined && valor !== '') {
+                resultado = resultado.replace(new RegExp(`#${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}#`, 'g'), valor);
+            }
+        });
+        return resultado;
+    }
+
+    /**
+     * Destaca variáveis no HTML do visualizador de código (span colorido).
+     */
+    function destacarVariaveisHtml(html) {
+        return html.replace(/#([A-Za-z0-9_\-\.]+)#/g,
+            '<span class="wiki-var-highlight">#$1#</span>');
+    }
+
+    /**
+     * Renderiza (ou atualiza) o painel de variáveis de um bloco.
+     */
+    function renderVariaveisPainel(idx) {
+        const codigo = window._wikiBlocosMap[idx] || '';
+        const variaveis = detectarVariaveis(codigo);
+        const bw = document.getElementById(`bw-${idx}`);
+        if (!bw) return;
+
+        // Remove painel anterior
+        const antigo = document.getElementById(`varspanel-${idx}`);
+        if (antigo) antigo.remove();
+
+        // Nenhuma variável → não renderiza
+        if (variaveis.length === 0) return;
+
+        const panel = document.createElement('div');
+        panel.className = 'wiki-vars-panel';
+        panel.id = `varspanel-${idx}`;
+
+        panel.innerHTML = `
+            <div class="wiki-vars-toggle" onclick="toggleVarsPanel(${idx})">
+                <div class="wiki-vars-toggle-left">
+                    <span>⚡</span>
+                    <span>Variáveis</span>
+                    <span class="wiki-vars-badge">${variaveis.length}</span>
+                </div>
+                <span class="wiki-vars-toggle-arrow" id="vars-arrow-${idx}">▼</span>
+            </div>
+            <div class="wiki-vars-body" id="vars-body-${idx}">
+                <div class="wiki-vars-hint">
+                    Preencha os valores para substituir <code>#variavel#</code> no código ao enviar ou copiar.
+                </div>
+                <div class="wiki-vars-grid" id="vars-grid-${idx}">
+                    ${variaveis.map(v => `
+                        <div class="wiki-var-row">
+                            <span class="wiki-var-label">#${esc(v)}#</span>
+                            <span class="wiki-var-arrow">→</span>
+                            <input
+                                class="wiki-var-inp"
+                                id="varinp-${idx}-${escAttr(v)}"
+                                placeholder="valor..."
+                                data-var="${escAttr(v)}"
+                                data-idx="${idx}"
+                                value="${esc(window._wikiVarsValues[`${idx}-${v}`] || '')}"
+                                oninput="onVarInput(${idx}, '${escJs(v)}', this)"
+                                onkeydown="if(event.key==='Enter'){enviarAoTerminal(${idx});}"
+                            >
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="wiki-vars-actions">
+                    <button class="btn-vars-limpar" onclick="limparVariaveis(${idx})">↺ Limpar valores</button>
+                </div>
+                <div class="wiki-vars-preview-wrap" id="vars-preview-wrap-${idx}">
+                    <div class="wiki-vars-preview-label">Pré-visualização</div>
+                    <pre class="wiki-vars-preview-pre" id="vars-preview-${idx}"></pre>
+                </div>
+            </div>`;
+
+        // Insere antes do footer (se existir) ou no fim do bloco
+        const footer = document.getElementById(`footer-${idx}`);
+        if (footer) {
+            bw.insertBefore(panel, footer);
+        } else {
+            // Para blocos extras (wiki-bloco-extra): insere antes do final
+            const footerGrande = bw.querySelector('.wiki-bloco-footer');
+            if (footerGrande) {
+                bw.insertBefore(panel, footerGrande);
+            } else {
+                bw.appendChild(panel);
+            }
+        }
+
+        // Estiliza campos que já têm valor
+        variaveis.forEach(v => {
+            const inp = document.getElementById(`varinp-${idx}-${v}`);
+            if (inp && inp.value) inp.classList.add('preenchido');
+        });
+    }
+
+    /**
+     * Abre/fecha o painel de variáveis.
+     */
+    function toggleVarsPanel(idx) {
+        const body = document.getElementById(`vars-body-${idx}`);
+        const arrow = document.getElementById(`vars-arrow-${idx}`);
+        if (!body) return;
+        const aberto = body.classList.toggle('visivel');
+        if (arrow) arrow.classList.toggle('aberto', aberto);
+    }
+
+    /**
+     * Chamado quando o usuário digita em um campo de variável.
+     */
+    function onVarInput(idx, varName, inputEl) {
+        const chave = `${idx}-${varName}`;
+        window._wikiVarsValues[chave] = inputEl.value;
+        inputEl.classList.toggle('preenchido', !!inputEl.value);
+        atualizarPreviewVariaveis(idx);
+    }
+
+    /**
+     * Atualiza a pré-visualização do código com variáveis substituídas.
+     */
+    function atualizarPreviewVariaveis(idx) {
+        const codigoOriginal = window._wikiBlocosMap[idx] || '';
+        const variaveis = detectarVariaveis(codigoOriginal);
+
+        // Verifica se tem pelo menos 1 variável preenchida
+        const algumPreenchido = variaveis.some(v => {
+            const val = window._wikiVarsValues[`${idx}-${v}`];
+            return val && val.trim();
+        });
+
+        const wrapPrev = document.getElementById(`vars-preview-wrap-${idx}`);
+        const pre = document.getElementById(`vars-preview-${idx}`);
+        if (!wrapPrev || !pre) return;
+
+        if (algumPreenchido) {
+            const codigoAplicado = aplicarVariaveis(idx, codigoOriginal);
+            pre.textContent = codigoAplicado;
+            wrapPrev.classList.add('visivel');
+        } else {
+            wrapPrev.classList.remove('visivel');
+        }
+    }
+
+    /**
+     * Limpa todos os valores de variáveis de um bloco.
+     */
+    function limparVariaveis(idx) {
+        const codigo = window._wikiBlocosMap[idx] || '';
+        const variaveis = detectarVariaveis(codigo);
+        variaveis.forEach(v => {
+            const chave = `${idx}-${v}`;
+            delete window._wikiVarsValues[chave];
+            const inp = document.getElementById(`varinp-${idx}-${v}`);
+            if (inp) { inp.value = ''; inp.classList.remove('preenchido'); }
+        });
+        const wrapPrev = document.getElementById(`vars-preview-wrap-${idx}`);
+        if (wrapPrev) wrapPrev.classList.remove('visivel');
+        mostrarToast('↺ Variáveis limpas', 'vars');
+    }
+
+    // ============================================================
     // WIKI — RENDERIZAR ARTIGO
     // ============================================================
-    // Contador global para IDs únicos de bloco (conteudo_html + blocos_codigo)
     let _blocoCounter = 0;
-    // Mapa: id -> texto original (para resetar)
     window._wikiBlocosMap = {};
 
     function renderizarArtigoWiki(artigo) {
@@ -443,28 +745,28 @@
         _blocoCounter = 0;
         window._wikiBlocosMap = {};
 
-        // Processar conteudo_html — injeta toolbar em cada <pre>
         const bodyHtml = processarConteudoWiki(artigo.conteudo_html || '');
 
-        // Blocos extras (blocos_codigo)
         let blocosHtml = '';
         if (artigo.blocos_codigo && artigo.blocos_codigo.length > 0) {
             blocosHtml = `<div class="wiki-blocos-section-title">Blocos de Código</div>`;
             blocosHtml += artigo.blocos_codigo.map(b => {
                 const idx = _blocoCounter++;
                 window._wikiBlocosMap[idx] = b.codigo;
+                const temVars = detectarVariaveis(b.codigo).length > 0;
                 return `
                 <div class="wiki-bloco-extra" id="bw-${idx}">
                     <div class="wiki-bloco-extra-header">
                         <strong>${esc(b.titulo)}</strong>
                         <div class="wiki-bloco-acoes">
                             <span class="wiki-bloco-lang">${esc(b.linguagem)}</span>
+                            ${temVars ? `<span class="wiki-bloco-lang" style="color:#ffa500;border-color:rgba(255,170,0,0.3);">⚡vars</span>` : ''}
                             ${toolbarBtns(idx)}
                         </div>
                     </div>
                     ${b.descricao ? `<p class="wiki-bloco-descricao">${esc(b.descricao)}</p>` : ''}
                     ${avisoEditar(idx)}
-                    <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${renderLinhas(esc(b.codigo))}</code></pre>
+                    <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${renderLinhasComVars(esc(b.codigo))}</code></pre>
                     ${editorWrap(idx)}
                     ${footerEditar(idx)}
                 </div>`;
@@ -492,17 +794,19 @@
                 ${blocosHtml}
             </div>`;
 
-        // Preencher textareas com o código original
+        // Preencher textareas e renderizar painéis de variáveis
         Object.entries(window._wikiBlocosMap).forEach(([idx, codigo]) => {
             const ed = document.getElementById(`ed-${idx}`);
             if (ed) { ed.value = codigo; autoResizeEditor(ed); }
+            // Renderizar painel de variáveis para todos os blocos
+            renderVariaveisPainel(parseInt(idx));
         });
 
         c.scrollTop = 0;
     }
 
     // ============================================================
-    // HELPERS DE HTML DOS BLOCOS (reutilizados nos dois contextos)
+    // HELPERS DE HTML DOS BLOCOS
     // ============================================================
     function toolbarBtns(idx) {
         return `
@@ -525,7 +829,7 @@
         return `<div class="wiki-codigo-editor-wrap" id="ew-${idx}">
             <textarea class="wiki-codigo-editor" id="ed-${idx}"
                 spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
-                oninput="autoResizeEditor(this)" onkeydown="editorKeydown(event)"></textarea>
+                oninput="autoResizeEditor(this);onEditorInput(${idx})" onkeydown="editorKeydown(event)"></textarea>
         </div>`;
     }
 
@@ -548,7 +852,6 @@
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
 
-        // Transformar headings
         tmp.querySelectorAll('h1,h2,h3,h4').forEach(h => {
             const texto = h.textContent;
             const novo = document.createElement('h2');
@@ -556,25 +859,28 @@
             h.replaceWith(novo);
         });
 
-        // Envolver cada <pre> com wrapper + toolbar
         tmp.querySelectorAll('pre').forEach(pre => {
             const idx = _blocoCounter++;
             const codeEl = pre.querySelector('code');
             const codigoOriginal = codeEl ? codeEl.textContent : pre.textContent;
             window._wikiBlocosMap[idx] = codigoOriginal;
 
-            // Numerar linhas
             const linhas = codigoOriginal.split('\n');
             if (linhas[linhas.length - 1] === '') linhas.pop();
             const linhasHtml = linhas.map(l =>
-                `<span class="ln"><span class="lc">${escStr(l)}</span></span>`
+                `<span class="ln"><span class="lc">${destacarVariaveisHtml(escStr(l))}</span></span>`
             ).join('');
+
+            const temVars = detectarVariaveis(codigoOriginal).length > 0;
 
             const wrapper = document.createElement('div');
             wrapper.className = 'wiki-code-wrapper';
             wrapper.id = `bw-${idx}`;
             wrapper.innerHTML = `
-                <div class="wiki-code-toolbar">${toolbarBtns(idx)}</div>
+                <div class="wiki-code-toolbar">
+                    ${temVars ? `<span style="color:#ffa500;font-size:10px;margin-right:auto;">⚡ ${detectarVariaveis(codigoOriginal).length} variável(is)</span>` : ''}
+                    ${toolbarBtns(idx)}
+                </div>
                 ${avisoEditar(idx)}
                 <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${linhasHtml}</code></pre>
                 ${editorWrap(idx)}
@@ -592,16 +898,24 @@
         return linhas.map(l => `<span class="ln"><span class="lc">${l}</span></span>`).join('');
     }
 
+    function renderLinhasComVars(codigoEsc) {
+        const linhas = codigoEsc.split('\n');
+        if (linhas[linhas.length - 1] === '') linhas.pop();
+        return linhas.map(l =>
+            `<span class="ln"><span class="lc">${destacarVariaveisHtml(l)}</span></span>`
+        ).join('');
+    }
+
     // ============================================================
     // EDITOR — toggle, resetar, resize, tab
     // ============================================================
     function toggleEditorBloco(idx) {
-        const pre = document.getElementById(`pre-${idx}`);
-        const ew  = document.getElementById(`ew-${idx}`);
-        const ft  = document.getElementById(`footer-${idx}`);
-        const av  = document.getElementById(`aviso-${idx}`);
-        const btn = document.getElementById(`btn-edit-${idx}`);
-        const ed  = document.getElementById(`ed-${idx}`);
+        const pre  = document.getElementById(`pre-${idx}`);
+        const ew   = document.getElementById(`ew-${idx}`);
+        const ft   = document.getElementById(`footer-${idx}`);
+        const av   = document.getElementById(`aviso-${idx}`);
+        const btn  = document.getElementById(`btn-edit-${idx}`);
+        const ed   = document.getElementById(`ed-${idx}`);
         const aberto = ew.classList.contains('visivel');
 
         if (aberto) {
@@ -623,6 +937,27 @@
         if (ed) { ed.value = original; autoResizeEditor(ed); mostrarToast('↺ Código restaurado ao original'); }
     }
 
+    /**
+     * Quando o editor é modificado, atualiza variáveis detectadas.
+     */
+    function onEditorInput(idx) {
+        const ed = document.getElementById(`ed-${idx}`);
+        if (!ed) return;
+        const novosCodigo = ed.value;
+        // Re-detecta variáveis com base no código editado
+        const varsAntes = detectarVariaveis(window._wikiBlocosMap[idx] || '');
+        const varsDepois = detectarVariaveis(novosCodigo);
+        // Se mudou a lista de variáveis, atualiza o painel
+        const mudou = JSON.stringify(varsAntes.sort()) !== JSON.stringify(varsDepois.sort());
+        if (mudou) {
+            // Salva o código temporariamente para re-detectar
+            const codigoSalvo = window._wikiBlocosMap[idx];
+            window._wikiBlocosMap[idx] = novosCodigo;
+            renderVariaveisPainel(idx);
+            window._wikiBlocosMap[idx] = codigoSalvo; // restaura original para reset
+        }
+    }
+
     function autoResizeEditor(el) {
         if (!el) return;
         el.style.height = 'auto';
@@ -640,41 +975,57 @@
     }
 
     // ============================================================
-    // PEGAR CÓDIGO (editor aberto ou visualizador)
+    // PEGAR CÓDIGO (editor aberto ou visualizador) + aplicar vars
     // ============================================================
     function getCodigoBloco(idx) {
+        let codigo = '';
+
         const ew = document.getElementById(`ew-${idx}`);
         if (ew && ew.classList.contains('visivel')) {
             const ed = document.getElementById(`ed-${idx}`);
-            return ed ? ed.value : '';
+            codigo = ed ? ed.value : '';
+        } else {
+            const cv = document.getElementById(`cv-${idx}`);
+            if (cv) {
+                const linhas = cv.querySelectorAll('.ln .lc');
+                if (linhas.length) {
+                    // Pega textContent de cada linha (remove HTML dos highlights)
+                    codigo = Array.from(linhas).map(l => l.textContent).join('\n');
+                } else {
+                    codigo = cv.textContent;
+                }
+            }
+            if (!codigo) codigo = window._wikiBlocosMap[idx] || '';
         }
-        // Extrai do visualizador renderizado
-        const cv = document.getElementById(`cv-${idx}`);
-        if (cv) {
-            const linhas = cv.querySelectorAll('.ln .lc');
-            if (linhas.length) return Array.from(linhas).map(l => l.textContent).join('\n');
-            return cv.textContent;
-        }
-        return window._wikiBlocosMap[idx] || '';
+
+        // ← APLICA VARIÁVEIS antes de retornar
+        return aplicarVariaveis(idx, codigo);
     }
 
     // ============================================================
-    // COPIAR
+    // COPIAR — avisa sobre variáveis não preenchidas
     // ============================================================
     function copiarBloco(btn, idx) {
         const codigo = getCodigoBloco(idx);
         if (!codigo) return;
+
+        // Avisa se ainda há variáveis não substituídas
+        const varsRestantes = detectarVariaveis(codigo);
+        if (varsRestantes.length > 0) {
+            mostrarToast(`⚡ ${varsRestantes.length} variável(is) sem valor: ${varsRestantes.map(v => '#'+v+'#').join(', ')}`, 'vars');
+        }
+
         navigator.clipboard.writeText(codigo).then(() => {
             const orig = btn.textContent;
             btn.textContent = '✓ Copiado!';
             btn.classList.add('copiado');
-            mostrarToast('⎘ Copiado para área de transferência');
+            if (varsRestantes.length === 0) mostrarToast('⎘ Copiado para área de transferência');
             setTimeout(() => { btn.textContent = orig; btn.classList.remove('copiado'); }, 2000);
         });
     }
 
     // ============================================================
-    // ENVIAR AO TERMINAL
+    // ENVIAR AO TERMINAL — avisa sobre variáveis não preenchidas
     // ============================================================
     function enviarAoTerminal(idx) {
         if (!terminalManager.activeTerminal) { mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return; }
@@ -683,6 +1034,16 @@
 
         const codigo = getCodigoBloco(idx);
         if (!codigo || !codigo.trim()) { mostrarToast('⚠ O código está vazio', 'erro'); return; }
+
+        // Avisa se ainda há variáveis não substituídas
+        const varsRestantes = detectarVariaveis(codigo);
+        if (varsRestantes.length > 0) {
+            mostrarToast(`⚡ Variáveis sem valor: ${varsRestantes.map(v=>'#'+v+'#').join(', ')}`, 'vars');
+            // Abre o painel de variáveis automaticamente
+            const body = document.getElementById(`vars-body-${idx}`);
+            if (body && !body.classList.contains('visivel')) toggleVarsPanel(idx);
+            return; // Bloqueia envio se há variáveis sem valor
+        }
 
         if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
             const linhas = codigo.split('\n');
@@ -715,6 +1076,12 @@
     function escStr(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
+    function escAttr(s) {
+        return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function escJs(s) {
+        return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');
+    }
 
     // ============================================================
     // RECONECTAR
@@ -742,15 +1109,7 @@
     // DEBUG
     // ============================================================
     const DEBUG = false; const debugLines = [];
-    function addDebug(msg) {
-        if (!DEBUG) return;
-        debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-        if (debugLines.length > 20) debugLines.shift();
-        const dp = document.getElementById('debugPanel');
-        if (dp) { dp.style.display = 'block'; const o = document.getElementById('debugOutput');
-            if (o) { o.innerHTML = debugLines.map(l => '<div class="debug-line">'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>').join(''); o.scrollTop = o.scrollHeight; } }
-        console.log(msg);
-    }
+    function addDebug(msg) { if (!DEBUG) return; console.log(msg); }
 
     // ============================================================
     // COLORIZAÇÃO
@@ -769,19 +1128,10 @@
         r = r.replace(/(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?/g, m => COLORS.IPV6+m+COLORS.RESET);
         r = r.replace(/\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi, m => COLORS.PROTOCOL+m+COLORS.RESET);
         r = r.replace(/\b(BFD|bfd)\b/g, m => COLORS.BFD+m+COLORS.RESET);
-        r = r.replace(/\b(network|Network|NETWORK)\b/g, m => COLORS.NETWORK+m+COLORS.RESET);
         r = r.replace(/\b(Established|established|ESTABLISHED)\b/g, m => COLORS.ESTABLISHED+m+COLORS.RESET);
         r = r.replace(/\b(Idle|idle|IDLE)(?!\()/g, m => COLORS.IDLE+m+COLORS.RESET);
         r = r.replace(/\b(Active|active|ACTIVE)\b/g, m => COLORS.ACTIVE+m+COLORS.RESET);
-        r = r.replace(/\b(ExStart|exstart|EXSTART)\b/g, m => COLORS.EXSTART+m+COLORS.RESET);
-        r = r.replace(/\b(Exchange|exchange|EXCHANGE)\b/g, m => COLORS.EXCHANGE+m+COLORS.RESET);
-        r = r.replace(/\b(Loading|loading|LOADING)\b/g, m => COLORS.LOADING+m+COLORS.RESET);
-        r = r.replace(/\b(Init|init|INIT)\b/g, m => COLORS.INIT+m+COLORS.RESET);
         r = r.replace(/\b(Down|down|DOWN)\b/g, m => COLORS.DOWN+m+COLORS.RESET);
-        r = r.replace(/\b(2-Way|2-way|2WAY)\b/g, m => COLORS.TWOWAY+m+COLORS.RESET);
-        r = r.replace(/\b(OpenSent|opensent|OPENSENT)\b/g, m => COLORS.OPEN_SENT+m+COLORS.RESET);
-        r = r.replace(/\b(OpenConfirm|openconfirm|OPENCONFIRM)\b/g, m => COLORS.OPEN_CONFIRM+m+COLORS.RESET);
-        r = r.replace(/\b(peer|Peer|PEER|neighbor|Neighbor|NEIGHBOR|neighbors|Neighbors|NEIGHBORS)\b/g, m => COLORS.KEYWORDS+m+COLORS.RESET);
         r = r.replace(/\b(up|Up|UP)\b/g, m => COLORS.UP+m+COLORS.RESET);
         return r;
     }
@@ -793,17 +1143,14 @@
         constructor() {
             this.terminals = new Map(); this.activeTerminal = null;
             this.tabCounter = 0; this.maxRetries = 3; this.retryDelay = 2000;
-            addDebug('🚀 TerminalManager inicializando...');
             this.verificarAcessoPendente();
             window.addEventListener('message', e => this.handleMessage(e));
             setInterval(() => this.limparTerminaisDesconectados(), 5000);
-            addDebug('✅ TerminalManager pronto');
         }
         verificarAcessoPendente() {
             try {
                 const p = localStorage.getItem('acessoPendente');
                 if (p) { const a = JSON.parse(p); localStorage.removeItem('acessoPendente'); setTimeout(() => this.abrirTerminal(a), 500); }
-                else { addDebug('⚠️ Nenhum acesso pendente'); }
             } catch(e) { addDebug('❌ ' + e.message); }
         }
         handleMessage(event) {
@@ -870,11 +1217,9 @@
             const tObj=this.terminals.get(terminalId); if(!tObj) return;
             const protocol=window.location.protocol==='https:'?'wss:':'ws:';
             const wsUrl=`${protocol}//${window.location.host}/ws/ssh/`;
-            addDebug('🔌 Conectando: '+wsUrl);
             try {
                 tObj.socket=new WebSocket(wsUrl);
                 tObj.socket.onopen=()=>{
-                    addDebug('✅ WS conectado');
                     tObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
                     tObj.wsRetries=0;
                     tObj.socket.send(JSON.stringify({action:'connect',acesso_id:tObj.acesso.id}));

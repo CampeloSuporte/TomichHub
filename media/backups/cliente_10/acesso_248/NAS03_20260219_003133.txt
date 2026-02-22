@@ -1,0 +1,719 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CONECTONLINE SERVICOS DE INFORMATICA E TELECOMUNICACOES LTDA - ME
+Equipamento: NAS03
+Host: 10.255.255.4:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 19/02/2026 00:31:33
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse
+[danilo@NAS-03-ESTRELINHA] > /export terse
+
+# feb/19/2026 00:31:28 by RouterOS 6.48.6
+# software id = 3BMX-X2K2
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 914F0B4DA4AD
+/interface bridge add name=bpgcorte
+/interface bridge add name=loopback-ospf
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment="PTP-SW-UBITQU
+I PORT-05"
+/interface vlan add interface=sfp-sfpplus1 name=vlan-2004-comunicacao-cgnat vlan-
+id=2204
+/interface vlan add comment="CLIENTE - PON-03" interface=sfp-sfpplus1 name=vlan-2
+703-PON2703-OLT-02 vlan-id=2703
+/interface vlan add comment="CLIENTE - PON-04" interface=sfp-sfpplus1 name=vlan-2
+704-PON2704-OLT-02 vlan-id=2704
+/interface vlan add comment="CLIENTE - PON-05" interface=sfp-sfpplus1 name=vlan-2
+705-PON2705-OLT-02 vlan-id=2705
+/interface vlan add comment="CLIENTE - PON-01" interface=sfp-sfpplus1 name=vlan-2
+801-PON2801 vlan-id=2801
+/interface vlan add comment="CLIENTE - PON-02" interface=sfp-sfpplus1 name=vlan-2
+802-PON2802 vlan-id=2802
+/interface vlan add comment="CLIENTE - PON-03" interface=sfp-sfpplus1 name=vlan-2
+803-PON2803 vlan-id=2803
+/interface vlan add comment="CLIENTE - PON-04" interface=sfp-sfpplus1 name=vlan-2
+804-PON2804 vlan-id=2804
+/interface vlan add comment="CLIENTE - PON-05" interface=sfp-sfpplus1 name=vlan-2
+805-PON2805 vlan-id=2805
+/interface vlan add comment="CLIENTE - PON-06" interface=sfp-sfpplus1 name=vlan-2
+806-PON2806 vlan-id=2806
+/interface vlan add comment="CLIENTE - PON-07" interface=sfp-sfpplus1 name=vlan-2
+807-PON2807 vlan-id=2807
+/interface vlan add comment="CLIENTE - PON-08" interface=sfp-sfpplus1 name=vlan-2
+808-PON2808 vlan-id=2808
+/ip pool add name=pool-local ranges=10.92.248.0/22
+/ip pool add name=pool-remoto ranges=10.82.248.0/22
+/ip pool add name=pgcorte ranges=10.5.0.2-10.5.3.254
+/ip pool add name=POOL-CGNAT ranges=100.64.4.0/22
+/ip pool add name=Local-1 ranges=10.64.4.0/23
+/ip pool add comment="100.64.4.1 AO 100.64.4.20 RESERVADO PARA FIXAR EM CLIENTE" 
+name=Remote-1 ranges=100.64.4.21-100.64.5.255
+/ip pool add comment=SGP-BLOQUEADOS name=bloqueados ranges=10.24.0.0/22
+/ipv6 pool add name=bloqueiov6pd prefix=2001:db9:100::/40 prefix-length=64
+/ipv6 pool add name=bloqueiov6prefix prefix=2001:dba:900::/40 prefix-length=64
+/ipv6 pool add name=POOL-PD prefix=2804:113c:9003:c000::/51 prefix-length=60
+/ipv6 pool add name=NDRA prefix=2804:113c:9003:e000::/51 prefix-length=64
+/ppp profile add change-tcp-mss=yes local-address=Local-1 name=pppoe-server on-do
+wn=":local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server binding remove [find server=\$servername]\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server remove [find numbers=\$user]" on-up=":local TOKEN \"1d43d
+76c-075b-4ec4-9b27-3078f14af46e\"\r\
+    \n:local ipnas \"10.0.34.2\"\r\
+    \n:local linksgp \"http://172.28.5.2:8000\"\r\
+    \n:local prefixo\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n:delay 30s\r\
+    \n:foreach binding in=[/ipv6 dhcp-server binding find status=\"bound\" server
+=\"\$servername\"] do={\r\
+    \n:set prefixo [/ipv6 dhcp-server binding get \$binding address]\r\
+    \n:log info \"IPV6 enviado para o SGP - Login: \$user \$linksgp/ws/radius/ipv
+6/update/\\\?token=\$TOKEN&username=\$user&app=mikrotik&nasip=\$ipnas&pd=\$prefi
+xo\"\r\
+    \n/tool fetch url=\"\$linksgp/ws/radius/ipv6/update/\\\?token=\$TOKEN&usernam
+e=\$user&app=mikrotik&nasip=\$ipnas&pd=\$prefixo\" mode=http as-value output=use
+r\r\
+    \n}" only-one=yes remote-address=Remote-1 use-upnp=yes
+/ppp profile add name=SGP-PLANO-ID19 rate-limit=220000k/410000k
+/ppp profile add name=SGP-PLANO-ID21 rate-limit=300000k/510000k
+/ppp profile add name=SGP-PLANO-ID25 rate-limit=400000k/630000k
+/ppp profile add name=SGP-PLANO-ID36 rate-limit=122880k/122880k
+/ppp profile add name=SGP-PLANO-ID1 rate-limit=60000k/110000k
+/ppp profile add name=SGP-PLANO-ID20 rate-limit=256000k/512000k
+/ppp profile add name=SGP-PLANO-ID2 rate-limit=60000k/105000k
+/ppp profile add name=SGP-PLANO-ID27 rate-limit=30000k/63000k
+/ppp profile add name=SGP-PLANO-ID26 rate-limit=40000k/70000k
+/ppp profile add name=SGP-PLANO-ID29 rate-limit=7000k/7000k
+/ppp profile add name=SGP-PLANO-ID18 rate-limit=204000k/408000k
+/ppp profile add name=SGP-BLOQUEADOS rate-limit=1k/1k remote-address=bloqueados
+/routing ospf area add area-id=100.64.4.0 name=area1-PPPoE
+/routing ospf instance set [ find default=yes ] name=nas-03 redistribute-connecte
+d=as-type-1 router-id=10.255.255.4
+/routing ospf-v3 instance set [ find default=yes ] redistribute-static=as-type-1 
+router-id=10.255.255.4
+/snmp community set [ find default=yes ] addresses=10.0.0.0/8,172.16.0.0/12,192.1
+68.0.0/16,100.64.0.0/10,172.96.12.155/32 name=acsinfo
+/snmp community add addresses=172.16.116.1/32,45.178.140.61/32 name=SGP-GRAPHICs
+/snmp community add addresses=::/0 name=TOMICH
+/ip firewall connection tracking set enabled=no
+/ip settings set rp-filter=strict
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2801-PON2801 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2801
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2802-PON2802 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2802
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2803-PON2803 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2803
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2804-PON2804 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2804
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2805-PON2805 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2805
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2806-PON2806 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2806
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2807-PON2807 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2807
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2808-PON2808 max-mru=1492 max-mtu=1492 one-session-
+per-host=yes service-name=service-vlan2808
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2705-PON2705-OLT-02 max-mru=1492 max-mtu=1492 one-s
+ession-per-host=yes service-name=service1
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2703-PON2703-OLT-02 max-mru=1492 max-mtu=1492 one-s
+ession-per-host=yes service-name=service2
+/interface pppoe-server server add authentication=pap default-profile=pppoe-serve
+r disabled=no interface=vlan-2704-PON2704-OLT-02 max-mru=1492 max-mtu=1492 one-s
+ession-per-host=yes service-name=service3
+/ip address add address=10.0.34.2/30 comment=COMUNICACAO-CGNAT interface=vlan-200
+4-comunicacao-cgnat network=10.0.34.0
+/ip address add address=10.255.255.4 comment=OSPF interface=loopback-ospf network
+=10.255.255.4
+/ip address add address=10.5.0.1/22 interface=bpgcorte network=10.5.0.0
+/ip address add address=191.241.72.8 disabled=yes interface=loopback-ospf network
+=191.241.72.8
+/ip cloud set ddns-enabled=yes ddns-update-interval=1m
+/ip dns set servers=10.10.10.10,10.10.10.11,2804:113c:ac00::1,2804:113c:ac00::2
+/ip firewall raw add action=notrack chain=output protocol=ospf
+/ip route add check-gateway=ping comment=route-default-cgnat distance=111 gateway
+=10.0.34.1
+/ip service set telnet disabled=yes
+/ip service set ftp address=172.31.255.2/32
+/ip service set www disabled=yes
+/ip service set ssh address=172.31.255.2/32,0.0.0.0/0 port=22002
+/ip service set api port=3540
+/ip service set winbox port=20583
+/ip service set api-ssl disabled=yes
+/ipv6 nd set [ find default=yes ] other-configuration=yes
+/ipv6 route add distance=1 dst-address=2804:113c:9003:c000::/50 type=unreachable
+/ppp aaa set interim-update=5m use-radius=yes
+/ppp secret add comment="SGP:JOSEFA DE FATIMA SOUZA SANTOS" disabled=yes name=jos
+efafatima056@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JHENIFFER LOPES LEITE" disabled=yes name=jhenifferlo
+pes130@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:KELMER MARCOS DE OLIVEIRA CASA DA MAE" disabled=yes 
+name=kelmermarcos054@fibra.pm password=12340 profile=SGP-PLANO-ID19 service=pppo
+e
+/ppp secret add comment="SGP:MAYCON DOS SANTOS VALERIO" disabled=yes name=maycons
+antos134@fibra.es password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LAIANE BATISTA SANTOS" disabled=yes name=laianebatis
+ta178@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JULIANA AUGUSTO BARBOSA EDUARDO" disabled=yes name=j
+ulianaaugusto121@fibra.sa password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:JESSICA RANGEL FERREIRA" disabled=yes name=jessicara
+ngel165@fibra.gv password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:MARA RUBIA FREITAS DE ALVARENGA" disabled=yes name=m
+ararubia075@fibra.mc password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ROBERSON GOULART DA SILVA" disabled=yes name=roberso
+ngoulart111@fibra.vr password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:EVALDO CRUZ FELIPE" disabled=yes name=evaldocruz129@
+fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALEXANDRE SIMOES LIMA" disabled=yes name=alexandresi
+moes172@fibra.sa password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ROWENA CRISTINA NORBERTTO DE ARAUJO" disabled=yes na
+me=rowenacristina135@fibra.ce password=12340 profile=SGP-PLANO-ID25 service=pppo
+e
+/ppp secret add comment="SGP:JOAO VITOR FABRI FERREIRA" disabled=yes name=joaovit
+or103@fibra.sc password=12340 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:JOSE RODOLPHO PEREIRA DE OLIVEIRA" disabled=yes name
+=joserodolpho142@fibra.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:RAQUEL DAS NEVES DE MARTIN" disabled=yes name=raquel
+neves123@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ANTONIO CARLOS NUNES" disabled=yes name=antoniocarlo
+s282@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LYSLEI KLASTNER VICENTE SALLES" disabled=yes name=ly
+sleiklastner121@fibra.ig password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:WELLINGTON CARVALHO AMORIM" disabled=yes name=wellin
+gtoncarvalho173@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:NAGIB SILVA FERREIRA" disabled=yes name=nagibsilva70
+7@fibra.sa password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:IVANA BARBOSA CARREIRO" disabled=yes name=ivanabarbo
+sa576@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JAQUELINE RODRIGUES" disabled=yes name=jaquelinerodr
+igues058@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ASSOCIACAO MISSIONARIA AGOSTINIANA CASA" disabled=ye
+s name=associacaocasa538@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=
+pppoe
+/ppp secret add comment="SGP:ALESSANDRA SANTOS AMORIM" disabled=yes name=alessand
+rasantos080@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:RAILSON NASCIMENTO DA ROCHA" disabled=yes name=rails
+onnascimento020@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:BRUNO RIBEIRO" disabled=yes name=brunoribeiro055@fib
+ra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:BERNADETE LIMA NUNES" disabled=yes name=bernadetelim
+a682@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ALESSANDRA ANDREA SILVA" disabled=yes name=alessandr
+aandrea505@fibra.sa password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:EDIMEA PEREIRA DO NASCIMENTO" disabled=yes name=edim
+eiapereira001@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:THIAGO PEREIRA DE OLIVEIRA" disabled=yes name=thiago
+pereira104@fibra.ca password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JUCILEI PEREIRA ROSA 2" disabled=yes name=jucelirosa
+074@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:INGRID DE ALVARENGA SILVA" disabled=yes name=ingrida
+lvarenga120@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:SANDRA MARCIA LOPES DE JESUS RAMOS" disabled=yes nam
+e=sandramarcia097@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:RAFAELA BATISTA MIRANDA" disabled=yes name=rafaelaba
+tista135@fibra.vr password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:HELIAMAR LAURA LEONEL RAYMUNDO" disabled=yes name=he
+liamarlaura559@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:IASMIN TEIXEIRA DE SOUZA" disabled=yes name=iasminte
+ixeira064@fibra.gv password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:BIANCA LOURENCO CARLOS CALHEIRO 2" disabled=yes name
+=biancacarlos120@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:DAYA SANTOS VITAL" disabled=yes name=dayasantos180@f
+ibra.mq password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:MELINA DE ARAUJO" disabled=yes name=melinaaraujo182@
+fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALICE MORETHZSON BRAGA" disabled=yes name=alicemoret
+hzson139@fibra.bv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:GIMENES CONTABIL LTDA" disabled=yes name=gimenescont
+abil@fibra.ce password=12340 profile=SGP-PLANO-ID36 remote-address=191.241.72.8 
+service=pppoe
+/ppp secret add comment="SGP:REGINA NORMA DE SOUZA RUAS SANTANA" disabled=yes nam
+e=reginanorma980@fibra.vr password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:PAULO CESAR PARAIZO PINTO" disabled=yes name=pauloce
+sar097@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CRISTIANY DE OLIVEIRA RESERVA 2" disabled=yes name=c
+ristianyreserva108@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JULIA BARAUNA FERNANDES LAMPERA" disabled=yes name=j
+uliabarauna226@fibra.mq password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:DIEGO PIEDADE GOMES DE SOUZA PINTO" disabled=yes nam
+e=diegopiedade047@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:TAIZA AMERICO SILVA" disabled=yes name=taizaamerico1
+64@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:VERA LUCIA MOREIRA" disabled=yes name=veralucia120@f
+ibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CARLO DAFOE ESTEVAO CASULA" disabled=yes name=carlod
+afoe153@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:THIAGO SAVIGNON" disabled=yes name=thiagosavignon107
+@fibra.sc password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JOZE BORGES" disabled=yes name=jozeborges109@fibra.s
+t password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:FELIPE PEREIRA PAIVA" disabled=yes name=felipepereir
+a077@fibra.vr password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JUCELIA ROCHA RIBEIRO" disabled=yes name=juceliaroch
+a151@fibra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JAMILE DE FREITAS OLIVEIRA" disabled=yes name=jamile
+freitas192@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:RAIMUNDO CONCEICAO CARVALHO" disabled=yes name=raimu
+ndoconceicao075@fibra.sa password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:SILVANA HELENA SOBRINHO" disabled=yes name=silvanahe
+lena117@fibra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ISABELY VITORIA LOPES FERREIRA" disabled=yes name=is
+abelyvitoria200@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARCIA RENATA DA SILVA GOLDNER" disabled=yes name=ma
+rciarenata126@fibra.bv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:LINDELANIA DE OLIVEIRA SOUSA" disabled=yes name=lind
+elaniaoliveira853@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LUCAS GONCALVES NUNES" disabled=yes name=lucasgoncal
+ves139@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:DIEGO ALVES DE ARAUJO" disabled=yes name=diegoalves1
+10@fibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARILENE GONCALVES FERREIRA HELAL" disabled=yes name
+=marilenegoncalves420@fibra.vr password=12340 profile=SGP-PLANO-ID21 service=ppp
+oe
+/ppp secret add comment="SGP:THAYNA FERNANDES BROZEGUINI" disabled=yes name=thayn
+afernandes159@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:KARENN RODRIGUES DOS SANTOS" disabled=yes name=karen
+nrodrigues217@fibra.gv password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:DARLIANA PEREIRA MORAES" disabled=yes name=darlianap
+ereira152@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LETICIA BERTE SIQUEIRA" disabled=yes name=leticiaber
+te055@fibra.vr password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP:WALBER VIEIRA DE SOUZA" disabled=yes name=walberviei
+ra001@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:TATIANA SOEIRO DE OLIVEIRA" disabled=yes name=tatian
+asoeiro172@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ERICSON MORAES DA SILVA" disabled=yes name=ericsonmo
+raes122@fibra.sa password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CLAUDIO MARCELO RODRIGUES MENDES" disabled=yes name=
+claudiomarcelo172@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:TATIANA COUTINHO LIMA" disabled=yes name=tatianacout
+inho055@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:REGINALDO VIEIRA LOPES" disabled=yes name=reginaldov
+ieira058@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LEONARDO LUIS DA SILVA" disabled=yes name=leonardolu
+is043@fibra.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:HELOARA ROSA FREITAS" disabled=yes name=heloararosa0
+05@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:DAMARES JOSE GONCALVES ANCELMO" disabled=yes name=da
+maresjose054@fibra.es password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:CAIO FERNANDO LIMA ALVES" disabled=yes name=caiofern
+ando162@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JANAINA RODRIGUES CARLOS" disabled=yes name=janainar
+odrigues055@fibra.vr password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP:CAUANE CONCEICAO CARVALHO" disabled=yes name=cauanec
+onceicao146@fibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:UALAS ROSTAN JESUS DOS SANTOS" disabled=yes name=ual
+asrostan141@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:GILMAR SEBASTIAO DO NASCIMENTO" disabled=yes name=gi
+lmarsebastiao756@fibra.vr password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:GENILZA BORGES SANTIAGO" disabled=yes name=genilzabo
+rges120@fibra.es password=12340 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:YARA SANTOS VALERIO" disabled=yes name=yarasantos156
+@fibra.es password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ALINE EDUARDO ATAIDE SILVA" disabled=yes name=alinee
+duardo139@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LIDIA MONTEIRO ALVARENGA" disabled=yes name=lidiamon
+teiro143@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:THAYS VIDAL DOS SANTOS" disabled=yes name=thaysvidal
+204@fibra.ig password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:WILSON  ROBERTO DE SOUZA" disabled=yes name=wilsonro
+berto470@fibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARCELA DALLA BERNARDINA" disabled=yes name=marcelad
+alla027@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:MEIRIELE DA SILVA BARRETO" disabled=yes name=meiriel
+esilva141@fibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ADILSON ARAUJO MONTEIRO" disabled=yes name=adilsonar
+aujo085@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ORGANIZACAO SOCIAL DO CENTRO HISTORICO DE VITORIA" d
+isabled=yes name=organizacaosocial273@fibra.vr password=12340 profile=SGP-PLANO-
+ID25 service=pppoe
+/ppp secret add comment="SGP:IZAUDENIRA DE PAULA LACERDA" disabled=yes name=izaud
+eniradepaula845@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:TOK UTIL" disabled=yes name=tokutil063@fibra.vr pass
+word=12340 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:EXECUTA PROCESSAMENTO DE  DADOS LTDA" disabled=yes n
+ame=executaprocessamento094@fibra.ce password=12340 profile=SGP-PLANO-ID19 servi
+ce=pppoe
+/ppp secret add comment="SGP:ANA JHULIA MARTINS" disabled=yes name=anajhulia205@f
+ibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:KARYNA LOSS CARVALHOSA VICTORIANO" disabled=yes name
+=karynaloss147@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:VINICIUS CAMPOS ALMADA" disabled=yes name=viniciusca
+mpos127@fibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALINE RODRIGUES NETO" disabled=yes name=alinerodrigu
+es082@fibra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JESSICA MATOS LOURENCO" disabled=yes name=jessicamat
+os144@fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALAN ROBERT COSTA ATAIDE" disabled=yes name=alanrobe
+rt172@fibra.gv password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:NADIA DE ARAUJO" disabled=yes name=nadiaaraujo133@fi
+bra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:VITORIA SANTOS BONFIM" disabled=yes name=vitoriasant
+os208@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JONATAS LUIZ CESARIO JUNIOR" disabled=yes name=jonat
+asluiz390@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:SALAO SHALOM" disabled=yes name=salaoshalom313@fibra
+.vr password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:IGREJA ASSEMBLEIA DE DEUS ADON HAKAVOD SENHOR DA GLO
+RIA" disabled=yes name=assembleiadeus410@fibra.ig password=12340 profile=SGP-PLA
+NO-ID25 service=pppoe
+/ppp secret add comment="SGP:ANTONIO MANOEL TAVARES" disabled=yes name=antonioman
+oel324@fibra.sa password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:ALESSANDRA NASCIMENTO" disabled=yes name=alessandran
+ascimento177@fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ROSANI PEREIRA" disabled=yes name=rosanipereira861@f
+ibra.ip password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:SILVANO MACHADO DE OLIVEIRA" disabled=yes name=silva
+nomachado022@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:WALDINEIA MONTEIRO ALVARENGA" disabled=yes name=wald
+ineiamonteiro053@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:PRISCILA DO NASCIMENTO CARNEIRO" disabled=yes name=p
+riscilanascimento105@fibra.ig password=12340 profile=SGP-PLANO-ID21 service=pppo
+e
+/ppp secret add comment="SGP:COMERCIAL CHARBEL LTDA" disabled=yes name=comercialc
+harbel284@fibra.vr password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:EVANILDA CONCEICAO RECLA DIOLINDO" disabled=yes name
+=evanildaconceicao813@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=ppp
+oe
+/ppp secret add comment="SGP:JULIANA MARIANO MATHEUS" disabled=yes name=julianama
+riano183@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ELISSANDRA  MONTEIRO COUTINHO PIMENTO" disabled=yes 
+name=elissandramonteiro123@fibra.st password=12340 profile=SGP-BLOQUEADOS servic
+e=pppoe
+/ppp secret add comment="SGP:NATHALIA DA SILVA LUNA" disabled=yes name=nathaliasi
+lva149@fibra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ADRIANA CAVALCANTI FARIAS DOS SANTOS" disabled=yes n
+ame=adrianacavalcanti093@fibra.es password=12340 profile=SGP-BLOQUEADOS service=
+pppoe
+/ppp secret add comment="SGP:LOHAINY ALVES DOS SANTOS" disabled=yes name=lohainya
+lves161@fibra.ig password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:KAMILY SILVA FRANKLIN" disabled=yes name=kamilysilva
+167@fibra.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:BRENDA NUNES DA VITORIA MEIRA" disabled=yes name=bre
+ndanunes158@fibra.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:TATIANA NUNES DE SOUZA" disabled=yes name=tatiananun
+es131@fibra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CHARLES BASTOS DE ALMEIDA" disabled=yes name=charles
+bastos168@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:MELINA DOS SANTOS" disabled=yes name=jesuinasantos09
+2@fibra.ig password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:ANA ADALIA ALVES RODRIGUES" disabled=yes name=anaada
+lia054@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ANA PAULA OLIVEIRA TEIXEIRA" disabled=yes name=anapa
+ula056@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CELINA MARIA PIVETTA" disabled=yes name=celinamaria7
+61@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:STEPHANY ALMEIDA SOUZA" disabled=yes name=stephanyal
+meida104@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:SAMUEL DOS SANTOS SOUZA" disabled=yes name=samuelsan
+tos190@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JHONY ALMEIDA GONCALVES" disabled=yes name=jhonyalme
+ida137@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:EFIGENIO ALEIXO NETO" disabled=yes name=efigenioalei
+xo100@fibra.es password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LAYZA MILENA DA SILVA VIEIRA" disabled=yes name=layz
+amilena198@fibra.sc password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:RAQUEL BRITO DE MORAIS" disabled=yes name=raquelbrit
+o125@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:THABATA LARISSA CANUTO DAMACENO" disabled=yes name=t
+habatalarissa154@fibra.es password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CHELISTON SANTOS" disabled=yes name=chelistonsantos1
+22@fibra.pd password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:PAULA CARVALHO DE CAMPOS MARTINS" disabled=yes name=
+paulacarvalho101@fibra.ig password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JACKLINNY NASCIMENTO" disabled=yes name=jacklinnynas
+cimento220@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARISA FLORES SOARES MOURA" disabled=yes name=marisa
+flores059@fibra.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CAUAN BORGES COVRE" disabled=yes name=cauanborges200
+@fibra.pm password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:TEREZA MARIA PEREIRA DE SOUZA" disabled=yes name=ter
+ezapereira017@fibra.vr password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:DANNUTA PIMENTEL E SILVA" disabled=yes name=dannutap
+imentel664@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:ROBERTO LUIZ DEFANTE FURLANE" disabled=yes name=robe
+rtoluiz575@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:KEVIN RANGEL MACHADO" disabled=yes name=kevinrangel1
+84@fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ATUAL ASSESSORIA CONTABIL LTDA" disabled=yes name=at
+ualassessoria005@fibra.sc password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:HINGRID FERRAZ DELL ANTONIO" disabled=yes name=hingr
+idferraz064@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:HAKYLLES GUSTAVO SANTOS OLIVEIRA" disabled=yes name=
+hakyllesgustavo112@fibra.mo password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:KARINE DIAS IGNACIO" disabled=yes name=karinedias080
+@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:TANIA MARIA CRIVILIN" disabled=yes name=taniamaria78
+8@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:UALACI HENRIQUE JUNIOR" disabled=yes name=ualacihenr
+ique116@fibra.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CLAUDIO HERLANIO C DE OLIVEIRA " disabled=yes name=c
+laudioherlanio043@fibra.ip password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP:GRES UNIDOS DA PIEDADE" disabled=yes name=gresunidos
+309@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CARIANA RODRIGUES BATISTA " disabled=yes name=carian
+erodrigues228@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:SINDIUPES - SINDICATO DOS TRABALHADORES EM EDUCACAO 
+PUBLICA DO ESPIRITO SANTO" disabled=yes name=sindiupes270@fibra.ce password=1234
+0 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:ALISSON DA SILVA MEIRELES " disabled=yes name=alisso
+nsilva402@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:LUCIANA MENEZES" disabled=yes name=lucianamenezes104
+@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LAILA ELEN GONCALVES BERNARDES" disabled=yes name=la
+ilaelen180@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARIA JOSE DE ALBUQUERQUE" disabled=yes name=mariajo
+se253@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:AMANDA DA SILVA MASCARENHAS" disabled=yes name=amand
+asilva175@fibra.fg password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP: MARCELO CALDERARI MIGUEL" disabled=yes name=marcelo
+calderari162@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ADRIANO HANTEQUESTE GOMES" disabled=yes name=adriano
+hantequeste194@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:NILTON RAMOS PEREIRA JUNIOR " disabled=yes name=nilt
+onramos147@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:LUCAS LISBOA PEREIRA ARAUJO" disabled=yes name=lucas
+lisboa122@fibra.vr password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:VANESSA FLORENCIO DA SILVA" disabled=yes name=vaness
+aflorencio363@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LUZINETE ROCHA" disabled=yes name=luzineterocha069@f
+ibra.mo password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ROBERT PEREIRA PORTO" disabled=yes name=robertpereir
+a098@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARCIA KELY FERREIRA DA SILVA" disabled=yes name=mar
+ciakely158@fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JULIA SILVA BARBOSA" disabled=yes name=juliasilva202
+@fibra.fg password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:ERCILIA WANZELER DE OLIVEIRA" disabled=yes name=erci
+liawanzeler027@fibra.pd password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP:KATIA OLIVEIRA DE SOUZA" disabled=yes name=katiaoliv
+eira090@fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:MAYARA AMORIM PEREIRA PINHEIRO" disabled=yes name=ma
+yaraamorim137@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MIRIAN ALVES" disabled=yes name=mirianalves125@fibra
+.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ASSOCIACAO DE DESENVOLVIMENTO AGRICOLA" disabled=yes
+ name=associacaodesenv924@fibra.ce password=12340 profile=SGP-PLANO-ID25 service
+=pppoe
+/ppp secret add comment="SGP: DAVID DE MOURA EUZEBIO" disabled=yes name=davidmour
+a139@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:JULIANO KLUPPEL " disabled=yes name=julianokluppel01
+6@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:NATHIELLY CIRQUEIRA DIAS" disabled=yes name=nathiell
+ycirqueira176@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:ELIESIO CARLOS PAIA" disabled=yes name=eliesiocarlos
+065@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:GILDSON DOS SANTOS" disabled=yes name=gildsonsantos0
+85@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:GLEICIELY DUARTE VARGAS" disabled=yes name=gleiciely
+duarte114@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:HERMES DEMARCHE" disabled=yes name=hermesdemarche899
+@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP: ELSON PEREIRA DA SILVA" disabled=yes name=elsonpere
+ira761@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:EWERTON BANDEIRA GUIMARAES" disabled=yes name=ewerto
+nbandeira839@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CHARLLES OLIVEIRA CAETANO " disabled=yes name=charll
+esoliveira141@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:LAIS OLIVEIRA VASCONCELLOS" disabled=yes name=laisol
+iveira191@fibra.pd password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:LEIA VENTURA SIQUEIRA" disabled=yes name=leiaventura
+813@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:LORRAYNE OLIVEIRA DA SILVA" disabled=yes name=lorray
+neoliveira188@fibra.pm password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARIA LUCIA BARROS OLIVEIRA" disabled=yes name=maria
+lucia005@fibra.ce password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:SUELEM CRISTINA DOS SANTOS " disabled=yes name=suele
+mcristina152@fibra.sc password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:OSMAR PAES DOS SANTOS" disabled=yes name=osmarpaes12
+5@fibra.ce password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MICHELLI FRANCISCO DA SILVA" disabled=yes name=miche
+llifrancisco170@fibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:MARIA LUCIA DE ARAUJO" disabled=yes name=marialucia0
+38@fibra.pm password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:RAPHAEL DELMIRO DA SILVA" disabled=yes name=raphaeld
+elmiro062@fibra.mq password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALNICIA VIEIRA MESSIAS" disabled=yes name=alniciavie
+ira124@fibra.pd password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP:ANDRE LUIZ ALVES MARETTO" disabled=yes name=andrelui
+z145@fibra.mo password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JOAB BATISTA DE ASSIS MIRANDA" disabled=yes name=joa
+bmiranda035@fibra password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:NATIELLE SOUZA DA SILVA" disabled=yes name=natielles
+ouza109@fibra.sc password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:LUPIO MODENESE" disabled=yes name=lupiomodenese024@f
+ibra.ce password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:GERALDO AVELINO DE SOUZA" disabled=yes name=geraldoa
+velino558@fibra.vr password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:AUTO SERVICO OURO NEGRO LTDA" disabled=yes name=ouro
+negro363@fibra.vb password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LEANDRO FERRAREZ NASCIMENTO" disabled=yes name=leand
+roferrarez195@fibra.pd password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:RAPHAEL ALVES BARROS" disabled=yes name=raphaelalves
+150@fibra.pm password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:TALITA RAFAELA CALHEIRO CAETANO" disabled=yes name=t
+alitarafaela058@fibra.st password=12340 profile=SGP-PLANO-ID1 service=pppoe
+/ppp secret add comment="SGP:DARIAN LIMA ALVES   LANCHONETE " disabled=yes name=d
+arianlima131@fibra.ce password=12340 profile=SGP-PLANO-ID20 service=pppoe
+/ppp secret add comment="SGP:PAULO JESUS DOS SANTOS" disabled=yes name=paulojesus
+099@fibra.bv password=12340 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:MAURO ROBERTO VIEIRA MUNIZ" disabled=yes name=mauror
+oberto144@fibra.pd password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:LORENA MOREIRA COSTA" disabled=yes name=lorenamoreir
+a194@fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:GRASIELE TEODORO ESTEVAN" disabled=yes name=grasiele
+teodoro119@fibra.ce password=12340 profile=SGP-PLANO-ID2 service=pppoe
+/ppp secret add comment="SGP:HELIO FRANCISCO" disabled=yes name=heliofrancisco214
+@fibra.ce password=12340 profile=SGP-PLANO-ID27 service=pppoe
+/ppp secret add comment="SGP:FABIOLA DOS SANTOS PAULO CORDEIRO" disabled=yes name
+=fabiolasantos053@fibra.fg password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:JAIANNY MILAGRES SGRANCIO" disabled=yes name=jaianny
+milagres123@fibra.sa password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:DARYANE SILVA DO NASCIMENTO" disabled=yes name=darya
+nesilva124@fibra.ip password=12340 profile=SGP-PLANO-ID27 service=pppoe
+/ppp secret add comment="SGP:MARCELO DAMACENO FERREIRA" disabled=yes name=marcelo
+damaceno052@fibra.pd password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALVANIA CELESTE FERREIRA ALVES MAURICIO" disabled=ye
+s name=alvaniaceleste699@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=
+pppoe
+/ppp secret add comment="SGP:MARCELO GONCALVES BELCHIOR" disabled=yes name=marcel
+ogoncalves030@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ROMULO BENEDITO PEREIRA CASA" disabled=yes name=romu
+lopereira845@fibra.fg password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ALDAIR JOSE DE JESUS  IGREJA " disabled=yes name=ald
+airjesus096@conect.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ROBERTO ROSARIO TORRES" disabled=yes name=robertoros
+ario832@fibra.fg password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:EDNA DOS SANTOS" disabled=yes name=ednasantos090@fib
+ra.pd password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:VANESSA NERY" disabled=yes name=vanessanery118@fibra
+.fg password=12340 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:LUCAS CORREA DOS SANTOS" disabled=yes name=lucascorr
+ea174@fibra.pd password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:MARCIA DA SILVA" disabled=yes name=marciasilva726@co
+nect.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:NELY ALVES" disabled=yes name=nelyalves008@fibra.st 
+password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:JOSE MARIA ALCANTARA  PEIXARIA " disabled=yes name=j
+osemaria364@peixaria.vr password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:ERIC LOPES DA SILVA" disabled=yes name=ericlopes145@
+fibra.st password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:PAULO CESAR FRANCISCO DOS SANTOS " disabled=yes name
+=paulocesar760@conect.st password=12340 profile=SGP-PLANO-ID21 service=pppoe
+/ppp secret add comment="SGP:CARLOS ALBERTO RAMOS RIBEIRO" disabled=yes name=carl
+osalberto967@cabral password=12340 profile=SGP-PLANO-ID26 service=pppoe
+/ppp secret add comment="SGP:BRUNO DOS SANTOS COELHO" disabled=yes name=brunosant
+os166@fibra.sa password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:WALTER MULULO" disabled=yes name=waltermululo054@con
+ect.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:EDERLAN LUIZ DA SILVA" disabled=yes name=ederlanluiz
+107@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:WILLIAN MAGNO DA SILVA" disabled=yes name=willianmag
+no059@conect.ip password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:CARLOS COUTINHO BENEDITO" disabled=yes name=carlosco
+utinho134@fibra.cb password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:ULYSSES VIEIRA DOS SANTOS" disabled=yes name=ulysses
+vieira094@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:RONIERE DOS SANTOS  RANGEL" disabled=yes name=ronier
+esantos101@fibra.st password=12340 profile=SGP-PLANO-ID25 service=pppoe
+/ppp secret add comment="SGP:AQUIANDERSON PEREIRA" disabled=yes name=aquianderson
+pereira860@fibra.st password=12340 profile=SGP-BLOQUEADOS service=pppoe
+/ppp secret add comment="SGP:GERALDO EDUARDO BARBOSA BRAGA" disabled=yes name=ger
+aldoeduardo119@fibra.ip password=12340 profile=SGP-PLANO-ID19 service=pppoe
+/ppp secret add comment="SGP:SUYANE DE FATIMA RIBEIRO NASCIMENTO" disabled=yes na
+me=suyanidefatina174@conect.net.ip password=12340 profile=SGP-PLANO-ID29 service
+=pppoe
+/ppp secret add comment="SGP:ASSOCIACAO MISSIONARIA AGOSTINIANA" disabled=yes nam
+e=associacaoagostiniana281sc password=12340 profile=SGP-PLANO-ID20 service=pppoe
+
+/ppp secret add comment="SGP:ASSOCIACAO MISSIONARIA AGOSTINIANA" disabled=yes nam
+e=associacaomissionaria281@sc password=12340 profile=SGP-PLANO-ID20 service=pppo
+e
+/ppp secret add comment="SGP:FILIPE AMBROZIO DA SILVA " disabled=yes name=filipea
+mbrozio122@conect.ip password=12340 profile=SGP-PLANO-ID18 service=pppoe
+/radius add address=172.28.5.2 comment="RADIUS SGP" secret=sgp@radius service=ppp
+,login,dhcp src-address=10.0.34.2 timeout=3s
+/radius add address=172.31.255.2 disabled=yes secret=123456 service=ppp timeout=3
+s
+/radius
+# timeout is set to longer than 3s, ppp authentication might time out
+add address=167.172.106.53 comment="ATIVAR APENAS SE O MKAUTH PARAR" disabled=yes
+ secret=testing123 service=ppp timeout=10s
+/radius incoming set accept=yes
+/routing ospf area range add area=area1-PPPoE range=100.64.4.0/23
+/routing ospf interface add interface=vlan-2004-comunicacao-cgnat network-type=po
+int-to-point
+/routing ospf network add area=backbone network=10.0.34.0/30
+/routing ospf network add area=backbone network=10.255.255.4/32
+/routing ospf network add area=area1-PPPoE network=100.64.4.0/23
+/routing ospf-v3 interface add area=backbone interface=vlan-2004-comunicacao-cgna
+t network-type=point-to-point
+/snmp set contact=acsinfoconsultoria@gmail.com enabled=yes location=brazil trap-c
+ommunity=SGP-GRAPHICs trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name=NAS-03-ESTRELINHA
+/system logging set 0 topics=info,!account
+/system ntp client set enabled=yes primary-ntp=200.160.0.8
+/system package update set channel=long-term
+/system scheduler add disabled=yes interval=4h name=sgp-aviso on-event=sgp-aviso 
+policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive start-date=jul
+/10/2023 start-time=01:00:00
+/system scheduler add interval=6h name=sgp_login_local on-event=sgp_login_local p
+olicy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-dat
+e=jul/10/2023 start-time=12:00:00
+/system scheduler add disabled=yes interval=1d name=reboot on-event="/system rebo
+ot\r\
+    \ny" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon 
+start-date=jul/31/2025 start-time=03:32:01
+/system script add dont-require-permissions=no name=sgp-aviso owner=sgp policy=ft
+p,reboot,read,write,policy,test,password,sniff,sensitive source=":log info \"sgp
+ aviso\";\r\
+    \n/file remove [find where name=sgp_aviso.rsc]\r\
+    \n/tool fetch url=\"https://conectonline.sgp.tsmx.com.br/ws/mikrotik/aviso/pe
+ndencia/\\\?token=1d43d76c-075b-4ec4-9b27-3078f14af46e&app=mikrotik\" dst-path=s
+gp_aviso.rsc;\r\
+    \n:delay 30s\r\
+    \nimport file-name=sgp_aviso.rsc;\r\
+    \n:delay 10s;\r\
+    \n/ip firewall address-list set timeout=00:15:00 [/ip firewall address-list f
+ind list=BLOQUEIO-AVISAR]"
+/system script add dont-require-permissions=no name=sgp_login_local owner=SGP pol
+icy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":gl
+obal filename \"sgp_login_local.txt\";\r\
+    \n/file remove [/file find name=\$filename]\r\
+    \n/tool fetch url=\"https://conectonline.sgplocal.com.br/ws/mikrotik/login/lo
+cal/\\\?token=1d43d76c-075b-4ec4-9b27-3078f14af46e&app=mikrotik&nas=10.0.34.2&di
+sabled=1\" duration=30 dst-path=\$filename;\r\
+    \n:delay 32s;\r\
+    \n/import file-name=\$filename;"
+/tool netwatch add down-script="Mkauth Down" host=172.31.255.2 timeout=7s up-scri
+pt="Mkauth Up"
+/tool netwatch add comment="ATIVAR O SECRETS CASO O RADIUS PARE" disabled=yes dow
+n-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ enable \$i 
+}; /ppp active; :foreach p in [find \\ radius=no comment~\"SGP:\"] do={ remove \
+$p; :delay 1};" host=172.16.116.1 interval=3m timeout=10s up-script="/ppp secret
+ ; :foreach i in [ find comment~\"SGP:\" ] do={ disable \$i }; /ppp active; :for
+each p in [find \\ radius=no comment~\"SGP:\"] do={ remove \$p; :delay 1};"
+/tool romon set enabled=yes secrets=net.10
+/user aaa set use-radius=yes
+
+[danilo@NAS-03-ESTRELINHA] >                                                   

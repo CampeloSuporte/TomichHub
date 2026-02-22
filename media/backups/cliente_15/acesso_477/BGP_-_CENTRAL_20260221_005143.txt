@@ -1,0 +1,515 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFORTECLINE COM TELECOMUNICAÇAO IMP. E EXP. LTDA
+Equipamento: BGP - CENTRAL
+Host: 191.243.96.1:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 21/02/2026 00:51:43
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/
+
+[tomich@BGP] > /                                                               
+[tomich@BGP] > /e
+
+[tomich@BGP] > /e                                                              
+[tomich@BGP] > /ex
+
+[tomich@BGP] > /ex                                                             
+[tomich@BGP] > /exp
+
+[tomich@BGP] > /exp                                                            
+[tomich@BGP] > /expo
+
+[tomich@BGP] > /expo                                                           
+[tomich@BGP] > /expor
+
+[tomich@BGP] > /expor                                                          
+[tomich@BGP] > /export
+
+[tomich@BGP] > /export                                                         
+[tomich@BGP] > /export 
+
+[tomich@BGP] > /export                                                         
+[tomich@BGP] > /export t
+
+[tomich@BGP] > /export t                                                       
+[tomich@BGP] > /export te
+
+[tomich@BGP] > /export te                                                      
+[tomich@BGP] > /export ter
+
+[tomich@BGP] > /export ter                                                     
+[tomich@BGP] > /export ters
+
+[tomich@BGP] > /export ters                                                    
+[tomich@BGP] > /export terse
+
+[tomich@BGP] > /export terse                                                   
+[tomich@BGP] > /export terse
+[tomich@BGP] > /export terse
+
+# feb/04/2026 04:50:04 by RouterOS 6.49.18
+# software id = 3KZH-RJPF
+#
+# model = CCR1036-8G-2S+
+# serial number = D8370DFEFC47
+/interface bridge add admin-mac=32:C2:B4:61:92:3C auto-mac=no name=bridge-server
+/interface bridge add admin-mac=E2:52:34:3B:05:7D auto-mac=no name=loopback
+/interface ethernet set [ find default-name=ether3 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full comment="OLT FITNETWORKS" name=ether3-
+ptp-borda-olt
+/interface ethernet set [ find default-name=ether4 ] comment=SEDE_6 name=ether4-p
+tp-sede_6
+/interface ethernet set [ find default-name=ether5 ] name=ether5-ptp-borda-servid
+or_topsapp
+/interface ethernet set [ find default-name=ether6 ] advertise=100M-full,1000M-fu
+ll comment=SERVIDOR_ZABBIX name=ether6-ptp2-borda-servidor-topsapp
+/interface ethernet set [ find default-name=ether7 ] advertise=100M-full,1000M-fu
+ll comment="SERVIDOR TOPSAPP" name=ether7-ptp-borda-servidor_zabbix
+/interface ethernet set [ find default-name=ether8 ] comment="SERVIDOR DE VELOCID
+ADE" name=ether8-ptp-borda-servidor_velocidade
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment="SWITCH PRINCI
+PAL"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name=sfp1
+/interface vlan add comment="!.. WIRELINK-IPV4" disabled=yes interface=sfp1 name=
+sfp1_vlan136-link_wirelink_v4 vlan-id=136
+/interface vlan add comment="!.. WIRELINK-IPV6" disabled=yes interface=sfp1 name=
+sfp1_vlan137-link_wirelink_v6 vlan-id=137
+/interface vlan add interface=sfp-sfpplus2 name=vlan3200-WAN-ONLINE-TELECOM vlan-
+id=3200
+/interface vlan add disabled=yes interface=sfp-sfpplus2 name=vlan3500-PPPoE01-SED
+E-01 vlan-id=3500
+/interface vlan add disabled=yes interface=sfp-sfpplus2 name=vlan3501-PPPoE02 vla
+n-id=3501
+/interface vlan add interface=sfp-sfpplus2 name=vlan3502-PPPoE vlan-id=3502
+/ip pool add name=wireless-01 ranges=192.168.50.2-192.168.50.253,192.168.51.2-192
+.168.51.253
+/ip pool add name=dhcp_pool1 ranges=192.168.1.2-192.168.1.6
+/ip pool add name=dhcp_pool2 ranges=192.168.254.2-192.168.254.6
+/ip pool add name=dhcp_pool3 ranges=192.254.254.2-192.254.254.254
+/ip pool add name=dhcp_pool4 ranges=191.243.96.10-191.243.96.14
+/ip pool add name=Pool-VPN ranges=10.40.1.2-10.40.1.10
+/ip pool add name=dhcp_pool5 ranges=191.243.96.2-191.243.96.6
+/ip pool add name=pool-vpn-ipv4 ranges=10.64.253.2-10.64.253.200
+/ip dhcp-server add address-pool=dhcp_pool5 authoritative=after-2sec-delay disabl
+ed=no interface=bridge-server name=dhcp1
+/ppp profile set *0 only-one=yes use-upnp=yes
+/ppp profile add change-tcp-mss=yes dns-server=191.243.96.2,8.8.8.8 local-address
+=10.40.1.1 name=VPN-IN remote-address=Pool-VPN use-compression=no use-encryption
+=yes
+/ppp profile add change-tcp-mss=yes local-address=10.64.253.1 name=profile-vpn on
+ly-one=yes remote-address=pool-vpn-ipv4 use-upnp=yes
+/ppp profile add dns-server=8.8.8.8 local-address=10.10.10.1 name=profile1-PPPoE-
+TEST remote-address=191.243.100.160
+/ppp profile set *FFFFFFFE dns-server=191.243.96.2,8.8.8.8 only-one=yes use-upnp=
+yes
+/routing bgp instance add as=263501 client-to-client-reflection=no name=IFL route
+r-id=200.231.70.2
+/routing ospf instance set [ find default=yes ] distribute-default=always-as-type
+-1 router-id=10.64.255.1
+/routing ospf-v3 instance set [ find default=yes ] distribute-default=always-as-t
+ype-1 router-id=10.64.255.1
+/snmp community set [ find default=yes ] disabled=yes
+/snmp community add addresses=::/0 disabled=yes name=M4tr1Xc0rP
+/snmp community add addresses=::/0 name=TOMICH
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/user group add name=null
+/dude set enabled=yes
+/interface bridge port add bridge=bridge-server hw=no interface=ether6-ptp2-borda
+-servidor-topsapp
+/interface bridge port add bridge=bridge-server disabled=yes interface=ether5-ptp
+-borda-servidor_topsapp
+/interface bridge port add bridge=bridge-server hw=no interface=ether7-ptp-borda-
+servidor_zabbix
+/interface bridge port add bridge=bridge-server disabled=yes interface=ether8-ptp
+-borda-servidor_velocidade
+/ip firewall connection tracking set enabled=yes generic-timeout=2m icmp-timeout=
+3s tcp-established-timeout=30m
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface l2tp-server server set default-profile=VPN-IN enabled=yes ipsec-secret
+=102030 use-ipsec=yes
+/interface pppoe-server server add default-profile=profile1-PPPoE-TEST disabled=n
+o interface=ether8-ptp-borda-servidor_velocidade
+/interface pptp-server server set authentication=pap,chap,mschap1,mschap2 default
+-profile=VPN-IN
+/ip address add address=191.243.96.1/28 comment="IPS - SERVIDORES" interface=brid
+ge-server network=191.243.96.0
+/ip address add address=10.201.100.1/28 comment="OLT - FIT NETWORKS" interface=et
+her3-ptp-borda-olt network=10.201.100.0
+/ip address add address=10.64.255.1 comment=LOOPBACK interface=loopback network=1
+0.64.255.1
+/ip address add address=172.10.0.1/30 comment=PPPoE-01 disabled=yes interface=vla
+n3500-PPPoE01-SEDE-01 network=172.10.0.0
+/ip address add address=10.250.26.2/30 comment="WAN - ONLINE TELECOM" interface=v
+lan3200-WAN-ONLINE-TELECOM network=10.250.26.0
+/ip address add address=172.10.1.1/30 comment=PPPoE-02 disabled=yes interface=vla
+n3501-PPPoE02 network=172.10.1.0
+/ip address add address=10.77.77.1/30 interface=ether1 network=10.77.77.0
+/ip address add address=172.10.2.1/30 comment="PPPoE SERVER - BNG" interface=vlan
+3502-PPPoE network=172.10.2.0
+/ip address add address=191.243.96.16 comment="ACESSO BNG" interface=loopback net
+work=191.243.96.16
+/ip address add address=192.168.1.1/24 interface=ether2 network=192.168.1.0
+/ip address add address=192.168.100.1/24 interface=ether2 network=192.168.100.0
+/ip address add address=192.168.8.1/24 interface=ether2 network=192.168.8.0
+/ip dhcp-server lease add address=191.243.96.4 comment=Zabbix mac-address=34:E6:D
+7:FB:D5:A6 server=dhcp1
+/ip dhcp-server lease add address=191.243.96.6 comment=Velocidades mac-address=F0
+:4D:A2:E7:1D:E0 server=dhcp1
+/ip dhcp-server network add address=191.243.96.0/29 comment=Servidores gateway=19
+1.243.96.1
+/ip dns set cache-size=4096KiB max-udp-packet-size=512 servers=8.8.8.8
+/ip firewall address-list add address=10.11.11.0/24 list=NAT-IPS-PRIVADOS
+/ip firewall address-list add address=10.64.107.0/29 list=NAT-IPS-PRIVADOS
+/ip firewall address-list add address=172.10.0.0/24 list=NAT-IPS-PRIVADOS
+/ip firewall address-list add address=191.243.96.0/20 list=SEM-NAT
+/ip firewall address-list add address=172.10.1.0/30 list=NAT-IPS-PRIVADOS
+/ip firewall address-list add address=100.64.0.0/10 list=NAT-IPS-PRIVADOS
+/ip firewall address-list add address=10.77.77.0/30 list=NAT-IPS-PRIVADOS
+/ip firewall filter add action=fasttrack-connection chain=forward connection-stat
+e=established,related
+/ip firewall filter add action=accept chain=forward connection-state=established,
+related
+/ip firewall filter add action=drop chain=forward connection-state=invalid
+/ip firewall filter add action=add-src-to-address-list address-list=PORTSCAN addr
+ess-list-timeout=1w3d chain=input comment="DETECTA PORTSCAN" in-interface=vlan32
+00-WAN-ONLINE-TELECOM protocol=tcp psd=21,3s,3,1
+/ip firewall filter add action=add-src-to-address-list address-list=rede-suporte 
+address-list-timeout=1d chain=input comment="TOC TOC ANTIGO" disabled=yes dst-po
+rt=4255 protocol=tcp
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA CONEX\D5
+ES ESTABELECIDAS OU RELACIONADAS" connection-state=established,related disabled=
+yes
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA REDE SUP
+ORTE" disabled=yes src-address-list=rede-suporte
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA 100 ICMP
+S POR SEG" disabled=yes limit=100,5:packet protocol=icmp
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA OSPF" di
+sabled=yes protocol=ospf
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA L2TP" di
+sabled=yes dst-port=1701,4500,500 protocol=udp
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA IPSEC" d
+isabled=yes protocol=ipsec-esp
+/ip firewall filter add action=accept chain=input comment="!==! - ACEITA BGP PARA
+ LISTA DE LIBERADOS" disabled=yes port=179 protocol=tcp src-address-list=liberad
+os-bgp
+/ip firewall filter add action=accept chain=forward comment="!==! ACEITA REDE SUP
+ORTE" disabled=yes dst-address-list=rede-local-geral src-address-list=rede-supor
+te
+/ip firewall filter add action=accept chain=forward comment="liberado geral" disa
+bled=yes dst-address-list=Acesso_Liberado_Firewall
+/ip firewall filter add action=accept chain=forward comment="!==! LIBERA ACESSO P
+ORTAS BAIXAS" disabled=yes dst-address-list=Aceita_Externo_Publica
+/ip firewall filter add action=drop chain=forward comment="!==! DROP PORTAS BAIXA
+S TCP" connection-state=new disabled=yes dst-address-list=rede-local-geral dst-p
+ort=0-1023,1900,8291 protocol=tcp src-address-list=!rede-local-geral
+/ip firewall filter add action=drop chain=forward comment="!==! DROP PORTAS BAIXA
+S UDP" connection-state=new disabled=yes dst-address-list=rede-local-geral dst-p
+ort=0-1023,1900,8291 protocol=udp src-address-list=!rede-local-geral
+/ip firewall filter add action=drop chain=input comment="!==! - DROP GERAL" disab
+led=yes src-address-list=!rede-local-geral
+/ip firewall mangle add action=accept chain=prerouting disabled=yes src-address=1
+91.243.104.6
+/ip firewall mangle add action=accept chain=prerouting comment="Aceita Local" dis
+abled=yes dst-address-list=Local src-address-list=Local
+/ip firewall mangle add action=accept chain=prerouting comment=TOPSAPP disabled=y
+es src-address=172.16.10.0/24
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PPPoE - BNG" dst
+-address=191.243.96.1 dst-port=59292 protocol=tcp to-addresses=172.10.2.2 to-por
+ts=29291
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO COTIJUBA - OLT 0
+2" dst-address=191.243.96.1 dst-port=40500 protocol=tcp to-addresses=172.31.120.
+2 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO COTIJUBA - OLT 0
+2" dst-address=191.243.96.1 dst-port=40501 protocol=tcp to-addresses=172.31.140.
+2 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO CENTRAL - OLT 01
+" dst-address=191.243.96.1 dst-port=40502 protocol=tcp to-addresses=10.65.66.2 t
+o-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO CENTRAL - OLT 04
+" dst-address=191.243.96.1 dst-port=40504 protocol=tcp to-addresses=10.192.197.1
+0 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO CENTRAL - OLT 05
+" dst-address=191.243.96.1 dst-port=40505 protocol=tcp to-addresses=172.31.130.2
+ to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO JURUNAS - OLT VS
+OL GPON 8P" dst-address=191.243.96.1 dst-port=40506 protocol=tcp to-addresses=10
+.192.196.2 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO MIMOSA - AP - JU
+RUNAS - ILHA COMBU" disabled=yes dst-address=191.243.96.1 dst-port=40507 protoco
+l=tcp to-addresses=192.168.1.20 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO MIMOSA - AP - JU
+RUNAS - ILHA COMBU" dst-address=191.243.96.1 dst-port=40507 protocol=tcp to-addr
+esses=10.192.196.5 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO SW JURUNAS" dst-
+address=191.243.96.1 dst-port=40508 protocol=tcp to-addresses=10.192.195.2 to-po
+rts=8291
+/ip firewall nat add action=accept chain=srcnat comment=TopSapp src-address=191.2
+43.96.2
+/ip firewall nat add action=accept chain=srcnat comment=TopSapp src-address=191.2
+43.96.3
+/ip firewall nat add action=accept chain=srcnat comment=TopSapp dst-address=191.2
+43.96.3
+/ip firewall nat add action=accept chain=srcnat comment=TopSapp dst-address=191.2
+43.96.2
+/ip firewall nat add action=masquerade chain=srcnat comment="Acesso TOPSAP via Se
+de IFL" dst-address=172.16.10.2 src-address=191.243.97.12
+/ip firewall nat add action=dst-nat chain=dstnat comment="SSH PBX" dst-address=19
+1.243.104.1 dst-port=22 protocol=tcp to-addresses=10.60.200.2
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTE SW-OLT-CENTRAL-0
+2" dst-address=191.243.104.1 dst-port=8045 protocol=tcp to-addresses=172.31.130.
+2 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="SSH PBX" disabled=yes d
+st-address=191.243.96.1 dst-port=8083 protocol=tcp to-addresses=192.168.8.100 to
+-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO CENTRAL - OLT 03
+" dst-address=191.243.96.1 dst-port=40503 protocol=tcp to-addresses=172.31.120.6
+ to-ports=443
+/ip firewall nat add action=src-nat chain=srcnat comment="SSH PBX" disabled=yes d
+st-address=192.168.8.100 to-addresses=192.168.8.1
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO GUARAJA MIRIM" d
+st-port=9293 protocol=tcp to-addresses=10.192.197.2 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO OLT VSOL CENTRAL
+ - GPON 4 PORTAS" dst-port=9294 protocol=tcp to-addresses=10.192.197.10 to-ports
+=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO GUAJARA MIRIM OL
+T C-DATA" dst-port=31977 protocol=tcp to-addresses=10.192.197.6 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PTP ILHA DO CUMB
+O AIRFIBER" dst-address=191.243.96.1 dst-port=31978 protocol=tcp to-addresses=10
+.192.194.5 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO - VAI QUEM QUER 
+- OLT Optfocus" dst-address=191.243.96.1 dst-port=31980 protocol=tcp to-addresse
+s=192.168.100.100 to-ports=80
+/ip firewall nat add action=src-nat chain=srcnat dst-address=192.168.100.100 to-a
+ddresses=192.168.100.1
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PTP ILHA DO CUMB
+O MIMOSA C6X" dst-address=191.243.96.1 dst-port=31979 protocol=tcp to-addresses=
+192.168.1.20 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PTP ILHA DO CUMB
+O MIMOSA C6X" dst-address=191.243.96.1 dst-port=31981 protocol=tcp to-addresses=
+192.168.1.21 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO OLT EM CONFIGURA
+\C7\C3O" dst-address=191.243.96.1 dst-port=31982 protocol=tcp to-addresses=10.19
+2.197.6 to-ports=443
+/ip firewall nat add action=src-nat chain=srcnat comment="REMOTO OLT EM CONFIGURA
+\C7\C3O" dst-address=192.168.8.200 to-addresses=192.168.8.1
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO ANTENAS COTIJUBA
+ UBIQUITI" dst-port=28081 protocol=tcp to-addresses=10.192.194.3 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO ANTENAS COTIJUBA
+ UBIQUITI" dst-port=433 protocol=tcp to-addresses=10.192.194.2 to-ports=433
+/ip firewall nat add action=netmap chain=srcnat src-address=10.10.10.0/24 to-addr
+esses=191.243.96.1
+/ip firewall raw add action=notrack chain=output comment="!==! - OSPF FORA DA CON
+NTRACK" protocol=ospf
+/ip firewall raw add action=drop chain=prerouting comment="DETECTA PORTSCAN" src-
+address-list=PORTSCAN
+/ip firewall raw add action=drop chain=prerouting comment="!==! - DESCARTA RECEBI
+MENTO DE PACOTES ORIGINADOS LOCALMENTE VIA OSPF" disabled=yes dst-address-type=m
+ulticast protocol=ospf src-address-type=local
+/ip firewall raw add action=add-src-to-address-list address-list=estagio1-rede-su
+porte address-list-timeout=3s chain=prerouting comment="!==! - PEGA IP PARA ESTA
+GIO 1 DA REDE SUPORTE" disabled=yes dst-address-type=local dst-port=2412 protoco
+l=tcp
+/ip firewall raw add action=add-src-to-address-list address-list=estagio2-rede-su
+porte address-list-timeout=3s chain=prerouting comment="!==! - PEGA IP PARA ESTA
+GIO 2 DA REDE SUPORTE" disabled=yes dst-address-type=local dst-port=1224 protoco
+l=tcp src-address-list=estagio1-rede-suporte
+/ip firewall raw add action=add-src-to-address-list address-list=rede-suporte add
+ress-list-timeout=3h chain=prerouting comment="!==! - PEGA IP PARA REDE SUPORTE"
+ disabled=yes dst-address-type=local dst-port=1147 protocol=tcp src-address-list
+=estagio2-rede-suporte
+/ip route add check-gateway=ping distance=1 dst-address=10.64.69.0/24 gateway=172
+.10.2.2
+/ip route add check-gateway=ping comment="CENTRAL - OLT 1" distance=1 dst-address
+=10.65.66.0/24 gateway=172.10.2.2
+/ip route add distance=1 dst-address=10.192.194.0/24 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="IPS COTIJUBA" distance=1 dst-address=10
+.192.194.0/27 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="IPS JURUNAS" distance=1 dst-address=10.
+192.195.0/27 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="ROTAS JURUNAS" distance=111 dst-address
+=10.192.196.0/24 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="OLT GUARAJA MIRIM" distance=111 dst-add
+ress=10.192.197.4/30 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="PPPoE - BNG - OLT VSOL GPON 4 PORTAS CE
+NTRAL" distance=111 dst-address=10.192.197.10/32 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="NEXT-HOP ONLINE TELECOM" distance=1 dst
+-address=10.255.0.20/32 gateway=10.250.26.1
+/ip route add check-gateway=ping comment="COTIJUBA - OLT 2" distance=1 dst-addres
+s=172.31.120.0/24 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="CENTRAL - OLT 05" distance=1 dst-addres
+s=172.31.130.0/24 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="COTIJUBA - OLT 3" distance=1 dst-addres
+s=172.31.140.0/24 gateway=172.10.2.2
+/ip route add distance=254 dst-address=191.243.98.0/24 type=blackhole
+/ip route add check-gateway=ping comment="PPPoE - BNG" distance=111 dst-address=1
+91.243.100.0/22 gateway=172.10.2.2
+/ip route add check-gateway=ping comment="PPPoE - BNG" distance=111 dst-address=1
+91.243.104.0/24 gateway=172.10.2.2
+/ip route add distance=1 dst-address=192.168.1.0/24 gateway=172.10.2.2
+/ip route rule add comment="Consulta servi\E7os internos" dst-address=191.243.96.
+0/20 table=main
+/ip route rule add comment="Consulta servi\E7os internos" dst-address=10.0.0.0/8 
+table=main
+/ip route rule add dst-address=100.64.0.0/10 table=main
+/ip route rule add dst-address=192.168.0.0/16 table=main
+/ip route rule add dst-address=172.16.0.0/12 table=main
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes port=8081
+/ip service set ssh port=22002
+/ip service set www-ssl port=446
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip upnp set enabled=yes
+/ip upnp interfaces add interface=ether3-ptp-borda-olt type=internal
+/ip upnp interfaces add interface=bridge-server type=internal
+/ip upnp interfaces add interface=ether1 type=external
+/ip upnp interfaces add interface=ether4-ptp-sede_6 type=internal
+/ip upnp interfaces add interface=ether2 type=internal
+/ipv6 address add address=2804:1a04:0:3::26a/126 advertise=no comment="PTP-LINK-W
+IRELINK IPV6" interface=sfp1_vlan137-link_wirelink_v6
+/ipv6 address add address=2804:12dc:1000::1/128 advertise=no interface=loopback
+/ipv6 address add address=2804:2468:3004::26:ded:2/126 advertise=no comment="WAN 
+- ONLINE TELECOM" interface=vlan3500-PPPoE01-SEDE-01
+/lcd set time-interval=hour
+/ppp aaa set interim-update=5m
+/ppp secret add name=junior password=infortecline2018@ profile=VPN-IN
+/ppp secret add name=suporte@infortecline.com.br password=404040 profile=profile1
+-PPPoE-TEST service=pppoe
+/ppp secret add local-address=10.10.10.1 name=vpn.tomich password=tomich profile=
+default-encryption remote-address=10.10.10.2 service=l2tp
+/radius add address=191.243.96.2 comment=TopSapp require-message-auth=no secret=D
+TopMultSapp service=ppp timeout=1s500ms
+/radius add address=172.16.10.2 comment=TopSap require-message-auth=no secret=DTo
+pMultSapp service=ppp timeout=1s500ms
+/radius incoming set accept=yes
+/routing bgp network add network=191.243.96.0/20 synchronize=no
+/routing bgp network add network=191.243.96.0/21 synchronize=no
+/routing bgp network add network=191.243.104.0/21 synchronize=no
+/routing bgp network add network=191.243.97.0/24 synchronize=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.103.0/24 synchroniz
+e=no
+/routing bgp network add network=191.243.104.0/22 synchronize=no
+/routing bgp network add comment="N\C3O UTILIZAR. / JR.G" disabled=yes network=19
+1.243.108.0/23 synchronize=no
+/routing bgp network add network=191.243.107.0/24 synchronize=no
+/routing bgp network add comment="UTILIZADO - POP IGARAPE ACU" disabled=yes netwo
+rk=191.243.98.0/24 synchronize=no
+/routing bgp network add disabled=yes network=191.243.111.0/24 synchronize=no
+/routing bgp network add disabled=yes network=191.243.110.0/24 synchronize=no
+/routing bgp network add network=2804:12dc::/32 synchronize=no
+/routing bgp network add network=191.243.106.0/24 synchronize=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.102.0/24 synchroniz
+e=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.100.0/24 synchroniz
+e=no
+/routing bgp network add network=191.243.99.0/24 synchronize=no
+/routing bgp network add network=191.243.96.0/22 synchronize=no
+/routing bgp network add comment=SERVIDORES network=191.243.96.0/24 synchronize=n
+o
+/routing bgp network add network=191.243.96.0/23 synchronize=no
+/routing bgp network add network=191.243.98.0/23 synchronize=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.100.0/22 synchroniz
+e=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.100.0/23 synchroniz
+e=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.101.0/24 synchroniz
+e=no
+/routing bgp network add comment="PPPoE SEDE" network=191.243.102.0/23 synchroniz
+e=no
+/routing bgp network add network=191.243.104.0/23 synchronize=no
+/routing bgp network add network=191.243.106.0/23 synchronize=no
+/routing bgp network add comment="N\C3O UTILIZAR /JR.B" disabled=yes network=191.
+243.110.0/23 synchronize=no
+/routing bgp network add network=191.243.104.0/24 synchronize=no
+/routing bgp network add network=191.243.105.0/24 synchronize=no
+/routing bgp network add disabled=yes network=191.243.108.0/24 synchronize=no
+/routing bgp network add disabled=yes network=191.243.109.0/24 synchronize=no
+/routing bgp network add comment="N\C3O UTILIZAR" disabled=yes network=191.243.10
+8.0/22 synchronize=no
+/routing bgp peer add disabled=yes in-filter=WIRELINK-IN instance=IFL name=WIRELI
+NK-IPV4 out-filter=WIRELINK-OUT remote-address=172.31.2.237 remote-as=61832 ttl=
+default
+/routing bgp peer add address-families=ipv6 disabled=yes in-filter=TRNASITO-WIREL
+INK-IPV6-IN instance=IFL name=TRANSITO-WIRELINK-IPV6 out-filter=TRNASITO-WIRELIN
+K-IPV6-OUT remote-address=2804:1a04:0:3::269 remote-as=61832
+/routing bgp peer add disabled=yes in-filter=WIRELINK-FULL-ROUTING-V4-IN instance
+=IFL multihop=yes name=WIRELINK-FULL-ROUTING-V4 out-filter=WIRELINK-FULL-ROUTING
+-V4-OUT remote-address=10.0.0.125 remote-as=61832
+/routing bgp peer add in-filter=ONLINE-TELECOM_in instance=IFL name=ONLINE-TELECO
+M out-filter=ONLINE-TELECOM_out remote-address=10.250.26.1 remote-as=264221
+/routing filter add action=discard chain=ONLINE-TELECOM_in prefix=!0.0.0.0/0
+/routing filter add action=accept chain=ONLINE-TELECOM_out prefix=191.243.96.0/20
+ prefix-length=20-24
+/routing filter add action=accept chain=ONLINE-TELECOM_out prefix=191.243.97.0/24
+
+/routing filter add action=discard chain=ONLINE-TELECOM_out
+/routing filter add append-bgp-communities=23456:147 chain=WIRELINK-IN disabled=y
+es set-bgp-local-pref=100 set-scope=15
+/routing filter add action=discard chain=WIRELINK-IN disabled=yes prefix=191.243.
+96.0/20 prefix-length=20-24
+/routing filter add action=discard chain=WIRELINK-IN disabled=yes
+/routing filter add action=accept chain=WIRELINK-OUT disabled=yes prefix=191.243.
+96.0/20
+/routing filter add action=accept chain=WIRELINK-OUT disabled=yes prefix=191.243.
+104.0/21
+/routing filter add action=accept chain=WIRELINK-OUT disabled=yes prefix=191.243.
+107.0/24
+/routing filter add action=discard chain=WIRELINK-OUT disabled=yes
+/routing filter add action=accept chain=TRNASITO-WIRELINK-IPV6-IN disabled=yes pr
+efix=::/0
+/routing filter add action=discard chain=TRNASITO-WIRELINK-IPV6-IN disabled=yes
+/routing filter add action=accept chain=TRNASITO-WIRELINK-IPV6-OUT disabled=yes p
+refix=2804:12dc::/32 prefix-length=32-48
+/routing filter add action=discard chain=TRNASITO-WIRELINK-IPV6-OUT disabled=yes
+/routing filter add action=discard chain=WIRELINK-FULL-ROUTING-V4-OUT disabled=ye
+s
+/routing filter add append-bgp-communities=23456:147 chain=WIRELINK-FULL-ROUTING-
+V4-IN disabled=yes set-bgp-local-pref=300 set-scope=15
+/routing filter add action=discard chain=WIRELINK-FULL-ROUTING-V4-IN disabled=yes
+
+/routing filter add action=discard chain=WIRELINK-FULL-ROUTING-V4-IN disabled=yes
+
+/routing ospf interface add network-type=point-to-point passive=yes
+/routing ospf interface add authentication=md5 authentication-key=Net.10 interfac
+e=vlan3500-PPPoE01-SEDE-01 network-type=point-to-point
+/routing ospf interface add interface=vlan3501-PPPoE02 network-type=point-to-poin
+t
+/routing ospf interface add interface=vlan3502-PPPoE network-type=point-to-point
+/routing ospf network add area=backbone network=191.243.96.0/28
+/routing ospf network add area=backbone comment="PPPoE 01" network=172.10.0.0/30
+/routing ospf network add area=backbone comment=PPPoE-02 network=172.10.1.0/30
+/routing ospf network add area=backbone comment="PPPoE BNG" network=172.10.2.0/30
+
+/routing ospf-v3 interface add area=backbone network-type=point-to-point passive=
+yes
+/snmp set contact="TOMICH TEC" enabled=yes engine-id=infortecline-borda location=
+"VITORIA- ES" trap-community=TOMICH trap-version=2
+/system clock set time-zone-name=America/Santarem
+/system identity set name=BGP
+/system ntp client set enabled=yes primary-ntp=200.160.0.8 secondary-ntp=200.189.
+40.8
+/system package update set channel=long-term
+/system scheduler add interval=5m name=CacheFull on-event="\r\
+    \n/queue simple move [find name=\"CacheFull\"] [:pick [find] 0]\r\
+    \n" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive start-t
+ime=startup
+/system watchdog set watchdog-timer=no
+/tool e-mail set from=""
+/tool graphing interface add
+/tool romon set enabled=yes secrets=#@infortecline
+/user aaa set default-group=null use-radius=yes
+
+[tomich@BGP] >                                                                 

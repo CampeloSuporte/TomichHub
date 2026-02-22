@@ -742,6 +742,7 @@ def listar_chamados_cliente(request):
             'categoria': chamado.categoria.nome if chamado.categoria else '',
             'prioridade': chamado.get_prioridade_display(),
             'status': chamado.get_status_display(),
+            'status_code': chamado.status,
             'departamento': chamado.get_departamento_display(),
             'responsavel': chamado.responsavel.get_full_name() or chamado.responsavel.username if chamado.responsavel else 'Não atribuído',
             'data_criacao': chamado.data_criacao.strftime('%d/%m/%Y %H:%M'),
