@@ -1,0 +1,81 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-DST-PEREIROS
+Host: 10.13.0.20:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 25/02/2026 00:47:28
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse
+[tomich@SW - PEREIROS] > /export terse
+
+# oct/28/1970 08:27:59 by RouterOS 6.48.7
+# software id = 0C55-XNAG
+#
+# model = CRS309-1G-8S+
+# serial number = HEW0903DR6T
+/interface bridge add ingress-filtering=yes name=bridge1 protocol-mode=none vlan-
+filtering=yes
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - S
+BM"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - T
+ANQUINHO"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] name="sfp-sfpplus3 - S
+ERVIDOR"
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] name="sfp-sfpplus4 - L
+AGOA DAS PEDRAS"
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] auto-negotiation=no na
+me="sfp-sfpplus5 - IGARA"
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] name="sfp-sfpplus6 - P
+2P-SW-DST-ANDORINHA-P3"
+/interface vlan add interface=bridge1 name=VLAN1651-GERENCIA vlan-id=1651
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/snmp community set [ find default=yes ] name=friends*
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus1 - SBM"
+/interface bridge port add bridge=bridge1 frame-types=admit-only-untagged-and-pri
+ority-tagged ingress-filtering=yes interface="sfp-sfpplus2 - TANQUINHO" pvid=101
+
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus3 - SERVIDOR"
+/interface bridge port add bridge=bridge1 interface=ether1
+/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="sfp-sf
+pplus4 - LAGOA DAS PEDRAS" pvid=102
+/interface bridge port add bridge=bridge1 disabled=yes interface="sfp-sfpplus6 - 
+P2P-SW-DST-ANDORINHA-P3"
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - SBM,sfp-sfpplus3
+ - SERVIDOR,ether1,sfp-sfpplus6 - P2P-SW-DST-ANDORINHA-P3" vlan-ids=1010
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus3 - SERVIDOR" untagg
+ed="sfp-sfpplus2 - TANQUINHO" vlan-ids=101
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus3 - SERVIDOR" untagg
+ed="sfp-sfpplus4 - LAGOA DAS PEDRAS" vlan-ids=102
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - SBM,sfp-sfpplus2
+ - TANQUINHO,sfp-sfpplus4 - LAGOA DAS PEDRAS,sfp-sfpplus6 - P2P-SW-DST-ANDORINHA
+-P3" vlan-ids=10
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - SBM,sfp-sfpplus6
+ - P2P-SW-DST-ANDORINHA-P3,bridge1" vlan-ids=1651
+/ip address add address=10.13.0.20/24 interface=VLAN1651-GERENCIA network=10.13.0
+.0
+/ip route add distance=1 gateway=10.13.0.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-version=2
+/system identity set name="SW - PEREIROS"
+/system routerboard settings set boot-os=router-os
+/tool romon set enabled=yes secrets="FR13NDS\$k9#zL"
+
+[tomich@SW - PEREIROS] >                                                       

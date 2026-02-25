@@ -1,0 +1,335 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW.HU.STMR
+Host: 10.20.0.246:22
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI S6730
+Template: Backup Huawei
+Data: 22/02/2026 00:54:08
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<SW.HW.STMR>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R022C00SPC500
+#
+sysname SW.HW.STMR
+#
+vlan batch 1200 4000 4006 4009 4016
+#
+lnp disable
+#
+stp disable
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+http server-source all-interface
+#
+clock timezone BR minus 03:00:00
+#
+diffserv domain default
+#
+radius-server template default
+#
+mpls lsr-id 10.20.0.246
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+ undo ttl propagate public
+ undo ttl expiration pop
+#
+mpls l2vpn
+#
+vsi PPPOE-ALL
+ pwsignal ldp
+  vsi-id 4000
+  peer 10.20.0.250
+ mtu 9000
+#
+mpls ldp
+ graceful-restart
+#
+mpls ldp remote-peer 10.20.0.234
+ remote-ip 10.20.0.234
+#
+mpls ldp remote-peer 10.20.0.237
+ remote-ip 10.20.0.237
+#
+mpls ldp remote-peer 10.20.0.243
+ remote-ip 10.20.0.243
+#
+mpls ldp remote-peer 10.20.0.247
+ remote-ip 10.20.0.247
+#
+mpls ldp remote-peer 10.20.0.250
+ remote-ip 10.20.0.250
+#
+pki realm default
+ certificate-check none
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default
+#
+vlan 1200
+ description VLAN.STMR.APCA
+ name VLAN.STMR.APCA
+vlan 4006
+ description VLAN.STMR.VLNV
+ name VLAN.STMR.VLNV
+vlan 4009
+ description VLAN.STMR.BJIT
+ name VLAN.STMR.BJIT
+vlan 4016
+ description VLAN.PTP.STMR.CDMR
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ local-aaa-user password policy administrator
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme radius
+  accounting-scheme default
+  radius-server default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ local-user admin password irreversible-cipher $1c$d/++Tuh*u;$cz0wQ@YS{NEE`DVukBvR<#V@3X&)j1B.I.:&7ju2$
+ local-user admin privilege level 15
+ local-user admin service-type terminal ssh http
+ local-user tomich password irreversible-cipher $1c$cif-2>c>+.$'"%1([F5x&Tz2aQDsJ3I{#S4Tv^OS(.fI@3Ym]W)$
+ local-user tomich privilege level 15
+ local-user tomich service-type terminal ssh
+ local-user infoline password irreversible-cipher $1c$OD"&(\dayH$VE_xLmbX>5D9E"*d;\BODFI'/7;FUJ0,,r:;euQO$
+ local-user infoline privilege level 15
+ local-user infoline service-type terminal ssh http
+#
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service unicast-server 170.150.252.34
+#
+interface Vlanif1
+#
+interface Vlanif1200
+ mtu 9000
+ ip address 10.20.1.65 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4000
+ description VPLS-PPPOE-ALL
+ mtu 9000
+ l2 binding vsi PPPOE-ALL
+#
+interface Vlanif4006
+ description VLAN.STMR.VLNV
+ mtu 9000
+ ip address 10.20.0.66 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4009
+ description VLAN.STMR.BJIT
+ mtu 9000
+ ip address 10.20.1.21 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4016
+ description VLAN.STMR.CDMR
+ ip address 10.20.0.118 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls ldp
+#
+interface MEth0/0/1
+ ip address 192.168.1.253 255.255.255.0
+#
+interface XGigabitEthernet0/0/1
+ description CNX.1G.ROTEADOR
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface XGigabitEthernet0/0/2
+#
+interface XGigabitEthernet0/0/3
+#
+interface XGigabitEthernet0/0/4
+#
+interface XGigabitEthernet0/0/5
+#
+interface XGigabitEthernet0/0/6
+#
+interface XGigabitEthernet0/0/7
+#
+interface XGigabitEthernet0/0/8
+#
+interface XGigabitEthernet0/0/9
+#
+interface XGigabitEthernet0/0/10
+#
+interface XGigabitEthernet0/0/11
+#
+interface XGigabitEthernet0/0/12
+#
+interface XGigabitEthernet0/0/13
+#
+interface XGigabitEthernet0/0/14
+#
+interface XGigabitEthernet0/0/15
+#
+interface XGigabitEthernet0/0/16
+#
+interface XGigabitEthernet0/0/17
+#
+interface XGigabitEthernet0/0/18
+#
+interface XGigabitEthernet0/0/19
+ description CNX.10G.SW.HW.CDMR
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4016
+#
+interface XGigabitEthernet0/0/20
+ description CNX.10G.OLT.STMR
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface XGigabitEthernet0/0/21
+ description CNX.10G.OLT.STED
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface XGigabitEthernet0/0/22
+ description CNX.10G.SW.DM.APCA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 1200
+#
+interface XGigabitEthernet0/0/23
+ description CNX.10G.SW.DM.BJIT
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4009
+#
+interface XGigabitEthernet0/0/24
+ description CNX.10G.OLT.STMR
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface 40GE0/0/1
+#
+interface 40GE0/0/2
+ description CNX.40G.SW.HW.VLNV
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4006
+#
+interface NULL0
+#
+interface LoopBack0
+ description LOOPBACK
+ ip address 10.20.0.246 255.255.255.255
+#
+ospf 1 router-id 10.20.0.246
+ import-route direct
+ import-route static
+ opaque-capability enable
+ graceful-restart
+ area 0.0.0.0
+  network 10.20.0.64 0.0.0.3
+  network 10.20.0.116 0.0.0.3
+  network 10.20.1.20 0.0.0.3
+  network 10.20.1.64 0.0.0.3
+  mpls-te enable
+#
+undo icmp name timestamp-request receive
+#
+snmp-agent
+snmp-agent local-engineid 800007DB031C20DBEE8B00
+snmp-agent community read cipher %^%#6;>40&u2LId"(lBXV;d#)cXO#ZeK3<332i/Wh[gA\9V-KaRe_*f9KZ8,P"n14cqGHrH=O$4QVk5%H0b%%^%#
+snmp-agent sys-info contact noc@infoline.com.br
+snmp-agent sys-info location STMR.CGOY.RJ
+snmp-agent sys-info version v1 v2c
+undo snmp-agent sys-info version v3
+snmp-agent protocol source-status all-interface
+snmp-agent protocol source-status ipv6 all-interface
+#
+stelnet server enable
+ssh user admin
+ssh user admin authentication-type password
+ssh user infoline
+ssh user infoline authentication-type password
+ssh user infoline service-type all
+ssh server-source all-interface
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh client key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh server dh-exchange min-len 2048
+ssh server publickey rsa_sha2_512 rsa_sha2_256
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$bTL,)FRjO"$u*&J-NwBNENZt5A]x$_/ujuSO#7lgYr{dVBJf6(Q$
+user-interface vty 0 4
+ authentication-mode aaa
+user-interface vty 16 20
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+ops
+#
+remote-unit
+#
+return
+<SW.HW.STMR>

@@ -90,23 +90,90 @@
         @keyframes pulseOrange { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
         /* ============================================
-           WIKI SIDEBAR
+           WIKI SIDEBAR — REDIMENSIONÁVEL + MAXIMIZÁVEL
         ============================================ */
         .wiki-sidebar {
-            position: fixed; top: 0; right: -500px; width: 480px; height: 100vh;
+            position: fixed; top: 0; right: -9999px; width: 480px; height: 100vh;
             background: #111; border-left: 2px solid #00ff88;
             display: flex; flex-direction: column; z-index: 9999;
-            box-shadow: -5px 0 30px rgba(0,0,0,0.7); transition: right 0.3s ease;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.7);
+            transition: right 0.3s ease, width 0.2s ease;
             font-family: 'JetBrains Mono', monospace;
+            min-width: 300px; max-width: 98vw;
         }
         .wiki-sidebar.aberto { right: 0; }
-        .wiki-sidebar-header {
-            background: #0a0a0a; padding: 14px 18px; border-bottom: 2px solid #00ff88;
-            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+        /* Maximizado: ocupa a tela toda */
+        .wiki-sidebar.maximizado {
+            width: 100vw !important;
+            border-left: none;
+            transition: width 0.2s ease;
         }
-        .wiki-sidebar-header h3 { margin: 0; color: #00ff88; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
-        .btn-close-wiki { background: transparent; border: none; color: #555; font-size: 18px; cursor: pointer; padding: 4px 8px; transition: 0.2s; line-height: 1; }
-        .btn-close-wiki:hover { color: #ff4444; }
+        /* Alça de redimensionamento — borda esquerda */
+        .wiki-resize-handle {
+            position: absolute; top: 0; left: -4px;
+            width: 8px; height: 100%;
+            cursor: ew-resize; z-index: 10000;
+            background: transparent;
+            transition: background 0.2s;
+        }
+        .wiki-resize-handle:hover,
+        .wiki-resize-handle.arrastando {
+            background: rgba(0,255,136,0.25);
+        }
+        /* Indicador visual na alça */
+        .wiki-resize-handle::after {
+            content: '';
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px; height: 40px;
+            background: rgba(0,255,136,0.4);
+            border-radius: 2px;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .wiki-resize-handle:hover::after,
+        .wiki-resize-handle.arrastando::after { opacity: 1; }
+
+        /* Cursor global durante arrasto */
+        body.wiki-resizing { cursor: ew-resize !important; user-select: none !important; }
+        body.wiki-resizing * { cursor: ew-resize !important; }
+
+        .wiki-sidebar-header {
+            background: #0a0a0a; padding: 10px 14px; border-bottom: 2px solid #00ff88;
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+            gap: 8px;
+        }
+        .wiki-sidebar-header h3 { margin: 0; color: #00ff88; font-size: 15px; font-weight: 700; letter-spacing: 1px; flex: 1; }
+        .wiki-header-actions { display: flex; align-items: center; gap: 4px; }
+        /* Indicador de largura */
+        .wiki-width-indicator {
+            font-size: 9px; color: #333; padding: 2px 6px;
+            background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 2px;
+            font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+            transition: color 0.2s;
+        }
+        body.wiki-resizing .wiki-width-indicator { color: #00ff88; border-color: #00ff88; }
+        /* Botões do cabeçalho */
+        .btn-wiki-action {
+            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            width: 26px; height: 26px; border-radius: 3px;
+            cursor: pointer; font-size: 12px; display: flex;
+            align-items: center; justify-content: center; transition: 0.2s;
+            flex-shrink: 0; line-height: 1;
+        }
+        .btn-wiki-action:hover { border-color: #00ff88; color: #00ff88; }
+        .btn-wiki-action.maximizar:hover { border-color: #00d9ff; color: #00d9ff; }
+        .btn-wiki-action.fechar:hover { border-color: #ff4444; color: #ff4444; }
+        /* Botões de largura predefinida */
+        .wiki-size-presets {
+            display: flex; gap: 3px; align-items: center;
+        }
+        .btn-preset {
+            background: transparent; border: 1px solid #1e1e1e; color: #444;
+            padding: 2px 6px; border-radius: 2px; cursor: pointer;
+            font-size: 9px; font-family: 'JetBrains Mono', monospace;
+            transition: 0.15s; white-space: nowrap;
+        }
+        .btn-preset:hover { border-color: #00ff88; color: #00ff88; }
         .wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
         .wiki-search-input {
             width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
@@ -178,9 +245,41 @@
             border-radius: 3px; overflow: hidden; margin: 12px 0;
         }
 
+        /* Toolbar do bloco de código */
         .wiki-code-toolbar {
             background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e;
-            display: flex; align-items: center; justify-content: flex-end; gap: 5px;
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        /* ── NOVO: área de linguagem + título à esquerda ── */
+        .wiki-code-toolbar-title {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .wiki-code-lang-badge {
+            background: rgba(255,170,0,0.15);
+            color: #ffa500;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 2px;
+            border: 1px solid rgba(255,170,0,0.25);
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .wiki-code-title-text {
+            color: #888;
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .btn-bloco {
@@ -278,7 +377,7 @@
         }
 
         /* ============================================
-           PAINEL DE VARIÁVEIS  ← NOVO
+           PAINEL DE VARIÁVEIS
         ============================================ */
         .wiki-vars-panel {
             background: rgba(255, 170, 0, 0.03);
@@ -286,7 +385,6 @@
             overflow: hidden;
             transition: max-height 0.3s ease;
         }
-
         .wiki-vars-toggle {
             display: flex; align-items: center; justify-content: space-between;
             padding: 7px 12px; cursor: pointer;
@@ -295,7 +393,6 @@
             transition: background 0.15s;
         }
         .wiki-vars-toggle:hover { background: rgba(255, 170, 0, 0.09); }
-
         .wiki-vars-toggle-left {
             display: flex; align-items: center; gap: 7px;
             font-size: 10px; font-weight: 700; color: #ffa500;
@@ -310,13 +407,11 @@
             user-select: none;
         }
         .wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
-
         .wiki-vars-body {
             padding: 10px 12px; display: none;
             flex-direction: column; gap: 8px;
         }
         .wiki-vars-body.visivel { display: flex; }
-
         .wiki-vars-hint {
             font-size: 10px; color: #555; padding: 4px 0;
             border-bottom: 1px solid #1a1a1a; margin-bottom: 2px;
@@ -326,14 +421,8 @@
             background: rgba(255,170,0,0.12); color: #ffa500;
             padding: 1px 4px; border-radius: 2px; font-size: 10px;
         }
-
-        .wiki-vars-grid {
-            display: flex; flex-direction: column; gap: 6px;
-        }
-
-        .wiki-var-row {
-            display: flex; align-items: center; gap: 8px;
-        }
+        .wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
+        .wiki-var-row { display: flex; align-items: center; gap: 8px; }
         .wiki-var-label {
             background: rgba(255, 170, 0, 0.12);
             color: #ffa500; font-size: 10px; font-weight: 700;
@@ -353,7 +442,6 @@
         .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
         .wiki-var-inp::placeholder { color: #3a3a3a; }
         .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
-
         .wiki-vars-actions {
             display: flex; gap: 6px; padding-top: 6px;
             border-top: 1px solid #1a1a1a; flex-wrap: wrap;
@@ -446,9 +534,25 @@
 
     <!-- WIKI SIDEBAR -->
     <div id="wikiSidebar" class="wiki-sidebar">
+        <!-- Alça de redimensionamento (borda esquerda) -->
+        <div class="wiki-resize-handle" id="wikiResizeHandle" title="Arraste para redimensionar"></div>
+
         <div class="wiki-sidebar-header">
             <h3>📖 Wiki</h3>
-            <button class="btn-close-wiki" onclick="toggleWikiSidebar()">✕</button>
+            <div class="wiki-header-actions">
+                <!-- Indicador de largura -->
+                <span class="wiki-width-indicator" id="wikiWidthIndicator">480px</span>
+                <!-- Presets de tamanho -->
+                <div class="wiki-size-presets">
+                    <button class="btn-preset" onclick="setWikiWidth(380)" title="Compacto">S</button>
+                    <button class="btn-preset" onclick="setWikiWidth(520)" title="Médio">M</button>
+                    <button class="btn-preset" onclick="setWikiWidth(720)" title="Largo">L</button>
+                </div>
+                <!-- Maximizar -->
+                <button class="btn-wiki-action maximizar" id="btnMaxWiki" onclick="toggleMaxWiki()" title="Maximizar / Restaurar">⤢</button>
+                <!-- Fechar -->
+                <button class="btn-wiki-action fechar" onclick="toggleWikiSidebar()" title="Fechar">✕</button>
+            </div>
         </div>
         <div class="wiki-sidebar-search">
             <input type="text" id="wikiSearchInput" class="wiki-search-input"
@@ -537,43 +641,26 @@
     }
 
     // ============================================================
-    // SISTEMA DE VARIÁVEIS  ← NOVO
+    // SISTEMA DE VARIÁVEIS
     // ============================================================
-    // Formato: #nomevariavel# dentro do código
     const VAR_REGEX = /#([A-Za-z0-9_\-\.]+)#/g;
-
-    // Armazena valores: { "idx-varname": "valor" }
     window._wikiVarsValues = {};
 
-    /**
-     * Detecta variáveis únicas no código.
-     * Retorna array de strings ex: ["vlan", "ip", "mask"]
-     */
     function detectarVariaveis(codigo) {
         const matches = [];
         const seen = new Set();
         let m;
         const rx = new RegExp(VAR_REGEX.source, 'g');
         while ((m = rx.exec(codigo)) !== null) {
-            if (!seen.has(m[1])) {
-                seen.add(m[1]);
-                matches.push(m[1]);
-            }
+            if (!seen.has(m[1])) { seen.add(m[1]); matches.push(m[1]); }
         }
         return matches;
     }
 
-    /**
-     * Aplica as variáveis salvas ao código.
-     * Substitui #varname# pelo valor definido.
-     * Variáveis sem valor são mantidas intactas.
-     */
     function aplicarVariaveis(idx, codigo) {
         let resultado = codigo;
-        const variaveis = detectarVariaveis(codigo);
-        variaveis.forEach(v => {
-            const chave = `${idx}-${v}`;
-            const valor = window._wikiVarsValues[chave];
+        detectarVariaveis(codigo).forEach(v => {
+            const valor = window._wikiVarsValues[`${idx}-${v}`];
             if (valor !== undefined && valor !== '') {
                 resultado = resultado.replace(new RegExp(`#${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}#`, 'g'), valor);
             }
@@ -581,39 +668,28 @@
         return resultado;
     }
 
-    /**
-     * Destaca variáveis no HTML do visualizador de código (span colorido).
-     */
     function destacarVariaveisHtml(html) {
         return html.replace(/#([A-Za-z0-9_\-\.]+)#/g,
             '<span class="wiki-var-highlight">#$1#</span>');
     }
 
-    /**
-     * Renderiza (ou atualiza) o painel de variáveis de um bloco.
-     */
     function renderVariaveisPainel(idx) {
         const codigo = window._wikiBlocosMap[idx] || '';
         const variaveis = detectarVariaveis(codigo);
         const bw = document.getElementById(`bw-${idx}`);
         if (!bw) return;
 
-        // Remove painel anterior
         const antigo = document.getElementById(`varspanel-${idx}`);
         if (antigo) antigo.remove();
-
-        // Nenhuma variável → não renderiza
         if (variaveis.length === 0) return;
 
         const panel = document.createElement('div');
         panel.className = 'wiki-vars-panel';
         panel.id = `varspanel-${idx}`;
-
         panel.innerHTML = `
             <div class="wiki-vars-toggle" onclick="toggleVarsPanel(${idx})">
                 <div class="wiki-vars-toggle-left">
-                    <span>⚡</span>
-                    <span>Variáveis</span>
+                    <span>⚡</span><span>Variáveis</span>
                     <span class="wiki-vars-badge">${variaveis.length}</span>
                 </div>
                 <span class="wiki-vars-toggle-arrow" id="vars-arrow-${idx}">▼</span>
@@ -627,18 +703,12 @@
                         <div class="wiki-var-row">
                             <span class="wiki-var-label">#${esc(v)}#</span>
                             <span class="wiki-var-arrow">→</span>
-                            <input
-                                class="wiki-var-inp"
-                                id="varinp-${idx}-${escAttr(v)}"
-                                placeholder="valor..."
-                                data-var="${escAttr(v)}"
-                                data-idx="${idx}"
+                            <input class="wiki-var-inp" id="varinp-${idx}-${escAttr(v)}"
+                                placeholder="valor..." data-var="${escAttr(v)}" data-idx="${idx}"
                                 value="${esc(window._wikiVarsValues[`${idx}-${v}`] || '')}"
                                 oninput="onVarInput(${idx}, '${escJs(v)}', this)"
-                                onkeydown="if(event.key==='Enter'){enviarAoTerminal(${idx});}"
-                            >
-                        </div>
-                    `).join('')}
+                                onkeydown="if(event.key==='Enter'){enviarAoTerminal(${idx});}">
+                        </div>`).join('')}
                 </div>
                 <div class="wiki-vars-actions">
                     <button class="btn-vars-limpar" onclick="limparVariaveis(${idx})">↺ Limpar valores</button>
@@ -649,30 +719,19 @@
                 </div>
             </div>`;
 
-        // Insere antes do footer (se existir) ou no fim do bloco
         const footer = document.getElementById(`footer-${idx}`);
-        if (footer) {
-            bw.insertBefore(panel, footer);
-        } else {
-            // Para blocos extras (wiki-bloco-extra): insere antes do final
-            const footerGrande = bw.querySelector('.wiki-bloco-footer');
-            if (footerGrande) {
-                bw.insertBefore(panel, footerGrande);
-            } else {
-                bw.appendChild(panel);
-            }
+        if (footer) bw.insertBefore(panel, footer);
+        else {
+            const fg = bw.querySelector('.wiki-bloco-footer');
+            if (fg) bw.insertBefore(panel, fg); else bw.appendChild(panel);
         }
 
-        // Estiliza campos que já têm valor
         variaveis.forEach(v => {
             const inp = document.getElementById(`varinp-${idx}-${v}`);
             if (inp && inp.value) inp.classList.add('preenchido');
         });
     }
 
-    /**
-     * Abre/fecha o painel de variáveis.
-     */
     function toggleVarsPanel(idx) {
         const body = document.getElementById(`vars-body-${idx}`);
         const arrow = document.getElementById(`vars-arrow-${idx}`);
@@ -681,56 +740,31 @@
         if (arrow) arrow.classList.toggle('aberto', aberto);
     }
 
-    /**
-     * Chamado quando o usuário digita em um campo de variável.
-     */
     function onVarInput(idx, varName, inputEl) {
-        const chave = `${idx}-${varName}`;
-        window._wikiVarsValues[chave] = inputEl.value;
+        window._wikiVarsValues[`${idx}-${varName}`] = inputEl.value;
         inputEl.classList.toggle('preenchido', !!inputEl.value);
         atualizarPreviewVariaveis(idx);
     }
 
-    /**
-     * Atualiza a pré-visualização do código com variáveis substituídas.
-     */
     function atualizarPreviewVariaveis(idx) {
         const codigoOriginal = window._wikiBlocosMap[idx] || '';
         const variaveis = detectarVariaveis(codigoOriginal);
-
-        // Verifica se tem pelo menos 1 variável preenchida
-        const algumPreenchido = variaveis.some(v => {
-            const val = window._wikiVarsValues[`${idx}-${v}`];
-            return val && val.trim();
-        });
-
+        const algum = variaveis.some(v => { const val = window._wikiVarsValues[`${idx}-${v}`]; return val && val.trim(); });
         const wrapPrev = document.getElementById(`vars-preview-wrap-${idx}`);
         const pre = document.getElementById(`vars-preview-${idx}`);
         if (!wrapPrev || !pre) return;
-
-        if (algumPreenchido) {
-            const codigoAplicado = aplicarVariaveis(idx, codigoOriginal);
-            pre.textContent = codigoAplicado;
-            wrapPrev.classList.add('visivel');
-        } else {
-            wrapPrev.classList.remove('visivel');
-        }
+        if (algum) { pre.textContent = aplicarVariaveis(idx, codigoOriginal); wrapPrev.classList.add('visivel'); }
+        else wrapPrev.classList.remove('visivel');
     }
 
-    /**
-     * Limpa todos os valores de variáveis de um bloco.
-     */
     function limparVariaveis(idx) {
-        const codigo = window._wikiBlocosMap[idx] || '';
-        const variaveis = detectarVariaveis(codigo);
-        variaveis.forEach(v => {
-            const chave = `${idx}-${v}`;
-            delete window._wikiVarsValues[chave];
+        detectarVariaveis(window._wikiBlocosMap[idx] || '').forEach(v => {
+            delete window._wikiVarsValues[`${idx}-${v}`];
             const inp = document.getElementById(`varinp-${idx}-${v}`);
             if (inp) { inp.value = ''; inp.classList.remove('preenchido'); }
         });
-        const wrapPrev = document.getElementById(`vars-preview-wrap-${idx}`);
-        if (wrapPrev) wrapPrev.classList.remove('visivel');
+        const wp = document.getElementById(`vars-preview-wrap-${idx}`);
+        if (wp) wp.classList.remove('visivel');
         mostrarToast('↺ Variáveis limpas', 'vars');
     }
 
@@ -794,11 +828,9 @@
                 ${blocosHtml}
             </div>`;
 
-        // Preencher textareas e renderizar painéis de variáveis
         Object.entries(window._wikiBlocosMap).forEach(([idx, codigo]) => {
             const ed = document.getElementById(`ed-${idx}`);
             if (ed) { ed.value = codigo; autoResizeEditor(ed); }
-            // Renderizar painel de variáveis para todos os blocos
             renderVariaveisPainel(parseInt(idx));
         });
 
@@ -846,7 +878,20 @@
     }
 
     // ============================================================
-    // PROCESSAR conteudo_html — injeta toolbar em cada <pre><code>
+    // ── FUNÇÃO CORRIGIDA: processarConteudoWiki ──────────────────
+    //
+    // PROBLEMA ANTERIOR:
+    //   O servidor salvava o código como:
+    //     ```routeros NAT - Titulo\ncomando\n```
+    //   O <pre> recebia esse texto completo (cerca + título + código).
+    //   Ao enviar para o terminal, a linha da cerca era enviada como
+    //   comando, causando erro.
+    //
+    // CORREÇÃO:
+    //   Detectamos a cerca Markdown com regex, extraímos a linguagem
+    //   e o título separadamente, e guardamos em _wikiBlocosMap APENAS
+    //   o código puro (sem cerca). Linguagem e título são exibidos na
+    //   toolbar visualmente, mas NUNCA vão ao terminal.
     // ============================================================
     function processarConteudoWiki(html) {
         const tmp = document.createElement('div');
@@ -862,7 +907,31 @@
         tmp.querySelectorAll('pre').forEach(pre => {
             const idx = _blocoCounter++;
             const codeEl = pre.querySelector('code');
-            const codigoOriginal = codeEl ? codeEl.textContent : pre.textContent;
+            let codigoRaw = codeEl ? codeEl.textContent : pre.textContent;
+
+            // ── CORREÇÃO: extrai linguagem e título da cerca Markdown ──
+            // Casa padrões como:
+            //   ```routeros NAT - Verifica sessões\nshow bgp summary\n```
+            //   ```cisco\nshow interfaces\n```
+            //   ```\nshow version\n```
+            let blocoLang   = '';
+            let blocoTitulo = '';
+
+            const fenceMatch = codigoRaw.match(/^```([^\n]*)\n([\s\S]*?)(?:\n```\s*)?$/);
+            if (fenceMatch) {
+                const primeiraLinha = fenceMatch[1].trim();
+                if (primeiraLinha) {
+                    // Separa o primeiro token (linguagem) do restante (título)
+                    const langMatch = primeiraLinha.match(/^(\S+)(?:\s+(.+))?$/);
+                    blocoLang   = langMatch ? langMatch[1] : primeiraLinha;
+                    blocoTitulo = (langMatch && langMatch[2]) ? langMatch[2].trim() : '';
+                }
+                // IMPORTANTE: apenas o código puro vai para _wikiBlocosMap
+                codigoRaw = fenceMatch[2];
+            }
+            // ──────────────────────────────────────────────────────────
+
+            const codigoOriginal = codigoRaw;
             window._wikiBlocosMap[idx] = codigoOriginal;
 
             const linhas = codigoOriginal.split('\n');
@@ -873,12 +942,25 @@
 
             const temVars = detectarVariaveis(codigoOriginal).length > 0;
 
+            // Toolbar: linguagem + título à esquerda, botões à direita
+            const toolbarLangHtml = blocoLang
+                ? `<span class="wiki-code-lang-badge">${esc(blocoLang)}</span>` : '';
+            const toolbarTituloHtml = blocoTitulo
+                ? `<span class="wiki-code-title-text">${esc(blocoTitulo)}</span>` : '';
+            const toolbarVarsHtml = temVars
+                ? `<span style="color:#ffa500;font-size:10px;white-space:nowrap;margin-left:4px;">⚡ ${detectarVariaveis(codigoOriginal).length} var(s)</span>`
+                : '';
+
             const wrapper = document.createElement('div');
             wrapper.className = 'wiki-code-wrapper';
             wrapper.id = `bw-${idx}`;
             wrapper.innerHTML = `
                 <div class="wiki-code-toolbar">
-                    ${temVars ? `<span style="color:#ffa500;font-size:10px;margin-right:auto;">⚡ ${detectarVariaveis(codigoOriginal).length} variável(is)</span>` : ''}
+                    <div class="wiki-code-toolbar-title">
+                        ${toolbarLangHtml}
+                        ${toolbarTituloHtml}
+                        ${toolbarVarsHtml}
+                    </div>
                     ${toolbarBtns(idx)}
                 </div>
                 ${avisoEditar(idx)}
@@ -937,24 +1019,18 @@
         if (ed) { ed.value = original; autoResizeEditor(ed); mostrarToast('↺ Código restaurado ao original'); }
     }
 
-    /**
-     * Quando o editor é modificado, atualiza variáveis detectadas.
-     */
     function onEditorInput(idx) {
         const ed = document.getElementById(`ed-${idx}`);
         if (!ed) return;
         const novosCodigo = ed.value;
-        // Re-detecta variáveis com base no código editado
         const varsAntes = detectarVariaveis(window._wikiBlocosMap[idx] || '');
         const varsDepois = detectarVariaveis(novosCodigo);
-        // Se mudou a lista de variáveis, atualiza o painel
         const mudou = JSON.stringify(varsAntes.sort()) !== JSON.stringify(varsDepois.sort());
         if (mudou) {
-            // Salva o código temporariamente para re-detectar
             const codigoSalvo = window._wikiBlocosMap[idx];
             window._wikiBlocosMap[idx] = novosCodigo;
             renderVariaveisPainel(idx);
-            window._wikiBlocosMap[idx] = codigoSalvo; // restaura original para reset
+            window._wikiBlocosMap[idx] = codigoSalvo;
         }
     }
 
@@ -979,7 +1055,6 @@
     // ============================================================
     function getCodigoBloco(idx) {
         let codigo = '';
-
         const ew = document.getElementById(`ew-${idx}`);
         if (ew && ew.classList.contains('visivel')) {
             const ed = document.getElementById(`ed-${idx}`);
@@ -989,7 +1064,6 @@
             if (cv) {
                 const linhas = cv.querySelectorAll('.ln .lc');
                 if (linhas.length) {
-                    // Pega textContent de cada linha (remove HTML dos highlights)
                     codigo = Array.from(linhas).map(l => l.textContent).join('\n');
                 } else {
                     codigo = cv.textContent;
@@ -997,19 +1071,16 @@
             }
             if (!codigo) codigo = window._wikiBlocosMap[idx] || '';
         }
-
-        // ← APLICA VARIÁVEIS antes de retornar
         return aplicarVariaveis(idx, codigo);
     }
 
     // ============================================================
-    // COPIAR — avisa sobre variáveis não preenchidas
+    // COPIAR
     // ============================================================
     function copiarBloco(btn, idx) {
         const codigo = getCodigoBloco(idx);
         if (!codigo) return;
 
-        // Avisa se ainda há variáveis não substituídas
         const varsRestantes = detectarVariaveis(codigo);
         if (varsRestantes.length > 0) {
             mostrarToast(`⚡ ${varsRestantes.length} variável(is) sem valor: ${varsRestantes.map(v => '#'+v+'#').join(', ')}`, 'vars');
@@ -1025,7 +1096,7 @@
     }
 
     // ============================================================
-    // ENVIAR AO TERMINAL — avisa sobre variáveis não preenchidas
+    // ENVIAR AO TERMINAL
     // ============================================================
     function enviarAoTerminal(idx) {
         if (!terminalManager.activeTerminal) { mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return; }
@@ -1035,14 +1106,12 @@
         const codigo = getCodigoBloco(idx);
         if (!codigo || !codigo.trim()) { mostrarToast('⚠ O código está vazio', 'erro'); return; }
 
-        // Avisa se ainda há variáveis não substituídas
         const varsRestantes = detectarVariaveis(codigo);
         if (varsRestantes.length > 0) {
             mostrarToast(`⚡ Variáveis sem valor: ${varsRestantes.map(v=>'#'+v+'#').join(', ')}`, 'vars');
-            // Abre o painel de variáveis automaticamente
             const body = document.getElementById(`vars-body-${idx}`);
             if (body && !body.classList.contains('visivel')) toggleVarsPanel(idx);
-            return; // Bloqueia envio se há variáveis sem valor
+            return;
         }
 
         if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
@@ -1108,7 +1177,7 @@
     // ============================================================
     // DEBUG
     // ============================================================
-    const DEBUG = false; const debugLines = [];
+    const DEBUG = false;
     function addDebug(msg) { if (!DEBUG) return; console.log(msg); }
 
     // ============================================================
@@ -1276,6 +1345,140 @@
             if(t){try{t.fitAddon.fit();}catch(e){}}
         }
     });
+    // ============================================================
+    // WIKI — REDIMENSIONAMENTO (arrastar borda esquerda)
+    // ============================================================
+    (function() {
+        const WIKI_WIDTH_KEY = 'wikiSidebarWidth';
+        const MIN_WIDTH = 300;
+        const MAX_WIDTH = () => window.innerWidth - 40;
+
+        const sidebar  = document.getElementById('wikiSidebar');
+        const handle   = document.getElementById('wikiResizeHandle');
+        const indicator = document.getElementById('wikiWidthIndicator');
+        const btnMax   = document.getElementById('btnMaxWiki');
+
+        let isResizing = false;
+        let startX = 0;
+        let startW = 0;
+        let isMaximized = false;
+
+        // Restaura largura salva
+        const savedWidth = localStorage.getItem(WIKI_WIDTH_KEY);
+        if (savedWidth && !isNaN(savedWidth)) {
+            const w = Math.max(MIN_WIDTH, Math.min(parseInt(savedWidth), window.innerWidth - 40));
+            sidebar.style.width = w + 'px';
+            if (indicator) indicator.textContent = w + 'px';
+        }
+
+        // ── Arrastar alça ────────────────────────────────────────
+        handle.addEventListener('mousedown', function(e) {
+            if (isMaximized) return; // não redimensiona quando maximizado
+            e.preventDefault();
+            isResizing = true;
+            startX = e.clientX;
+            startW = sidebar.offsetWidth;
+            handle.classList.add('arrastando');
+            document.body.classList.add('wiki-resizing');
+            // Desativa transição durante arrasto para fluidez
+            sidebar.style.transition = 'right 0.3s ease';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            // Arrasto para esquerda = aumenta; para direita = diminui
+            const delta = startX - e.clientX;
+            const newW  = Math.max(MIN_WIDTH, Math.min(startW + delta, MAX_WIDTH()));
+            sidebar.style.width = newW + 'px';
+            if (indicator) indicator.textContent = newW + 'px';
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (!isResizing) return;
+            isResizing = false;
+            handle.classList.remove('arrastando');
+            document.body.classList.remove('wiki-resizing');
+            sidebar.style.transition = 'right 0.3s ease, width 0.2s ease';
+            // Persiste a largura
+            localStorage.setItem(WIKI_WIDTH_KEY, sidebar.offsetWidth);
+            // Refita o terminal ativo
+            if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
+                const t = terminalManager.terminals.get(terminalManager.activeTerminal);
+                if (t) { try { t.fitAddon.fit(); } catch(_) {} }
+            }
+        });
+
+        // Suporte touch (mobile)
+        handle.addEventListener('touchstart', function(e) {
+            if (isMaximized) return;
+            e.preventDefault();
+            isResizing = true;
+            startX = e.touches[0].clientX;
+            startW = sidebar.offsetWidth;
+            handle.classList.add('arrastando');
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!isResizing) return;
+            const delta = startX - e.touches[0].clientX;
+            const newW  = Math.max(MIN_WIDTH, Math.min(startW + delta, MAX_WIDTH()));
+            sidebar.style.width = newW + 'px';
+            if (indicator) indicator.textContent = newW + 'px';
+        }, { passive: true });
+
+        document.addEventListener('touchend', function() {
+            if (!isResizing) return;
+            isResizing = false;
+            handle.classList.remove('arrastando');
+            localStorage.setItem(WIKI_WIDTH_KEY, sidebar.offsetWidth);
+        });
+
+        // ── Maximizar / Restaurar ────────────────────────────────
+        window.toggleMaxWiki = function() {
+            isMaximized = !isMaximized;
+            if (isMaximized) {
+                sidebar.classList.add('maximizado');
+                if (btnMax) { btnMax.textContent = '⤡'; btnMax.title = 'Restaurar tamanho'; }
+                if (indicator) indicator.textContent = '100%';
+            } else {
+                sidebar.classList.remove('maximizado');
+                if (btnMax) { btnMax.textContent = '⤢'; btnMax.title = 'Maximizar'; }
+                const w = parseInt(localStorage.getItem(WIKI_WIDTH_KEY) || 480);
+                if (indicator) indicator.textContent = w + 'px';
+            }
+            // Refit terminal
+            setTimeout(() => {
+                if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
+                    const t = terminalManager.terminals.get(terminalManager.activeTerminal);
+                    if (t) { try { t.fitAddon.fit(); } catch(_) {} }
+                }
+            }, 250);
+        };
+
+        // ── Largura por preset ───────────────────────────────────
+        window.setWikiWidth = function(w) {
+            if (isMaximized) { toggleMaxWiki(); }
+            const clamped = Math.max(MIN_WIDTH, Math.min(w, MAX_WIDTH()));
+            sidebar.style.width = clamped + 'px';
+            if (indicator) indicator.textContent = clamped + 'px';
+            localStorage.setItem(WIKI_WIDTH_KEY, clamped);
+            setTimeout(() => {
+                if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
+                    const t = terminalManager.terminals.get(terminalManager.activeTerminal);
+                    if (t) { try { t.fitAddon.fit(); } catch(_) {} }
+                }
+            }, 250);
+        };
+
+        // Esc fecha a wiki
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('aberto')) {
+                if (isMaximized) { toggleMaxWiki(); return; }
+                toggleWikiSidebar();
+            }
+        });
+    })();
+
     window.addEventListener('load', () => {
         setTimeout(() => {
             if(terminalManager.activeTerminal){
