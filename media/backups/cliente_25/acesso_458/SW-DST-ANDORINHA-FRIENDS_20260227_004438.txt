@@ -1,0 +1,131 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-DST-ANDORINHA-FRIENDS
+Host: 10.13.0.3:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 27/02/2026 00:44:38
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /                                          
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /e
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /e                                         
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /ex
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /ex                                        
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /exp
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /exp                                       
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /expo
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /expo                                      
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /expor
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /expor                                     
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export                                    
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export 
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export                                    
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export t
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export t                                  
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export te
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export te                                 
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export ter
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export ter                                
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export ters
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export ters                               
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export terse
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export terse                              
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export terse
+[tomich@SW-DST-ANDORINHA-FRIENDS] > /export terse
+
+# mar/16/1970 11:59:02 by RouterOS 6.49.19
+# software id = BLBY-2ZYZ
+#
+# model = CRS309-1G-8S+
+# serial number = HEZ09FY5YA9
+/interface bridge add admin-mac=78:9A:18:45:37:AB auto-mac=no comment=defconf nam
+e=bridge vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] name="ether1 - CAMERA"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - P
+2P-SW-CORE-P6"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - P
+2P-SW-DST-PEDRA-VERMELHA-P2" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] name="sfp-sfpplus3 - P
+2P-SW-DST-PEREIROS-P1"
+/interface vlan add interface=bridge name=VLAN1651-GERENCIA vlan-id=1651
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/snmp community set [ find default=yes ] name=friends* write-access=yes
+/interface bridge port add bridge=bridge comment=defconf frame-types=admit-only-u
+ntagged-and-priority-tagged interface="ether1 - CAMERA" pvid=60
+/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus1 
+- P2P-SW-CORE-P6"
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface="
+sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2"
+/interface bridge port add bridge=bridge comment=defconf interface="sfp-sfpplus3 
+- P2P-SW-DST-PEREIROS-P1"
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus5
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus6
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus7
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus8
+/ip firewall connection tracking set enabled=no
+/interface bridge vlan add bridge=bridge comment="VLAN CAMERAS" tagged="sfp-sfppl
+us1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" untagged="ethe
+r1 - CAMERA" vlan-ids=60
+/interface bridge vlan add bridge=bridge comment="VLAN QUICE" tagged="sfp-sfpplus
+1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" vlan-ids=1660,16
+62,1669
+/interface bridge vlan add bridge=bridge comment="VLAN PILAR" tagged="sfp-sfpplus
+1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" vlan-ids=1650
+/interface bridge vlan add bridge=bridge comment="VLAN ROMULO CAMPOS" tagged="sfp
+-sfpplus1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" vlan-ids
+=1655
+/interface bridge vlan add bridge=bridge comment="VLAN MEDRADO" tagged="sfp-sfppl
+us1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" vlan-ids=1657
+/interface bridge vlan add bridge=bridge comment="VLAN JGA" tagged="sfp-sfpplus1 
+- P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" vlan-ids=1680
+/interface bridge vlan add bridge=bridge comment="VLAN TRANSP-INFORNET" tagged="s
+fp-sfpplus1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2,sfp-sfp
+plus3 - P2P-SW-DST-PEREIROS-P1" vlan-ids=10,1010
+/interface bridge vlan add bridge=bridge comment="VLAN PEDRA VERMELHA" tagged="sf
+p-sfpplus1 - P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2" vlan-id
+s=1676
+/interface bridge vlan add bridge=bridge comment=GERENCIA tagged="sfp-sfpplus1 - 
+P2P-SW-CORE-P6,sfp-sfpplus2 - P2P-SW-DST-PEDRA-VERMELHA-P2,bridge" vlan-ids=1651
+
+/ip address add address=10.13.0.3/24 interface=VLAN1651-GERENCIA network=10.13.0.
+0
+/ip route add distance=1 gateway=10.13.0.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-version=2
+/system identity set name=SW-DST-ANDORINHA-FRIENDS
+/system routerboard settings set boot-os=router-os
+/tool romon set enabled=yes secrets="FR13NDS\$k9#zL"
+
+[tomich@SW-DST-ANDORINHA-FRIENDS] >                                            

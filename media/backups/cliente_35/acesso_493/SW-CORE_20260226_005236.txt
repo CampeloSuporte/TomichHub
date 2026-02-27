@@ -1,0 +1,1036 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW-CORE
+Host: 10.20.0.250:22
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI S6730
+Template: Backup Huawei
+Data: 26/02/2026 00:52:36
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<SW.HW.CORE>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R019C10SPC500
+#
+sysname SW.HW.CORE
+#
+vlan batch 6 49 to 51 97 100 to 104 200 to 201 499 to 513 518 528 600 to 601 666
+vlan batch 702 to 711 777 800 to 810 820 902 970 1000 to 1002 1005 to 1006 1234 2023
+vlan batch 2030 to 2031 2043 2120 2181 2330 2807 to 2808 2916 3900 to 3901 3996 to 4003 4010
+vlan batch 4012 to 4013 4021 4024 to 4028 4048 to 4050
+#
+lnp disable
+#
+stp disable
+#
+multicast routing-enable
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+igmp-snooping enable
+igmp-snooping over-vpls enable
+#
+undo http server enable
+#
+clock timezone BR minus 03:00:00
+#
+vlan pool 501-513
+#
+dns snooping ttl delay-time 5760
+#
+diffserv domain default
+#
+radius-server template default
+#
+mpls lsr-id 10.20.0.250
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+ undo ttl propagate public
+ undo ttl expiration pop
+#
+mpls l2vpn
+#
+vsi PPPOE-ALL
+ pwsignal ldp
+  vsi-id 4000
+  peer 10.20.0.249
+  peer 10.20.0.248
+  peer 10.20.0.247
+  peer 10.20.0.246
+  peer 10.20.0.245
+  peer 10.20.0.244
+  peer 10.20.0.243
+  peer 10.20.0.242
+  peer 10.20.0.241
+  peer 10.20.0.240
+  peer 10.20.0.239
+  peer 10.20.0.238
+  peer 10.20.0.237
+  peer 10.20.0.236
+  peer 10.20.0.235
+  peer 10.20.0.234
+  peer 10.20.0.233
+  peer 10.20.0.232
+  peer 10.20.0.231
+ mtu 9000
+#
+vsi IPTV-PLENATV
+ pwsignal ldp
+  vsi-id 2120
+  peer 10.20.0.249
+ igmp-snooping enable
+#
+vsi IPTV-ALL
+ pwsignal ldp
+  vsi-id 3999
+  peer 10.20.0.249
+  peer 10.20.0.248
+ igmp-snooping enable
+#
+vsi IPTV-3VIATV
+ pwsignal ldp
+  vsi-id 2181
+  peer 10.20.0.249
+ igmp-snooping enable
+#
+vsi IPTV-2
+ pwsignal ldp
+  vsi-id 3900
+  peer 10.20.0.249
+ igmp-snooping enable
+#
+vsi IPTV-3
+ pwsignal ldp
+  vsi-id 3901
+  peer 10.20.0.249
+ igmp-snooping enable
+#
+vsi GGC
+ pwsignal ldp
+  vsi-id 101
+  peer 10.20.0.249
+ mtu 9000
+#
+mpls ldp
+ graceful-restart
+#
+mpls ldp remote-peer 10.20.0.231
+ remote-ip 10.20.0.231
+#
+mpls ldp remote-peer 10.20.0.232
+ remote-ip 10.20.0.232
+#
+mpls ldp remote-peer 10.20.0.233
+ remote-ip 10.20.0.233
+#
+mpls ldp remote-peer 10.20.0.234
+ remote-ip 10.20.0.234
+#
+mpls ldp remote-peer 10.20.0.235
+ remote-ip 10.20.0.235
+#
+mpls ldp remote-peer 10.20.0.236
+ remote-ip 10.20.0.236
+#
+mpls ldp remote-peer 10.20.0.237
+ remote-ip 10.20.0.237
+#
+mpls ldp remote-peer 10.20.0.238
+ remote-ip 10.20.0.238
+#
+mpls ldp remote-peer 10.20.0.239
+ remote-ip 10.20.0.239
+#
+mpls ldp remote-peer 10.20.0.240
+ remote-ip 10.20.0.240
+#
+mpls ldp remote-peer 10.20.0.241
+ remote-ip 10.20.0.241
+#
+mpls ldp remote-peer 10.20.0.242
+ remote-ip 10.20.0.242
+#
+mpls ldp remote-peer 10.20.0.243
+ remote-ip 10.20.0.243
+#
+mpls ldp remote-peer 10.20.0.244
+ remote-ip 10.20.0.244
+#
+mpls ldp remote-peer 10.20.0.245
+ remote-ip 10.20.0.245
+#
+mpls ldp remote-peer 10.20.0.246
+ remote-ip 10.20.0.246
+#
+mpls ldp remote-peer 10.20.0.247
+ remote-ip 10.20.0.247
+#
+mpls ldp remote-peer 10.20.0.248
+ remote-ip 10.20.0.248
+#
+mpls ldp remote-peer 10.20.0.249
+ remote-ip 10.20.0.249
+#
+pki realm default
+ certificate-check none
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default
+#
+vlan 6
+ description 6-VPWS-CPE-SFI_COR_ULTR
+vlan 49
+ description PTP-CDNTV
+vlan 50
+ name L2-RB-FW-MX204
+vlan 51
+ description VMWARE-SERVER
+vlan 97
+ description OLT-CENTRO-UNTAGGED
+vlan 100
+ name L2-NETFLIX
+vlan 101
+ name L2-GGC
+vlan 102
+ description CDN-FACEBOOK
+ name L2.FNA
+vlan 103
+ name L2-BRAS-02
+vlan 104
+ description 104-CDN-NETFLIX-TRAV
+vlan 499
+ name GERENCIA-CISCO_2960-TV
+vlan 500
+ name 500
+vlan 501
+ name 501
+vlan 502
+ name 502
+vlan 503
+ name 503
+vlan 504
+ name 504
+vlan 505
+ name 505
+vlan 506
+ name 506
+vlan 507
+ name 507
+vlan 508
+ name 508
+vlan 509
+ name 509
+vlan 510
+ name 510
+vlan 511
+ name 511
+vlan 512
+ name 512
+vlan 513
+ name 513
+vlan 528
+ name VLAN.CORE.CCIT.VIA.FORTE
+vlan 600
+ name IPTV
+ l2-multicast forwarding-mode mac
+ igmp-snooping enable
+vlan 601
+ description GERENCIA-SG500X-ENCODERS
+vlan 666
+ name VLAN0666
+vlan 702
+ name GERENCIA
+vlan 703
+ name LINK-LIGTECH
+vlan 704
+ name TRANSITO-LIGTECH
+vlan 705
+ name 705
+vlan 706
+ name SPEED-CDN
+vlan 707
+ description LIGTECH-CDN
+ name 707
+vlan 708
+ name 708
+vlan 709
+ name 709
+vlan 710
+ name 710
+vlan 711
+ description FLOWSPEC-TRANSITO-IP
+vlan 777
+ name teste-s6720
+vlan 800
+ name 800
+vlan 801
+ name 801
+vlan 802
+ name 802
+vlan 803
+ name 803
+vlan 804
+ name 804
+vlan 805
+ name 805
+vlan 806
+ name 806
+vlan 807
+ name 807
+vlan 808
+ name 808
+vlan 809
+ name 809
+vlan 810
+ name 810
+vlan 970
+ description VLAN.PTP.CORE.ULTRAFIBRA.SFIT
+vlan 1000
+ name L2-ME3600X-MX5
+vlan 1001
+ name L2-ME-CORE-ME-TRAV
+vlan 1002
+ name L2-ME-CORE-ME-BIG
+vlan 1005
+ name LE-MX5-ME-TRAV
+vlan 1006
+ name 1006
+vlan 1234
+ description IP-ALTAREDE-BKP
+vlan 2023
+ description L2VC.CORE.MCCO.DINAMICA
+vlan 2031
+ description VLAN.DINAMICA
+vlan 2043
+ description DINAMICA-RT02-40G
+vlan 2120
+ description CCTO-IPTV-FOLHA
+vlan 2181
+ description CCTO-IPTV-3VIA
+vlan 2330
+ description TRANSPORTE-FORTETELECOM-MDC
+vlan 2807
+ description IXBR-RJ-GLOBENET
+vlan 2808
+ description IXBR-RJ-GLOBENET
+vlan 2916
+ description TRANSPORTE-FORTETELECOM-BJS
+vlan 3900
+ description VLAN-IPTV-2
+vlan 3901
+ description VLAN-IPTV-3
+vlan 3996
+ description REDE-OLT-CENTRO
+vlan 3997
+ description REDE-OLT-JDC
+vlan 3998
+ description L2VC-CCR-GATEWAY-BIG-FIELD
+vlan 3999
+ description IPTV-ALL
+vlan 4000
+ description VSI-PPPOE-ALL
+vlan 4001
+ description PTP-6730-TRAVESSAO
+vlan 4002
+ description PTP-6720-BIGFIELD
+vlan 4010
+ description VLAN-PTP-DM4370-GUARUS
+vlan 4012
+ description VLAN.PTP.SW.DM.CDMR
+vlan 4013
+ description VLAN.CORE.JDCA
+vlan 4021
+ description VLAN-PTP-CORE-NVBR
+ name VLAN-PTP-CORE-NVBR
+vlan 4024
+ description VLAN.PTP.CORE.TRAV.VIA.BR356
+vlan 4025
+ description VLAN.CORE.CDMR.VIA.K2
+vlan 4026
+ description VLAN.CORE.ULTRAFIBRA.VIA.K2
+vlan 4027
+ description VLAN.PTP.SW.HW.CDMR.VIA.K2
+vlan 4028
+ description VLAN.CORE.ITLV.VIA.K2
+vlan 4048
+ name L2-GERENCIA-A10
+vlan 4049
+ name L2-A10-EXTERNA
+vlan 4050
+ name L2-A10-INTERNA
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ local-aaa-user password policy administrator 
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme radius
+  accounting-scheme default
+  radius-server default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ local-user admin password irreversible-cipher $1c$_6yW55EcA*$aiKjQQHgYHoN\k;&2e*0|IuT%>Q(90zt6I8`kYUB$
+ local-user admin privilege level 15
+ local-user admin service-type terminal ssh
+ local-user tomich password irreversible-cipher $1c$1;uQ)2W!TC$%1.x+i\ef&uAs~-Ba\v1&Qnv+Y#goQ~kx)X/F'(L$
+ local-user tomich privilege level 15
+ local-user tomich service-type terminal ssh
+ local-user flowspec password irreversible-cipher $1c$WWCgX1&']O$(Pw`HAj%FAtkODPe:#C9#H$!96YJx.!.~p/A"v5B$
+ local-user flowspec privilege level 15
+ local-user flowspec service-type terminal ssh
+ local-user infoline password irreversible-cipher $1c$DN/ZO$+Qr/$/V7;Ba}^E'U!xi)3&ed)$A2FXiQeNCr[%A=[@-}H$
+ local-user infoline privilege level 15
+ local-user infoline service-type terminal ssh
+#
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service unicast-server 170.150.252.34
+#
+interface Vlanif1
+ shutdown
+#
+interface Vlanif6
+ description 6-VPWS-CPE-SFI_COR_ULTR
+ mpls l2vc 10.20.0.242 6 mtu 1550
+#
+interface Vlanif101
+ description VPLS.GGC
+ mtu 9000
+ l2 binding vsi GGC
+#
+interface Vlanif102
+ description L2.FNA
+ mpls l2vc 10.20.0.249 102 no-control-word
+#
+interface Vlanif103
+ description L2.NETFLIX
+ mpls l2vc 10.20.0.249 103 no-control-word
+#
+interface Vlanif104
+ mpls l2vc 10.20.0.249 104 mtu 1550
+#
+interface Vlanif200
+ mpls l2vc 10.20.0.247 200 no-control-word
+#
+interface Vlanif201
+ mpls l2vc 10.20.0.249 201 no-control-word
+#
+interface Vlanif500
+ description GERENCIA-SG500X-ENCODERS
+#
+interface Vlanif528
+ description VLAN.CORE.CCIT.VIA.FORTE.R1
+ ip address 10.20.1.61 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif601
+ mpls l2vc 10.20.0.249 601 no-control-word
+#
+interface Vlanif702
+ description GERENCIA
+ ip address 10.18.15.242 255.255.255.252
+ ospf network-type p2p
+#
+interface Vlanif710
+ ip address 10.7.10.2 255.255.255.252
+#
+interface Vlanif970
+ description VLAN.PTP.CORE.ULTRAFIBRA.SFIT
+ ip address 10.20.1.49 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif2023
+ description L2VC.CORE.MCCO.DINAMICA
+ mpls l2vc 10.20.0.235 2023 mtu 9198
+#
+interface Vlanif2120
+ l2 binding vsi IPTV-PLENATV
+#
+interface Vlanif2181
+ l2 binding vsi IPTV-3VIATV
+#
+interface Vlanif2330
+ description VLAN.PTP.CORE.MCCO.VIA.FORTE
+ mtu 9000
+ ip address 10.20.0.77 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif2916
+ description VLAN.PTP.CORE.BJIT
+ mtu 9000
+ ip address 10.20.0.85 255.255.255.252
+ ospf cost 150
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif3900
+ description IPTV-2
+ igmp enable
+ l2 binding vsi IPTV-2
+#
+interface Vlanif3901
+ description IPTV-3
+ igmp enable
+ l2 binding vsi IPTV-3
+#
+interface Vlanif3998
+ description L2VC-CCR-GATEWAY-BIG-FIELD
+ mpls l2vc 10.20.0.248 3998 no-control-word
+#
+interface Vlanif3999
+ description IPTV-ALL
+ igmp enable
+ l2 binding vsi IPTV-ALL
+#
+interface Vlanif4000
+ description VPLS-PPPOE-ALL
+ mtu 9000
+ l2 binding vsi PPPOE-ALL
+#
+interface Vlanif4001
+ description PTP-6730-TRAVESSAO
+ mtu 9000
+ ip address 10.20.0.45 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4002
+ description PTP-6720-BIGFIELD
+ mtu 9000
+ ip address 10.20.0.49 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4003
+ description L2VC.CORE.MCCO.DINAMICA
+ mpls l2vc 10.20.0.235 4003 mtu 9198
+#
+interface Vlanif4010
+ description VLAN-PTP-DM4370-GUARUS
+ ip address 10.20.0.89 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif4012
+ description VLAN.PTP.SW.DM.CDMR
+ ip address 10.20.0.97 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif4013
+ description VLAN-PTP-DM4370-GUARUS
+ ip address 10.20.1.69 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif4021
+ description VLAN-PTP-CORE-NVBR
+ ip address 10.20.0.141 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif4024
+ description VLAN.PTP.CORE.SFDL
+ mtu 9000
+ ip address 10.20.0.149 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4026
+ description VLAN.PTP.CORE.ULTRAFIBRA.SFIT
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface Vlanif4027
+ ip address 10.20.0.161 255.255.255.252
+ ospf cost 10
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls ldp
+#
+interface Vlanif4028
+ description VLAN.CORE.ITLV.VIA.K2
+ mtu 9000
+ ip address 10.20.1.53 255.255.255.252
+ ospf cost 100
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls ldp
+#
+interface MEth0/0/1
+ ip address 192.168.10.2 255.255.255.252
+#
+load-balance-profile MPLS
+ ipv4 field sip dip sport
+ mpls field top-label sip dip sport
+#
+e-trunk 7
+ security-key simple 00E0FC0000000000
+#
+interface Eth-Trunk2
+ description LAGG-20G-NETFLIX-OCA
+ port link-type access
+ port default vlan 100
+ mode lacp
+#
+interface Eth-Trunk3
+ description LAGG-40G-CDN-FACEBOOK
+ port link-type access
+ mode lacp
+#
+interface Eth-Trunk4
+ description LAGG-20G-A10-CGNAT-BOX-1
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4048 to 4050
+ mode lacp
+#
+interface Eth-Trunk5
+ description LAGG-20G-LIGTECH
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 200 to 201 703 707
+ mode lacp
+#
+interface Eth-Trunk6
+ description LAGG-20G-A10-CGNAT-BOX-2
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4048 to 4050
+ mode lacp
+#
+interface Eth-Trunk7
+ description LAGG.20G.SW.DM.SFDL
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4024
+ mode lacp
+#
+interface XGigabitEthernet0/0/1
+ description CNX-WMARE-SERVER
+ port default vlan 51
+#
+interface XGigabitEthernet0/0/2
+ description CNX-10G-LIGTECH-ETH-TRUNK-5
+ eth-trunk 5
+#
+interface XGigabitEthernet0/0/3
+ description CNX-1G-CISCO-2960-GERENCIA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 499 to 500
+#
+interface XGigabitEthernet0/0/4
+ description CNX.10G.SRV.PRXMX.DNS.TECHNO
+ port link-type access
+ port default vlan 51
+#
+interface XGigabitEthernet0/0/5
+ description CNX.TESTE.UNIFI.LAN
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface XGigabitEthernet0/0/6
+ description CNX.10G.UDM.PRO
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface XGigabitEthernet0/0/7
+ description CNX-10G-ARISTA-FNA
+ eth-trunk 3
+#
+interface XGigabitEthernet0/0/8
+ description CNX-1G-RB-FW
+ port link-type access
+ port default vlan 50
+ port negotiation disable
+#
+interface XGigabitEthernet0/0/9
+ undo portswitch
+ description MX204-PPPOE-TRAV-UNTAGG
+ mtu 9000
+ mpls l2vc 10.20.0.249 99 no-control-word
+#
+interface XGigabitEthernet0/0/10
+ undo portswitch
+ description MX204-PPPOE-BGFD-UNTAGG
+ mpls l2vc 10.20.0.248 98 no-control-word
+#
+interface XGigabitEthernet0/0/11
+ description CNX-10G-CDN-GGC-01
+ port link-type access
+#
+interface XGigabitEthernet0/0/12
+ description CNX-10G-CDN-GGC-02
+ port link-type access
+#
+interface XGigabitEthernet0/0/13
+ description CNX-10G-ARISTA-FNA
+ eth-trunk 3
+#
+interface XGigabitEthernet0/0/14
+ description CNX-1G-OLT-CENTRO-UNTAGGED
+ port link-type access
+ port default vlan 97
+#
+interface XGigabitEthernet0/0/15
+ description CNX-10G-CDNTV
+ port link-type access
+ port default vlan 49
+#
+interface XGigabitEthernet0/0/16
+ description CNX.10G.SW.HW.CDMR
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4012
+#
+interface XGigabitEthernet0/0/17
+#
+interface XGigabitEthernet0/0/18
+ description CNX-10G-DM4370-NVBR
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4021
+#
+interface XGigabitEthernet0/0/19
+ description CNX-10G-FORTE-CCTO-STARSAT-IPTV-CCH-MDC
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 528 970 1234 2330 2916
+#
+interface XGigabitEthernet0/0/20
+ description CNX-10G-MX204-PPPOE-TRUNK-OLTS-UNTAGG-PACPON
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 97 to 100 499 to 500 601 3998 to 3999
+#
+interface XGigabitEthernet0/0/21
+ description CNX-10G-A10-LAGG
+ eth-trunk 4
+#
+interface XGigabitEthernet0/0/22
+ description CNX-10G-A10-LAGG
+ eth-trunk 4
+#
+interface XGigabitEthernet0/0/23
+ description CNX-10G-ARISTA-FNA
+ eth-trunk 3
+#
+interface XGigabitEthernet0/0/24
+ description CNX-10G-ARISTA-FNA
+ eth-trunk 3
+#
+interface XGigabitEthernet0/0/25
+ description CNX-10G-DM4370-GUARUS
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4010
+#
+interface XGigabitEthernet0/0/26
+ description CNX-10G-LIGTECH-ETH-TRUNK-5
+ eth-trunk 5
+#
+interface XGigabitEthernet0/0/27
+ description CNX-1G-ENCODER
+ port link-type dot1q-tunnel
+ port default vlan 3999
+#
+interface XGigabitEthernet0/0/28
+ description CNX.10G.DINAMICA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 2023 2030 4003
+#
+interface XGigabitEthernet0/0/29
+ description CNX-10G-A10-LAGG
+ eth-trunk 6
+#
+interface XGigabitEthernet0/0/30
+ description CNX-10G-A10-LAGG
+ eth-trunk 6
+#
+interface XGigabitEthernet0/0/31
+ description CNX-1G-SRV-VOD-CDNTV
+ port link-type access
+ port default vlan 49
+#
+interface XGigabitEthernet0/0/32
+ description CNX-10G-K2-TRANSPORTE-ITALVA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4028
+#
+interface XGigabitEthernet0/0/33
+ description CNX-PROXMOX-SERVER
+ port link-type access
+ port default vlan 51
+#
+interface XGigabitEthernet0/0/34
+ description CNX-1G-IPTV-3
+ port default vlan 3901
+#
+interface XGigabitEthernet0/0/35
+ description TESTE-FLUXO
+ port default vlan 3999
+#
+interface XGigabitEthernet0/0/36
+#
+interface XGigabitEthernet0/0/37
+ port link-type hybrid
+ qinq vlan-translation enable
+ port hybrid untagged vlan 4010
+ port vlan-stacking vlan 100 stack-vlan 4010
+#
+interface XGigabitEthernet0/0/38
+#
+interface XGigabitEthernet0/0/39
+#
+interface XGigabitEthernet0/0/40
+#
+interface XGigabitEthernet0/0/41
+#
+interface XGigabitEthernet0/0/42
+ description CNX.10G.SW.DM.JDCA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4013
+#
+interface XGigabitEthernet0/0/43
+ description CNX.10G.SW.DM.SFDL
+ eth-trunk 7
+#
+interface XGigabitEthernet0/0/44
+ description CNX.10G.SG.VIA.K2
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 49
+#
+interface XGigabitEthernet0/0/45
+ description CNX.10G.SRV.CDNTV
+ port link-type access
+ port default vlan 49
+#
+interface XGigabitEthernet0/0/46
+ description CNX.10G.SW.DM.SFDL
+ eth-trunk 7
+#
+interface XGigabitEthernet0/0/47
+ description CNX.SW.HW.CDMR.VIA.K2
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4027
+#
+interface XGigabitEthernet0/0/48
+ description CNX.10G.SW.DM.ULTRAFIBRA.VIA.K2
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4026
+#
+interface 100GE0/0/1
+ description CNX.100G.ITANET
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 710 to 711 902 2807 to 2808
+#
+interface 100GE0/0/2
+ description CNX.100G.MX204.PPPOE
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface 100GE0/0/3
+ description CNX.100G.SW.HW.TRAV
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4001
+#
+interface 100GE0/0/4
+ description CNX-40G-6720-BIGFIELD
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4002
+#
+interface 100GE0/0/5
+ description CNX.40G.DINAMICA
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 2043
+#
+interface 100GE0/0/6
+ description CNX-100G-MX204-BGP
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 6 49 to 51 100 to 104 501 to 513 666 702 to 711 800 to 810 902 1000 1006
+ port trunk allow-pass vlan 1234 2030 to 2031 2043 2807 to 2808 4048 to 4050
+#
+interface NULL0
+#
+interface LoopBack0
+ description ENDERECO-LOOPBACK
+ ip address 10.20.0.250 255.255.255.255
+#
+ospf 1 router-id 10.20.0.250
+ default-route-advertise
+ import-route direct
+ import-route static
+ opaque-capability enable
+ graceful-restart
+ area 0.0.0.0
+  network 10.18.15.240 0.0.0.3
+  network 10.20.0.44 0.0.0.3
+  network 10.20.0.48 0.0.0.3
+  network 10.20.0.76 0.0.0.3
+  network 10.20.0.84 0.0.0.3
+  network 10.20.0.88 0.0.0.3
+  network 10.20.0.96 0.0.0.3
+  network 10.20.0.140 0.0.0.3
+  network 10.20.0.148 0.0.0.3
+  network 10.20.0.160 0.0.0.3
+  network 10.20.1.36 0.0.0.3
+  network 10.20.1.48 0.0.0.3
+  network 10.20.1.52 0.0.0.3
+  network 10.20.1.56 0.0.0.3
+  network 10.20.1.60 0.0.0.3
+  network 10.20.1.68 0.0.0.3
+  mpls-te enable
+#
+igmp
+#
+undo icmp name timestamp-request receive
+#
+ip route-static 0.0.0.0 0.0.0.0 10.18.15.241
+ip route-static 10.18.18.0 255.255.255.0 10.18.15.241 preference 2 description ZABBIX
+#
+snmp-agent
+snmp-agent local-engineid 800007DB03F4DEAFD1EF90
+snmp-agent community read cipher %^%#:Oy[<SnY$Z-1K43MLQc&=&270X=hrE*XsV$;gu:O5T8O/d#=pJWDX_)vn]d7cl^*+M4}IJV0@AE]wo6.%^%#
+snmp-agent sys-info contact noc@infoline.com.br
+snmp-agent sys-info location CORE.CGOY.RJ
+snmp-agent sys-info version v1 v2c
+undo snmp-agent sys-info version v3
+#
+ssh server authentication-retries 5
+ssh server compatible-ssh1x enable
+stelnet server enable
+ssh user layer7
+ssh user layer7 authentication-type password
+ssh user layer7 service-type stelnet
+ssh client first-time enable
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh server dh-exchange min-len 2048
+#
+user-interface maximum-vty 15
+user-interface con 0
+ authentication-mode aaa
+user-interface vty 0 4
+ authentication-mode aaa
+ protocol inbound all
+user-interface vty 5 14
+user-interface vty 16 20
+#
+wlan
+ traffic-profile name default
+ security-profile name default
+ security-profile name default-wds
+ security-profile name default-mesh
+ ssid-profile name default
+ vap-profile name default
+ wds-profile name default
+ mesh-handover-profile name default
+ mesh-profile name default
+ regulatory-domain-profile name default
+ air-scan-profile name default
+ rrm-profile name default
+ radio-2g-profile name default
+ radio-5g-profile name default
+ wids-spoof-profile name default
+ wids-whitelist-profile name default
+ wids-profile name default
+ ap-system-profile name default
+ port-link-profile name default
+ wired-port-profile name default
+ ap-group name default
+ provision-ap
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+ops
+#
+return
+<SW.HW.CORE>

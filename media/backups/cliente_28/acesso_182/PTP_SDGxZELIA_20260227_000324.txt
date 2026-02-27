@@ -1,0 +1,80 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: PTP_SDGxZELIA
+Host: 172.26.86.2:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK RB922
+Template: Backup Mikrotik
+Data: 27/02/2026 00:03:24
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse
+[admin@PTP_SDGxZELIA] > /export terse
+
+# jan/31/2026 22:58:36 by RouterOS 6.47.2
+# software id = 9JQC-1U2X
+#
+# model = 922UAGS-5HPacD
+# serial number = 77C307C3AF33
+/interface bridge add admin-mac=64:D1:54:24:22:6F auto-mac=no comment=defconf nam
+e=bridge
+/interface wireless set [ find default-name=wlan1 ] adaptive-noise-immunity=clien
+t-mode ampdu-priorities="" band=5ghz-onlyac basic-rates-a/g="" channel-width=20/
+40/80mhz-XXXX country=no_country_set disabled=no frequency=5940 frequency-mode=s
+uperchannel hide-ssid=yes ht-basic-mcs=mcs-14 ht-supported-mcs=mcs-14 hw-retries
+=4 installation=outdoor l2mtu=2000 mode=bridge mtu=2000 name="wlan-Pedra dagua" 
+nv2-preshared-key=19937Pjo7249@21 nv2-security=enabled radio-name=MEGASAP rate-s
+et=configured rx-chains=0,1 scan-list=5900-6000 ssid=REDE_MEGASNETIBT2021 statio
+n-roaming=enabled supported-rates-a/g="" tx-chains=0,1 vht-basic-mcs=mcs0-9 wds-
+default-bridge=bridge wds-mode=dynamic wireless-protocol=nv2-nstreme wps-mode=di
+sabled
+/interface ethernet set [ find default-name=ether1 ] l2mtu=4076 mtu=4076
+/interface wireless nstreme set "wlan-Pedra dagua" disable-csma=yes enable-nstrem
+e=yes framer-limit=4000 framer-policy=best-fit
+/interface wireless security-profiles set [ find default=yes ] authentication-typ
+es=wpa-psk,wpa2-psk,wpa-eap,wpa2-eap eap-methods="" mode=dynamic-keys supplicant
+-identity=MikroTik wpa-pre-shared-key=180997PJO7249@21 wpa2-pre-shared-key=18099
+7PJO7249@21
+/interface bridge port add bridge=bridge comment=defconf interface=ether1
+/interface bridge port add bridge=bridge comment=defconf interface=sfp1
+/interface bridge port add bridge=bridge comment=defconf interface="wlan-Pedra da
+gua"
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/ip address add address=172.26.86.2/29 interface=bridge network=172.26.86.0
+/ip cloud set ddns-enabled=yes
+/ip dns set servers=1.1.1.1
+/ip route add distance=1 gateway=172.26.86.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set api-ssl disabled=yes
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name=PTP_SDGxZELIA
+/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot
+,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 st
+art-time=03:00:00
+/system script add dont-require-permissions=no name=backup owner=admin policy=ftp
+,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local bac
+kupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/syst
+em clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/syste
+m identity get name] . \".rsc\")\r\
+    \n\r\
+    \n# Cria o backup\r\
+    \n/export file=\$backupFileName\r\
+    \n\r\
+    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-pa
+th=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
+    \ndelay 10s\r\
+    \n/file remove \$backupFileName"
+/tool romon set enabled=yes secrets=Conecta@2023
+
+[admin@PTP_SDGxZELIA] >                                                        

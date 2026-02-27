@@ -8,6 +8,7 @@ from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 
 # ═════════════════════════════════════════════════════════════════
 # CONFIGURE AQUI OS IDS DOS USUÁRIOS PERMITIDOS
@@ -27,44 +28,53 @@ USUARIOS_FINANCEIRO = [1, 2]  # ← MUDE PARA OS IDS REAIS
 def acesso_financeiro_restrito(view_func):
     """
     ✅ Decorator que restringe acesso ao Financeiro
-    
+
     Uso:
         @login_required
         @acesso_financeiro_restrito
         def dashboard_financeiro(request):
             ...
-    
+
     ✅ Verifica se:
     1. Usuário está logado (feito por @login_required)
     2. Usuário é STAFF
     3. Usuário está na lista de IDs permitidos
     """
-    
+
     @wraps(view_func)
     def wrapped_view(request, *args, **kwargs):
-        
+
+        def is_ajax():
+            return (
+                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                or request.path.startswith('/financeiro/api/')
+            )
+
         # Se não é staff
         if not request.user.is_staff:
+            if is_ajax():
+                return JsonResponse({'sucesso': False, 'erro': 'Acesso negado'}, status=403)
             messages.error(
-                request, 
+                request,
                 '❌ Acesso Negado: Você não tem permissão para acessar o Financeiro!'
             )
             return redirect('home')
-        
+
         # Se é staff mas não está na lista permitida
         if request.user.id not in USUARIOS_FINANCEIRO:
+            if is_ajax():
+                return JsonResponse({'sucesso': False, 'erro': 'Acesso restrito'}, status=403)
             messages.error(
-                request, 
+                request,
                 f'❌ Acesso Restrito: Apenas usuários autorizados podem acessar o Financeiro. '
                 f'(Seu ID: {request.user.id})'
             )
             return redirect('home')
-        
+
         print(f'✅ Acesso concedido ao Financeiro para: {request.user.username}')
-        
-        # Se passou em todas as verificações, executa a view normalmente
+
         return view_func(request, *args, **kwargs)
-    
+
     return wrapped_view
 
 

@@ -1,0 +1,60 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Flávio José Sousa Araújo - Portal Net
+Equipamento: AXIXA - OLT HUAWEI 5800 MA X2
+Host: 10.11.104.2:22
+Acesso: VIA PROXY SSH
+Modelo: OLT HUAWEI MA5800
+Template: backup olt huawei
+Data: 27/02/2026 01:06:33
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: enable
+============================================================
+enable 
+
+OLT-HU-AXIXA#
+
+============================================================
+Comando: config
+============================================================
+config 
+
+OLT-HU-AXIXA(config)#
+
+============================================================
+Comando: undo interactive
+============================================================
+undo interactive 
+  Interactive function is disabled
+
+OLT-HU-AXIXA(config)#
+
+============================================================
+Comando: undo smart
+============================================================
+undo smart 
+  Interactive function is disabled
+
+OLT-HU-AXIXA(config)#
+
+============================================================
+Comando: scroll
+============================================================
+scroll 
+
+OLT-HU-AXIXA(config)#
+
+============================================================
+Comando: display  current-configuration
+============================================================
+display  current-configuration
+
+                              ^
+  % Unknown command, the error locates at '^'
+
+OLT-HU-AXIXA(config)#
