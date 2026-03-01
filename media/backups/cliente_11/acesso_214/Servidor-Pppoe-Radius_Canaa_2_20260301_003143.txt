@@ -1,0 +1,157 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: DEANGELES MOURÃO PIMENTA 
+Equipamento: Servidor-Pppoe-Radius Canaa 2
+Host: 10.9.1.6:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 01/03/2026 00:31:43
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /                                     
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /e
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /e                                    
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /ex
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /ex                                   
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /exp
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /exp                                  
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /expo
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /expo                                 
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /expor
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /expor                                
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export                               
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export 
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export                               
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export t
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export t                             
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export te
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export te                            
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ter
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ter                           
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ters
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export ters                          
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse
+
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse                         
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse
+[tomich@Servidor-Pppoe-Radius Canaa 2] > /export terse
+
+# mar/01/2026 00:31:39 by RouterOS 6.49.18
+# software id = 20BH-FJKY
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 7AEE0708800F
+/interface bridge add name=loopback protocol-mode=none
+/interface ethernet set [ find default-name=ether1 ] comment="LINK LOCAL"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment=LINK
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-500- RUA HORTE
+NCIA " vlan-id=500
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-501-RUA CENTRA
+L " vlan-id=501
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-502- RUA MIRIM
+ " vlan-id=502
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-503-RUA BARRA 
+SECA" vlan-id=503
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-504- RUA CIRCU
+LAR" vlan-id=504
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-505- RUA TANCR
+EDO NEVES " vlan-id=505
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-506- RUA VALE 
+ALEGRE " vlan-id=506
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-507- RUA JOSE 
+DE SOUZA" vlan-id=507
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-508-RUA  BOA S
+ORTE  " vlan-id=508
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-509-RUA ELDORA
+DO " vlan-id=509
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-510-RUA AMAZON
+AS " vlan-id=510
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-511 - RUA  SAN
+TA CATARINA " vlan-id=511
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-512 - RUA  COR
+ITIBA " vlan-id=512
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-513 - RUA SANT
+OS DUMONT  " vlan-id=513
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-514 - RUA MUTU
+M " vlan-id=514
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-515 - RUA SAO 
+FRANCISCO " vlan-id=515
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-516 - RUA VALE
+ ENCANTADO  " vlan-id=516
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-517 - RUA GERA
+LDINO INACIO  " vlan-id=517
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-518 - RUA SALV
+ADOR  " vlan-id=518
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan-519 - RUA NITE
+ROI" vlan-id=519
+/interface vlan add interface=sfp-sfpplus1 name=vlan101-WAN-IPv4 vlan-id=101
+/interface vlan add interface=sfp-sfpplus1 name=vlan201-WAN-IPv6 vlan-id=201
+/interface vlan add comment=RAMAL-04 disabled=yes interface=sfp-sfpplus1 name="vl
+an257-TANCREDO NEVES" vlan-id=257
+/interface vlan add interface=sfp-sfpplus1 name="vlan520 " vlan-id=520
+/interface vlan add interface=sfp-sfpplus1 name=vlan521 vlan-id=521
+/interface vlan add interface=sfp-sfpplus1 name=vlan522 vlan-id=522
+/interface vlan add interface=sfp-sfpplus1 name=vlan523 vlan-id=523
+/interface vlan add interface=sfp-sfpplus1 name=vlan524 vlan-id=524
+/interface vlan add interface=sfp-sfpplus1 name=vlan525 vlan-id=525
+/interface vlan add interface=sfp-sfpplus1 name=vlan526 vlan-id=526
+/interface vlan add interface=sfp-sfpplus1 name=vlan527 vlan-id=527
+/interface vlan add interface=sfp-sfpplus1 name=vlan528 vlan-id=528
+/interface vlan add interface=sfp-sfpplus1 name=vlan529 vlan-id=529
+/interface vlan add interface=sfp-sfpplus1 name=vlan530 vlan-id=530
+/interface vlan add interface=sfp-sfpplus1 name=vlan531 vlan-id=531
+/interface vlan add interface=sfp-sfpplus1 name=vlan532 vlan-id=532
+/interface vlan add interface=sfp-sfpplus1 name=vlan533 vlan-id=533
+/interface vlan add interface=sfp-sfpplus1 name=vlan534 vlan-id=534
+/interface vlan add interface=sfp-sfpplus1 name=vlan535 vlan-id=535
+/interface vlan add interface=sfp-sfpplus1 name=vlan536 vlan-id=536
+/interface vlan add interface=sfp-sfpplus1 name=vlan537 vlan-id=537
+/interface vlan add interface=sfp-sfpplus1 name=vlan538 vlan-id=538
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name=vlan539 vlan-id=539
+/interface wireless security-profiles set [ find default=yes ] supplicant-identit
+y=MikroTik
+/ip pool add name=Remoto-1 ranges=100.64.4.0/22
+/ip pool add name=Local-1 ranges=10.64.4.0/22
+/ip pool add comment=SGP-BLOQUEADOS name=bloqueados ranges=10.24.0.0/20
+/ipv6 pool add name=PD1-LAN prefix=2804:2e7c:2408::/46 prefix-length=56
+/ipv6 pool add name=PREFIX1-WAN prefix=2804:2e7c:240c::/48 prefix-length=64
+/ipv6 pool add name=bloqueiov6pd prefix=2001:db9:100::/40 prefix-length=64
+/ipv6 pool add name=bloqueiov6prefix prefix=2001:dba:900::/40 prefix-length=64
+/ppp profile set *0 local-address=Local-1 remote-address=Remoto-1
+/ppp profile add change-tcp-mss=yes dhcpv6-pd-pool=PD1-LAN dns-server=172.31.102.
+6,8.8.8.8 local-address=Local-1 name=profile1-servidor-01 on-down=":local server
+name \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server binding remove [find server=\$servername]\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n/ipv6 dhcp-server remove [find numbers=\$user]" on-up=":local TOKEN \"31f01
+836-c974-4ca9-a5cc-0b755e46299c\"\r\
+    \n:local ipnas \"10.9.1.6\"\r\
+    \n:local linksgp \"https://hmtelecom.sgplocal.com.br\"\r\
+    \n:local prefixo\r\
+    \n:local servername \"<pppoe-\$user>\"\r\
+    \n:delay 30s\r\
+    \n:foreach binding in=[/ipv6 dhcp-server binding find status=\"bound\" server
+=\"\$servername\"] do={\r\
+    \n:set prefixo [/ipv6 dhcp-server binding get \$binding address]\r\
+

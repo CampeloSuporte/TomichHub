@@ -1,0 +1,314 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW.HW.SFDL
+Host: 10.20.0.236:22
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI S6730
+Template: Backup Huawei
+Data: 28/02/2026 00:52:33
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<SW.HW.SFDL>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R022C00SPC500
+#
+sysname SW.HW.SFDL
+#
+vlan batch 4000 4014 4024
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+http server-source all-interface
+#
+clock timezone BR minus 03:00:00
+#
+diffserv domain default
+#
+radius-server template default
+#
+mpls lsr-id 10.20.0.236
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+ undo ttl propagate public
+ undo ttl expiration pop
+#
+mpls l2vpn
+#
+vsi PPPOE-ALL
+ pwsignal ldp
+  vsi-id 4000
+  peer 10.20.0.250
+ mtu 9000
+#
+mpls ldp
+ graceful-restart
+#
+mpls ldp remote-peer 10.20.0.243
+ remote-ip 10.20.0.243
+#
+mpls ldp remote-peer 10.20.0.250
+ remote-ip 10.20.0.250
+#
+pki realm default
+ certificate-check none
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default
+#
+vlan 4014
+ description VLAN.PTP.SFDL.CDMR
+ name VLAN.SFDL.CDMR
+vlan 4024
+ description VLAN.SFDL.CORE
+ name VLAN.SFDL.CORE
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ local-aaa-user password policy administrator
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme radius
+  accounting-scheme default
+  radius-server default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ local-user admin password irreversible-cipher $1c$K`%ZL^]I[*$kh5b"CY\f**`\dU9!lG=s:Kn#"Pk%<u%)1A#+B'W$
+ local-user admin privilege level 15
+ local-user admin service-type ssh http
+ local-user tomich password irreversible-cipher $1c$kNb0>PsHRL$,GHnM)dhw,VMVg+D0p{:(wv@0;OF85GOazP^sn(J$
+ local-user tomich privilege level 15
+ local-user tomich service-type terminal ssh
+ local-user infoline password irreversible-cipher $1c$8p{{QJ2pWQ$.`[-HWLSE@:@VoQ>ki"=`<8"GP4PSHGH|#Sd=rsQ$
+ local-user infoline privilege level 15
+ local-user infoline service-type ssh http
+#
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service unicast-server 170.150.252.34
+#
+interface Vlanif1
+#
+interface Vlanif4000
+ description VPLS-PPPOE-ALL
+ mtu 9000
+ l2 binding vsi PPPOE-ALL
+#
+interface Vlanif4014
+ description VLAN.PTP.SFDL.CDMR
+ mtu 9000
+ ip address 10.20.1.42 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif4024
+ description VLAN.PTP.SFDL.CORE.VIA.BR356
+ mtu 9000
+ ip address 10.20.0.150 255.255.255.252
+ ospf network-type p2p
+ ospf ldp-sync
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface MEth0/0/1
+ ip address 192.168.1.253 255.255.255.0
+#
+interface Eth-Trunk1
+ description LAGG.20G.SFDL.CORE
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4024
+ mode lacp
+#
+interface XGigabitEthernet0/0/1
+ description CNX.1G.ROTEADOR
+ port link-type dot1q-tunnel
+ port default vlan 4000
+#
+interface XGigabitEthernet0/0/2
+#
+interface XGigabitEthernet0/0/3
+#
+interface XGigabitEthernet0/0/4
+#
+interface XGigabitEthernet0/0/5
+#
+interface XGigabitEthernet0/0/6
+#
+interface XGigabitEthernet0/0/7
+#
+interface XGigabitEthernet0/0/8
+#
+interface XGigabitEthernet0/0/9
+#
+interface XGigabitEthernet0/0/10
+#
+interface XGigabitEthernet0/0/11
+#
+interface XGigabitEthernet0/0/12
+#
+interface XGigabitEthernet0/0/13
+#
+interface XGigabitEthernet0/0/14
+#
+interface XGigabitEthernet0/0/15
+#
+interface XGigabitEthernet0/0/16
+#
+interface XGigabitEthernet0/0/17
+#
+interface XGigabitEthernet0/0/18
+#
+interface XGigabitEthernet0/0/19
+#
+interface XGigabitEthernet0/0/20
+#
+interface XGigabitEthernet0/0/21
+#
+interface XGigabitEthernet0/0/22
+#
+interface XGigabitEthernet0/0/23
+ description CNX.10G.SFDL.CORE
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/24
+ description CNX.10G.SFDL.CORE
+ eth-trunk 1
+#
+interface 100GE0/0/1
+#
+interface 100GE0/0/2
+#
+interface 100GE0/0/3
+#
+interface 100GE0/0/4
+#
+interface 100GE0/0/5
+ description CNX.100G.SW.HW.CDMR
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4014
+#
+interface 100GE0/0/6
+ description CNX.100G.SW.HW.CORE
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 4024
+#
+interface NULL0
+#
+interface LoopBack0
+ description LOOPBACK
+ ip address 10.20.0.236 255.255.255.255
+#
+ospf 1 router-id 10.20.0.236
+ import-route direct
+ import-route static
+ opaque-capability enable
+ graceful-restart
+ area 0.0.0.0
+  network 10.20.0.148 0.0.0.3
+  network 10.20.1.40 0.0.0.3
+  mpls-te enable
+#
+undo icmp name timestamp-request receive
+#
+snmp-agent
+snmp-agent local-engineid 800007DB039400B0F1C770
+snmp-agent community read cipher %^%#3Pv^;Ij1^32"D<;wqk6QfcCTS#\vvBS[\]4>v%U'Si[H>JC@#,cCdHFT=rn:Tf804tm-h'G/2];Y2is<%^%#
+snmp-agent sys-info contact noc@infoline.com.br
+snmp-agent sys-info location SFDL.SFDL.RJ
+snmp-agent sys-info version v1 v2c
+undo snmp-agent sys-info version v3
+snmp-agent protocol source-status all-interface
+snmp-agent protocol source-status ipv6 all-interface
+#
+stelnet server enable
+ssh server-source all-interface
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh client key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh server dh-exchange min-len 2048
+ssh server publickey rsa_sha2_512 rsa_sha2_256
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$ZBpZ=P;<GE$cor",97M}D2x:''V"i@>r&k2Y$QJq69+-$U=2}DN$
+user-interface vty 0 4
+ authentication-mode aaa
+user-interface vty 16 20
+#
+wlan
+ traffic-profile name default
+ security-profile name default
+ security-profile name default-wds
+ security-profile name default-mesh
+ ssid-profile name default
+ vap-profile name default
+ wds-profile name default
+ mesh-handover-profile name default
+ mesh-profile name default
+ regulatory-domain-profile name default
+ air-scan-profile name default
+ rrm-profile name default
+ radio-2g-profile name default
+ radio-5g-profile name default
+ wids-spoof-profile name default
+ wids-whitelist-profile name default
+ wids-profile name default
+ ap-system-profile name default
+ port-link-profile name default
+ wired-port-profile name default
+ ap-group name default
+ provision-ap
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+ops
+#
+remote-unit
+#
+return
+<SW.HW.SFDL>

@@ -1,0 +1,514 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW-TRAV-RETORNO
+Host: 10.20.0.14:22
+Acesso: VIA PROXY SSH
+Modelo: SW CISCO NEXUS3000
+Template: Backup Completo
+Data: 28/02/2026 01:03:24
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+
+SW.N3K.TRAV# 
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+
+!Command: show running-config
+!Time: Sat Feb 28 01:03:21 2026
+
+version 7.0(3)I6(2)
+hostname SW.N3K.TRAV
+vdc SW.N3K.TRAV id 1
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource vrf minimum 2 maximum 4096
+  limit-resource port-channel minimum 0 maximum 104
+  limit-resource u4route-mem minimum 128 maximum 128
+  limit-resource u6route-mem minimum 96 maximum 96
+  limit-resource m4route-mem minimum 58 maximum 58
+  limit-resource m6route-mem minimum 8 maximum 8
+
+feature telnet
+feature pim
+feature interface-vlan
+feature lacp
+feature lldp
+clock timezone BRA -3 0
+
+no password strength-check
+username admin password 5 $5$Gs9s1jkq$digjDIjIzLJZ5.RN4Q1WFb6bGTTbYML2IeNfwlrTYq8  role network-admin
+username infoline password 5 $5$l3YGw0VR$giRTfzvnOxfZ5NZYsLWs5E.E2K2MqgVJo2rLMUazp6D  role network-admin
+username tomich password 5 $5$RmIqinMD$0FFfBJRFEAXuti8A6m4oVStv6sbSao3tuunr8vE/BYA  role network-admin
+ip domain-lookup
+ip domain-name infolinebandalarga.com.br
+service unsupported-transceiver
+vlan dot1Q tag native
+ip access-list copp-system-acl-eigrp
+  10 permit eigrp any 224.0.0.10/32 
+ipv6 access-list copp-system-acl-eigrp6
+  10 permit eigrp any ff02::a/128 
+ip access-list copp-system-acl-icmp
+  10 permit icmp any any 
+ip access-list copp-system-acl-igmp
+  10 permit igmp any any 
+ip access-list copp-system-acl-ntp
+  10 permit udp any any eq ntp 
+  20 permit udp any eq ntp any 
+ip access-list copp-system-acl-pimreg
+  10 permit pim any any 
+ip access-list copp-system-acl-ping
+  10 permit icmp any any echo 
+  20 permit icmp any any echo-reply 
+ip access-list copp-system-acl-routingproto1
+  10 permit tcp any gt 1024 any eq bgp 
+  20 permit tcp any eq bgp any gt 1024 
+  30 permit udp any 224.0.0.0/24 eq rip 
+  40 permit tcp any gt 1024 any eq 639 
+  50 permit tcp any eq 639 any gt 1024 
+  70 permit ospf any any 
+  80 permit ospf any 224.0.0.5/32 
+  90 permit ospf any 224.0.0.6/32 
+ip access-list copp-system-acl-routingproto2
+  10 permit udp any 224.0.0.0/24 eq 1985 
+  20 permit 112 any 224.0.0.0/24 
+ip access-list copp-system-acl-snmp
+  10 permit udp any any eq snmp 
+  20 permit udp any any eq snmptrap 
+ip access-list copp-system-acl-ssh
+  10 permit tcp any any eq 22 
+  20 permit tcp any eq 22 any 
+ip access-list copp-system-acl-stftp
+  10 permit udp any any eq tftp 
+  20 permit udp any any eq 1758 
+  30 permit udp any eq tftp any 
+  40 permit udp any eq 1758 any 
+  50 permit tcp any any eq 115 
+  60 permit tcp any eq 115 any 
+ip access-list copp-system-acl-tacacsradius
+  10 permit tcp any any eq tacacs 
+  20 permit tcp any eq tacacs any 
+  30 permit udp any any eq 1812 
+  40 permit udp any any eq 1813 
+  50 permit udp any any eq 1645 
+  60 permit udp any any eq 1646 
+  70 permit udp any eq 1812 any 
+  80 permit udp any eq 1813 any 
+  90 permit udp any eq 1645 any 
+  100 permit udp any eq 1646 any 
+ip access-list copp-system-acl-telnet
+  10 permit tcp any any eq telnet 
+  20 permit tcp any any eq 107 
+  30 permit tcp any eq telnet any 
+  40 permit tcp any eq 107 any 
+ipv6 access-list copp-system-acl-v6routingProto2
+  10 permit udp any ff02::66/128 eq 2029 
+  20 permit udp any ff02::fb/128 eq 5353 
+  30 permit 112 any ff02::12/128 
+  40 permit pim any ff02::d/128 
+ipv6 access-list copp-system-acl-v6routingproto1
+  10 permit 89 any ff02::5/128 
+  20 permit 89 any ff02::6/128 
+  30 permit udp any ff02::9/128 eq 521 
+ip access-list copp-system-dhcp-relay
+  10 permit udp any eq bootps any eq bootps 
+policy-map type network-qos jumbo
+  class type network-qos class-default
+    mtu 9216
+system qos
+  service-policy type network-qos jumbo
+class-map type control-plane match-any copp-icmp
+  match access-group name copp-system-acl-icmp
+class-map type control-plane match-any copp-ntp
+  match access-group name copp-system-acl-ntp
+class-map type control-plane match-any copp-s-arp
+class-map type control-plane match-any copp-s-bfd
+class-map type control-plane match-any copp-s-bpdu
+class-map type control-plane match-any copp-s-dai
+class-map type control-plane match-any copp-s-default
+class-map type control-plane match-any copp-s-dhcpreq
+class-map type control-plane match-any copp-s-dhcpresp
+  match access-group name copp-system-dhcp-relay
+class-map type control-plane match-any copp-s-dpss
+class-map type control-plane match-any copp-s-eigrp
+  match access-group name copp-system-acl-eigrp
+  match access-group name copp-system-acl-eigrp6
+class-map type control-plane match-any copp-s-glean
+class-map type control-plane match-any copp-s-igmp
+  match access-group name copp-system-acl-igmp
+class-map type control-plane match-any copp-s-ipmcmiss
+class-map type control-plane match-any copp-s-l2switched
+class-map type control-plane match-any copp-s-l3destmiss
+class-map type control-plane match-any copp-s-l3mtufail
+class-map type control-plane match-any copp-s-l3slowpath
+class-map type control-plane match-any copp-s-mpls
+class-map type control-plane match-any copp-s-pimautorp
+class-map type control-plane match-any copp-s-pimreg
+  match access-group name copp-system-acl-pimreg
+class-map type control-plane match-any copp-s-ping
+  match access-group name copp-system-acl-ping
+class-map type control-plane match-any copp-s-ptp
+class-map type control-plane match-any copp-s-routingProto1
+  match access-group name copp-system-acl-routingproto1
+  match access-group name copp-system-acl-v6routingproto1
+class-map type control-plane match-any copp-s-routingProto2
+  match access-group name copp-system-acl-routingproto2
+class-map type control-plane match-any copp-s-selfIp
+class-map type control-plane match-any copp-s-ttl1
+class-map type control-plane match-any copp-s-v6routingProto2
+  match access-group name copp-system-acl-v6routingProto2
+class-map type control-plane match-any copp-s-vxlan
+class-map type control-plane match-any copp-snmp
+  match access-group name copp-system-acl-snmp
+class-map type control-plane match-any copp-ssh
+  match access-group name copp-system-acl-ssh
+class-map type control-plane match-any copp-stftp
+  match access-group name copp-system-acl-stftp
+class-map type control-plane match-any copp-tacacsradius
+  match access-group name copp-system-acl-tacacsradius
+class-map type control-plane match-any copp-telnet
+  match access-group name copp-system-acl-telnet
+policy-map type control-plane copp-system-policy 
+  class copp-s-default
+    police pps 400 
+  class copp-s-l2switched
+    police pps 200 
+  class copp-s-ping
+    police pps 100 
+  class copp-s-l3destmiss
+    police pps 100 
+  class copp-s-glean
+    police pps 500 
+  class copp-s-selfIp
+    police pps 500 
+  class copp-s-l3mtufail
+    police pps 100 
+  class copp-s-ttl1
+    police pps 100 
+  class copp-s-ipmcmiss
+    police pps 400 
+  class copp-s-l3slowpath
+    police pps 100 
+  class copp-s-dhcpreq
+    police pps 300 
+  class copp-s-dhcpresp
+    police pps 300 
+  class copp-s-dai
+    police pps 300 
+  class copp-s-igmp
+    police pps 400 
+  class copp-s-eigrp
+    police pps 200 
+  class copp-s-pimreg
+    police pps 200 
+  class copp-s-pimautorp
+    police pps 200 
+  class copp-s-routingProto2
+    police pps 1300 
+  class copp-s-v6routingProto2
+    police pps 1300 
+  class copp-s-routingProto1
+    police pps 1000 
+  class copp-s-arp
+    police pps 200 
+  class copp-s-ptp
+    police pps 1000 
+  class copp-s-vxlan
+    police pps 1000 
+  class copp-s-bfd
+    police pps 350 
+  class copp-s-bpdu
+    police pps 12000 
+  class copp-s-dpss
+    police pps 1000 
+  class copp-s-mpls
+    police pps 100 
+  class copp-icmp
+    police pps 200 
+  class copp-telnet
+    police pps 500 
+  class copp-ssh
+    police pps 500 
+  class copp-snmp
+    police pps 500 
+  class copp-ntp
+    police pps 100 
+  class copp-tacacsradius
+    police pps 400 
+  class copp-stftp
+    police pps 400 
+control-plane
+  service-policy input copp-system-policy 
+snmp-server user admin network-admin auth md5 0x53601c63c5a206ad4e6512aca1cc854c priv 0x53601c63c5a206ad4e6512aca1cc854c localizedkey
+snmp-server user tomich network-admin auth md5 0x179afc54a2d7ea184a2e357d6a9686ce priv 0x179afc54a2d7ea184a2e357d6a9686ce localizedkey
+snmp-server user infoline network-admin auth md5 0x249f7f35dd7f198c4205f8f0355cc107 priv 0x249f7f35dd7f198c4205f8f0355cc107 localizedkey
+rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+snmp-server community infoline group network-operator
+ntp server 170.150.252.34
+
+ip pim ssm range 232.0.0.0/8
+vlan 1
+vlan 5
+  name ULTRACOM
+vlan 50,71-95
+vlan 99
+  name PPPOE-FH-TRAV-PACPON-UNTAGGEDA
+vlan 100
+  name GERENCIA-FIBERHOME-TRAVESSAO
+vlan 101
+vlan 500
+  name VLAN.GERENCIA.CISCO.IPTV
+vlan 501
+  name L2-GATEWAY-1
+vlan 502
+  name L2-GATEWAY-2
+vlan 503
+  name L2-GATEWAY-3
+vlan 504
+  name L2-GATEWAY-4
+vlan 505
+  name L2-SWITCH-CRS
+vlan 506
+  name L2-CCR-CENTRAIS
+vlan 508
+  name L2-GATEWAY-5
+vlan 509
+  name L2-TRES-VENDAS
+vlan 512
+  name L2-CCR-GUANDU
+vlan 513
+vlan 666
+  name IPTV-SERVER
+vlan 800,811-818,821-828,831-838,841-848,899-916
+vlan 917
+  name GERENCIA-OLT-TRVD
+vlan 918-933,1000-1001,1003-1004
+vlan 1006
+  name PTP-ME-TRAV-ME-CORE2
+vlan 1011-1018,1031-1038
+vlan 1041
+  name TANANAM
+vlan 1042-1048,1051-1058,1061-1068,1071-1078,1081-1088,1101-1108,1171-1178,1181-1188,1201-1208,1301-1308,1401-1408,1501-1508,1601-1624,1685-1764
+vlan 3000
+  name DEDICADO-COAGRO
+vlan 3001
+  name DEDICADO-VITAL-GUARUS
+vlan 3003
+  name DEDICADO-VITAL-CODIN
+
+vlan configuration 1015
+  ip igmp snooping querier 10.10.15.254
+vrf context management
+no system urpf disable
+no port-channel load-balance resilient
+
+interface Vlan1
+
+interface Vlan1003
+  description GERENCIA
+  no shutdown
+  ip address 10.20.0.14/30
+
+interface Vlan1015
+  no shutdown
+
+interface Vlan1016
+  no shutdown
+
+interface Ethernet1/1
+  description CNX-CCR-GATEWAY-4
+  switchport mode trunk
+  switchport access vlan 81
+  switchport trunk allowed vlan 71,504
+
+interface Ethernet1/2
+  description CNX-CCR-GATEWAY-4-RB-IMBURI
+  switchport mode trunk
+  switchport access vlan 82
+  switchport trunk allowed vlan 72,501
+
+interface Ethernet1/3
+  description CNX-CCR-GATEWAY-3
+  switchport mode trunk
+  switchport access vlan 83
+  switchport trunk allowed vlan 73,503
+
+interface Ethernet1/4
+  description CNX-CCR-INFOLINE-CENTRAIS
+  switchport mode trunk
+  switchport access vlan 84
+  switchport trunk allowed vlan 74,506
+
+interface Ethernet1/5
+  description CNX-SWITCH-CRS
+  switchport mode trunk
+  switchport access vlan 85
+  switchport trunk allowed vlan 75,505
+
+interface Ethernet1/6
+  description CNX-CCR-GATEWAY-2
+  switchport mode trunk
+  switchport access vlan 86
+  switchport trunk allowed vlan 76,502
+
+interface Ethernet1/7
+  description CNX-GATEWAY-TRES-VENDAS
+  switchport mode trunk
+  switchport access vlan 87
+  switchport trunk allowed vlan 77,509
+
+interface Ethernet1/8
+  description CNX-CCR-GATEWAY-GUANDU
+  switchport mode trunk
+  switchport access vlan 88
+  switchport trunk allowed vlan 78,101,512
+
+interface Ethernet1/9
+  description CNX-FH-TRAVESSAO-PACPON-UNTAGGED
+  switchport access vlan 99
+
+interface Ethernet1/10
+  description TESTE-PPPOE
+  switchport access vlan 1401
+
+interface Ethernet1/11
+  description CNX-CCR-GTW4-BRIDGE-VLAN508-CCR-CODIN
+  switchport mode trunk
+  switchport access vlan 91
+  switchport trunk allowed vlan 508
+
+interface Ethernet1/12
+  switchport access vlan 92
+
+interface Ethernet1/13
+  switchport access vlan 93
+
+interface Ethernet1/14
+  switchport access vlan 94
+
+interface Ethernet1/15
+  switchport access vlan 95
+
+interface Ethernet1/16
+
+interface Ethernet1/17
+
+interface Ethernet1/18
+
+interface Ethernet1/19
+
+interface Ethernet1/20
+  switchport access vlan 1015
+
+interface Ethernet1/21
+  switchport access vlan 1016
+
+interface Ethernet1/22
+  switchport access vlan 1017
+
+interface Ethernet1/23
+  switchport access vlan 1018
+
+interface Ethernet1/24
+
+interface Ethernet1/25
+
+interface Ethernet1/26
+
+interface Ethernet1/27
+
+interface Ethernet1/28
+
+interface Ethernet1/29
+
+interface Ethernet1/30
+  description CNX-10G-SERVIDOR-IPTV
+  switchport access vlan 666
+
+interface Ethernet1/31
+
+interface Ethernet1/32
+
+interface Ethernet1/33
+
+interface Ethernet1/34
+
+interface Ethernet1/35
+
+interface Ethernet1/36
+
+interface Ethernet1/37
+
+interface Ethernet1/38
+
+interface Ethernet1/39
+
+interface Ethernet1/40
+
+interface Ethernet1/41
+
+interface Ethernet1/42
+
+interface Ethernet1/43
+
+interface Ethernet1/44
+
+interface Ethernet1/45
+
+interface Ethernet1/46
+  description CNX.ROTEADOR
+  switchport access vlan 79
+
+interface Ethernet1/47
+  description CNX-ROTEADOR-CENTRAL-KM14
+  switchport access vlan 79
+
+interface Ethernet1/48
+  description CNX-1G-CCR-GAT4-GERENCIAS
+  switchport mode trunk
+  switchport access vlan 1101
+  switchport trunk allowed vlan 5,99,508,513,800,811-818,821-828,831-838,841-848,899,1104,1173,1501,1504,1616-1624,3000
+
+interface Ethernet1/49
+  description CNX-S6730-TRAV-TRUNK-LAN
+  switchport mode trunk
+  switchport trunk allowed vlan 5,71-79,99-101,500-506,508-509,512-513,708,817,822,827,838,900-933,1001,1003-1004,1006,1101-1108,1171-1178,1181-1188,1201-1208,1301-1308,1401-1408,1501-1508,1601-1624,3000
+
+interface Ethernet1/50
+  description CNX.CISCO.IPTV
+  switchport mode trunk
+  switchport trunk allowed vlan 500,1015-1018
+  speed 1000
+
+interface Ethernet1/51
+  description CNX-10G-OLT-TRV
+  switchport mode trunk
+  switchport trunk allowed vlan 100,1101-1108,1171-1178,1181-1188,1201-1208,1301-1308,1401-1408,1501-1508,1601-1624,3000
+  spanning-tree bpdufilter enable
+
+interface Ethernet1/52
+  description CNX-10G-OLT-TVD
+  switchport mode trunk
+  switchport trunk allowed vlan 77,509,917-933,1004
+
+interface mgmt0
+  vrf member management
+line console
+line vty
+boot nxos bootflash:/nxos.7.0.3.I6.2.bin 
+ip route 0.0.0.0/0 10.20.0.13
+
+SW.N3K.TRAV# 
