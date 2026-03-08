@@ -1,0 +1,375 @@
+"""
+monitoramento/services.py
+Camada de acesso à API Zabbix (JSON-RPC 2.0).
+
+Compatibilidade:
+  - Zabbix < 6.4 : auth no payload JSON
+  - Zabbix 7.0+  : Bearer header (auth no payload foi removido)
+"""
+import logging
+import time
+import requests
+
+requests.packages.urllib3.disable_warnings(
+    requests.packages.urllib3.exceptions.InsecureRequestWarning
+)
+
+logger = logging.getLogger(__name__)
+
+_version_cache: dict = {}
+
+
+# ──────────────────────────────────────────────────────────────
+# VERSÃO
+# ──────────────────────────────────────────────────────────────
+
+def _get_zabbix_version(url: str) -> tuple:
+    if url in _version_cache:
+        return _version_cache[url]
+    try:
+        resp = requests.post(
+            f"{url.rstrip('/')}/api_jsonrpc.php",
+            json={"jsonrpc": "2.0", "method": "apiinfo.version", "params": {}, "id": 1},
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+            verify=False,
+        )
+        version_str = resp.json().get("result", "0.0.0")
+        parts = version_str.split(".")
+        version = tuple(int(p) for p in parts[:3])
+    except Exception:
+        version = (7, 0, 0)
+    _version_cache[url] = version
+    return version
+
+
+# ──────────────────────────────────────────────────────────────
+# HTTP / RPC
+# ──────────────────────────────────────────────────────────────
+
+def _rpc(url: str, method: str, params: dict, auth: str = None) -> dict:
+    endpoint = f"{url.rstrip('/')}/api_jsonrpc.php"
+    payload  = {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
+    headers  = {"Content-Type": "application/json"}
+
+    if auth:
+        version = _get_zabbix_version(url)
+        if version >= (7, 0, 0):
+            headers["Authorization"] = f"Bearer {auth}"
+        else:
+            payload["auth"] = auth
+
+    resp = requests.post(endpoint, json=payload, headers=headers, timeout=15, verify=False)
+    resp.raise_for_status()
+    data = resp.json()
+
+    if "error" in data:
+        msg = data["error"].get("data") or data["error"].get("message", "Zabbix API Error")
+        raise Exception(msg)
+
+    return data.get("result")
+
+
+# ──────────────────────────────────────────────────────────────
+# AUTENTICAÇÃO
+# ──────────────────────────────────────────────────────────────
+
+def _get_auth_token(config):
+    if getattr(config, 'api_token', None):
+        return config.api_token
+
+    url = config.url.rstrip('/')
+    for user_param in ("username", "user"):
+        payload = {
+            "jsonrpc": "2.0",
+            "method":  "user.login",
+            "params":  {user_param: config.usuario, "password": config.senha},
+            "id":      1,
+        }
+        resp = requests.post(
+            f"{url}/api_jsonrpc.php",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=15,
+            verify=False,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        if "result" in data:
+            return data["result"]
+
+        error_data = data.get("error", {}).get("data", "")
+        if 'unexpected parameter "user"' in error_data:
+            continue
+        if 'unexpected parameter "username"' in error_data:
+            continue
+        raise Exception(error_data or data["error"].get("message", "Erro de autenticação"))
+
+    raise Exception("Falha ao autenticar na API Zabbix")
+
+
+def testar_conexao(config) -> str:
+    version = _rpc(config.url, "apiinfo.version", {})
+    _get_auth_token(config)
+    return version
+
+
+# ──────────────────────────────────────────────────────────────
+# HOSTS
+# ──────────────────────────────────────────────────────────────
+
+def listar_hosts(config, busca: str = "") -> list:
+    auth   = _get_auth_token(config)
+    params = {
+        "output":           ["hostid", "host", "name", "status"],
+        "selectInterfaces": ["ip", "port", "type", "available"],
+        "limit":            300,
+    }
+    if busca:
+        params["search"]      = {"name": busca, "host": busca}
+        params["searchByAny"] = True
+
+    hosts = _rpc(config.url, "host.get", params, auth)
+
+    result = []
+    for h in hosts:
+        ip        = ""
+        available = "unknown"
+        ifaces    = h.get("interfaces", [])
+        if ifaces:
+            ip = ifaces[0].get("ip", "")
+            avail_vals = [i.get("available", "0") for i in ifaces]
+            if "1" in avail_vals:
+                available = "up"
+            elif all(v == "2" for v in avail_vals):
+                available = "down"
+
+        result.append({
+            "hostid":    h["hostid"],
+            "host":      h["host"],
+            "name":      h.get("name", h["host"]),
+            "status":    "enabled" if h.get("status") == "0" else "disabled",
+            "available": available,
+            "ip":        ip,
+        })
+    return result
+
+
+# ──────────────────────────────────────────────────────────────
+# INTERFACES / ITENS
+# ──────────────────────────────────────────────────────────────
+
+def listar_interfaces(config, host_id: str) -> list:
+    """
+    Retorna TODOS os itens ativos do host agrupados por nome de interface.
+    Sem filtro de keyword — o usuário pesquisa o que quiser no frontend.
+
+    Ordenação: grupos com in+out primeiro, depois só um, depois nenhum.
+    """
+    auth = _get_auth_token(config)
+
+    try:
+        all_items = _rpc(config.url, "item.get", {
+            "output":  ["itemid", "name", "key_", "lastvalue", "units"],
+            "hostids": host_id,
+            "filter":  {"status": "0"},
+            "limit":   3000,
+        }, auth)
+    except Exception as e:
+        logger.error("item.get error: %s", e)
+        return []
+
+    if not all_items:
+        return []
+
+    groups: dict = {}  # group_name → {name, in_id, out_id}
+
+    for item in all_items:
+        name = item["name"]
+        key  = item["key_"]
+
+        if ":" in name:
+            group_name = name.split(":")[0].strip()
+            for prefix in ("Interface ", "Port ", "Iface ", "Link "):
+                group_name = group_name.replace(prefix, "").strip()
+        else:
+            group_name = key.split("[")[0] if "[" in key else key
+
+        if group_name not in groups:
+            groups[group_name] = {
+                "name":   group_name,
+                "in_id":  None,
+                "out_id": None,
+            }
+
+        g         = groups[group_name]
+        key_lower  = key.lower()
+        name_lower = name.lower()
+
+        is_in = (
+            any(k in key_lower for k in (
+                "hcinoctets", "ifinoctets", "net.if.in", "if.in[",
+            )) or
+            any(k in name_lower for k in (
+                "bits received", "traffic in", "in octets",
+                "received bits", "entrada",
+            ))
+        )
+
+        is_out = (
+            any(k in key_lower for k in (
+                "hcoutoctets", "ifoutoctets", "net.if.out", "if.out[",
+            )) or
+            any(k in name_lower for k in (
+                "bits sent", "traffic out", "out octets",
+                "sent bits", "saída",
+            ))
+        )
+
+        if is_in and not g["in_id"]:
+            g["in_id"] = item["itemid"]
+        if is_out and not g["out_id"]:
+            g["out_id"] = item["itemid"]
+
+    result = list(groups.values())
+
+    def _sort(g):
+        if g["in_id"] and g["out_id"]:
+            return (0, g["name"])
+        if g["in_id"] or g["out_id"]:
+            return (1, g["name"])
+        return (2, g["name"])
+
+    result.sort(key=_sort)
+    return result
+
+
+# ──────────────────────────────────────────────────────────────
+# STATUS EM TEMPO REAL
+# ──────────────────────────────────────────────────────────────
+
+def status_nodes(config, host_ids: list) -> dict:
+    if not host_ids:
+        return {}
+
+    auth      = _get_auth_token(config)
+    hosts_raw = _rpc(config.url, "host.get", {
+        "output":           ["hostid"],
+        "selectInterfaces": ["available"],
+        "hostids":          host_ids,
+    }, auth)
+
+    status: dict = {}
+    for h in hosts_raw:
+        hid        = h["hostid"]
+        avail_vals = [i.get("available", "0") for i in h.get("interfaces", [])]
+        if "1" in avail_vals:
+            status[hid] = "up"
+        elif avail_vals and all(v == "2" for v in avail_vals):
+            status[hid] = "down"
+        else:
+            status[hid] = "unknown"
+
+    try:
+        triggered = _rpc(config.url, "trigger.get", {
+            "output":      ["triggerid"],
+            "selectHosts": ["hostid"],
+            "hostids":     host_ids,
+            "only_true":   True,
+            "filter":      {"status": "0"},
+        }, auth)
+        for t in triggered:
+            for h in t.get("hosts", []):
+                hid = h["hostid"]
+                if status.get(hid) == "up":
+                    status[hid] = "problem"
+    except Exception:
+        pass
+
+    return status
+
+
+def status_items(config, item_ids: list) -> dict:
+    if not item_ids:
+        return {}
+
+    auth  = _get_auth_token(config)
+    items = _rpc(config.url, "item.get", {
+        "output":  ["itemid", "lastvalue", "lastclock", "units"],
+        "itemids": item_ids,
+    }, auth)
+
+    return {
+        it["itemid"]: {
+            "value": it.get("lastvalue", "0"),
+            "units": it.get("units", "bps"),
+            "clock": it.get("lastclock", 0),
+        }
+        for it in items
+    }
+
+
+def historico_item(config, item_id: str, limit: int = 60, hours: int = 1) -> list:
+    """
+    Busca histórico de um item Zabbix.
+    - hours: janela de tempo a buscar (1, 3, 6, 12, 24)
+    - limit: máximo de pontos (calculado automaticamente pelo período)
+    """
+    auth      = _get_auth_token(config)
+    time_from = int(time.time()) - (hours * 3600)
+
+    # Mais pontos para períodos maiores (máx 1000)
+    limit = min(hours * 120, 1000)
+
+    # Descobre o value_type real do item para consultar o histórico correto
+    items = _rpc(config.url, "item.get", {
+        "output":  ["itemid", "value_type"],
+        "itemids": item_id,
+    }, auth)
+    value_type = int(items[0]["value_type"]) if items else 3
+
+    history = _rpc(config.url, "history.get", {
+        "output":    "extend",
+        "history":   value_type,   # tipo correto: 3=uint (tráfego), 0=float
+        "itemids":   item_id,
+        "time_from": time_from,
+        "sortfield": "clock",
+        "sortorder": "DESC",
+        "limit":     limit,
+    }, auth)
+
+    # Fallback: tenta outros tipos caso o principal retorne vazio
+    if not history:
+        for fallback_type in [3, 0, 1]:
+            if fallback_type == value_type:
+                continue
+            history = _rpc(config.url, "history.get", {
+                "output":    "extend",
+                "history":   fallback_type,
+                "itemids":   item_id,
+                "time_from": time_from,
+                "sortfield": "clock",
+                "sortorder": "DESC",
+                "limit":     limit,
+            }, auth)
+            if history:
+                break
+
+    history.reverse()
+    return [{"t": int(h["clock"]), "v": float(h["value"])} for h in history]
+
+
+# ──────────────────────────────────────────────────────────────
+# UTILITÁRIOS
+# ──────────────────────────────────────────────────────────────
+
+def format_bps(value_str) -> str:
+    try:
+        v = float(value_str)
+    except (TypeError, ValueError):
+        return "0 bps"
+    if v >= 1_000_000_000: return f"{v/1_000_000_000:.1f} Gbps"
+    if v >= 1_000_000:     return f"{v/1_000_000:.1f} Mbps"
+    if v >= 1_000:         return f"{v/1_000:.1f} Kbps"
+    return f"{v:.0f} bps"

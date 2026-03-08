@@ -1,0 +1,20 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: C & D ADMINISTRADORA
+Equipamento: DNS RECURSIVO MASTER
+Host: 172.31.200.3:22002
+Acesso: VIA PROXY SSH
+Modelo: debian 13
+Template: Backup Mikrotik
+Data: 04/03/2026 01:05:55
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/export terse
+-bash: /export: Arquivo ou diretório inexistente
+tomich@DNS-MASTER:~$ 

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'financeiro',
     'wiki',
     'markdown',
+    'monitoramento.apps.MonitoramentoConfig',
 ]
 
 REST_FRAMEWORK = {

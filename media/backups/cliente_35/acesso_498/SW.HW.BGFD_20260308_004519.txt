@@ -1,0 +1,118 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW.HW.BGFD
+Host: 10.20.0.248:22
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI S6730
+Template: Backup Huawei
+Data: 08/03/2026 00:45:19
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<SW.HW.BGFD>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R019C00SPC500
+#
+sysname SW.HW.BGFD
+#
+vlan batch 3998 to 4000 4002 to 4004 4011 4014 4017 4022 4025
+#
+lnp disable
+#
+stp disable
+#
+igmp global limit 6000
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+undo http server enable
+#
+clock timezone Brasil minus 03:00:00
+#
+diffserv domain default
+#
+radius-server template default
+#
+mpls lsr-id 10.20.0.248
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+ undo ttl propagate public
+ undo ttl expiration pop
+#
+mpls l2vpn
+#
+vsi PPPOE-ALL
+ pwsignal ldp
+  vsi-id 4000
+  peer 10.20.0.250
+ mtu 9000
+#
+vsi IPTV-ALL
+ pwsignal ldp
+  vsi-id 3999
+  peer 10.20.0.250
+ shutdown
+#
+mpls ldp
+ graceful-restart
+#
+mpls ldp remote-peer 10.20.0.231
+ remote-ip 10.20.0.231
+#
+mpls ldp remote-peer 10.20.0.235
+ remote-ip 10.20.0.235
+#
+mpls ldp remote-peer 10.20.0.236
+ remote-ip 10.20.0.236
+#
+mpls ldp remote-peer 10.20.0.238
+ remote-ip 10.20.0.238
+#
+mpls ldp remote-peer 10.20.0.240
+ remote-ip 10.20.0.240
+#
+mpls ldp remote-peer 10.20.0.244
+ remote-ip 10.20.0.244
+#
+mpls ldp remote-peer 10.20.0.245
+ remote-ip 10.20.0.245
+#
+mpls ldp remote-peer 10.20.0.246
+ remote-ip 10.20.0.246
+#
+mpls ldp remote-peer 10.20.0.247
+ remote-ip 10.20.0.247
+#
+mpls ldp remote-peer 10.20.0.249
+ remote-ip 10.20.0.249
+#
+mpls ldp remote-peer 10.20.0.250
+ remote-ip 10.20.0.250
+#
+pki realm default
+ certificate-check none
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default

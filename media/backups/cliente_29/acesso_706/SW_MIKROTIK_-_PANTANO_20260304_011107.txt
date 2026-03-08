@@ -1,0 +1,41 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: SW MIKROTIK - PANTANO
+Host: 172.16.21.252:2225
+Acesso: VIA PROXY SSH
+Modelo: SW MIKROTIK CSS326-24G-2S+
+Template: Backup Mikrotik
+Data: 04/03/2026 01:11:07
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+MikroTikls warrants  that for  a period of  ninety (90) days  from the 
+days  of acquisition,  the  Software, if  operated  as directed,  will 
+substantially   achieve    the   functionality   described    in   the 
+Documentation. MikroTikls does not  warrant, however, that your use of 
+the  SOFTWARE will  be  uninterrupted  or that  the  operation of  the 
+SOFTWARE will be error-free or secure and hereby disclaims any and all 
+liability  on account  thereof. In  addition, the  security mechanisms 
+implemented by  the SOFTWARE have  inherent limitations, and  you must 
+determine that the SOFTWARE sufficiently meets your requirements. 
+ 
+MikroTikls also  warrants that the  media containing the  Software, if 
+provided  by  MikroTikls,  is   free  from  defects  in  material  and 
+workmanship  and  will so  remain  for (90)  days  from  the date  you 
+acquired the  Software. MikroTikls' sole  liability for any  breach of 
+this warranty shall be, in MikroTikls' sole discretion: 
+ 
+   i.   to replace your defective media; or 
+   ii.  to  advise  you  how  to  achieve   substantially   the   same 
+        functionality   with  the   SOFTWARE   as   described  in  the 
+        Documentation; or 
+   iii. if the above remidies are impracticable, to refund the license 
+        fee  you  paid  for  the  Software.  Repaired,  corrected,  or 
+-- press Enter (q to abort)
+

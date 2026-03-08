@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/', include('clientes.api_urls')),
     path('financeiro/', include('financeiro.urls')),
     path('wiki/', include('wiki.urls')),
+    path('monitoramento/', include('monitoramento.urls', namespace='monitoramento')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

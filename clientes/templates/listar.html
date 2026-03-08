@@ -63,6 +63,11 @@
             <li class="nav-item">
                 <a class="nav-link" href="#" onclick="trocarAba(event, 'chamados')">Chamados</a>
             </li>
+             <li class="nav-item">
+                <a class="nav-link" onclick="trocarAba(event, 'monitoramento')">
+                🖧 Monitoramento
+                </a>
+            </li>
         </ul>
 
        <!-- ABA ACESSOS -->
@@ -1253,7 +1258,7 @@
                 </div>
             </div>
         </div>
-
+        {% include 'monitoramento/tab_monitoramento.html' %}
     </div>
 </div>
 
@@ -1860,14 +1865,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 function trocarAba(event, nomeAba) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
     document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
     document.getElementById('tab-' + nomeAba).style.display = 'block';
-    event.target.classList.add('active');
-    
-    // ✅ NOVA LINHA: Sempre salvar a aba atual
+    if (event && event.target) event.target.classList.add('active');
+
     sessionStorage.setItem('abaAtiva', nomeAba);
+
+    if (nomeAba === 'monitoramento') {
+        // Aguarda o include renderizar e os scripts executarem
+        setTimeout(function() {
+            if (window.GRAPH && typeof window.GRAPH.init === 'function') {
+                window.GRAPH.init();
+            }
+        }, 100);
+    }
 }
 
 
