@@ -384,3 +384,40 @@ class ValidacaoRPKI_IRR_Log(models.Model):
     
     def __str__(self):
         return f"Validação {self.bloco.bloco} - {self.data_validacao.strftime('%d/%m/%Y %H:%M')}"
+
+
+class DocumentacaoRedeConfig(models.Model):
+    """
+    Configuração de documentação de rede por cliente.
+    Armazena URLs do PHP IPAM e NetBox (podem ser IPs privados).
+    O acesso é feito via tunnel SSH do proxy configurado no cliente.
+    """
+    cliente = models.OneToOneField(
+        Cliente,
+        on_delete=models.CASCADE,
+        related_name='documentacao_config'
+    )
+    
+    # PHP IPAM
+    phpipam_habilitado   = models.BooleanField(default=False)
+    phpipam_url          = models.CharField(max_length=500, blank=True, null=True,
+                                             help_text='Ex: http://192.168.1.10/phpipam')
+    phpipam_usuario      = models.CharField(max_length=100, blank=True, null=True)
+    phpipam_senha        = models.CharField(max_length=200, blank=True, null=True)
+
+    # NetBox
+    netbox_habilitado    = models.BooleanField(default=False)
+    netbox_url           = models.CharField(max_length=500, blank=True, null=True,
+                                             help_text='Ex: http://192.168.1.20:8000')
+    netbox_token         = models.CharField(max_length=200, blank=True, null=True,
+                                             help_text='Token de API do NetBox (opcional)')
+
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração de Documentação de Rede'
+        verbose_name_plural = 'Configurações de Documentação de Rede'
+
+    def __str__(self):
+        return f'DocConfig - {self.cliente.nome_empresa}'
+    

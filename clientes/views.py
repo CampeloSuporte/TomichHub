@@ -3624,3 +3624,36 @@ def editar_comentario_acesso(request, comentario_id):
             'data_atualizacao': comentario.data_atualizacao.strftime('%d/%m/%Y %H:%M:%S'),
         }
     })
+
+
+@login_required(login_url='login')
+def proxy_ativo_cliente(request):
+    cliente_id = request.GET.get('cliente_id')
+    if not cliente_id:
+        return JsonResponse({'tem_proxy_ativo': False})
+
+    proxy = ProxyServer.objects.filter(cliente_id=cliente_id, ativo=True).first()
+    return JsonResponse({
+        'tem_proxy_ativo': bool(proxy),
+        'nome': proxy.nome if proxy else None,
+        'host': proxy.host if proxy else None,
+    })
+
+
+# ---- Helper página de erro ----
+
+def _error_page(msg: str) -> str:
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body{{background:#0d1117;color:#ccc;font-family:'Courier New',monospace;
+       display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
+  .box{{background:#161b22;border:1px solid #30363d;border-radius:8px;
+        padding:40px;max-width:520px;text-align:center}}
+  p{{color:#8b949e;line-height:1.6}}
+</style></head><body>
+<div class="box">
+  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+  <h2 style="color:#f85149">Erro de Conexão</h2>
+  <p>{msg}</p>
+</div></body></html>"""

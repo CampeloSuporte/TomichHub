@@ -7,7 +7,26 @@
     <title>TOMICH HUB - Login</title>
     <link href="{% static 'css/css_login.css'%}" rel="stylesheet">
     <style>
-      
+        .alert-message {
+            background: rgba(255, 50, 50, 0.15);
+            border: 1px solid #ff3333;
+            color: #ff6666;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            animation: fadeIn 0.3s ease;
+        }
+        .alert-message.alert-success {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -21,6 +40,14 @@
             </div>
 
             <div class="terminal-line">Inicializando conexão segura<span class="cursor">_</span></div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-message alert-{{ message.tags }}">
+                        ⚠ {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
 
             <form id="loginForm" action="{% url 'login'%}" method="post">
                 {% csrf_token %}
@@ -40,14 +67,10 @@
             </form>
 
             <div class="footer-links">
-                <a href="#">Esqueceu a senha?</a>
-                <a href="#">Primeiro acesso</a>
             </div>
 
             <div class="status-bar">
                 STATUS: <span class="status-online">● ONLINE</span> | 
-                SERVIDOR: 10.10.10.1:23 | 
-                PROTOCOLO: TELNET/SSH
             </div>
         </div>
     </div>
@@ -65,55 +88,34 @@
         const columns = canvas.width / fontSize;
         const drops = Array(Math.floor(columns)).fill(1);
 
-        // Array of colors for variation
         const colors = ['#8b5cf6', '#00d4ff', '#a855f7', '#0ea5e9', '#7c3aed'];
 
         function drawMatrix() {
             ctx.fillStyle = 'rgba(10, 0, 21, 0.05)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             ctx.font = fontSize + 'px monospace';
-
             for (let i = 0; i < drops.length; i++) {
-                // Alternate colors for variety
                 ctx.fillStyle = colors[i % colors.length];
-                
                 const text = chars[Math.floor(Math.random() * chars.length)];
                 ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                    drops[i] = 0;
-                }
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
                 drops[i]++;
             }
         }
 
         setInterval(drawMatrix, 35);
-
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         });
 
-        // Login form
+        // Login form — sem e.preventDefault() para não bloquear o POST em caso de erro
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
             const usuario = document.getElementById('usuario').value;
-            const senha = document.getElementById('senha').value;
+            const terminalLine = document.querySelector('.terminal-line');
 
-            // Simulação de login
-            document.querySelector('.terminal-line').innerHTML = 
-                'Autenticando usuário: ' + usuario + '<span class="cursor">_</span>';
-
-            setTimeout(() => {
-                document.querySelector('.terminal-line').innerHTML = 
-                    'Acesso concedido! Redirecionando<span class="cursor">_</span>';
-                document.querySelector('.terminal-line').style.color = '#00d4ff';
-                setTimeout(() => {
-                    this.submit();
-                }, 1000);
-            }, 1500);
+            // Atualiza o terminal mas deixa o form submeter normalmente
+            terminalLine.innerHTML = 'Autenticando usuário: ' + usuario + '<span class="cursor">_</span>';
         });
     </script>
 </body>

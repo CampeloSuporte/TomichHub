@@ -200,3 +200,4 @@ os.environ['TZ'] = 'America/Sao_Paulo'
 TIME_ZONE = 'America/Sao_Paulo'
 USE_TZ = True
 USE_L10N = True
+X_FRAME_OPTIONS = 'SAMEORIGIN'
