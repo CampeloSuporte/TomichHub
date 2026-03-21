@@ -1267,164 +1267,76 @@ def listar_backups_cliente(request):
 
 
 def realizar_backup(acesso, usuario=None):
-    """
-    ✅ ULTRA CORRIGIDO: Leitura contínua com silence detection
-    - Lê dados em loop enquanto chegam
-    - Detecta quando parou de chegar dados (silence de 2s)
-    - Timeout máximo de 120s para configs MUITO grandes
-    - Captura 100% do output
-    """
     inicio = time.time()
     ssh_tunnel = None
-    ssh_process = None
-    
+
     try:
         print(f"\n{'='*80}")
-        print(f"🔄 INICIANDO BACKUP COM PEXPECT")
+        print(f"🔄 INICIANDO BACKUP")
         print(f"{'='*80}")
-        print(f"📋 Equipamento: {acesso.tipo}")
-        print(f"📡 Host: {acesso.host}:{acesso.porta}")
-        print(f"👤 Usuário: {acesso.usuario}")
-        print(f"🔧 Modelo: {acesso.modelo}")
-        print(f"📝 Template: {acesso.backup_template.nome if acesso.backup_template else 'N/A'}")
-        
-        # ✅ DETECTAR IP PRIVADO
+
         eh_privado = is_private_ip(acesso.host)
-        print(f"🔍 IP Privado? {eh_privado}")
-        
         host_conexao = acesso.host
         porta_conexao = int(acesso.porta) if acesso.porta else 22
-        
-        # ✅ CRIAR TÚNEL SE IP PRIVADO
+
+        is_huawei = (
+            acesso.modelo and 'huawei' in acesso.modelo.nome.lower()
+            if acesso.modelo and hasattr(acesso.modelo, 'nome') else False
+        )
+        print(f"🏭 Fabricante Huawei: {is_huawei}")
+
         if eh_privado:
-            print(f"\n{'='*80}")
-            print(f"⚠️ IP PRIVADO - CRIANDO TÚNEL SSH")
-            print(f"{'='*80}")
-            
-            proxy = ProxyServer.objects.filter(
-                cliente=acesso.cliente,
-                ativo=True
-            ).first()
-            
+            proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
             if not proxy:
-                raise Exception(
-                    "❌ IP privado, mas nenhum proxy SSH ativo!\n"
-                    "Configure um túnel SSH na aba 'Túneis SSH'."
-                )
-            
-            print(f"✅ Proxy encontrado: {proxy.nome}")
-            
+                raise Exception("IP privado sem proxy SSH ativo.")
             ssh_tunnel = criar_ssh_tunnel(
-                {
-                    'host': proxy.host,
-                    'porta': proxy.porta,
-                    'usuario': proxy.usuario,
-                    'senha': proxy.senha
-                },
-                acesso.host,
-                porta_conexao
+                {'host': proxy.host, 'porta': proxy.porta,
+                 'usuario': proxy.usuario, 'senha': proxy.senha},
+                acesso.host, porta_conexao
             )
-            
             host_conexao = ssh_tunnel['local_host']
             porta_conexao = ssh_tunnel['local_port']
-            
-            print(f"✅ Túnel criado: localhost:{porta_conexao} → {acesso.host}:{acesso.porta}")
             time.sleep(1)
-        
-        # ✅ PREPARAR DIRETÓRIO
+
         backup_dir = preparar_diretorio_backup(acesso.cliente.id, acesso.id)
-        print(f"\n📁 Diretório de backup: {backup_dir}")
-        
-        # ✅ DETECTAR PROTOCOLO
-        protocolo = detectar_protocolo(porta_conexao)
-        print(f"🔌 Protocolo: {protocolo.upper()}")
-        
-        # ✅ CONECTAR
-        print(f"\n{'='*80}")
-        print(f"🔐 CONECTANDO")
-        print(f"{'='*80}")
-        
-        if protocolo == 'ssh':
-            ssh_process = conectar_ssh_backup(
-                host_conexao,
-                porta_conexao,
-                acesso.usuario,
-                acesso.senha,
-                acesso.senha_adm
-            )
-        else:
-            ssh_process = conectar_telnet_backup(
-                host_conexao,
-                porta_conexao,
-                acesso.usuario,
-                acesso.senha
-            )
-        
-        print(f"✅ Conectado e autenticado!")
-        
-        # ✅ EXECUTAR COMANDOS
-        print(f"\n{'='*80}")
-        print(f"📋 EXECUTANDO COMANDOS")
-        print(f"{'='*80}")
-        
-        output = ""
+
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            hostname=host_conexao,
+            port=porta_conexao,
+            username=acesso.usuario,
+            password=acesso.senha,
+            timeout=30,
+            look_for_keys=False,
+            allow_agent=False,
+            banner_timeout=30,
+        )
+        print(f"✅ Conectado!")
+
         comandos = acesso.backup_template.get_comandos_list()
-        print(f"🔢 Total de comandos: {len(comandos)}\n")
-        
-        for i, comando in enumerate(comandos, 1):
-            print(f"  [{i}/{len(comandos)}] {comando}")
-            output += f"\n{'='*60}\n"
-            output += f"Comando: {comando}\n"
-            output += f"{'='*60}\n"
-            
-            try:
-                # ✅ ENVIAR COMANDO
-                print(f"    📤 Enviando...")
-                ssh_process.send(comando + '\r')
-                time.sleep(0.3)
-                
-                # ✅ LEITURA CONTÍNUA COM SILENCE DETECTION
-                print(f"    ⏳ Lendo resultado (silence detection)...")
-                resultado = ler_saida_comando(ssh_process,)
-                
-                # ✅ Adicionar ao output
-                if resultado and len(resultado) > 0:
-                    output += resultado + "\n"
-                    print(f"    ✅ OK ({len(resultado)} bytes)")
-                else:
-                    print(f"    ⚠️ Output vazio")
-                    output += "\n"
-                
-            except Exception as cmd_error:
-                print(f"    ❌ Erro: {cmd_error}")
-                output += f"ERRO: {str(cmd_error)}\n"
-                continue
-        
-        # ✅ DESCONECTAR
-        try:
-            ssh_process.send('exit\r')
-            time.sleep(0.5)
-            ssh_process.close()
-            print(f"\n🔌 Desconectado")
-        except:
-            pass
-        
-        if len(output) < 100:
-            raise Exception("Backup vazio ou muito pequeno. Verifique comandos.")
-        
-        # ✅ SALVAR ARQUIVO
-        print(f"\n{'='*80}")
-        print(f"💾 SALVANDO ARQUIVO")
-        print(f"{'='*80}")
-        
+        output = ""
+
+        if is_huawei:
+            # ✅ Huawei: invoke_shell com terminal largo (sem quebra de linha)
+            output = _executar_comandos_huawei(client, comandos)
+        else:
+            # ✅ Outros (MikroTik, Cisco, etc.): exec_command sem PTY
+            output = _executar_comandos_sem_pty(client, comandos)
+
+        client.close()
+
+        if len(output.strip()) < 100:
+            raise Exception("Backup vazio ou muito pequeno.")
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         nome_arquivo = f"{acesso.tipo.replace(' ', '_')}_{timestamp}.txt"
         arquivo_path = os.path.join(backup_dir, nome_arquivo)
-        
+
         with open(arquivo_path, 'w', encoding='utf-8') as f:
-            f.write(f"{'=' * 80}\n")
+            f.write(f"{'='*80}\n")
             f.write(f"BACKUP DE CONFIGURAÇÃO\n")
-            f.write(f"{'=' * 80}\n")
+            f.write(f"{'='*80}\n")
             f.write(f"Cliente: {acesso.cliente.nome_empresa}\n")
             f.write(f"Equipamento: {acesso.tipo}\n")
             f.write(f"Host: {acesso.host}:{acesso.porta}\n")
@@ -1433,19 +1345,13 @@ def realizar_backup(acesso, usuario=None):
             f.write(f"Template: {acesso.backup_template.nome}\n")
             f.write(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
             f.write(f"Executado por: {usuario.username if usuario else 'Sistema'}\n")
-            f.write(f"{'=' * 80}\n\n")
+            f.write(f"{'='*80}\n\n")
             f.write(output)
-        
+
         tamanho = os.path.getsize(arquivo_path)
         duracao = time.time() - inicio
-        
-        print(f"✅ Arquivo: {nome_arquivo}")
-        print(f"📊 Tamanho: {tamanho} bytes")
-        print(f"⏱️ Duração: {duracao:.2f}s")
-        
         arquivo_relativo = os.path.relpath(arquivo_path, settings.MEDIA_ROOT)
-        
-        # ✅ REGISTRAR LOG
+
         BackupLog.objects.create(
             acesso=acesso,
             cliente=acesso.cliente,
@@ -1453,37 +1359,22 @@ def realizar_backup(acesso, usuario=None):
             arquivo_path=arquivo_relativo,
             tamanho_bytes=tamanho,
             status='SUCESSO',
-            mensagem=f"Backup realizado com sucesso via {protocolo.upper()}",
+            mensagem=f"Backup realizado com sucesso",
             executado_por=usuario,
             duracao_segundos=duracao
         )
-        
-        print(f"\n{'='*80}")
-        print(f"✅ BACKUP CONCLUÍDO COM SUCESSO!")
-        print(f"{'='*80}\n")
-        
-        return {
-            'sucesso': True,
-            'arquivo': nome_arquivo,
-            'tamanho': tamanho,
-            'duracao': f"{duracao:.2f}s"
-        }
-        
+
+        print(f"✅ BACKUP CONCLUÍDO! {tamanho} bytes em {duracao:.1f}s")
+        return {'sucesso': True, 'arquivo': nome_arquivo,
+                'tamanho': tamanho, 'duracao': f"{duracao:.2f}s"}
+
     except Exception as e:
         erro = f"Erro: {str(e)}"
         print(f"\n❌ {erro}\n")
         registrar_erro_backup(acesso, usuario, erro, time.time() - inicio)
         return {'sucesso': False, 'erro': erro}
-        
+
     finally:
-        # ✅ FECHAR CONEXÃO
-        if ssh_process:
-            try:
-                ssh_process.close()
-            except:
-                pass
-        
-        # ✅ FECHAR TÚNEL
         if ssh_tunnel:
             try:
                 if 'ssh_client' in ssh_tunnel:
@@ -1493,6 +1384,128 @@ def realizar_backup(acesso, usuario=None):
             except:
                 pass
 
+
+def _executar_comandos_sem_pty(client, comandos):
+    """
+    MikroTik, Cisco e outros: exec_command sem PTY.
+    Sem terminal = sem quebra de linha.
+    """
+    output = ""
+    for i, comando in enumerate(comandos, 1):
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+        try:
+            stdin, stdout, stderr = client.exec_command(
+                comando, timeout=120, get_pty=False
+            )
+            resultado = stdout.read().decode('utf-8', errors='replace')
+            if resultado:
+                resultado = limpar_ansi(resultado)
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+        except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+    return output
+
+
+def _executar_comandos_huawei(client, comandos):
+    """
+    Huawei VRP: invoke_shell com terminal de 10000 colunas.
+    - screen-length 0 temporary precisa rodar na mesma sessão
+      que display current-configuration
+    - Terminal largo evita quebra de linha
+    """
+    import re
+
+    output = ""
+
+    # ✅ Abrir shell com terminal muito largo
+    channel = client.invoke_shell(
+        term='vt100',
+        width=10000,
+        height=50
+    )
+    channel.settimeout(120)
+
+    # Aguardar o banner de login
+    time.sleep(3)
+    _ler_ate_silencio(channel, silencio=2.0)
+
+    for i, comando in enumerate(comandos, 1):
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+
+        try:
+            channel.send(comando + '\n')
+
+            # Aguardar o output completo (silence detection)
+            resultado = _ler_ate_silencio(channel, silencio=3.0, max_wait=120)
+
+            if resultado:
+                resultado = limpar_ansi(resultado)
+
+                # Remover o eco do comando enviado (primeira linha)
+                linhas = resultado.split('\n')
+                if linhas and comando.strip() in linhas[0]:
+                    linhas = linhas[1:]
+                resultado = '\n'.join(linhas)
+
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+            else:
+                print(f"    ⚠️ Output vazio")
+
+        except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+
+    try:
+        channel.send('quit\n')
+        time.sleep(0.5)
+        channel.close()
+    except:
+        pass
+
+    return output
+
+
+def _ler_ate_silencio(channel, silencio=2.0, max_wait=120):
+    """
+    Lê do channel paramiko até silêncio por `silencio` segundos
+    ou até atingir `max_wait` segundos no total.
+    """
+    resultado = b""
+    inicio = time.time()
+    ultimo_dado = time.time()
+
+    while True:
+        if time.time() - inicio > max_wait:
+            print(f"    ⚠️ max_wait atingido ({max_wait}s)")
+            break
+
+        if channel.recv_ready():
+            chunk = channel.recv(65536)
+            if chunk:
+                resultado += chunk
+                ultimo_dado = time.time()
+        else:
+            if time.time() - ultimo_dado >= silencio:
+                break
+            time.sleep(0.05)
+
+    return resultado.decode('utf-8', errors='replace')
+
+
+def limpar_ansi(texto):
+    """Remove códigos ANSI e normaliza quebras de linha."""
+    import re
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    texto = ansi_escape.sub('', texto)
+    texto = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', texto)
+    texto = texto.replace('[K', '')
+    texto = texto.replace('\r\n', '\n').replace('\r', '\n')
+    return texto
 
 def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120,modelo=None):
     """
@@ -1667,102 +1680,87 @@ def limpar_output_generico(texto):
     return texto_final
 
 def limpar_output_mikrotik(texto):
-    """
-    ✅ NOVA FUNÇÃO: Remove códigos ANSI e reconstrói linhas quebradas
-    
-    Estratégia:
-    1. Remove códigos ANSI (escape sequences)
-    2. Remove caracteres de controle
-    3. Reconstrói linhas que foram quebradas incorretamente
-    """
     import re
-    
-    # 1. Remover códigos de escape ANSI
-    # Padrão: ESC [ ... letras
+
+    # 1. Remover códigos ANSI
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     texto = ansi_escape.sub('', texto)
-    
-    # 2. Remover caracteres de controle (exceto \n e \r)
+
+    # 2. Remover caracteres de controle
     texto = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', texto)
-    
-    # 3. Remover sequências [K (clear line)
     texto = texto.replace('[K', '')
-    
-    # 4. Normalizar line breaks
+
+    # 3. Normalizar quebras de linha
     texto = texto.replace('\r\n', '\n').replace('\r', '\n')
-    
-    # 5. Remover linhas duplicadas que aparecem durante digitação
+
+    # 4. Reagrupar linhas quebradas pelo terminal (wrap de 80 colunas do RouterOS)
+    #
+    # RouterOS quebra linhas longas sem marcador de continuação.
+    # Padrão: linha com 79-80 chars → próxima linha NÃO começa com
+    # '/', '#', '[' (prompt), ou está vazia.
     linhas = texto.split('\n')
-    linhas_limpas = []
-    linha_anterior = None
-    
-    for linha in linhas:
-        linha_strip = linha.strip()
-        
-        # Pular linhas vazias excessivas
-        if not linha_strip:
-            if linha_anterior != '':
-                linhas_limpas.append('')
-                linha_anterior = ''
-            continue
-        
-        # Pular linhas que são apenas prompt
-        if linha_strip.startswith('[') and linha_strip.endswith(']'):
-            continue
-        
-        # Pular linhas que mostram comando sendo digitado caracter por caracter
-        if linha_strip.startswith('[') and '> /' in linha_strip:
-            # Extrair comando completo
-            if '/export terse' in linha_strip:
-                continue
-            elif linha_strip.count('>') > 0:
-                continue
-        
-        # ✅ CRÍTICO: Reconstrói linhas quebradas
-        # Se linha não começa com # ou / e a anterior não terminou "completa"
-        if linha_anterior is not None and linha_anterior != '':
-            ultima_linha = linhas_limpas[-1] if linhas_limpas else ''
-            
-            # Detectar linha quebrada: linha anterior não termina com padrão de fim
-            # e linha atual não começa com padrão de início de comando
-            if (ultima_linha and 
-                not ultima_linha.rstrip().endswith(('\\', '{', '}', ')', '"')) and
-                not linha_strip.startswith(('/interface', '/ip', '/routing', '/mpls', 
-                                           '/system', '/tool', '/snmp', '#', '/user',
-                                           '/queue', '/firewall', '/certificate'))):
-                # Juntar com linha anterior
-                linhas_limpas[-1] = ultima_linha.rstrip() + ' ' + linha_strip
-            else:
-                linhas_limpas.append(linha)
-        else:
-            linhas_limpas.append(linha)
-        
-        linha_anterior = linha_strip
-    
-    # 6. Reconstruir texto
-    texto_final = '\n'.join(linhas_limpas)
-    
-    # 7. Remover múltiplas linhas vazias consecutivas
-    texto_final = re.sub(r'\n{3,}', '\n\n', texto_final)
-    
-    return texto_final
+    resultado = []
+    i = 0
+
+    while i < len(linhas):
+        linha_atual = linhas[i]
+
+        # Continua juntando enquanto parece linha quebrada
+        while True:
+            proxima_existe = (i + 1) < len(linhas)
+            if not proxima_existe:
+                break
+
+            proxima = linhas[i + 1]
+            proxima_strip = proxima.strip()
+
+            # Comprimento da linha atual sem espaços à direita
+            comprimento = len(linha_atual.rstrip())
+
+            # Condições para ser linha quebrada pelo terminal:
+            # - Linha atual tem 76-80 chars (wrap típico de 80 colunas)
+            # - Linha atual não está vazia
+            # - Próxima linha não é um novo comando RouterOS
+            # - Próxima linha não é prompt '[usuario@...]'
+            # - Próxima linha não é comentário '#'
+            # - Próxima linha não está vazia
+            eh_quebra = (
+                76 <= comprimento <= 80
+                and linha_atual.rstrip()
+                and proxima_strip
+                and not proxima_strip.startswith('/')
+                and not proxima_strip.startswith('#')
+                and not proxima_strip.startswith('[')
+            )
+
+            if not eh_quebra:
+                break
+
+            # Juntar sem espaço extra (RouterOS quebra no meio da palavra/token)
+            linha_atual = linha_atual.rstrip() + proxima_strip
+            i += 1
+
+        resultado.append(linha_atual)
+        i += 1
+
+    texto = '\n'.join(resultado)
+
+    # 5. Remover linhas que são apenas o prompt RouterOS
+    # Ex: "[tomich@SW - PEREIROS] > "
+    texto = re.sub(r'^\[.+?\]\s*>\s*$', '', texto, flags=re.MULTILINE)
+
+    # 6. Remover excesso de linhas vazias
+    texto = re.sub(r'\n{3,}', '\n\n', texto)
+
+    return texto.strip()
 
 
 def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
-    """
-    ✅ MEGA ULTRA CORRIGIDO v2: Detecta e trata erro de SSH não encontrado
-    - Retry automático com fallback para /bin/bash
-    - Verifica SSH antes de conectar
-    - Logs detalhados para debug
-    """
     print(f"📤 SSH: Conectando a {host}:{porta}...")
     
-    # ✅ VERIFICAR SSH
     ssh_path = "/usr/bin/ssh"
     if not os.path.exists(ssh_path):
-        print(f"⚠️ SSH não encontrado em {ssh_path}")
-        print(f"   Tentando via PATH...")
-        ssh_path = "ssh"  # Fallback para PATH
+        ssh_path = "ssh"
     
     ssh_cmd = (
         f"{ssh_path} -o StrictHostKeyChecking=no "
@@ -1785,9 +1783,7 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         try:
             print(f"   [Tentativa {tentativa + 1}/{tentativas}]")
             
-            if tentativa == 0 or tentativa == 1:
-                # Primeiras tentativas: direto
-                print(f"      Método: Direct spawn")
+            if tentativa < 2:
                 ssh_process = pexpect.spawn(
                     ssh_cmd,
                     timeout=timeout,
@@ -1796,8 +1792,6 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                     cwd=os.path.expanduser('~')
                 )
             else:
-                # Última tentativa: via shell
-                print(f"      Método: Shell wrapper")
                 ssh_process = pexpect.spawn(
                     '/bin/bash',
                     ['-c', ssh_cmd],
@@ -1806,82 +1800,65 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                     maxread=65536
                 )
             
-            print(f"   ✅ Spawn OK!")
+            # ✅ CORREÇÃO PRINCIPAL: PTY com largura de 10000 colunas
+            # Impede que RouterOS (e qualquer equipamento) quebre linhas longas.
+            # Deve ser chamado ANTES da autenticação para que o SSH negocie
+            # o tamanho correto do terminal com o equipamento remoto.
+            ssh_process.setwinsize(24, 10000)
+            print(f"   ✅ Spawn OK! PTY: 24x10000")
             break
             
         except FileNotFoundError as e:
             print(f"   ❌ FileNotFoundError: {str(e)}")
-            
             if tentativa < tentativas - 1:
-                print(f"      Aguardando 2s antes de retry...")
                 time.sleep(2)
                 continue
             else:
-                # Última tentativa falhou
                 raise Exception(
                     f"❌ SSH não encontrado após {tentativas} tentativas\n"
                     f"Execute no servidor: sudo apt-get install openssh-client"
                 )
-        
         except Exception as e:
             print(f"   ❌ Erro inesperado: {str(e)}")
             raise
     
-    # ✅ Resto do código continua igual (PASSO 1, 2, 3, etc)
     try:
         print(f"📤 Aguardando autenticação...")
         
-        # PASSO 1
-        try:
-            index = ssh_process.expect([
-                "password:",
-                "Password:",
-                r".*[#>$\]].*",
-            ], timeout=30)
-            
-            if index == 0 or index == 1:
-                print(f"🔐 Enviando senha...")
-                ssh_process.sendline(senha)
-                time.sleep(1)
-                
-                try:
-                    ssh_process.read_nonblocking(timeout=1.0, size=65536)
-                except:
-                    pass
+        index = ssh_process.expect([
+            "password:",
+            "Password:",
+            r".*[#>$\]].*",
+        ], timeout=30)
         
-        except pexpect.exceptions.TIMEOUT:
-            raise Exception("❌ Timeout ao autenticar SSH")
+        if index in (0, 1):
+            print(f"🔐 Enviando senha...")
+            ssh_process.sendline(senha)
+            time.sleep(1)
+            try:
+                ssh_process.read_nonblocking(timeout=1.0, size=65536)
+            except:
+                pass
         
-        # PASSO 2
         print(f"⏳ Aguardando sistema estabilizar (3s)...")
         time.sleep(3)
         
-        # PASSO 3
         print(f"🧹 Limpando buffer com CTRL+U...")
         ssh_process.send("\x15")
         time.sleep(0.5)
         
-        # PASSO 4
-        print(f"🔍 Testando se prompt está respondendo...")
         ssh_process.send("\r")
         time.sleep(0.5)
         
         try:
-            ssh_process.expect([
-                r".*[\#\>\$\]]\s*$",
-                r">",
-                r"\$",
-                r"\]",
-            ], timeout=3)
+            ssh_process.expect([r".*[\#\>\$\]]\s*$", r">", r"\$", r"\]"], timeout=3)
             print(f"✅ Prompt detectado!")
         except pexpect.exceptions.TIMEOUT:
-            print(f"⚠️ Timeout ao detectar, limpando...")
             try:
                 ssh_process.read_nonblocking(timeout=0.5, size=65536)
             except:
                 pass
         
-        # PASSO 5-10 (mesmo código anterior)
         print(f"🔧 Desabilitando paginação...")
         ssh_process.send("terminal length 0\r")
         time.sleep(0.8)
@@ -1898,7 +1875,6 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         
-        print(f"🧹 Limpando...")
         ssh_process.send("\r")
         time.sleep(1)
         try:
@@ -1906,24 +1882,19 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         
-        print(f"🔐 SINCRONIZANDO - Aguardando prompt 100%...")
+        print(f"🔐 SINCRONIZANDO...")
         for tentativa_sync in range(3):
-            print(f"   Tentativa {tentativa_sync + 1}/3...")
             ssh_process.send("\r")
             time.sleep(0.5)
-            
             try:
                 ssh_process.expect([r".*[\#\>\$\]]\s*$"], timeout=2)
                 print(f"   ✅ Prompt respondeu!")
                 break
             except pexpect.exceptions.TIMEOUT:
-                print(f"   ⚠️ Timeout")
                 continue
         
-        print(f"⏳ Aguardando final (2s)...")
         time.sleep(2)
         
-        print(f"🧹 Limpando buffer final...")
         try:
             while True:
                 dados = ssh_process.read_nonblocking(timeout=0.2, size=65536)

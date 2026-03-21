@@ -1,0 +1,972 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: CGNAT
+Host: 186.0.151.207:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-12G-4S
+Template: Backup Mikrotik
+Data: 17/03/2026 00:30:31
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+/
+
+[tomich@CGNAT] > /                                                             
+[tomich@CGNAT] > /e
+
+[tomich@CGNAT] > /e                                                            
+[tomich@CGNAT] > /ex
+
+[tomich@CGNAT] > /ex                                                           
+[tomich@CGNAT] > /exp
+
+[tomich@CGNAT] > /exp                                                          
+[tomich@CGNAT] > /expo
+
+[tomich@CGNAT] > /expo                                                         
+[tomich@CGNAT] > /expor
+
+[tomich@CGNAT] > /expor                                                        
+[tomich@CGNAT] > /export
+
+[tomich@CGNAT] > /export                                                       
+[tomich@CGNAT] > /export 
+
+[tomich@CGNAT] > /export                                                       
+[tomich@CGNAT] > /export t
+
+[tomich@CGNAT] > /export t                                                     
+[tomich@CGNAT] > /export te
+
+[tomich@CGNAT] > /export te                                                    
+[tomich@CGNAT] > /export ter
+
+[tomich@CGNAT] > /export ter                                                   
+[tomich@CGNAT] > /export ters
+
+[tomich@CGNAT] > /export ters                                                  
+[tomich@CGNAT] > /export terse
+
+[tomich@CGNAT] > /export terse                                                 
+[tomich@CGNAT] > /export terse
+[tomich@CGNAT] > /export terse
+
+# mar/17/2026 00:30:14 by RouterOS 6.49.18
+# software id = GWAM-6MZU
+#
+# model = CCR1036-8G-2S+
+# serial number = 968E0B863D23
+/interface bridge add arp=disabled name=Loopback
+/interface bridge add name=br-conecta
+/interface bridge add name=vpn-romon
+/interface ethernet set [ find default-name=ether1 ] comment="SWITCH HUAWEI"
+/interface ethernet set [ find default-name=ether2 ] comment="HUAWEI PORTA DE GER
+ENCIA"
+/interface ethernet set [ find default-name=ether3 ] comment="PROXMOX 1 - PRINCIP
+AL"
+/interface ethernet set [ find default-name=ether4 ] comment=ESCRITORIO
+/interface ethernet set [ find default-name=ether5 ] comment="MGMT OLT DATACOM 03
+" speed=100Mbps
+/interface ethernet set [ find default-name=ether6 ] comment="GERENCIA SERVIDORES
+ E EQUIPAMENTOS"
+/interface ethernet set [ find default-name=ether7 ] comment="TEST - SW DATACOM"
+/interface ethernet set [ find default-name=ether8 ] advertise=10M-half,10M-full,
+100M-half,100M-full,1000M-half,1000M-full comment="PROXMOX BACKUP" speed=100Mbps
+
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment="LACP - SW HUA
+WEI - PORTA 15"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment="LACP - SW HUA
+WEI - PORTA 04"
+/interface l2tp-client add connect-to=10.11.11.4 name=l2tp-out1 password=HSKSJDUK
+SOALA4S5DIEN user=sgpsgp03
+/interface eoip add local-address=186.0.151.65 mac-address=02:28:38:20:E8:3D name
+=eoip-tunnel1-SETOR02 remote-address=186.0.149.9 tunnel-id=100
+/interface eoip add local-address=186.0.151.65 mac-address=02:28:38:20:E8:3D name
+=eoip-tunnel2-SETOR01 remote-address=186.0.149.71 tunnel-id=101
+/interface vlan add disabled=yes interface=ether7 name=VLAN-104-PPPoE-CORE-ZTE-01
+ vlan-id=104
+/interface vlan add interface=ether6 name=vlan3080-GERENCIA-SERVIDORES-EQUIPAMENT
+OS vlan-id=3080
+/interface bonding add mode=802.3ad name=bonding1-WAN slaves=sfp-sfpplus1,sfp-sfp
+plus2 transmit-hash-policy=layer-2-and-3
+/interface vlan add interface=bonding1-WAN name="VLAN 1002-SERVER-DELL-SW2-ETHER6
+" vlan-id=1002
+/interface vlan add disabled=yes interface=bonding1-WAN name=VLAN-100-CCR-SERVIDO
+R vlan-id=100
+/interface vlan add interface=bonding1-WAN name=VLAN-101-PPPoE-RADIO vlan-id=101
+/interface vlan add interface=bonding1-WAN name=VLAN-102-PPPoE-PARAUAPEBAS-GPON v
+lan-id=102
+/interface vlan add interface=bonding1-WAN name=VLAN-103-PPPoE-CORE_3 vlan-id=103
+
+/interface vlan add disabled=yes interface=bonding1-WAN name=VLAN-300-PPPoE-JUNIP
+ER vlan-id=300
+/interface vlan add interface=bonding1-WAN name="VLAN-1001-OLT 6 - ZTE DATACENTER
+ 2 - PORTAS PON" vlan-id=1001
+/interface vlan add interface=bonding1-WAN name=VLAN-1013-TRANSPORTE-CLIENTES-G5 
+vlan-id=1013
+/interface vlan add interface=bonding1-WAN name=VLAN-1014-REDE-NEUTRA-CONNECTA-OU
+T vlan-id=1014
+/interface vlan add interface=bonding1-WAN name="VLAN-1015-REDE NEUTRA G5 TEST" v
+lan-id=1015
+/interface vlan add interface=bonding1-WAN name=VLAN-1056-REDE-NEUTRA-CONNECTA-OU
+T vlan-id=1056
+/interface vlan add comment="VAI PELO TRANSPORTE DA COELHO - CURIONOPOLIS" interf
+ace=bonding1-WAN name=VLAN-1401-PPPoE-BNG-CURIONOPOLIS vlan-id=1401
+/interface vlan add interface=VLAN-1401-PPPoE-BNG-CURIONOPOLIS name=VLAN1014-CURI
+ANOPOLIS-IN vlan-id=1014
+/interface vlan add interface=VLAN-1401-PPPoE-BNG-CURIONOPOLIS name=VLAN1056-CURI
+ANOPOLIS-IN vlan-id=1056
+/interface vlan add interface=bonding1-WAN name=vlan130-BGP-HUAWEI vlan-id=130
+/interface vlan add interface=bonding1-WAN name=vlan140-PPPoE-HUAWEI vlan-id=140
+/interface vlan add interface=bonding1-WAN name="vlan301-GERENCIA SWITCHS" vlan-i
+d=301
+/interface vlan add interface=bonding1-WAN name=vlan512-GERENCIA-OLT-ZTE vlan-id=
+512
+/interface vlan add interface=bonding1-WAN name=vlan1003-LAN-TO-LAN-TORRES vlan-i
+d=1003
+/interface vlan add interface=VLAN-1013-TRANSPORTE-CLIENTES-G5 name=vlan1014 vlan
+-id=1014
+/interface vlan add interface=bonding1-WAN name="vlan1100-PPPoE PARAUAPEBAS - geo
+sol.s11d@g5fibra - TRANSPORTE PELA FIBRA DO FORNECEDOR" vlan-id=1100
+/interface vlan add interface=bonding1-WAN name=vlan2004-WAN-IPv6 vlan-id=2004
+/interface vlan add interface=bonding1-WAN name=vlan2020-PPPoE-TORRE-CDJ vlan-id=
+2020
+/interface vlan add interface=bonding1-WAN name="vlan2150-GERENCIA OLTs" vlan-id=
+2150
+/interface vlan add disabled=yes interface=bonding1-WAN name=vlan3001-WAN vlan-id
+=3001
+/interface vlan add interface=bonding1-WAN name="vlan3031-TORRE VS10 - PELA OLT D
+ATACOM 5" vlan-id=3031
+/interface vlan add interface=bonding1-WAN name=vlan4040-POP-TROPICAL vlan-id=404
+0
+/interface vlan add interface=bonding1-WAN name="vlan4084-CLIENTE KOMATSU KBI - T
+EST" vlan-id=4084
+/interface list add name=LAN
+/interface list add name=Juniper
+/interface list add name=VPN
+/interface list add name=WAN
+/ip pool add name="CGNAT [61489-65535]" ranges=100.79.150.0/23
+/ip pool add name=dhcp_pool17 ranges=10.13.13.2-10.13.13.254
+/ip pool add name=POOL_OpenVPN ranges=192.168.250.128/25
+/ip pool add name=dhcp_pool19 ranges=192.168.188.20-192.168.188.254
+/ip dhcp-server add address-pool=dhcp_pool19 disabled=no interface=vlan3080-GEREN
+CIA-SERVIDORES-EQUIPAMENTOS name=dhcp1
+/ip pool add name="CGNAT [57458-61488]" next-pool="CGNAT [61489-65535]" ranges=10
+0.78.150.0/23
+/ip pool add name="CGNAT [53427-57457]" next-pool="CGNAT [57458-61488]" ranges=10
+0.77.150.0/23
+/ip pool add name="CGNAT [49396-53426]" next-pool="CGNAT [53427-57457]" ranges=10
+0.76.150.0/23
+/ip pool add name="CGNAT [45365-49395]" next-pool="CGNAT [49396-53426]" ranges=10
+0.75.150.0/23
+/ip pool add name="CGNAT [41334-45364]" next-pool="CGNAT [45365-49395]" ranges=10
+0.74.150.0/23
+/ip pool add name="CGNAT [37303-41333]" next-pool="CGNAT [41334-45364]" ranges=10
+0.73.150.0/23
+/ip pool add name="CGNAT [33272-37302]" next-pool="CGNAT [37303-41333]" ranges=10
+0.72.150.0/23
+/ip pool add name="CGNAT [29241-33271]" next-pool="CGNAT [33272-37302]" ranges=10
+0.71.150.0/23
+/ip pool add name="CGNAT [25210-29240]" next-pool="CGNAT [29241-33271]" ranges=10
+0.70.150.0/23
+/ip pool add name="CGNAT [21179-25209]" next-pool="CGNAT [25210-29240]" ranges=10
+0.69.150.0/23
+/ip pool add name="CGNAT [17148-21178]" next-pool="CGNAT [21179-25209]" ranges=10
+0.68.150.0/23
+/ip pool add name="CGNAT [13117-17147]" next-pool="CGNAT [17148-21178]" ranges=10
+0.67.150.0/23
+/ip pool add name="CGNAT [9086-13116]" next-pool="CGNAT [13117-17147]" ranges=100
+.66.150.0/23
+/ip pool add name="CGNAT [5055-9085]" next-pool="CGNAT [9086-13116]" ranges=100.6
+5.150.0/23
+/ip pool add name="CGNAT [1024-5054]" next-pool="CGNAT [5055-9085]" ranges=100.64
+.150.0/23
+/ppp profile add address-list=VPN-client change-tcp-mss=yes name=VPN-client only-
+one=yes use-encryption=yes use-upnp=no
+/ppp profile add bridge=vpn-romon change-tcp-mss=yes name=VPN-romon use-encryptio
+n=yes use-upnp=no
+/ppp profile add change-tcp-mss=yes local-address=192.168.250.1 name=OPEN_VPN rat
+e-limit=50m/50m use-encryption=yes
+/routing bgp instance set default as=270506 redistribute-ospf=yes router-id=10.25
+5.255.1
+/routing ospf instance set [ find default=yes ] distribute-default=if-installed-a
+s-type-1 redistribute-connected=as-type-1 redistribute-other-ospf=as-type-1 redi
+stribute-static=as-type-1 router-id=10.255.255.1
+/routing ospf-v3 instance set [ find default=yes ] redistribute-connected=as-type
+-1 router-id=10.255.255.1
+/snmp community set [ find default=yes ] addresses=10.100.100.2/32 name=TOMICH
+/system logging action add memory-lines=5000 name=firewall target=memory
+/system logging action add name=warning target=memory
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,wi
+nbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge=br-conecta interface=vlan1014
+/interface bridge port add bridge=br-conecta interface=VLAN-1014-REDE-NEUTRA-CONN
+ECTA-OUT
+/ip firewall connection tracking set enabled=yes generic-timeout=2m tcp-establish
+ed-timeout=30m tcp-max-retrans-timeout=30s
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/ip settings set rp-filter=loose tcp-syncookies=yes
+/interface l2tp-server server set allow-fast-path=yes authentication=mschap1,msch
+ap2 enabled=yes ipsec-secret=102030 mrru=1600 one-session-per-host=yes use-ipsec
+=yes
+/interface list member add interface=VLAN-100-CCR-SERVIDOR list=LAN
+/interface list member add interface=VLAN-101-PPPoE-RADIO list=LAN
+/interface list member add interface=VLAN-102-PPPoE-PARAUAPEBAS-GPON list=LAN
+/interface list member add interface=ether8 list=Juniper
+/interface list member add interface=sfp-sfpplus1 list=WAN
+/interface list member add list=VPN
+/interface ovpn-server server set auth=sha1 certificate=Servidor-OPEN cipher=aes2
+56 default-profile=OPEN_VPN enabled=yes port=61194 require-client-certificate=ye
+s
+/interface pppoe-server server add authentication=chap disabled=no interface=ethe
+r4
+/interface pppoe-server server add service-name=service1
+/interface sstp-server server set enabled=yes port=5443
+/ip address add address=10.255.255.1 comment="LOOPBACK - OSPF" interface=Loopback
+ network=10.255.255.1
+/ip address add address=10.0.0.5/30 comment="PPPoE PARAUAPEBAS" interface=VLAN-10
+2-PPPoE-PARAUAPEBAS-GPON network=10.0.0.4
+/ip address add address=10.0.0.9/30 comment="PPPoE RADIO" interface=VLAN-101-PPPo
+E-RADIO network=10.0.0.8
+/ip address add address=10.0.0.13/30 comment="CCR SERVIDOR" interface=ether6 netw
+ork=10.0.0.12
+/ip address add address=186.0.148.246 comment="CGNAT- GERAL JUNIPER" interface=Lo
+opback network=186.0.148.246
+/ip address add address=10.0.0.17/30 comment="PPPoE CORE 3" interface=VLAN-103-PP
+PoE-CORE_3 network=10.0.0.16
+/ip address add address=10.0.1.1/24 comment="GERENCIA SWICHS" interface="vlan301-
+GERENCIA SWITCHS" network=10.0.1.0
+/ip address add address=10.0.0.21/30 comment="PPPoE CURIONOPOLIS" interface=VLAN-
+1401-PPPoE-BNG-CURIONOPOLIS network=10.0.0.20
+/ip address add address=186.0.151.207 comment="CGNAT GERAL" interface=Loopback ne
+twork=186.0.151.207
+/ip address add address=192.168.0.2/24 comment="IDRAC DELL - 192.168.0.120 / NE80
+00 - 192.168.0.1" interface=ether2 network=192.168.0.0
+/ip address add address=10.0.0.25/30 comment="CORE ZTE 01" disabled=yes interface
+=VLAN-104-PPPoE-CORE-ZTE-01 network=10.0.0.24
+/ip address add address=172.31.100.1/30 comment="PROXMOX 01 - PRINCIPAL" interfac
+e=ether3 network=172.31.100.0
+/ip address add address=186.0.151.33/27 comment="PROXMOX - VMS - SERVIDORES" inte
+rface=ether3 network=186.0.151.32
+/ip address add address=10.64.10.2/30 comment=JUNIPER disabled=yes interface=VLAN
+-300-PPPoE-JUNIPER network=10.64.10.0
+/ip address add address=192.168.200.1/30 comment="GERENCIA OLT ZTE" interface=vla
+n512-GERENCIA-OLT-ZTE network=192.168.200.0
+/ip address add address=172.31.101.1/30 comment="PROXMOX BACKUP- GERENCIA" interf
+ace=ether8 network=172.31.101.0
+/ip address add address=192.168.100.1/30 comment="PROXMOX 02 - RESERVA" interface
+=ether8 network=192.168.100.0
+/ip address add address=172.31.102.1/30 comment="PROXMOX - BACKUP" interface=ethe
+r8 network=172.31.102.0
+/ip address add address=172.31.255.5/30 comment="HUAWEI NE8000 - PPPoE" interface
+=vlan140-PPPoE-HUAWEI network=172.31.255.4
+/ip address add address=172.31.255.2/30 comment="HUAWEI NE8000 - BGP - WAN" inter
+face=vlan130-BGP-HUAWEI network=172.31.255.0
+/ip address add address=192.168.1.1/24 comment="SWITCH HUAWEI - 192.168.1.253 - M
+GNT" interface=ether1 network=192.168.1.0
+/ip address add address=10.100.100.1/24 comment="VMs PROXMOX 01" interface=ether3
+ network=10.100.100.0
+/ip address add address=10.200.200.1/24 comment="IPS VMS PROXMOX 2" interface=eth
+er3 network=10.200.200.0
+/ip address add address=10.10.3.1/24 comment="GERENCIA OLTs" interface="vlan2150-
+GERENCIA OLTs" network=10.10.3.0
+/ip address add address=192.168.24.1/24 comment="POP TROPICAL" interface=vlan4040
+-POP-TROPICAL network=192.168.24.0
+/ip address add address=172.100.12.1/24 comment="TORRE VS10 - PELA OLT DATACOM 5"
+ interface="vlan3031-TORRE VS10 - PELA OLT DATACOM 5" network=172.100.12.0
+/ip address add address=10.11.11.1/24 comment="SGP - ANTIGO - 10.11.11.4 E 10.11.
+11.7 OU POR DHCP CLIENT" interface=vlan3080-GERENCIA-SERVIDORES-EQUIPAMENTOS net
+work=10.11.11.0
+/ip address add address=192.168.188.1/24 comment="NVR - 192.168.188.8" interface=
+vlan3080-GERENCIA-SERVIDORES-EQUIPAMENTOS network=192.168.188.0
+/ip address add address=186.0.151.65/30 comment="SISTEMA DE TELEFONE" interface=v
+lan3080-GERENCIA-SERVIDORES-EQUIPAMENTOS network=186.0.151.64
+/ip address add address=10.10.2.25/30 comment="MGNT - OLT DATACOM 4" interface=vl
+an3080-GERENCIA-SERVIDORES-EQUIPAMENTOS network=10.10.2.24
+/ip address add address=10.10.2.29/30 comment="MGNT - OLT DATACOM 5" interface=vl
+an3080-GERENCIA-SERVIDORES-EQUIPAMENTOS network=10.10.2.28
+/ip address add address=10.64.63.1/30 interface=eoip-tunnel2-SETOR01 network=10.6
+4.63.0
+/ip address add address=10.64.64.1/30 comment=EoIP-SETOR-02 interface=eoip-tunnel
+1-SETOR02 network=10.64.64.0
+/ip address add address=192.168.34.1/24 comment="IPS PARA ACESSO DE TORRE" interf
+ace="VLAN-1001-OLT 6 - ZTE DATACENTER 2 - PORTAS PON" network=192.168.34.0
+/ip address add address=192.168.47.1/24 interface="VLAN-1001-OLT 6 - ZTE DATACENT
+ER 2 - PORTAS PON" network=192.168.47.0
+/ip address add address=10.0.22.1/24 comment="TORRE MINERIOS" interface=vlan2020-
+PPPoE-TORRE-CDJ network=10.0.22.0
+/ip address add address=192.168.44.1/24 comment="GERENCIA TORRE CIDADE JARDIM" in
+terface=vlan2020-PPPoE-TORRE-CDJ network=192.168.44.0
+/ip address add address=172.100.10.1/24 comment=G5-TORRE-UNIAO interface="VLAN-10
+01-OLT 6 - ZTE DATACENTER 2 - PORTAS PON" network=172.100.10.0
+/ip address add address=192.168.48.1/24 comment="POP TROPICAL" interface=vlan4040
+-POP-TROPICAL network=192.168.48.0
+/ip address add address=192.168.0.1/24 disabled=yes interface=ether7 network=192.
+168.0.0
+/ip dhcp-server lease add address=192.168.188.2 client-id=1:80:8f:e8:dc:4e:a0 mac
+-address=80:8F:E8:DC:4E:A0 server=dhcp1
+/ip dhcp-server lease add address=192.168.188.3 mac-address=00:0C:29:E0:65:C4 ser
+ver=dhcp1
+/ip dhcp-server network add address=192.168.188.0/24 gateway=192.168.188.1
+/ip dns set servers=10.100.100.3,10.200.200.3,2804:6d00:2000:1::2
+/ip firewall address-list add address=100.64.0.0/21 comment=BNG-CORE-3 list=rede-
+privada-para-cgnat
+/ip firewall address-list add address=100.64.8.0/21 comment=PARAUAPEBAS-GPON list
+=rede-privada-para-cgnat
+/ip firewall address-list add address=100.64.16.0/22 comment=BNG-RADIO list=rede-
+privada-para-cgnat
+/ip firewall address-list add address=100.64.20.0/24 comment=BNG-CURIONOPOLIS lis
+t=rede-privada-para-cgnat
+/ip firewall address-list add address=10.11.248.0/21 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=10.10.1.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=172.20.30.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=10.100.100.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=100.64.22.0/23 comment=CORE-ZTE-01 list=red
+e-privada-para-cgnat
+/ip firewall address-list add address=10.0.0.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=172.31.100.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=100.64.0.0/19 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=10.20.20.0/24 comment=TV list="NAT IPS PRIV
+ADOS"
+/ip firewall address-list add address=10.20.21.0/24 comment=TV list="NAT IPS PRIV
+ADOS"
+/ip firewall address-list add address=10.20.22.0/24 comment="NVR QUE ESTA LIGADO 
+NA CCR SEVIDORES NA ETHER8" list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=10.11.11.0/24 comment="NAT SGP - SE ATIVAR,
+ O RADIUS PARA DE FUNCIONAR" disabled=yes list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=100.64.0.0/19 list=rede-privada-para-cgnat
+/ip firewall address-list add address=100.64.0.0/20 list=rede-privada-para-cgnat
+/ip firewall address-list add address=10.64.10.0/30 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=192.168.100.0/30 comment="PROXMOX RESERVA" 
+list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=186.0.149.111 comment="Adm Diretoria andar 
+01" list=IPS-LIBERADOS-PARA-IXC
+/ip firewall address-list add address=179.48.68.65 disabled=yes list=IPS-LIBERADO
+S-PARA-IXC
+/ip firewall address-list add address=186.0.150.74 comment="Setor 2" list=IPS-LIB
+ERADOS-PARA-IXC
+/ip firewall address-list add address=186.0.149.155 comment="Setor 2 fibra" list=
+IPS-LIBERADOS-PARA-IXC
+/ip firewall address-list add address=100.96.1.74 comment="Setor 2 radio" list=IP
+S-LIBERADOS-PARA-IXC
+/ip firewall address-list add address=10.20.20.0/29 comment="NAT PARA ESCRITORIO"
+ list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=10.10.2.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=100.64.0.0/19 disabled=yes list=LANs-ERP
+/ip firewall address-list add address=200.160.0.0/20 disabled=yes list=LANs-ERP
+/ip firewall address-list add address=179.48.68.0/22 disabled=yes list=LANs-ERP
+/ip firewall address-list add address=186.0.151.32/27 disabled=yes list=LANs-ERP
+/ip firewall address-list add address=10.100.100.2 list=SEM-NAT
+/ip firewall address-list add address=192.168.0.25 disabled=yes list=SEM-NAT
+/ip firewall address-list add address=10.200.200.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=10.10.3.0/24 comment=OLTS list="NAT IPS PRI
+VADOS"
+/ip firewall address-list add address=10.10.2.34 comment="OLT 2" list="NAT IPS PR
+IVADOS"
+/ip firewall address-list add address=10.10.2.26 comment="OLT 4" list="NAT IPS PR
+IVADOS"
+/ip firewall address-list add address=10.10.2.30 comment="OLT 5" list="NAT IPS PR
+IVADOS"
+/ip firewall address-list add address=192.168.188.0/24 list="NAT IPS PRIVADOS"
+/ip firewall address-list add address=186.0.151.64/30 list=SEM-NAT
+/ip firewall address-list add address=192.168.33.0/24 list=SEM-NAT
+/ip firewall address-list add address=192.168.73.0/24 list=SEM-NAT
+/ip firewall address-list add address=192.168.73.0/24 list=SEM-NAT-IPs-CAMERAS
+/ip firewall address-list add address=192.168.33.0/24 list=SEM-NAT-IPs-CAMERAS
+/ip firewall address-list add address=10.168.0.0/24 list=SEM-NAT-IPs-CAMERAS
+/ip firewall filter add action=fasttrack-connection chain=forward connection-stat
+e=established,related
+/ip firewall filter add action=accept chain=forward connection-state=established,
+related
+/ip firewall filter add action=drop chain=forward connection-state=invalid
+/ip firewall filter add action=accept chain=forward comment="ERP: permitir LANs" 
+connection-state=new disabled=yes dst-address=186.0.151.42 src-address-list=LANs
+-ERP
+/ip firewall filter add action=drop chain=forward comment="ERP: bloquear no-LANs"
+ connection-state=new disabled=yes dst-address=186.0.151.42
+/ip firewall filter add action=drop chain=forward comment="BLOQUEIO ACESSO SISTEM
+A IXC" dst-address=186.0.151.40 src-address-list=!IPS-LIBERADOS-PARA-IXC
+/ip firewall filter add action=drop chain=forward comment="BLOQUEIO ACESSO SISTEM
+A SGP ANTIGO" disabled=yes dst-address=192.168.188.3 src-address-list=!IPS-LIBER
+ADOS-PARA-IXC
+/ip firewall filter add action=add-src-to-address-list address-list=PORTSCAN addr
+ess-list-timeout=1w chain=input comment="PORT SCAN" in-interface=vlan130-BGP-HUA
+WEI protocol=tcp psd=21,3s,3,1
+/ip firewall filter add action=drop chain=input comment="DROP DNS" dst-port=53 in
+-interface=vlan130-BGP-HUAWEI protocol=udp
+/ip firewall filter add action=drop chain=forward dst-port=53 in-interface=vlan13
+0-BGP-HUAWEI protocol=udp
+/ip firewall filter add action=accept chain=input disabled=yes src-address=10.0.0
+.14
+/ip firewall filter add action=accept chain=input disabled=yes src-address=10.11.
+11.4
+/ip firewall filter add action=accept chain=output disabled=yes dst-address=10.0.
+0.14
+/ip firewall filter add action=accept chain=output disabled=yes dst-address=10.11
+.11.4
+/ip firewall filter add action=add-src-to-address-list address-list=TOC_TOC addre
+ss-list-timeout=15s chain=input comment=TOC-TOC disabled=yes dst-port=1425 proto
+col=tcp
+/ip firewall filter add action=add-src-to-address-list address-list=LIBERA_SERVIC
+OS address-list-timeout=15m chain=input disabled=yes dst-port=2514 protocol=tcp 
+src-address-list=TOC_TOC
+/ip firewall filter add action=accept chain=input disabled=yes src-address-list=L
+IBERA_SERVICOS
+/ip firewall nat
+# no interface
+add action=masquerade chain=srcnat comment="NAT VPN" out-interface=*F019FF to-add
+resses=186.0.148.246
+/ip firewall nat add action=src-nat chain=srcnat src-address=100.64.0.0/10 to-add
+resses=186.0.149.128/26
+/ip firewall nat add action=accept chain=srcnat comment="IPs VPN FORA DO NAT" dis
+abled=yes dst-address=172.20.30.0/24
+/ip firewall nat add action=accept chain=srcnat comment="IPs VPN FORA DO NAT" dis
+abled=yes src-address=10.168.0.0/24
+/ip firewall nat add action=accept chain=srcnat comment="IPs VPN FORA DO NAT" dis
+abled=yes dst-address=10.168.0.0/24
+/ip firewall nat add action=accept chain=srcnat comment="IPs VPN FORA DO NAT" dis
+abled=yes src-address=186.0.148.0/22
+/ip firewall nat add action=accept chain=srcnat comment="IPs VPN FORA DO NAT" dis
+abled=yes dst-address=186.0.148.0/22
+/ip firewall nat add action=accept chain=srcnat comment="IPs VPN FORA DO NAT" dis
+abled=yes dst-address=172.20.30.0/24
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO ROTEADOR CLIENTE
+ COM INTERNET VIA SATELITE" dst-port=40800 protocol=tcp to-addresses=10.168.0.25
+3 to-ports=8080
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO MIKROTIK CLIENTE
+ COM INTERNET VIA SATELITE" dst-port=40801 protocol=tcp to-addresses=10.168.0.1 
+to-ports=9291
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes dst-address=10.11.1
+1.4 to-addresses=10.11.11.1
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT IPs CAMERAS" dst
+-address-list=SEM-NAT-IPs-CAMERAS
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - ZABBIX - DNS" 
+dst-address=10.200.200.3 src-address=10.100.100.2
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT PARA O SW HUAWEI
+" dst-address=192.168.0.25
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - ZABBIX - BGP" 
+dst-address=172.31.255.1 src-address=10.100.100.2
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - ZABBIX - SWITC
+HS" dst-address=10.0.1.0/24 src-address=10.100.100.2
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - ZABBIX - BNG" 
+dst-address=172.31.255.6 src-address=10.100.100.2
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - ZABBIX - PROXM
+OX" dst-address=172.31.100.2 src-address=10.100.100.2
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - ZABBIX - OLT Z
+TE" dst-address=192.168.200.2 src-address=10.100.100.2
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT - PROXMOX - ZABB
+IX" dst-address=10.100.100.2 src-address=172.31.100.2
+/ip firewall nat add action=src-nat chain=srcnat comment="PING DO DUDE PARA A ARA
+NET" dst-address=100.101.229.73 src-address=186.0.151.41 to-addresses=186.0.148.
+246
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO SW HUAWEI" dst-a
+ddress=186.0.148.246 dst-port=32334 protocol=tcp to-addresses=192.168.1.253 to-p
+orts=22
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT PARA O SW HUAWEI
+" dst-address=192.168.1.253
+/ip firewall nat add action=dst-nat chain=dstnat dst-address=186.0.151.207 dst-po
+rt=18899 protocol=tcp to-addresses=100.96.7.38 to-ports=9291
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT PARA O PPPOE HUA
+WEI" dst-address=186.0.151.42 src-address=172.31.255.6
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT PARA O PPPOE HUA
+WEI" dst-address=172.31.255.6 src-address=186.0.151.42
+/ip firewall nat add action=src-nat chain=srcnat comment="CG-NAT PPPoE GERAL" src
+-address=100.96.0.0/20 to-addresses=186.0.150.0/24
+/ip firewall nat add action=accept chain=srcnat comment="SEM NAT PARA O PPPOE HUA
+WEI" src-address=172.31.255.6
+/ip firewall nat add action=accept chain=srcnat protocol=ospf
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT GERAL - 186.0.149.1
+28/25" disabled=yes src-address-list="NAT IPS PRIVADOS" to-addresses=186.0.149.1
+28/25
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT PARA NVR" disabled=
+yes src-address=192.168.188.0/24 to-addresses=186.0.151.65
+/ip firewall nat add action=same chain=srcnat comment="CG-NAT PPPoE JUNIPER" disa
+bled=yes same-not-by-dst=yes src-address=100.64.66.110 to-addresses=186.0.150.0/
+24
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT GERAL##############
+####" disabled=yes src-address=10.0.1.2 to-addresses=186.0.151.207
+/ip firewall nat add action=accept chain=srcnat disabled=yes dst-address=186.0.15
+1.40 src-address=10.0.0.10
+/ip firewall nat add action=same chain=srcnat comment="CG-NAT PPPoE JUNIPER" disa
+bled=yes same-not-by-dst=yes src-address=100.64.64.0/21 to-addresses=186.0.150.0
+/24
+/ip firewall nat add action=src-nat chain=srcnat comment="CG-NAT PPPoE JUNIPER" d
+isabled=yes src-address=100.64.64.0/21 to-addresses=186.0.148.246
+/ip firewall nat add action=dst-nat chain=dstnat comment="UTILIZAR DNS DO GOOGLE 
+- ATIVAR ESSA REGRA, SOMENTE SE O DNS LOCAL TIVER SEM FUNCIONAR" disabled=yes ds
+t-address=!8.8.8.8 dst-port=53 protocol=udp to-addresses=8.8.8.8
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PROXMOX 1 - PRIN
+CIPAL" dst-address=186.0.148.246 dst-port=8886 protocol=tcp src-port="" to-addre
+sses=172.31.100.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PROXMOX 2 - RESE
+RVA" dst-address=186.0.148.246 dst-port=8888 protocol=tcp src-port="" to-address
+es=192.168.100.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PROXMOX 2 - RESE
+RVA" dst-address=186.0.148.246 dst-port=38888 protocol=tcp src-port="" to-addres
+ses=172.20.30.117 to-ports=8291
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PROXMOX BACKUP" 
+dst-address=186.0.148.246 dst-port=8807 protocol=tcp src-port="" to-addresses=17
+2.31.102.2 to-ports=8007
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PROXMOX" disable
+d=yes dst-address=186.0.148.246 dst-port=8887 protocol=tcp src-port="" to-addres
+ses=10.11.11.2 to-ports=80
+/ip firewall nat add action=accept chain=srcnat comment=JUNIPER disabled=yes dst-
+address=186.0.151.40 src-address=10.64.10.1
+/ip firewall nat add action=src-nat chain=srcnat comment="REMOTO JJUNIPER" disabl
+ed=yes dst-address=192.168.1.253 to-addresses=192.168.1.1
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-targe
+t=cgnat src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0
+.0/24 portas=1024-5055" jump-target=100.64.0.0/24 src-address=100.64.0.0/24
+/ip firewall nat add action=netmap chain=100.64.0.0/24 comment="100.64.0.0/24 ==>
+ portas=1024-5055" protocol=tcp to-addresses=186.0.150.0/24 to-ports=1024-5055
+/ip firewall nat add action=netmap chain=100.64.0.0/24 comment="100.64.0.0/24 ==>
+ portas=1024-5055" protocol=udp to-addresses=186.0.150.0/24 to-ports=1024-5055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+.0/24 portas=5056-9087" jump-target=100.64.1.0/24 src-address=100.64.1.0/24
+/ip firewall nat add action=netmap chain=100.64.1.0/24 comment="100.64.1.0/24 ==>
+ portas=5056-9087" protocol=tcp to-addresses=186.0.150.0/24 to-ports=5056-9087
+/ip firewall nat add action=netmap chain=100.64.1.0/24 comment="100.64.1.0/24 ==>
+ portas=5056-9087" protocol=udp to-addresses=186.0.150.0/24 to-ports=5056-9087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2
+.0/24 portas=9088-13119" jump-target=100.64.2.0/24 src-address=100.64.2.0/24
+/ip firewall nat add action=netmap chain=100.64.2.0/24 comment="100.64.2.0/24 ==>
+ portas=9088-13119" protocol=tcp to-addresses=186.0.150.0/24 to-ports=9088-13119
+
+/ip firewall nat add action=netmap chain=100.64.2.0/24 comment="100.64.2.0/24 ==>
+ portas=9088-13119" protocol=udp to-addresses=186.0.150.0/24 to-ports=9088-13119
+
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3
+.0/24 portas=13120-17151" jump-target=100.64.3.0/24 src-address=100.64.3.0/24
+/ip firewall nat add action=netmap chain=100.64.3.0/24 comment="100.64.3.0/24 ==>
+ portas=13120-17151" protocol=tcp to-addresses=186.0.150.0/24 to-ports=13120-171
+51
+/ip firewall nat add action=netmap chain=100.64.3.0/24 comment="100.64.3.0/24 ==>
+ portas=13120-17151" protocol=udp to-addresses=186.0.150.0/24 to-ports=13120-171
+51
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4
+.0/24 portas=17152-21183" jump-target=100.64.4.0/24 src-address=100.64.4.0/24
+/ip firewall nat add action=netmap chain=100.64.4.0/24 comment="100.64.4.0/24 ==>
+ portas=17152-21183" protocol=tcp to-addresses=186.0.150.0/24 to-ports=17152-211
+83
+/ip firewall nat add action=netmap chain=100.64.4.0/24 comment="100.64.4.0/24 ==>
+ portas=17152-21183" protocol=udp to-addresses=186.0.150.0/24 to-ports=17152-211
+83
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5
+.0/24 portas=21184-25215" jump-target=100.64.5.0/24 src-address=100.64.5.0/24
+/ip firewall nat add action=netmap chain=100.64.5.0/24 comment="100.64.5.0/24 ==>
+ portas=21184-25215" protocol=tcp to-addresses=186.0.150.0/24 to-ports=21184-252
+15
+/ip firewall nat add action=netmap chain=100.64.5.0/24 comment="100.64.5.0/24 ==>
+ portas=21184-25215" protocol=udp to-addresses=186.0.150.0/24 to-ports=21184-252
+15
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6
+.0/24 portas=25216-29247" jump-target=100.64.6.0/24 src-address=100.64.6.0/24
+/ip firewall nat add action=netmap chain=100.64.6.0/24 comment="100.64.6.0/24 ==>
+ portas=25216-29247" protocol=tcp to-addresses=186.0.150.0/24 to-ports=25216-292
+47
+/ip firewall nat add action=netmap chain=100.64.6.0/24 comment="100.64.6.0/24 ==>
+ portas=25216-29247" protocol=udp to-addresses=186.0.150.0/24 to-ports=25216-292
+47
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7
+.0/24 portas=29248-33279" jump-target=100.64.7.0/24 src-address=100.64.7.0/24
+/ip firewall nat add action=netmap chain=100.64.7.0/24 comment="100.64.7.0/24 ==>
+ portas=29248-33279" protocol=tcp to-addresses=186.0.150.0/24 to-ports=29248-332
+79
+/ip firewall nat add action=netmap chain=100.64.7.0/24 comment="100.64.7.0/24 ==>
+ portas=29248-33279" protocol=udp to-addresses=186.0.150.0/24 to-ports=29248-332
+79
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.8
+.0/24 portas=33280-37311" jump-target=100.64.8.0/24 src-address=100.64.8.0/24
+/ip firewall nat add action=netmap chain=100.64.8.0/24 comment="100.64.8.0/24 ==>
+ portas=33280-37311" protocol=tcp to-addresses=186.0.150.0/24 to-ports=33280-373
+11
+/ip firewall nat add action=netmap chain=100.64.8.0/24 comment="100.64.8.0/24 ==>
+ portas=33280-37311" protocol=udp to-addresses=186.0.150.0/24 to-ports=33280-373
+11
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.9
+.0/24 portas=37312-41343" jump-target=100.64.9.0/24 src-address=100.64.9.0/24
+/ip firewall nat add action=netmap chain=100.64.9.0/24 comment="100.64.9.0/24 ==>
+ portas=37312-41343" protocol=tcp to-addresses=186.0.150.0/24 to-ports=37312-413
+43
+/ip firewall nat add action=netmap chain=100.64.9.0/24 comment="100.64.9.0/24 ==>
+ portas=37312-41343" protocol=udp to-addresses=186.0.150.0/24 to-ports=37312-413
+43
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+0.0/24 portas=41344-45375" jump-target=100.64.10.0/24 src-address=100.64.10.0/24
+
+/ip firewall nat add action=netmap chain=100.64.10.0/24 comment="100.64.10.0/24 =
+=> portas=41344-45375" protocol=tcp to-addresses=186.0.150.0/24 to-ports=41344-4
+5375
+/ip firewall nat add action=netmap chain=100.64.10.0/24 comment="100.64.10.0/24 =
+=> portas=41344-45375" protocol=udp to-addresses=186.0.150.0/24 to-ports=41344-4
+5375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+1.0/24 portas=45376-49407" jump-target=100.64.11.0/24 src-address=100.64.11.0/24
+
+/ip firewall nat add action=netmap chain=100.64.11.0/24 comment="100.64.11.0/24 =
+=> portas=45376-49407" protocol=tcp to-addresses=186.0.150.0/24 to-ports=45376-4
+9407
+/ip firewall nat add action=netmap chain=100.64.11.0/24 comment="100.64.11.0/24 =
+=> portas=45376-49407" protocol=udp to-addresses=186.0.150.0/24 to-ports=45376-4
+9407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+2.0/24 portas=49408-53439" jump-target=100.64.12.0/24 src-address=100.64.12.0/24
+
+/ip firewall nat add action=netmap chain=100.64.12.0/24 comment="100.64.12.0/24 =
+=> portas=49408-53439" protocol=tcp to-addresses=186.0.150.0/24 to-ports=49408-5
+3439
+/ip firewall nat add action=netmap chain=100.64.12.0/24 comment="100.64.12.0/24 =
+=> portas=49408-53439" protocol=udp to-addresses=186.0.150.0/24 to-ports=49408-5
+3439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+3.0/24 portas=53440-57471" jump-target=100.64.13.0/24 src-address=100.64.13.0/24
+
+/ip firewall nat add action=netmap chain=100.64.13.0/24 comment="100.64.13.0/24 =
+=> portas=53440-57471" protocol=tcp to-addresses=186.0.150.0/24 to-ports=53440-5
+7471
+/ip firewall nat add action=netmap chain=100.64.13.0/24 comment="100.64.13.0/24 =
+=> portas=53440-57471" protocol=udp to-addresses=186.0.150.0/24 to-ports=53440-5
+7471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+4.0/24 portas=57472-61503" jump-target=100.64.14.0/24 src-address=100.64.14.0/24
+
+/ip firewall nat add action=netmap chain=100.64.14.0/24 comment="100.64.14.0/24 =
+=> portas=57472-61503" protocol=tcp to-addresses=186.0.150.0/24 to-ports=57472-6
+1503
+/ip firewall nat add action=netmap chain=100.64.14.0/24 comment="100.64.14.0/24 =
+=> portas=57472-61503" protocol=udp to-addresses=186.0.150.0/24 to-ports=57472-6
+1503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1
+5.0/24 portas=61504-65535" jump-target=100.64.15.0/24 src-address=100.64.15.0/24
+
+/ip firewall nat add action=netmap chain=100.64.15.0/24 comment="100.64.15.0/24 =
+=> portas=61504-65535" protocol=tcp to-addresses=186.0.150.0/24 to-ports=61504-6
+5535
+/ip firewall nat add action=netmap chain=100.64.15.0/24 comment="100.64.15.0/24 =
+=> portas=61504-65535" protocol=udp to-addresses=186.0.150.0/24 to-ports=61504-6
+5535
+/ip firewall nat add action=netmap chain=srcnat comment="100.64.0.0/20 ==> 186.0.
+150.0/24" src-address=100.64.0.0/20 to-addresses=186.0.150.0/24
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT GERAL##############
+####" dst-address-list="!SEM NAT IPS PUBLICOS" src-address-list="NAT IPS PRIVADO
+S" to-addresses=186.0.151.207
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO HUAWEI NE8000 - 
+PPPOE" dst-address=186.0.151.207 dst-port=22222 protocol=tcp to-addresses=172.31
+.255.6 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR OLT 01 CURIONOP
+OLIS" dst-address=186.0.151.207 dst-port=22334 protocol=tcp to-addresses=192.168
+.0.25 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR OLT 02" dst-add
+ress=186.0.151.207 dst-port=22335 protocol=tcp to-addresses=10.10.2.34 to-ports=
+22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR OLT 03" dst-add
+ress=186.0.151.207 dst-port=22336 protocol=tcp to-addresses=10.10.3.4 to-ports=2
+2002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR OLT 04" dst-add
+ress=186.0.151.207 dst-port=22337 protocol=tcp to-addresses=10.10.2.26 to-ports=
+22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR OLT 05" dst-add
+ress=186.0.151.207 dst-port=22338 protocol=tcp to-addresses=10.10.2.30 to-ports=
+22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR OLT 06" dst-add
+ress=186.0.151.207 dst-port=22339 protocol=tcp to-addresses=192.168.200.2 to-por
+ts=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR SW 02 - OLT 02"
+ dst-address=186.0.151.207 dst-port=29291 protocol=tcp to-addresses=10.0.1.2 to-
+ports=9291
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR ZABBIX SSH" dst
+-address=186.0.151.207 dst-port=22340 protocol=tcp to-addresses=10.100.100.2 to-
+ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR SSH PROXMOX" ds
+t-address=186.0.151.207 dst-port=22342 protocol=tcp to-addresses=172.31.100.2 to
+-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR DNS RECURSIVO S
+LAVE" dst-address=186.0.151.207 dst-port=22343 protocol=tcp to-addresses=10.200.
+200.3 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR DJANGO" dst-add
+ress=186.0.151.207 dst-port=9000 protocol=tcp to-addresses=10.100.100.2 to-ports
+=9000
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR GRAFANA WEB" ds
+t-address=186.0.151.207 dst-port=3030 protocol=tcp to-addresses=10.100.100.2 to-
+ports=3030
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR ZABBIX WEB" dst
+-address=186.0.151.207 dst-port=3031 protocol=tcp to-addresses=10.100.100.2 to-p
+orts=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR DNS RECURSIVO M
+ASTER" dst-address=186.0.151.207 dst-port=22341 protocol=tcp to-addresses=10.100
+.100.3 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSAR PHPIPAM" dst-ad
+dress=186.0.151.207 dst-port=8903 protocol=tcp to-addresses=10.100.100.2 to-port
+s=8903
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO ZABBIX SSH" dst-
+address=186.0.151.207 dst-port=22340 protocol=tcp to-addresses=10.100.100.2 to-p
+orts=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO NVR" disabled=ye
+s dst-address=186.0.151.65 dst-port=37777 protocol=tcp to-addresses=192.168.188.
+2 to-ports=37777
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO NVR" dst-address
+=186.0.151.65 dst-port=554 protocol=tcp to-addresses=192.168.188.2 to-ports=554
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO NVR" dst-address
+=186.0.151.65 dst-port=37778 protocol=tcp to-addresses=192.168.188.2 to-ports=37
+778
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO NVR" dst-address
+=186.0.151.65 dst-port=8070 protocol=tcp to-addresses=192.168.188.2 to-ports=807
+0
+/ip firewall nat add action=src-nat chain=srcnat comment=NAT_OpenVPN src-address=
+192.168.250.128/25 to-addresses=186.0.148.246
+/ip firewall nat add action=src-nat chain=srcnat dst-address=10.10.2.34 to-addres
+ses=186.0.151.207
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO TFTP TOMICH" dis
+abled=yes dst-port=69 protocol=udp to-addresses=179.48.68.65 to-ports=69
+/ip firewall raw add action=notrack chain=output protocol=ospf
+/ip firewall raw add action=notrack chain=prerouting protocol=ospf
+/ip firewall raw add action=notrack chain=prerouting comment="FORA DO CGNAT PPPoE
+ HUAWEI" disabled=yes src-address=172.31.255.6
+/ip firewall raw add action=drop chain=prerouting comment="BLOQUEIO PORT SCAN" ds
+t-address-list=PORTSCAN
+/ip firewall raw add action=drop chain=prerouting protocol=udp src-port=19,25,190
+0,11211
+/ip firewall raw add action=drop chain=prerouting protocol=tcp src-port=19,25,190
+0,11211
+/ip firewall raw add action=drop chain=prerouting dst-port=19,25,1900,11211 proto
+col=udp
+/ip firewall raw add action=drop chain=prerouting dst-port=19,25,1900,11211 proto
+col=tcp
+/ip route add check-gateway=ping comment="ROTA PARA BGP HUAWEI" distance=1 gatewa
+y=172.31.255.1 pref-src=186.0.148.246
+/ip route add check-gateway=ping disabled=yes distance=111 gateway=10.0.0.1
+/ip route add distance=1 dst-address=10.10.1.0/24 gateway=10.0.0.22
+/ip route add distance=1 dst-address=10.10.4.0/24 gateway=10.0.0.22
+/ip route add check-gateway=ping comment="FAIXA DE IP CLIENTE COM INTERNET VIA SA
+TELITE " distance=1 dst-address=10.168.0.0/24 gateway=172.20.30.117
+/ip route add comment="IPS PPPoE PARA JUNIPER" disabled=yes distance=1 dst-addres
+s=100.64.64.0/21 gateway=10.64.10.1
+/ip route add comment=RFC6890 distance=111 dst-address=127.0.0.0/8 type=prohibit
+/ip route add check-gateway=ping comment="TEST IP FORNECEDOR CAIXA PPPoE RADIO" d
+isabled=yes distance=1 dst-address=132.255.229.1/32 gateway=10.0.0.6
+/ip route add comment="IP FORNECEDOR PARA CLIENTE NO JUNIPER" disabled=yes distan
+ce=1 dst-address=132.255.229.2/32 gateway=10.64.10.1
+/ip route add comment=RFC6890 distance=111 dst-address=169.254.0.0/16 type=prohib
+it
+/ip route add comment=RFC6890 distance=111 dst-address=172.16.0.0/12 type=prohibi
+t
+/ip route add check-gateway=ping disabled=yes distance=111 dst-address=172.16.236
+.14/32 gateway=10.0.0.14
+/ip route add check-gateway=ping disabled=yes distance=111 dst-address=172.16.236
+.18/32 gateway=10.0.0.6
+/ip route add check-gateway=ping disabled=yes distance=111 dst-address=172.16.236
+.20/32 gateway=10.0.0.10
+/ip route add disabled=yes distance=1 dst-address=186.0.149.0/24 gateway=10.64.10
+.1
+/ip route add comment=BLACKHOLE disabled=yes distance=1 dst-address=186.0.149.128
+/25 type=blackhole
+/ip route add comment=CGNAT distance=1 dst-address=186.0.149.128/26 type=blackhol
+e
+/ip route add comment=CGNAT distance=1 dst-address=186.0.150.0/24 type=blackhole
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=192.0.0.0/24 
+type=prohibit
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=192.0.2.0/24 
+type=prohibit
+/ip route add comment="6to4 relay Anycast RFC 3068" disabled=yes distance=111 dst
+-address=192.88.99.0/24 type=prohibit
+/ip route add comment=RFC6890 distance=111 dst-address=192.168.0.0/16 type=prohib
+it
+/ip route add distance=1 dst-address=192.168.0.25/32 gateway=10.0.0.22
+/ip route add comment="ROTA OLT DATACOM 02 DANILO 27-06-2021" disabled=yes distan
+ce=111 dst-address=192.168.5.0/24 gateway=10.0.0.6
+/ip route add comment="IPS DO ESCRITORIO SETOR 02 ACESSO AS CAMERAS" distance=1 d
+st-address=192.168.33.0/24 gateway=10.64.64.2
+/ip route add comment="IPS DO ESCRITORIO SETOR 01 ACESSO AS CAMERAS" distance=1 d
+st-address=192.168.73.0/24 gateway=10.64.63.2
+/ip route add check-gateway=ping disabled=yes distance=1 dst-address=192.168.73.0
+/24 gateway=10.0.0.10
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=198.18.0.0/15
+ type=prohibit
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=198.51.100.0/
+24 type=prohibit
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=203.0.113.0/2
+4 type=prohibit
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=224.0.0.0/4 t
+ype=prohibit
+/ip route add comment=RFC6890 disabled=yes distance=111 dst-address=240.0.0.0/4 t
+ype=prohibit
+/ip service set telnet disabled=yes
+/ip service set ftp port=40800
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip ssh set strong-crypto=yes
+/ip tftp add disabled=yes ip-addresses=0.0.0.0/0 read-only=no real-filename=000-1
+157-55-DmOS-10.4.4-DM4615.swu req-filename=000-1157-55-DmOS-10.4.4-DM4615.swu
+/ip tftp add disabled=yes ip-addresses=0.0.0.0/0 read-only=no real-filename=000-1
+157-58-DmOS-11.2.0-DM4615.swu req-filename=000-1157-58-DmOS-11.2.0-DM4615.swu
+/ipv6 address add address=2804:6d00:1200::2/128 advertise=no interface=Loopback
+/ipv6 address add address=fd00:0:1:803::2 advertise=no comment=WAN disabled=yes i
+nterface=vlan2004-WAN-IPv6
+/ipv6 address add address=2804:6d00:2000:1::1 advertise=no comment="PROXMOX 01 - 
+SERVIDORES" interface=ether3
+/ipv6 address add address=2804:6d00:2000:2::1 advertise=no comment="PROXMOX 02" i
+nterface=ether3
+/ipv6 nd set [ find default=yes ] advertise-dns=no
+/lcd set time-interval=hour
+/mpls interface set [ find default=yes ] mpls-mtu=1560
+/mpls ldp set enabled=yes lsr-id=10.255.255.1 transport-address=10.255.255.1
+/mpls ldp interface add disabled=yes interface=VLAN-102-PPPoE-PARAUAPEBAS-GPON
+/mpls ldp interface add disabled=yes interface=VLAN-1401-PPPoE-BNG-CURIONOPOLIS
+/ppp secret add disabled=yes local-address=172.20.30.1 name=GSSTELECOM password=g
+5telecom profile=VPN-client remote-address=172.20.30.15
+/ppp secret add disabled=yes local-address=172.16.30.1 name=danilo password=danil
+o profile=VPN-client remote-address=172.16.30.13
+/ppp secret add disabled=yes local-address=172.20.30.1 name=vpn.danilo password=d
+anilo profile=VPN-client remote-address=172.20.30.15 service=l2tp
+/ppp secret add disabled=yes local-address=172.20.30.1 name=vpn.danilonote passwo
+rd=danilonote profile=VPN-client remote-address=172.20.30.16 service=l2tp
+/ppp secret add local-address=172.20.30.1 name=vpn.tomich password=tomich profile
+=VPN-client remote-address=172.20.30.14 service=l2tp
+/ppp secret add local-address=172.20.30.1 name=sidcley password=0936210abcd profi
+le=VPN-client remote-address=172.20.30.14 service=l2tp
+/ppp secret add local-address=192.168.250.128 name=open-vpn-.tomich password=57u2
+S7-DR3zf profile=OPEN_VPN remote-address=192.168.250.129 service=ovpn
+/ppp secret add local-address=10.20.20.1 name=diretoria@g5fibra password=diretori
+a remote-address=10.20.20.2 service=pppoe
+/ppp secret add local-address=172.20.30.1 name=vpn.dcml password=Tomich.10 profil
+e=VPN-client remote-address=172.20.30.117 service=sstp
+/routing bfd interface set [ find default=yes ] disabled=yes
+/routing filter add action=discard chain=ospf-in disabled=yes prefix=100.64.0.0/1
+0 prefix-length=32
+/routing ospf interface add network-type=broadcast passive=yes
+/routing ospf interface add interface=VLAN-101-PPPoE-RADIO network-type=point-to-
+point
+/routing ospf interface add disabled=yes interface=VLAN-102-PPPoE-PARAUAPEBAS-GPO
+N network-type=point-to-point
+/routing ospf interface add disabled=yes interface=VLAN-100-CCR-SERVIDOR network-
+type=point-to-point
+/routing ospf interface add interface=VLAN-103-PPPoE-CORE_3 network-type=point-to
+-point
+/routing ospf interface add disabled=yes interface=VLAN-1401-PPPoE-BNG-CURIONOPOL
+IS network-type=point-to-point
+/routing ospf interface add authentication=md5 authentication-key=Net.10 disabled
+=yes interface=VLAN-104-PPPoE-CORE-ZTE-01 network-type=point-to-point
+/routing ospf interface add disabled=yes interface=VLAN-300-PPPoE-JUNIPER network
+-type=point-to-point
+/routing ospf interface add authentication=md5 authentication-key=Net.10 disabled
+=yes interface=vlan3001-WAN network-type=point-to-point
+/routing ospf interface add interface=vlan130-BGP-HUAWEI network-type=point-to-po
+int
+/routing ospf interface add interface=vlan140-PPPoE-HUAWEI network-type=point-to-
+point
+/routing ospf network add area=backbone disabled=yes network=10.0.0.0/8
+/routing ospf network add area=backbone disabled=yes network=186.0.148.0/22
+/routing ospf network add area=backbone network=192.168.100.0/24
+/routing ospf network add area=backbone comment="PPPoE - PARAUAPEBAS" network=10.
+0.0.4/30
+/routing ospf network add area=backbone comment="PPPoE JUNIPER" network=10.64.10.
+0/30
+/routing ospf network add area=backbone comment="GERENCIA OLT ZTE" network=192.16
+8.200.0/30
+/routing ospf network add area=backbone comment="CGNAT GERAL - JUNIPER" network=1
+86.0.148.246/32
+/routing ospf network add area=backbone comment="CGNAT GERAL" network=186.0.151.2
+07/32
+/routing ospf network add area=backbone comment=PROXMOX network=172.31.100.0/30
+/routing ospf network add area=backbone comment="PROXMOX BACKUP" network=172.31.1
+01.0/30
+/routing ospf network add area=backbone comment="VMS - SERVIDORES" network=186.0.
+151.32/27
+/routing ospf network add area=backbone comment="CCR SERVIDOR" network=10.0.0.12/
+30
+/routing ospf network add area=backbone comment="PPPoE RADIO" network=10.0.0.8/30
+
+/routing ospf network add area=backbone comment="PPPoE CORE 3" network=10.0.0.16/
+30
+/routing ospf network add area=backbone comment="PPPOE ZTE" network=10.0.0.24/30
+/routing ospf network add area=backbone comment="PPPoE CURIONOPOLIS" network=10.0
+.0.20/30
+/routing ospf network add area=backbone comment="GERENCIA OLT 03" network=10.10.2
+.20/30
+/routing ospf network add area=backbone comment="GERENCIA SWITCHS" network=10.0.1
+.0/26
+/routing ospf network add area=backbone comment=WAN network=10.0.0.0/30
+/routing ospf network add area=backbone comment=LOOPBACK network=10.255.255.1/32
+/routing ospf network add area=backbone comment="SW 01" network=10.0.2.0/30
+/routing ospf network add area=backbone comment="IPS PARA CLIENTES" network=186.0
+.151.224/27
+/routing ospf network add area=backbone comment="HUAWEI NE8000 - PPPoE" network=1
+72.31.255.4/30
+/routing ospf network add area=backbone comment="BGP - HUAWEI" network=172.31.255
+.0/30
+/routing ospf network add area=backbone comment="SGP VELHO" network=10.11.11.0/24
+
+/routing ospf-v3 interface add area=backbone passive=yes
+/routing ospf-v3 interface add area=backbone interface=VLAN-100-CCR-SERVIDOR netw
+ork-type=point-to-point
+/routing ospf-v3 interface add area=backbone disabled=yes interface=VLAN-101-PPPo
+E-RADIO network-type=point-to-point
+/routing ospf-v3 interface add area=backbone disabled=yes interface=VLAN-102-PPPo
+E-PARAUAPEBAS-GPON network-type=point-to-point
+/routing ospf-v3 interface add area=backbone disabled=yes interface=sfp-sfpplus1 
+network-type=point-to-point
+/routing ospf-v3 interface add area=backbone disabled=yes interface=VLAN-1401-PPP
+oE-BNG-CURIONOPOLIS network-type=point-to-point
+/routing ospf-v3 interface add area=backbone disabled=yes network-type=point-to-p
+oint
+/routing ospf-v3 interface add area=backbone interface=vlan2004-WAN-IPv6 network-
+type=point-to-point
+/snmp set enabled=yes trap-version=2
+/system clock set time-zone-name=America/Belem
+/system identity set name=CGNAT
+/system logging set 0 topics=info,!firewall
+/system logging add action=firewall prefix=FW topics=info,firewall
+/system logging add topics=tftp
+/system package update set channel=long-term
+/system routerboard settings set auto-upgrade=yes
+/system scheduler add disabled=yes interval=1w name=auto-system-upgrade on-event=
+"# leonardorosa.com\r\
+    \n#\r\
+    \n#\r\
+    \n# uncomment desired channel below. recommended is long-term.\r\
+    \n# descomente abaixo o canal desejado. recomendo long-term.\r\
+    \n\r\
+    \n:local \"my-channel\" \"long-term\";\r\
+    \n#:local \"my-channel\" \"stable\";\r\
+    \n#:local \"my-channel\" \"testing\";\r\
+    \n\r\
+    \n\r\
+    \n/sys pac upd set chan=\$\"my-channel\";:exec {/sys pac upd check};:delay 10
+;:local \"ver-status\" [/sys pac upd get status];:local \"ver-status-len\" [:len
+ \$\"ver-status\"];:local \"ver-latest\" [/system package update get latest-vers
+ion];/sys sche add inte=1w start-t=([/sys clo get time]+[:totime 2]) start-d=[/s
+ys clo get date] name=\"auto-system-upgrade_running\" on-event=\":if (ver-status
+-len < 27 ) do={:exec {/sys pac upd ins};:global \\\"wday-ok\\\" 1} else={:globa
+l \\\"wday-ok\\\" 0};\";:delay 5;:if (wday-ok = 1) do={:log warn \"#\";:log warn
+ \"# \$\"ver-status\": v\$\"ver-latest\"\";:log warn \"# Installing upgrade...\"
+;:log warn \"#\";:log warn \"# leonardorosa.com\";/sys scri env rem \"wday-ok\";
+} else={:log warn \"#\";:log warn \"# \$\"ver-status\": v\$\"ver-latest\"\";:log
+ warn \"#\";:log warn \"# leonardorosa.com\";/sys scri env rem \"wday-ok\";};/sy
+s sched rem [find name=\"auto-system-upgrade_running\"];\r\
+    \n" policy=ftp,reboot,read,write,policy,test start-date=nov/17/2015 start-tim
+e=04:00:00
+/system scheduler add disabled=yes name=Reboot on-event=":log warn #;:log warn \"
+# REBOOT AGENDADO\";:log warn #;:log warn \"# leonardorosa.com\";/system reboot;
+\r\
+    \n" policy=reboot start-date=nov/17/2015 start-time=04:30:00
+/system scheduler add disabled=yes name=DOWNGRADE on-event=":log warn #;:log warn
+ \"# REBOOT AGENDADO para DOWNGRADE\";:log warn #;:log warn \"# leonardorosa.com
+\";/system package downgrade;\r\
+    \n" policy=ftp,reboot,read,write,policy,test start-date=nov/17/2015 start-tim
+e=04:30:00
+/system scheduler add disabled=yes interval=1d name=reboot on-event="/system rebo
+ot\r\
+    \ny" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon 
+start-date=sep/02/2023 start-time=05:00:00
+/tool bandwidth-server set authenticate=no enabled=no
+

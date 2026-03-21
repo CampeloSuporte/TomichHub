@@ -1,0 +1,382 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: SW.DM.CCIT
+Host: 10.20.0.232:22
+Acesso: VIA PROXY SSH
+Modelo: SW DATACOM DM4370
+Template: Backup Datacom
+Data: 20/03/2026 00:56:54
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+show running-config | nomore
+aaa authentication-order [ local ]
+aaa user admin
+ password $1$cOc3HzPI$3joP/j4TjzjSWwiIYPsHL.
+ group admin
+!
+aaa user infoline
+ password $1$DIAxuZBe$iQ3PEzLIpEZQMJntgbJmZ.
+ group admin
+!
+aaa user tomich
+ password $1$DRxhnAAb$T9YmydfdGCh4VgwEZnBvi/
+ group admin
+!
+mpls ldp
+ lsr-id loopback-1
+  interface l3-VLAN-CCIT-CORE-VIA-FORTE-R1
+  !
+  neighbor targeted 10.20.0.250
+  !
+ !
+!
+mpls l2vpn
+ logging pw-status
+ vpls-group PPPOE-CORE
+  vpn VLAN-4000-PPPOE
+   vfi
+    pw-type vlan 4000
+    neighbor 10.20.0.250
+     pw-id 4000
+     pw-mtu 9000
+    !
+   !
+   bridge-domain
+    mac-limit 10240
+    access-interface gigabit-ethernet-1/1/4
+    !
+    access-interface ten-gigabit-ethernet-1/1/2
+    !
+   !
+  !
+ !
+!
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent version v2c
+snmp agent version v3
+snmp community public
+ sec-name public
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group public
+ member public
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+  notify-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/2
+ description CN.1G.CCR-CCIT
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/3
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/4
+ description CXN.ROTEADOR.LOCAL
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/5
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/6
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/7
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/8
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/1
+ description CNX.10G.SW.DINAMICA.CIRCUITO.NPY
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/2
+ description CNX.10G.CCR.CCIT
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/3
+ description CNX.10G.FORTE.ROTA.ZUMBI
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/4
+ description CNX.10G.FORTE.ROTA.MOAB
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface l3 GERENCIA-OLT-HU-CCIT
+ lower-layer-if vlan 40
+ ipv4 address 172.16.0.81/30
+!
+interface l3 VLAN-CCIT-CORE-VIA-FORTE-R1
+ ip-mtu 9000
+ lower-layer-if vlan 528
+ ipv4 address 10.20.1.62/30
+!
+interface l3 VLAN-NPY
+ lower-layer-if vlan 3200
+ ipv4 address 10.10.80.2/30
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.0.25/24
+!
+interface loopback 1
+ ipv4 address 10.20.0.232/32
+!
+clock timezone BR -3
+hostname SM.DM.CCIT
+telnet-server disabled
+oam
+ efm
+  interface gigabit-ethernet-1/1/1
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/2
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/3
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/4
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/5
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/6
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/7
+   mode passive
+  !
+  interface gigabit-ethernet-1/1/8
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/1
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/2
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/3
+   mode passive
+  !
+  interface ten-gigabit-ethernet-1/1/4
+   mode passive
+  !
+ !
+!
+loopback-detection
+ destination-address alternative
+!
+mac-address-table
+ aging-time 600
+!
+layer2-control-protocol
+ tunnel-mac datacom
+ tunnel-priority 7
+!
+sntp client
+sntp server 170.150.252.34
+switchport
+ interface lag-1
+  native-vlan vlan-id 528
+ !
+!
+vrf global
+!
+vrf mgmt
+!
+router ospf 1 vrf global
+ mpls-te router-id loopback-1
+ router-id 10.20.0.232
+ redistribute connected
+ !
+ area 0.0.0.0
+  interface l3-GERENCIA-OLT-HU-CCIT
+   passive
+   network-type broadcast
+  !
+  interface l3-VLAN-CCIT-CORE-VIA-FORTE-R1
+   mtu-ignore
+   network-type point-to-point
+  !
+  interface loopback-1
+  !
+ !
+!
+dot1q
+ vlan 40
+  name GERENCIA-OLT-HU-CCIT
+  interface gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 528
+  name VLAN.CCIT.CORE.VIA.FORTE
+  interface lag-1
+    untagged
+  !
+ !
+ vlan 2055
+  name 2055-TRANSP-RD-NEUTRA-NPY
+  interface gigabit-ethernet-1/1/2
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 3200
+  interface gigabit-ethernet-1/1/2
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+!
+link-aggregation
+ interface lag 1
+  description CNX.20G.FORTE
+  interface ten-gigabit-ethernet-1/1/3
+  !
+  interface ten-gigabit-ethernet-1/1/4
+  !
+ !
+!
+license mpls enabled
+license mpls key ***
+remote-devices
+ interface gigabit-ethernet-1/1/1
+ !
+ interface gigabit-ethernet-1/1/2
+ !
+ interface gigabit-ethernet-1/1/3
+ !
+ interface gigabit-ethernet-1/1/4
+ !
+ interface gigabit-ethernet-1/1/5
+ !
+ interface gigabit-ethernet-1/1/6
+ !
+ interface gigabit-ethernet-1/1/7
+ !
+ interface gigabit-ethernet-1/1/8
+ !
+ interface ten-gigabit-ethernet-1/1/1
+ !
+ interface ten-gigabit-ethernet-1/1/2
+ !
+ interface ten-gigabit-ethernet-1/1/3
+ !
+ interface ten-gigabit-ethernet-1/1/4
+ !
+!
+SM.DM.CCIT# 

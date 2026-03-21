@@ -1,0 +1,821 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
+Equipamento: HILLSTOME SSH
+Host: 128.201.240.226:22
+Acesso: DIRETO
+Modelo: HILLSTONE
+Template: Backup hillstone
+Data: 21/03/2026 16:22:50
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+CGNAT-AGILIZA# 
+
+============================================================
+Comando: show configuration
+============================================================
+show configuration
+
+Building configuration.
+Running configuration:
+# PREVIOUS CONFIGERATION START
+# END OF PREVIOUS CONFIGERATION
+
+!
+Version 5.5R8
+subVersion 2.0
+
+ip vrouter "mgt-vr"
+exit
+ip vrouter "trust-vr"
+exit
+vswitch "vswitch1"
+exit
+zone "mgt"
+exit
+zone "trust"
+exit
+zone "untrust"
+exit
+zone "dmz"
+exit
+zone "l2-trust" l2
+exit
+zone "l2-untrust" l2
+exit
+zone "l2-dmz" l2
+exit
+zone "VPNHub"
+exit
+zone "HA"
+exit
+interface vswitchif1
+exit
+interface MGT0
+exit
+interface HA0
+exit
+interface ethernet0/0
+exit
+interface ethernet0/1
+exit
+interface ethernet0/2
+exit
+interface ethernet0/3
+exit
+interface ethernet0/4
+exit
+interface ethernet0/5
+exit
+interface ethernet0/6
+exit
+interface ethernet0/7
+exit
+interface ethernet0/8
+exit
+interface ethernet0/9
+exit
+interface ethernet0/10
+exit
+interface ethernet0/11
+exit
+interface ethernet0/12
+exit
+interface ethernet0/13
+exit
+interface ethernet0/14
+exit
+interface ethernet0/15
+exit
+interface ethernet0/16
+exit
+interface ethernet0/17
+exit
+interface ethernet0/18
+exit
+interface ethernet0/19
+exit
+interface ethernet0/20
+exit
+interface ethernet0/21
+exit
+interface ethernet0/22
+exit
+interface ethernet0/23
+exit
+interface xethernet0/24
+exit
+interface xethernet0/25
+exit
+interface aggregate1
+exit
+interface aggregate1.503
+exit
+interface loopback1
+exit
+interface aggregate1.501
+exit
+interface aggregate1.504
+exit
+interface loopback5
+exit
+interface loopback4
+exit
+interface aggregate1.3000
+exit
+interface aggregate1.1001
+exit
+address "Any" predefined
+exit
+address "IPv6-any" ipv6 predefined
+exit
+address "private_network" predefined
+exit
+address "128.201.242.0/25"
+exit
+address "100.64.0.0/21"
+exit
+address "172.31.55.0/30"
+exit
+address "172.31.100.0/30"
+exit
+address "10.100.100.0/30"
+exit
+address "10.200.200.0/30"
+exit
+aaa-server "local" type local
+exit
+logging session content hostname
+logging session content username
+service "DST-NAT-BNG-HUAWEI"
+exit
+service "8007-DST-NAT-THE-DUDE"
+exit
+service "DST-NAT-PROXMOX-02"
+exit
+service "34555-DST-NAT-DNS-MASTER"
+exit
+service "34556-DST-NAT-DNS-SLAVE"
+exit
+service "34557-DST-NAT-ZABBIX-SSH"
+exit
+service "40000-DST-NAT-ZABBIX-WEB"
+exit
+service "40001-DST-NAT-GRAFANA"
+exit
+service "40002-DST-NAT-PHPIPAM"
+exit
+service "8009-DST-NAT-PROXMOX01"
+exit
+service "DST-NAT-BNG-HUAWEI"
+  tcp dst-port 22334 
+exit
+service "8007-DST-NAT-THE-DUDE"
+  tcp dst-port 8007 
+exit
+service "DST-NAT-PROXMOX-02"
+  tcp dst-port 8006 
+exit
+service "34555-DST-NAT-DNS-MASTER"
+  tcp dst-port 34555 
+exit
+service "34556-DST-NAT-DNS-SLAVE"
+  tcp dst-port 34556 
+exit
+service "34557-DST-NAT-ZABBIX-SSH"
+  tcp dst-port 34557 
+exit
+service "40000-DST-NAT-ZABBIX-WEB"
+  tcp dst-port 40000 
+exit
+service "40001-DST-NAT-GRAFANA"
+  tcp dst-port 40001 
+exit
+service "40002-DST-NAT-PHPIPAM"
+  tcp dst-port 40002 
+exit
+service "8009-DST-NAT-PROXMOX01"
+  tcp dst-port 8009 
+exit
+contentfilter-profile "no-contentfilter"
+exit
+behavior-profile "no-behavior"
+exit
+sandbox-profile "predef_low"
+  file-type pe use-server cloud-server
+  protocol HTTP direction both
+  protocol FTP direction both
+  protocol SMTP direction upload
+  protocol POP3 direction download
+  protocol IMAP4 direction download
+  protocol SMB direction both
+  whitelist enable
+  certificate-validation enable
+exit
+sandbox-profile "predef_middle"
+  file-type pe use-server cloud-server
+  file-type apk use-server cloud-server
+  file-type jar use-server cloud-server
+  file-type pdf use-server cloud-server
+  file-type ms-office use-server cloud-server
+  protocol HTTP direction both
+  protocol FTP direction both
+  protocol SMTP direction upload
+  protocol POP3 direction download
+  protocol IMAP4 direction download
+  protocol SMB direction both
+  whitelist enable
+  certificate-validation enable
+exit
+sandbox-profile "predef_high"
+  file-type pe use-server cloud-server
+  file-type apk use-server cloud-server
+  file-type jar use-server cloud-server
+  file-type pdf use-server cloud-server
+  file-type ms-office use-server cloud-server
+  file-type swf use-server cloud-server
+  file-type rar use-server cloud-server
+  file-type zip use-server cloud-server
+  file-type script use-server cloud-server
+  protocol HTTP direction both
+  protocol FTP direction both
+  protocol SMTP direction upload
+  protocol POP3 direction download
+  protocol IMAP4 direction download
+  protocol SMB direction both
+exit
+url-profile "no-url" global-predefined
+exit
+webpost-profile "no-webpost"
+exit
+mail-profile "no-mail"
+exit
+dlp-profile "no-dlp"
+exit
+nbr-profile "no-nbr"
+exit
+epp-profile "no-epp"
+exit
+epp-profile "predef_epp"
+ status uninstall log-only
+ status unhealthy log-only
+ status infected block
+ status abnormal block
+exit
+logging event to localdb
+logging network to localdb
+logging traffic session on
+logging traffic session to syslog custom-format 
+logging traffic nat on
+logging traffic nat to syslog custom-format 
+logging configuration to localdb
+pki trust-domain "trust_domain_default"
+  keypair "Default-Key"
+  enrollment self
+  subject commonName "SG-6000"
+  subject organization "Hillstone Networks"
+exit
+pki trust-domain "trust_domain_ssl_proxy"
+  keypair "Default-Key"
+  enrollment self
+  subject commonName "SG-6000"
+  subject organization "Hillstone Networks"
+exit
+pki trust-domain "trust_domain_ssl_proxy_2048"
+  keypair "Default-Key-2048"
+  enrollment self
+  subject commonName "SG-6000"
+  subject organization "Hillstone Networks"
+exit
+pki trust-domain "trust_domain_ssl_proxy_rsa_4096"
+  keypair "RSA-Key-4096"
+  enrollment self
+  subject commonName "SG-6000"
+  subject organization "Hillstone Networks"
+exit
+pki trust-domain "trust_domain_ssl_proxy_ecc_256"
+  keypair "ECC-Key-256"
+  enrollment self
+  subject commonName "SG-6000"
+  subject organization "Hillstone Networks"
+exit
+pki trust-domain "trust_domain_ssl_proxy_ecc_384"
+  keypair "ECC-Key-384"
+  enrollment self
+  subject commonName "SG-6000"
+  subject organization "Hillstone Networks"
+exit
+pki trust-domain "network_manager_ca"
+  enrollment terminal
+exit
+address "Any" predefined
+  ip 0.0.0.0/0
+exit
+address "IPv6-any" ipv6 predefined
+  ip ::/0
+exit
+address "private_network" predefined
+  ip 10.0.0.0/8
+  ip 172.16.0.0/12
+  ip 192.168.0.0/16
+exit
+address "128.201.242.0/25"
+  ip 128.201.242.0/25
+exit
+address "100.64.0.0/21"
+  ip 100.64.0.0/21
+exit
+address "172.31.55.0/30"
+  ip 172.31.55.0/30
+exit
+address "172.31.100.0/30"
+  ip 172.31.100.0/30
+exit
+address "10.100.100.0/30"
+  ip 10.100.100.0/30
+exit
+address "10.200.200.0/30"
+  ip 10.200.200.0/30
+exit
+zone "mgt"
+  vrouter "mgt-vr"
+exit
+zone "trust"
+  vrouter "trust-vr"
+  ad ip-spoofing
+  ad winnuke
+  ad port-scan
+  ad syn-flood
+  ad syn-flood destination ip-based
+  ad ip-sweep
+exit
+zone "untrust"
+  application-identify
+  vrouter "trust-vr"
+  type wan
+  ad icmp-flood
+  ad icmp-flood action alarm
+  ad ip-spoofing
+  ad ip-sweep
+  ad land-attack
+  ad land-attack action alarm
+  ad port-scan
+  ad syn-flood
+  ad syn-flood destination ip-based
+  ad tear-drop
+  ad winnuke
+  ad ping-of-death
+  ad udp-flood
+  ad udp-flood action alarm
+  ad ip-fragment
+  ad ip-fragment action alarm
+  ad ip-option
+  ad ip-option action alarm
+  ad ip-directed-broadcast
+  ad ip-directed-broadcast action alarm
+  ad arp-spoofing ip-number-per-mac 100 action drop
+  ad arp-spoofing reverse-query
+  ad arp-spoofing gratuitous-arp-send-rate 10
+  ad syn-proxy
+  ad syn-proxy cookie
+  ad session-limit id 1 src-ip "Any" dst-ip "Any" session max 300000 log
+exit
+zone "l2-untrust" l2
+  type wan
+exit
+hostname "CGNAT-AGILIZA"
+admin host any ssh
+admin host any https
+isakmp proposal "psk-sha256-aes128-g2"
+  hash sha256
+  encryption aes
+exit
+
+isakmp proposal "psk-sha256-aes256-g2"
+  hash sha256
+  encryption aes-256
+exit
+
+isakmp proposal "psk-sha256-3des-g2"
+  hash sha256
+exit
+
+isakmp proposal "psk-md5-aes128-g2"
+  hash md5
+  encryption aes
+exit
+
+isakmp proposal "psk-md5-aes256-g2"
+  hash md5
+  encryption aes-256
+exit
+
+isakmp proposal "psk-md5-3des-g2"
+  hash md5
+exit
+
+isakmp proposal "rsa-sha256-aes128-g2"
+  authentication rsa-sig
+  hash sha256
+  encryption aes
+exit
+
+isakmp proposal "rsa-sha256-aes256-g2"
+  authentication rsa-sig
+  hash sha256
+  encryption aes-256
+exit
+
+isakmp proposal "rsa-sha256-3des-g2"
+  authentication rsa-sig
+  hash sha256
+exit
+
+isakmp proposal "rsa-md5-aes128-g2"
+  authentication rsa-sig
+  hash md5
+  encryption aes
+exit
+
+isakmp proposal "rsa-md5-aes256-g2"
+  authentication rsa-sig
+  hash md5
+  encryption aes-256
+exit
+
+isakmp proposal "rsa-md5-3des-g2"
+  authentication rsa-sig
+  hash md5
+exit
+
+isakmp proposal "dsa-sha-aes128-g2"
+  authentication dsa-sig
+  encryption aes
+exit
+
+isakmp proposal "dsa-sha-aes256-g2"
+  authentication dsa-sig
+  encryption aes-256
+exit
+
+isakmp proposal "dsa-sha-3des-g2"
+  authentication dsa-sig
+exit
+
+ipsec proposal "esp-sha256-aes128-g2"
+  hash sha256
+  encryption aes
+  group 2
+exit
+
+ipsec proposal "esp-sha256-aes128-g0"
+  hash sha256
+  encryption aes
+exit
+
+ipsec proposal "esp-sha256-aes256-g2"
+  hash sha256
+  encryption aes-256
+  group 2
+exit
+
+ipsec proposal "esp-sha256-aes256-g0"
+  hash sha256
+  encryption aes-256
+exit
+
+ipsec proposal "esp-sha256-3des-g2"
+  hash sha256
+  encryption 3des
+  group 2
+exit
+
+ipsec proposal "esp-sha256-3des-g0"
+  hash sha256
+  encryption 3des
+exit
+
+ipsec proposal "esp-md5-aes128-g2"
+  hash md5
+  encryption aes
+  group 2
+exit
+
+ipsec proposal "esp-md5-aes128-g0"
+  hash md5
+  encryption aes
+exit
+
+ipsec proposal "esp-md5-aes256-g2"
+  hash md5
+  encryption aes-256
+  group 2
+exit
+
+ipsec proposal "esp-md5-aes256-g0"
+  hash md5
+  encryption aes-256
+exit
+
+ipsec proposal "esp-md5-3des-g2"
+  hash md5
+  encryption 3des
+  group 2
+exit
+
+ipsec proposal "esp-md5-3des-g0"
+  hash md5
+  encryption 3des
+exit
+
+strict-tunnel-check
+flow
+  icmp-unreachable-session-keep
+exit
+interface MGT0
+  zone  "mgt"
+  ip address 192.168.1.1 255.255.255.0
+  manage ssh
+  manage ping
+  manage snmp
+  manage https
+exit
+interface xethernet0/24
+  aggregate aggregate1
+exit
+interface xethernet0/25
+  aggregate aggregate1
+exit
+interface aggregate1
+  lacp enable
+exit
+interface aggregate1.503
+  zone  "untrust"
+  ip address 172.31.50.6 255.255.255.252
+  description "BGP"
+  manage ssh
+  manage ping
+  manage https
+exit
+interface loopback1
+  zone  "untrust"
+  ip address 128.201.240.226 255.255.255.255
+  manage ssh
+  manage ping
+  manage https
+exit
+interface aggregate1.501
+  zone  "trust"
+  ip address 10.200.30.1 255.255.255.252
+  manage ping
+exit
+interface aggregate1.504
+  zone  "trust"
+  ip address 172.31.50.1 255.255.255.252
+  description "BNG"
+  manage ping
+exit
+interface loopback5
+  zone  "untrust"
+  ip address 128.201.240.227 255.255.255.255
+  description "loopback3"
+  manage ssh
+  manage ping
+exit
+interface loopback4
+  zone  "untrust"
+  ip address 128.201.243.155 255.255.255.255
+  description "loopback2"
+  manage ssh
+  manage ping
+exit
+interface aggregate1.3000
+  zone  "trust"
+  ip address 172.31.55.1 255.255.255.252
+  description "PROXMOX 01 - THE DUDE"
+  ip address 10.200.200.1 255.255.255.0 secondary
+  ip address 192.168.0.1 255.255.255.0 secondary
+  manage ping
+exit
+interface aggregate1.1001
+  zone  "trust"
+  ip address 128.201.240.65 255.255.255.224
+  description "PROXMOX 2 - IXC, OPA, DNS MASTER"
+  ip address 172.31.100.1 255.255.255.252 secondary
+  ip address 10.100.100.1 255.255.255.252 secondary
+  manage ping
+exit
+ip vrouter "mgt-vr"
+  ip route 0.0.0.0/0 192.168.1.2
+exit
+ip vrouter "trust-vr"
+  snatrule id 13 from ip 10.200.200.3 to ip 172.31.50.2 service "Any" no-trans 
+  snatrule id 11 from ip 172.31.100.0/30 to ip 10.200.200.3 service "Any" no-trans 
+  snatrule id 10 from ip 10.200.200.3 to address-book "172.31.100.0/30" service "Any" no-trans 
+  snatrule id 9 from ip 172.31.100.2 to ip 10.200.200.3 service "Any" no-trans 
+  snatrule id 8 from ip 192.168.0.4 to ip 10.200.200.3 service "Any" no-trans 
+  snatrule id 7 from ip 10.200.200.3 to ip 172.31.100.2 service "Any" no-trans 
+  snatrule id 6 from ip 10.200.200.3 to ip 192.168.0.4 service "Any" no-trans 
+  snatrule id 100 from address-book "100.64.0.0/21" to address-book "Any" service "Any" trans-to address-book "128.201.242.0/25" mode dynamicport fixed-block start 1024 end 64511 size 1984 log all 
+  snatrule id 1 from address-book "172.31.55.0/30" to address-book "Any" service "Any" trans-to ip 128.201.240.226 mode dynamicport 
+  snatrule id 2 from address-book "172.31.100.0/30" to address-book "Any" service "Any" trans-to ip 128.201.240.226 mode dynamicport 
+  snatrule id 3 from address-book "10.100.100.0/30" to address-book "Any" service "Any" trans-to ip 128.201.240.226 mode dynamicport 
+  snatrule id 4 from address-book "10.200.200.0/30" to address-book "Any" service "Any" trans-to ip 128.201.240.226 mode dynamicport 
+  snatrule id 5 from ip 192.168.0.4 to address-book "Any" service "Any" trans-to ip 128.201.240.226 mode dynamicport 
+  dnatrule id 1 from address-book "Any" to ip 128.201.240.226 service "DST-NAT-BNG-HUAWEI" trans-to ip 172.31.50.2 port 22334 
+  dnatrule id 2 from address-book "Any" to ip 128.201.240.226 service "8007-DST-NAT-THE-DUDE" trans-to ip 172.31.55.2 port 8291 
+  dnatrule id 3 from address-book "Any" to ip 128.201.240.226 service "DST-NAT-PROXMOX-02" trans-to ip 172.31.100.2 port 8006 
+  dnatrule id 4 from address-book "Any" to ip 128.201.240.226 service "34555-DST-NAT-DNS-MASTER" trans-to ip 10.100.100.2 port 22002 
+  dnatrule id 5 from address-book "Any" to ip 128.201.240.226 service "34556-DST-NAT-DNS-SLAVE" trans-to ip 10.200.200.2 port 22002 
+  dnatrule id 6 from address-book "Any" to ip 128.201.240.226 service "34557-DST-NAT-ZABBIX-SSH" trans-to ip 10.200.200.3 port 22002 
+  dnatrule id 7 from address-book "Any" to ip 128.201.240.226 service "40000-DST-NAT-ZABBIX-WEB" trans-to ip 10.200.200.3 port 80 
+  dnatrule id 8 from address-book "Any" to ip 128.201.240.226 service "40001-DST-NAT-GRAFANA" trans-to ip 10.200.200.3 port 3030 
+  dnatrule id 9 from address-book "Any" to ip 128.201.240.226 service "40002-DST-NAT-PHPIPAM" trans-to ip 10.200.200.3 port 8903 
+  dnatrule id 10 from address-book "Any" to ip 128.201.240.226 service "8009-DST-NAT-PROXMOX01" trans-to ip 192.168.0.4 port 8006 
+  ip route 0.0.0.0/0 172.31.50.5
+  ip route 128.201.242.0/25 null0
+  ip route 100.64.0.0/10 172.31.50.2
+  ip route 128.201.243.0/24 172.31.50.2
+  ip route 128.201.240.225/32 172.31.50.2 description "LOOPBACK DO BNG"
+  ip route 10.64.64.0/30 172.31.50.2
+  ip route 10.64.64.4/30 172.31.50.2
+exit
+qos-engine first
+  root-pipe "default" id 1
+    qos-mode "stat"
+  exit
+exit
+qos-engine second
+  disable
+  root-pipe "default" id 2
+    qos-mode "stat"
+  exit
+exit
+ntp enable
+
+ip name-server 128.201.240.68 vrouter "trust-vr"
+ip name-server 128.201.240.35 vrouter "trust-vr"
+ip name-server 1.1.1.1 vrouter "trust-vr"
+ip name-server 8.8.8.8 vrouter "mgt-vr"
+rule id 1
+  action permit
+  src-addr "Any"
+  dst-addr "Any"
+  service "Any"
+exit
+password-policy
+  admin complexity disable
+exit
+admin user "hillstone"
+  password $020100ks$n3wDTy04e6rhUQlXT69y/vswbeLPHvdh49EwTlyoulbGU0Y=
+  password-expiration 1750799838
+  role "admin"
+  access console
+  access ssh
+  access https
+exit
+admin user "celeti"
+  password $020100iu$6UlgBYjWSOrsMjvoVacMjWvGQH1LOFuI7tZkVaq/iyJiPgc=
+  password-expiration 1750800835
+  role "admin"
+  access console
+  access telnet
+  access ssh
+  access http
+  access https
+exit
+admin user "tomich"
+  password $020100ga$lJ9xzacxUi6pN1gOqXZ0UXpTHLorbagILmNQEays2+pBzKo=
+  password-expiration 1750985885
+  role "admin"
+  access console
+  access telnet
+  access ssh
+  access http
+  access https
+key "20250605063611262" 
+value "eyJfZyI6eyJkbmF0LnZpZXcuRG5hdEdyaWRfZG5hdGdyaWRfdW5kZWZpbmVkX3VuZGVmaW5lZF9kbmF0LnN0b3JlLkRuYXRMaXN0IjpbeyJfcCI6WzBdfSx7Il9wIjpbMV19LHsiX3AiOlsyXX0seyJfcCI6WzNdLCJfYyI6W3siX3AiOlszLDBdfSx7Il9wI
+jpbMywxXSwiX3ciOjI1Niwid09uQ1IiOjF9LHsiX3AiOlszLDJdLCJfdyI6MzU0LCJ3T25DUiI6MX1dfSx7Il9wIjpbNF19LHsiX3AiOls1XX0seyJfcCI6WzZdfSx7Il9wIjpbN119LHsiX3AiOls4XX0seyJfcCI6WzldfSx7Il9wIjpbMTBdfV0sInNuYXQudmlld
+y5TbmF0R3JpZF9zbmF0Z3JpZF91bmRlZmluZWRfdW5kZWZpbmVkX3NuYXQuc3RvcmUuU25hdExpc3QiOlt7Il9wIjpbMF19LHsiX3AiOlsxXX0seyJfcCI6WzJdfSx7Il9wIjpbM10sIl9jIjpbeyJfcCI6WzMsMF0sIl93IjozMTAsIndPbkNSIjoxfSx7Il9wIjpbM
+ywxXSwiX3ciOjI3NCwid09uQ1IiOjF9LHsiX3AiOlszLDJdfSx7Il9wIjpbMywzXX0seyJfcCI6WzMsNF19XX0seyJfcCI6WzRdLCJfdyI6MTI3LCJ3T25DUiI6MX0seyJfcCI6WzVdfSx7Il9wIjpbNl19LHsiX3AiOls3XX0seyJfcCI6WzhdfSx7Il9wIjpbOV19L
+HsiX3AiOlsxMF19XX0sIl9wIjp7fX0=" 
+exit
+user-sso server ad-scripting default
+exit
+user-sso server sso-radius default
+exit
+user-sso server radius-snooping default
+exit
+tcp-syn-bit-check drop
+l2-nonip-action drop
+nat444-resource monitor port-utilization threshold 90 log
+nat444-resource monitor port-block-utilization threshold 90 log
+nat type full-cone
+no alg sqlnetv2
+no alg sip
+tcp-mss all 1448
+tcp-mss tunnel 1380
+ecmp-route-select by-src-and-dst
+url-db-query server1 "url1.hillstonenet.com" port 8866 vrouter trust-vr
+url-db-query server2 "url2.hillstonenet.com" port 8866 vrouter trust-vr
+app update server1 "update1.hillstonenet.com" vrouter "mgt-vr"
+app update server2 "update2.hillstonenet.com" vrouter "mgt-vr"
+app update server3 "SD" vrouter "mgt-vr"
+app update schedule daily 00:50
+share-access-detect signature update server1 "update1.hillstonenet.com" vrouter "mgt-vr"
+share-access-detect signature update server2 "update2.hillstonenet.com" vrouter "mgt-vr"
+share-access-detect signature update mode auto
+share-access-detect signature update schedule weekly sun 03:00
+sslproxy trust-domain "trust_domain_ssl_proxy_2048"
+share-access-detect rule "GATONET"
+  src-zone "Any"
+  src-addr "Any"
+  access-limit 4
+exit
+query-groups
+  dashboard-query-group "hillstone-dashboard-query-group" user "hillstone"
+    rule "license" create-time 1750799878 query-string "%7B%22time%22%3A1750771073983%2C%22ignore%22%3Atrue%7D"
+  exit
+exit
+longlife-sess-percent 10
+no sms disable
+statistics-set "predef_zone_bw"
+  target-data bandwidth id 0 record-history
+  group-by zone directional vsys
+exit
+statistics-set "predef_if_bw"
+  target-data bandwidth id 1 record-history
+  group-by interface directional vsys
+exit
+statistics-set "predef_user_bw"
+  target-data bandwidth id 2 record-history
+  group-by user directional vr vsys
+exit
+statistics-set "predef_app_bw"
+  target-data bandwidth id 3 record-history
+  group-by application vsys
+exit
+statistics-set "predef_zone_sess"
+  target-data session id 4 record-history
+  group-by zone vsys
+exit
+statistics-set "predef_if_sess"
+  target-data session id 5 record-history
+  group-by interface vsys
+exit
+statistics-set "predef_user_sess"
+  target-data session id 6 record-history
+  group-by user vr vsys
+exit
+statistics-set "predef_app_sess"
+  target-data session id 7 record-history
+  group-by application vsys
+exit
+statistics-set "predef_user_app_bw"
+  target-data bandwidth id 8 record-history
+  group-by user directional interface zone application vsys
+exit
+statistics-set "predef_zone_if_app_bw"
+  target-data bandwidth id 9
+  group-by interface zone directional application vsys
+exit
+statistics-set "predef_user_url_cat_hit"
+  target-data URL-hit id 32 record-history
+  group-by user URL URL-category vsys
+exit
+statistics-set "predef_url_bw"
+  target-data URL-bw id 33 record-history
+  group-by URL-category vsys
+exit
+statistics-set "predef_protocol_bw"
+  target-data bandwidth id 10 record-history
+  group-by protocol vsys
+exit
+statistics-set "predef_protocol_sess"
+  target-data session id 11 record-history
+  group-by protocol vsys
+exit
+statistics-set "predef_url_hit"
+  target-data URL-hit id 34 record-history
+  group-by URL vsys
+exit
+statistics-set "predef_user_url"
+  target-data URL-hit id 35 record-history
+  group-by user vsys
+exit
+statistics-set "predef_url_cat_hit"
+  target-data URL-hit id 36 record-history
+  group-by URL-category vsys
+exit
+statistics-filter address "Any"
+ha transmit udp
+
+End
+CGNAT-AGILIZA# 

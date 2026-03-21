@@ -1,0 +1,2945 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: OLT.HU.CCIT
+Host: 172.16.0.82:22
+Acesso: VIA PROXY SSH
+Modelo: SW DATACOM DM4370
+Template: backup olt huawei
+Data: 19/03/2026 01:06:31
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: enable
+============================================================
+enable 
+
+OLT.CCIT#
+
+============================================================
+Comando: config
+============================================================
+config 
+
+OLT.CCIT(config)#
+
+============================================================
+Comando: undo interactive
+============================================================
+undo interactive 
+  Interactive function is disabled
+
+OLT.CCIT(config)#
+
+============================================================
+Comando: undo smart
+============================================================
+undo smart 
+  Interactive function is disabled
+
+OLT.CCIT(config)#
+
+============================================================
+Comando: scroll
+============================================================
+scroll 
+
+OLT.CCIT(config)#
+
+============================================================
+Comando: display  current-configuration
+============================================================
+display  current-configuration 
+[Active: H903MPLB; Standby: H903MPLB]
+[Patch Info: SPH202]
+[MA5800V100R021: 5711]
+#
+[pre-config]
+  <pre-config>
+ board-template start H903GPSF 
+ board add 0/1 H903GPSF 
+ board add 0/2 H903GPSF 
+ board add 0/3 H903GPSF 
+ board add 0/4 H903GPSF 
+ board add 0/5 H903GPSF 
+ board add 0/6 H903GPSF 
+ board add 0/7 H902GPUF 
+ board add 0/10 H902GPUF 
+ board add 0/11 H902GPUF 
+ board add 0/12 H903GPSF 
+ board add 0/13 H903GPSF 
+ board add 0/18 H903PILA 
+ board add 0/19 H903PILA 
+#
+[sysmode]
+  <sysmode>
+ switch vdsl mode to tr129
+ xpon mode switch-to profile-mode
+ sysmode end
+#
+[global-config]
+  <global-config>
+ sysname OLT.CCIT
+ terminal user name buildrun_new_password root *j$1b$a1MwLd80<P$1c/FSNc|k/XKUQ7LXOG!=v;&LWf'.RSu$kDW@j'2$* 7 0000:00:00:00:00:00 2022:09:24:01:10:26 root 1 
+first-login-info 0 self-changed-password 1 "-----"
+ terminal user name buildrun_new_password supergiga *~kc$1b$l~QVH@$wO7$fo'tIJb165<uBc;$H1:"x/_C~[\<pTxWSk*9Gmh9$* 0 2022:09:24:01:54:27 2022:09:24:11:31:33 root 2 first-login-info 0 self-changed-password 0 "-----"
+ terminal user name buildrun_new_password ixcsoft *~fc$1b$L%;HFa+DY($6&#;$m>bsX/=wPW/7.hS<W\~Z<3bb2nqCX/H^r&.$* 0 2022:09:25:16:36:12 2022:09:25:16:36:12 root 3 first-login-info 0 self-changed-password 0 "-----"
+ terminal user name buildrun_new_password tomich *~kc$1b$QL'<MkN',2$i{.l9@92yM4!omD.z^IP8b59/B`q|(`b3aH%YWcD$* 0 2026:02:10:08:22:14 2026:02:10:08:22:14 root 4 first-login-info 0 self-changed-password 0 "-----"
+ terminal user name buildrun_new_password oltcloud *u$1b$u>[W%41:M~$9jJzTcVVx.X$il$(r9&3<Mlx</AirE\9HlCkHGUD$* 0 2026:02:10:14:36:11 2026:02:10:14:47:53 root 5 first-login-info 0 self-changed-password 0 "-----"
+ system user password security-length 12
+ terminal user name history_password root *j$1b$tL>#(!DekJ$dfVf4]xwv&oH}U!lfNT@U:im%JN}JVo71~=u=xzY$*
+ terminal user name history_password supergiga *~kc$1b${:BJ9sFEkM$p8,`F]8I34iTDnPi&]'*T\'GPM+'H)tuac=k0m\"$* *~kc$1b$qArYKcNrJ4$dckN~jG}S8QMzg#ctTy3psg$ZIn`)Ym~LcFfB(UV$*
+ terminal user name history_password oltcloud *u$1b$^KtyRPXNx"$D`7:"wU9^6/#etHXjq2KV]%**M5sTKWJhVRg$N2K$*
+ xpon ont optical-ddm quick-query disable
+ dba-profile add profile-id 10 profile-name "DBA1" type4 max 1024000
+ ont wan-profile profile-id 1 profile-name "PPPOE"
+  nat enable
+  quit
+ gpon ont home-gateway config-method omci
+ ont-srvprofile gpon profile-id 1 profile-name "HUAWEI"
+  ont-port pots adaptive 32 eth adaptive 8 
+  commit
+ ont-srvprofile gpon profile-id 2 profile-name "xSIRIUS"
+  ont-port pots 1 eth 4 
+  commit
+ ont-lineprofile gpon profile-id 0 profile-name "line-profile_default_0"
+  omcc encrypt off
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 0
+  commit
+  quit
+ ont-lineprofile gpon profile-id 100 profile-name "100.S1.P0"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 100
+  commit
+  quit
+ ont-lineprofile gpon profile-id 101 profile-name "101.S1.P1"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 101
+  commit
+  quit
+ ont-lineprofile gpon profile-id 102 profile-name "102.S1.P2"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 102
+  commit
+  quit
+ ont-lineprofile gpon profile-id 103 profile-name "103.S1.P3"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 103
+  commit
+  quit
+ ont-lineprofile gpon profile-id 104 profile-name "104.S1.P4"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 104
+  commit
+  quit
+ ont-lineprofile gpon profile-id 105 profile-name "105.S1.P5"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 105
+  commit
+  quit
+ ont-lineprofile gpon profile-id 106 profile-name "106.S1.P6"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 106
+  commit
+  quit
+ ont-lineprofile gpon profile-id 107 profile-name "107.S1.P7"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 107
+  commit
+  quit
+ ont-lineprofile gpon profile-id 108 profile-name "108.S1.P8"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 108
+  commit
+  quit
+ ont-lineprofile gpon profile-id 109 profile-name "109.S1.P9"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 109
+  commit
+  quit
+ ont-lineprofile gpon profile-id 110 profile-name "110.S1.P10"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 110
+  commit
+  quit
+ ont-lineprofile gpon profile-id 111 profile-name "111.S1.P11"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 111
+  commit
+  quit
+ ont-lineprofile gpon profile-id 112 profile-name "112.S1.P12"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 112
+  commit
+  quit
+ ont-lineprofile gpon profile-id 113 profile-name "113.S1.P13"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 113
+  commit
+  quit
+ ont-lineprofile gpon profile-id 114 profile-name "114.S1.P14"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 114
+  commit
+  quit
+ ont-lineprofile gpon profile-id 115 profile-name "115.S1.P15"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 115
+  commit
+  quit
+ ont-lineprofile gpon profile-id 116 profile-name "116.S2.P0"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 116
+  commit
+  quit
+ ont-lineprofile gpon profile-id 117 profile-name "117.S2.P1"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 117
+  commit
+  quit
+ ont-lineprofile gpon profile-id 118 profile-name "118.S2.P2"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 118
+  commit
+  quit
+ ont-lineprofile gpon profile-id 119 profile-name "119.S2.P3"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 119
+  commit
+  quit
+ ont-lineprofile gpon profile-id 120 profile-name "120.S2.P4"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 120
+  commit
+  quit
+ ont-lineprofile gpon profile-id 121 profile-name "121.S2.P5"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 121
+  commit
+  quit
+ ont-lineprofile gpon profile-id 122 profile-name "122.S2.P6"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 122
+  commit
+  quit
+ ont-lineprofile gpon profile-id 123 profile-name "123.S2.P7"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 123
+  commit
+  quit
+ ont-lineprofile gpon profile-id 124 profile-name "124.S2.P8"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 124
+  commit
+  quit
+ ont-lineprofile gpon profile-id 125 profile-name "125.S2.P9"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 125
+  commit
+  quit
+ ont-lineprofile gpon profile-id 126 profile-name "126.S2.P10"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 126
+  commit
+  quit
+ ont-lineprofile gpon profile-id 127 profile-name "127.S2.P11"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 127
+  commit
+  quit
+ ont-lineprofile gpon profile-id 128 profile-name "128.S2.P12"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 128
+  commit
+  quit
+ ont-lineprofile gpon profile-id 129 profile-name "129.S2.P13"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 129
+  commit
+  quit
+ ont-lineprofile gpon profile-id 130 profile-name "130.S2.P14"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 130
+  commit
+  quit
+ ont-lineprofile gpon profile-id 131 profile-name "131.S2.P15"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 131
+  commit
+  quit
+ ont-lineprofile gpon profile-id 132 profile-name "132.S3.P0"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 132
+  commit
+  quit
+ ont-lineprofile gpon profile-id 133 profile-name "133.S3.P1"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 133
+  commit
+  quit
+ ont-lineprofile gpon profile-id 134 profile-name "134.S3.P2"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 134
+  commit
+  quit
+ ont-lineprofile gpon profile-id 135 profile-name "135.S3.P3"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 135
+  commit
+  quit
+ ont-lineprofile gpon profile-id 136 profile-name "136.S3.P4"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 136
+  commit
+  quit
+ ont-lineprofile gpon profile-id 137 profile-name "137.S3.P5"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 137
+  commit
+  quit
+ ont-lineprofile gpon profile-id 138 profile-name "138.S3.P6"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 138
+  commit
+  quit
+ ont-lineprofile gpon profile-id 139 profile-name "139.S3.P7"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 139
+  commit
+  quit
+ ont-lineprofile gpon profile-id 140 profile-name "140.S3.P8"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 140
+  commit
+  quit
+ ont-lineprofile gpon profile-id 141 profile-name "141.S3.P9"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 141
+  commit
+  quit
+ ont-lineprofile gpon profile-id 142 profile-name "142.S3.P10"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 142
+  commit
+  quit
+ ont-lineprofile gpon profile-id 143 profile-name "143.S3.P11"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 143
+  commit
+  quit
+ ont-lineprofile gpon profile-id 144 profile-name "144.S3.P12"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 144
+  commit
+  quit
+ ont-lineprofile gpon profile-id 145 profile-name "145.S3.P13"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 145
+  commit
+  quit
+ ont-lineprofile gpon profile-id 146 profile-name "146.S3.P14"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 146
+  commit
+  quit
+ ont-lineprofile gpon profile-id 147 profile-name "147.S3.P15"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 147
+  commit
+  quit
+ ont-lineprofile gpon profile-id 148 profile-name "148.S4.P0"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 148
+  commit
+  quit
+ ont-lineprofile gpon profile-id 149 profile-name "149.S4.P1"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 149
+  commit
+  quit
+ ont-lineprofile gpon profile-id 150 profile-name "150.S4.P2"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 150
+  commit
+  quit
+ ont-lineprofile gpon profile-id 151 profile-name "151.S4.P3"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 151
+  commit
+  quit
+ ont-lineprofile gpon profile-id 152 profile-name "152.S4.P4"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 152
+  commit
+  quit
+ ont-lineprofile gpon profile-id 153 profile-name "153.S4.P5"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 153
+  commit
+  quit
+ ont-lineprofile gpon profile-id 154 profile-name "154.S4.P6"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 154
+  commit
+  quit
+ ont-lineprofile gpon profile-id 155 profile-name "155.S4.P7"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 155
+  commit
+  quit
+ ont-lineprofile gpon profile-id 156 profile-name "156.S4.P8"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 156
+  commit
+  quit
+ ont-lineprofile gpon profile-id 157 profile-name "157.S4.P9"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 157
+  commit
+  quit
+ ont-lineprofile gpon profile-id 158 profile-name "158.S4.P10"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 158
+  commit
+  quit
+ ont-lineprofile gpon profile-id 159 profile-name "159.S4.P11"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 159
+  commit
+  quit
+ ont-lineprofile gpon profile-id 160 profile-name "160.S4.P12"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 160
+  commit
+  quit
+ ont-lineprofile gpon profile-id 161 profile-name "161.S4.P13"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 161
+  commit
+  quit
+ ont-lineprofile gpon profile-id 162 profile-name "162.S4.P14"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 162
+  commit
+  quit
+ ont-lineprofile gpon profile-id 163 profile-name "163.S4.P15"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 163
+  commit
+  quit
+ ont-lineprofile gpon profile-id 164 profile-name "164.S5.P0"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 164
+  commit
+  quit
+ ont-lineprofile gpon profile-id 165 profile-name "165.S5.P1"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 165
+  commit
+  quit
+ ont-lineprofile gpon profile-id 166 profile-name "166.S5.P2"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 166
+  commit
+  quit
+ ont-lineprofile gpon profile-id 167 profile-name "167.S5.P3"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 167
+  commit
+  quit
+ ont-lineprofile gpon profile-id 168 profile-name "168.S5.P4"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 168
+  commit
+  quit
+ ont-lineprofile gpon profile-id 169 profile-name "169.S5.P5"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 169
+  commit
+  quit
+ ont-lineprofile gpon profile-id 170 profile-name "170.S5.P6"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 170
+  commit
+  quit
+ ont-lineprofile gpon profile-id 171 profile-name "171.S5.P7"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 171
+  commit
+  quit
+ ont-lineprofile gpon profile-id 172 profile-name "172.S5.P8"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 172
+  commit
+  quit
+ ont-lineprofile gpon profile-id 173 profile-name "173.S5.P9"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 173
+  commit
+  quit
+ ont-lineprofile gpon profile-id 174 profile-name "174.S5.P10"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 174
+  commit
+  quit
+ ont-lineprofile gpon profile-id 175 profile-name "175.S5.P11"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 175
+  commit
+  quit
+ ont-lineprofile gpon profile-id 176 profile-name "176.S5.P12"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 176
+  commit
+  quit
+ ont-lineprofile gpon profile-id 177 profile-name "177.S5.P13"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 177
+  commit
+  quit
+ ont-lineprofile gpon profile-id 178 profile-name "178.S5.P14"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 178
+  commit
+  quit
+ ont-lineprofile gpon profile-id 179 profile-name "179.S5.P15"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 179
+  commit
+  quit
+ ont-lineprofile gpon profile-id 180 profile-name "180.S6.P0"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 180
+  commit
+  quit
+ ont-lineprofile gpon profile-id 181 profile-name "181.S6.P1"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 181
+  commit
+  quit
+ ont-lineprofile gpon profile-id 182 profile-name "182.S6.P2"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 182
+  commit
+  quit
+ ont-lineprofile gpon profile-id 183 profile-name "183.S6.P3"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 183
+  commit
+  quit
+ ont-lineprofile gpon profile-id 184 profile-name "184.S6.P4"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 184
+  commit
+  quit
+ ont-lineprofile gpon profile-id 185 profile-name "185.S6.P5"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 185
+  commit
+  quit
+ ont-lineprofile gpon profile-id 186 profile-name "186.S6.P6"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 186
+  commit
+  quit
+ ont-lineprofile gpon profile-id 187 profile-name "187.S6.P7"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 187
+  commit
+  quit
+ ont-lineprofile gpon profile-id 188 profile-name "188.S6.P8"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 188
+  commit
+  quit
+ ont-lineprofile gpon profile-id 189 profile-name "189.S6.P9"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 189
+  commit
+  quit
+ ont-lineprofile gpon profile-id 190 profile-name "190.S6.P10"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 190
+  commit
+  quit
+ ont-lineprofile gpon profile-id 191 profile-name "191.S6.P11"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 191
+  commit
+  quit
+ ont-lineprofile gpon profile-id 192 profile-name "192.S6.P12"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 192
+  commit
+  quit
+ ont-lineprofile gpon profile-id 193 profile-name "193.S6.P13"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 193
+  commit
+  quit
+ ont-lineprofile gpon profile-id 194 profile-name "194.S6.P14"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 194
+  commit
+  quit
+ ont-lineprofile gpon profile-id 195 profile-name "195.S6.P15"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 195
+  commit
+  quit
+ ont-lineprofile gpon profile-id 2055 profile-name "line-profile_2055"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 2055
+  commit
+  quit
+ ont-lineprofile gpon profile-id 3200 profile-name "RN.NPY"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 3200
+  commit
+  quit
+#
+[device-config]
+  <device-config>
+ board add standby
+ system power-protect power-off disable 0
+ system power-protect alarm disable 0
+ system power-protect max-load-voltage 48.0 max-load-current 60.0
+#
+[public-config]
+  <public-config>
+ monitor uplink-port traffic port 0/8/0
+ monitor uplink-port traffic port 0/8/1
+ monitor uplink-port traffic port 0/8/2
+ monitor uplink-port traffic port 0/8/3
+ monitor uplink-port traffic port 0/9/0
+ monitor uplink-port traffic port 0/9/1
+ monitor uplink-port traffic port 0/9/2
+ monitor uplink-port traffic port 0/9/3
+ sysman service telnet enable
+ sysman service dhcp-relay disable
+ sysman service dhcpv6-relay disable
+ snmp-agent trap enable standard
+#
+[vlan-config]
+  <vlan-config>
+ vlan 10 smart
+ vlan 40 standard
+ vlan 100 to 195 smart
+ vlan 2055 smart
+ vlan 3200 smart
+ port vlan 10 0/8 0
+ port vlan 40 0/8 0
+ port vlan 40 0/8 1
+ port vlan 40 0/8 2
+ port vlan 40 0/8 3
+ port vlan 100 to 195 0/8 0
+ port vlan 2055 0/8 0
+ port vlan 2055 0/8 1
+ port vlan 2055 0/8 2
+ port vlan 2055 0/8 3
+ port vlan 3200 0/8 0
+ port vlan 3200 0/8 1
+ port vlan 3200 0/8 2
+ port vlan 3200 0/8 3
+#
+[mpu]
+  <mpu-0/8>
+interface mpu 0/8
+ auto-neg 0 disable
+ speed 0 10000
+ auto-neg 1 disable
+ speed 1 10000
+ auto-neg 2 disable
+ speed 2 10000
+ auto-neg 3 disable
+ speed 3 10000
+#
+interface mpu 0/9
+ auto-neg 0 disable
+ speed 0 10000
+ auto-neg 1 disable
+ speed 1 10000
+ auto-neg 2 disable
+ speed 2 10000
+ auto-neg 3 disable
+ speed 3 10000
+#
+[gpon]
+  <gpon-0/1>
+ interface gpon 0/1
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 12 1 sn-auth "54504C47DDEE43C0" omci ont-lineprofile-id 112 
+ont-srvprofile-id 2 desc "2zym5gj1" 
+ ont add 12 3 sn-auth "4857544332227CA6" omci ont-lineprofile-id 112 
+ont-srvprofile-id 1 desc "257j8t6l" 
+ ont ipconfig 12 3 pppoe vlan 112 priority 5 user-account username "257j8t6l" 
+password "%$%#cV(!!!!!!!!!!!!o9Iw6V]\(1:/SfH,ScUU9BVl/+r^\=[.a|1DKRJ&5*`ERwH5a3bJ[*3D+[Y"gjNdFE$iKD-mZ#3yR6hLoI(I~2u}w;!<}b"Dy|s1p!G+>fi^c5%$%#"
+ ont internet-config 12 3 ip-index 0
+ ont wan-config 12 3 ip-index 0 profile-id 1
+ ont add 12 5 sn-auth "485754437B8296A6" omci ont-lineprofile-id 112 
+ont-srvprofile-id 1 desc "zq113pe5" 
+ ont ipconfig 12 5 pppoe vlan 112 priority 5 user-account username "zq113pe5" 
+password "%$%#cV(!!!!!!!!!!!!cTzZ~bZ7dN,ji'!AE`K7bc^wS:ir(Z^;6MPV708IMA$8IdVU1Vs(hs9,Q3I!<YZo='/_j=Oi;4I/pp)-c9:vUZYXt9'[-TFls<@1Y\l6*_V*5>%$%#"
+ ont internet-config 12 5 ip-index 0
+ ont wan-config 12 5 ip-index 0 profile-id 1
+ ont add 12 7 sn-auth "5853495200007B3E" omci ont-lineprofile-id 112 
+ont-srvprofile-id 2 desc "zscysax2" 
+ ont add 12 8 sn-auth "54504C4748523668" omci ont-lineprofile-id 112 
+ont-srvprofile-id 1 desc "i2dt8474" 
+ ont ipconfig 12 8 pppoe vlan 112 priority 5 user-account username "i2dt8474" 
+password "%$%#cV(!!!!!!!!!!!!38p29JA$8SELQ<<avwgM6~RtQmcp-Z\V>[<_tQ-X]mk2I{I^rSR>5{Objb|H$dg)O98D:(R</aBr6nG=Z|H%>5U<s~"vb^DA3PJMmaS5A7ni3G%$%#"
+ ont internet-config 12 8 ip-index 0
+ ont wan-config 12 8 ip-index 0 profile-id 1
+ ont add 13 2 sn-auth "48575443B066F1A3" omci ont-lineprofile-id 113 
+ont-srvprofile-id 1 desc "efa5w816" 
+ ont ipconfig 13 2 pppoe vlan 113 priority 5 user-account username "efa5w816" 
+password "%$%#cV(!!!!!!!!!!!!UQwQ3/EDH5zXO26x_2fIJt01*V9on97{MJF7Zrp9PbhjI,(=iFPAylJ5k1Z@`w+a<a4)QF0gv%Sq\U\R@ZcD2[pE_"Ce[`X250S=G7P%Eo.>CK%$%#"
+ ont internet-config 13 2 ip-index 0
+ ont wan-config 13 2 ip-index 0 profile-id 1
+ ont add 15 0 sn-auth "4857544382E23EA6" omci ont-lineprofile-id 115 
+ont-srvprofile-id 1 desc "vt392n35" 
+ ont ipconfig 15 0 pppoe vlan 115 priority 5 user-account username "vt392n35" 
+password "%$%#cV(!!!!!!!!!!!!0M4(8<W$FAZIa0HbKqp0A$nD%QH`l/a#qw4>+L:B:'!+I3E'M/\KuF=`fGvC_AaPAg4C=5$f;:4vD17D_`"G3IYl[Y/+u|3X==m%XtAs=_\FD&%$%#"
+ ont internet-config 15 0 ip-index 0
+ ont wan-config 15 0 ip-index 0 profile-id 1
+ ont add 15 1 sn-auth "485754437AC491A6" omci ont-lineprofile-id 115 
+ont-srvprofile-id 1 desc "qz91sgm4" 
+ ont ipconfig 15 1 pppoe vlan 115 priority 5 user-account username "qz91sgm4" 
+password "%$%#cV(!!!!!!!!!!!!+Arg;KgYo2w]Ml#DTl=ZMH@'ZzFa;FT6_HGsP`9'KTjJ$N&c|*6DqMQ5&wYVI2Qi'hd6_M=4'13$vSW8dRaxECx0=Z`"ps"UeG6WhL"uM~*846%$%#"
+ ont internet-config 15 1 ip-index 0
+ ont wan-config 15 1 ip-index 0 profile-id 1
+ ont add 15 2 sn-auth "485754438269ABA6" omci ont-lineprofile-id 115 
+ont-srvprofile-id 1 desc "8a88163g" 
+ ont ipconfig 15 2 pppoe vlan 115 priority 5 user-account username "8a88163g" 
+password "%$%#cV(!!!!!!!!!!!!RN}E8q['MJFr0AJ@Z>A-)6t>@0]KXH=O&<9&/EAEGaWx3z2{-Yn/}1=E7fc#=plm>XFr7G9Ve$DDr./+JmSU!9V$*U9}Rl6$`$Q1y_0:Cg8g[M%$%#"
+ ont internet-config 15 2 ip-index 0
+ ont wan-config 15 2 ip-index 0 profile-id 1
+ ont add 15 3 sn-auth "48575443A733CAA8" omci ont-lineprofile-id 115 
+ont-srvprofile-id 1 desc "3patpa8t" 
+ ont ipconfig 15 3 pppoe vlan 115 priority 5 user-account username "3patpa8t" 
+password "%$%#cV(!!!!!!!!!!!!q=zrYtIiq+h6wNTLnD<:\66KF^g.7<SIq{5!fO,:S%Us%C=\1/Q%X{TRe,=;arf4:_kKE@,(;tKu.FTOL]df-8S6V4c])i4JxPVI[C5T5.(=n~%$%#"
+ ont internet-config 15 3 ip-index 0
+ ont wan-config 15 3 ip-index 0 profile-id 1
+ ont add 15 4 sn-auth "485754438291AEA6" omci ont-lineprofile-id 115 
+ont-srvprofile-id 1 desc "9a3b476k" 
+ ont ipconfig 15 4 pppoe vlan 115 priority 5 user-account username "9a3b476k" 
+password "%$%#cV(!!!!!!!!!!!!Q[_a;j!`N-kJ(n=877D+A&H1;V\_`$yhqg!>6PE:mXO^CB}9w<!fQyHX\,j-guxR@{'~PCeARO(&LbRT{y73=Aly$VbKe46@dOb+nu-#D5z@AC%$%#"
+ ont internet-config 15 4 ip-index 0
+ ont wan-config 15 4 ip-index 0 profile-id 1
+ ont add 15 5 sn-auth "54504C47D2A780B8" omci ont-lineprofile-id 115 
+ont-srvprofile-id 2 desc "lhq5j264" 
+ ont add 15 6 sn-auth "54504C47517AB998" omci ont-lineprofile-id 115 
+ont-srvprofile-id 2 desc "796k89jp" 
+ ont add 15 9 sn-auth "54504C47D2A787D0" omci ont-lineprofile-id 115 
+ont-srvprofile-id 2 desc "5g2zuz56" 
+ ont add 15 10 sn-auth "54504C47D2A77EB0" omci ont-lineprofile-id 115 
+ont-srvprofile-id 1 desc "vl8g25p1" 
+ ont ipconfig 15 10 pppoe vlan 115 priority 5 user-account username "vl8g25p1" 
+password "%$%#cV(!!!!!!!!!!!!A{{&MyXcoKaZ3L=MVGe+&_\)4[Cg3<<t,cDY!ev0"l&gX0r32F4H*,)>I)#Vg!j3KEGx{+6@Ik9oW29-rh#h4{GNeE=u.XCk9!vH9>>e4o()[H%$%#"
+ ont internet-config 15 10 ip-index 0
+ ont wan-config 15 10 ip-index 0 profile-id 1
+ ont add 15 11 sn-auth "5853495200008371" omci ont-lineprofile-id 115 
+ont-srvprofile-id 2 desc "e49287gu" 
+ ont add 15 12 sn-auth "54504C47DDEE6B78" omci ont-lineprofile-id 115 
+ont-srvprofile-id 2 desc "6f4b61xr" 
+ ont port route 12 3 eth 1 enable
+ ont port route 12 3 eth 2 enable
+ ont port route 12 3 eth 3 enable
+ ont port route 12 3 eth 4 enable
+ ont port route 12 5 eth 1 enable
+ ont port route 12 5 eth 2 enable
+ ont port route 12 5 eth 3 enable
+ ont port route 12 5 eth 4 enable
+ ont port route 12 8 eth 1 enable
+ ont port route 12 8 eth 2 enable
+ ont port route 12 8 eth 3 enable
+ ont port route 12 8 eth 4 enable
+ ont port route 13 2 eth 1 enable
+ ont port route 13 2 eth 2 enable
+ ont port route 13 2 eth 3 enable
+ ont port route 13 2 eth 4 enable
+ ont port route 15 0 eth 1 enable
+ ont port route 15 0 eth 2 enable
+ ont port route 15 0 eth 3 enable
+ ont port route 15 0 eth 4 enable
+ ont port route 15 1 eth 1 enable
+ ont port route 15 1 eth 2 enable
+ ont port route 15 1 eth 3 enable
+ ont port route 15 1 eth 4 enable
+ ont port route 15 2 eth 1 enable
+ ont port route 15 2 eth 2 enable
+ ont port route 15 2 eth 3 enable
+ ont port route 15 2 eth 4 enable
+ ont port route 15 3 eth 1 enable
+ ont port route 15 3 eth 2 enable
+ ont port route 15 3 eth 3 enable
+ ont port route 15 3 eth 4 enable
+ ont port route 15 4 eth 1 enable
+ ont port route 15 4 eth 2 enable
+ ont port route 15 4 eth 3 enable
+ ont port route 15 4 eth 4 enable
+ ont port route 15 10 eth 1 enable
+ ont port route 15 10 eth 2 enable
+ ont port route 15 10 eth 3 enable
+ ont port route 15 10 eth 4 enable
+#
+ interface gpon 0/2
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 0 0 sn-auth "4857544382E0ADA6" omci ont-lineprofile-id 116 
+ont-srvprofile-id 1 desc "erqd86e9" 
+ ont ipconfig 0 0 pppoe vlan 116 priority 5 user-account username "erqd86e9" 
+password "%$%#cV(!!!!!!!!!!!!MJg]2:6pdMb.$Q:;Z"q'>hiLRX8-}W$<V9'%vRN#TL_hF9MPKAf5tCVH\:bW^7t/4H^v)4I$6V78;$oJSfQs<1+GA:Dk%a&wgfT0PVNjQb:oU+%$%#"
+ ont internet-config 0 0 ip-index 0
+ ont wan-config 0 0 ip-index 0 profile-id 1
+ ont add 0 2 sn-auth "5853495200007BB0" omci ont-lineprofile-id 116 
+ont-srvprofile-id 2 desc "4ew211sl" 
+ ont add 0 3 sn-auth "4857544382FC23A6" omci ont-lineprofile-id 116 
+ont-srvprofile-id 1 desc "m2335f7d" 
+ ont ipconfig 0 3 pppoe vlan 116 priority 5 user-account username "m2335f7d" 
+password "%$%#cV(!!!!!!!!!!!!q+HUCQr5;V)L,,15\1k%kl|DD_^i>4z9Y{DE6Z6Y(=]OSJG<!W>FpVW6/^l!`~XJYlMD"0bO6[PJogy<D2b^9"uloOZ{zDKf0[^Xx,L{7Kv=Z@%$%#"
+ ont internet-config 0 3 ip-index 0
+ ont wan-config 0 3 ip-index 0 profile-id 1
+ ont add 0 10 sn-auth "54504C478ECB7090" omci ont-lineprofile-id 116 
+ont-srvprofile-id 2 desc "hwrx58bx" 
+ ont add 0 12 sn-auth "5853495200007EB7" omci ont-lineprofile-id 116 
+ont-srvprofile-id 2 desc "tp7l1918" 
+ ont add 1 0 sn-auth "48575443A72D83A8" omci ont-lineprofile-id 117 
+ont-srvprofile-id 1 desc "deghk3cy" 
+ ont ipconfig 1 0 pppoe vlan 117 priority 5 user-account username "deghk3cy" 
+password "%$%#cV(!!!!!!!!!!!!jH5u1GTdcGMuR)9dS"7;]yW\L9Yg.,=yv~N(eK89RY1xBOS$fPYUbDWs^HlFWeuhRsN*lKt=iX3cfd2$-ld9$u|LkSR+2gVd|4/L=z._>!VV)A%$%#"
+ ont internet-config 1 0 ip-index 0
+ ont wan-config 1 0 ip-index 0 profile-id 1
+ ont add 1 1 sn-auth "5853495200007CA7" omci ont-lineprofile-id 117 
+ont-srvprofile-id 2 desc "2vse3n27" 
+ ont add 2 0 sn-auth "5853495200007D43" omci ont-lineprofile-id 118 
+ont-srvprofile-id 2 desc "h5wa5wnz" 
+ ont add 2 1 sn-auth "585349520000825B" omci ont-lineprofile-id 118 
+ont-srvprofile-id 2 desc "rj7p8j92" 
+ ont add 2 2 sn-auth "54504C47485233E8" omci ont-lineprofile-id 118 
+ont-srvprofile-id 2 desc "kfgd1965" 
+ ont add 3 1 sn-auth "485754432D2B1FAC" omci ont-lineprofile-id 119 
+ont-srvprofile-id 1 desc "2dy3k4ss" 
+ ont ipconfig 3 1 pppoe vlan 119 priority 5 user-account username "2dy3k4ss" 
+password "%$%#cV(!!!!!!!!!!!!$9!]5Eeof/g7Q!COHm`ROdyTVMW%e&BIh@@2TH'G]NX`!!x2C+8Bw~,]M(J&D}rmAUOvLS//CEM4%8'!MxEyEMI;O+=r89W-`IV:sAo,+}>fpI%$%#"
+ ont internet-config 3 1 ip-index 0
+ ont wan-config 3 1 ip-index 0 profile-id 1
+ ont add 5 0 sn-auth "48575443EC8099A6" omci ont-lineprofile-id 121 
+ont-srvprofile-id 1 desc "wz6525l8" 
+ ont ipconfig 5 0 pppoe vlan 121 priority 5 user-account username "wz6525l8" 
+password "%$%#cV(!!!!!!!!!!!!g)O5E%kM/SD_tu4nOMW<mr'iG4D~#E.YV;F<W7^S;GH~+n]Xh#]B!27hj"1'N[wO@2EOI$A`:2!-T;Q'AWqW#(Sib&KF!d0GyWKTY2'=:~XOTM%$%#"
+ ont internet-config 5 0 ip-index 0
+ ont wan-config 5 0 ip-index 0 profile-id 1
+ ont add 5 2 sn-auth "5853495200008207" omci ont-lineprofile-id 121 
+ont-srvprofile-id 2 desc "h1ac8s95" 
+ ont add 5 3 sn-auth "54504C47DDEE39E8" omci ont-lineprofile-id 121 
+ont-srvprofile-id 1 desc "618pz6u9" 
+ ont ipconfig 5 3 pppoe vlan 121 priority 5 user-account username "618pz6u9" 
+password "%$%#cV(!!!!!!!!!!!!PCpE*|N8=C<|\K2B5InYC)lNT3Ssi2g1!u&>1V_GS|,L<4KAx&l]o!!'c1^9("M;8ABIzYe[h,)Of1DI+-^I&[;gR#,2Q'@]I"\3-Fnm4ru%*B%$%#"
+ ont internet-config 5 3 ip-index 0
+ ont wan-config 5 3 ip-index 0 profile-id 1
+ ont add 8 1 sn-auth "48575443829020A6" omci ont-lineprofile-id 124 
+ont-srvprofile-id 1 desc "9514cg5z" 
+ ont ipconfig 8 1 pppoe vlan 124 priority 5 user-account username "9514cg5z" 
+password "%$%#cV(!!!!!!!!!!!!Ll#fGd!+TE|vHs26//WR>e<mX"P7H$ru-H-xo!6#I%nmWh[RA"f4km.JWro;i!(n">}!L3!iz>M*L/U~0MlH'SO*~'-M)y=2%n-7Com-#2Na[#%$%#"
+ ont internet-config 8 1 ip-index 0
+ ont wan-config 8 1 ip-index 0 profile-id 1
+ ont add 8 2 sn-auth "48575443371431AE" omci ont-lineprofile-id 124 
+ont-srvprofile-id 1 desc "t2z354ar" 
+ ont ipconfig 8 2 pppoe vlan 124 priority 5 user-account username "t2z354ar" 
+password "%$%#cV(!!!!!!!!!!!!hKE_)f{fM2U4|ZPo8t,IK2,P>r-t>.vS`{EWjokU-BcCGk)K-74WO\C6Cj@BQvdv&E_zM$/JN6XHg2M1k}=N9c='TWeB2+5gV5M)[}D5KTaUlE%$%#"
+ ont internet-config 8 2 ip-index 0
+ ont wan-config 8 2 ip-index 0 profile-id 1
+ ont add 8 3 sn-auth "4857544382E03EA6" omci ont-lineprofile-id 124 
+ont-srvprofile-id 1 desc "b8d7f25k" 
+ ont ipconfig 8 3 pppoe vlan 124 priority 5 user-account username "b8d7f25k" 
+password "%$%#cV(!!!!!!!!!!!!3UV(,NHd6*S@ZjR/!/cITq$MA=+2QHM]E1D/lj+TwevcB<Gny5c*yh2#ly.<WzAqDc92RP61'%V#`Qb#-RqPR+I^u)g':W5\'eL+/\5{)mk+YR%$%#"
+ ont internet-config 8 3 ip-index 0
+ ont wan-config 8 3 ip-index 0 profile-id 1
+ ont add 10 0 sn-auth "5853495200007849" omci ont-lineprofile-id 126 
+ont-srvprofile-id 2 desc "lazj7q44" 
+ ont add 11 0 sn-auth "485754438255C4A6" omci ont-lineprofile-id 127 
+ont-srvprofile-id 1 desc "9a44n631" 
+ ont ipconfig 11 0 pppoe vlan 127 priority 5 user-account username "9a44n631" 
+password "%$%#cV(!!!!!!!!!!!!TDrTSY4/fNpBQbJr96]5YRac.E'7o1fi`zT@P;~;8~%m'*"viFGHg0*^{ylNrkr`>y1B$@eO&*//`X:RnIM;DezbDETv.qHU&Fz+l>aCDs'q]3%$%#"
+ ont internet-config 11 0 ip-index 0
+ ont wan-config 11 0 ip-index 0 profile-id 1
+ ont add 11 1 sn-auth "4857544313DD00A6" omci ont-lineprofile-id 127 
+ont-srvprofile-id 1 desc "ww1bs65m" 
+ ont ipconfig 11 1 pppoe vlan 127 priority 5 user-account username "ww1bs65m" 
+password "%$%#cV(!!!!!!!!!!!!327d)IXgt8N3`U">UNX+o'^8(v5\h-SqD9>mSa.H`L'LN;6!)Fio)'J9pL+2#4J~8*;l#.=F2g%tLG7DC'[#%8&I^+i^LU,VPe\,:`#.+pl;,H%$%#"
+ ont internet-config 11 1 ip-index 0
+ ont wan-config 11 1 ip-index 0 profile-id 1
+ ont add 11 2 sn-auth "485754437BE299A6" omci ont-lineprofile-id 127 
+ont-srvprofile-id 1 desc "s5zqq76e" 
+ ont ipconfig 11 2 pppoe vlan 127 priority 5 user-account username "s5zqq76e" 
+password "%$%#cV(!!!!!!!!!!!!Y-,R6r^W_1q(0x0cl!8A5=,W"u!Ne'D&QC%5%L064Ks<.BT>jOrdak.H8O.,8=`=F$,,T9`q\k6K4@n:Wrb3O]`:~+aL;gIC28e74YJ'"_d39D%$%#"
+ ont internet-config 11 2 ip-index 0
+ ont wan-config 11 2 ip-index 0 profile-id 1
+ ont add 11 4 sn-auth "5853495200007DFE" omci ont-lineprofile-id 127 
+ont-srvprofile-id 2 desc "viyxwwqx" 
+ ont add 11 5 sn-auth "54504C47D2A73A50" omci ont-lineprofile-id 127 
+ont-srvprofile-id 1 desc "5w7h4mni" 
+ ont ipconfig 11 5 pppoe vlan 127 priority 5 user-account username "5w7h4mni" 
+password "%$%#cV(!!!!!!!!!!!!z_H0;XsUn>U'M'.Rjf-3!KIbCs9>T%e=93Um1iZ5"6xeFO(u<UO_$@4!:k)6-]:"=^;LrX,='i/YB375-1ITI+FIrGf}vD;{pZX:}S3!!)8w{)%$%#"
+ ont internet-config 11 5 ip-index 0
+ ont wan-config 11 5 ip-index 0 profile-id 1
+ ont add 11 6 sn-auth "5853495200007A81" omci ont-lineprofile-id 127 
+ont-srvprofile-id 2 desc "jpt582a4" 
+ ont add 11 7 sn-auth "585349520000832E" omci ont-lineprofile-id 127 
+ont-srvprofile-id 2 desc "y8789n8w" 
+ ont add 12 1 sn-auth "485754437BE408A6" omci ont-lineprofile-id 128 
+ont-srvprofile-id 1 desc "k83aq5f4" 
+ ont ipconfig 12 1 pppoe vlan 128 priority 5 user-account username "k83aq5f4" 
+password "%$%#cV(!!!!!!!!!!!!`viL)c3.E6/OM-K]CKoF[%Rs,B\K~=C_l">+$x~U{"ML2GyqT~aQr@0\JQKOK4@C0x(:n:Tu%gFF~YN;fGGN4Se\@1Z99l6-rYF9J1/[SGL=H6%$%#"
+ ont internet-config 12 1 ip-index 0
+ ont wan-config 12 1 ip-index 0 profile-id 1
+ ont add 12 3 sn-auth "5853495200007A0A" omci ont-lineprofile-id 129 
+ont-srvprofile-id 2 desc "fr3w5266" 
+ ont add 12 4 sn-auth "5853495200007A6D" omci ont-lineprofile-id 129 
+ont-srvprofile-id 2 desc "29i25qix" 
+ ont add 12 5 sn-auth "54504C47DDEE6E88" omci ont-lineprofile-id 128 
+ont-srvprofile-id 2 desc "28981036520" 
+ ont add 13 0 sn-auth "4857544382595BA6" omci ont-lineprofile-id 129 
+ont-srvprofile-id 1 desc "v831efs8" 
+ ont ipconfig 13 0 pppoe vlan 129 priority 5 user-account username "v831efs8" 
+password "%$%#cV(!!!!!!!!!!!!8PHkSL'6J:0O9s0hV.f'K:O-=;Ae\-r-f4B)t]dJ_O.5%F+Jy/hAy'!.8K@4x"`2JLf~K+;P*}/3Xb(UN-R@Jd_,&((}f8-Y*ZJ+}["7Iz9&`5%$%#"
+ ont internet-config 13 0 ip-index 0
+ ont wan-config 13 0 ip-index 0 profile-id 1
+ ont add 13 1 sn-auth "4857544319D8629F" omci ont-lineprofile-id 129 
+ont-srvprofile-id 1 desc "9586l35n" 
+ ont ipconfig 13 1 pppoe vlan 129 priority 5 user-account username "9586l35n" 
+password "%$%#cV(!!!!!!!!!!!!_Fh{'l8oxIL3*KP=E!/UP4RI9FdBlC+cK*3eU7Y/aErvYn>Yb<QnRm+n&\^OoS+CNPco"Up0`mWJD3}FD%'N*!$O]K=Dk:.(ez<09pGgRM*/09%$%#"
+ ont internet-config 13 1 ip-index 0
+ ont wan-config 13 1 ip-index 0 profile-id 1
+ ont add 13 2 sn-auth "48575443824BF6A6" omci ont-lineprofile-id 129 
+ont-srvprofile-id 1 desc "vsr25qna" 
+ ont ipconfig 13 2 pppoe vlan 129 priority 5 user-account username "vsr25qna" 
+password "%$%#cV(!!!!!!!!!!!!S2;!&.C!b"mVn%T[FHp'oL{"M#E,}N162B7\pDCG{-9;Yt`FCXraHk.c\j'OD9$TI]8k&ZEsGQ<E>;jF}2c<S9!9PTPz!7)O=)EDT=vT>|.(DL%$%#"
+ ont internet-config 13 2 ip-index 0
+ ont wan-config 13 2 ip-index 0 profile-id 1
+ ont add 13 3 sn-auth "5853495200007B94" omci ont-lineprofile-id 129 
+ont-srvprofile-id 2 desc "eg723769" 
+ ont add 13 6 sn-auth "485754433A2DB4A6" omci ont-lineprofile-id 129 
+ont-srvprofile-id 1 desc "pk1kz4u6" 
+ ont ipconfig 13 6 pppoe vlan 129 priority 5 user-account username "pk1kz4u6" 
+password "%$%#cV(!!!!!!!!!!!!x<jDBS$C@S#sky#(gMt$_g)@T'-fjXaXxCIE[ss*nA=2!N#=t@|hI1Q#TvgTl0iJUJ8a`+M#0.+p,&3CN7G)(A|S$CcRlEJ-kBxF6Aa}7D=LG@%$%#"
+ ont internet-config 13 6 ip-index 0
+ ont wan-config 13 6 ip-index 0 profile-id 1
+ ont add 13 7 sn-auth "54504C47D2A78B80" omci ont-lineprofile-id 129 
+ont-srvprofile-id 1 desc "6rvzp6d3" 
+ ont ipconfig 13 7 pppoe vlan 129 priority 5 user-account username "6rvzp6d3" 
+password "%$%#cV(!!!!!!!!!!!!wA6s*w92uV~o3)SU^WXUC93\H]iSw7Y3v2PP`Qx&Yi{FT&qMOUOb2WMqtirTbQ@<2/LFcP#2rdAS/'$N9zd*(Pfr!%<bfZX!Z3d=%LrPRkLJY,%$%#"
+ ont internet-config 13 7 ip-index 0
+ ont wan-config 13 7 ip-index 0 profile-id 1
+ ont add 14 0 sn-auth "54504C47517ABA78" omci ont-lineprofile-id 130 
+ont-srvprofile-id 1 desc "2eig9fmu" 
+ ont ipconfig 14 0 pppoe vlan 130 priority 5 user-account username "2eig9fmu" 
+password "%$%#cV(!!!!!!!!!!!!r+Y&Op]I3L9^t^<`nkbYdll,-k@oW-Q-r2B,^.K-Fxb>I)m[d-=T/j;F\'#8M);,2mtc6M[<\[IXv8#<O42U98IN\Y;B'5R1qjI>tqU}@L++R(%$%#"
+ ont internet-config 14 0 ip-index 0
+ ont wan-config 14 0 ip-index 0 profile-id 1
+ ont add 15 0 sn-auth "48575443EC7B78A6" omci ont-lineprofile-id 131 
+ont-srvprofile-id 1 desc "r7492a4c" 
+ ont ipconfig 15 0 pppoe vlan 131 priority 5 user-account username "r7492a4c" 
+password "%$%#cV(!!!!!!!!!!!!bzR%YnDr}A*rHb.qoq%'}y;%<iCeOC2$R'Wn)RA<mE9WX1yqS9`4MU.sz9c.4:B`TIPY_JW@\,#erJfWi|E-*9Q[NESdrTYtc=ENktLWVolg.&%$%#"
+ ont internet-config 15 0 ip-index 0
+ ont wan-config 15 0 ip-index 0 profile-id 1
+ ont add 15 1 sn-auth "4857544383AA82A6" omci ont-lineprofile-id 131 
+ont-srvprofile-id 1 desc "7agbdx57" 
+ ont ipconfig 15 1 pppoe vlan 131 priority 5 user-account username "7agbdx57" 
+password "%$%#cV(!!!!!!!!!!!!UCT&28$yF<Nl|VJUgN%*Z!6S)kcB-BUE<o4w\o9N#gHRIDN;]FVHYi*8wm+~DF`l.eOg%F/CB+WO1OW$q}He>xX8|,O<j!<:WTB'e1KqYp>ADG%$%#"
+ ont internet-config 15 1 ip-index 0
+ ont wan-config 15 1 ip-index 0 profile-id 1
+ ont add 15 2 sn-auth "485754438AFEF5A5" omci ont-lineprofile-id 131 
+ont-srvprofile-id 1 desc "9u371a8g" 
+ ont ipconfig 15 2 pppoe vlan 131 priority 5 user-account username "9u371a8g" 
+password "%$%#cV(!!!!!!!!!!!!-tT_*g"/w*CS2t/rGY,C{ev,IZJ^HG%P{~9&*jxH6^&QY-hOTJf->7*:Y'mPc:v!@*gqf!P>"=P_==39F`7T%UBb&6vL}m;b,jI9as<Y4VL^.R%$%#"
+ ont internet-config 15 2 ip-index 0
+ ont wan-config 15 2 ip-index 0 profile-id 1
+ ont add 15 7 sn-auth "48575443EBC439A6" omci ont-lineprofile-id 131 
+ont-srvprofile-id 1 desc "l7au4475" 
+ ont ipconfig 15 7 pppoe vlan 131 priority 5 user-account username "l7au4475" 
+password "%$%#cV(!!!!!!!!!!!!a.SHOTC=-RI6RqBv]j*Ju,][GF\>1<@a@7Q*M+UJ'LupM+Png0omuK3D/T@/m\g{Vt#U-;I=6T///%CVQ^wyK}`l36}Y._;PfUV"E}y%3LZ>;%%$%#"
+ ont internet-config 15 7 ip-index 0
+ ont wan-config 15 7 ip-index 0 profile-id 1
+ ont add 15 9 sn-auth "585349520000825A" omci ont-lineprofile-id 131 
+ont-srvprofile-id 2 desc "2d31hn7p" 
+ ont add 15 10 sn-auth "48575443EC56BEA6" omci ont-lineprofile-id 131 
+ont-srvprofile-id 1 desc "ehwxw8ve" 
+ ont ipconfig 15 10 pppoe vlan 131 priority 5 user-account username "ehwxw8ve" 
+password "%$%#cV(!!!!!!!!!!!!Lp(~/B+Be%T3ot"i_.-S=Xr7J+!RAT~xZ,J8@[j/+#{83B1rXQ3u&1<ECRx',B$F,Yk.{.zyf)Z1LwW&x+~[HO3As+52_E+;]=K:1-{fH^3+O.%$%#"
+ ont internet-config 15 10 ip-index 0
+ ont wan-config 15 10 ip-index 0 profile-id 1
+ ont add 15 11 sn-auth "5853495200007BFE" omci ont-lineprofile-id 131 
+ont-srvprofile-id 2 desc "1v1pdd9c" 
+ ont port route 0 0 eth 1 enable
+ ont port route 0 0 eth 2 enable
+ ont port route 0 0 eth 3 enable
+ ont port route 0 0 eth 4 enable
+ ont port route 0 3 eth 1 enable
+ ont port route 0 3 eth 2 enable
+ ont port route 0 3 eth 3 enable
+ ont port route 0 3 eth 4 enable
+ ont port route 1 0 eth 1 enable
+ ont port route 1 0 eth 2 enable
+ ont port route 1 0 eth 3 enable
+ ont port route 1 0 eth 4 enable
+ ont port route 3 1 eth 1 enable
+ ont port route 3 1 eth 2 enable
+ ont port route 3 1 eth 3 enable
+ ont port route 3 1 eth 4 enable
+ ont port route 5 0 eth 1 enable
+ ont port route 5 0 eth 2 enable
+ ont port route 5 0 eth 3 enable
+ ont port route 5 0 eth 4 enable
+ ont port route 5 3 eth 1 enable
+ ont port route 5 3 eth 2 enable
+ ont port route 5 3 eth 3 enable
+ ont port route 5 3 eth 4 enable
+ ont port route 8 1 eth 1 enable
+ ont port route 8 1 eth 2 enable
+ ont port route 8 1 eth 3 enable
+ ont port route 8 1 eth 4 enable
+ ont port route 8 2 eth 1 enable
+ ont port route 8 2 eth 2 enable
+ ont port route 8 2 eth 3 enable
+ ont port route 8 2 eth 4 enable
+ ont port route 8 3 eth 1 enable
+ ont port route 8 3 eth 2 enable
+ ont port route 8 3 eth 3 enable
+ ont port route 8 3 eth 4 enable
+ ont port route 11 0 eth 1 enable
+ ont port route 11 0 eth 2 enable
+ ont port route 11 0 eth 3 enable
+ ont port route 11 0 eth 4 enable
+ ont port route 11 1 eth 1 enable
+ ont port route 11 1 eth 2 enable
+ ont port route 11 1 eth 3 enable
+ ont port route 11 1 eth 4 enable
+ ont port route 11 2 eth 1 enable
+ ont port route 11 2 eth 2 enable
+ ont port route 11 2 eth 3 enable
+ ont port route 11 2 eth 4 enable
+ ont port route 11 5 eth 1 enable
+ ont port route 11 5 eth 2 enable
+ ont port route 11 5 eth 3 enable
+ ont port route 11 5 eth 4 enable
+ ont port route 12 1 eth 1 enable
+ ont port route 12 1 eth 2 enable
+ ont port route 12 1 eth 3 enable
+ ont port route 12 1 eth 4 enable
+ ont port route 13 0 eth 1 enable
+ ont port route 13 0 eth 2 enable
+ ont port route 13 0 eth 3 enable
+ ont port route 13 0 eth 4 enable
+ ont port route 13 1 eth 1 enable
+ ont port route 13 1 eth 2 enable
+ ont port route 13 1 eth 3 enable
+ ont port route 13 1 eth 4 enable
+ ont port route 13 2 eth 1 enable
+ ont port route 13 2 eth 2 enable
+ ont port route 13 2 eth 3 enable
+ ont port route 13 2 eth 4 enable
+ ont port route 13 6 eth 1 enable
+ ont port route 13 6 eth 2 enable
+ ont port route 13 6 eth 3 enable
+ ont port route 13 6 eth 4 enable
+ ont port route 13 7 eth 1 enable
+ ont port route 13 7 eth 2 enable
+ ont port route 13 7 eth 3 enable
+ ont port route 13 7 eth 4 enable
+ ont port route 14 0 eth 1 enable
+ ont port route 14 0 eth 2 enable
+ ont port route 14 0 eth 3 enable
+ ont port route 14 0 eth 4 enable
+ ont port route 15 0 eth 1 enable
+ ont port route 15 0 eth 2 enable
+ ont port route 15 0 eth 3 enable
+ ont port route 15 0 eth 4 enable
+ ont port route 15 1 eth 1 enable
+ ont port route 15 1 eth 2 enable
+ ont port route 15 1 eth 3 enable
+ ont port route 15 1 eth 4 enable
+ ont port route 15 2 eth 1 enable
+ ont port route 15 2 eth 2 enable
+ ont port route 15 2 eth 3 enable
+ ont port route 15 2 eth 4 enable
+ ont port route 15 7 eth 1 enable
+ ont port route 15 7 eth 2 enable
+ ont port route 15 7 eth 3 enable
+ ont port route 15 7 eth 4 enable
+ ont port route 15 10 eth 1 enable
+ ont port route 15 10 eth 2 enable
+ ont port route 15 10 eth 3 enable
+ ont port route 15 10 eth 4 enable
+#
+ interface gpon 0/3
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 0 0 sn-auth "5853495200007C04" omci ont-lineprofile-id 132 
+ont-srvprofile-id 2 desc "5xtnzu2a" 
+ ont add 0 1 sn-auth "54504C478ECB7158" omci ont-lineprofile-id 132 
+ont-srvprofile-id 1 desc "y6byf719" 
+ ont ipconfig 0 1 pppoe vlan 132 priority 5 user-account username "y6byf719" 
+password "%$%#cV(!!!!!!!!!!!!k}^0EDvM#/eWYRBYccI$-|Ow+u\'-R*fKA'fS!aY[),wYtNiC9_6"!6ySaM;"xAm9[~OlIy@=x,n3{rLYNh:~"/=1PclN4OczsY@j\m}Pu**kD%$%#"
+ ont internet-config 0 1 ip-index 0
+ ont wan-config 0 1 ip-index 0 profile-id 1
+ ont add 0 2 sn-auth "48575443A76AA7A8" omci ont-lineprofile-id 132 
+ont-srvprofile-id 1 desc "v4k6qs28" 
+ ont ipconfig 0 2 pppoe vlan 132 priority 5 user-account username "v4k6qs28" 
+password "%$%#cV(!!!!!!!!!!!!z$&E4H9+k17:\[MK\rj;Zbc;UoOBo+Nwtb<U0_d-3,ng47qnD1hFj-WL:>M2}W_5Yzdoy.P95|8T/[P7EGG!H^1pVI+n{1RVu-)U]B7GT26IL"%$%#"
+ ont internet-config 0 2 ip-index 0
+ ont wan-config 0 2 ip-index 0 profile-id 1
+ ont add 0 3 sn-auth "5853495200008394" omci ont-lineprofile-id 132 
+ont-srvprofile-id 2 desc "w9f71fl2" 
+ ont add 0 6 sn-auth "58534952000078D9" omci ont-lineprofile-id 132 
+ont-srvprofile-id 2 desc "w8sx49a2" 
+ ont add 0 8 sn-auth "54504C4748523300" omci ont-lineprofile-id 132 
+ont-srvprofile-id 1 desc "6i2ymerl" 
+ ont ipconfig 0 8 pppoe vlan 132 priority 5 user-account username "6i2ymerl" 
+password "%$%#cV(!!!!!!!!!!!!@xI|AQ,:z*U*%L#fE4!"w%2\>5%#5<nico-~YNf#-4>9AAMh#FR<M2.^tPYOo8q=>.`!}>G4>k1khCR-y.`O$QHDMVQfl'@aw!o"mbLXPyk#':%$%#"
+ ont internet-config 0 8 ip-index 0
+ ont wan-config 0 8 ip-index 0 profile-id 1
+ ont add 1 0 sn-auth "58534952000079C0" omci ont-lineprofile-id 133 
+ont-srvprofile-id 2 desc "8smq4399" 
+ ont add 1 1 sn-auth "54504C47DDEE6EC8" omci ont-lineprofile-id 133 
+ont-srvprofile-id 2 desc "5sz8rnr8" 
+ ont add 1 4 sn-auth "5853495200007F9A" omci ont-lineprofile-id 133 
+ont-srvprofile-id 1 desc "1a4ml1t6" 
+ ont ipconfig 1 4 pppoe vlan 133 priority 5 user-account username "1a4ml1t6" 
+password "%$%#cV(!!!!!!!!!!!!@B,1*XpI`TS$zSVXPVJA9j#r8rO=LYjmh'9bld`#wj,4Z6\ax%PEGqQ@eYn$tk[bF5ZeDA={D3-<bbS9tk;pBa[Fl(BBhR".|jDVh>~^!v]R=X%$%#"
+ ont internet-config 1 4 ip-index 0
+ ont wan-config 1 4 ip-index 0 profile-id 1
+ ont add 2 0 sn-auth "485754438EEB53B4" omci ont-lineprofile-id 3200 
+ont-srvprofile-id 1 desc "16151" 
+ ont ipconfig 2 0 ip-index 1 pppoe vlan 3200 priority 0 user-account username 
+"16151" password "%$%#cV(!!!!!!!!!!!!$/s>:T8h>G@m1f%0j1h,w4#,R,]It.WIdD9TR(GYJ`+>XfQASO-^c=N$Od'Kv/nP((gdkQM,(3#E)@u4(kSNBbDS%*k-/+U^RJ!P;I&|KAu^J0%$%#"
+ ont internet-config 2 0 ip-index 1
+ ont wan-config 2 0 ip-index 1 profile-id 1
+ ont add 2 3 sn-auth "485754431A6B48A4" omci ont-lineprofile-id 134 
+ont-srvprofile-id 1 desc "c7w2f88w" 
+ ont ipconfig 2 3 pppoe vlan 134 priority 5 user-account username "c7w2f88w" 
+password "%$%#cV(!!!!!!!!!!!!2Bvz~jH'BJ+Zm6K)PisKG_$nB5/[`~2;W9WXjXP8TapEJfx<m1i'ewD2k^'9CG)b,5O)wXqtug<ttNe;0ciaO@;<xCh*WgH:@j9XrAR+78vEgO%$%#"
+ ont internet-config 2 3 ip-index 0
+ ont wan-config 2 3 ip-index 0 profile-id 1
+ ont add 2 4 sn-auth "54504C47DDEE6ED0" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "v5k545w9" 
+ ont add 2 5 sn-auth "485754438261E9A6" omci ont-lineprofile-id 134 
+ont-srvprofile-id 1 desc "274fg5ye" 
+ ont ipconfig 2 5 pppoe vlan 134 priority 5 user-account username "274fg5ye" 
+password "%$%#cV(!!!!!!!!!!!!o(QWAH\E,C5>tN$#(CO<F"[Z92(CBW:b7nWUvSO<pK/:GD-F*@%=dIKsq5H%!8p%3:7{1BUwBX!Y/U.-Ef1y(4/v!=#fX70MVbr)H&P;$B!yN'%$%#"
+ ont internet-config 2 5 ip-index 0
+ ont wan-config 2 5 ip-index 0 profile-id 1
+ ont add 2 6 sn-auth "5853495200007924" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "2hc22ysk" 
+ ont add 2 7 sn-auth "48575443DC4EB5A2" omci ont-lineprofile-id 134 
+ont-srvprofile-id 1 desc "6i3x9d97" 
+ ont ipconfig 2 7 pppoe vlan 134 priority 5 user-account username "6i3x9d97" 
+password "%$%#cV(!!!!!!!!!!!!kuM.+:FZxM\fClCK{=,8'<mJB&V!)Y0#\H.=QRrN-0nN:UO=uPb]]\7W8]=>e5VV(}gyO2`D[X=T$>*D6V(B!:*T)N\Lrq6H@,-HB~!"@_RWY"%$%#"
+ ont internet-config 2 7 ip-index 0
+ ont wan-config 2 7 ip-index 0 profile-id 1
+ ont add 2 8 sn-auth "5853495200007860" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "7n6v68wv" 
+ ont add 2 9 sn-auth "5853495200008706" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "kzsp5qi4" 
+ ont add 2 10 sn-auth "5853495200008082" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "11nc47g6" 
+ ont add 2 12 sn-auth "58534952000082CB" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "1wv9ahgq" 
+ ont add 2 15 sn-auth "5853495200007EB4" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "62r763h4" 
+ ont add 2 17 sn-auth "5853495200007CE0" omci ont-lineprofile-id 134 
+ont-srvprofile-id 2 desc "a8754ze3" 
+ ont add 2 18 sn-auth "54504C47D2A76CA8" omci ont-lineprofile-id 134 
+ont-srvprofile-id 1 desc "5t8w196m" 
+ ont ipconfig 2 18 pppoe vlan 134 priority 5 user-account username "5t8w196m" 
+password "%$%#cV(!!!!!!!!!!!!8~bN#}Vs`1Zyl4IUD)]'_;~X$swBu(*dA45;N{!5+fKs&s:T^Tw09_CZK.d;:QQ<+$K!BR%1u@3Hv[}3;6,$XNtO!89loJC]ASANp#{2NVUKnF%$%#"
+ ont internet-config 2 18 ip-index 0
+ ont wan-config 2 18 ip-index 0 profile-id 1
+ ont add 3 0 sn-auth "48575443A73ECCA8" omci ont-lineprofile-id 135 
+ont-srvprofile-id 1 desc "k6m678j3" 
+ ont ipconfig 3 0 pppoe vlan 135 priority 5 user-account username "k6m678j3" 
+password "%$%#cV(!!!!!!!!!!!!m<\j;KAm_$lOpfB"(@[)-#_@Q2Xm|GOR\"/1gq7@Bk=w)go^{Lhx6'*~$p,'(Il{GI^^K!$B=/Unw2l,*RC{Df7Zr1.WV*/f>IM!;Tq:0cz*F$%$%#"
+ ont internet-config 3 0 ip-index 0
+ ont wan-config 3 0 ip-index 0 profile-id 1
+ ont add 3 2 sn-auth "585349520000786D" omci ont-lineprofile-id 135 
+ont-srvprofile-id 2 desc "wu85lh4c" 
+ ont add 3 5 sn-auth "5853495200008255" omci ont-lineprofile-id 135 
+ont-srvprofile-id 2 desc "3au1yu93" 
+ ont add 3 12 sn-auth "5853495200007DDB" omci ont-lineprofile-id 135 
+ont-srvprofile-id 2 desc "le38527z" 
+ ont add 3 13 sn-auth "5853495200008657" omci ont-lineprofile-id 135 
+ont-srvprofile-id 2 desc "5juuhu7h" 
+ ont add 4 0 sn-auth "54504C47D1628608" omci ont-lineprofile-id 136 
+ont-srvprofile-id 2 desc "1tg93u18" 
+ ont add 5 0 sn-auth "4857544382686BA6" omci ont-lineprofile-id 137 
+ont-srvprofile-id 1 desc "t319c48c" 
+ ont ipconfig 5 0 pppoe vlan 137 priority 5 user-account username "t319c48c" 
+password "%$%#cV(!!!!!!!!!!!!`a,eQ6t@4.R2Y_@+kO+:gGfiN-tC8LFkO,YX&rY4Un_b<@K*87#BLZ4THfqSXo:RVo5Z[:5{-]3pH8>A^FzERGn!28Pr0h,:7>}.YTAGJbd&DV%$%#"
+ ont internet-config 5 0 ip-index 0
+ ont wan-config 5 0 ip-index 0 profile-id 1
+ ont add 5 1 sn-auth "5853495200008096" omci ont-lineprofile-id 137 
+ont-srvprofile-id 2 desc "1w6h45kf" 
+ ont add 5 2 sn-auth "5853495200007FF0" omci ont-lineprofile-id 137 
+ont-srvprofile-id 2 desc "875ube79" 
+ ont add 5 3 sn-auth "485754438EF205B4" omci ont-lineprofile-id 3200 
+ont-srvprofile-id 1 desc "11850697710" 
+ ont ipconfig 5 3 ip-index 1 pppoe vlan 3200 priority 0 user-account username 
+"11850697710" password "%$%#cV(!!!!!!!!!!!!h$*)T*!!O<`KwT$1x@W=mdJa(Ll+6)<Mgd(-Q@-<U>miF[aMn*~bGV6}[@oOC6e3;^uqv"\h+1.|F~F8kgsUGchtgU(g{x7B}]EN5i>GG92#$1%$%#"
+ ont internet-config 5 3 ip-index 1
+ ont wan-config 5 3 ip-index 1 profile-id 1
+ ont add 5 4 sn-auth "485754438EE8C4B4" omci ont-lineprofile-id 3200 
+ont-srvprofile-id 1 desc "16308" 
+ ont ipconfig 5 4 ip-index 1 pppoe vlan 3200 priority 0 user-account username 
+"16308" password "%$%#cV(!!!!!!!!!!!!5}xD.g'~H:vJhXT^pKD5A!ibO06[iBu!,d2YSFlI7LGj"92R2(97`'>4q~M02<E!EUQ_CRa.sBTJa5aCh,55W`l}V;Y/4%:b8gAJOm>.7_ade4%$%#"
+ ont internet-config 5 4 ip-index 1
+ ont wan-config 5 4 ip-index 1 profile-id 1
+ ont add 5 5 sn-auth "54504C478E90EE20" omci ont-lineprofile-id 137 
+ont-srvprofile-id 1 desc "ydfh9338" 
+ ont ipconfig 5 5 pppoe vlan 137 priority 5 user-account username "ydfh9338" 
+password "%$%#cV(!!!!!!!!!!!!3/Y;S#,w}&)ELDWn^GdUud3JO@6lh;7`B|!oakA~aNIQ-ND5C>s@fd@6|M5NGVq.Q6UaQ)-X#~E[JvkG5d~4W\_,QK=T^-0+)ReR.Rg;N}d5{5%$%#"
+ ont internet-config 5 5 ip-index 0
+ ont wan-config 5 5 ip-index 0 profile-id 1
+ ont add 6 0 sn-auth "5853495200007C76" omci ont-lineprofile-id 138 
+ont-srvprofile-id 2 desc "qe6eci8q" 
+ ont add 6 2 sn-auth "4857544383DC22A6" omci ont-lineprofile-id 138 
+ont-srvprofile-id 1 desc "2qi67suv" 
+ ont ipconfig 6 2 pppoe vlan 138 priority 5 user-account username "2qi67suv" 
+password "%$%#cV(!!!!!!!!!!!!tw"-Xuv+;F1u{:W-H~xJDLN0)-utJ->BVi)+)L4&e{z=WN.nFDmopp8ZHSy>2I#@=}>QhE=u<X4w,!)"6#3_2en%':WCXoFfY@f@$$:i8KlcrO%$%#"
+ ont internet-config 6 2 ip-index 0
+ ont wan-config 6 2 ip-index 0 profile-id 1
+ ont add 6 3 sn-auth "48575443F3BEA2A5" omci ont-lineprofile-id 138 
+ont-srvprofile-id 1 desc "yrunl5x9" 
+ ont ipconfig 6 3 pppoe vlan 138 priority 5 user-account username "yrunl5x9" 
+password "%$%#cV(!!!!!!!!!!!!]S{+!8nz5X1mP'*3F6.2;G,G!AM|PB9M+[G<`7=<`-bT<G9:iMSq&"4=}n3@+{e_EAL{=Q3*JyN=/):GE^}gOJMBNWz:\TJ+a3kJd!9F~R(WT%%$%#"
+ ont internet-config 6 3 ip-index 0
+ ont wan-config 6 3 ip-index 0 profile-id 1
+ ont add 6 5 sn-auth "5853495200007C71" omci ont-lineprofile-id 138 
+ont-srvprofile-id 2 desc "35z51s76" 
+ ont add 6 6 sn-auth "54504C47D2A78808" omci ont-lineprofile-id 138 
+ont-srvprofile-id 1 desc "i75id4k9" 
+ ont ipconfig 6 6 pppoe vlan 138 priority 5 user-account username "i75id4k9" 
+password "%$%#cV(!!!!!!!!!!!!aF\e$YnZxP(CxM-{pdRI(SfC7+`/9!@W73!MqhG3,PyYHe;WFJj{`x<x(d:R'[.u;n&5j'I@|tGCiBTN6t&/,WBKbH*])yAK8"wLu2e,;e%UZ*%$%#"
+ ont internet-config 6 6 ip-index 0
+ ont wan-config 6 6 ip-index 0 profile-id 1
+ ont add 7 1 sn-auth "5853495200008149" omci ont-lineprofile-id 139 
+ont-srvprofile-id 2 desc "bn24ad9t" 
+ ont add 7 3 sn-auth "54504C4748523310" omci ont-lineprofile-id 139 
+ont-srvprofile-id 1 desc "z3m5q1du" 
+ ont ipconfig 7 3 pppoe vlan 139 priority 5 user-account username "z3m5q1du" 
+password "%$%#cV(!!!!!!!!!!!!2;h''Jy~v2YwPp"1*)5TDc~fKJ)w@:w\m8HT=W^+JN~i9}b!XL%jK6CaIWYKbp|h,-%;!C[<f2An$15$`#D,"Cv@8'x[(2%c_{nGwZGcIK<Rz$%$%#"
+ ont internet-config 7 3 ip-index 0
+ ont wan-config 7 3 ip-index 0 profile-id 1
+ ont add 7 4 sn-auth "5853495200007833" omci ont-lineprofile-id 139 
+ont-srvprofile-id 2 desc "4b12n36t" 
+ ont add 8 1 sn-auth "4857544384020AA6" omci ont-lineprofile-id 140 
+ont-srvprofile-id 1 desc "2g9u6pra" 
+ ont ipconfig 8 1 pppoe vlan 140 priority 5 user-account username "2g9u6pra" 
+password "%$%#cV(!!!!!!!!!!!!UWYSMTbZcM*5<!VY]#1,$1IGT#Bd;Ama.1=[~e58S-+TH:C#m'^W:X=EN^\#EiIIE1)-nGI-}`%*l9;494]>%dI0*Mka4C6e2<g+H6^qCs$d'Y%$%#"
+ ont internet-config 8 1 ip-index 0
+ ont wan-config 8 1 ip-index 0 profile-id 1
+ ont add 9 0 sn-auth "5853495200007F8D" omci ont-lineprofile-id 141 
+ont-srvprofile-id 2 desc "768d49rt" 
+ ont add 10 0 sn-auth "58534952000080A7" omci ont-lineprofile-id 142 
+ont-srvprofile-id 2 desc "48t8a4ed" 
+ ont add 10 4 sn-auth "54504C47485231D8" omci ont-lineprofile-id 142 
+ont-srvprofile-id 1 desc "qfqw79n9" 
+ ont ipconfig 10 4 pppoe vlan 142 priority 5 user-account username "qfqw79n9" 
+password "%$%#cV(!!!!!!!!!!!!S6%`R+Q;d!ab/lE/iYV&.mu6N*lF3ZnC$G'+dXb${kK&JB.D:X`>Nc@cyoC-BZ~#THw6-3.Z.5ZGCRB8yC9j1>-{y*5UOc4B>hsM]}%{Q=r$pC%$%#"
+ ont internet-config 10 4 ip-index 0
+ ont wan-config 10 4 ip-index 0 profile-id 1
+ ont add 12 1 sn-auth "48575443FBD08EA4" omci ont-lineprofile-id 144 
+ont-srvprofile-id 1 desc "lenl86ft" 
+ ont ipconfig 12 1 pppoe vlan 144 priority 5 user-account username "lenl86ft" 
+password "%$%#cV(!!!!!!!!!!!!FrH4AAa]b$L%t2FU{|x=$n8zE2(ayLc4=r@]90bKJLxFC7Ce5N"s80/k2BpB,FXbHnK-B8U^m,5GEBRE+apuCm\;%;Z+a~85clpW<TijVy1]wF%$%#"
+ ont internet-config 12 1 ip-index 0
+ ont wan-config 12 1 ip-index 0 profile-id 1
+ ont add 12 2 sn-auth "485754433A2F7EA6" omci ont-lineprofile-id 144 
+ont-srvprofile-id 1 desc "861898w2" 
+ ont ipconfig 12 2 pppoe vlan 144 priority 5 user-account username "861898w2" 
+password "%$%#cV(!!!!!!!!!!!!T!c$GR"+h.D)_B:QT;P%mK3[37W\uA.z->MLAUkS1ygzFV)FJL^{6ULn@x8,Kz[RS]y*)D0;<4!O^[c1}fjR'adi.NFm0%KWQB'4@5>]8/I1kW%$%#"
+ ont internet-config 12 2 ip-index 0
+ ont wan-config 12 2 ip-index 0 profile-id 1
+ ont add 12 4 sn-auth "48575443A73559A8" omci ont-lineprofile-id 144 
+ont-srvprofile-id 1 desc "c2b15p99" 
+ ont ipconfig 12 4 pppoe vlan 144 priority 5 user-account username "c2b15p99" 
+password "%$%#cV(!!!!!!!!!!!!u*]G:0euTK,n1>+ZH(F-.ER~O/,ra(#7.q!_!5~Un[l"K{,7GDWK17)Kg4IET4)oV`,^KKK-}]A'at9%sz]y)H3kUB0Uj=>!</mHkRC2+qj^2H%$%#"
+ ont internet-config 12 4 ip-index 0
+ ont wan-config 12 4 ip-index 0 profile-id 1
+ ont add 12 9 sn-auth "5853495200008081" omci ont-lineprofile-id 144 
+ont-srvprofile-id 2 desc "vr7bf545" 
+ ont add 12 10 sn-auth "54504C47D2A79060" omci ont-lineprofile-id 144 
+ont-srvprofile-id 1 desc "x4k6zf58" 
+ ont ipconfig 12 10 pppoe vlan 144 priority 5 user-account username "x4k6zf58" 
+password "%$%#cV(!!!!!!!!!!!!fqBa$_g8:R!HOFQ{FP/-H4cST~=cG4Kr/{Us0j$NKX/b'ftL=O5|!%S=i]j,\oMs@&bmzCkITjO{hqXF|1)3()aT#-u8SF!!/*f.||'vEB_9H%%$%#"
+ ont internet-config 12 10 ip-index 0
+ ont wan-config 12 10 ip-index 0 profile-id 1
+ ont add 13 1 sn-auth "54504C47D2A74448" omci ont-lineprofile-id 145 
+ont-srvprofile-id 1 desc "kzmpw1hr" 
+ ont ipconfig 13 1 pppoe vlan 145 priority 5 user-account username "kzmpw1hr" 
+password "%$%#cV(!!!!!!!!!!!!z(NV0}2cK+db!U")/2uJI}`sKj8Ln:k{ck=</z^B<M}F5}r,K%|\1|%ufihL8KiCN~uhJ;`wKlSgrnM6/{1C;Tf/$1^#*KMT'3)$Gbik%U3f=L%$%#"
+ ont internet-config 13 1 ip-index 0
+ ont wan-config 13 1 ip-index 0 profile-id 1
+ ont add 14 0 sn-auth "58534952000083B9" omci ont-lineprofile-id 146 
+ont-srvprofile-id 2 desc "in596n11" 
+ ont add 14 1 sn-auth "5853495200007C63" omci ont-lineprofile-id 146 
+ont-srvprofile-id 2 desc "zs45432y" 
+ ont add 14 2 sn-auth "54504C47D1628680" omci ont-lineprofile-id 146 
+ont-srvprofile-id 2 desc "8huf4i51" 
+ ont add 14 3 sn-auth "5853495200007DCA" omci ont-lineprofile-id 146 
+ont-srvprofile-id 2 desc "rv1a5287" 
+ ont add 14 4 sn-auth "54504C4748523468" omci ont-lineprofile-id 146 
+ont-srvprofile-id 2 desc "1346d6r7" 
+ ont add 15 0 sn-auth "54504C47D2A74130" omci ont-lineprofile-id 147 
+ont-srvprofile-id 1 desc "n4lhie8n" 
+ ont ipconfig 15 0 pppoe vlan 147 priority 5 user-account username "n4lhie8n" 
+password "%$%#cV(!!!!!!!!!!!!TymL'Jq!q4$)y`D~C*h$@Z9:=||EpFc4p;~+y'6RTn>UBzN]"AfG5qP+e_;&qJDb/Ry`A!!O@.,[P19KK}svLp9KE-,u3)U]fWU*"a&^VwPKh7%$%#"
+ ont internet-config 15 0 ip-index 0
+ ont wan-config 15 0 ip-index 0 profile-id 1
+ ont port route 0 1 eth 1 enable
+ ont port route 0 1 eth 2 enable
+ ont port route 0 1 eth 3 enable
+ ont port route 0 1 eth 4 enable
+ ont port route 0 2 eth 1 enable
+ ont port route 0 2 eth 2 enable
+ ont port route 0 2 eth 3 enable
+ ont port route 0 2 eth 4 enable
+ ont port route 0 8 eth 1 enable
+ ont port route 0 8 eth 2 enable
+ ont port route 0 8 eth 3 enable
+ ont port route 0 8 eth 4 enable
+ ont port route 1 4 eth 1 enable
+ ont port route 1 4 eth 2 enable
+ ont port route 1 4 eth 3 enable
+ ont port route 1 4 eth 4 enable
+ ont port route 2 0 eth 1 enable
+ ont port route 2 0 eth 2 enable
+ ont port route 2 0 eth 3 enable
+ ont port route 2 0 eth 4 enable
+ ont port route 2 3 eth 1 enable
+ ont port route 2 3 eth 2 enable
+ ont port route 2 3 eth 3 enable
+ ont port route 2 3 eth 4 enable
+ ont port route 2 5 eth 1 enable
+ ont port route 2 5 eth 2 enable
+ ont port route 2 5 eth 3 enable
+ ont port route 2 5 eth 4 enable
+ ont port route 2 7 eth 1 enable
+ ont port route 2 7 eth 2 enable
+ ont port route 2 7 eth 3 enable
+ ont port route 2 7 eth 4 enable
+ ont port route 2 18 eth 1 enable
+ ont port route 2 18 eth 2 enable
+ ont port route 2 18 eth 3 enable
+ ont port route 2 18 eth 4 enable
+ ont port route 3 0 eth 1 enable
+ ont port route 3 0 eth 2 enable
+ ont port route 3 0 eth 3 enable
+ ont port route 3 0 eth 4 enable
+ ont port route 5 0 eth 1 enable
+ ont port route 5 0 eth 2 enable
+ ont port route 5 0 eth 3 enable
+ ont port route 5 0 eth 4 enable
+ ont port route 5 3 eth 1 enable
+ ont port route 5 3 eth 2 enable
+ ont port route 5 3 eth 3 enable
+ ont port route 5 3 eth 4 enable
+ ont port route 5 4 eth 1 enable
+ ont port route 5 4 eth 2 enable
+ ont port route 5 4 eth 3 enable
+ ont port route 5 4 eth 4 enable
+ ont port route 5 5 eth 1 enable
+ ont port route 5 5 eth 2 enable
+ ont port route 5 5 eth 3 enable
+ ont port route 5 5 eth 4 enable
+ ont port route 6 2 eth 1 enable
+ ont port route 6 2 eth 2 enable
+ ont port route 6 2 eth 3 enable
+ ont port route 6 2 eth 4 enable
+ ont port route 6 3 eth 1 enable
+ ont port route 6 3 eth 2 enable
+ ont port route 6 3 eth 3 enable
+ ont port route 6 3 eth 4 enable
+ ont port route 6 6 eth 1 enable
+ ont port route 6 6 eth 2 enable
+ ont port route 6 6 eth 3 enable
+ ont port route 6 6 eth 4 enable
+ ont port route 7 3 eth 1 enable
+ ont port route 7 3 eth 2 enable
+ ont port route 7 3 eth 3 enable
+ ont port route 7 3 eth 4 enable
+ ont port route 8 1 eth 1 enable
+ ont port route 8 1 eth 2 enable
+ ont port route 8 1 eth 3 enable
+ ont port route 8 1 eth 4 enable
+ ont port route 10 4 eth 1 enable
+ ont port route 10 4 eth 2 enable
+ ont port route 10 4 eth 3 enable
+ ont port route 10 4 eth 4 enable
+ ont port route 12 1 eth 1 enable
+ ont port route 12 1 eth 2 enable
+ ont port route 12 1 eth 3 enable
+ ont port route 12 1 eth 4 enable
+ ont port route 12 2 eth 1 enable
+ ont port route 12 2 eth 2 enable
+ ont port route 12 2 eth 3 enable
+ ont port route 12 2 eth 4 enable
+ ont port route 12 4 eth 1 enable
+ ont port route 12 4 eth 2 enable
+ ont port route 12 4 eth 3 enable
+ ont port route 12 4 eth 4 enable
+ ont port route 12 10 eth 1 enable
+ ont port route 12 10 eth 2 enable
+ ont port route 12 10 eth 3 enable
+ ont port route 12 10 eth 4 enable
+ ont port route 13 1 eth 1 enable
+ ont port route 13 1 eth 2 enable
+ ont port route 13 1 eth 3 enable
+ ont port route 13 1 eth 4 enable
+ ont port route 15 0 eth 1 enable
+ ont port route 15 0 eth 2 enable
+ ont port route 15 0 eth 3 enable
+ ont port route 15 0 eth 4 enable
+#
+ interface gpon 0/4
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 3 0 sn-auth "5853495200008755" omci ont-lineprofile-id 151 
+ont-srvprofile-id 2 desc "s6174255" 
+ ont add 3 1 sn-auth "5853495200007990" omci ont-lineprofile-id 151 
+ont-srvprofile-id 2 desc "pa13p344" 
+ ont add 7 0 sn-auth "54504C4748523508" omci ont-lineprofile-id 155 
+ont-srvprofile-id 1 desc "lkje2u18" 
+ ont ipconfig 7 0 pppoe vlan 155 priority 5 user-account username "lkje2u18" 
+password "%$%#cV(!!!!!!!!!!!!JQ9N:#5)y4:`P7Wz11L;aXo#PXB^rNWDa)QAS7#H_oAi>b[%Q:)DIz.5#7`(U'X83Sz"*TNG5x5]1P8>u38R3j3!g8wpNs2-#!iKYb,X4G[L-Q%$%#"
+ ont internet-config 7 0 ip-index 0
+ ont wan-config 7 0 ip-index 0 profile-id 1
+ ont add 8 1 sn-auth "48575443C60320A6" omci ont-lineprofile-id 156 
+ont-srvprofile-id 1 desc "d7j8un7j" 
+ ont ipconfig 8 1 pppoe vlan 156 priority 5 user-account username "d7j8un7j" 
+password "%$%#cV(!!!!!!!!!!!!,-1&%gi_/Fl/EMXA4MP'g1E7-Q;7o!|1B*&poqt-Sk.EB$n=NM[=%d4^Iv@1-LbG4~@e:,$Lz0!90<!AOlh1XxK8r>>{0!EX~fz9qJCw(:69N<%$%#"
+ ont internet-config 8 1 ip-index 0
+ ont wan-config 8 1 ip-index 0 profile-id 1
+ ont add 8 2 sn-auth "48575443A73423A8" omci ont-lineprofile-id 156 
+ont-srvprofile-id 1 desc "1g47ngd6" 
+ ont ipconfig 8 2 pppoe vlan 156 priority 5 user-account username "1g47ngd6" 
+password "%$%#cV(!!!!!!!!!!!!_gXO2e/<$WZVdh3K2uECYHPx+KM#L0_s:p@>A-d5aM&/QV"K`(&z;.*luOHLEy^-OnfmJPpB*j:I59fSD:|o!)ZlJ~O.4a~@7m,-568T5m&vGM%$%#"
+ ont internet-config 8 2 ip-index 0
+ ont wan-config 8 2 ip-index 0 profile-id 1
+ ont add 8 3 sn-auth "5853495200007E11" omci ont-lineprofile-id 156 
+ont-srvprofile-id 2 desc "es55j7si" 
+ ont add 8 5 sn-auth "585349520000862E" omci ont-lineprofile-id 156 
+ont-srvprofile-id 2 desc "644bsp1v" 
+ ont add 8 6 sn-auth "54504C47DDEE6DE8" omci ont-lineprofile-id 156 
+ont-srvprofile-id 2 desc "2z5775k5" 
+ ont add 8 7 sn-auth "5853495200007F7F" omci ont-lineprofile-id 156 
+ont-srvprofile-id 2 desc "u7dhbuz8" 
+ ont add 9 2 sn-auth "5853495200008488" omci ont-lineprofile-id 157 
+ont-srvprofile-id 2 desc "3xka1124" 
+ ont add 10 2 sn-auth "5853495200007C9E" omci ont-lineprofile-id 158 
+ont-srvprofile-id 2 desc "5y1wt599" 
+ ont add 11 0 sn-auth "54504C47D2A786F8" omci ont-lineprofile-id 159 
+ont-srvprofile-id 1 desc "b8tv3845" 
+ ont ipconfig 11 0 pppoe vlan 159 priority 5 user-account username "b8tv3845" 
+password "%$%#cV(!!!!!!!!!!!!yx_bF8Q,NH4azt(\hDo;Q8K75/uN^VS5b:!XkR\F^J>xEwI@J8E10g)R9E6P(X_0Q.%hVEjo>XElggIC~nFvFkv)^Kk<|o~xeGI9In,`6"<yO,%$%#"
+ ont internet-config 11 0 ip-index 0
+ ont wan-config 11 0 ip-index 0 profile-id 1
+ ont add 12 1 sn-auth "54504C47DDEE6D18" omci ont-lineprofile-id 160 
+ont-srvprofile-id 2 desc "6e4h7f4e" 
+ ont add 13 2 sn-auth "54504C478ECB7228" omci ont-lineprofile-id 161 
+ont-srvprofile-id 2 desc "315kdraj" 
+ ont add 14 1 sn-auth "485754432BFE6AAC" omci ont-lineprofile-id 162 
+ont-srvprofile-id 1 desc "2c7g3k16" 
+ ont ipconfig 14 1 pppoe vlan 162 priority 5 user-account username "2c7g3k16" 
+password "%$%#cV(!!!!!!!!!!!!@,-K>JtCE~&kkh6u@k<Lb]3'HHWS{HbXrrJ[Lz*IMgi(@O!tS6$DrM8zr5[Hbt+*)\7=Y88uuQ6$.".Z*1C#*_Jf8@`OOb6>iP+P's=M.r_>&$%$%#"
+ ont internet-config 14 1 ip-index 0
+ ont wan-config 14 1 ip-index 0 profile-id 1
+ ont add 14 2 sn-auth "485754433A25A6A6" omci ont-lineprofile-id 162 
+ont-srvprofile-id 1 desc "6p2g5s45" 
+ ont ipconfig 14 2 pppoe vlan 162 priority 5 user-account username "6p2g5s45" 
+password "%$%#cV(!!!!!!!!!!!!mgu>0>`]I2Ko@W#6Z0iTM/x'=WF@W.kRS=DJF9MP~/*r:`G'LBM/5c~(3M(JNNPKU+/5RE)wK/=zC&lH<#+0/P3I`4O-O0(5z\,CgLr,UWFuMM%$%#"
+ ont internet-config 14 2 ip-index 0
+ ont wan-config 14 2 ip-index 0 profile-id 1
+ ont add 14 3 sn-auth "4857544313DE8DA6" omci ont-lineprofile-id 162 
+ont-srvprofile-id 1 desc "r633tb31" 
+ ont ipconfig 14 3 pppoe vlan 162 priority 5 user-account username "r633tb31" 
+password "%$%#cV(!!!!!!!!!!!!cSg{6ItSP!owWNMvn7;R)9[qA!Hr\U]U/.X]h@%OQvZqRX{gkBB:sJ828LlIR1"cU]"b"I04kF,ql/(@l{2}GI+;#M{8!O27>-K#"^CpVCc;i/%$%#"
+ ont internet-config 14 3 ip-index 0
+ ont wan-config 14 3 ip-index 0 profile-id 1
+ ont add 14 4 sn-auth "58534952000078D8" omci ont-lineprofile-id 162 
+ont-srvprofile-id 2 desc "5g11w58q" 
+ ont add 15 1 sn-auth "54504C47D2A739A8" omci ont-lineprofile-id 163 
+ont-srvprofile-id 1 desc "48bz3b1g" 
+ ont ipconfig 15 1 pppoe vlan 163 priority 5 user-account username "48bz3b1g" 
+password "%$%#cV(!!!!!!!!!!!!nlTpN=.+k+O4:90cpmQ'!*[G"%#4!>P]1uT~d655&r4PNO[[(5Cyzj5l:;)!3(T$%v_)FU^lZ5$0SkdGe@pNP(J,C;,LJb-5uOAZ%(=pRwMn;/%$%#"
+ ont internet-config 15 1 ip-index 0
+ ont wan-config 15 1 ip-index 0 profile-id 1
+ ont port route 7 0 eth 1 enable
+ ont port route 7 0 eth 2 enable
+ ont port route 7 0 eth 3 enable
+ ont port route 7 0 eth 4 enable
+ ont port route 8 1 eth 1 enable
+ ont port route 8 1 eth 2 enable
+ ont port route 8 1 eth 3 enable
+ ont port route 8 1 eth 4 enable
+ ont port route 8 2 eth 1 enable
+ ont port route 8 2 eth 2 enable
+ ont port route 8 2 eth 3 enable
+ ont port route 8 2 eth 4 enable
+ ont port route 11 0 eth 1 enable
+ ont port route 11 0 eth 2 enable
+ ont port route 11 0 eth 3 enable
+ ont port route 11 0 eth 4 enable
+ ont port route 14 1 eth 1 enable
+ ont port route 14 1 eth 2 enable
+ ont port route 14 1 eth 3 enable
+ ont port route 14 1 eth 4 enable
+ ont port route 14 2 eth 1 enable
+ ont port route 14 2 eth 2 enable
+ ont port route 14 2 eth 3 enable
+ ont port route 14 2 eth 4 enable
+ ont port route 14 3 eth 1 enable
+ ont port route 14 3 eth 2 enable
+ ont port route 14 3 eth 3 enable
+ ont port route 14 3 eth 4 enable
+ ont port route 15 1 eth 1 enable
+ ont port route 15 1 eth 2 enable
+ ont port route 15 1 eth 3 enable
+ ont port route 15 1 eth 4 enable
+#
+ interface gpon 0/5
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 0 0 sn-auth "5853495200007EFE" omci ont-lineprofile-id 164 
+ont-srvprofile-id 2 desc "197a5z92" 
+ ont add 0 1 sn-auth "58534952000079DE" omci ont-lineprofile-id 164 
+ont-srvprofile-id 2 desc "8n58f174" 
+ ont add 1 1 sn-auth "5853495200007B59" omci ont-lineprofile-id 165 
+ont-srvprofile-id 2 desc "euzzcc92" 
+ ont add 1 4 sn-auth "5853495200007E2A" omci ont-lineprofile-id 165 
+ont-srvprofile-id 2 desc "36b3w35m" 
+ ont add 1 6 sn-auth "48575443A745CFA8" omci ont-lineprofile-id 165 
+ont-srvprofile-id 1 desc "58zsp225" 
+ ont ipconfig 1 6 pppoe vlan 165 priority 5 user-account username "58zsp225" 
+password "%$%#cV(!!!!!!!!!!!!E7xuASK[yTOd=/6%jL}8$kV;VUSRH#fp;M:E^@XGv|V[8&kkz(z"Rx>`#`&JY'D@A""H;O\Kt|T,p7F=$s1F1PfFQ)q)Pu#7l;xXW2jw,oXt`2%$%#"
+ ont internet-config 1 6 ip-index 0
+ ont wan-config 1 6 ip-index 0 profile-id 1
+ ont add 3 0 sn-auth "4857544332196FA6" omci ont-lineprofile-id 167 
+ont-srvprofile-id 1 desc "9p862525" 
+ ont ipconfig 3 0 pppoe vlan 167 priority 5 user-account username "9p862525" 
+password "%$%#cV(!!!!!!!!!!!!g+/V)xxzzMBtk^T6Th]N}HiX.`0r^~V(>"<{FT{8*<d;$AX-8T54L2JgyQl*Q(4$WPF<u:V;"ZG'3'\W9j|kBx7|c0rx-n"NBfs#(N!2;ZE'b3%$%#"
+ ont internet-config 3 0 ip-index 0
+ ont wan-config 3 0 ip-index 0 profile-id 1
+ ont add 3 1 sn-auth "5853495200008AB6" omci ont-lineprofile-id 167 
+ont-srvprofile-id 2 desc "p52li51r" 
+ ont add 3 2 sn-auth "5853495200008A79" omci ont-lineprofile-id 167 
+ont-srvprofile-id 2 desc "e699jgv2" 
+ ont add 4 0 sn-auth "485754432C00C6AC" omci ont-lineprofile-id 168 
+ont-srvprofile-id 1 desc "7rt6e5sn" 
+ ont ipconfig 4 0 pppoe vlan 168 priority 5 user-account username "7rt6e5sn" 
+password "%$%#cV(!!!!!!!!!!!!**wc3>AVcD^FnFL#`&i,M:VE~9OqQH$ni1U,Yo'$qyXY.HO>Z)'(z2@r@H[OF[!sQig3dSG5#p*"@u<*jf<-&^Lhe&."3>/bBT`(M)&s8l:-I-%$%#"
+ ont internet-config 4 0 ip-index 0
+ ont wan-config 4 0 ip-index 0 profile-id 1
+ ont add 4 3 sn-auth "5853495200008507" omci ont-lineprofile-id 168 
+ont-srvprofile-id 2 desc "1e5pestq" 
+ ont add 5 1 sn-auth "54504C47D2A78ED8" omci ont-lineprofile-id 169 
+ont-srvprofile-id 1 desc "d1idr19t" 
+ ont ipconfig 5 1 pppoe vlan 169 priority 5 user-account username "d1idr19t" 
+password "%$%#cV(!!!!!!!!!!!!:$h=POV,\C:W=yL760!RL\S<R[SG`M6*U7"W#El4qa{gNgt#~L{Rc+L>'H%5+gWC#sa[V>xn("6z^RO'!>G9"QA.^5DrVQ<"*0T-O*N2Ww(:M8%$%#"
+ ont internet-config 5 1 ip-index 0
+ ont wan-config 5 1 ip-index 0 profile-id 1
+ ont add 5 3 sn-auth "54504C47D2A78F20" omci ont-lineprofile-id 169 
+ont-srvprofile-id 2 desc "57f3q2pj" 
+ ont add 6 1 sn-auth "5853495200008254" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "itdh5w9d" 
+ ont add 6 6 sn-auth "5853495200007C4D" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "am35xu96" 
+ ont add 6 7 sn-auth "5853495200008134" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "56qsfcra" 
+ ont add 6 8 sn-auth "54504C47D2A742F0" omci ont-lineprofile-id 170 
+ont-srvprofile-id 1 desc "u3bvz39x" 
+ ont ipconfig 6 8 pppoe vlan 170 priority 5 user-account username "u3bvz39x" 
+password "%$%#cV(!!!!!!!!!!!!XC-)8}KlJU~E3uYa44+$V^bo1ytklFc:QG-zt-&=/0\\*3&T07GAsjFh54JWC^n&KGW_eAb-O*QoZ~,-4I%!Q)6|.BDN*|%3db-)FSe!1DB[q%%$%#"
+ ont internet-config 6 8 ip-index 0
+ ont wan-config 6 8 ip-index 0 profile-id 1
+ ont add 7 0 sn-auth "485754433204D3A6" omci ont-lineprofile-id 171 
+ont-srvprofile-id 1 desc "lc7y7n17" 
+ ont ipconfig 7 0 pppoe vlan 171 priority 5 user-account username "lc7y7n17" 
+password "%$%#cV(!!!!!!!!!!!!qLOI&l#$WAR[AY(:02-O/#Y]Mnkk!QH/4q4|4TQO_'ec6rRq^3|LIw%vmV.6y_~`*)X,*=W(QjJ1G:i,,#47Zc^&:F0C=k4',o)T'Clk:^@T(&%$%#"
+ ont internet-config 7 0 ip-index 0
+ ont wan-config 7 0 ip-index 0 profile-id 1
+ ont add 7 1 sn-auth "5853495200007F2D" omci ont-lineprofile-id 171 
+ont-srvprofile-id 2 desc "k8cu8xz1" 
+ ont add 7 4 sn-auth "5853495200008A7A" omci ont-lineprofile-id 171 
+ont-srvprofile-id 2 desc "m6l75y1l" 
+ ont add 8 1 sn-auth "48575443C9B7189F" omci ont-lineprofile-id 172 
+ont-srvprofile-id 1 desc "s7411591" 
+ ont ipconfig 8 1 pppoe vlan 172 priority 5 user-account username "s7411591" 
+password "%$%#cV(!!!!!!!!!!!!ApH2BxgK]CDE!jO^_n)19XJ6PX%J7TS~d#"FFES,jcQ/8*T~|>0|~,(TTGE-XcXt:CU05+v-|65pO@r(%zu1+wM&9;MnHb=Y9I4'L9[24t_L(:%$%#"
+ ont internet-config 8 1 ip-index 0
+ ont wan-config 8 1 ip-index 0 profile-id 1
+ ont add 8 3 sn-auth "48575443371680AE" omci ont-lineprofile-id 172 
+ont-srvprofile-id 1 desc "gra876n5" 
+ ont ipconfig 8 3 pppoe vlan 172 priority 5 user-account username "gra876n5" 
+password "%$%#cV(!!!!!!!!!!!!6!=j1G6eH3(HO,;!:o}DNoVgQUOa[&T`"/3hZIeB.jg[@!}NbBz0S,V\L]3;iLuh/#)g+"E/z(Q52xIFUfh!)~cc4OR9D47lkTu>"]wz:;CE*9%$%#"
+ ont internet-config 8 3 ip-index 0
+ ont wan-config 8 3 ip-index 0 profile-id 1
+ ont add 8 5 sn-auth "58534952000088E7" omci ont-lineprofile-id 172 
+ont-srvprofile-id 2 desc "ai23u18n" 
+ ont add 9 1 sn-auth "48575443A73E9DA8" omci ont-lineprofile-id 173 
+ont-srvprofile-id 1 desc "igu4dxg5" 
+ ont ipconfig 9 1 pppoe vlan 173 priority 5 user-account username "igu4dxg5" 
+password "%$%#cV(!!!!!!!!!!!!sH!M%v!'4QHZ>>ZXQzOPDO]\8P(^9W_$eI>&5~z'7fGf73}81Y'BC#(0P<k36e6vS=Us]PiC"DXW9-l<sd%}UmR]IPv,bM=l4d>U[!'0<Dr'pJ%$%#"
+ ont internet-config 9 1 ip-index 0
+ ont wan-config 9 1 ip-index 0 profile-id 1
+ ont add 9 2 sn-auth "485754433711CDAE" omci ont-lineprofile-id 173 
+ont-srvprofile-id 1 desc "wc5779rn" 
+ ont ipconfig 9 2 pppoe vlan 173 priority 5 user-account username "wc5779rn" 
+password "%$%#cV(!!!!!!!!!!!!P2"aSRz_Y2>J8&*/T7g'*10<-[NO-82B!{D(3f6#vt-&HdjO$"AZ2f>Hf`JQQ(kq"rF~F'aGD'B'>&WK',KwIG\f9/^C!I5_W+YH<=aHE;]n02%$%#"
+ ont internet-config 9 2 ip-index 0
+ ont wan-config 9 2 ip-index 0 profile-id 1
+ ont add 9 5 sn-auth "5853495200007F06" omci ont-lineprofile-id 173 
+ont-srvprofile-id 2 desc "58wdwp37" 
+ ont add 9 6 sn-auth "58534952000078D5" omci ont-lineprofile-id 173 
+ont-srvprofile-id 2 desc "18926h3l" 
+ ont add 10 4 sn-auth "5853495200008253" omci ont-lineprofile-id 174 
+ont-srvprofile-id 1 desc "j627fb4w" 
+ ont ipconfig 10 4 pppoe vlan 174 priority 5 user-account username "j627fb4w" 
+password "%$%#cV(!!!!!!!!!!!!;jhy(_Gu61^U9t3h}dT5984z~i7X&@duGE"=]g*/ux;1NZtg3KV6\$Q2nN:>YopvA%hV&Ej@R@4/o8I$e,6i&1Ed7$/.rwP>g<@<G0/xA:,1aU%$%#"
+ ont internet-config 10 4 ip-index 0
+ ont wan-config 10 4 ip-index 0 profile-id 1
+ ont add 10 5 sn-auth "58534952000081C1" omci ont-lineprofile-id 174 
+ont-srvprofile-id 2 desc "717t5vvc" 
+ ont add 11 1 sn-auth "54504C47DDEE4338" omci ont-lineprofile-id 175 
+ont-srvprofile-id 1 desc "vs93su39" 
+ ont ipconfig 11 1 pppoe vlan 175 priority 5 user-account username "vs93su39" 
+password "%$%#cV(!!!!!!!!!!!!+F+9Il(nRTuh6`Ie(Ls(LGzF.K3)>~]k$pEYf:B4L`''V<(Oy;cnb.Tr$26!o`JM=Qpb-Fq^fpF7Z56"<HHs2g1nUYRV$YWum/c-Rjmb)iUk!6%$%#"
+ ont internet-config 11 1 ip-index 0
+ ont wan-config 11 1 ip-index 0 profile-id 1
+ ont add 14 0 sn-auth "5853495200007E0D" omci ont-lineprofile-id 178 
+ont-srvprofile-id 2 desc "iue1l8lr" 
+ ont add 14 1 sn-auth "54504C47DDEE6E48" omci ont-lineprofile-id 178 
+ont-srvprofile-id 2 desc "jmef342f" 
+ ont add 14 2 sn-auth "485754437BEF5EA6" omci ont-lineprofile-id 178 
+ont-srvprofile-id 1 desc "wmfy9jd3" 
+ ont ipconfig 14 2 pppoe vlan 178 priority 5 user-account username "wmfy9jd3" 
+password "%$%#cV(!!!!!!!!!!!!,|OrHMy3{9cdEk/aVB7683iLFL#;i!''wJ(~'wKF:KSmOB#%x5TbDo#j:A'J5.H7E7s#G@"s[r9@J]S-/#R|!.[a]0A4av&|NlyOT^G90UH&j,%$%#"
+ ont internet-config 14 2 ip-index 0
+ ont wan-config 14 2 ip-index 0 profile-id 1
+ ont add 14 3 sn-auth "5853495200007C74" omci ont-lineprofile-id 178 
+ont-srvprofile-id 2 desc "6v2632a7" 
+ ont add 14 6 sn-auth "5853495200008844" omci ont-lineprofile-id 178 
+ont-srvprofile-id 2 desc "bgq647g6" 
+ ont port route 1 6 eth 1 enable
+ ont port route 1 6 eth 2 enable
+ ont port route 1 6 eth 3 enable
+ ont port route 1 6 eth 4 enable
+ ont port route 3 0 eth 1 enable
+ ont port route 3 0 eth 2 enable
+ ont port route 3 0 eth 3 enable
+ ont port route 3 0 eth 4 enable
+ ont port route 4 0 eth 1 enable
+ ont port route 4 0 eth 2 enable
+ ont port route 4 0 eth 3 enable
+ ont port route 4 0 eth 4 enable
+ ont port route 5 1 eth 1 enable
+ ont port route 5 1 eth 2 enable
+ ont port route 5 1 eth 3 enable
+ ont port route 5 1 eth 4 enable
+ ont port route 6 8 eth 1 enable
+ ont port route 6 8 eth 2 enable
+ ont port route 6 8 eth 3 enable
+ ont port route 6 8 eth 4 enable
+ ont port route 7 0 eth 1 enable
+ ont port route 7 0 eth 2 enable
+ ont port route 7 0 eth 3 enable
+ ont port route 7 0 eth 4 enable
+ ont port route 8 1 eth 1 enable
+ ont port route 8 1 eth 2 enable
+ ont port route 8 1 eth 3 enable
+ ont port route 8 1 eth 4 enable
+ ont port route 8 3 eth 1 enable
+ ont port route 8 3 eth 2 enable
+ ont port route 8 3 eth 3 enable
+ ont port route 8 3 eth 4 enable
+ ont port route 9 1 eth 1 enable
+ ont port route 9 1 eth 2 enable
+ ont port route 9 1 eth 3 enable
+ ont port route 9 1 eth 4 enable
+ ont port route 9 2 eth 1 enable
+ ont port route 9 2 eth 2 enable
+ ont port route 9 2 eth 3 enable
+ ont port route 9 2 eth 4 enable
+ ont port route 10 4 eth 1 enable
+ ont port route 10 4 eth 2 enable
+ ont port route 10 4 eth 3 enable
+ ont port route 10 4 eth 4 enable
+ ont port route 11 1 eth 1 enable
+ ont port route 11 1 eth 2 enable
+ ont port route 11 1 eth 3 enable
+ ont port route 11 1 eth 4 enable
+ ont port route 14 2 eth 1 enable
+ ont port route 14 2 eth 2 enable
+ ont port route 14 2 eth 3 enable
+ ont port route 14 2 eth 4 enable
+#
+ interface gpon 0/6
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 2 0 sn-auth "5853495200007B23" omci ont-lineprofile-id 160 
+ont-srvprofile-id 2 desc "2he765wm" 
+ ont add 2 1 sn-auth "54504C47517ABA90" omci ont-lineprofile-id 160 
+ont-srvprofile-id 2 desc "2fp5heh8" 
+ ont add 2 5 sn-auth "4857544315F775A6" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "35441nn5" 
+ ont ipconfig 2 5 pppoe vlan 160 priority 5 user-account username "35441nn5" 
+password "%$%#cV(!!!!!!!!!!!!H3-o$31I@KdO-)-JD~|"_=aeKOHRv3K0,hNPll&Zv8m`LvYEt${E2y$vy4lP-.;7#="F>8sLT97Vv#O%Ok6x&Et'[USS"eGr^3o1o=nXCv<qDM%$%#"
+ ont internet-config 2 5 ip-index 0
+ ont wan-config 2 5 ip-index 0 profile-id 1
+ ont add 2 7 sn-auth "5853495200007D9C" omci ont-lineprofile-id 160 
+ont-srvprofile-id 2 desc "j3792yg7" 
+ ont add 3 0 sn-auth "48575443A7341FA8" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "jsxjq48v" 
+ ont ipconfig 3 0 pppoe vlan 160 priority 5 user-account username "jsxjq48v" 
+password "%$%#cV(!!!!!!!!!!!!EmwqQM$H#T~f:w.ftM\LX\4WDtm][L@{GV.#G~CXj6,mFJ3dh"u}T(#W!TOR{msR6Vm{{1=DZl'mPk8E4~*F;`4*]Scp-mBUaH:C;kpb,H0e68%$%#"
+ ont internet-config 3 0 ip-index 0
+ ont wan-config 3 0 ip-index 0 profile-id 1
+ ont add 3 1 sn-auth "54504C47D1628430" omci ont-lineprofile-id 160 
+ont-srvprofile-id 2 desc "91p33e1k" 
+ ont add 7 0 sn-auth "48575443A74616A8" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "v61wyw92" 
+ ont ipconfig 7 0 pppoe vlan 160 priority 5 user-account username "v61wyw92" 
+password "%$%#cV(!!!!!!!!!!!!I>JT@aom5:2GI/MxVg>E[>EzFASkdGJCF>,b8@F~^3+{Ele3n.D{Kz!/C83(F8Wd#!FkEVhdNVCn'e;-hv47"_lE-;k,qLI>n0>(sFXx45[]4S%$%#"
+ ont internet-config 7 0 ip-index 0
+ ont wan-config 7 0 ip-index 0 profile-id 1
+ ont add 9 0 sn-auth "4857544383AB73A6" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "5x665e5l" 
+ ont ipconfig 9 0 pppoe vlan 160 priority 5 user-account username "5x665e5l" 
+password "%$%#cV(!!!!!!!!!!!!,IoZ;<4`-.UA4j<.=YJ(o"N&;ly-9;mtkv*j!*GG/_D}8t',T*U7QK0~5nQD%ys[CS$fXV[e52R*@b_!V&4%Yz$7^O!u:rS6=n&##eUV5cDq:~%$%#"
+ ont internet-config 9 0 ip-index 0
+ ont wan-config 9 0 ip-index 0 profile-id 1
+ ont add 9 1 sn-auth "485754437BE480A6" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "qdft9ch6" 
+ ont ipconfig 9 1 pppoe vlan 160 priority 5 user-account username "qdft9ch6" 
+password "%$%#cV(!!!!!!!!!!!!>-T7"eaz@5G@S|Hkl%62Xl:"Tf{8I!Rt2WBwK%`(Ikt!T}"_RYTRUt83=|'A9-YH2^]Q"Q71@<7xn2W*E={+>:P%`Rz\_0).HSAB7Zj<63h%"P%$%#"
+ ont internet-config 9 1 ip-index 0
+ ont wan-config 9 1 ip-index 0 profile-id 1
+ ont add 12 0 sn-auth "485754433224E7A6" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "1vjl6r48" 
+ ont ipconfig 12 0 pppoe vlan 160 priority 5 user-account username "1vjl6r48" 
+password "%$%#cV(!!!!!!!!!!!!IZ)>J8*;Y:i&a49]ZL)(zVvp:K!7gMOdlG<S7KW73&Cv&Z#`G'*sXZJ<*\N&.az0;b}j]Is<D^~x-\v3ATR<S1R'4$-r~qQu{)6<b2wE3v9t]>%$%#"
+ ont internet-config 12 0 ip-index 0
+ ont wan-config 12 0 ip-index 0 profile-id 1
+ ont add 14 0 sn-auth "4857544382FF94A6" omci ont-lineprofile-id 160 
+ont-srvprofile-id 1 desc "721puv41" 
+ ont ipconfig 14 0 pppoe vlan 160 priority 5 user-account username "721puv41" 
+password "%$%#cV(!!!!!!!!!!!!P!tB%:dEx(9dD:IvU06<(Hs%$8b1g.6`RqNQ0pZ(&1}P4WO[e-~DTE.u&(zOXT/_VZ%`.HmoM.*^DW=1#dYa'!Bs+1FJ(MTnwKl6HaL,#N{p9W%$%#"
+ ont internet-config 14 0 ip-index 0
+ ont wan-config 14 0 ip-index 0 profile-id 1
+ ont add 14 4 sn-auth "5853495200007ED9" omci ont-lineprofile-id 160 
+ont-srvprofile-id 2 desc "c7r9xjmh" 
+ ont port route 2 5 eth 1 enable
+ ont port route 2 5 eth 2 enable
+ ont port route 2 5 eth 3 enable
+ ont port route 2 5 eth 4 enable
+ ont port route 3 0 eth 1 enable
+ ont port route 3 0 eth 2 enable
+ ont port route 3 0 eth 3 enable
+ ont port route 3 0 eth 4 enable
+ ont port route 7 0 eth 1 enable
+ ont port route 7 0 eth 2 enable
+ ont port route 7 0 eth 3 enable
+ ont port route 7 0 eth 4 enable
+ ont port route 9 0 eth 1 enable
+ ont port route 9 0 eth 2 enable
+ ont port route 9 0 eth 3 enable
+ ont port route 9 0 eth 4 enable
+ ont port route 9 1 eth 1 enable
+ ont port route 9 1 eth 2 enable
+ ont port route 9 1 eth 3 enable
+ ont port route 9 1 eth 4 enable
+ ont port route 12 0 eth 1 enable
+ ont port route 12 0 eth 2 enable
+ ont port route 12 0 eth 3 enable
+ ont port route 12 0 eth 4 enable
+ ont port route 14 0 eth 1 enable
+ ont port route 14 0 eth 2 enable
+ ont port route 14 0 eth 3 enable
+ ont port route 14 0 eth 4 enable
+#
+ interface gpon 0/7
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 0 0 sn-auth "485754432CB9B669" omci ont-lineprofile-id 170 
+ont-srvprofile-id 1 desc "3yvmici4" 
+ ont add 2 0 sn-auth "485754433A7FBFA6" omci ont-lineprofile-id 170 
+ont-srvprofile-id 1 desc "92lt3yhq" 
+ ont ipconfig 2 0 pppoe vlan 170 priority 5 user-account username "92lt3yhq" 
+password "%$%#cV(!!!!!!!!!!!!B_/]=h%VE*,dbcEO1`x@jTyYSr@o%~iyxrX5l2oESvDG+/D3}/>v'VY1s>U1o.r:"r/}9*f)MnP0>R,<Q+C=3SB3#A{Oe~T1fOiST8f<5s6Sc7%$%#"
+ ont internet-config 2 0 ip-index 0
+ ont wan-config 2 0 ip-index 0 profile-id 1
+ ont add 2 1 sn-auth "5853495200007A03" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "rn7i7d32" 
+ ont add 2 3 sn-auth "58534952000081CD" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "ht67421h" 
+ ont add 3 0 sn-auth "485754433A9A35A6" omci ont-lineprofile-id 170 
+ont-srvprofile-id 1 desc "eu9f31cd" 
+ ont ipconfig 3 0 pppoe vlan 170 priority 5 user-account username "eu9f31cd" 
+password "%$%#cV(!!!!!!!!!!!!8t2C4^{%$<~2&NU\2TN%q,'_>yPp*O$9A$T\)SB!^,L&)^#yz@O]BGP%Dl[JJw~^!cYPd8E<OwNEw>P'X.;LEmt,Z1(N+VS\$:'!NoH#X|iQ.2%$%#"
+ ont internet-config 3 0 ip-index 0
+ ont wan-config 3 0 ip-index 0 profile-id 1
+ ont add 5 0 sn-auth "5853495200008284" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "z9r7v4qh" 
+ ont add 6 2 sn-auth "58534952000079DA" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "bjw98gb9" 
+ ont add 9 0 sn-auth "5853495200007F5F" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "541w5l75" 
+ ont add 14 0 sn-auth "5853495200007FF4" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "2319z24k" 
+ ont add 14 1 sn-auth "54504C47D1628738" omci ont-lineprofile-id 170 
+ont-srvprofile-id 2 desc "xvk23465" 
+ ont add 15 1 sn-auth "485754437EA081A6" omci ont-lineprofile-id 170 
+ont-srvprofile-id 1 desc "6k3e7258" 
+ ont ipconfig 15 1 pppoe vlan 170 priority 5 user-account username "6k3e7258" 
+password "%$%#cV(!!!!!!!!!!!!!Rz{E>RwIYnEiP:yT.pN^Qrq!&&p-3zGzkN~B)/~vY86(`o=m={3eSVccK):s~BoF3T*`&HKzJI@nT|I$woDO^uX-TjQ#f*!3Y(~(E>RC/kt=K%$%#"
+ ont internet-config 15 1 ip-index 0
+ ont wan-config 15 1 ip-index 0 profile-id 1
+ ont port native-vlan 0 0 eth 1 vlan 170 priority 0 
+ ont port route 2 0 eth 1 enable
+ ont port route 2 0 eth 2 enable
+ ont port route 2 0 eth 3 enable
+ ont port route 2 0 eth 4 enable
+ ont port route 3 0 eth 1 enable
+ ont port route 3 0 eth 2 enable
+ ont port route 3 0 eth 3 enable
+ ont port route 3 0 eth 4 enable
+ ont port route 15 1 eth 1 enable
+ ont port route 15 1 eth 2 enable
+ ont port route 15 1 eth 3 enable
+ ont port route 15 1 eth 4 enable
+#
+ interface gpon 0/10
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 2 0 sn-auth "5853495200007D9D" omci ont-lineprofile-id 180 
+ont-srvprofile-id 2 desc "w2ma482a" 
+ ont add 6 0 sn-auth "54504C47517ABA98" omci ont-lineprofile-id 180 
+ont-srvprofile-id 2 desc "97yy683f" 
+ ont add 7 0 sn-auth "4857544328C7CCAC" omci ont-lineprofile-id 180 
+ont-srvprofile-id 1 desc "4n2174r5" 
+ ont ipconfig 7 0 pppoe vlan 180 priority 5 user-account username "4n2174r5" 
+password "%$%#cV(!!!!!!!!!!!!|8_]-gM+1;!2yY&~S4nTBU^YIN:7@A606QHKz7WH]y)J>Dyc*!a1}<%3)T_6)[0(BF8(H2{[:@Gcg;_3n$Q>F@$(0AsmY-PK2S/RKV8s+MV>cE%$%#"
+ ont internet-config 7 0 ip-index 0
+ ont wan-config 7 0 ip-index 0 profile-id 1
+ ont add 8 0 sn-auth "4857544387FF23A6" omci ont-lineprofile-id 180 
+ont-srvprofile-id 1 desc "wkggd419" 
+ ont ipconfig 8 0 pppoe vlan 180 priority 5 user-account username "wkggd419" 
+password "%$%#cV(!!!!!!!!!!!!CB`c6oz,;RU.c[Fu3weO_R&o0j)z~D$u1BZn)%CDLj4!6]~:9Bzs/SH8FO|8D9~#Rjn'@UK@4l&;K_>#ybOQV`\5)5Usp,O=)^=:;*%P7z:OW!%$%#"
+ ont internet-config 8 0 ip-index 0
+ ont wan-config 8 0 ip-index 0 profile-id 1
+ ont add 9 4 sn-auth "54504C47D2A785A0" omci ont-lineprofile-id 180 
+ont-srvprofile-id 1 desc "3f31g8s1" 
+ ont ipconfig 9 4 pppoe vlan 180 priority 5 user-account username "3f31g8s1" 
+password "%$%#cV(!!!!!!!!!!!!0';)FD57WV\>H\Uv#uFD_x!y1rKK|DI~-@J,]FENjuTH;^lhQLkGJKODgO[![+D(~L]yCDfK`:Yz3s`*roVn;C_m'QLiTo6eAfMSl$J4!'69]$%$%#"
+ ont internet-config 9 4 ip-index 0
+ ont wan-config 9 4 ip-index 0 profile-id 1
+ ont add 9 5 sn-auth "54504C47DDEE6E50" omci ont-lineprofile-id 180 
+ont-srvprofile-id 2 desc "4ny6ap9d" 
+ ont add 11 1 sn-auth "4857544332201FA6" omci ont-lineprofile-id 180 
+ont-srvprofile-id 1 desc "51xbr771" 
+ ont ipconfig 11 1 pppoe vlan 180 priority 5 user-account username "51xbr771" 
+password "%$%#cV(!!!!!!!!!!!!7j"":5;+)Dg7J\$nZ3}GeP`WMu[E81'7R[P[(C$'q-VW1u,s%JqT2<OTwNu~#t``Tzj<lUs*hL43-ZcLV[pY58i#hM|f=*IrG\e2={{w@s}ZPP%$%#"
+ ont internet-config 11 1 ip-index 0
+ ont wan-config 11 1 ip-index 0 profile-id 1
+ ont add 11 2 sn-auth "5853495200007F77" omci ont-lineprofile-id 180 
+ont-srvprofile-id 2 desc "8482sk89" 
+ ont add 12 0 sn-auth "5853495200007AD4" omci ont-lineprofile-id 180 
+ont-srvprofile-id 2 desc "2ci28f89" 
+ ont port route 7 0 eth 1 enable
+ ont port route 7 0 eth 2 enable
+ ont port route 7 0 eth 3 enable
+ ont port route 7 0 eth 4 enable
+ ont port route 8 0 eth 1 enable
+ ont port route 8 0 eth 2 enable
+ ont port route 8 0 eth 3 enable
+ ont port route 8 0 eth 4 enable
+ ont port route 9 4 eth 1 enable
+ ont port route 9 4 eth 2 enable
+ ont port route 9 4 eth 3 enable
+ ont port route 9 4 eth 4 enable
+ ont port route 11 1 eth 1 enable
+ ont port route 11 1 eth 2 enable
+ ont port route 11 1 eth 3 enable
+ ont port route 11 1 eth 4 enable
+#
+ interface gpon 0/11
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 1 0 sn-auth "585349520000893F" omci ont-lineprofile-id 190 
+ont-srvprofile-id 2 desc "25i7wkl9" 
+ ont add 3 1 sn-auth "585349520000835F" omci ont-lineprofile-id 190 
+ont-srvprofile-id 2 desc "74nuw6jb" 
+ ont add 3 3 sn-auth "54504C47DDEE4328" omci ont-lineprofile-id 190 
+ont-srvprofile-id 2 desc "65rps7b6" 
+ ont add 8 2 sn-auth "585349520000871C" omci ont-lineprofile-id 195 
+ont-srvprofile-id 2 desc "p4q185q5" 
+ ont add 11 0 sn-auth "54504C47D2A742A8" omci ont-lineprofile-id 195 
+ont-srvprofile-id 1 desc "6mq6514d" 
+ ont ipconfig 11 0 pppoe vlan 195 priority 5 user-account username "6mq6514d" 
+password "%$%#cV(!!!!!!!!!!!!!4_zA0bScAJ/n`**XK4(EUKWMHCixY.[t5!m0+2@`kI}XZ}(TVqg8[0h5#pR1+By@yMkG<D07mB%/Q>)qphq~!EckO{%5"McA6GWlv)q.vLJ:4%$%#"
+ ont internet-config 11 0 ip-index 0
+ ont wan-config 11 0 ip-index 0 profile-id 1
+ ont add 12 0 sn-auth "48575443071F7FA4" omci ont-lineprofile-id 120 
+ont-srvprofile-id 1 desc "gn1p5131" 
+ ont ipconfig 12 0 pppoe vlan 120 priority 5 user-account username "gn1p5131" 
+password "%$%#cV(!!!!!!!!!!!!\y]N'orb1/\9J-3I%q,!az;e10n6}':_;|<]+VS/tkr_Dt;T#OZ-~fRaZWFP@fYU~/Yo@F%~JU(9~4q0G}u%,7ig\QZru"BgVJJRfR$v4#Beh+%$%#"
+ ont internet-config 12 0 ip-index 0
+ ont wan-config 12 0 ip-index 0 profile-id 1
+ ont port route 11 0 eth 1 enable
+ ont port route 11 0 eth 2 enable
+ ont port route 11 0 eth 3 enable
+ ont port route 11 0 eth 4 enable
+ ont port route 12 0 eth 1 enable
+ ont port route 12 0 eth 2 enable
+ ont port route 12 0 eth 3 enable
+ ont port route 12 0 eth 4 enable
+#
+ interface gpon 0/12
+ port 0 ont-auto-find enable
+ port 0 ont-password-renew extra 1440
+ port 1 ont-auto-find enable
+ port 1 ont-password-renew extra 1440
+ port 2 ont-auto-find enable
+ port 2 ont-password-renew extra 1440
+ port 3 ont-auto-find enable
+ port 3 ont-password-renew extra 1440
+ port 4 ont-auto-find enable
+ port 4 ont-password-renew extra 1440
+ port 5 ont-auto-find enable
+ port 5 ont-password-renew extra 1440
+ port 6 ont-auto-find enable
+ port 6 ont-password-renew extra 1440
+ port 7 ont-auto-find enable
+ port 7 ont-password-renew extra 1440
+ port 8 ont-auto-find enable
+ port 8 ont-password-renew extra 1440
+ port 9 ont-auto-find enable
+ port 9 ont-password-renew extra 1440
+ port 10 ont-auto-find enable
+ port 10 ont-password-renew extra 1440
+ port 11 ont-auto-find enable
+ port 11 ont-password-renew extra 1440
+ port 12 ont-auto-find enable
+ port 12 ont-password-renew extra 1440
+ port 13 ont-auto-find enable
+ port 13 ont-password-renew extra 1440
+ port 14 ont-auto-find enable
+ port 14 ont-password-renew extra 1440
+ port 15 ont-auto-find enable
+ port 15 ont-password-renew extra 1440
+ ont add 13 0 sn-auth "5853495200007B5D" omci ont-lineprofile-id 195 
+ont-srvprofile-id 2 desc "w9b41fk8" 
+ ont add 13 2 sn-auth "58534952000083A2" omci ont-lineprofile-id 195 
+ont-srvprofile-id 2 desc "2cef57nd" 
+#
+ interface gpon 0/13
+ port 0 ont-password-renew extra 1440
+ port 1 ont-password-renew extra 1440
+ port 2 ont-password-renew extra 1440
+ port 3 ont-password-renew extra 1440
+ port 4 ont-password-renew extra 1440
+ port 5 ont-password-renew extra 1440
+ port 6 ont-password-renew extra 1440
+ port 7 ont-password-renew extra 1440
+ port 8 ont-password-renew extra 1440
+ port 9 ont-password-renew extra 1440
+ port 10 ont-password-renew extra 1440
+ port 11 ont-password-renew extra 1440
+ port 12 ont-password-renew extra 1440
+ port 13 ont-password-renew extra 1440
+ port 14 ont-password-renew extra 1440
+ port 15 ont-password-renew extra 1440
+#
+[emu-config]
+  <emu-config>
+ emu add 0 fan 0 1  "H902FMLA"
+#
+[bbs-config]
+  <bbs-config>
+ service-port 0 vlan 167 gpon 0/5/3 ont 2 gemport 1 multi-service user-vlan 167 tag-transform translate
+ service-port 2 vlan 180 gpon 0/10/8 ont 0 gemport 1 multi-service user-vlan 180 tag-transform translate
+ service-port 5 vlan 112 gpon 0/1/12 ont 5 gemport 1 multi-service user-vlan 112 tag-transform translate
+ service-port 6 vlan 127 gpon 0/2/11 ont 0 gemport 1 multi-service user-vlan 127 tag-transform translate
+ service-port 11 vlan 174 gpon 0/5/10 ont 5 gemport 1 multi-service user-vlan 
+174 tag-transform translate
+ service-port 14 vlan 113 gpon 0/1/13 ont 2 gemport 1 multi-service user-vlan 
+113 tag-transform translate
+ service-port 22 vlan 117 gpon 0/2/1 ont 1 gemport 1 multi-service user-vlan 117 tag-transform translate
+ service-port 32 vlan 173 gpon 0/5/9 ont 5 gemport 1 multi-service user-vlan 173 tag-transform translate
+ service-port 34 vlan 124 gpon 0/2/8 ont 1 gemport 1 multi-service user-vlan 124 tag-transform translate
+ service-port 45 vlan 127 gpon 0/2/11 ont 1 gemport 1 multi-service user-vlan 
+127 tag-transform translate
+ service-port 46 vlan 121 gpon 0/2/5 ont 0 gemport 1 multi-service user-vlan 121 tag-transform translate
+ service-port 47 vlan 135 gpon 0/3/3 ont 5 gemport 1 multi-service user-vlan 135 tag-transform translate
+ service-port 48 vlan 140 gpon 0/3/8 ont 1 gemport 1 multi-service user-vlan 140 tag-transform translate
+ service-port 50 vlan 137 gpon 0/3/5 ont 0 gemport 1 multi-service user-vlan 137 tag-transform translate
+ service-port 51 vlan 131 gpon 0/2/15 ont 10 gemport 1 multi-service user-vlan 
+131 tag-transform translate
+ service-port 52 vlan 134 gpon 0/3/2 ont 8 gemport 1 multi-service user-vlan 134 tag-transform translate
+ service-port 62 vlan 168 gpon 0/5/4 ont 0 gemport 1 multi-service user-vlan 168 tag-transform translate
+ service-port 65 vlan 170 gpon 0/7/6 ont 2 gemport 1 multi-service user-vlan 170 tag-transform translate
+ service-port 75 vlan 124 gpon 0/2/8 ont 3 gemport 1 multi-service user-vlan 124 tag-transform translate
+ service-port 76 vlan 142 gpon 0/3/10 ont 0 gemport 1 multi-service user-vlan 
+142 tag-transform translate
+ service-port 79 vlan 129 gpon 0/2/13 ont 6 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 80 vlan 133 gpon 0/3/1 ont 4 gemport 1 multi-service user-vlan 133 tag-transform translate
+ service-port 81 vlan 127 gpon 0/2/11 ont 2 gemport 1 multi-service user-vlan 
+127 tag-transform translate
+ service-port 83 vlan 131 gpon 0/2/15 ont 1 gemport 1 multi-service user-vlan 
+131 tag-transform translate
+ service-port 85 vlan 131 gpon 0/2/15 ont 2 gemport 1 multi-service user-vlan 
+131 tag-transform translate
+ service-port 88 vlan 165 gpon 0/5/1 ont 1 gemport 1 multi-service user-vlan 165 tag-transform translate
+ service-port 89 vlan 115 gpon 0/1/15 ont 1 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 91 vlan 170 gpon 0/7/9 ont 0 gemport 1 multi-service user-vlan 170 tag-transform translate
+ service-port 96 vlan 156 gpon 0/4/8 ont 3 gemport 1 multi-service user-vlan 156 tag-transform translate
+ service-port 98 vlan 146 gpon 0/3/14 ont 0 gemport 1 multi-service user-vlan 
+146 tag-transform translate
+ service-port 99 vlan 165 gpon 0/5/1 ont 4 gemport 1 multi-service user-vlan 165 tag-transform translate
+ service-port 102 vlan 119 gpon 0/2/3 ont 1 gemport 1 multi-service user-vlan 
+119 tag-transform translate
+ service-port 105 vlan 128 gpon 0/2/12 ont 1 gemport 1 multi-service user-vlan 
+128 tag-transform translate
+ service-port 112 vlan 131 gpon 0/2/15 ont 11 gemport 1 multi-service user-vlan 131 tag-transform translate
+ service-port 115 vlan 134 gpon 0/3/2 ont 18 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 118 vlan 173 gpon 0/5/9 ont 1 gemport 1 multi-service user-vlan 
+173 tag-transform translate
+ service-port 125 vlan 173 gpon 0/5/9 ont 2 gemport 1 multi-service user-vlan 
+173 tag-transform translate
+ service-port 126 vlan 172 gpon 0/5/8 ont 3 gemport 1 multi-service user-vlan 
+172 tag-transform translate
+ service-port 131 vlan 132 gpon 0/3/0 ont 6 gemport 1 multi-service user-vlan 
+132 tag-transform translate
+ service-port 132 vlan 180 gpon 0/10/11 ont 1 gemport 1 multi-service user-vlan 180 tag-transform translate
+ service-port 134 vlan 138 gpon 0/3/6 ont 6 gemport 1 multi-service user-vlan 
+138 tag-transform translate
+ service-port 135 vlan 167 gpon 0/5/3 ont 0 gemport 1 multi-service user-vlan 
+167 tag-transform translate
+ service-port 141 vlan 159 gpon 0/4/11 ont 0 gemport 1 multi-service user-vlan 
+159 tag-transform translate
+ service-port 148 vlan 134 gpon 0/3/2 ont 3 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 149 vlan 156 gpon 0/4/8 ont 1 gemport 1 multi-service user-vlan 
+156 tag-transform translate
+ service-port 150 vlan 162 gpon 0/4/14 ont 2 gemport 1 multi-service user-vlan 
+162 tag-transform translate
+ service-port 151 vlan 118 gpon 0/2/2 ont 1 gemport 1 multi-service user-vlan 
+118 tag-transform translate
+ service-port 152 vlan 116 gpon 0/2/0 ont 3 gemport 1 multi-service user-vlan 
+116 tag-transform translate
+ service-port 155 vlan 174 gpon 0/5/10 ont 4 gemport 1 multi-service user-vlan 
+174 tag-transform translate
+ service-port 157 vlan 160 gpon 0/6/2 ont 7 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 160 vlan 158 gpon 0/4/10 ont 2 gemport 1 multi-service user-vlan 
+158 tag-transform translate
+ service-port 161 vlan 144 gpon 0/3/12 ont 1 gemport 1 multi-service user-vlan 
+144 tag-transform translate
+ service-port 163 vlan 160 gpon 0/6/2 ont 0 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 168 vlan 172 gpon 0/5/8 ont 5 gemport 1 multi-service user-vlan 
+172 tag-transform translate
+ service-port 169 vlan 127 gpon 0/2/11 ont 4 gemport 1 multi-service user-vlan 
+127 tag-transform translate
+ service-port 174 vlan 144 gpon 0/3/12 ont 4 gemport 1 multi-service user-vlan 
+144 tag-transform translate
+ service-port 177 vlan 170 gpon 0/7/0 ont 0 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 179 vlan 169 gpon 0/5/5 ont 1 gemport 1 multi-service user-vlan 
+169 tag-transform translate
+ service-port 180 vlan 142 gpon 0/3/10 ont 4 gemport 1 multi-service user-vlan 
+142 tag-transform translate
+ service-port 182 vlan 132 gpon 0/3/0 ont 8 gemport 1 multi-service user-vlan 
+132 tag-transform translate
+ service-port 188 vlan 137 gpon 0/3/5 ont 5 gemport 1 multi-service user-vlan 
+137 tag-transform translate
+ service-port 190 vlan 160 gpon 0/6/12 ont 0 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 195 vlan 180 gpon 0/10/2 ont 0 gemport 1 multi-service user-vlan 
+180 tag-transform translate
+ service-port 197 vlan 139 gpon 0/3/7 ont 3 gemport 1 multi-service user-vlan 
+139 tag-transform translate
+ service-port 201 vlan 115 gpon 0/1/15 ont 10 gemport 1 multi-service user-vlan 115 tag-transform translate
+ service-port 203 vlan 135 gpon 0/3/3 ont 2 gemport 1 multi-service user-vlan 
+135 tag-transform translate
+ service-port 204 vlan 127 gpon 0/2/11 ont 5 gemport 1 multi-service user-vlan 
+127 tag-transform translate
+ service-port 205 vlan 160 gpon 0/6/9 ont 0 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 206 vlan 170 gpon 0/5/6 ont 8 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 209 vlan 132 gpon 0/3/0 ont 2 gemport 1 multi-service user-vlan 
+132 tag-transform translate
+ service-port 210 vlan 195 gpon 0/11/11 ont 0 gemport 1 multi-service user-vlan 195 tag-transform translate
+ service-port 211 vlan 145 gpon 0/3/13 ont 1 gemport 1 multi-service user-vlan 
+145 tag-transform translate
+ service-port 213 vlan 155 gpon 0/4/7 ont 0 gemport 1 multi-service user-vlan 
+155 tag-transform translate
+ service-port 214 vlan 118 gpon 0/2/2 ont 0 gemport 1 multi-service user-vlan 
+118 tag-transform translate
+ service-port 215 vlan 112 gpon 0/1/12 ont 8 gemport 1 multi-service user-vlan 
+112 tag-transform translate
+ service-port 217 vlan 163 gpon 0/4/15 ont 1 gemport 1 multi-service user-vlan 
+163 tag-transform translate
+ service-port 222 vlan 170 gpon 0/7/3 ont 0 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 224 vlan 170 gpon 0/7/2 ont 0 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 225 vlan 134 gpon 0/3/2 ont 5 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 226 vlan 178 gpon 0/5/14 ont 0 gemport 1 multi-service user-vlan 
+178 tag-transform translate
+ service-port 230 vlan 115 gpon 0/1/15 ont 2 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 235 vlan 115 gpon 0/1/15 ont 3 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 237 vlan 144 gpon 0/3/12 ont 2 gemport 1 multi-service user-vlan 
+144 tag-transform translate
+ service-port 238 vlan 115 gpon 0/1/15 ont 4 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 239 vlan 138 gpon 0/3/6 ont 3 gemport 1 multi-service user-vlan 
+138 tag-transform translate
+ service-port 242 vlan 129 gpon 0/2/13 ont 2 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 244 vlan 172 gpon 0/5/8 ont 1 gemport 1 multi-service user-vlan 
+172 tag-transform translate
+ service-port 256 vlan 129 gpon 0/2/12 ont 3 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 260 vlan 170 gpon 0/7/15 ont 1 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 262 vlan 131 gpon 0/2/15 ont 7 gemport 1 multi-service user-vlan 
+131 tag-transform translate
+ service-port 265 vlan 129 gpon 0/2/13 ont 1 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 266 vlan 117 gpon 0/2/1 ont 0 gemport 1 multi-service user-vlan 
+117 tag-transform translate
+ service-port 267 vlan 137 gpon 0/3/5 ont 2 gemport 1 multi-service user-vlan 
+137 tag-transform translate
+ service-port 268 vlan 161 gpon 0/4/13 ont 2 gemport 1 multi-service user-vlan 
+161 tag-transform translate
+ service-port 271 vlan 134 gpon 0/3/2 ont 7 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 274 vlan 160 gpon 0/6/3 ont 0 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 275 vlan 144 gpon 0/3/12 ont 9 gemport 1 multi-service user-vlan 
+144 tag-transform translate
+ service-port 279 vlan 171 gpon 0/5/7 ont 0 gemport 1 multi-service user-vlan 
+171 tag-transform translate
+ service-port 281 vlan 180 gpon 0/10/12 ont 0 gemport 1 multi-service user-vlan 180 tag-transform translate
+ service-port 288 vlan 180 gpon 0/10/11 ont 2 gemport 1 multi-service user-vlan 180 tag-transform translate
+ service-port 290 vlan 116 gpon 0/2/0 ont 10 gemport 1 multi-service user-vlan 
+116 tag-transform translate
+ service-port 291 vlan 160 gpon 0/6/2 ont 5 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 292 vlan 180 gpon 0/10/9 ont 5 gemport 1 multi-service user-vlan 
+180 tag-transform translate
+ service-port 293 vlan 120 gpon 0/11/12 ont 0 gemport 1 multi-service user-vlan 120 tag-transform translate
+ service-port 296 vlan 170 gpon 0/7/5 ont 0 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 297 vlan 178 gpon 0/5/14 ont 2 gemport 1 multi-service user-vlan 
+178 tag-transform translate
+ service-port 298 vlan 128 gpon 0/2/12 ont 5 gemport 1 multi-service user-vlan 
+128 tag-transform translate
+ service-port 301 vlan 190 gpon 0/11/3 ont 1 gemport 1 multi-service user-vlan 
+190 tag-transform translate
+ service-port 302 vlan 168 gpon 0/5/4 ont 3 gemport 1 multi-service user-vlan 
+168 tag-transform translate
+ service-port 306 vlan 135 gpon 0/3/3 ont 12 gemport 1 multi-service user-vlan 
+135 tag-transform translate
+ service-port 309 vlan 133 gpon 0/3/1 ont 0 gemport 1 multi-service user-vlan 
+133 tag-transform translate
+ service-port 312 vlan 165 gpon 0/5/1 ont 6 gemport 1 multi-service user-vlan 
+165 tag-transform translate
+ service-port 314 vlan 195 gpon 0/12/13 ont 0 gemport 1 multi-service user-vlan 195 tag-transform translate
+ service-port 315 vlan 170 gpon 0/7/14 ont 0 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 321 vlan 190 gpon 0/11/3 ont 3 gemport 1 multi-service user-vlan 
+190 tag-transform translate
+ service-port 328 vlan 138 gpon 0/3/6 ont 0 gemport 1 multi-service user-vlan 
+138 tag-transform translate
+ service-port 329 vlan 173 gpon 0/5/9 ont 6 gemport 1 multi-service user-vlan 
+173 tag-transform translate
+ service-port 330 vlan 146 gpon 0/3/14 ont 3 gemport 1 multi-service user-vlan 
+146 tag-transform translate
+ service-port 332 vlan 170 gpon 0/7/2 ont 1 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 343 vlan 144 gpon 0/3/12 ont 10 gemport 1 multi-service user-vlan 144 tag-transform translate
+ service-port 347 vlan 141 gpon 0/3/9 ont 0 gemport 1 multi-service user-vlan 
+141 tag-transform translate
+ service-port 351 vlan 190 gpon 0/11/1 ont 0 gemport 1 multi-service user-vlan 
+190 tag-transform translate
+ service-port 355 vlan 171 gpon 0/5/7 ont 1 gemport 1 multi-service user-vlan 
+171 tag-transform translate
+ service-port 356 vlan 132 gpon 0/3/0 ont 3 gemport 1 multi-service user-vlan 
+132 tag-transform translate
+ service-port 360 vlan 162 gpon 0/4/14 ont 1 gemport 1 multi-service user-vlan 
+162 tag-transform translate
+ service-port 362 vlan 157 gpon 0/4/9 ont 2 gemport 1 multi-service user-vlan 
+157 tag-transform translate
+ service-port 365 vlan 135 gpon 0/3/3 ont 13 gemport 1 multi-service user-vlan 
+135 tag-transform translate
+ service-port 369 vlan 134 gpon 0/3/2 ont 9 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 372 vlan 160 gpon 0/6/14 ont 0 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 373 vlan 160 gpon 0/6/14 ont 4 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 376 vlan 116 gpon 0/2/0 ont 12 gemport 1 multi-service user-vlan 
+116 tag-transform translate
+ service-port 377 vlan 139 gpon 0/3/7 ont 4 gemport 1 multi-service user-vlan 
+139 tag-transform translate
+ service-port 379 vlan 178 gpon 0/5/14 ont 6 gemport 1 multi-service user-vlan 
+178 tag-transform translate
+ service-port 381 vlan 139 gpon 0/3/7 ont 1 gemport 1 multi-service user-vlan 
+139 tag-transform translate
+ service-port 383 vlan 167 gpon 0/5/3 ont 1 gemport 1 multi-service user-vlan 
+167 tag-transform translate
+ service-port 393 vlan 170 gpon 0/5/6 ont 1 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 394 vlan 156 gpon 0/4/8 ont 5 gemport 1 multi-service user-vlan 
+156 tag-transform translate
+ service-port 398 vlan 160 gpon 0/6/7 ont 0 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 402 vlan 160 gpon 0/4/12 ont 1 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 404 vlan 134 gpon 0/3/2 ont 6 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 405 vlan 170 gpon 0/5/6 ont 6 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 406 vlan 195 gpon 0/12/13 ont 2 gemport 1 multi-service user-vlan 195 tag-transform translate
+ service-port 407 vlan 164 gpon 0/5/0 ont 1 gemport 1 multi-service user-vlan 
+164 tag-transform translate
+ service-port 408 vlan 132 gpon 0/3/0 ont 0 gemport 1 multi-service user-vlan 
+132 tag-transform translate
+ service-port 409 vlan 112 gpon 0/1/12 ont 7 gemport 1 multi-service user-vlan 
+112 tag-transform translate
+ service-port 410 vlan 131 gpon 0/2/15 ont 9 gemport 1 multi-service user-vlan 
+131 tag-transform translate
+ service-port 411 vlan 138 gpon 0/3/6 ont 5 gemport 1 multi-service user-vlan 
+138 tag-transform translate
+ service-port 412 vlan 138 gpon 0/3/6 ont 2 gemport 1 multi-service user-vlan 
+138 tag-transform translate
+ service-port 415 vlan 170 gpon 0/7/2 ont 3 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 416 vlan 171 gpon 0/5/7 ont 4 gemport 1 multi-service user-vlan 
+171 tag-transform translate
+ service-port 417 vlan 170 gpon 0/5/6 ont 7 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 418 vlan 121 gpon 0/2/5 ont 2 gemport 1 multi-service user-vlan 
+121 tag-transform translate
+ service-port 422 vlan 195 gpon 0/11/8 ont 2 gemport 1 multi-service user-vlan 
+195 tag-transform translate
+ service-port 426 vlan 116 gpon 0/2/0 ont 2 gemport 1 multi-service user-vlan 
+116 tag-transform translate
+ service-port 427 vlan 121 gpon 0/2/5 ont 3 gemport 1 multi-service user-vlan 
+121 tag-transform translate
+ service-port 430 vlan 129 gpon 0/2/12 ont 4 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 431 vlan 156 gpon 0/4/8 ont 6 gemport 1 multi-service user-vlan 
+156 tag-transform translate
+ service-port 432 vlan 180 gpon 0/10/9 ont 4 gemport 1 multi-service user-vlan 
+180 tag-transform translate
+ service-port 433 vlan 129 gpon 0/2/13 ont 7 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 434 vlan 133 gpon 0/3/1 ont 1 gemport 1 multi-service user-vlan 
+133 tag-transform translate
+ service-port 435 vlan 178 gpon 0/5/14 ont 1 gemport 1 multi-service user-vlan 
+178 tag-transform translate
+ service-port 436 vlan 134 gpon 0/3/2 ont 4 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 439 vlan 180 gpon 0/10/7 ont 0 gemport 1 multi-service user-vlan 
+180 tag-transform translate
+ service-port 441 vlan 134 gpon 0/3/2 ont 15 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 442 vlan 156 gpon 0/4/8 ont 2 gemport 1 multi-service user-vlan 
+156 tag-transform translate
+ service-port 444 vlan 124 gpon 0/2/8 ont 2 gemport 1 multi-service user-vlan 
+124 tag-transform translate
+ service-port 445 vlan 134 gpon 0/3/2 ont 12 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 446 vlan 134 gpon 0/3/2 ont 17 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 448 vlan 175 gpon 0/5/11 ont 1 gemport 1 multi-service user-vlan 
+175 tag-transform translate
+ service-port 449 vlan 169 gpon 0/5/5 ont 3 gemport 1 multi-service user-vlan 
+169 tag-transform translate
+ service-port 450 vlan 112 gpon 0/1/12 ont 3 gemport 1 multi-service user-vlan 
+112 tag-transform translate
+ service-port 451 vlan 146 gpon 0/3/14 ont 1 gemport 1 multi-service user-vlan 
+146 tag-transform translate
+ service-port 452 vlan 160 gpon 0/6/9 ont 1 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 453 vlan 115 gpon 0/1/15 ont 11 gemport 1 multi-service user-vlan 115 tag-transform translate
+ service-port 454 vlan 178 gpon 0/5/14 ont 3 gemport 1 multi-service user-vlan 
+178 tag-transform translate
+ service-port 455 vlan 151 gpon 0/4/3 ont 0 gemport 1 multi-service user-vlan 
+151 tag-transform translate
+ service-port 456 vlan 115 gpon 0/1/15 ont 9 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 457 vlan 115 gpon 0/1/15 ont 12 gemport 1 multi-service user-vlan 115 tag-transform translate
+ service-port 459 vlan 127 gpon 0/2/11 ont 7 gemport 1 multi-service user-vlan 
+127 tag-transform translate
+ service-port 462 vlan 156 gpon 0/4/8 ont 7 gemport 1 multi-service user-vlan 
+156 tag-transform translate
+ service-port 463 vlan 112 gpon 0/1/12 ont 1 gemport 1 multi-service user-vlan 
+112 tag-transform translate
+ service-port 465 vlan 126 gpon 0/2/10 ont 0 gemport 1 multi-service user-vlan 
+126 tag-transform translate
+ service-port 466 vlan 134 gpon 0/3/2 ont 10 gemport 1 multi-service user-vlan 
+134 tag-transform translate
+ service-port 467 vlan 151 gpon 0/4/3 ont 1 gemport 1 multi-service user-vlan 
+151 tag-transform translate
+ service-port 468 vlan 146 gpon 0/3/14 ont 4 gemport 1 multi-service user-vlan 
+146 tag-transform translate
+ service-port 469 vlan 127 gpon 0/2/11 ont 6 gemport 1 multi-service user-vlan 
+127 tag-transform translate
+ service-port 470 vlan 162 gpon 0/4/14 ont 4 gemport 1 multi-service user-vlan 
+162 tag-transform translate
+ service-port 474 vlan 162 gpon 0/4/14 ont 3 gemport 1 multi-service user-vlan 
+162 tag-transform translate
+ service-port 476 vlan 132 gpon 0/3/0 ont 1 gemport 1 multi-service user-vlan 
+132 tag-transform translate
+ service-port 478 vlan 116 gpon 0/2/0 ont 0 gemport 1 multi-service user-vlan 
+116 tag-transform translate
+ service-port 483 vlan 135 gpon 0/3/3 ont 0 gemport 1 multi-service user-vlan 
+135 tag-transform translate
+ service-port 484 vlan 115 gpon 0/1/15 ont 5 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 485 vlan 129 gpon 0/2/13 ont 3 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 486 vlan 118 gpon 0/2/2 ont 2 gemport 1 multi-service user-vlan 
+118 tag-transform translate
+ service-port 487 vlan 137 gpon 0/3/5 ont 1 gemport 1 multi-service user-vlan 
+137 tag-transform translate
+ service-port 489 vlan 146 gpon 0/3/14 ont 2 gemport 1 multi-service user-vlan 
+146 tag-transform translate
+ service-port 490 vlan 136 gpon 0/3/4 ont 0 gemport 1 multi-service user-vlan 
+136 tag-transform translate
+ service-port 492 vlan 170 gpon 0/7/14 ont 1 gemport 1 multi-service user-vlan 
+170 tag-transform translate
+ service-port 493 vlan 129 gpon 0/2/13 ont 0 gemport 1 multi-service user-vlan 
+129 tag-transform translate
+ service-port 494 vlan 115 gpon 0/1/15 ont 0 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 495 vlan 160 gpon 0/6/2 ont 1 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 500 vlan 131 gpon 0/2/15 ont 0 gemport 1 multi-service user-vlan 
+131 tag-transform translate
+ service-port 502 vlan 164 gpon 0/5/0 ont 0 gemport 1 multi-service user-vlan 
+164 tag-transform translate
+ service-port 505 vlan 3200 gpon 0/3/5 ont 3 gemport 1 multi-service user-vlan 
+3200 tag-transform translate
+ service-port 507 vlan 147 gpon 0/3/15 ont 0 gemport 1 multi-service user-vlan 
+147 tag-transform translate
+ service-port 508 vlan 160 gpon 0/6/3 ont 1 gemport 1 multi-service user-vlan 
+160 tag-transform translate
+ service-port 509 vlan 3200 gpon 0/3/2 ont 0 gemport 1 multi-service user-vlan 
+3200 tag-transform translate
+ service-port 510 vlan 130 gpon 0/2/14 ont 0 gemport 1 multi-service user-vlan 
+130 tag-transform translate
+ service-port 511 vlan 3200 gpon 0/3/5 ont 4 gemport 1 multi-service user-vlan 
+3200 tag-transform translate
+ service-port 512 vlan 115 gpon 0/1/15 ont 6 gemport 1 multi-service user-vlan 
+115 tag-transform translate
+ service-port 513 vlan 180 gpon 0/10/6 ont 0 gemport 1 multi-service user-vlan 
+180 tag-transform translate
+ monitor uplink-port non-unicast port 0/8/0
+ monitor uplink-port non-unicast port 0/8/1
+ monitor uplink-port non-unicast port 0/8/2
+ monitor uplink-port non-unicast port 0/8/3
+ monitor uplink-port non-unicast port 0/9/0
+ monitor uplink-port non-unicast port 0/9/1
+ monitor uplink-port non-unicast port 0/9/2
+ monitor uplink-port non-unicast port 0/9/3
+#
+[abs-config]
+  <abs-config>
+ monitor uplink-port pppoe port 0/8/0
+ monitor uplink-port pppoe port 0/8/1
+ monitor uplink-port pppoe port 0/8/2
+ monitor uplink-port pppoe port 0/8/3
+ monitor uplink-port pppoe port 0/9/0
+ monitor uplink-port pppoe port 0/9/1
+ monitor uplink-port pppoe port 0/9/2
+ monitor uplink-port pppoe port 0/9/3
+#
+[ip-tunnel-profile]
+  <ip-tunnel-profile>
+ ip tunnel priority-profile gre index 0 name "default-profile-0" inbound 
+dscp-outer dscp-inner
+#
+ ip tunnel priority-profile vxlan index 0 name "default-profile-0" inbound 
+dscp-outer cos-inner
+#
+ ip tunnel priority-profile segment-routing ipv6 index 0 name 
+"default-profile-0" outbound cos-inner dscp-outer
+#
+set neid 0xC261D7
+#
+[telnet]
+  <telnet>
+ telnet server acl 2000
+#
+[acl-basic]
+  <acl-basic>
+acl 2000
+ rule 5 permit source 10.21.0.2 0
+ rule 10 permit source 0.0.0.1 255.255.255.248
+ rule 15 permit source 10.18.2.137 0
+#
+[aaa]
+  <aaa>
+aaa
+ #
+ authentication-scheme "default"
+ #
+ authorization-scheme "default"
+ #
+ accounting-scheme "default"
+ #
+ domain "default"
+#
+[Interface]
+  <Vlanif10>
+interface Vlanif10
+ description "VLAN.GERENCIA"
+ ip address 172.16.0.2 255.255.255.252
+#
+interface Vlanif40
+ ip address 172.16.0.82 255.255.255.252
+#
+interface MEth0
+ ip address 10.11.104.2 255.255.255.0
+#
+interface NULL0
+#
+undo dcn
+#
+[route-static]
+  <route-static>
+ip route-static 0.0.0.0 0.0.0.0 172.16.0.1
+#
+[snmp]
+  <snmp>
+snmp-agent local-engineid 800007DB03389052459795
+snmp-agent community read cipher "%@%##!!!!!!!!!"!!!!"!!!!(!!!!7LTnVOK_g:Ef<:IU9}%>&7E5=-No02XBM]N<F{fM!!!!!!!!!!1!!!!37}k>__KWXJIZdR[46&:%@%#"
+snmp-agent community read cipher "%@%##!!!!!!!!!"!!!!"!!!!(!!!!7LTnVOK_g:1JZB=eJpi:a%sHKGb7P:Z^x$=_Ft#C!!!!!!!!!!1!!!!S\LI~ED-E*L:P4"7<&>S%@%#"
+snmp-agent target-host trap-hostname "oltsoft" address 10.18.2.138 udp-port 162 trap-paramsname "oltsoft"
+snmp-agent target-host trap-paramsname "oltsoft" v2c securityname cipher "%@%##!!!!!!!!!"!!!!"!!!!(!!!!7LTnVOK_g:M!#e0PlnD:k'I($>ijJ<a^F[1p+|9!!!!!!!!!!!1!!!!dYkd'cb~oKxr4.-ciT\"%@%#"
+#
+[post-system]
+  <post-system>
+ ssh user "ixcsoft" authentication-type password
+ ssh user "oltcloud" authentication-type password
+ ssh user "root" authentication-type password
+ ssh user "supergiga" authentication-type password
+ ssh user "tomich" authentication-type password
+ ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ ssh server hmac sha2_512 sha2_256 sha1
+ ssh server key-exchange dh_group_exchange_sha256 dh_group14_sha1
+ ssh server dh-exchange min-len 2048
+ ssh server publickey rsa x509v3-ssh-rsa rsa_sha2_256 rsa_sha2_512
+ ntp-service server source-interface all disable
+ ntp-service ipv6 server source-interface all disable
+ ssh client publickey rsa rsa_sha2_256 rsa_sha2_512
+ ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ ssh client hmac sha2_512 sha2_256 sha1
+ ssh client key-exchange dh_group_exchange_sha256 dh_group14_sha1
+#
+[source-interface]
+  <source-interface>
+ sysman source trap vlanif 40
+ sysman server source ssh meth 0
+ sysman server source ssh vlanif 10
+ sysman server source ssh vlanif 40
+ sysman server source snmp any-interface
+ sysman server source telnet vlanif 10
+ sysman server source telnet vlanif 40
+#
+return
+
+OLT.CCIT(config)#

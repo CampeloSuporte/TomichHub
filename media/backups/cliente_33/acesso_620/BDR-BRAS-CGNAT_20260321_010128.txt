@@ -1,0 +1,572 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMR.NET LTDA
+Equipamento: BDR-BRAS-CGNAT
+Host: 10.5.0.2:2202
+Acesso: VIA PROXY SSH
+Modelo: CISCO ASR1002
+Template: Backup Completo
+Data: 21/03/2026 01:01:28
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+JMR-BNG-ASR-1000#
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+Building configuration...
+
+Current configuration : 14102 bytes
+!
+! Last configuration change at 10:22:49 UTC Mon Mar 16 2026 by jmrnet
+!
+version 15.6
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+service unsupported-transceiver
+no platform punt-keepalive disable-kernel-core
+!
+hostname JMR-BNG-ASR-1000
+!
+boot-start-marker
+boot system flash bootflash:asr1000rp1-adventerprisek9.03.17.04.S.156-1.S4-std.bin
+boot-end-marker
+!
+!
+vrf definition Mgmt-intf
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!
+!
+aaa new-model
+!
+!
+aaa group server radius sgp_jmrnet
+ server-private 172.16.116.1 auth-port 2912 acct-port 2913 key 7 01000114490A0206345F6E03141719171F
+ ip radius source-interface TenGigabitEthernet0/1/0.1558
+!
+aaa authentication login default local
+aaa authentication enable default enable
+aaa authentication ppp default group radius local
+aaa authentication ppp sgp_jmrnet group sgp_jmrnet
+aaa authorization console
+aaa authorization config-commands
+aaa authorization exec default local 
+aaa authorization exec sgp_jmrnet group sgp_jmrnet 
+aaa authorization network default group radius 
+aaa authorization network sgp_jmrnet group sgp_jmrnet 
+aaa authorization configuration sgp_jmrnet group sgp_jmrnet 
+aaa authorization subscriber-service default local group radius 
+aaa authorization subscriber-service sgp_jmrnet local group sgp_jmrnet 
+aaa accounting send counters ipv6
+aaa accounting delay-start all
+aaa accounting delay-start extended-delay 1
+aaa accounting session-duration ntp-adjusted
+aaa accounting update periodic 10
+aaa accounting include auth-profile framed-ip-address
+aaa accounting include auth-profile framed-ipv6-prefix
+aaa accounting include auth-profile delegated-ipv6-prefix
+aaa accounting exec default start-stop group radius
+aaa accounting exec sgp_jmrnet start-stop group sgp_jmrnet
+aaa accounting network default start-stop group radius
+aaa accounting network sgp_jmrnet start-stop group sgp_jmrnet
+aaa accounting system default start-stop group radius
+!
+!
+!
+!
+aaa server radius dynamic-author
+ client 172.16.116.1 server-key 7 061508315E4F0D10100432010116242E30
+ port 3799
+ auth-type any
+ ignore session-key
+ ignore server-key
+!
+aaa session-id common
+aaa policy interface-config allow-subinterface
+!
+!
+!
+!
+!
+!
+!
+!
+!
+
+ip domain name jmr.com.br
+!
+!
+!
+ipv6 unicast-routing
+ipv6 dhcp pool prefix-lan
+ prefix-delegation pool prefix-lan lifetime 1800 600
+ dns-server 2001:4860:4860::8888
+ dns-server 2001:4860:4860::8844
+ domain-name jmr.com.br
+!
+ipv6 dhcp pool bloqueiov6pd
+ prefix-delegation pool bloqueiov6pd lifetime 1800 600
+ dns-server 2001:4860:4860::8888
+ dns-server 2001:4860:4860::8844
+ domain-name jmr.com.br
+!
+ipv6 dhcp pool prefix-pd
+ prefix-delegation pool prefix-pd lifetime 1800 600
+ dns-server 2001:4860:4860::8888
+ dns-server 2001:4860:4860::8844
+ domain-name jmr.com.br
+!
+!
+!
+!
+!
+!
+!
+!
+subscriber service multiple-accept
+subscriber service session-accounting
+subscriber service accounting interim-interval 1
+subscriber access pppoe pre-authorize nas-port-id default
+subscriber templating
+!
+!
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+spanning-tree extend system-id
+!
+username lucaslima privilege 15 password 7 011F0F095A5A535B736C
+username sgp-integracao privilege 15 password 7 13170332212130697A767B
+username nocdfsolutions privilege 15 password 7 1405062B393404687D706266
+username jmrnet privilege 15 password 7 07252C5E400C0D255456
+username tomich privilege 15 secret 5 $1$UbeF$SaSEfW1YcEl3n/L1zwfpS1
+!
+redundancy
+ mode none
+!
+!
+!
+!
+!
+!
+!
+policy-map OUT-PADRAO
+ class class-default
+  police cir 2000000000
+   conform-action transmit 
+   exceed-action drop 
+policy-map IN-PADRAO
+ class class-default
+  police cir 2000000000
+   conform-action transmit 
+   exceed-action drop 
+!
+!
+! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+! 
+! 
+! 
+! 
+! 
+! 
+bba-group pppoe pppoe
+ virtual-template 1
+ nas-port-id format c
+ sessions per-vc limit 32000
+ sessions per-mac limit 10
+ sessions per-vlan limit 6500
+ sessions per-mac throttle 10 1 30
+ sessions auto cleanup
+!
+bba-group pppoe sgp_jmrnet
+ virtual-template 77
+ sessions per-mac limit 1
+ sessions per-vlan limit 16000
+ pado delay 0
+!
+!
+!
+interface Loopback0
+ ip address 10.100.0.2 255.255.255.255
+!
+interface Loopback10
+ ip address 45.175.84.0 255.255.255.255
+!
+interface GigabitEthernet0/0/0
+ no ip address
+ negotiation auto
+!
+interface GigabitEthernet0/0/1
+ no ip address
+ negotiation auto
+!
+interface GigabitEthernet0/0/2
+ no ip address
+ negotiation auto
+!
+interface GigabitEthernet0/0/3
+ no ip address
+ negotiation auto
+!
+interface TenGigabitEthernet0/1/0
+ no ip address
+!
+interface TenGigabitEthernet0/1/0.1150
+ description LINK-SICONET
+ encapsulation dot1Q 1150
+ ip address 100.100.109.66 255.255.255.252
+ ip nat outside
+ ipv6 address 2804:692C:C000:10::2/64
+ ipv6 enable
+!
+interface TenGigabitEthernet0/1/0.1558
+ description wan.ipv4
+ encapsulation dot1Q 1558
+ ip address 10.5.0.2 255.255.255.252
+ no ip redirects
+ no ip unreachables
+ no ip proxy-arp
+ ip nat outside
+ ip ospf network point-to-point
+!
+interface TenGigabitEthernet0/1/0.1559
+ description wan.ipv6
+ encapsulation dot1Q 1559
+ no ip redirects
+ no ip unreachables
+ no ip proxy-arp
+ ip nat outside
+ ipv6 address FD00:390C:CAFE::2/126
+ ipv6 enable
+!
+interface TenGigabitEthernet0/2/0
+ no ip address
+!
+interface TenGigabitEthernet0/2/0.101
+ encapsulation dot1Q 101
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.102
+ encapsulation dot1Q 102
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.103
+ encapsulation dot1Q 103
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.104
+ encapsulation dot1Q 104
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.105
+ encapsulation dot1Q 105
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.106
+ encapsulation dot1Q 106
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.107
+ encapsulation dot1Q 107
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.108
+ encapsulation dot1Q 108
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.500
+ description OVERTECK
+ encapsulation dot1Q 500
+ ip address 172.16.255.1 255.255.255.252
+!
+interface TenGigabitEthernet0/2/0.501
+ description OLT-PARKS
+ encapsulation dot1Q 501
+ ip address 172.16.255.5 255.255.255.252
+!
+interface TenGigabitEthernet0/2/0.600
+ description OLT-VSOL
+ encapsulation dot1Q 600
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.1141
+ encapsulation dot1Q 1141
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.1142
+ description TRANSPORT-CLIENTE:JAONEIVA
+ encapsulation dot1Q 1142
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.2000
+ encapsulation dot1Q 2000
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.2021
+ description P2P-BNG-MARECHAL-TRANSP-VLA
+ encapsulation dot1Q 2021
+ ip address 172.34.201.1 255.255.255.252
+ pppoe enable group pppoe
+!
+interface TenGigabitEthernet0/2/0.3001
+ description TRANSPORTE-SICONECT
+ encapsulation dot1Q 3001
+ pppoe enable group pppoe
+!
+interface GigabitEthernet0
+ vrf forwarding Mgmt-intf
+ ip address 192.168.0.254 255.255.255.0
+ negotiation auto
+!
+interface Virtual-Template1
+ mtu 1480
+ ip unnumbered TenGigabitEthernet0/1/0.1558
+ ip nat inside
+ ip tcp adjust-mss 1440
+ ipv6 unnumbered TenGigabitEthernet0/1/0.1559
+ ipv6 enable
+ ipv6 nd managed-config-flag
+ ipv6 nd other-config-flag
+ ipv6 nd router-preference High
+ ipv6 dhcp server prefix-pd
+ peer default ip address pool 1
+ peer default ipv6 pool prefix-ndra
+ keepalive 12
+ ppp authentication pap chap ms-chap sgp_jmrnet
+ ppp authorization sgp_jmrnet
+ ppp accounting sgp_jmrnet
+ ppp ipcp dns 208.67.222.222 8.8.8.8
+ ppp ipcp address required
+ ppp ipcp address unique
+ service-policy input IN-PADRAO
+ service-policy output OUT-PADRAO
+!
+interface Virtual-Template77
+ mtu 1492
+ ip unnumbered TenGigabitEthernet0/1/0.1558
+ ip nat inside
+ keepalive 12
+ ppp authentication pap chap ms-chap ms-chap-v2 sgp_jmrnet
+ ppp authorization sgp_jmrnet
+ ppp accounting sgp_jmrnet
+ service-policy input IN-PADRAO
+ service-policy output OUT-PADRAO
+!
+router ospf 1
+ router-id 10.100.0.2
+ redistribute connected subnets
+ redistribute static subnets
+ network 10.5.0.0 0.0.0.3 area 0
+ network 10.100.0.2 0.0.0.0 area 0
+ network 172.34.201.0 0.0.0.3 area 0
+!
+router bgp 268905
+ bgp log-neighbor-changes
+ neighbor 2804:692C:C000:10::1 remote-as 270253
+ neighbor 2804:692C:C000:10::1 description UPSTREAM-SICONECTK-V6
+ neighbor 100.100.109.65 remote-as 270253
+ neighbor 100.100.109.65 description UPSTREAM-SICONECT-V4
+ neighbor 100.100.109.65 shutdown
+ !
+ address-family ipv4
+  network 45.175.84.0 mask 255.255.255.0
+  no neighbor 2804:692C:C000:10::1 activate
+  neighbor 100.100.109.65 activate
+  neighbor 100.100.109.65 send-community both
+  neighbor 100.100.109.65 soft-reconfiguration inbound
+  neighbor 100.100.109.65 route-map RM-PEER-SICONET-V4-IN in
+  neighbor 100.100.109.65 route-map RM-PEER-SICONET-V4-OUT out
+ exit-address-family
+ !
+ address-family ipv6
+  network 2804:5C60:4000::/42
+  neighbor 2804:692C:C000:10::1 activate
+  neighbor 2804:692C:C000:10::1 soft-reconfiguration inbound
+  neighbor 2804:692C:C000:10::1 route-map RM-PEER-SICONET-V6-IN in
+  neighbor 2804:692C:C000:10::1 route-map RM-PEER-SICONET-V6-OUT out
+ exit-address-family
+!
+ip local pool 1 100.64.0.1 100.64.7.254
+ip local pool bloqueados 10.24.0.1 10.24.3.254
+ip nat settings mode cgn
+no ip nat settings support mapping outside
+ip nat settings pap limit 60 bpa set-size 128 
+ip nat settings nonpatdrop
+ip nat translation timeout 300
+ip nat translation tcp-timeout 300
+ip nat translation udp-timeout 120
+ip nat translation finrst-timeout 30
+ip nat translation syn-timeout 30
+ip nat translation dns-timeout 30
+ip nat translation icmp-timeout 30
+ip nat translation max-entries 12512000
+ip nat translation max-entries all-host 16384
+no ip nat service all-algs
+no ip nat service gatekeeper
+ip nat pool POOL-CGNAT-45.175.84.192/26 45.175.84.192 45.175.84.255 prefix-length 26
+ip nat pool POOL-CGNAT-200.110.207.232/29 200.110.207.232 200.110.207.239 prefix-length 29
+ip nat pool POOL-CGNAT-200.110.204.112/28 200.110.204.112 200.110.204.127 prefix-length 28
+ip nat inside source list CLIENTES-CGNAT pool POOL-CGNAT-200.110.204.112/28 overload
+ip forward-protocol nd
+!
+no ip http server
+no ip http secure-server
+ip route 0.0.0.0 0.0.0.0 10.5.0.1
+ip route 45.175.84.0 255.255.255.0 Null0
+ip route 100.80.0.0 255.255.248.0 172.34.201.2
+ip route 200.110.204.112 255.255.255.240 Null0
+ip route 200.110.207.232 255.255.255.248 Null0 name BLOCO-OPERADORA
+ip ssh time-out 30
+ip ssh authentication-retries 2
+ip ssh port 2202 rotary 1
+ip ssh rsa keypair-name JMR-BNG-ASR-1000.jmr.com.br
+ip ssh logging events
+ip ssh version 2
+ip ssh dh min size 2048
+ip ssh server algorithm encryption aes256-ctr
+ip scp server enable
+!
+ip access-list extended CLIENTES-CGNAT
+ permit ip 100.64.0.0 0.0.7.255 any
+ permit ip 100.80.0.0 0.0.7.255 any
+ip access-list extended DenyStdSSH
+ deny   tcp any any eq 22
+ permit ip any any
+!
+!
+ip prefix-list PL-DEFAULT-ROUTE seq 5 permit 0.0.0.0/0
+!
+ip prefix-list PL-ORIGIN-45.175.84.0_24 seq 5 permit 45.175.84.0/24
+ipv6 route 2804:5C60:4000::/42 Null0
+ipv6 route ::/0 FD00:390C:CAFE::1
+ipv6 local pool bloqueiov6pd 2001:DB1:100::/43 56
+ipv6 local pool bloqueiov6prefix 2001:DB8:200::/48 64
+ipv6 local pool prefix-lan 2804:692C:3008::/48 64
+ipv6 local pool prefix-wan 2804:692C:3009::/50 64
+ipv6 local pool prefix-pd 2804:5C60:4000::/43 59
+ipv6 local pool prefix-ndra 2804:5C60:4020::/43 59
+!
+!
+ipv6 prefix-list PL-DEFAULT-V6 seq 5 permit ::/0
+!
+ipv6 prefix-list PL-MY-PREFIX-V6-42 seq 5 permit 2804:5C60:4000::/42
+route-map RM-PEER-SICONET-V4-IN permit 10
+ match ip address prefix-list PL-DEFAULT-ROUTE
+!
+route-map RM-PEER-SICONET-V6-IN permit 1
+ match ipv6 address prefix-list PL-DEFAULT-V6
+!
+route-map RM-PEER-SICONET-V4-OUT permit 10
+ match ip address prefix-list PL-ORIGIN-45.175.84.0_24
+!
+route-map RM-PEER-SICONET-V6-OUT permit 1
+ match ipv6 address prefix-list PL-MY-PREFIX-V6-42
+!
+snmp-server community SGP-GRAPHICs RO
+snmp-server community upzbx RO
+snmp-server host 172.16.116.1 version 2c SGP-GRAPHICs 
+!
+!
+no radius-server attribute 77 include-in-acct-req
+no radius-server attribute 77 include-in-access-req
+radius-server attribute 6 on-for-login-auth
+radius-server attribute 6 support-multiple
+radius-server attribute 8 include-in-access-req
+radius-server attribute 32 include-in-access-req 
+radius-server attribute 32 include-in-accounting-req 
+radius-server attribute 55 include-in-acct-req
+radius-server attribute 55 access-request include
+radius-server attribute 25 access-request include
+radius-server attribute nas-port format d
+radius-server attribute 31 mac format one-byte delimiter colon upper-case
+radius-server attribute 31 send nas-port-detail mac-only
+radius-server attribute 31 remote-id
+radius-server attribute nas-port-id include circuit-id 
+radius-server retransmit 6
+radius-server timeout 30
+radius-server deadtime 1
+radius-server authorization default Framed-Protocol ppp
+radius-server vsa send cisco-nas-port
+!
+radius server sgp_jmrnet
+ address ipv4 172.16.116.1 auth-port 2912 acct-port 2913
+ timeout 30
+ key 7 0518011F334D4A000C163718061E0A2F3F
+!
+!
+control-plane
+!
+ !
+ !
+ !
+ !
+!
+!
+!
+!
+!
+line con 0
+ stopbits 1
+line aux 0
+ stopbits 1
+line vty 0 4
+ access-class DenyStdSSH in
+ privilege level 15
+ rotary 1
+ transport input ssh
+line vty 5 15
+ rotary 1
+ transport input all
+!
+event manager applet Reset_CGNAT_and_Couters
+ event timer cron cron-entry "10 05 * * 0-6"
+ action 1.0  cli command "enable"
+ action 1.1  cli command "clear logging" pattern "confirm"
+ action 1.10 wait 5
+ action 1.11 syslog msg "Reset CGNAT e Counters ... Realizado"
+ action 1.2  cli command "y"
+ action 1.3  cli command "clear ip nat translation *"
+ action 1.4  cli command "clear ip nat statistics "
+ action 1.5  cli command "clear counters" pattern "confirm"
+ action 1.6  cli command "y"
+ action 1.7  wait 5
+ action 1.8  cli command "clear platform hardware qfp active feature nat datapath drop-subcodes"
+ action 1.9  cli command "clear platform hardware qfp active feature nat datapath nonpat"
+!
+end
+
+JMR-BNG-ASR-1000#

@@ -1,0 +1,31 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: CGNAT A10-01
+Host: 10.18.1.54:22
+Acesso: VIA PROXY SSH
+Modelo: CGNAT A10
+Template: Backup Completo
+Data: 21/03/2026 00:57:05
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+                                ^
+% Unrecognized command.Invalid input detected at '^' marker.
+
+TH1040-INFOLINE-2-vBlade[1/2]>
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+                                     ^
+% Unrecognized command.Invalid input detected at '^' marker.
+
+TH1040-INFOLINE-2-vBlade[1/2]>

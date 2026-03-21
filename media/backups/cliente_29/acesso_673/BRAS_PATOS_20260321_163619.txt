@@ -1,0 +1,32 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: BRAS PATOS
+Host: 170.79.95.32:22
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M4
+Template: Backup Huawei
+Data: 21/03/2026 16:36:19
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+
+Info: The max number of VTY users is 21, the number of current VTY users online is 2, and total number of terminal users online is 2.
+      The current login time is 2026-03-21 16:36:18-03:00.
+      The last login time is 2026-03-21 16:35:59-03:00 from 179.48.68.73 through SSH.
+<266296-GRN-PPPOE-BGP-PATOS>
+Info: The configuration takes effect on the current user terminal interface only.
+<266296-GRN-PPPOE-BGP-PATOS>
+<266296-GRN-PPPOE-BGP-PATOS>
+<266296-GRN-PPPOE-BGP-PATOS>
+Info: The max number of VTY users is 21, and the number of current VTY users on line is 1.
+
+============================================================
+Comando: display current-configuration
+============================================================
+ERRO: 

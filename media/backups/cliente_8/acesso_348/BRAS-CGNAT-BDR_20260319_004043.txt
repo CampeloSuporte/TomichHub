@@ -1,0 +1,1121 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ARNALDO PEDRO DE LIMA
+Equipamento: BRAS-CGNAT-BDR
+Host: 45.71.73.255:2202
+Acesso: DIRETO
+Modelo: CISCO ASR1002
+Template: Backup Completo
+Data: 19/03/2026 00:40:43
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: terminal length 0
+============================================================
+terminal length 0
+BDR-BRAS-CGNAT#
+
+============================================================
+Comando: show running-config
+============================================================
+show running-config
+Building configuration...
+
+Current configuration : 33105 bytes
+!
+! Last configuration change at 21:50:17 UTC Wed Jan 21 2026 by admin
+!
+version 16.9
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service unsupported-transceiver
+platform qfp utilization monitor load 80
+no platform punt-keepalive disable-kernel-core
+platform hardware throughput level 36000000
+!
+hostname BDR-BRAS-CGNAT
+!
+boot-start-marker
+boot-end-marker
+!
+!
+vrf definition Mgmt-intf
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!
+enable secret 5 $1$wbip$BV5PndydcxJvx0NvGDOvF1
+!
+aaa new-model
+!
+!
+aaa group server radius sgp_smartconnectnet
+ server-private 177.52.37.55 auth-port 3512 acct-port 3513 key sgpradius@smartconnectnet
+ ip radius source-interface Loopback1
+!
+aaa authentication login default local
+aaa authentication ppp default group radius local
+aaa authentication ppp sgp_smartconnectnet group sgp_smartconnectnet
+aaa authorization console
+aaa authorization config-commands
+aaa authorization exec default local 
+aaa authorization exec sgp_smartconnectnet group sgp_smartconnectnet 
+aaa authorization network sgp_smartconnectnet group sgp_smartconnectnet 
+aaa authorization configuration sgp_smartconnectnet group sgp_smartconnectnet 
+aaa authorization subscriber-service sgp_smartconnectnet local group sgp_smartconnectnet 
+aaa accounting delay-start all
+aaa accounting session-duration ntp-adjusted
+aaa accounting update periodic 10
+aaa accounting include auth-profile framed-ip-address
+aaa accounting include auth-profile framed-ipv6-prefix
+aaa accounting include auth-profile delegated-ipv6-prefix
+aaa accounting exec default start-stop group radius
+aaa accounting exec sgp_smartconnectnet start-stop group sgp_smartconnectnet
+aaa accounting network sgp_smartconnectnet start-stop group sgp_smartconnectnet
+!
+!
+!
+!
+!
+aaa server radius dynamic-author
+ client 177.52.37.55 server-key sgpradius@smartconnectnet
+ port 3799
+ auth-type any
+ ignore session-key
+ ignore server-key
+!
+aaa session-id common
+!
+!
+!
+!
+!
+!
+!
+ip domain name asr1000series.com
+!
+!
+!
+no login on-success log
+!
+!
+!
+!
+!
+!
+!
+subscriber templating
+! 
+! 
+! 
+! 
+!
+ipv6 unicast-routing
+ipv6 dhcp pool IPV6-PD
+ prefix-delegation pool IPV6-DHCP-PD lifetime 86400 86400
+ address prefix 2804:43E4:FFE0::/64
+ dns-server 2001:4860:4860::8888
+ dns-server 2001:4860:4860::8844
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+!
+!
+!
+!
+crypto pki trustpoint TP-self-signed-1196109093
+ enrollment selfsigned
+ subject-name cn=IOS-Self-Signed-Certificate-1196109093
+ revocation-check none
+ rsakeypair TP-self-signed-1196109093
+!
+!
+crypto pki certificate chain TP-self-signed-1196109093
+!
+license udi pid ASR1002-X sn JAE18280HJ6
+license accept end user agreement
+license boot level adventerprise
+no license smart enable
+!
+spanning-tree extend system-id
+diagnostic bootup level minimal
+!
+!
+!
+username sgp privilege 15 secret 5 $1$sgRM$N0BL9VAR0k5JNn4lH64Js0
+username danilo privilege 15 secret 5 $1$rEni$FDjyGSWP1n9zm2r9W6vk81
+username cisco_support privilege 15 secret 8 $8$t30iMyVHEhUVJz$uedf4FsZ1RYBrUD9Sgwkmi6sVJXiXhNEQEGBLI0ztm6
+!
+redundancy
+ mode none
+!
+!
+!
+!
+!
+!
+!
+policy-map OUT-PADRAO
+ class class-default
+  police cir 2000000000
+   conform-action transmit 
+   exceed-action drop 
+policy-map IN-PADRAO
+ class class-default
+  police cir 2000000000
+   conform-action transmit 
+   exceed-action drop 
+!
+!
+! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+! 
+! 
+bba-group pppoe sgp_smartconnectnet
+ virtual-template 77
+ sessions per-mac limit 1
+ sessions per-vlan limit 16000
+ pado delay 0
+!
+!
+!
+interface Loopback0
+ ip address 172.25.255.1 255.255.255.255
+ ip ospf 1 area 0
+!
+interface Loopback1
+ ip address 45.71.73.255 255.255.255.255
+!
+interface GigabitEthernet0/0/0
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface GigabitEthernet0/0/1
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface GigabitEthernet0/0/2
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface GigabitEthernet0/0/3
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface GigabitEthernet0/0/4
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface GigabitEthernet0/0/5
+ no ip address
+ shutdown
+ negotiation auto
+!
+interface TenGigabitEthernet0/1/0
+ no ip address
+!
+interface TenGigabitEthernet0/2/0
+ no ip address
+!
+interface TenGigabitEthernet0/3/0
+ no ip address
+!
+interface TenGigabitEthernet0/3/0.101
+ description PPPOE-ZONA-RURAL1
+ encapsulation dot1Q 101
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.102
+ description PPPOE-ZONA-RURAL2
+ encapsulation dot1Q 102
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.103
+ description PPPOE-ZONA-RURAL3
+ encapsulation dot1Q 103
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.104
+ description PPPOE-ZONA-RURAL4
+ encapsulation dot1Q 104
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.105
+ description PPPOE-ZONA-RURAL5
+ encapsulation dot1Q 105
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.106
+ description PPPOE-ZONA-RURAL6
+ encapsulation dot1Q 106
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.107
+ description PPPOE-ZONA-RURAL7
+ encapsulation dot1Q 107
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.108
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 108
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.109
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 109
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.110
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 110
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.111
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 111
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.112
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 112
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.113
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 113
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.114
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 114
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.115
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 115
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.116
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 116
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.140
+ description BRAS-ZONA-RURAL 
+ encapsulation dot1Q 140
+ ip address 172.31.140.1 255.255.255.252
+ ip nat inside
+ ip ospf network point-to-point
+ ip ospf 1 area 0
+!
+interface TenGigabitEthernet0/3/0.150
+ encapsulation dot1Q 150
+ ip address 172.31.150.1 255.255.255.252
+ ip nat inside
+ ip ospf network point-to-point
+ ip ospf 1 area 0
+!
+interface TenGigabitEthernet0/3/0.151
+ encapsulation dot1Q 151
+ ip address 172.31.151.1 255.255.255.252
+ ip ospf network point-to-point
+ ip ospf 1 area 0
+!
+interface TenGigabitEthernet0/3/0.152
+ description PPPOE-ZONA-RURAL
+ encapsulation dot1Q 152
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.153
+ description VMS-PROXMOX
+ encapsulation dot1Q 153
+ ip address 172.31.101.1 255.255.255.240 secondary
+ ip address 172.31.100.1 255.255.255.252
+ ip nat inside
+!
+interface TenGigabitEthernet0/3/0.154
+ description GERENCIA-SWITCHS
+ encapsulation dot1Q 154
+ ip address 10.10.21.1 255.255.255.240
+!
+interface TenGigabitEthernet0/3/0.201
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 201
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.202
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 202
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.203
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 203
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.204
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 204
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.205
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 205
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.206
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 206
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.207
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 207
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.208
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 208
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.209
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 209
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.210
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 210
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.211
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 211
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.212
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 212
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.213
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 213
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.214
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 214
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.215
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 215
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.216
+ description PPPOE-OLT-CIDADE
+ encapsulation dot1Q 216
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.221
+ description PPPOE-OLT-VSOL-8PORTAS
+ encapsulation dot1Q 221
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.492
+ description UPSTREAM-LINK-LOCAL
+ encapsulation dot1Q 492
+ ip address 10.22.21.46 255.255.255.252
+ ip nat outside
+ ipv6 address 2804:3B18::1AA/126
+ ipv6 enable
+!
+interface TenGigabitEthernet0/3/0.500
+ description GERENCIA-OLT-VSOL
+ encapsulation dot1Q 500
+ ip address 10.64.10.1 255.255.255.252
+ ip nat inside
+!
+interface TenGigabitEthernet0/3/0.501
+ description PPPOE-OLT-VSOL-PON1
+ encapsulation dot1Q 501
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.502
+ description PPPOE-OLT-VSOL-PON2
+ encapsulation dot1Q 502
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.503
+ description PPPOE-OLT-VSOL-PON3
+ encapsulation dot1Q 503
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.504
+ description PPPOE-OLT-VSOL-PON4
+ encapsulation dot1Q 504
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.505
+ description PPPOE-OLT-VSOL-PON5
+ encapsulation dot1Q 505
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.506
+ description PPPOE-OLT-VSOL-PON6
+ encapsulation dot1Q 506
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.507
+ description PPPOE-OLT-VSOL-PON7
+ encapsulation dot1Q 507
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.508
+ description PPPOE-508
+ encapsulation dot1Q 508
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1000
+ description UPSTREAM-1TELECOM-V4
+ encapsulation dot1Q 1000
+ ip address 172.18.76.13 255.255.255.252
+ ip nat outside
+!
+interface TenGigabitEthernet0/3/0.1001
+ description UPSTREAM-1TELECOM-V6
+ encapsulation dot1Q 1001
+ ipv6 address FD00::71/126
+ ipv6 enable
+!
+interface TenGigabitEthernet0/3/0.1144
+ description UPSTREAM-LINKLOCAL-ROTA-BKP
+ encapsulation dot1Q 1144
+ ip address 10.22.21.154 255.255.255.252
+ ip nat outside
+ ipv6 address 2804:3B18::1BA/126
+ ipv6 enable
+!
+interface TenGigabitEthernet0/3/0.1201
+ description PPPOE-Petrovia
+ encapsulation dot1Q 1201
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1202
+ description PPPOE-Painel Teste
+ encapsulation dot1Q 1202
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1203
+ description PPPOE-Painel C
+ encapsulation dot1Q 1203
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1204
+ description PPPOE-Painel X
+ encapsulation dot1Q 1204
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1205
+ description PPPOE-Highlander
+ encapsulation dot1Q 1205
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1206
+ description PPPOE-Teste
+ encapsulation dot1Q 1206
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1207
+ description PPPOE-Cosmo-Buenos-Aires
+ encapsulation dot1Q 1207
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1208
+ description PPPOE-VAZIO
+ encapsulation dot1Q 1208
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1209
+ description PPPOE-Maia Lucia
+ encapsulation dot1Q 1209
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1210
+ description PPPOE-SW Giga
+ encapsulation dot1Q 1210
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1211
+ description PPPOE-Claudio-2-Pedras
+ encapsulation dot1Q 1211
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1212
+ description PPPOE-Campo-Ramos
+ encapsulation dot1Q 1212
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1213
+ description PPPOE-Pera
+ encapsulation dot1Q 1213
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1214
+ description PPPOE-Seu-Bica
+ encapsulation dot1Q 1214
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1215
+ description PPPOE-Heleninha Maracuja
+ encapsulation dot1Q 1215
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1216
+ description PPPOE-Mimosa Quaresma
+ encapsulation dot1Q 1216
+ ip address 192.168.5.1 255.255.255.0
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1217
+ description PPPOE-Mimosa Rodrigo Maracuja
+ encapsulation dot1Q 1217
+ ip address 192.168.10.1 255.255.255.0
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1218
+ description PPPOE-Dyna-Japaranduba
+ encapsulation dot1Q 1218
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1219
+ description PPPOE-VAZIO
+ encapsulation dot1Q 1219
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1220
+ description PPPOE-Mimosa-Ze-Broca
+ encapsulation dot1Q 1220
+ ip address 192.168.1.1 255.255.255.0
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1221
+ description PPPOE-Quinquinha
+ encapsulation dot1Q 1221
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1222
+ description PPPOE-Anderson-Ferreira
+ encapsulation dot1Q 1222
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1223
+ description PPPOE-Vaquejada NDA
+ encapsulation dot1Q 1223
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.1224
+ description PPPOE-VAZIO
+ encapsulation dot1Q 1224
+ pppoe enable group sgp_smartconnectnet
+!
+interface TenGigabitEthernet0/3/0.4000
+ description GERENCIA-OLT-CIDADE
+ encapsulation dot1Q 4000
+ ip address 10.98.99.1 255.255.255.252
+ ip nat inside
+!
+interface TenGigabitEthernet0/3/0.4001
+ description GERENCIA-OLT-VSOL-8-PON
+ encapsulation dot1Q 4001
+ ip address 10.98.99.5 255.255.255.252
+ ip nat inside
+!
+interface GigabitEthernet0
+ vrf forwarding Mgmt-intf
+ ip address 192.168.89.2 255.255.255.0
+ negotiation auto
+!
+interface Virtual-Template77
+ mtu 1492
+ ip unnumbered Loopback1
+ no ip unreachables
+ no ip proxy-arp
+ ip nat inside
+ peer default ip address pool POOL-CLIENTES-PPPOE
+ peer default ipv6 pool IPV6-DHCP-P2P
+ ipv6 unnumbered Loopback0
+ ipv6 enable
+ ipv6 mtu 1492
+ ipv6 nd managed-config-flag
+ ipv6 nd other-config-flag
+ ipv6 nd router-preference High
+ no ipv6 nd ra suppress
+ ipv6 dhcp server IPV6-PD
+ no snmp trap link-status
+ keepalive 12
+ ppp authentication pap chap ms-chap ms-chap-v2 sgp_smartconnectnet
+ ppp authorization sgp_smartconnectnet
+ ppp accounting sgp_smartconnectnet
+ ppp ipcp dns 172.31.101.2 208.67.222.222
+ ppp ipcp ignore-map
+ ppp ipv6cp address unique
+ service-policy input IN-PADRAO
+ service-policy output OUT-PADRAO
+ ip virtual-reassembly
+!
+router ospf 1
+ router-id 172.25.255.1
+ network 172.31.140.0 0.0.0.3 area 0
+ network 172.31.150.0 0.0.0.3 area 0
+ network 172.31.151.0 0.0.0.3 area 0
+!
+router bgp 267597
+ bgp log-neighbor-changes
+ neighbor 10.22.21.45 remote-as 266129
+ neighbor 10.22.21.45 description UPSTREAM-LINK-LOCAL-LINK-V4
+ neighbor 10.22.21.153 remote-as 266129
+ neighbor 10.22.21.153 description UPSTREAM-LINK-LOCAL-BACKUP-LINK-V4
+ neighbor 2804:3B18::1A9 remote-as 266129
+ neighbor 2804:3B18::1A9 description UPSTREAM-LINK-LOCAL-LINK-V6
+ neighbor 2804:3B18::1B9 remote-as 266129
+ neighbor 2804:3B18::1B9 description UPSTREAM-LINK-LOCAL-BACKUP-LINK-V6
+ neighbor 172.18.76.14 remote-as 52965
+ neighbor 172.18.76.14 description UPSTREAM-LINK-1TELECOM-V4
+ neighbor FD00::72 remote-as 52965
+ neighbor FD00::72 description UPSTREAM-LINK-1TELECOM-V6
+ !
+ address-family ipv4
+  network 45.71.73.0 mask 255.255.255.0
+  neighbor 10.22.21.45 activate
+  neighbor 10.22.21.45 send-community both
+  neighbor 10.22.21.45 soft-reconfiguration inbound
+  neighbor 10.22.21.45 route-map RM-PEER-LOCALLINK-V4-IN in
+  neighbor 10.22.21.45 route-map RM-PEER-LOCALLINK-V4-OUT out
+  neighbor 10.22.21.153 activate
+  neighbor 10.22.21.153 send-community both
+  neighbor 10.22.21.153 soft-reconfiguration inbound
+  neighbor 10.22.21.153 route-map RM-PEER-LOCALLINK-BACKUP-V4-IN in
+  neighbor 10.22.21.153 route-map RM-PEER-LOCALLINK-BACKUP-V4-OUT out
+  no neighbor 2804:3B18::1A9 activate
+  no neighbor 2804:3B18::1B9 activate
+  neighbor 172.18.76.14 activate
+  neighbor 172.18.76.14 send-community both
+  neighbor 172.18.76.14 soft-reconfiguration inbound
+  neighbor 172.18.76.14 route-map RM-PEER-1TELECOM-V4-IN in
+  neighbor 172.18.76.14 route-map RM-PEER-1TELECOM-V4-OUT out
+  no neighbor FD00::72 activate
+ exit-address-family
+ !
+ address-family ipv6
+  network 2804:43E4:FF00::/40
+  neighbor 2804:3B18::1A9 activate
+  neighbor 2804:3B18::1A9 soft-reconfiguration inbound
+  neighbor 2804:3B18::1A9 route-map RM-PEER-LOCALLINK-V6-IN in
+  neighbor 2804:3B18::1A9 route-map RM-PEER-LOCALLINK-V6-OUT out
+  neighbor 2804:3B18::1B9 activate
+  neighbor 2804:3B18::1B9 soft-reconfiguration inbound
+  neighbor 2804:3B18::1B9 route-map RM-PEER-LOCALLINK-BACKUP-V6-IN in
+  neighbor 2804:3B18::1B9 route-map RM-PEER-LOCALLINK-BACKUP-V6-OUT out
+  neighbor FD00::72 activate
+  neighbor FD00::72 soft-reconfiguration inbound
+  neighbor FD00::72 route-map RM-PEER-1TELECOM-V6-IN in
+  neighbor FD00::72 route-map RM-PEER-1TELECOM-V6-OUT out
+ exit-address-family
+!
+ip local pool POOL-CLIENTES-PPPOE 100.69.0.0 100.69.15.255
+ip forward-protocol nd
+ip http server
+ip http authentication local
+ip http secure-server
+ip http client source-interface GigabitEthernet0
+ip tftp source-interface GigabitEthernet0
+ip nat settings mode cgn
+no ip nat settings support mapping outside
+ip nat settings pap limit 30 bpa set-size 512 
+ip nat translation timeout 1800
+ip nat translation tcp-timeout 500
+ip nat translation udp-timeout 30
+ip nat translation finrst-timeout 30
+ip nat translation syn-timeout 30
+ip nat translation dns-timeout 30
+ip nat translation icmp-timeout 30
+ip nat translation max-entries 2147483647
+ip nat translation max-entries all-host 2048
+no ip nat service all-algs
+ip nat pool POOL-CGNAT-45.71.73.0/25 45.71.73.0 45.71.73.127 prefix-length 25
+ip nat inside source static tcp 10.98.99.2 23 45.71.73.255 1023 extendable
+ip nat inside source static tcp 10.64.10.2 23 45.71.73.255 2301 extendable
+ip nat inside source static tcp 172.31.101.5 3030 45.71.73.255 3030 extendable
+ip nat inside source static tcp 172.31.100.2 8006 45.71.73.255 8889 extendable
+ip nat inside source static tcp 172.31.101.5 80 45.71.73.255 8890 extendable
+ip nat inside source static tcp 172.31.101.2 22002 45.71.73.255 22003 extendable
+ip nat inside source static tcp 172.31.100.2 22 45.71.73.255 22004 extendable
+ip nat inside source static tcp 172.31.101.5 22002 45.71.73.255 22230 extendable
+ip nat inside source static tcp 10.98.99.6 23 45.71.73.255 23002 extendable
+ip nat inside source list CLIENTES-CGNAT pool POOL-CGNAT-45.71.73.0/25 overload
+ip route 45.71.73.0 255.255.255.0 Null0 name PREFIXO-ALUGADO
+ip route 45.171.73.254 255.255.255.255 172.31.150.2
+ip route 100.64.0.0 255.255.252.0 172.31.140.2
+ip route 100.64.4.0 255.255.252.0 172.31.150.2
+ip route 100.64.8.0 255.255.252.0 172.31.150.2
+ip route vrf Mgmt-intf 10.0.0.0 255.0.0.0 192.168.89.1
+!
+ip ssh authentication-retries 5
+ip ssh port 2202 rotary 1
+!
+!
+ip prefix-list PL-DEFAULT-ROUTE seq 5 permit 0.0.0.0/0
+!
+ip prefix-list PL-ORIGIN-45.71.73.0_24 seq 5 permit 45.71.73.0/24
+ip radius source-interface Loopback1 
+!
+ip access-list extended CLIENTES-CGNAT
+ deny   ip 100.64.8.0 0.0.3.255 host 172.31.101.2
+ deny   ip 100.64.4.0 0.0.3.255 host 172.31.101.2
+ deny   ip 100.64.0.0 0.0.3.255 host 172.31.101.2
+ deny   ip 100.69.0.0 0.0.15.255 host 172.31.101.2
+ permit ip 100.64.0.0 0.0.3.255 any
+ permit ip 100.64.4.0 0.0.3.255 any
+ permit ip 100.64.8.0 0.0.3.255 any
+ permit ip host 172.21.150.2 any
+ permit ip host 172.31.150.2 any
+ permit ip host 172.31.140.2 any
+ permit ip host 10.98.99.6 any
+ permit ip host 10.98.99.2 any
+ permit ip host 172.31.100.2 any
+ permit ip 172.31.101.0 0.0.0.15 any
+ permit ip host 10.64.10.2 any
+ permit ip 100.69.0.0 0.0.15.255 any
+ip access-list extended DENY-SSH-PORT22
+ deny   tcp any any eq 22
+ permit ip host 0.0.0.0 any
+ permit ip host 177.52.37.55 any
+ permit ip 179.0.110.0 0.0.0.255 any
+ permit ip 45.71.73.0 0.0.0.255 any
+ permit ip 179.48.68.0 0.0.3.255 any
+ipv6 route 2804:43E4:FF00::/40 Null0
+ipv6 local pool IPV6-DHCP-P2P 2804:43E4:FFE0::/43 59
+ipv6 local pool IPV6-DHCP-PD 2804:43E4:FFC0::/43 59
+!
+!
+ipv6 prefix-list PL-DEFAULT-V6 seq 5 permit ::/0
+!
+ipv6 prefix-list PL-MY-PREFIX-V6-40 seq 5 permit 2804:43E4:FF00::/40
+!
+route-map RM-PEER-1TELECOM-V4-IN permit 10 
+ match ip address prefix-list PL-DEFAULT-ROUTE
+!
+route-map RM-PEER-1TELECOM-V6-IN permit 1 
+ match ipv6 address prefix-list PL-DEFAULT-V6
+!
+route-map RM-PEER-LOCALLINK-BACKUP-V6-IN permit 1 
+ match ipv6 address prefix-list PL-DEFAULT-V6
+!
+route-map RM-PEER-LOCALLINK-BACKUP-V4-IN permit 10 
+ match ip address prefix-list PL-DEFAULT-ROUTE
+!
+route-map RM-PEER-LOCALLINK-V4-IN permit 10 
+ match ip address prefix-list PL-DEFAULT-ROUTE
+!
+route-map RM-PEER-LOCALLINK-V6-IN permit 1 
+ match ipv6 address prefix-list PL-DEFAULT-V6
+!
+route-map RM-PEER-1TELECOM-V4-OUT permit 10 
+ match ip address prefix-list PL-ORIGIN-45.71.73.0_24
+!
+route-map RM-PEER-1TELECOM-V6-OUT permit 1 
+ match ipv6 address prefix-list PL-MY-PREFIX-V6-40
+!
+route-map RM-PEER-LOCALLINK-BACKUP-V6-OUT permit 1 
+ match ipv6 address prefix-list PL-MY-PREFIX-V6-40
+!
+route-map RM-PEER-LOCALLINK-BACKUP-V4-OUT permit 10 
+ match ip address prefix-list PL-ORIGIN-45.71.73.0_24
+!
+route-map RM-PEER-LOCALLINK-V4-OUT permit 10 
+ match ip address prefix-list PL-ORIGIN-45.71.73.0_24
+!
+route-map RM-PEER-LOCALLINK-V6-OUT permit 1 
+ match ipv6 address prefix-list PL-MY-PREFIX-V6-40
+!
+snmp-server community SGP-GRAPHICs RO
+snmp-server community arnaldo-ro RW
+snmp-server enable traps snmp authentication linkdown linkup coldstart warmstart
+snmp-server enable traps vrrp
+snmp-server enable traps pfr
+snmp-server enable traps flowmon
+snmp-server enable traps ds1
+snmp-server enable traps entity-perf throughput-notif
+snmp-server enable traps call-home message-send-fail server-fail
+snmp-server enable traps tty
+snmp-server enable traps eigrp
+snmp-server enable traps casa
+snmp-server enable traps ospf state-change
+snmp-server enable traps ospf errors
+snmp-server enable traps ospf retransmit
+snmp-server enable traps ospf lsa
+snmp-server enable traps ospf cisco-specific state-change nssa-trans-change
+snmp-server enable traps ospf cisco-specific state-change shamlink interface
+snmp-server enable traps ospf cisco-specific state-change shamlink neighbor
+snmp-server enable traps ospf cisco-specific errors
+snmp-server enable traps ospf cisco-specific retransmit
+snmp-server enable traps ospf cisco-specific lsa
+snmp-server enable traps smart-license
+snmp-server enable traps license
+snmp-server enable traps atm subif
+snmp-server enable traps bfd
+snmp-server enable traps memory bufferpeak
+snmp-server enable traps config-copy
+snmp-server enable traps config
+snmp-server enable traps config-ctid
+snmp-server enable traps dial
+snmp-server enable traps diameter
+snmp-server enable traps dlsw
+snmp-server enable traps dsp card-status
+snmp-server enable traps dsp oper-state
+snmp-server enable traps dsp video-usage
+snmp-server enable traps dsp video-out-of-resource
+snmp-server enable traps fru-ctrl
+snmp-server enable traps entity
+snmp-server enable traps event-manager
+snmp-server enable traps frame-relay multilink bundle-mismatch
+snmp-server enable traps frame-relay
+snmp-server enable traps frame-relay subif
+snmp-server enable traps hsrp
+snmp-server enable traps pppoe
+snmp-server enable traps cpu threshold
+snmp-server enable traps ipsla
+snmp-server enable traps syslog
+snmp-server enable traps l2tun session
+snmp-server enable traps l2tun pseudowire status
+snmp-server enable traps pki
+snmp-server enable traps adslline
+snmp-server enable traps vdsl2line
+snmp-server enable traps ethernet evc status create delete
+snmp-server enable traps ether-oam
+snmp-server enable traps ethernet cfm cc mep-up mep-down cross-connect loop config
+snmp-server enable traps ethernet cfm crosscheck mep-missing mep-unknown service-up
+snmp-server enable traps entity-qfp mem-res-thresh throughput-notif
+snmp-server enable traps entity-state
+snmp-server enable traps entity-sensor
+snmp-server enable traps flash insertion removal lowspace
+snmp-server enable traps firewall serverstatus
+snmp-server enable traps netsync
+snmp-server enable traps ptp
+snmp-server enable traps lost-ptp-slave
+snmp-server enable traps breach-ptp-offset-threshold
+snmp-server enable traps sbc adj-status
+snmp-server enable traps sbc blacklist
+snmp-server enable traps sbc congestion-alarm
+snmp-server enable traps sbc h248-ctrlr-status
+snmp-server enable traps sbc media-source
+snmp-server enable traps sbc radius-conn-status
+snmp-server enable traps sbc sla-violation
+snmp-server enable traps sbc sla-violation-rev1
+snmp-server enable traps sbc svc-state
+snmp-server enable traps sbc qos-statistics
+snmp-server enable traps srp
+snmp-server enable traps isdn call-information
+snmp-server enable traps isdn layer2
+snmp-server enable traps isdn chan-not-avail
+snmp-server enable traps isdn ietf
+snmp-server enable traps cnpd
+snmp-server enable traps entity-diag boot-up-fail hm-test-recover hm-thresh-reached scheduled-test-fail
+snmp-server enable traps cef resource-failure peer-state-change peer-fib-state-change inconsistency
+snmp-server enable traps sonet
+snmp-server enable traps resource-policy
+snmp-server enable traps otn
+snmp-server enable traps ip local pool
+snmp-server enable traps lisp
+snmp-server enable traps aaa_server
+snmp-server enable traps dhcp
+snmp-server enable traps auth-framework sec-violation
+snmp-server enable traps pw vc
+snmp-server enable traps mpls rfc ldp
+snmp-server enable traps mpls ldp
+snmp-server enable traps mpls rfc traffic-eng
+snmp-server enable traps mpls traffic-eng
+snmp-server enable traps mpls fast-reroute protected
+snmp-server enable traps rsvp
+snmp-server enable traps ipmulticast
+snmp-server enable traps msdp
+snmp-server enable traps pim neighbor-change rp-mapping-change invalid-pim-message
+snmp-server enable traps mvpn
+snmp-server enable traps pimstdmib neighbor-loss invalid-register invalid-join-prune rp-mapping-change interface-election
+snmp-server enable traps isis
+snmp-server enable traps bgp
+snmp-server enable traps bgp cbgp2
+snmp-server enable traps ospfv3 state-change
+snmp-server enable traps ospfv3 errors
+snmp-server enable traps nhrp nhs
+snmp-server enable traps nhrp nhc
+snmp-server enable traps nhrp nhp
+snmp-server enable traps nhrp quota-exceeded
+snmp-server enable traps ike policy add
+snmp-server enable traps ike policy delete
+snmp-server enable traps ike tunnel start
+snmp-server enable traps ike tunnel stop
+snmp-server enable traps ipsec cryptomap add
+snmp-server enable traps ipsec cryptomap delete
+snmp-server enable traps ipsec cryptomap attach
+snmp-server enable traps ipsec cryptomap detach
+snmp-server enable traps ipsec tunnel start
+snmp-server enable traps ipsec tunnel stop
+snmp-server enable traps ipsec too-many-sas
+snmp-server enable traps gdoi gm-start-registration
+snmp-server enable traps gdoi gm-registration-complete
+snmp-server enable traps gdoi gm-re-register
+snmp-server enable traps gdoi gm-rekey-rcvd
+snmp-server enable traps gdoi gm-rekey-fail
+snmp-server enable traps gdoi ks-rekey-pushed
+snmp-server enable traps gdoi gm-incomplete-cfg
+snmp-server enable traps gdoi ks-no-rsa-keys
+snmp-server enable traps gdoi ks-new-registration
+snmp-server enable traps gdoi ks-reg-complete
+snmp-server enable traps gdoi ks-role-change
+snmp-server enable traps gdoi ks-gm-deleted
+snmp-server enable traps gdoi ks-peer-reachable
+snmp-server enable traps gdoi ks-peer-unreachable
+snmp-server enable traps bulkstat collection transfer
+snmp-server enable traps alarms informational
+snmp-server enable traps voice
+snmp-server enable traps ethernet cfm alarm
+snmp-server enable traps rf
+snmp-server enable traps transceiver all
+snmp-server enable traps mpls vpn
+snmp-server enable traps mpls rfc vpn
+snmp-server enable traps vrfmib vrf-up vrf-down vnet-trunk-up vnet-trunk-down
+snmp-server host 177.52.37.55 version 2c SGP-GRAPHICs 
+snmp mib expression owner cgnat name pool
+  expression 46
+snmp mib expression owner cgnat name total
+  expression 37608
+!
+!
+no radius-server attribute 77 include-in-acct-req
+no radius-server attribute 77 include-in-access-req
+radius-server attribute 6 on-for-login-auth
+radius-server attribute 6 support-multiple
+radius-server attribute 8 include-in-access-req
+radius-server attribute 32 include-in-access-req 
+radius-server attribute 32 include-in-accounting-req 
+radius-server attribute 55 include-in-acct-req
+radius-server attribute 55 access-request include
+radius-server attribute 25 access-request include
+radius-server attribute nas-port format d
+radius-server attribute 31 mac format one-byte delimiter colon upper-case
+radius-server attribute 31 send nas-port-detail mac-only
+radius-server attribute 31 remote-id
+radius-server attribute nas-port-id include circuit-id 
+radius-server retransmit 6
+radius-server timeout 30
+radius-server deadtime 1
+radius-server authorization default Framed-Protocol ppp
+radius-server vsa send cisco-nas-port
+!
+radius server sgp_smartconnectnet
+ address ipv4 177.52.37.55 auth-port 3512 acct-port 3513
+ timeout 30
+ key sgpradius@smartconnectnet
+!
+!
+control-plane
+!
+call admission new-model
+call admission limit 600
+call admission cpu-limit 65
+call admission vpdn 10 1
+call admission pppoe 10 1
+call admission pppoa 10 1
+!
+!
+!
+!
+!
+line con 0
+ stopbits 1
+line aux 0
+ stopbits 1
+line vty 0 4
+ rotary 1
+ transport input ssh
+line vty 5 15
+ rotary 1
+!
+ntp server vrf Mgmt-intf pool.ntp.org
+ntp server vrf Mgmt-intf 34.208.249.133
+!
+!
+!
+!
+!
+event manager session cli username "admin"
+event manager applet Reset_CGNAT_and_Couters
+ event timer cron cron-entry "10 05 * * 0-6"
+ action 1.0  cli command "enable"
+ action 1.1  cli command "clear logging" pattern "confirm"
+ action 1.10 wait 5
+ action 1.11 syslog msg "Reset CGNAT e Counters ... Realizado"
+ action 1.2  cli command "y"
+ action 1.3  cli command "clear ip nat translation *"
+ action 1.4  cli command "clear ip nat statistics "
+ action 1.5  cli command "clear counters" pattern "confirm"
+ action 1.6  cli command "y"
+ action 1.7  wait 5
+ action 1.8  cli command "clear platform hardware qfp active feature nat datapath drop-subcodes"
+ action 1.9  cli command "clear platform hardware qfp active feature nat datapath nonpat"
+event manager applet CGNAT_TOTAL
+ event timer watchdog time 300 maxrun 60
+ action 010 cli command "enable"
+ action 020 cli command "conf t"
+ action 040 cli command "do show ip nat translations total"
+ action 090 regexp "([0-9]+)" "$_cli_result" match total_translations
+ action 100 cli command "snmp mib expression owner cgnat name total"
+ action 110 if $_regexp_result eq "1"
+ action 120  cli command "expression $total_translations"
+ action 130 else
+ action 140  cli command "expression 0"
+ action 150  cli command "exit"
+ action 160 end
+event manager applet CGNAT_POOL
+ event timer watchdog time 280 maxrun 60
+ action 010 cli command "enable"
+ action 020 cli command "conf t"
+ action 030 cli command "do show ip nat statistics | i allocated"
+ action 040 regexp "\(([0-9]+)" "$_cli_result" var1 var2
+ action 050 if $_regexp_result eq "1"
+ action 060  cli command "snmp mib expression owner cgnat name pool"
+ action 070  cli command "expression $var2"
+ action 080 else
+ action 090  cli command "expression 0"
+ action 100  cli command "exit"
+ action 110 end
+!
+end
+
+BDR-BRAS-CGNAT#

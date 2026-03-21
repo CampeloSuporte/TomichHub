@@ -7,6 +7,7 @@ import logging
 import time
 import os
 import socket
+import select as _select
 import paramiko
 from channels.generic.websocket import WebsocketConsumer
 from .models import Acesso, ProxyServer
@@ -18,7 +19,7 @@ class SSHConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
         self.limpar_recursos()
-        
+
     def limpar_recursos(self):
         """✅ LIMPEZA COMPLETA E SEGURA DE RECURSOS"""
         self.is_reading = False
@@ -28,21 +29,21 @@ class SSHConsumer(WebsocketConsumer):
                 self.read_thread.join(timeout=1.0)
             except:
                 pass
-        
+
         if hasattr(self, 'ssh_process') and self.ssh_process:
             try:
                 self.ssh_process.close()
             except:
                 pass
             self.ssh_process = None
-        
+
         if hasattr(self, 'telnet_client') and self.telnet_client:
             try:
                 self.telnet_client.close()
             except:
                 pass
             self.telnet_client = None
-        
+
         if hasattr(self, 'tunnel_process') and self.tunnel_process:
             try:
                 self.tunnel_process.close()
@@ -50,7 +51,6 @@ class SSHConsumer(WebsocketConsumer):
                 pass
             self.tunnel_process = None
 
-        # ✅ NOVO: Fechar tunnel paramiko se existir
         if hasattr(self, '_paramiko_client') and self._paramiko_client:
             try:
                 self._paramiko_client.close()
@@ -75,46 +75,49 @@ class SSHConsumer(WebsocketConsumer):
         self.is_reading = False
         self.is_huawei = False
         self.acessoId = None
-        
+
     def disconnect(self, close_code):
         logger.info("🔌 WebSocket desconectando...")
         self.limpar_recursos()
         logger.info("✅ Limpeza concluída")
-    
+
     def receive(self, text_data):
         try:
             data = json.loads(text_data)
             action = data.get('action')
-            
+
             if action == 'connect':
                 acesso_id = data.get('acesso_id')
                 logger.info(f"📋 Conectar acesso {acesso_id}")
                 self.limpar_recursos()
                 time.sleep(0.1)
                 self.conectar_acesso(acesso_id)
-            
+
             elif action == 'command':
                 command = data.get('command', '')
                 self.enviar_comando(command)
-        
+
         except json.JSONDecodeError as e:
             logger.error(f"❌ Erro ao parsear JSON: {str(e)}")
             self.send_error(f"Erro ao parsear JSON: {str(e)}")
         except Exception as e:
             logger.error(f"❌ Erro na função receive: {str(e)}")
             self.send_error(f"Erro: {str(e)}")
-    
+
     def conectar_acesso(self, acesso_id):
         try:
             self.acessoId = acesso_id
             acesso = Acesso.objects.get(id=acesso_id)
             protocol = self.detect_protocol(acesso.porta)
             self.protocol = protocol
-            
-            self.is_huawei = acesso.equipamento and 'huawei' in acesso.equipamento.lower() if hasattr(acesso, 'equipamento') else False
-            
+
+            self.is_huawei = (
+                acesso.equipamento and 'huawei' in acesso.equipamento.lower()
+                if hasattr(acesso, 'equipamento') else False
+            )
+
             logger.info(f"🔗 Protocolo: {protocol.upper()} | Huawei: {self.is_huawei}")
-            
+
             if self.is_private_ip(acesso.host):
                 if protocol == 'ssh':
                     self.connect_ssh_via_proxy(acesso)
@@ -125,35 +128,42 @@ class SSHConsumer(WebsocketConsumer):
                     self.connect_ssh(acesso)
                 else:
                     self.connect_telnet(acesso)
-        
+
         except Acesso.DoesNotExist:
             self.send_error('Acesso não encontrado')
         except Exception as e:
             logger.error(f"❌ Erro ao conectar: {str(e)}")
             self.send_error(f'Erro ao conectar: {str(e)}')
-    
+
     def enviar_comando(self, command):
+        """
+        ✅ BACKSPACE FIX:
+        xterm.js envia DEL (\x7f) ao pressionar Backspace.
+        Equipamentos de rede (OLTs, Cisco IOS, Juniper legado) esperam BS (\x08 / Ctrl-H).
+        Conversão incondicional: DEL → BS.
+        """
         try:
+            # Substitui \x7f (DEL, padrão do xterm) por \x08 (BS/Ctrl-H, esperado por equipamentos)
+            command = command.replace('\x7f', '\x08')
+
             if self.protocol == 'ssh':
                 if self.ssh_process:
                     logger.debug(f"📤 ENVIANDO: {repr(command[:50])}")
                     self.ssh_process.send(command)
-            
             elif self.protocol == 'telnet':
                 if self.telnet_client:
                     self.telnet_client.write(command.encode('utf-8'))
-        
         except Exception as e:
             logger.error(f"❌ Erro ao enviar: {str(e)}")
             self.send_error(f'Erro ao enviar comando: {str(e)}')
-    
+
     def is_private_ip(self, host):
         try:
             ip = ipaddress.ip_address(host)
             return ip.is_private
         except ValueError:
             return False
-    
+
     def detect_protocol(self, porta):
         porta_int = int(porta)
         if porta_int == 22:
@@ -166,7 +176,7 @@ class SSHConsumer(WebsocketConsumer):
             return 'telnet'
         else:
             return 'telnet' if porta_int < 1024 else 'ssh'
-    
+
     def get_active_proxy(self, cliente):
         try:
             proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
@@ -175,26 +185,14 @@ class SSHConsumer(WebsocketConsumer):
             return proxy
         except Exception as e:
             raise Exception(f"Erro ao buscar proxy: {str(e)}")
-    
+
     # =========================================================
-    # ✅ NOVO: Criar túnel via Paramiko (sem pexpect, sem sleep)
+    # Criar túnel via Paramiko
     # =========================================================
 
     def _criar_tunel_paramiko(self, proxy, host_destino, porta_destino, timeout_conn=8):
-        """
-        Cria um túnel TCP local usando paramiko com socket forwarding.
-        
-        Vantagens sobre pexpect:
-          - Sem prompts de senha para parsear
-          - Sem sleep fixo aguardando processo
-          - Conexão confirmada na hora (handshake real)
-          - Muito mais rápido (tipicamente < 2s)
-        
-        Retorna: int (porta local disponível)
-        """
         logger.info(f"⚡ [PARAMIKO] Conectando ao proxy {proxy.host}:{proxy.porta}...")
 
-        # 1. Conectar ao proxy via paramiko
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh_client.connect(
@@ -209,13 +207,10 @@ class SSHConsumer(WebsocketConsumer):
         )
         logger.info(f"✅ [PARAMIKO] Proxy conectado!")
 
-        # 2. Guardar referência para fechar depois
         self._paramiko_client = ssh_client
 
-        # 3. Encontrar porta local livre
         local_port = self.find_available_port()
 
-        # 4. Criar servidor TCP local que faz forwarding via paramiko
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_sock.bind(('127.0.0.1', local_port))
@@ -226,7 +221,6 @@ class SSHConsumer(WebsocketConsumer):
         transport = ssh_client.get_transport()
 
         def _forward(client_socket):
-            """Faz o forwarding bidirecional entre socket local e canal SSH."""
             try:
                 channel = transport.open_channel(
                     'direct-tcpip',
@@ -261,13 +255,11 @@ class SSHConsumer(WebsocketConsumer):
                 except: pass
 
         def _accept_loop():
-            """Aceita conexões locais e abre canais SSH para elas."""
             while True:
                 try:
                     client_sock, _ = server_sock.accept()
                     threading.Thread(target=_forward, args=(client_sock,), daemon=True).start()
                 except socket.timeout:
-                    # Verifica se ainda deve continuar
                     if not self.is_reading and self.ssh_process is None:
                         break
                     continue
@@ -276,8 +268,6 @@ class SSHConsumer(WebsocketConsumer):
 
         threading.Thread(target=_accept_loop, daemon=True).start()
 
-        # 5. Validar que o canal consegue ser aberto ANTES de continuar
-        # (evita descobrir falha somente depois de montar o pexpect)
         try:
             test_channel = transport.open_channel(
                 'direct-tcpip',
@@ -286,64 +276,59 @@ class SSHConsumer(WebsocketConsumer):
                 timeout=timeout_conn,
             )
             test_channel.close()
-            logger.info(f"✅ [PARAMIKO] Canal testado - túnel OK na porta {local_port}")
+            logger.info(f"✅ [PARAMIKO] Canal testado — túnel OK na porta {local_port}")
         except Exception as e:
-            raise Exception(f"Proxy conectou mas não conseguiu abrir canal para {host_destino}:{porta_destino} — {e}")
+            raise Exception(
+                f"Proxy conectou mas não conseguiu abrir canal para "
+                f"{host_destino}:{porta_destino} — {e}"
+            )
 
         return local_port
 
     # =========================================================
-    # SSH direto (sem proxy) — sem mudanças relevantes
+    # SSH direto
     # =========================================================
 
     def connect_ssh(self, acesso):
         try:
             logger.info(f"🔗 SSH: {acesso.host}:{acesso.porta}")
-            
+
             terminal_type = "vt100" if self.is_huawei else "xterm-256color"
-            
             ssh_cmd = self._build_ssh_cmd(acesso.usuario, acesso.host, acesso.porta)
-            
+
             env = os.environ.copy()
             env['TERM'] = terminal_type
-            
+
             self.ssh_process = pexpect.spawn(
                 ssh_cmd, timeout=15, encoding=None, maxread=262144, env=env
             )
-            
+
             self._authenticate_ssh_process(self.ssh_process, acesso.senha)
-            
+
             if self.is_huawei:
                 self._disable_huawei_paging()
-            
+
             self.send_json({
                 'type': 'connected',
-                'message': f'✓ Conectado SSH a {acesso.host}:{acesso.porta}' + (" [HUAWEI]" if self.is_huawei else "")
+                'message': (
+                    f'✓ Conectado SSH a {acesso.host}:{acesso.porta}'
+                    + (" [HUAWEI]" if self.is_huawei else "")
+                )
             })
-            
+
             self.is_reading = True
             self.read_thread = threading.Thread(target=self.read_ssh_output, daemon=True)
             self.read_thread.start()
-        
+
         except Exception as e:
             logger.error(f"❌ SSH: {str(e)}")
             self.send_error(f'Erro SSH: {str(e)}')
 
     # =========================================================
-    # ✅ SSH via proxy — NOVO (paramiko tunnel)
+    # SSH via proxy
     # =========================================================
 
     def connect_ssh_via_proxy(self, acesso):
-        """
-        Conexão SSH via proxy usando paramiko para o túnel.
-        
-        Fluxo:
-          1. Conecta paramiko ao proxy  (~1-2s, sem parsing de prompts)
-          2. Abre canal direct-tcpip para validar                (~0.3s)
-          3. Conecta pexpect SSH para o equipamento via localhost (~2-4s)
-        
-        Tempo esperado: 3-6s (vs 8-12s anterior com pexpect para o túnel)
-        """
         tempo_inicio = time.time()
 
         try:
@@ -352,13 +337,11 @@ class SSHConsumer(WebsocketConsumer):
 
             self.send_json({'type': 'info', 'message': f'⚡ Conectando via proxy {proxy.nome}...'})
 
-            # ── Passo 1: túnel paramiko ──────────────────────────────
             local_port = self._criar_tunel_paramiko(proxy, acesso.host, int(acesso.porta))
-            
+
             elapsed = time.time() - tempo_inicio
             logger.info(f"⏱️  Túnel pronto em {elapsed:.1f}s — localhost:{local_port} → {acesso.host}:{acesso.porta}")
 
-            # ── Passo 2: SSH para o equipamento via localhost ─────────
             terminal_type = "vt100" if self.is_huawei else "xterm-256color"
             ssh_cmd = self._build_ssh_cmd(acesso.usuario, '127.0.0.1', local_port)
 
@@ -379,7 +362,10 @@ class SSHConsumer(WebsocketConsumer):
 
             self.send_json({
                 'type': 'connected',
-                'message': f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome} ({tempo_total:.1f}s)' + (" [HUAWEI]" if self.is_huawei else "")
+                'message': (
+                    f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome} ({tempo_total:.1f}s)'
+                    + (" [HUAWEI]" if self.is_huawei else "")
+                )
             })
 
             self.is_reading = True
@@ -393,14 +379,10 @@ class SSHConsumer(WebsocketConsumer):
             self.limpar_recursos()
 
     # =========================================================
-    # ✅ Telnet via proxy — NOVO (paramiko tunnel)
+    # Telnet via proxy
     # =========================================================
 
     def connect_telnet_via_proxy(self, acesso):
-        """
-        Conexão Telnet via proxy usando paramiko para o túnel.
-        Mesma abordagem do SSH via proxy.
-        """
         tempo_inicio = time.time()
 
         try:
@@ -409,13 +391,11 @@ class SSHConsumer(WebsocketConsumer):
 
             self.send_json({'type': 'info', 'message': f'⚡ Telnet via proxy {proxy.nome}...'})
 
-            # ── Passo 1: túnel paramiko ──────────────────────────────
             local_port = self._criar_tunel_paramiko(proxy, acesso.host, int(acesso.porta))
 
             elapsed = time.time() - tempo_inicio
             logger.info(f"⏱️  Túnel pronto em {elapsed:.1f}s")
 
-            # ── Passo 2: Telnet via localhost ─────────────────────────
             self.telnet_client = telnetlib.Telnet('127.0.0.1', local_port, timeout=10)
 
             self.send_json({'type': 'info', 'message': 'Autenticando Telnet...'})
@@ -440,12 +420,11 @@ class SSHConsumer(WebsocketConsumer):
             self.limpar_recursos()
 
     # =========================================================
-    # Helpers
+    # Helpers de conexão
     # =========================================================
 
     def _build_ssh_cmd(self, usuario, host, porta):
-        """Monta o comando SSH com todas as opções de compatibilidade."""
-        cmd = (
+        return (
             f"ssh -o StrictHostKeyChecking=no "
             f"-o UserKnownHostsFile=/dev/null "
             f"-o IdentitiesOnly=yes "
@@ -463,10 +442,8 @@ class SSHConsumer(WebsocketConsumer):
             f"-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512 "
             f"-p {porta} {usuario}@{host}"
         )
-        return cmd
 
     def _authenticate_ssh_process(self, process, senha):
-        """Autentica um processo pexpect SSH aguardando prompt de senha."""
         index = process.expect([
             b"password:",
             b"Password:",
@@ -481,7 +458,6 @@ class SSHConsumer(WebsocketConsumer):
             index = process.expect([b"password:", b"Password:", pexpect.TIMEOUT], timeout=10)
 
         if index == 3:
-            # Já autenticado — envia \r para forçar exibição do prompt
             time.sleep(0.2)
             process.send('\r')
             return
@@ -505,7 +481,6 @@ class SSHConsumer(WebsocketConsumer):
             if result == 6:
                 raise Exception("Equipamento encerrou conexão")
 
-            # ✅ Envia \r para forçar aparecimento do prompt após login
             time.sleep(0.2)
             process.send('\r')
             return
@@ -516,7 +491,6 @@ class SSHConsumer(WebsocketConsumer):
             raise Exception("Equipamento encerrou conexão")
 
     def _disable_huawei_paging(self):
-        """Desabilita paginação em equipamentos Huawei."""
         try:
             logger.info("⚙️ Desabilitando paginação Huawei...")
             self.ssh_process.send("screen-length 0 temporary\r")
@@ -529,44 +503,42 @@ class SSHConsumer(WebsocketConsumer):
             logger.warning(f"⚠️ Não foi possível desabilitar paginação: {e}")
 
     # =========================================================
-    # Telnet direto (sem proxy) — sem mudanças
+    # Telnet direto
     # =========================================================
 
     def connect_telnet(self, acesso):
         try:
             logger.info(f"🔗 Telnet: {acesso.host}:{acesso.porta}")
-            
+
             self.telnet_client = telnetlib.Telnet(acesso.host, int(acesso.porta), timeout=10)
-            
-            logger.info(f"✅ Telnet: Conectado")
-            
+
             self.send_json({'type': 'info', 'message': f'Conectando Telnet a {acesso.host}:{acesso.porta}...'})
             self.authenticate_telnet(acesso.usuario, acesso.senha)
-            
+
             self.send_json({
                 'type': 'connected',
                 'message': f'✓ Conectado Telnet a {acesso.host}:{acesso.porta}'
             })
-            
+
             self.is_reading = True
             self.read_thread = threading.Thread(target=self.read_telnet_output, daemon=True)
             self.read_thread.start()
-        
+
         except Exception as e:
             logger.error(f"❌ Telnet: {str(e)}")
             self.send_error(f'Erro Telnet: {str(e)}')
-    
+
     def authenticate_telnet(self, username, password):
         try:
             logger.info(f"🔐 Telnet: Autenticando")
-            
+
             self.telnet_client.write(b'\n')
             time.sleep(0.5)
-            
+
             output = self.telnet_client.read_very_eager()
             if output:
                 self.send_json({'type': 'output', 'data': output.decode('utf-8', errors='ignore')})
-            
+
             output = b''
             for _ in range(50):
                 chunk = self.telnet_client.read_very_eager()
@@ -575,18 +547,17 @@ class SSHConsumer(WebsocketConsumer):
                     if any(x in output.lower() for x in [b'username', b'login', b'user']):
                         break
                 time.sleep(0.1)
-            
+
             if output:
                 self.send_json({'type': 'output', 'data': output.decode('utf-8', errors='ignore')})
-            
-            logger.info(f"📤 Enviando username")
+
             self.telnet_client.write(username.encode('utf-8') + b'\n')
             time.sleep(0.5)
-            
+
             output = self.telnet_client.read_very_eager()
             if output:
                 self.send_json({'type': 'output', 'data': output.decode('utf-8', errors='ignore')})
-            
+
             output = b''
             for _ in range(50):
                 chunk = self.telnet_client.read_very_eager()
@@ -595,79 +566,151 @@ class SSHConsumer(WebsocketConsumer):
                     if any(x in output.lower() for x in [b'password', b'passwd', b'senha']):
                         break
                 time.sleep(0.1)
-            
+
             if output:
                 self.send_json({'type': 'output', 'data': output.decode('utf-8', errors='ignore')})
-            
-            logger.info("📤 Enviando senha")
+
             self.telnet_client.write(password.encode('utf-8') + b'\n')
             time.sleep(1)
-            
+
             output = self.telnet_client.read_very_eager()
             if output:
                 self.send_json({'type': 'output', 'data': output.decode('utf-8', errors='ignore')})
-            
+
             logger.info(f"✅ Telnet: Autenticado")
-        
+
         except Exception as e:
             logger.error(f"❌ Telnet autenticação: {str(e)}")
             self.send_error(f'Erro na autenticação Telnet: {str(e)}')
             raise
 
     # =========================================================
-    # Leitura de output
+    # ✅ LEITURA SSH — select() + flush adaptativo
     # =========================================================
-    
+
     def read_ssh_output(self):
+        ECHO_MAX  = 32
+        LARGE_MIN = 4096
+        BATCH_MS  = 0.008
+
         try:
-            logger.info("📖 Thread SSH iniciada")
-            
+            logger.info("📖 Thread SSH iniciada (select mode)")
+            fd  = self.ssh_process.fileno()
+            buf = bytearray()
+
             while self.is_reading and self.ssh_process:
                 try:
-                    output = self.ssh_process.read_nonblocking(timeout=0.1, size=262144)
-                    
-                    if output and len(output) > 0:
-                        try:
-                            texto = output.decode('utf-8', errors='replace')
-                        except:
-                            texto = output.decode('latin1', errors='replace')
-                        
-                        self.send_json({'type': 'output', 'data': texto})
+                    ready, _, _ = _select.select([fd], [], [], BATCH_MS)
+
+                    if ready:
+                        chunk = self.ssh_process.read_nonblocking(timeout=0, size=65536)
+                        if not chunk:
+                            continue
+
+                        buf += chunk
+
+                        if len(buf) <= ECHO_MAX:
+                            self.send_json({
+                                'type': 'output',
+                                'data': buf.decode('utf-8', errors='replace')
+                            })
+                            buf.clear()
+
+                        elif len(buf) >= LARGE_MIN:
+                            self.send_json({
+                                'type': 'output',
+                                'data': buf.decode('utf-8', errors='replace')
+                            })
+                            buf.clear()
+
                     else:
-                        time.sleep(0.001)
-                
-                except pexpect.exceptions.TIMEOUT:
-                    continue
-                except pexpect.exceptions.EOF:
-                    logger.info("🔌 SSH: EOF recebido")
+                        if buf:
+                            self.send_json({
+                                'type': 'output',
+                                'data': buf.decode('utf-8', errors='replace')
+                            })
+                            buf.clear()
+
+                except (pexpect.exceptions.EOF, OSError):
+                    logger.info("🔌 SSH: conexão encerrada")
+                    if buf:
+                        self.send_json({
+                            'type': 'output',
+                            'data': buf.decode('utf-8', errors='replace')
+                        })
                     break
+
                 except Exception as e:
-                    logger.error(f"❌ Erro leitura SSH: {str(e)}")
+                    err = str(e)
+                    if 'EIO' in err or 'EOF' in err or 'closed' in err.lower():
+                        logger.info("🔌 SSH: fd fechado")
+                        break
+                    logger.error(f"❌ Erro leitura SSH: {err}")
                     break
-        
+
         except Exception as e:
             logger.error(f"❌ Erro thread SSH: {str(e)}")
         finally:
             logger.info("🛑 Thread SSH finalizada")
             self.is_reading = False
-    
+
+    # =========================================================
+    # ✅ LEITURA TELNET — select() no socket + flush adaptativo
+    # =========================================================
+
     def read_telnet_output(self):
+        ECHO_MAX  = 32
+        LARGE_MIN = 4096
+        BATCH_MS  = 0.008
+
         try:
-            logger.info("📖 Thread Telnet iniciada")
-            
+            logger.info("📖 Thread Telnet iniciada (select mode)")
+            sock_fd = self.telnet_client.sock.fileno()
+            buf = bytearray()
+
             while self.is_reading and self.telnet_client:
                 try:
-                    output = self.telnet_client.read_very_eager()
-                    
-                    if output:
-                        self.send_json({'type': 'output', 'data': output.decode('utf-8', errors='ignore')})
+                    ready, _, _ = _select.select([sock_fd], [], [], BATCH_MS)
+
+                    if ready:
+                        chunk = self.telnet_client.read_very_eager()
+                        if not chunk:
+                            time.sleep(0.001)
+                            continue
+
+                        buf += chunk
+
+                        if len(buf) <= ECHO_MAX or len(buf) >= LARGE_MIN:
+                            self.send_json({
+                                'type': 'output',
+                                'data': buf.decode('utf-8', errors='ignore')
+                            })
+                            buf.clear()
+
                     else:
-                        time.sleep(0.001)
-                
+                        if buf:
+                            self.send_json({
+                                'type': 'output',
+                                'data': buf.decode('utf-8', errors='ignore')
+                            })
+                            buf.clear()
+
                 except EOFError:
-                    logger.info("🔌 Telnet: Conexão encerrada")
+                    logger.info("🔌 Telnet: conexão encerrada")
+                    if buf:
+                        self.send_json({
+                            'type': 'output',
+                            'data': buf.decode('utf-8', errors='ignore')
+                        })
                     break
-        
+
+                except Exception as e:
+                    err = str(e)
+                    if 'closed' in err.lower() or 'bad file' in err.lower():
+                        break
+                    logger.error(f"❌ Erro leitura Telnet: {err}")
+                    break
+
         except Exception as e:
             logger.error(f"❌ Erro thread Telnet: {str(e)}")
         finally:
@@ -688,12 +731,12 @@ class SSHConsumer(WebsocketConsumer):
             except OSError:
                 continue
         raise Exception("Nenhuma porta disponível")
-    
+
     def send_json(self, data):
         try:
             self.send(text_data=json.dumps(data))
         except Exception as e:
             logger.error(f"❌ Erro send_json: {str(e)}")
-    
+
     def send_error(self, message):
         self.send_json({'type': 'error', 'message': message})

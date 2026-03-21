@@ -1,0 +1,305 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ALTA RADIO LTDA
+Equipamento: SW-CORE-SANTA-LUZIA
+Host: 10.40.40.70:22
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI S6730
+Template: Backup Huawei
+Data: 21/03/2026 01:21:30
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+screen-length 0 temporary
+Info: The configuration takes effect on the current user terminal interface only.
+<PMS04-SANTA LUZIA-S6730>
+
+============================================================
+Comando: display current-configuration
+============================================================
+display current-configuration
+!Software Version V200R021C00SPC100
+#
+sysname PMS04-SANTA LUZIA-S6730
+#
+vlan batch 54 140 to 141 143 711 to 712 811 813 902 to 903 1001 1100 1599
+vlan batch 1931
+#
+rrpp enable
+#
+authentication-profile name default_authen_profile
+ undo authentication ip-address in-accounting-start
+authentication-profile name dot1x_authen_profile
+ undo authentication ip-address in-accounting-start
+authentication-profile name dot1xmac_authen_profile
+ undo authentication ip-address in-accounting-start
+authentication-profile name mac_authen_profile
+ undo authentication ip-address in-accounting-start
+authentication-profile name multi_authen_profile
+ undo authentication ip-address in-accounting-start
+authentication-profile name portal_authen_profile
+ undo authentication ip-address in-accounting-start
+#
+http server-source -i MEth0/0/1
+#
+portal https-redirect tls1.1 enable
+#
+diffserv domain default
+#
+radius-server template default
+#
+pki realm default
+ certificate-check none
+#
+acl number 3000
+ rule 10 permit ip source 170.80.59.99 0
+ rule 15 permit ip source 170.80.59.16 0
+ rule 20 permit ip source 170.80.59.17 0
+ rule 25 permit ip source 170.79.93.14 0
+ rule 30 permit ip source 170.79.93.15 0
+ rule 40 permit ip source 170.79.93.78 0
+acl number 3001
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+drop-profile default
+#
+vlan 54
+ description VOIP
+vlan 711
+ description GREEN-TELECOM
+vlan 712
+ description GREEN TELECOM IDRAK
+vlan 811
+ description SUPORTE ONLINE
+vlan 813
+ description Suporte_Online_GPON
+vlan 902
+ description DIR: CLEUTO CLEMACO P:0/0/2 D:01
+vlan 903
+ description GCA_GERALDO AGROCERRADO
+vlan 1001
+ description TRANSPORTE GREEN TELECOM SITE-PM01 SANTA LUZIA
+vlan 1100
+ description TRANSPORTE GREEN TELECOM SITE-PM01 SANTA LUZIA
+vlan 1931
+ description Gerencia
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ local-aaa-user password policy administrator
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme radius
+  accounting-scheme default
+  radius-server default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ user-password complexity-check enhance
+ local-user tomich password irreversible-cipher $1c$|2zc#;0,:=$C3U]NeSes!hYs8)#_)BPAo<mOn^&7KV$A4a;y9$
+ local-user tomich privilege level 15
+ local-user tomich service-type ssh
+ local-user wiler1 password irreversible-cipher $1c$'d2YD#!sC0$&b01)c$Cf<)1`ELCn46~lRHWSuG>RDI):I)y#>BY$
+ local-user wiler1 privilege level 15
+ local-user wiler1 service-type telnet terminal ssh ftp http
+#
+interface Vlanif1
+#
+interface Vlanif1100
+ ip address 10.50.50.4 255.255.255.0
+#
+interface Vlanif1931
+ ip address 10.40.40.70 255.255.255.252
+#
+interface MEth0/0/1
+ ip address 192.168.1.253 255.255.255.0
+#
+interface Eth-Trunk1
+ description TRANSPORTE GERALDO CARMO DO PARANAIBA
+ port link-type trunk
+ port trunk allow-pass vlan 1599
+ mode lacp
+#
+interface XGigabitEthernet0/0/1
+ description DIR: CLEUTO CLEMACO P:0/0/2 D:01
+ port link-type trunk
+ port trunk allow-pass vlan 902
+#
+interface XGigabitEthernet0/0/2
+ shutdown
+#
+interface XGigabitEthernet0/0/3
+ description UPLINK_DIR OLT ZTE ZXA 10 C600
+ port link-type trunk
+ port trunk allow-pass vlan 54 140 to 144 711 811 813 1931
+#
+interface XGigabitEthernet0/0/4
+ port media type copper
+  undo negotiation auto
+ description GCA_GERALDO AGROCERRADO
+ port link-type trunk
+ port trunk allow-pass vlan 903
+#
+interface XGigabitEthernet0/0/5
+#
+interface XGigabitEthernet0/0/6
+#
+interface XGigabitEthernet0/0/7
+#
+interface XGigabitEthernet0/0/8
+#
+interface XGigabitEthernet0/0/9
+#
+interface XGigabitEthernet0/0/10
+#
+interface XGigabitEthernet0/0/11
+#
+interface XGigabitEthernet0/0/12
+#
+interface XGigabitEthernet0/0/13
+#
+interface XGigabitEthernet0/0/14
+#
+interface XGigabitEthernet0/0/15
+#
+interface XGigabitEthernet0/0/16
+#
+interface XGigabitEthernet0/0/17
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/18
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/19
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/20
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/21
+ eth-trunk 1
+#
+interface XGigabitEthernet0/0/22
+ description TRANSPORTE GREEN TELECOM SITE-PM01 SORRISO
+ port link-type trunk
+ port trunk allow-pass vlan 1100
+#
+interface XGigabitEthernet0/0/23
+ port media type copper
+  undo negotiation auto
+ description IDRAK GREEN TELECOM
+ port link-type trunk
+ port trunk allow-pass vlan 712
+#
+interface XGigabitEthernet0/0/24
+ description SERVIDOR GREEN TELECOM
+ port link-type access
+ port default vlan 713
+#
+interface 40GE0/0/1
+ description Site-PMS01 Sorriso
+ port link-type trunk
+ port trunk allow-pass vlan 54 140 to 144 711 to 712 811 813 902 to 903 1001 1100 1599 1931
+#
+interface 40GE0/0/2
+#
+interface 40GE0/0/3
+#
+interface 40GE0/0/4
+#
+interface 40GE0/0/5
+#
+interface 40GE0/0/6
+#
+interface NULL0
+#
+undo icmp name timestamp-request receive
+#
+ip route-static 0.0.0.0 0.0.0.0 10.40.40.18
+ip route-static 0.0.0.0 0.0.0.0 10.40.40.69
+#
+stelnet server enable
+ssh user master
+ssh user master authentication-type password
+ssh user master service-type stelnet
+ssh user root
+ssh user root authentication-type password
+ssh server-source all-interface
+ssh ipv6 server-source all-interface
+ssh server acl 3001
+ssh ipv6 server acl 3000
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh client key-exchange dh_group16_sha512 dh_group15_sha512 dh_group14_sha256 dh_group_exchange_sha256
+ssh server dh-exchange min-len 2048
+ssh authorization-type default aaa
+ssh server publickey ecc rsa
+#
+TFTP client-source -a 192.168.1.254
+#
+capwap dtls cert-mandatory-match enable
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1c$je8J!lH.8D$5]W,'ZHPoLB9|l*+jxFEM20EL$F<_$1Y.K*&{L/N$
+user-interface vty 0 4
+ authentication-mode aaa
+ user privilege level 3
+user-interface vty 16 20
+ acl 3000 inbound
+ authentication-mode aaa
+ user privilege level 3
+#
+wlan
+ traffic-profile name default
+ security-profile name default
+  security open
+ security-profile name default-wds
+ security-profile name default-mesh
+  security open
+ ssid-profile name default
+ vap-profile name default
+ wds-profile name default
+ mesh-handover-profile name default
+ mesh-profile name default
+ regulatory-domain-profile name default
+ air-scan-profile name default
+ rrm-profile name default
+ radio-2g-profile name default
+ radio-5g-profile name default
+ wids-spoof-profile name default
+ wids-whitelist-profile name default
+ wids-profile name default
+ ap-system-profile name default
+ port-link-profile name default
+ wired-port-profile name default
+ ap-group name default
+ provision-ap
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+ops
+#
+return
+<PMS04-SANTA LUZIA-S6730>

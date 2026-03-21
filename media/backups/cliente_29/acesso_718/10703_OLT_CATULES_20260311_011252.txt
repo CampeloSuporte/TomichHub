@@ -1,0 +1,1984 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: 10703 OLT_CATULES
+Host: 172.18.19.2:22
+Acesso: VIA PROXY SSH
+Modelo: OLT DATACOM DM4615
+Template: Backup Datacom
+Data: 11/03/2026 01:12:52
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+show running-config | nomore
+aaa authentication-order [ local ]
+aaa user LVNetwork
+ password $1$OD93el4b$bjbhI0K25Xg2YOeXjU5tu0
+ group admin
+!
+aaa user admin
+ password $1$vULTMZLB$du9g2nKsU9nbqO7H6MGiG0
+ group admin
+!
+aaa user hubsoft
+ password $1$6xQrwQ3y$EsVymxmTs6K0G9aejBcjs.
+ group admin
+!
+mpls ldp
+ lsr-id loopback-0
+  interface l3-GERENCIA-OLT
+  !
+  interface l3-OSPF-SW-DT-BREJO
+  !
+  neighbor targeted 172.18.18.120
+  !
+ !
+!
+mpls l2vpn
+ vpls-group PPPOE-SERVICOS
+  vpn 1510-VOIP-OLT-CAT-CARM
+   vfi
+    pw-type vlan
+    neighbor 172.18.18.120
+     pw-id 1510
+     pw-mtu 1500
+     pw-load-balance
+      flow-label both
+     !
+    !
+   !
+   bridge-domain
+    dot1q 1510
+    access-interface gigabit-ethernet-1/1/9
+    !
+   !
+  !
+  vpn 814-PPPOE-OLT-CAT-CARM
+   vfi
+    pw-type vlan
+    neighbor 172.18.18.120
+     pw-id 814
+     pw-mtu 9198
+     pw-load-balance
+      flow-label both
+     !
+    !
+   !
+   bridge-domain
+    dot1q 814
+    access-interface gigabit-ethernet-1/1/9
+    !
+   !
+  !
+ !
+!
+snmp system contact noc@tomich.com.br
+snmp system location VITORIA-ES
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent ip 172.18.19.2
+snmp agent version v2c
+snmp agent version v3
+snmp community TOMICH
+ sec-name TOMICH
+!
+snmp community datacom
+ sec-name datacom
+!
+snmp community public
+ sec-name public
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group TOMICH
+ member TOMICH
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+ !
+!
+snmp vacm group datacom
+ member datacom
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+ !
+!
+snmp vacm group oltdmgreen
+ member oltdmgreen
+  sec-model [ v2c ]
+ !
+!
+snmp vacm group public
+ member public
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+  notify-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/3
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/4
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/5
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/6
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/7
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/8
+ no shutdown
+ negotiation
+ duplex full
+ speed 1G
+ advertising-abilities 1Gfull
+ mdix normal
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/9
+ description CNX.ALCA-CAIXAO
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/10
+ description CNX.ALCA-CAIXAO
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/11
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface gigabit-ethernet 1/1/12
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 16361
+!
+interface ten-gigabit-ethernet 1/1/1
+ description CNX.SW-HU-BRAVIN
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 16361
+!
+interface ten-gigabit-ethernet 1/1/2
+ description CNX.SW-DT-BREJO
+ shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ mdix normal
+ mtu 16361
+!
+interface l3 GERENCIA-OLT
+ ip-mtu 9198
+ lower-layer-if vlan 40
+ ipv4 address 172.18.19.2/30
+!
+interface l3 OSPF-SW-DT-BREJO
+ ip-mtu 9198
+ lower-layer-if vlan 41
+ ipv4 address 172.18.19.6/30
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.0.25/24
+!
+interface loopback 0
+ ipv4 address 172.18.18.249/32
+!
+interface gpon 1/1/1
+ description CATULES
+ no shutdown
+ onu 1
+  name cjosiane
+  serial-number ITBS0A813350
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 2
+  name cfabiomoreira
+  serial-number D01146AA4870
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 3
+  name c4batista
+  serial-number DD72468544D8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 7
+  name cfabiomoreira
+  serial-number ITBS5FDFBA5B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 9
+  name cfabiomoreira
+  serial-number D01146AA9A7C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 10
+  name cfabiomoreira
+  serial-number ITBS445DFD84
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 11
+  name cfabiomoreira
+  serial-number D01146AA489C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 12
+  name cfabiomoreira
+  serial-number ITBS5FDFB9C1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 13
+  name cfabiomoreira
+  serial-number ITBS0D2C6C39
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 14
+  name cfabiomoreira
+  serial-number ITBSF14375ED
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 15
+  name cfabiomoreira
+  serial-number D01146AA4444
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 16
+  name cmariaangela
+  serial-number ITBS0A4C0E5C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 17
+  name cfabiomoreira
+  serial-number ITBS446619B7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 19
+  name cfabiomoreira
+  serial-number D01146AA67A8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 20
+  name cfabiomoreira
+  serial-number ITBS5FDFB88D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 21
+  name c4gil
+  serial-number DD72468544C8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 22
+  name cfabiomoreira
+  serial-number D01146AA4418
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 24
+  name cmariamoreira
+  serial-number ITBS5FDFBB27
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 25
+  name cfabiomoreira
+  serial-number D01146AA442E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 26
+  name cfabiomoreira
+  serial-number D01146A27D26
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 27
+  name cfabiomoreira
+  serial-number D01146AA489A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 28
+  name cfabiomoreira
+  serial-number ITBS5FDFB859
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 29
+  name candreiabar
+  serial-number ITBSACE36C51
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 30
+  name cfabiomoreira
+  serial-number D01146AA4A1E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 32
+  name cfabiomoreira
+  serial-number D01146AA9A80
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 33
+  name cfabiomoreira
+  serial-number ITBS445DFD38
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 34
+  name cfabiomoreira
+  serial-number ITBS446619C1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 35
+  name cfabiomoreira
+  serial-number D01146AA4438
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 38
+  name cfabiomoreira
+  serial-number D01146AAC2F8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 39
+  name cfabiomoreira
+  serial-number ITBS5FDFB90D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 41
+  name csamuel
+  serial-number ZTEGD1F02880
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 42
+  name csamuel
+  serial-number ITBS5F834761
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 43
+  name cmariaelizete
+  serial-number ITBS445C9FC9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 44
+  name cmiguelneto
+  serial-number D01146AA4412
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 45
+  name popbravin
+  serial-number ZTEGCECDA0C5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 46
+  name crenato
+  serial-number ITBSACE36C52
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 47
+  name cbelchior2
+  serial-number D01146AAC2D8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 48
+  name ccelio
+  serial-number ITBS0A4C0E56
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 49
+  name cd2d
+  serial-number ITBS0A4C0E4C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 50
+  name popbravin
+  serial-number ITBS0AC98D12
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 51
+  name cjuvani
+  serial-number ITBS5B5E1A34
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 52
+  name cwaldir2
+  serial-number ITBS5B37AEAB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 53
+  name cferpa
+  serial-number ZTEGD5295C09
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 54
+  name c6ana
+  serial-number ITBS5B7243AB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+!
+interface gpon 1/1/2
+ description CATULES_2
+ no shutdown
+ onu 1
+  name cfabiomoreira
+  serial-number ITBS445DFD70
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 2
+  name cedineide
+  serial-number ITBS0A4C0E68
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 3
+  name cfabiomoreira
+  serial-number ITBSF1437593
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 4
+  name cpriscila
+  serial-number ITBS2CB51898
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 5
+  name cfabiomoreira
+  serial-number ITBSF184D1AA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 6
+  name cfabiomoreira
+  serial-number ITBS5F83476D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 7
+  name cfabiomoreira
+  serial-number ITBSF184D1B6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 8
+  name cfabiomoreira
+  serial-number ITBS5FDFBBBB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 9
+  name cfabiomoreira
+  serial-number ITBS445C9FC5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 10
+  name cfabiomoreira
+  serial-number D01146AA9A96
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 11
+  name cfabiomoreira
+  serial-number D01146A27D48
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 12
+  name cfabiomoreira
+  serial-number D01146AA9AA8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 13
+  name cfabiomoreira
+  serial-number ITBSF14375AD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 14
+  name cfabiomoreira
+  serial-number ITBS5FDFBD45
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 15
+  name cfabiomoreira
+  serial-number ITBSF142BE33
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 16
+  name cfabiomoreira
+  serial-number D01146A1A088
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 17
+  name cfabiomoreira
+  serial-number ITBSF14375A7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 18
+  name cfabiomoreira
+  serial-number D01146AB060E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 19
+  name cfabiomoreira
+  serial-number D01146AA4428
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 20
+  name cfabiomoreira
+  serial-number ITBS5FDFBADD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 21
+  name cfabiomoreira
+  serial-number D01146AAC2E6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 22
+  name cfabiomoreira
+  serial-number D01146AAC2DE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 23
+  name cfabiomoreira
+  serial-number ITBSF164DFE1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 24
+  name cgabriela
+  serial-number ITBS2CDB34A9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 25
+  name testewilliam1
+  serial-number ITBSF1437FEB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 26
+  name cana
+  serial-number ITBS44917AAB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 27
+  name cwilsonjunior
+  serial-number HWTC7989D1AA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 28
+  name clisiane
+  serial-number D01146AA441C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 29
+  name cfabiomoreira
+  serial-number ITBS445DFCBA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 30
+  name clena
+  serial-number ITBS0A4C0AF0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 31
+  name douglas
+  serial-number ITBSF1437E7F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 32
+  name cfracisco
+  serial-number D01146AA9AA0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 33
+  name cgabriela2
+  serial-number D01146AA4A22
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 34
+  name cjosejanuario
+  serial-number ZTEGD5F257A6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 35
+  name cluizhenrique
+  serial-number ZTEGD5F353DD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 36
+  name cluiz
+  serial-number HWTCFC0879AF
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 37
+  name c1zezin
+  serial-number ZTEGD5F29886
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 38
+  name c1anapaulasouza
+  serial-number HWTC2AD6CEAC
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 39
+  name c1renatoracao
+  serial-number D01146A27D14
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 40
+  name c1jorge
+  serial-number D01146A1A09A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 41
+  name c1jorge
+  serial-number HWTCFA7855AE
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 42
+  name clucas
+  serial-number HWTCAAC73BAC
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 43
+  name clucascomposto
+  serial-number HWTCFC0876AF
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 44
+  name clucas2
+  serial-number HWTCC32E08AA
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 45
+  name cmarcio
+  serial-number HWTC449B01AC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 46
+  name c5aline
+  serial-number HWTC64144AAE
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 47
+  name ckanidia
+  serial-number HWTCA22E18AF
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 48
+  name c1darc
+  serial-number HWTC24A5EA5C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 49
+  name c1cleomar
+  serial-number ZTEGD428A6E6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 50
+  name c1adelino
+  serial-number ITBS5FDFB8AD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 51
+  name cwallison
+  serial-number ZTEGD81FC94B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 52
+  name c1darc
+  serial-number D01146A27688
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 53
+  name camarildo
+  serial-number HWTC00BC4438
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 54
+  name cbelchiordosreis
+  serial-number HWTC4484B4AC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 55
+  name cerica
+  serial-number D01146AB00B0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 56
+  name cmozair
+  serial-number ITBS5FDFBA45
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 57
+  name c1darc
+  serial-number HWTC5D50F891
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 58
+  name caldair
+  serial-number ZTEGCE5B0414
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 59
+  name clazinho2
+  serial-number ITBS445DFD50
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 60
+  name cevelino
+  serial-number D01146AA487C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 61
+  name cerica
+  serial-number DD72468544FE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 62
+  name c1veneraldo
+  serial-number HWTCC05205AB
+  line-profile ROUTER_VOIP
+  veip 1
+  !
+ !
+ onu 63
+  name c1wanderson
+  serial-number HWTCA3720E48
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 64
+  name c1celia
+  serial-number HWTCA3623F01
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 65
+  name testeluis
+  serial-number HWTC6C62FA7E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 66
+  name c3vania
+  serial-number ITBS5B2E503F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+ onu 67
+  name cescolajose
+  serial-number ZTEGD8D9ED70
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 68
+  name c1renatoracao
+  serial-number ITBSF184D472
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 814
+  !
+ !
+!
+interface gpon 1/1/3
+ no shutdown
+!
+interface gpon 1/1/4
+ no shutdown
+!
+interface gpon 1/1/5
+ no shutdown
+!
+interface gpon 1/1/6
+ no shutdown
+!
+interface gpon 1/1/7
+ no shutdown
+!
+interface gpon 1/1/8
+ description CATULES
+ no shutdown
+!
+clock timezone GMT -3
+hostname OLT_CATULES
+ssh-server legacy-support
+telnet-server enabled
+profile gpon bandwidth-profile BRIDGE
+ traffic type-3 assured-bw 2048 max-bw 9984
+!
+profile gpon bandwidth-profile PPPoE
+ traffic type-4 max-bw 1106944
+!
+profile gpon bandwidth-profile VOIP
+ traffic type-1 fixed-bw 512
+!
+profile gpon bandwidth-profile type-2_1024
+ traffic type-2 assured-bw 1024
+!
+profile gpon bandwidth-profile type-4_1106944
+ traffic type-4 max-bw 1106944
+!
+profile gpon line-profile BRIDGE-MPLS
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   ethernet 1 vlan 2106 cos any
+  !
+ !
+!
+profile gpon line-profile LINE_ONU_BRIDGE
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   ethernet 1 vlan 814 cos any
+  !
+ !
+!
+profile gpon line-profile LINE_ONU_BRIDGE_GEN
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map PPPOE
+   ethernet any vlan any cos any
+  !
+ !
+!
+profile gpon line-profile LINE_ONU_ROUTER
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   veip 1 vlan 814 cos any
+  !
+ !
+!
+profile gpon line-profile ONU_BRIDGE
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   ethernet 1 vlan 814 cos any
+  !
+ !
+!
+profile gpon line-profile PPPoE-ONU-BRIDGE
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map PPPoE
+   ethernet any vlan 814 cos any
+  !
+ !
+!
+profile gpon line-profile ROUTER_MPLS
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map PPPoE
+   veip 1 vlan 2106 cos any
+  !
+ !
+!
+profile gpon line-profile ROUTER_VOIP
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ tcont 2 bandwidth-profile VOIP
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   veip 1 vlan 814 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map VOIP
+   veip 1 vlan 1510 cos any
+  !
+ !
+!
+profile gpon line-profile VOIP
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map internet
+   veip 1 vlan 814 cos any
+  !
+ !
+!
+profile gpon onu-profile PPPoE-BRIDGE
+ ethernet adaptive
+!
+profile gpon service-profile PPPoE-BRIDGE
+ onu-profile PPPoE-BRIDGE
+!
+service vlan 814
+ type n:1
+!
+service vlan 1510
+ type tls
+!
+dhcp l2-relay circuit-id format <hostname> eth <oltSlot>/<panelPort>/<onuId>/<onuSlot>/<gemPort>:<svlan>
+anti-ip-spoofing
+ interface service-port-10293084
+  allowed-ip all
+ !
+ interface service-port-11029849
+  allowed-ip all
+ !
+ interface service-port-2932157
+  allowed-ip all
+ !
+ interface service-port-4356647
+  allowed-ip all
+ !
+ interface service-port-6748812
+  allowed-ip all
+ !
+!
+gpon 1/1
+ onu-auth-method serial-number
+ aes-key-exchange 3600
+!
+loopback-detection
+ destination-address alternative
+!
+lldp
+ interface gigabit-ethernet-1/1/1
+  admin-status tx-and-rx
+  no notification
+ !
+ interface gigabit-ethernet-1/1/2
+  admin-status tx-and-rx
+  no notification
+ !
+ interface ten-gigabit-ethernet-1/1/1
+  admin-status tx-and-rx
+  no notification
+ !
+ interface ten-gigabit-ethernet-1/1/2
+  admin-status tx-and-rx
+  no notification
+ !
+!
+mac-address-table
+ aging-time 600
+!
+service-port 39776
+ gpon 1/1/1 onu 54 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 84333
+ gpon 1/1/2 onu 14 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 232228
+ gpon 1/1/2 onu 51 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 446738
+ gpon 1/1/2 onu 50 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 461329
+ gpon 1/1/2 onu 19 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 541863
+ gpon 1/1/2 onu 47 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 645106
+ gpon 1/1/2 onu 10 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 666187
+ gpon 1/1/1 onu 21 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1440237
+ gpon 1/1/2 onu 67 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1518966
+ gpon 1/1/1 onu 3 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1673384
+ gpon 1/1/2 onu 17 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1818263
+ gpon 1/1/1 onu 44 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1848640
+ gpon 1/1/1 onu 20 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1857568
+ gpon 1/1/2 onu 24 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 1882702
+ gpon 1/1/1 onu 25 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2100207
+ gpon 1/1/2 onu 35 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2102085
+ gpon 1/1/1 onu 2 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2105229
+ gpon 1/1/2 onu 49 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2156979
+ gpon 1/1/2 onu 34 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2364779
+ gpon 1/1/2 onu 4 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2418512
+ gpon 1/1/2 onu 41 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2482734
+ gpon 1/1/1 onu 1 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2851601
+ gpon 1/1/2 onu 43 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 2932157
+ gpon 1/1/1 onu 35 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 3183711
+ gpon 1/1/1 onu 32 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 3346442
+ gpon 1/1/2 onu 15 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 3396772
+ gpon 1/1/1 onu 14 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 3763487
+ gpon 1/1/1 onu 15 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 3768503
+ gpon 1/1/2 onu 28 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 3947654
+ gpon 1/1/2 onu 21 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4045186
+ gpon 1/1/1 onu 28 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4140159
+ gpon 1/1/1 onu 41 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4194720
+ gpon 1/1/2 onu 37 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4299507
+ gpon 1/1/1 onu 43 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4356647
+ gpon 1/1/1 onu 51 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4808901
+ gpon 1/1/2 onu 45 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 4972830
+ gpon 1/1/1 onu 52 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 5252514
+ gpon 1/1/2 onu 39 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 5396079
+ gpon 1/1/2 onu 22 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 5448795
+ gpon 1/1/1 onu 46 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 5632028
+ gpon 1/1/2 onu 20 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 5990720
+ gpon 1/1/2 onu 27 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 6571852
+ gpon 1/1/1 onu 47 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 6646691
+ gpon 1/1/1 onu 34 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 6705896
+ gpon 1/1/2 onu 52 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 6728351
+ gpon 1/1/1 onu 16 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 6748812
+ gpon 1/1/1 onu 50 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7020204
+ gpon 1/1/2 onu 5 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7093824
+ gpon 1/1/1 onu 24 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7613132
+ gpon 1/1/2 onu 48 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7632716
+ gpon 1/1/2 onu 31 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7781332
+ gpon 1/1/1 onu 27 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7823806
+ gpon 1/1/2 onu 56 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 7972033
+ gpon 1/1/2 onu 13 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8040987
+ gpon 1/1/1 onu 12 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8136304
+ gpon 1/1/1 onu 26 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8179318
+ gpon 1/1/2 onu 32 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8277342
+ gpon 1/1/1 onu 29 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8314823
+ gpon 1/1/2 onu 66 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8352827
+ gpon 1/1/2 onu 12 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8394347
+ gpon 1/1/2 onu 63 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 8877175
+ gpon 1/1/1 onu 30 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 9007312
+ gpon 1/1/1 onu 10 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 9122488
+ gpon 1/1/2 onu 26 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 9222947
+ gpon 1/1/2 onu 7 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 9240603
+ gpon 1/1/2 onu 58 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 9369967
+ gpon 1/1/2 onu 9 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10192798
+ gpon 1/1/2 onu 18 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10249688
+ gpon 1/1/1 onu 19 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10293084
+ gpon 1/1/2 onu 65 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10335665
+ gpon 1/1/2 onu 40 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10438319
+ gpon 1/1/2 onu 60 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10655723
+ gpon 1/1/1 onu 49 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 10816175
+ gpon 1/1/2 onu 36 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11029849
+ gpon 1/1/1 onu 45 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11035723
+ gpon 1/1/2 onu 38 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11177918
+ gpon 1/1/2 onu 8 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11208564
+ gpon 1/1/2 onu 42 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11232692
+ gpon 1/1/1 onu 9 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11344415
+ gpon 1/1/2 onu 59 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11346403
+ gpon 1/1/1 onu 11 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11753690
+ gpon 1/1/2 onu 57 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 11820656
+ gpon 1/1/2 onu 25 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 12262637
+ gpon 1/1/1 onu 7 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 12379814
+ gpon 1/1/1 onu 22 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 12855868
+ gpon 1/1/2 onu 29 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 12870829
+ gpon 1/1/2 onu 2 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 12880739
+ gpon 1/1/2 onu 3 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 12977845
+ gpon 1/1/2 onu 46 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13260840
+ gpon 1/1/2 onu 16 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13274283
+ gpon 1/1/2 onu 6 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13277391
+ gpon 1/1/1 onu 38 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13294167
+ gpon 1/1/2 onu 33 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13469638
+ gpon 1/1/1 onu 42 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13618120
+ gpon 1/1/2 onu 61 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13618749
+ gpon 1/1/2 onu 55 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 13989529
+ gpon 1/1/2 onu 53 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 14024032
+ gpon 1/1/2 onu 23 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 14144775
+ gpon 1/1/1 onu 33 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 14351879
+ gpon 1/1/2 onu 64 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 14358398
+ gpon 1/1/1 onu 13 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 14700814
+ gpon 1/1/1 onu 48 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 14973629
+ gpon 1/1/2 onu 1 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 15098480
+ gpon 1/1/1 onu 17 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 15182744
+ gpon 1/1/1 onu 53 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 15526665
+ gpon 1/1/2 onu 44 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 15571620
+ gpon 1/1/2 onu 30 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 16162448
+ gpon 1/1/2 onu 11 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 16323872
+ gpon 1/1/2 onu 68 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 16513641
+ gpon 1/1/2 onu 62 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 16540086
+ gpon 1/1/1 onu 39 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+service-port 16547291
+ gpon 1/1/2 onu 54 gem 1 match vlan vlan-id 814 action vlan replace vlan-id 814
+!
+vrf global
+!
+vrf mgmt
+!
+router ospf 1 vrf global
+ router-id 172.18.18.249
+ area 0
+  interface l3-GERENCIA-OLT
+   authentication simple-password
+   authentication-key "hls:1530989611:3;`CnGpC"
+   network-type point-to-point
+  !
+  interface l3-OSPF-SW-DT-BREJO
+   authentication simple-password
+   authentication-key "hls:1530989611:3;`CnGpC"
+   cost 500
+   network-type point-to-point
+  !
+  interface loopback-0
+  !
+ !
+!
+router static
+ address-family ipv4
+  0.0.0.0/0 next-hop 172.18.19.1
+  !
+ !
+!
+dot1q
+ vlan 40
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 41
+  name OSPF-SW-DT-BREJO
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 814
+  name PPPoE
+  interface gigabit-ethernet-1/1/10
+  !
+ !
+ vlan 1501
+  name GERENCIA-OLT
+  interface gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+ !
+ vlan 1510
+  name Voip
+  interface gigabit-ethernet-1/1/10
+  !
+ !
+!
+license mpls enabled
+license mpls key ***
+OLT_CATULES# 

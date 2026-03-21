@@ -77,6 +77,7 @@
         .btn-terminal:hover { border-color: #00ff88; color: #00ff88; }
         .btn-terminal.btn-wiki { border-color: #00d9ff; color: #00d9ff; }
         .btn-terminal.btn-wiki:hover { background: rgba(0, 217, 255, 0.1); }
+        .btn-terminal.btn-cores-off { border-color: #444; color: #444; }
 
         /* ESTADO VAZIO */
         .terminal-empty {
@@ -85,12 +86,11 @@
         }
         .terminal-empty-text { text-align: center; line-height: 1.6; font-family: 'JetBrains Mono', monospace; }
         .debug-panel { display: none !important; }
-        .debug-line { margin: 2px 0; padding: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
         .btn-terminal.reconnecting { border-color: #ffa500; color: #ffa500; animation: pulseOrange 1s infinite; }
         @keyframes pulseOrange { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
         /* ============================================
-           WIKI SIDEBAR — REDIMENSIONÁVEL + MAXIMIZÁVEL
+           WIKI SIDEBAR
         ============================================ */
         .wiki-sidebar {
             position: fixed; top: 0; right: -9999px; width: 480px; height: 100vh;
@@ -102,76 +102,45 @@
             min-width: 300px; max-width: 98vw;
         }
         .wiki-sidebar.aberto { right: 0; }
-        /* Maximizado: ocupa a tela toda */
-        .wiki-sidebar.maximizado {
-            width: 100vw !important;
-            border-left: none;
-            transition: width 0.2s ease;
-        }
-        /* Alça de redimensionamento — borda esquerda */
+        .wiki-sidebar.maximizado { width: 100vw !important; border-left: none; transition: width 0.2s ease; }
         .wiki-resize-handle {
-            position: absolute; top: 0; left: -4px;
-            width: 8px; height: 100%;
-            cursor: ew-resize; z-index: 10000;
-            background: transparent;
-            transition: background 0.2s;
+            position: absolute; top: 0; left: -4px; width: 8px; height: 100%;
+            cursor: ew-resize; z-index: 10000; background: transparent; transition: background 0.2s;
         }
-        .wiki-resize-handle:hover,
-        .wiki-resize-handle.arrastando {
-            background: rgba(0,255,136,0.25);
-        }
-        /* Indicador visual na alça */
+        .wiki-resize-handle:hover, .wiki-resize-handle.arrastando { background: rgba(0,255,136,0.25); }
         .wiki-resize-handle::after {
-            content: '';
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 2px; height: 40px;
-            background: rgba(0,255,136,0.4);
-            border-radius: 2px;
-            opacity: 0; transition: opacity 0.2s;
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 2px; height: 40px;
+            background: rgba(0,255,136,0.4); border-radius: 2px; opacity: 0; transition: opacity 0.2s;
         }
-        .wiki-resize-handle:hover::after,
-        .wiki-resize-handle.arrastando::after { opacity: 1; }
-
-        /* Cursor global durante arrasto */
+        .wiki-resize-handle:hover::after, .wiki-resize-handle.arrastando::after { opacity: 1; }
         body.wiki-resizing { cursor: ew-resize !important; user-select: none !important; }
         body.wiki-resizing * { cursor: ew-resize !important; }
-
         .wiki-sidebar-header {
             background: #0a0a0a; padding: 10px 14px; border-bottom: 2px solid #00ff88;
-            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
-            gap: 8px;
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 8px;
         }
         .wiki-sidebar-header h3 { margin: 0; color: #00ff88; font-size: 15px; font-weight: 700; letter-spacing: 1px; flex: 1; }
         .wiki-header-actions { display: flex; align-items: center; gap: 4px; }
-        /* Indicador de largura */
         .wiki-width-indicator {
-            font-size: 9px; color: #333; padding: 2px 6px;
-            background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 2px;
-            font-family: 'JetBrains Mono', monospace; white-space: nowrap;
-            transition: color 0.2s;
+            font-size: 9px; color: #333; padding: 2px 6px; background: #0d0d0d;
+            border: 1px solid #1a1a1a; border-radius: 2px; font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; transition: color 0.2s;
         }
         body.wiki-resizing .wiki-width-indicator { color: #00ff88; border-color: #00ff88; }
-        /* Botões do cabeçalho */
         .btn-wiki-action {
             background: transparent; border: 1px solid #2a2a2a; color: #555;
-            width: 26px; height: 26px; border-radius: 3px;
-            cursor: pointer; font-size: 12px; display: flex;
-            align-items: center; justify-content: center; transition: 0.2s;
-            flex-shrink: 0; line-height: 1;
+            width: 26px; height: 26px; border-radius: 3px; cursor: pointer; font-size: 12px;
+            display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; line-height: 1;
         }
         .btn-wiki-action:hover { border-color: #00ff88; color: #00ff88; }
         .btn-wiki-action.maximizar:hover { border-color: #00d9ff; color: #00d9ff; }
         .btn-wiki-action.fechar:hover { border-color: #ff4444; color: #ff4444; }
-        /* Botões de largura predefinida */
-        .wiki-size-presets {
-            display: flex; gap: 3px; align-items: center;
-        }
+        .wiki-size-presets { display: flex; gap: 3px; align-items: center; }
         .btn-preset {
             background: transparent; border: 1px solid #1e1e1e; color: #444;
-            padding: 2px 6px; border-radius: 2px; cursor: pointer;
-            font-size: 9px; font-family: 'JetBrains Mono', monospace;
-            transition: 0.15s; white-space: nowrap;
+            padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 9px;
+            font-family: 'JetBrains Mono', monospace; transition: 0.15s; white-space: nowrap;
         }
         .btn-preset:hover { border-color: #00ff88; color: #00ff88; }
         .wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
@@ -184,7 +153,6 @@
         .wiki-search-input::placeholder { color: #444; }
         .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; }
         .wiki-sidebar-results::-webkit-scrollbar { width: 4px; }
-        .wiki-sidebar-results::-webkit-scrollbar-track { background: transparent; }
         .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
         .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background 0.15s; }
         .wiki-result-item:hover { background: rgba(0,255,136,0.04); }
@@ -197,9 +165,7 @@
         .wiki-fabricante { background: rgba(0,217,255,0.12); color: #00d9ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
         .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: #555; font-size: 12px; }
 
-        /* ============================================
-           ARTIGO
-        ============================================ */
+        /* ARTIGO */
         .wiki-artigo-view { color: #ccc; font-size: 12px; line-height: 1.6; }
         .btn-voltar-wiki {
             display: flex; align-items: center; gap: 8px; width: 100%;
@@ -237,120 +203,57 @@
             border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
         }
 
-        /* ============================================
-           WRAPPER DE CÓDIGO
-        ============================================ */
-        .wiki-code-wrapper {
-            background: #0a0a0a; border: 1px solid #1e1e1e;
-            border-radius: 3px; overflow: hidden; margin: 12px 0;
-        }
-
-        /* Toolbar do bloco de código */
-        .wiki-code-toolbar {
-            background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e;
-            display: flex; align-items: center; gap: 5px;
-        }
-
-        /* ── NOVO: área de linguagem + título à esquerda ── */
-        .wiki-code-toolbar-title {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-width: 0;
-            overflow: hidden;
-        }
+        /* WRAPPER DE CÓDIGO */
+        .wiki-code-wrapper { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; margin: 12px 0; }
+        .wiki-code-toolbar { background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 5px; }
+        .wiki-code-toolbar-title { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
         .wiki-code-lang-badge {
-            background: rgba(255,170,0,0.15);
-            color: #ffa500;
-            font-size: 9px;
-            font-weight: 800;
-            padding: 2px 7px;
-            border-radius: 2px;
-            border: 1px solid rgba(255,170,0,0.25);
-            white-space: nowrap;
-            flex-shrink: 0;
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            background: rgba(255,170,0,0.15); color: #ffa500; font-size: 9px; font-weight: 800;
+            padding: 2px 7px; border-radius: 2px; border: 1px solid rgba(255,170,0,0.25);
+            white-space: nowrap; flex-shrink: 0; font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .wiki-code-title-text {
-            color: #888;
-            font-size: 11px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
+        .wiki-code-title-text { color: #888; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-bloco {
             background: transparent; border: 1px solid #2a2a2a; color: #555;
-            padding: 3px 9px; border-radius: 2px; cursor: pointer;
-            font-size: 10px; font-family: 'JetBrains Mono', monospace;
-            transition: 0.2s; white-space: nowrap; line-height: 1.5;
+            padding: 3px 9px; border-radius: 2px; cursor: pointer; font-size: 10px;
+            font-family: 'JetBrains Mono', monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
         }
         .btn-bloco:hover { color: #aaa; border-color: #444; }
         .btn-bloco.btn-editar:hover  { color: #ffa500; border-color: #ffa500; }
         .btn-bloco.btn-editar.ativo  { color: #ffa500; border-color: #ffa500; background: rgba(255,165,0,0.08); }
         .btn-bloco.btn-copiar:hover  { color: #00d9ff; border-color: #00d9ff; }
         .btn-bloco.btn-copiar.copiado { color: #00ff88; border-color: #00ff88; }
-        .btn-bloco.btn-enviar {
-            color: #00ff88; border-color: #00ff88;
-            background: rgba(0,255,136,0.07); font-weight: 600;
-        }
+        .btn-bloco.btn-enviar { color: #00ff88; border-color: #00ff88; background: rgba(0,255,136,0.07); font-weight: 600; }
         .btn-bloco.btn-enviar:hover { background: rgba(0,255,136,0.16); box-shadow: 0 0 8px rgba(0,255,136,0.2); }
-
-        /* Aviso modo edição */
         .wiki-bloco-edit-aviso {
-            display: none; padding: 6px 12px;
-            background: rgba(255,165,0,0.05); border-bottom: 1px solid rgba(255,165,0,0.15);
-            color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
+            display: none; padding: 6px 12px; background: rgba(255,165,0,0.05);
+            border-bottom: 1px solid rgba(255,165,0,0.15); color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
         }
         .wiki-bloco-edit-aviso.visivel { display: flex; }
-
-        /* Visualizador readonly */
         .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0a0a0a; border-left: 3px solid #00ff88; }
-        .wiki-codigo-pre code {
-            display: table; width: 100%; counter-reset: linhas;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0;
-        }
+        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
         .wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
         .wiki-codigo-pre code .ln::before {
             content: counter(linhas); display: table-cell; width: 34px; min-width: 34px;
             text-align: right; padding: 0 10px 0 6px; color: #3a3a3a;
-            border-right: 1px solid #1e1e1e; user-select: none; font-size: 10px;
-            vertical-align: top; padding-top: 1px;
+            border-right: 1px solid #1e1e1e; user-select: none; font-size: 10px; vertical-align: top; padding-top: 1px;
         }
         .wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
-
-        /* Highlight de variáveis no código */
-        .wiki-codigo-pre code .ln .lc .wiki-var-highlight {
-            background: rgba(255, 170, 0, 0.18);
-            color: #ffaa00;
-            border-radius: 2px;
-            padding: 0 2px;
-            border-bottom: 1px dashed #ffa500;
-        }
-
-        /* Editor textarea */
+        .wiki-codigo-pre code .ln .lc .wiki-var-highlight { background: rgba(255,170,0,0.18); color: #ffaa00; border-radius: 2px; padding: 0 2px; border-bottom: 1px dashed #ffa500; }
         .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0a0a0a; }
         .wiki-codigo-editor-wrap.visivel { display: block; }
         .wiki-codigo-editor {
-            width: 100%; min-height: 80px; max-height: 420px;
-            background: #0d0d0d; color: #e8e8e8;
-            border: none; outline: none; resize: vertical;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
-            padding: 10px 14px; tab-size: 4;
-            scrollbar-width: thin; scrollbar-color: #333 transparent;
-            caret-color: #ffa500;
+            width: 100%; min-height: 80px; max-height: 420px; background: #0d0d0d; color: #e8e8e8;
+            border: none; outline: none; resize: vertical; font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
+            scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
         }
         .wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
         .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
         .wiki-codigo-editor:focus { background: #0f0f0f; }
-
-        /* Rodapé do editor */
         .wiki-bloco-footer {
-            display: none; padding: 8px 12px; background: #0e0e0e;
-            border-top: 1px solid #1e1e1e;
+            display: none; padding: 8px 12px; background: #0e0e0e; border-top: 1px solid #1e1e1e;
             align-items: center; justify-content: space-between; gap: 8px;
         }
         .wiki-bloco-footer.visivel { display: flex; }
@@ -358,15 +261,15 @@
         .wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
         .btn-resetar {
             background: transparent; border: 1px solid #2a2a2a; color: #555;
-            padding: 4px 10px; border-radius: 2px; cursor: pointer;
-            font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s;
+            padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
+            font-family: 'JetBrains Mono', monospace; transition: 0.2s;
         }
         .btn-resetar:hover { color: #ff5555; border-color: #ff5555; }
         .btn-enviar-grande {
             background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;
-            padding: 5px 14px; border-radius: 2px; cursor: pointer;
-            font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
-            transition: 0.2s; display: flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
+            font-family: 'JetBrains Mono', monospace; font-weight: 600; transition: 0.2s;
+            display: flex; align-items: center; gap: 6px;
         }
         .btn-enviar-grande:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 12px rgba(0,255,136,0.28); }
         .btn-enviar-grande.enviado { animation: flashGreen 0.5s ease; }
@@ -376,116 +279,40 @@
             100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
         }
 
-        /* ============================================
-           PAINEL DE VARIÁVEIS
-        ============================================ */
-        .wiki-vars-panel {
-            background: rgba(255, 170, 0, 0.03);
-            border-top: 1px solid rgba(255, 170, 0, 0.12);
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        .wiki-vars-toggle {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 7px 12px; cursor: pointer;
-            background: rgba(255, 170, 0, 0.05);
-            border-bottom: 1px solid rgba(255, 170, 0, 0.08);
-            transition: background 0.15s;
-        }
-        .wiki-vars-toggle:hover { background: rgba(255, 170, 0, 0.09); }
-        .wiki-vars-toggle-left {
-            display: flex; align-items: center; gap: 7px;
-            font-size: 10px; font-weight: 700; color: #ffa500;
-            text-transform: uppercase; letter-spacing: 0.8px;
-        }
-        .wiki-vars-badge {
-            background: rgba(255, 170, 0, 0.2); color: #ffa500;
-            padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800;
-        }
-        .wiki-vars-toggle-arrow {
-            color: #555; font-size: 11px; transition: transform 0.25s;
-            user-select: none;
-        }
+        /* VARIÁVEIS */
+        .wiki-vars-panel { background: rgba(255,170,0,0.03); border-top: 1px solid rgba(255,170,0,0.12); overflow: hidden; transition: max-height 0.3s ease; }
+        .wiki-vars-toggle { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; cursor: pointer; background: rgba(255,170,0,0.05); border-bottom: 1px solid rgba(255,170,0,0.08); transition: background 0.15s; }
+        .wiki-vars-toggle:hover { background: rgba(255,170,0,0.09); }
+        .wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #ffa500; text-transform: uppercase; letter-spacing: 0.8px; }
+        .wiki-vars-badge { background: rgba(255,170,0,0.2); color: #ffa500; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
+        .wiki-vars-toggle-arrow { color: #555; font-size: 11px; transition: transform 0.25s; user-select: none; }
         .wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
-        .wiki-vars-body {
-            padding: 10px 12px; display: none;
-            flex-direction: column; gap: 8px;
-        }
+        .wiki-vars-body { padding: 10px 12px; display: none; flex-direction: column; gap: 8px; }
         .wiki-vars-body.visivel { display: flex; }
-        .wiki-vars-hint {
-            font-size: 10px; color: #555; padding: 4px 0;
-            border-bottom: 1px solid #1a1a1a; margin-bottom: 2px;
-            line-height: 1.5;
-        }
-        .wiki-vars-hint code {
-            background: rgba(255,170,0,0.12); color: #ffa500;
-            padding: 1px 4px; border-radius: 2px; font-size: 10px;
-        }
+        .wiki-vars-hint { font-size: 10px; color: #555; padding: 4px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 2px; line-height: 1.5; }
+        .wiki-vars-hint code { background: rgba(255,170,0,0.12); color: #ffa500; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
         .wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
         .wiki-var-row { display: flex; align-items: center; gap: 8px; }
-        .wiki-var-label {
-            background: rgba(255, 170, 0, 0.12);
-            color: #ffa500; font-size: 10px; font-weight: 700;
-            padding: 4px 8px; border-radius: 2px;
-            white-space: nowrap; min-width: 80px; text-align: center;
-            border: 1px solid rgba(255, 170, 0, 0.2);
-            font-family: 'JetBrains Mono', monospace;
-        }
+        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'JetBrains Mono', monospace; }
         .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
-        .wiki-var-inp {
-            flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
-            padding: 5px 10px; border-radius: 2px;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px;
-            outline: none; transition: border-color 0.15s, background 0.15s;
-            min-width: 0;
-        }
+        .wiki-var-inp { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 5px 10px; border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; }
         .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
         .wiki-var-inp::placeholder { color: #3a3a3a; }
         .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
-        .wiki-vars-actions {
-            display: flex; gap: 6px; padding-top: 6px;
-            border-top: 1px solid #1a1a1a; flex-wrap: wrap;
-        }
-        .btn-vars-limpar {
-            background: transparent; border: 1px solid #2a2a2a; color: #555;
-            padding: 4px 10px; border-radius: 2px; cursor: pointer;
-            font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s;
-        }
+        .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #1a1a1a; flex-wrap: wrap; }
+        .btn-vars-limpar { background: transparent; border: 1px solid #2a2a2a; color: #555; padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s; }
         .btn-vars-limpar:hover { color: #ff5555; border-color: #ff5555; }
         .wiki-vars-preview-wrap { display: none; }
         .wiki-vars-preview-wrap.visivel { display: block; }
         .wiki-vars-preview-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        .wiki-vars-preview-pre {
-            background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1);
-            border-left: 3px solid rgba(0,255,136,0.4);
-            border-radius: 2px; padding: 8px 10px; overflow-x: auto;
-            font-family: 'JetBrains Mono', monospace; font-size: 10px;
-            color: #b0e0b0; white-space: pre; line-height: 1.6;
-            max-height: 140px; overflow-y: auto;
-        }
-
-        /* Blocos extras (blocos_codigo) */
-        .wiki-blocos-section-title {
-            padding: 10px 16px 4px; font-size: 10px; color: #444;
-            text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1a1a1a;
-        }
-        .wiki-bloco-extra {
-            margin: 0 16px 14px; background: #0a0a0a;
-            border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden;
-        }
-        .wiki-bloco-extra-header {
-            background: #111; padding: 8px 12px; border-bottom: 1px solid #1e1e1e;
-            display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
-        }
+        .wiki-vars-preview-pre { background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1); border-left: 3px solid rgba(0,255,136,0.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
+        .wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1a1a1a; }
+        .wiki-bloco-extra { margin: 0 16px 14px; background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; }
+        .wiki-bloco-extra-header { background: #111; padding: 8px 12px; border-bottom: 1px solid #1e1e1e; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
         .wiki-bloco-extra-header strong { color: #00d9ff; font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
         .wiki-bloco-acoes { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
-        .wiki-bloco-lang {
-            font-size: 9px; color: #444; background: #0a0a0a;
-            padding: 2px 7px; border-radius: 10px; border: 1px solid #222;
-        }
+        .wiki-bloco-lang { font-size: 9px; color: #444; background: #0a0a0a; padding: 2px 7px; border-radius: 10px; border: 1px solid #222; }
         .wiki-bloco-descricao { padding: 8px 12px; color: #666; font-size: 11px; border-bottom: 1px solid #1e1e1e; margin: 0; }
-
-        /* Toast */
         .wiki-toast {
             position: fixed; bottom: 70px; right: 20px; background: #111;
             border: 1px solid #00ff88; color: #00ff88; padding: 8px 16px;
@@ -524,6 +351,7 @@
             <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
             {% endif %}
             <button class="btn-terminal" onclick="limparTela()">✕ Limpar Tela</button>
+            <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
             <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
             <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
             <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
@@ -532,25 +360,18 @@
 
     <div class="debug-panel" id="debugPanel" style="display:none;"></div>
 
-    <!-- WIKI SIDEBAR -->
     <div id="wikiSidebar" class="wiki-sidebar">
-        <!-- Alça de redimensionamento (borda esquerda) -->
         <div class="wiki-resize-handle" id="wikiResizeHandle" title="Arraste para redimensionar"></div>
-
         <div class="wiki-sidebar-header">
             <h3>📖 Wiki</h3>
             <div class="wiki-header-actions">
-                <!-- Indicador de largura -->
                 <span class="wiki-width-indicator" id="wikiWidthIndicator">480px</span>
-                <!-- Presets de tamanho -->
                 <div class="wiki-size-presets">
-                    <button class="btn-preset" onclick="setWikiWidth(380)" title="Compacto">S</button>
-                    <button class="btn-preset" onclick="setWikiWidth(520)" title="Médio">M</button>
-                    <button class="btn-preset" onclick="setWikiWidth(720)" title="Largo">L</button>
+                    <button class="btn-preset" onclick="setWikiWidth(380)">S</button>
+                    <button class="btn-preset" onclick="setWikiWidth(520)">M</button>
+                    <button class="btn-preset" onclick="setWikiWidth(720)">L</button>
                 </div>
-                <!-- Maximizar -->
                 <button class="btn-wiki-action maximizar" id="btnMaxWiki" onclick="toggleMaxWiki()" title="Maximizar / Restaurar">⤢</button>
-                <!-- Fechar -->
                 <button class="btn-wiki-action fechar" onclick="toggleWikiSidebar()" title="Fechar">✕</button>
             </div>
         </div>
@@ -564,7 +385,6 @@
         </div>
     </div>
 
-    <!-- Toast -->
     <div id="wikiToast" class="wiki-toast"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
@@ -586,7 +406,7 @@
     }
 
     // ============================================================
-    // WIKI — BUSCA / LISTAGEM
+    // WIKI
     // ============================================================
     let wikiDebounceTimer = null;
     let wikiUltimosResultados = [];
@@ -609,10 +429,7 @@
         c.innerHTML = '<div class="wiki-loading">Buscando...</div>';
         fetch('/wiki/api/buscar/?q=' + encodeURIComponent(q))
             .then(r => r.json())
-            .then(d => {
-                wikiUltimosResultados = d.artigos || [];
-                renderizarResultadosWiki(wikiUltimosResultados);
-            })
+            .then(d => { wikiUltimosResultados = d.artigos || []; renderizarResultadosWiki(wikiUltimosResultados); })
             .catch(() => { c.innerHTML = '<div class="wiki-error">Erro ao carregar artigos</div>'; });
     }
 
@@ -641,19 +458,15 @@
     }
 
     // ============================================================
-    // SISTEMA DE VARIÁVEIS
+    // VARIÁVEIS
     // ============================================================
     const VAR_REGEX = /#([A-Za-z0-9_\-\.]+)#/g;
     window._wikiVarsValues = {};
 
     function detectarVariaveis(codigo) {
-        const matches = [];
-        const seen = new Set();
-        let m;
+        const matches = []; const seen = new Set(); let m;
         const rx = new RegExp(VAR_REGEX.source, 'g');
-        while ((m = rx.exec(codigo)) !== null) {
-            if (!seen.has(m[1])) { seen.add(m[1]); matches.push(m[1]); }
-        }
+        while ((m = rx.exec(codigo)) !== null) { if (!seen.has(m[1])) { seen.add(m[1]); matches.push(m[1]); } }
         return matches;
     }
 
@@ -661,16 +474,14 @@
         let resultado = codigo;
         detectarVariaveis(codigo).forEach(v => {
             const valor = window._wikiVarsValues[`${idx}-${v}`];
-            if (valor !== undefined && valor !== '') {
+            if (valor !== undefined && valor !== '')
                 resultado = resultado.replace(new RegExp(`#${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}#`, 'g'), valor);
-            }
         });
         return resultado;
     }
 
     function destacarVariaveisHtml(html) {
-        return html.replace(/#([A-Za-z0-9_\-\.]+)#/g,
-            '<span class="wiki-var-highlight">#$1#</span>');
+        return html.replace(/#([A-Za-z0-9_\-\.]+)#/g, '<span class="wiki-var-highlight">#$1#</span>');
     }
 
     function renderVariaveisPainel(idx) {
@@ -678,26 +489,18 @@
         const variaveis = detectarVariaveis(codigo);
         const bw = document.getElementById(`bw-${idx}`);
         if (!bw) return;
-
         const antigo = document.getElementById(`varspanel-${idx}`);
         if (antigo) antigo.remove();
         if (variaveis.length === 0) return;
-
         const panel = document.createElement('div');
-        panel.className = 'wiki-vars-panel';
-        panel.id = `varspanel-${idx}`;
+        panel.className = 'wiki-vars-panel'; panel.id = `varspanel-${idx}`;
         panel.innerHTML = `
             <div class="wiki-vars-toggle" onclick="toggleVarsPanel(${idx})">
-                <div class="wiki-vars-toggle-left">
-                    <span>⚡</span><span>Variáveis</span>
-                    <span class="wiki-vars-badge">${variaveis.length}</span>
-                </div>
+                <div class="wiki-vars-toggle-left"><span>⚡</span><span>Variáveis</span><span class="wiki-vars-badge">${variaveis.length}</span></div>
                 <span class="wiki-vars-toggle-arrow" id="vars-arrow-${idx}">▼</span>
             </div>
             <div class="wiki-vars-body" id="vars-body-${idx}">
-                <div class="wiki-vars-hint">
-                    Preencha os valores para substituir <code>#variavel#</code> no código ao enviar ou copiar.
-                </div>
+                <div class="wiki-vars-hint">Preencha os valores para substituir <code>#variavel#</code> no código ao enviar ou copiar.</div>
                 <div class="wiki-vars-grid" id="vars-grid-${idx}">
                     ${variaveis.map(v => `
                         <div class="wiki-var-row">
@@ -710,26 +513,16 @@
                                 onkeydown="if(event.key==='Enter'){enviarAoTerminal(${idx});}">
                         </div>`).join('')}
                 </div>
-                <div class="wiki-vars-actions">
-                    <button class="btn-vars-limpar" onclick="limparVariaveis(${idx})">↺ Limpar valores</button>
-                </div>
+                <div class="wiki-vars-actions"><button class="btn-vars-limpar" onclick="limparVariaveis(${idx})">↺ Limpar valores</button></div>
                 <div class="wiki-vars-preview-wrap" id="vars-preview-wrap-${idx}">
                     <div class="wiki-vars-preview-label">Pré-visualização</div>
                     <pre class="wiki-vars-preview-pre" id="vars-preview-${idx}"></pre>
                 </div>
             </div>`;
-
         const footer = document.getElementById(`footer-${idx}`);
         if (footer) bw.insertBefore(panel, footer);
-        else {
-            const fg = bw.querySelector('.wiki-bloco-footer');
-            if (fg) bw.insertBefore(panel, fg); else bw.appendChild(panel);
-        }
-
-        variaveis.forEach(v => {
-            const inp = document.getElementById(`varinp-${idx}-${v}`);
-            if (inp && inp.value) inp.classList.add('preenchido');
-        });
+        else { const fg = bw.querySelector('.wiki-bloco-footer'); if (fg) bw.insertBefore(panel, fg); else bw.appendChild(panel); }
+        variaveis.forEach(v => { const inp = document.getElementById(`varinp-${idx}-${v}`); if (inp && inp.value) inp.classList.add('preenchido'); });
     }
 
     function toggleVarsPanel(idx) {
@@ -769,18 +562,15 @@
     }
 
     // ============================================================
-    // WIKI — RENDERIZAR ARTIGO
+    // RENDERIZAR ARTIGO
     // ============================================================
     let _blocoCounter = 0;
     window._wikiBlocosMap = {};
 
     function renderizarArtigoWiki(artigo) {
         const c = document.getElementById('wikiResults');
-        _blocoCounter = 0;
-        window._wikiBlocosMap = {};
-
+        _blocoCounter = 0; window._wikiBlocosMap = {};
         const bodyHtml = processarConteudoWiki(artigo.conteudo_html || '');
-
         let blocosHtml = '';
         if (artigo.blocos_codigo && artigo.blocos_codigo.length > 0) {
             blocosHtml = `<div class="wiki-blocos-section-title">Blocos de Código</div>`;
@@ -806,11 +596,8 @@
                 </div>`;
             }).join('');
         }
-
         const tagsHtml = artigo.tags && artigo.tags.length
-            ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
-                ${artigo.tags.map(t => `<span class="badge-cat">🏷 ${esc(t)}</span>`).join('')}</div>` : '';
-
+            ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${artigo.tags.map(t => `<span class="badge-cat">🏷 ${esc(t)}</span>`).join('')}</div>` : '';
         c.innerHTML = `
             <div class="wiki-artigo-view">
                 <button class="btn-voltar-wiki" onclick="renderizarResultadosWiki(wikiUltimosResultados)">← Voltar</button>
@@ -827,139 +614,68 @@
                 <div class="wiki-artigo-conteudo">${bodyHtml}</div>
                 ${blocosHtml}
             </div>`;
-
         Object.entries(window._wikiBlocosMap).forEach(([idx, codigo]) => {
             const ed = document.getElementById(`ed-${idx}`);
             if (ed) { ed.value = codigo; autoResizeEditor(ed); }
             renderVariaveisPainel(parseInt(idx));
         });
-
         c.scrollTop = 0;
     }
 
-    // ============================================================
-    // HELPERS DE HTML DOS BLOCOS
-    // ============================================================
     function toolbarBtns(idx) {
         return `
-            <button class="btn-bloco btn-editar" id="btn-edit-${idx}"
-                onclick="toggleEditorBloco(${idx})" title="Editar localmente (não salva na wiki)">✎ Editar</button>
-            <button class="btn-bloco btn-copiar" id="btn-copiar-${idx}"
-                onclick="copiarBloco(this,${idx})" title="Copiar código">⎘ Copiar</button>
-            <button class="btn-bloco btn-enviar"
-                onclick="enviarAoTerminal(${idx})" title="Enviar ao terminal ativo">▶ Terminal</button>`;
+            <button class="btn-bloco btn-editar" id="btn-edit-${idx}" onclick="toggleEditorBloco(${idx})" title="Editar localmente">✎ Editar</button>
+            <button class="btn-bloco btn-copiar" id="btn-copiar-${idx}" onclick="copiarBloco(this,${idx})" title="Copiar">⎘ Copiar</button>
+            <button class="btn-bloco btn-enviar" onclick="enviarAoTerminal(${idx})" title="Enviar ao terminal">▶ Terminal</button>`;
     }
-
     function avisoEditar(idx) {
-        return `<div class="wiki-bloco-edit-aviso" id="aviso-${idx}">
-            <span>✎</span>
-            <span>Modo edição — alterações são <strong>apenas locais</strong> e não serão salvas na wiki</span>
-        </div>`;
+        return `<div class="wiki-bloco-edit-aviso" id="aviso-${idx}"><span>✎</span><span>Modo edição — alterações são <strong>apenas locais</strong></span></div>`;
     }
-
     function editorWrap(idx) {
-        return `<div class="wiki-codigo-editor-wrap" id="ew-${idx}">
-            <textarea class="wiki-codigo-editor" id="ed-${idx}"
-                spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
-                oninput="autoResizeEditor(this);onEditorInput(${idx})" onkeydown="editorKeydown(event)"></textarea>
-        </div>`;
+        return `<div class="wiki-codigo-editor-wrap" id="ew-${idx}"><textarea class="wiki-codigo-editor" id="ed-${idx}" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="autoResizeEditor(this);onEditorInput(${idx})" onkeydown="editorKeydown(event)"></textarea></div>`;
     }
-
     function footerEditar(idx) {
-        return `<div class="wiki-bloco-footer" id="footer-${idx}">
-            <span class="wiki-bloco-footer-info">💡 Edite o código acima e envie ao terminal</span>
-            <div class="wiki-bloco-footer-acoes">
-                <button class="btn-resetar" onclick="resetarBloco(${idx})">↺ Resetar</button>
-                <button class="btn-enviar-grande" id="beg-${idx}" onclick="enviarAoTerminal(${idx})">
-                    <span>▶</span> Enviar ao Terminal
-                </button>
-            </div>
-        </div>`;
+        return `<div class="wiki-bloco-footer" id="footer-${idx}"><span class="wiki-bloco-footer-info">💡 Edite o código acima e envie ao terminal</span><div class="wiki-bloco-footer-acoes"><button class="btn-resetar" onclick="resetarBloco(${idx})">↺ Resetar</button><button class="btn-enviar-grande" id="beg-${idx}" onclick="enviarAoTerminal(${idx})"><span>▶</span> Enviar ao Terminal</button></div></div>`;
     }
 
-    // ============================================================
-    // ── FUNÇÃO CORRIGIDA: processarConteudoWiki ──────────────────
-    //
-    // PROBLEMA ANTERIOR:
-    //   O servidor salvava o código como:
-    //     ```routeros NAT - Titulo\ncomando\n```
-    //   O <pre> recebia esse texto completo (cerca + título + código).
-    //   Ao enviar para o terminal, a linha da cerca era enviada como
-    //   comando, causando erro.
-    //
-    // CORREÇÃO:
-    //   Detectamos a cerca Markdown com regex, extraímos a linguagem
-    //   e o título separadamente, e guardamos em _wikiBlocosMap APENAS
-    //   o código puro (sem cerca). Linguagem e título são exibidos na
-    //   toolbar visualmente, mas NUNCA vão ao terminal.
-    // ============================================================
     function processarConteudoWiki(html) {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
-
         tmp.querySelectorAll('h1,h2,h3,h4').forEach(h => {
             const texto = h.textContent;
             const novo = document.createElement('h2');
             novo.innerHTML = `<span class="wiki-titulo-texto">${texto}</span>`;
             h.replaceWith(novo);
         });
-
         tmp.querySelectorAll('pre').forEach(pre => {
             const idx = _blocoCounter++;
             const codeEl = pre.querySelector('code');
             let codigoRaw = codeEl ? codeEl.textContent : pre.textContent;
-
-            // ── CORREÇÃO: extrai linguagem e título da cerca Markdown ──
-            // Casa padrões como:
-            //   ```routeros NAT - Verifica sessões\nshow bgp summary\n```
-            //   ```cisco\nshow interfaces\n```
-            //   ```\nshow version\n```
-            let blocoLang   = '';
-            let blocoTitulo = '';
-
+            let blocoLang = '', blocoTitulo = '';
             const fenceMatch = codigoRaw.match(/^```([^\n]*)\n([\s\S]*?)(?:\n```\s*)?$/);
             if (fenceMatch) {
                 const primeiraLinha = fenceMatch[1].trim();
                 if (primeiraLinha) {
-                    // Separa o primeiro token (linguagem) do restante (título)
                     const langMatch = primeiraLinha.match(/^(\S+)(?:\s+(.+))?$/);
                     blocoLang   = langMatch ? langMatch[1] : primeiraLinha;
                     blocoTitulo = (langMatch && langMatch[2]) ? langMatch[2].trim() : '';
                 }
-                // IMPORTANTE: apenas o código puro vai para _wikiBlocosMap
                 codigoRaw = fenceMatch[2];
             }
-            // ──────────────────────────────────────────────────────────
-
             const codigoOriginal = codigoRaw;
             window._wikiBlocosMap[idx] = codigoOriginal;
-
             const linhas = codigoOriginal.split('\n');
             if (linhas[linhas.length - 1] === '') linhas.pop();
-            const linhasHtml = linhas.map(l =>
-                `<span class="ln"><span class="lc">${destacarVariaveisHtml(escStr(l))}</span></span>`
-            ).join('');
-
+            const linhasHtml = linhas.map(l => `<span class="ln"><span class="lc">${destacarVariaveisHtml(escStr(l))}</span></span>`).join('');
             const temVars = detectarVariaveis(codigoOriginal).length > 0;
-
-            // Toolbar: linguagem + título à esquerda, botões à direita
-            const toolbarLangHtml = blocoLang
-                ? `<span class="wiki-code-lang-badge">${esc(blocoLang)}</span>` : '';
-            const toolbarTituloHtml = blocoTitulo
-                ? `<span class="wiki-code-title-text">${esc(blocoTitulo)}</span>` : '';
-            const toolbarVarsHtml = temVars
-                ? `<span style="color:#ffa500;font-size:10px;white-space:nowrap;margin-left:4px;">⚡ ${detectarVariaveis(codigoOriginal).length} var(s)</span>`
-                : '';
-
             const wrapper = document.createElement('div');
-            wrapper.className = 'wiki-code-wrapper';
-            wrapper.id = `bw-${idx}`;
+            wrapper.className = 'wiki-code-wrapper'; wrapper.id = `bw-${idx}`;
             wrapper.innerHTML = `
                 <div class="wiki-code-toolbar">
                     <div class="wiki-code-toolbar-title">
-                        ${toolbarLangHtml}
-                        ${toolbarTituloHtml}
-                        ${toolbarVarsHtml}
+                        ${blocoLang ? `<span class="wiki-code-lang-badge">${esc(blocoLang)}</span>` : ''}
+                        ${blocoTitulo ? `<span class="wiki-code-title-text">${esc(blocoTitulo)}</span>` : ''}
+                        ${temVars ? `<span style="color:#ffa500;font-size:10px;white-space:nowrap;margin-left:4px;">⚡ ${detectarVariaveis(codigoOriginal).length} var(s)</span>` : ''}
                     </div>
                     ${toolbarBtns(idx)}
                 </div>
@@ -967,39 +683,22 @@
                 <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${linhasHtml}</code></pre>
                 ${editorWrap(idx)}
                 ${footerEditar(idx)}`;
-
             pre.replaceWith(wrapper);
         });
-
         return tmp.innerHTML;
-    }
-
-    function renderLinhas(codigoEsc) {
-        const linhas = codigoEsc.split('\n');
-        if (linhas[linhas.length - 1] === '') linhas.pop();
-        return linhas.map(l => `<span class="ln"><span class="lc">${l}</span></span>`).join('');
     }
 
     function renderLinhasComVars(codigoEsc) {
         const linhas = codigoEsc.split('\n');
         if (linhas[linhas.length - 1] === '') linhas.pop();
-        return linhas.map(l =>
-            `<span class="ln"><span class="lc">${destacarVariaveisHtml(l)}</span></span>`
-        ).join('');
+        return linhas.map(l => `<span class="ln"><span class="lc">${destacarVariaveisHtml(l)}</span></span>`).join('');
     }
 
-    // ============================================================
-    // EDITOR — toggle, resetar, resize, tab
-    // ============================================================
     function toggleEditorBloco(idx) {
-        const pre  = document.getElementById(`pre-${idx}`);
-        const ew   = document.getElementById(`ew-${idx}`);
-        const ft   = document.getElementById(`footer-${idx}`);
-        const av   = document.getElementById(`aviso-${idx}`);
-        const btn  = document.getElementById(`btn-edit-${idx}`);
-        const ed   = document.getElementById(`ed-${idx}`);
+        const pre = document.getElementById(`pre-${idx}`), ew = document.getElementById(`ew-${idx}`),
+              ft  = document.getElementById(`footer-${idx}`), av = document.getElementById(`aviso-${idx}`),
+              btn = document.getElementById(`btn-edit-${idx}`), ed = document.getElementById(`ed-${idx}`);
         const aberto = ew.classList.contains('visivel');
-
         if (aberto) {
             ew.classList.remove('visivel'); ft.classList.remove('visivel');
             av.classList.remove('visivel'); pre.style.display = '';
@@ -1013,20 +712,17 @@
     }
 
     function resetarBloco(idx) {
-        const original = window._wikiBlocosMap[idx];
-        if (original === undefined) return;
+        const original = window._wikiBlocosMap[idx]; if (original === undefined) return;
         const ed = document.getElementById(`ed-${idx}`);
         if (ed) { ed.value = original; autoResizeEditor(ed); mostrarToast('↺ Código restaurado ao original'); }
     }
 
     function onEditorInput(idx) {
-        const ed = document.getElementById(`ed-${idx}`);
-        if (!ed) return;
+        const ed = document.getElementById(`ed-${idx}`); if (!ed) return;
         const novosCodigo = ed.value;
         const varsAntes = detectarVariaveis(window._wikiBlocosMap[idx] || '');
         const varsDepois = detectarVariaveis(novosCodigo);
-        const mudou = JSON.stringify(varsAntes.sort()) !== JSON.stringify(varsDepois.sort());
-        if (mudou) {
+        if (JSON.stringify(varsAntes.sort()) !== JSON.stringify(varsDepois.sort())) {
             const codigoSalvo = window._wikiBlocosMap[idx];
             window._wikiBlocosMap[idx] = novosCodigo;
             renderVariaveisPainel(idx);
@@ -1035,9 +731,7 @@
     }
 
     function autoResizeEditor(el) {
-        if (!el) return;
-        el.style.height = 'auto';
-        el.style.height = Math.min(el.scrollHeight + 2, 420) + 'px';
+        if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight + 2, 420) + 'px';
     }
 
     function editorKeydown(e) {
@@ -1050,62 +744,39 @@
         }
     }
 
-    // ============================================================
-    // PEGAR CÓDIGO (editor aberto ou visualizador) + aplicar vars
-    // ============================================================
     function getCodigoBloco(idx) {
         let codigo = '';
         const ew = document.getElementById(`ew-${idx}`);
         if (ew && ew.classList.contains('visivel')) {
-            const ed = document.getElementById(`ed-${idx}`);
-            codigo = ed ? ed.value : '';
+            const ed = document.getElementById(`ed-${idx}`); codigo = ed ? ed.value : '';
         } else {
             const cv = document.getElementById(`cv-${idx}`);
             if (cv) {
                 const linhas = cv.querySelectorAll('.ln .lc');
-                if (linhas.length) {
-                    codigo = Array.from(linhas).map(l => l.textContent).join('\n');
-                } else {
-                    codigo = cv.textContent;
-                }
+                codigo = linhas.length ? Array.from(linhas).map(l => l.textContent).join('\n') : cv.textContent;
             }
             if (!codigo) codigo = window._wikiBlocosMap[idx] || '';
         }
         return aplicarVariaveis(idx, codigo);
     }
 
-    // ============================================================
-    // COPIAR
-    // ============================================================
     function copiarBloco(btn, idx) {
-        const codigo = getCodigoBloco(idx);
-        if (!codigo) return;
-
+        const codigo = getCodigoBloco(idx); if (!codigo) return;
         const varsRestantes = detectarVariaveis(codigo);
-        if (varsRestantes.length > 0) {
-            mostrarToast(`⚡ ${varsRestantes.length} variável(is) sem valor: ${varsRestantes.map(v => '#'+v+'#').join(', ')}`, 'vars');
-        }
-
+        if (varsRestantes.length > 0) mostrarToast(`⚡ ${varsRestantes.length} variável(is) sem valor: ${varsRestantes.map(v => '#'+v+'#').join(', ')}`, 'vars');
         navigator.clipboard.writeText(codigo).then(() => {
-            const orig = btn.textContent;
-            btn.textContent = '✓ Copiado!';
-            btn.classList.add('copiado');
+            const orig = btn.textContent; btn.textContent = '✓ Copiado!'; btn.classList.add('copiado');
             if (varsRestantes.length === 0) mostrarToast('⎘ Copiado para área de transferência');
             setTimeout(() => { btn.textContent = orig; btn.classList.remove('copiado'); }, 2000);
         });
     }
 
-    // ============================================================
-    // ENVIAR AO TERMINAL
-    // ============================================================
     function enviarAoTerminal(idx) {
         if (!terminalManager.activeTerminal) { mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return; }
         const tObj = terminalManager.terminals.get(terminalManager.activeTerminal);
         if (!tObj) { mostrarToast('⚠ Terminal não encontrado', 'erro'); return; }
-
         const codigo = getCodigoBloco(idx);
         if (!codigo || !codigo.trim()) { mostrarToast('⚠ O código está vazio', 'erro'); return; }
-
         const varsRestantes = detectarVariaveis(codigo);
         if (varsRestantes.length > 0) {
             mostrarToast(`⚡ Variáveis sem valor: ${varsRestantes.map(v=>'#'+v+'#').join(', ')}`, 'vars');
@@ -1113,11 +784,9 @@
             if (body && !body.classList.contains('visivel')) toggleVarsPanel(idx);
             return;
         }
-
         if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
-            const linhas = codigo.split('\n');
-            linhas.forEach((linha, i) => {
-                const cmd = linha + (i < linhas.length - 1 ? '\n' : '');
+            codigo.split('\n').forEach((linha, i, arr) => {
+                const cmd = linha + (i < arr.length - 1 ? '\n' : '');
                 if (cmd) tObj.socket.send(JSON.stringify({ action: 'command', command: cmd }));
             });
             mostrarToast('▶ Código enviado ao terminal!');
@@ -1125,32 +794,20 @@
             tObj.terminal.paste(codigo);
             mostrarToast('▶ Código colado no terminal');
         }
-
         const btn = document.getElementById(`beg-${idx}`);
         if (btn) {
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<span>✓</span> Enviado!';
-            btn.classList.add('enviado');
+            const orig = btn.innerHTML; btn.innerHTML = '<span>✓</span> Enviado!'; btn.classList.add('enviado');
             setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('enviado'); }, 2000);
         }
     }
 
     // ============================================================
-    // HELPERS DE ESCAPE
+    // ESCAPE
     // ============================================================
-    function esc(s) {
-        if (!s) return '';
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function escStr(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    function escAttr(s) {
-        return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-    function escJs(s) {
-        return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');
-    }
+    function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function escStr(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function escJs(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
 
     // ============================================================
     // RECONECTAR
@@ -1158,8 +815,7 @@
     function reconectarTerminalAtivo() {
         if (!terminalManager.activeTerminal) { alert('Nenhum terminal ativo.'); return; }
         const id = terminalManager.activeTerminal;
-        const tObj = terminalManager.terminals.get(id);
-        if (!tObj) return;
+        const tObj = terminalManager.terminals.get(id); if (!tObj) return;
         if (tObj.socket) { try { tObj.socket.close(); } catch(e) {} tObj.socket = null; }
         tObj.connected = false; tObj.wsRetries = 0;
         const tab = document.getElementById(`tab-${id}`);
@@ -1174,35 +830,54 @@
         if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); reconectarTerminalAtivo(); }
     });
 
-    // ============================================================
-    // DEBUG
-    // ============================================================
     const DEBUG = false;
     function addDebug(msg) { if (!DEBUG) return; console.log(msg); }
 
     // ============================================================
-    // COLORIZAÇÃO
+    // ✅ COLORIZAÇÃO
     // ============================================================
     const COLORS = {
         RESET:'\x1b[0m', IPV4:'\x1b[1;94m', IPV6:'\x1b[1;94m', PROTOCOL:'\x1b[36m',
         ESTABLISHED:'\x1b[92m', IDLE:'\x1b[93m', ACTIVE:'\x1b[91m', EXSTART:'\x1b[93m',
-        EXCHANGE:'\x1b[96m', LOADING:'\x1b[94m', INIT:'\x1b[91m', DOWN:'\x1b[31m',
-        TWOWAY:'\x1b[93m', OPEN_SENT:'\x1b[93m', OPEN_CONFIRM:'\x1b[96m',
-        UP:'\x1b[92m', NETWORK:'\x1b[36m', BFD:'\x1b[95m', KEYWORDS:'\x1b[36m',
+        DOWN:'\x1b[31m', UP:'\x1b[92m', BFD:'\x1b[95m',
     };
+
+    let colorizeEnabled = true;
+
+    function toggleColorize() {
+        colorizeEnabled = !colorizeEnabled;
+        const btn = document.getElementById('btnColorize');
+        if (btn) {
+            btn.textContent = colorizeEnabled ? '🎨 Cores: ON' : '🎨 Cores: OFF';
+            btn.classList.toggle('btn-cores-off', !colorizeEnabled);
+        }
+        mostrarToast(colorizeEnabled ? '🎨 Colorização ativada' : '🎨 Colorização desativada');
+    }
+
     function colorizeOutput(text) {
-        if (!text) return text;
+        if (!colorizeEnabled || text.length < 30) return text;
         let r = text;
-        r = r.replace(/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/g, m => COLORS.IPV4+m+COLORS.RESET);
-        r = r.replace(/(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?/g, m => COLORS.IPV6+m+COLORS.RESET);
-        r = r.replace(/\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi, m => COLORS.PROTOCOL+m+COLORS.RESET);
-        r = r.replace(/\b(BFD|bfd)\b/g, m => COLORS.BFD+m+COLORS.RESET);
-        r = r.replace(/\b(Established|established|ESTABLISHED)\b/g, m => COLORS.ESTABLISHED+m+COLORS.RESET);
-        r = r.replace(/\b(Idle|idle|IDLE)(?!\()/g, m => COLORS.IDLE+m+COLORS.RESET);
-        r = r.replace(/\b(Active|active|ACTIVE)\b/g, m => COLORS.ACTIVE+m+COLORS.RESET);
-        r = r.replace(/\b(Down|down|DOWN)\b/g, m => COLORS.DOWN+m+COLORS.RESET);
-        r = r.replace(/\b(up|Up|UP)\b/g, m => COLORS.UP+m+COLORS.RESET);
+        r = r.replace(/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/g, m => COLORS.IPV4 + m + COLORS.RESET);
+        r = r.replace(/(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?/g, m => COLORS.IPV6 + m + COLORS.RESET);
+        r = r.replace(/\b(Established|established|ESTABLISHED)\b/g,  m => COLORS.ESTABLISHED + m + COLORS.RESET);
+        r = r.replace(/\b(Idle|idle|IDLE)(?!\()/g,                   m => COLORS.IDLE        + m + COLORS.RESET);
+        r = r.replace(/\b(Active|active|ACTIVE)\b/g,                 m => COLORS.ACTIVE      + m + COLORS.RESET);
+        r = r.replace(/\b(Down|down|DOWN)\b/g,                       m => COLORS.DOWN        + m + COLORS.RESET);
+        r = r.replace(/\b(up|Up|UP)\b/g,                             m => COLORS.UP          + m + COLORS.RESET);
+        r = r.replace(/\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi,     m => COLORS.PROTOCOL    + m + COLORS.RESET);
+        r = r.replace(/\b(BFD|bfd)\b/g,                              m => COLORS.BFD         + m + COLORS.RESET);
+        r = r.replace(/\b(EXSTART|EXCHANGE|LOADING|INIT|TWOWAY|OPEN_SENT|OPEN_CONFIRM)\b/g, m => COLORS.EXSTART + m + COLORS.RESET);
         return r;
+    }
+
+    const _enc = new TextEncoder();
+
+    function writeToTerminal(terminal, text) {
+        if (!colorizeEnabled && text.length < 500) {
+            terminal.write(_enc.encode(text));
+        } else {
+            terminal.write(colorizeOutput(text));
+        }
     }
 
     // ============================================================
@@ -1216,116 +891,157 @@
             window.addEventListener('message', e => this.handleMessage(e));
             setInterval(() => this.limparTerminaisDesconectados(), 5000);
         }
+
         verificarAcessoPendente() {
             try {
                 const p = localStorage.getItem('acessoPendente');
                 if (p) { const a = JSON.parse(p); localStorage.removeItem('acessoPendente'); setTimeout(() => this.abrirTerminal(a), 500); }
             } catch(e) { addDebug('❌ ' + e.message); }
         }
+
         handleMessage(event) {
             if (event.data && event.data.type === 'NOVA_CONEXAO') { this.abrirTerminal(event.data.acesso); window.focus(); }
         }
+
         abrirTerminal(acessoData) {
             const terminalId = `terminal-${++this.tabCounter}`;
             try {
                 const terminal = new Terminal({
-                    cursorBlink:true, fontSize:13,
-                    fontFamily:"'JetBrains Mono','Courier New',monospace",
-                    fontWeight:400, fontWeightBold:600, lineHeight:1.2, letterSpacing:0,
-                    theme:{background:'#000000',foreground:'#ffffff',cursor:'#ffffff',cursorAccent:'#000000'},
-                    scrollback:5000, rows:24, cols:120, allowTransparency:true, windowsMode:false, convertEol:true
+                    cursorBlink: true, fontSize: 13,
+                    fontFamily: "'JetBrains Mono','Courier New',monospace",
+                    fontWeight: 400, fontWeightBold: 600, lineHeight: 1.2, letterSpacing: 0,
+                    theme: { background:'#000000', foreground:'#ffffff', cursor:'#ffffff', cursorAccent:'#000000' },
+                    scrollback: 5000, rows: 24, cols: 120,
+                    allowTransparency: true, windowsMode: false, convertEol: true,
+                    rendererType: 'canvas',
                 });
                 const fitAddon = new FitAddon.FitAddon();
                 terminal.loadAddon(fitAddon);
-                terminal.attachCustomKeyEventHandler(arg => { if (arg.ctrlKey && arg.keyCode===87) return false; return true; });
+                terminal.attachCustomKeyEventHandler(arg => {
+                    if (arg.ctrlKey && arg.keyCode === 87) return false;
+                    return true;
+                });
+
                 const pane = document.createElement('div');
-                pane.className='terminal-pane'; pane.id=`pane-${terminalId}`;
-                pane.style.flex='1'; pane.style.overflow='hidden';
-                pane.style.display='none'; pane.style.minHeight='0'; pane.style.minWidth='0';
+                pane.className = 'terminal-pane'; pane.id = `pane-${terminalId}`;
+                pane.style.flex = '1'; pane.style.overflow = 'hidden';
+                pane.style.display = 'none'; pane.style.minHeight = '0'; pane.style.minWidth = '0';
+
                 const content = document.getElementById('terminalContent');
-                content.querySelectorAll('.terminal-pane.active').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
-                content.appendChild(pane); terminal.open(pane);
-                const tObj = { id:terminalId, terminal, fitAddon, pane, acesso:acessoData, socket:null, connected:false, wsRetries:0 };
+                content.querySelectorAll('.terminal-pane.active').forEach(p => {
+                    p.classList.remove('active'); p.style.display = 'none';
+                });
+                content.appendChild(pane);
+                terminal.open(pane);
+
+                const tObj = {
+                    id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
+                    socket: null, connected: false, wsRetries: 0
+                };
                 this.terminals.set(terminalId, tObj);
                 this.criarAba(terminalId, acessoData);
                 this.ativarTerminal(terminalId);
+
                 terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
-                terminal.writeln('\x1b[1;36m▶ Conectando a '+acessoData.host+':'+acessoData.porta+'...\x1b[0m\n');
+                terminal.writeln('\x1b[1;36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
+
+                // ✅ BACKSPACE FIX: xterm.js envia \x7f (DEL) ao pressionar Backspace.
+                // Equipamentos de rede (OLTs, Cisco IOS, Juniper legado) esperam \x08 (BS/Ctrl-H).
+                // A conversão é incondicional — todos os equipamentos de rede aceitam \x08,
+                // e o backend (consumers.py) também faz a mesma conversão como garantia dupla.
                 terminal.onData(input => {
-                    if (tObj.socket && tObj.socket.readyState===WebSocket.OPEN)
-                        tObj.socket.send(JSON.stringify({action:'command',command:input}));
+                    if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
+                        const cmd = input.replace(/\x7f/g, '\x08');
+                        tObj.socket.send(JSON.stringify({ action: 'command', command: cmd }));
+                    }
                 });
+
                 setTimeout(() => this.conectarWebSocket(terminalId), 200);
-            } catch(e) { addDebug('❌ '+e.message); console.error(e); }
+            } catch(e) { addDebug('❌ ' + e.message); console.error(e); }
         }
+
         criarAba(terminalId, acessoData) {
             const tabs = document.getElementById('terminalTabs');
             const tab = document.createElement('div');
-            tab.className='terminal-tab active'; tab.id=`tab-${terminalId}`;
-            tab.innerHTML=`<div class="terminal-tab-status connected"></div>
+            tab.className = 'terminal-tab active'; tab.id = `tab-${terminalId}`;
+            tab.innerHTML = `
+                <div class="terminal-tab-status connected"></div>
                 <span>${acessoData.tipo} - ${acessoData.host}</span>
-                <span class="terminal-tab-close" onclick="event.stopPropagation();terminalManager.fecharTerminal('${terminalId}')">✕</span>`;
-            tab.onclick=()=>this.ativarTerminal(terminalId);
+                <span class="terminal-tab-close"
+                      onclick="event.stopPropagation();terminalManager.fecharTerminal('${terminalId}')">✕</span>`;
+            tab.onclick = () => this.ativarTerminal(terminalId);
             tabs.appendChild(tab);
         }
+
         ativarTerminal(terminalId) {
             if (this.activeTerminal) {
-                const ant=this.terminals.get(this.activeTerminal);
-                if (ant) { ant.pane.classList.remove('active'); ant.pane.style.display='none';
-                    const tAnt=document.getElementById(`tab-${this.activeTerminal}`); if(tAnt) tAnt.classList.remove('active'); }
+                const ant = this.terminals.get(this.activeTerminal);
+                if (ant) {
+                    ant.pane.classList.remove('active'); ant.pane.style.display = 'none';
+                    const tAnt = document.getElementById(`tab-${this.activeTerminal}`);
+                    if (tAnt) tAnt.classList.remove('active');
+                }
             }
-            this.activeTerminal=terminalId;
-            const tObj=this.terminals.get(terminalId);
+            this.activeTerminal = terminalId;
+            const tObj = this.terminals.get(terminalId);
             if (tObj) {
-                tObj.pane.classList.add('active'); tObj.pane.style.display='flex';
-                const tab=document.getElementById(`tab-${terminalId}`); if(tab) tab.classList.add('active');
-                setTimeout(()=>{ try{tObj.fitAddon.fit();}catch(e){} tObj.terminal.focus(); },50);
+                tObj.pane.classList.add('active'); tObj.pane.style.display = 'flex';
+                const tab = document.getElementById(`tab-${terminalId}`);
+                if (tab) tab.classList.add('active');
+                setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} tObj.terminal.focus(); }, 50);
             }
         }
+
         conectarWebSocket(terminalId) {
-            const tObj=this.terminals.get(terminalId); if(!tObj) return;
-            const protocol=window.location.protocol==='https:'?'wss:':'ws:';
-            const wsUrl=`${protocol}//${window.location.host}/ws/ssh/`;
+            const tObj = this.terminals.get(terminalId); if (!tObj) return;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
             try {
-                tObj.socket=new WebSocket(wsUrl);
-                tObj.socket.onopen=()=>{
+                tObj.socket = new WebSocket(wsUrl);
+                tObj.socket.onopen = () => {
                     tObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
-                    tObj.wsRetries=0;
-                    tObj.socket.send(JSON.stringify({action:'connect',acesso_id:tObj.acesso.id}));
+                    tObj.wsRetries = 0;
+                    tObj.socket.send(JSON.stringify({ action: 'connect', acesso_id: tObj.acesso.id }));
                 };
-                tObj.socket.onmessage=e=>{
-                    const data=JSON.parse(e.data);
-                    if (data.type==='connected') {
-                        tObj.connected=true;
-                        const tab=document.getElementById(`tab-${terminalId}`);
-                        if(tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
-                        tObj.terminal.writeln('\x1b[1;32m✓ '+data.message+'\x1b[0m\n');
-                    } else if (data.type==='output'&&data.data) {
-                        tObj.terminal.write(colorizeOutput(data.data));
-                    } else if (data.type==='error') {
-                        tObj.connected=false;
-                        tObj.terminal.writeln('\x1b[1;31m✕ ERRO: '+data.message+'\x1b[0m\n');
+                tObj.socket.onmessage = e => {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'connected') {
+                        tObj.connected = true;
+                        const tab = document.getElementById(`tab-${terminalId}`);
+                        if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
+                        tObj.terminal.writeln('\x1b[1;32m✓ ' + data.message + '\x1b[0m\n');
+                    } else if (data.type === 'output' && data.data) {
+                        writeToTerminal(tObj.terminal, data.data);
+                    } else if (data.type === 'error') {
+                        tObj.connected = false;
+                        tObj.terminal.writeln('\x1b[1;31m✕ ERRO: ' + data.message + '\x1b[0m\n');
                     }
                 };
-                tObj.socket.onerror=()=>tObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
-                tObj.socket.onclose=()=>{
-                    tObj.connected=false;
-                    if(tObj.wsRetries<this.maxRetries){tObj.wsRetries++;setTimeout(()=>this.conectarWebSocket(terminalId),this.retryDelay);}
+                tObj.socket.onerror = () => tObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
+                tObj.socket.onclose = () => {
+                    tObj.connected = false;
+                    if (tObj.wsRetries < this.maxRetries) {
+                        tObj.wsRetries++;
+                        setTimeout(() => this.conectarWebSocket(terminalId), this.retryDelay);
+                    }
                 };
-            } catch(e){addDebug('❌ '+e.message);}
+            } catch(e) { addDebug('❌ ' + e.message); }
         }
+
         fecharTerminal(terminalId) {
-            const tObj=this.terminals.get(terminalId); if(!tObj) return;
-            if(tObj.socket) tObj.socket.close();
+            const tObj = this.terminals.get(terminalId); if (!tObj) return;
+            if (tObj.socket) tObj.socket.close();
             tObj.terminal.dispose(); tObj.pane.remove();
-            const tab=document.getElementById(`tab-${terminalId}`); if(tab) tab.remove();
+            const tab = document.getElementById(`tab-${terminalId}`); if (tab) tab.remove();
             this.terminals.delete(terminalId);
-            if(this.activeTerminal===terminalId){
-                const next=Array.from(this.terminals.keys())[0];
-                if(next) this.ativarTerminal(next); else this.activeTerminal=null;
+            if (this.activeTerminal === terminalId) {
+                const next = Array.from(this.terminals.keys())[0];
+                if (next) this.ativarTerminal(next); else this.activeTerminal = null;
             }
         }
-        fecharTodos() { Array.from(this.terminals.keys()).forEach(id=>this.fecharTerminal(id)); }
+
+        fecharTodos() { Array.from(this.terminals.keys()).forEach(id => this.fecharTerminal(id)); }
+
         limparTerminaisDesconectados() {}
     }
 
@@ -1333,37 +1049,32 @@
 
     function limparTela() {
         if (terminalManager.activeTerminal) {
-            const t=terminalManager.terminals.get(terminalManager.activeTerminal);
-            if(t) t.terminal.clear();
+            const t = terminalManager.terminals.get(terminalManager.activeTerminal);
+            if (t) t.terminal.clear();
         }
     }
     function fecharTodosTerminais() { terminalManager.fecharTodos(); }
 
     window.addEventListener('resize', () => {
         if (terminalManager.activeTerminal) {
-            const t=terminalManager.terminals.get(terminalManager.activeTerminal);
-            if(t){try{t.fitAddon.fit();}catch(e){}}
+            const t = terminalManager.terminals.get(terminalManager.activeTerminal);
+            if (t) { try { t.fitAddon.fit(); } catch(e) {} }
         }
     });
+
     // ============================================================
-    // WIKI — REDIMENSIONAMENTO (arrastar borda esquerda)
+    // WIKI — REDIMENSIONAMENTO
     // ============================================================
     (function() {
         const WIKI_WIDTH_KEY = 'wikiSidebarWidth';
         const MIN_WIDTH = 300;
         const MAX_WIDTH = () => window.innerWidth - 40;
-
-        const sidebar  = document.getElementById('wikiSidebar');
-        const handle   = document.getElementById('wikiResizeHandle');
+        const sidebar   = document.getElementById('wikiSidebar');
+        const handle    = document.getElementById('wikiResizeHandle');
         const indicator = document.getElementById('wikiWidthIndicator');
-        const btnMax   = document.getElementById('btnMaxWiki');
+        const btnMax    = document.getElementById('btnMaxWiki');
+        let isResizing = false, startX = 0, startW = 0, isMaximized = false;
 
-        let isResizing = false;
-        let startX = 0;
-        let startW = 0;
-        let isMaximized = false;
-
-        // Restaura largura salva
         const savedWidth = localStorage.getItem(WIKI_WIDTH_KEY);
         if (savedWidth && !isNaN(savedWidth)) {
             const w = Math.max(MIN_WIDTH, Math.min(parseInt(savedWidth), window.innerWidth - 40));
@@ -1371,82 +1082,47 @@
             if (indicator) indicator.textContent = w + 'px';
         }
 
-        // ── Arrastar alça ────────────────────────────────────────
         handle.addEventListener('mousedown', function(e) {
-            if (isMaximized) return; // não redimensiona quando maximizado
-            e.preventDefault();
-            isResizing = true;
-            startX = e.clientX;
-            startW = sidebar.offsetWidth;
-            handle.classList.add('arrastando');
-            document.body.classList.add('wiki-resizing');
-            // Desativa transição durante arrasto para fluidez
+            if (isMaximized) return; e.preventDefault();
+            isResizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
+            handle.classList.add('arrastando'); document.body.classList.add('wiki-resizing');
             sidebar.style.transition = 'right 0.3s ease';
         });
-
         document.addEventListener('mousemove', function(e) {
             if (!isResizing) return;
-            // Arrasto para esquerda = aumenta; para direita = diminui
-            const delta = startX - e.clientX;
-            const newW  = Math.max(MIN_WIDTH, Math.min(startW + delta, MAX_WIDTH()));
-            sidebar.style.width = newW + 'px';
-            if (indicator) indicator.textContent = newW + 'px';
+            const newW = Math.max(MIN_WIDTH, Math.min(startW + (startX - e.clientX), MAX_WIDTH()));
+            sidebar.style.width = newW + 'px'; if (indicator) indicator.textContent = newW + 'px';
         });
-
         document.addEventListener('mouseup', function() {
-            if (!isResizing) return;
-            isResizing = false;
-            handle.classList.remove('arrastando');
-            document.body.classList.remove('wiki-resizing');
+            if (!isResizing) return; isResizing = false;
+            handle.classList.remove('arrastando'); document.body.classList.remove('wiki-resizing');
             sidebar.style.transition = 'right 0.3s ease, width 0.2s ease';
-            // Persiste a largura
             localStorage.setItem(WIKI_WIDTH_KEY, sidebar.offsetWidth);
-            // Refita o terminal ativo
             if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
                 const t = terminalManager.terminals.get(terminalManager.activeTerminal);
                 if (t) { try { t.fitAddon.fit(); } catch(_) {} }
             }
         });
-
-        // Suporte touch (mobile)
         handle.addEventListener('touchstart', function(e) {
-            if (isMaximized) return;
-            e.preventDefault();
-            isResizing = true;
-            startX = e.touches[0].clientX;
-            startW = sidebar.offsetWidth;
+            if (isMaximized) return; e.preventDefault();
+            isResizing = true; startX = e.touches[0].clientX; startW = sidebar.offsetWidth;
             handle.classList.add('arrastando');
         }, { passive: false });
-
         document.addEventListener('touchmove', function(e) {
             if (!isResizing) return;
-            const delta = startX - e.touches[0].clientX;
-            const newW  = Math.max(MIN_WIDTH, Math.min(startW + delta, MAX_WIDTH()));
-            sidebar.style.width = newW + 'px';
-            if (indicator) indicator.textContent = newW + 'px';
+            const newW = Math.max(MIN_WIDTH, Math.min(startW + (startX - e.touches[0].clientX), MAX_WIDTH()));
+            sidebar.style.width = newW + 'px'; if (indicator) indicator.textContent = newW + 'px';
         }, { passive: true });
-
         document.addEventListener('touchend', function() {
-            if (!isResizing) return;
-            isResizing = false;
-            handle.classList.remove('arrastando');
-            localStorage.setItem(WIKI_WIDTH_KEY, sidebar.offsetWidth);
+            if (!isResizing) return; isResizing = false;
+            handle.classList.remove('arrastando'); localStorage.setItem(WIKI_WIDTH_KEY, sidebar.offsetWidth);
         });
 
-        // ── Maximizar / Restaurar ────────────────────────────────
         window.toggleMaxWiki = function() {
             isMaximized = !isMaximized;
-            if (isMaximized) {
-                sidebar.classList.add('maximizado');
-                if (btnMax) { btnMax.textContent = '⤡'; btnMax.title = 'Restaurar tamanho'; }
-                if (indicator) indicator.textContent = '100%';
-            } else {
-                sidebar.classList.remove('maximizado');
-                if (btnMax) { btnMax.textContent = '⤢'; btnMax.title = 'Maximizar'; }
-                const w = parseInt(localStorage.getItem(WIKI_WIDTH_KEY) || 480);
-                if (indicator) indicator.textContent = w + 'px';
-            }
-            // Refit terminal
+            sidebar.classList.toggle('maximizado', isMaximized);
+            if (btnMax) { btnMax.textContent = isMaximized ? '⤡' : '⤢'; btnMax.title = isMaximized ? 'Restaurar tamanho' : 'Maximizar'; }
+            if (indicator) indicator.textContent = isMaximized ? '100%' : (parseInt(localStorage.getItem(WIKI_WIDTH_KEY) || 480) + 'px');
             setTimeout(() => {
                 if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
                     const t = terminalManager.terminals.get(terminalManager.activeTerminal);
@@ -1455,9 +1131,8 @@
             }, 250);
         };
 
-        // ── Largura por preset ───────────────────────────────────
         window.setWikiWidth = function(w) {
-            if (isMaximized) { toggleMaxWiki(); }
+            if (isMaximized) toggleMaxWiki();
             const clamped = Math.max(MIN_WIDTH, Math.min(w, MAX_WIDTH()));
             sidebar.style.width = clamped + 'px';
             if (indicator) indicator.textContent = clamped + 'px';
@@ -1470,7 +1145,6 @@
             }, 250);
         };
 
-        // Esc fecha a wiki
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && sidebar.classList.contains('aberto')) {
                 if (isMaximized) { toggleMaxWiki(); return; }
@@ -1481,11 +1155,11 @@
 
     window.addEventListener('load', () => {
         setTimeout(() => {
-            if(terminalManager.activeTerminal){
-                const t=terminalManager.terminals.get(terminalManager.activeTerminal);
-                if(t) t.fitAddon.fit();
+            if (terminalManager.activeTerminal) {
+                const t = terminalManager.terminals.get(terminalManager.activeTerminal);
+                if (t) t.fitAddon.fit();
             }
-        },100);
+        }, 100);
     });
     </script>
 </body>
