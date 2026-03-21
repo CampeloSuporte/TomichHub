@@ -1274,31 +1274,68 @@ def realizar_backup(acesso, usuario=None):
         print(f"\n{'='*80}")
         print(f"🔄 INICIANDO BACKUP")
         print(f"{'='*80}")
+        print(f"📋 Equipamento: {acesso.tipo}")
+        print(f"📡 Host: {acesso.host}:{acesso.porta}")
+        print(f"👤 Usuário: {acesso.usuario}")
+        print(f"🔧 Modelo: {acesso.modelo}")
+        print(f"📝 Template: {acesso.backup_template.nome if acesso.backup_template else 'N/A'}")
 
         eh_privado = is_private_ip(acesso.host)
+        print(f"🔍 IP Privado? {eh_privado}")
+
         host_conexao = acesso.host
         porta_conexao = int(acesso.porta) if acesso.porta else 22
 
-        is_huawei = (
-            acesso.modelo and 'huawei' in acesso.modelo.nome.lower()
-            if acesso.modelo and hasattr(acesso.modelo, 'nome') else False
-        )
-        print(f"🏭 Fabricante Huawei: {is_huawei}")
+        # ✅ Detectar fabricante
+        modelo_nome = ''
+        if acesso.modelo and hasattr(acesso.modelo, 'nome'):
+            modelo_nome = acesso.modelo.nome.lower()
 
+        is_huawei = 'huawei' in modelo_nome
+        is_a10    = 'a10'    in modelo_nome
+
+        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10}")
+
+        # ✅ Criar túnel se IP privado
         if eh_privado:
+            print(f"\n{'='*80}")
+            print(f"⚠️ IP PRIVADO - CRIANDO TÚNEL SSH")
+            print(f"{'='*80}")
+
             proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
             if not proxy:
-                raise Exception("IP privado sem proxy SSH ativo.")
+                raise Exception(
+                    "IP privado sem proxy SSH ativo. "
+                    "Configure um túnel SSH na aba 'Túneis SSH'."
+                )
+
+            print(f"✅ Proxy encontrado: {proxy.nome}")
+
             ssh_tunnel = criar_ssh_tunnel(
-                {'host': proxy.host, 'porta': proxy.porta,
-                 'usuario': proxy.usuario, 'senha': proxy.senha},
-                acesso.host, porta_conexao
+                {
+                    'host':    proxy.host,
+                    'porta':   proxy.porta,
+                    'usuario': proxy.usuario,
+                    'senha':   proxy.senha
+                },
+                acesso.host,
+                porta_conexao
             )
+
             host_conexao = ssh_tunnel['local_host']
             porta_conexao = ssh_tunnel['local_port']
+
+            print(f"✅ Túnel criado: localhost:{porta_conexao} → {acesso.host}:{acesso.porta}")
             time.sleep(1)
 
+        # ✅ Preparar diretório de backup
         backup_dir = preparar_diretorio_backup(acesso.cliente.id, acesso.id)
+        print(f"\n📁 Diretório: {backup_dir}")
+
+        # ✅ Conectar via Paramiko
+        print(f"\n{'='*80}")
+        print(f"🔐 CONECTANDO VIA PARAMIKO")
+        print(f"{'='*80}")
 
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -1314,20 +1351,31 @@ def realizar_backup(acesso, usuario=None):
         )
         print(f"✅ Conectado!")
 
+        # ✅ Executar comandos conforme fabricante
+        print(f"\n{'='*80}")
+        print(f"📋 EXECUTANDO COMANDOS")
+        print(f"{'='*80}")
+
         comandos = acesso.backup_template.get_comandos_list()
-        output = ""
+        print(f"🔢 Total de comandos: {len(comandos)}")
 
         if is_huawei:
-            # ✅ Huawei: invoke_shell com terminal largo (sem quebra de linha)
             output = _executar_comandos_huawei(client, comandos)
+        elif is_a10:
+            output = _executar_comandos_a10(client, comandos, acesso.senha_adm)
         else:
-            # ✅ Outros (MikroTik, Cisco, etc.): exec_command sem PTY
+            # MikroTik, Cisco, Datacom, Juniper, etc.
             output = _executar_comandos_sem_pty(client, comandos)
 
         client.close()
 
         if len(output.strip()) < 100:
-            raise Exception("Backup vazio ou muito pequeno.")
+            raise Exception("Backup vazio ou muito pequeno. Verifique os comandos do template.")
+
+        # ✅ Salvar arquivo
+        print(f"\n{'='*80}")
+        print(f"💾 SALVANDO ARQUIVO")
+        print(f"{'='*80}")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         nome_arquivo = f"{acesso.tipo.replace(' ', '_')}_{timestamp}.txt"
@@ -1352,6 +1400,11 @@ def realizar_backup(acesso, usuario=None):
         duracao = time.time() - inicio
         arquivo_relativo = os.path.relpath(arquivo_path, settings.MEDIA_ROOT)
 
+        print(f"✅ Arquivo: {nome_arquivo}")
+        print(f"📊 Tamanho: {tamanho} bytes")
+        print(f"⏱️ Duração: {duracao:.2f}s")
+
+        # ✅ Registrar log
         BackupLog.objects.create(
             acesso=acesso,
             cliente=acesso.cliente,
@@ -1364,9 +1417,16 @@ def realizar_backup(acesso, usuario=None):
             duracao_segundos=duracao
         )
 
-        print(f"✅ BACKUP CONCLUÍDO! {tamanho} bytes em {duracao:.1f}s")
-        return {'sucesso': True, 'arquivo': nome_arquivo,
-                'tamanho': tamanho, 'duracao': f"{duracao:.2f}s"}
+        print(f"\n{'='*80}")
+        print(f"✅ BACKUP CONCLUÍDO COM SUCESSO!")
+        print(f"{'='*80}\n")
+
+        return {
+            'sucesso': True,
+            'arquivo': nome_arquivo,
+            'tamanho': tamanho,
+            'duracao': f"{duracao:.2f}s"
+        }
 
     except Exception as e:
         erro = f"Erro: {str(e)}"
@@ -1384,6 +1444,90 @@ def realizar_backup(acesso, usuario=None):
             except:
                 pass
 
+def _executar_comandos_a10(client, comandos, senha_enable):
+    """
+    A10 Thunder: invoke_shell com enable password.
+    Fluxo:
+      1. Aguarda prompt >
+      2. Envia 'enable'
+      3. Envia senha_enable
+      4. Aguarda prompt #
+      5. Executa comandos do template
+    """
+    output = ""
+
+    channel = client.invoke_shell(
+        term='vt100',
+        width=10000,
+        height=50
+    )
+    channel.settimeout(30)
+
+    # Aguardar banner inicial
+    time.sleep(2)
+    banner = _ler_ate_silencio(channel, silencio=2.0, max_wait=10)
+    print(f"    📋 Banner: {banner[-100:]!r}")
+
+    # ✅ Entrar em modo enable
+    print(f"    🔐 Enviando enable...")
+    channel.send('enable\n')
+    time.sleep(1)
+
+    resposta_enable = _ler_ate_silencio(channel, silencio=1.5, max_wait=10)
+    print(f"    📋 Após enable: {resposta_enable[-100:]!r}")
+
+    # ✅ Enviar senha de enable (campo senha_adm)
+    if 'password' in resposta_enable.lower() or 'Password' in resposta_enable:
+        print(f"    🔑 Enviando senha enable...")
+        channel.send((senha_enable or '') + '\n')
+        time.sleep(1)
+        resposta_senha = _ler_ate_silencio(channel, silencio=1.5, max_wait=10)
+        print(f"    📋 Após senha: {resposta_senha[-100:]!r}")
+
+        if 'invalid' in resposta_senha.lower() or 'fail' in resposta_senha.lower():
+            raise Exception("Senha de enable incorreta no A10 Thunder")
+    else:
+        # Pode já estar em modo privilegiado
+        print(f"    ⚠️ Prompt de senha não apareceu, continuando...")
+
+    # ✅ Executar comandos do template
+    for i, comando in enumerate(comandos, 1):
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+
+        try:
+            channel.send(comando + '\n')
+
+            # show running-config pode demorar mais
+            silencio = 5.0 if 'show' in comando.lower() else 2.0
+            resultado = _ler_ate_silencio(channel, silencio=silencio, max_wait=120)
+
+            if resultado:
+                resultado = limpar_ansi(resultado)
+
+                # Remover eco do comando
+                linhas = resultado.split('\n')
+                if linhas and comando.strip() in linhas[0]:
+                    linhas = linhas[1:]
+                resultado = '\n'.join(linhas)
+
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+            else:
+                print(f"    ⚠️ Output vazio")
+
+        except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+
+    try:
+        channel.send('exit\n')
+        time.sleep(0.5)
+        channel.close()
+    except:
+        pass
+
+    return output
 
 def _executar_comandos_sem_pty(client, comandos):
     """
