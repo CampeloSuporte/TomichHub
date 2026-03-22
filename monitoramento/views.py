@@ -4,6 +4,11 @@ Views da aba de Monitoramento de Rede.
 """
 import json
 import logging
+import socket
+import threading
+import ipaddress
+import paramiko
+from urllib.parse import urlparse
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -12,6 +17,9 @@ from django.views.decorators.http import require_http_methods
 
 from .models import MonitorLink, MonitorNode, MonitorTopology, ZabbixConfig
 from . import services
+
+# Import do ProxyServer do app clientes
+from clientes.models import ProxyServer
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +37,165 @@ def _pode_acessar_cliente(request, cliente_id: str) -> bool:
         return str(c.id) == str(cliente_id)
     except Exception:
         return False
+
+
+# ──────────────────────────────────────────────────────────────
+# HELPERS DE TÚNEL SSH PARA ZABBIX COM IP PRIVADO
+# ──────────────────────────────────────────────────────────────
+
+def _is_private_ip(host: str) -> bool:
+    """Verifica se o host é um IP privado (RFC-1918)."""
+    try:
+        return ipaddress.ip_address(host).is_private
+    except ValueError:
+        # hostname DNS — assume público
+        return False
+
+
+def _criar_tunel_zabbix(proxy, zbx_host, zbx_port, timeout=10):
+    """
+    Cria túnel SSH para acessar Zabbix em IP privado.
+    Retorna (local_port, ssh_client, server_sock) ou None se falhar.
+    """
+    try:
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(
+            hostname=proxy.host,
+            port=int(proxy.porta),
+            username=proxy.usuario,
+            password=proxy.senha,
+            timeout=timeout,
+            look_for_keys=False,
+            allow_agent=False,
+            banner_timeout=timeout,
+        )
+
+        # Encontrar porta local livre
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 0))
+        local_port = s.getsockname()[1]
+        s.close()
+
+        server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_sock.bind(('127.0.0.1', local_port))
+        server_sock.listen(5)
+        server_sock.settimeout(1)
+
+        transport = ssh_client.get_transport()
+
+        def _forward(client_socket):
+            try:
+                channel = transport.open_channel(
+                    'direct-tcpip',
+                    (zbx_host, int(zbx_port)),
+                    ('127.0.0.1', local_port),
+                )
+
+                def _pipe(src, dst):
+                    try:
+                        while True:
+                            data = src.recv(65536)
+                            if not data:
+                                break
+                            dst.sendall(data)
+                    except Exception:
+                        pass
+                    finally:
+                        try: src.close()
+                        except: pass
+                        try: dst.close()
+                        except: pass
+
+                t1 = threading.Thread(target=_pipe, args=(client_socket, channel), daemon=True)
+                t2 = threading.Thread(target=_pipe, args=(channel, client_socket), daemon=True)
+                t1.start()
+                t2.start()
+            except Exception as e:
+                logger.error(f"[ZBX TUNNEL] forward error: {e}")
+                try: client_socket.close()
+                except: pass
+
+        def _accept_loop():
+            while True:
+                try:
+                    client_sock, _ = server_sock.accept()
+                    threading.Thread(target=_forward, args=(client_sock,), daemon=True).start()
+                except socket.timeout:
+                    continue
+                except Exception:
+                    break
+
+        threading.Thread(target=_accept_loop, daemon=True).start()
+        logger.info(f"[ZBX TUNNEL] túnel criado: localhost:{local_port} → {zbx_host}:{zbx_port}")
+        return local_port, ssh_client, server_sock
+
+    except Exception as e:
+        logger.error(f"[ZBX TUNNEL] erro ao criar túnel: {e}")
+        return None
+
+
+def _fechar_tunel(tunel):
+    """Fecha o túnel SSH criado para o Zabbix."""
+    if not tunel:
+        return
+    _, ssh_client, server_sock = tunel
+    try: server_sock.close()
+    except: pass
+    try: ssh_client.close()
+    except: pass
+
+
+def _get_config_com_tunel(config, cliente_id):
+    """
+    Se a URL do Zabbix tiver IP privado, cria túnel SSH e retorna
+    (config_modificado, tunel) onde config_modificado aponta para
+    localhost:porta_local.
+    Caso contrário retorna (config_original, None).
+    """
+    parsed   = urlparse(config.url)
+    zbx_host = parsed.hostname
+    zbx_port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+
+    if not _is_private_ip(zbx_host):
+        return config, None
+
+    # IP privado — precisa de túnel
+    proxy = ProxyServer.objects.filter(
+        cliente_id=cliente_id, ativo=True
+    ).first()
+
+    if not proxy:
+        raise Exception(
+            f"Zabbix tem IP privado ({zbx_host}) mas não há proxy SSH ativo "
+            f"para este cliente. Configure na aba 'Túneis SSH'."
+        )
+
+    tunel = _criar_tunel_zabbix(proxy, zbx_host, zbx_port)
+    if not tunel:
+        raise Exception(f"Falha ao criar túnel SSH para {zbx_host}:{zbx_port}")
+
+    local_port, _, _ = tunel
+
+    # Montar URL local mantendo o path original
+    nova_url = f"{parsed.scheme}://127.0.0.1:{local_port}"
+    if parsed.path:
+        nova_url += parsed.path
+
+    # Criar config temporário com URL substituída
+    class _ConfigProxy:
+        pass
+
+    cfg           = _ConfigProxy()
+    cfg.url       = nova_url
+    cfg.usuario   = config.usuario
+    cfg.senha     = config.senha
+    cfg.api_token = getattr(config, 'api_token', None)
+    cfg.ativo     = config.ativo
+
+    logger.info(f"[ZBX TUNNEL] usando túnel: {config.url} → {nova_url}")
+    return cfg, tunel
 
 
 # ──────────────────────────────────────────────────────────────
@@ -61,11 +228,15 @@ def salvar_zabbix_config(request):
         },
     )
 
+    tunel = None
     try:
+        config, tunel = _get_config_com_tunel(config, cliente_id)
         version = services.testar_conexao(config)
         return JsonResponse({'success': True, 'message': f'Conectado! Zabbix v{version}'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Configurado, mas teste falhou: {e}'})
+    finally:
+        _fechar_tunel(tunel)
 
 
 @login_required(login_url='login')
@@ -93,14 +264,18 @@ def testar_zabbix_conexao(request):
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
+    tunel = None
     try:
         config  = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
+        config, tunel = _get_config_com_tunel(config, cliente_id)
         version = services.testar_conexao(config)
         return JsonResponse({'success': True, 'message': f'Zabbix v{version} — conexão OK'})
     except ZabbixConfig.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Zabbix não configurado para este cliente'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+    finally:
+        _fechar_tunel(tunel)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -115,8 +290,10 @@ def listar_hosts_zabbix(request):
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
+    tunel = None
     try:
         config = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
+        config, tunel = _get_config_com_tunel(config, cliente_id)
         hosts  = services.listar_hosts(config, busca)
         return JsonResponse({'hosts': hosts})
     except ZabbixConfig.DoesNotExist:
@@ -124,6 +301,8 @@ def listar_hosts_zabbix(request):
     except Exception as e:
         logger.exception("Erro ao listar hosts Zabbix")
         return JsonResponse({'error': str(e)}, status=500)
+    finally:
+        _fechar_tunel(tunel)
 
 
 @login_required(login_url='login')
@@ -134,8 +313,10 @@ def listar_interfaces_zabbix(request):
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
+    tunel = None
     try:
         config     = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
+        config, tunel = _get_config_com_tunel(config, cliente_id)
         interfaces = services.listar_interfaces(config, host_id)
         return JsonResponse({'interfaces': interfaces})
     except ZabbixConfig.DoesNotExist:
@@ -143,13 +324,15 @@ def listar_interfaces_zabbix(request):
     except Exception as e:
         logger.exception("Erro ao listar interfaces")
         return JsonResponse({'error': str(e)}, status=500)
+    finally:
+        _fechar_tunel(tunel)
 
 
 @login_required(login_url='login')
 def historico_item_zabbix(request):
     cliente_id = request.GET.get('cliente_id')
     item_id    = request.GET.get('item_id')
-    hours      = int(request.GET.get('hours', 1))   # ← NOVO
+    hours      = int(request.GET.get('hours', 1))
 
     # Garante valor válido
     if hours not in (1, 3, 6, 12, 24):
@@ -158,12 +341,16 @@ def historico_item_zabbix(request):
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
+    tunel = None
     try:
         config  = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
-        history = services.historico_item(config, item_id, hours=hours)   # ← passa hours
+        config, tunel = _get_config_com_tunel(config, cliente_id)
+        history = services.historico_item(config, item_id, hours=hours)
         return JsonResponse({'history': history})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    finally:
+        _fechar_tunel(tunel)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -328,8 +515,10 @@ def status_topologia(request):
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
+    tunel = None
     try:
         config    = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
+        config, tunel = _get_config_com_tunel(config, cliente_id)
         topologia = get_object_or_404(MonitorTopology, id=topo_id, cliente_id=cliente_id)
 
         nodes = list(MonitorNode.objects.filter(topologia=topologia))
@@ -361,11 +550,9 @@ def status_topologia(request):
             val_out    = item_values.get(lk.zabbix_itemid_out,    {}) if lk.zabbix_itemid_out    else {}
             val_status = item_values.get(lk.zabbix_itemid_status, {}) if lk.zabbix_itemid_status else {}
 
-            # Define tráfego ANTES de usar no status
             traffic_in  = val_in.get('value')  if val_in  else None
             traffic_out = val_out.get('value')  if val_out else None
 
-            # Status: usa item dedicado, senão infere pelo tráfego
             raw_status = val_status.get('value') if val_status else None
             if raw_status is not None:
                 link_up = str(raw_status).strip() == '1'
@@ -392,4 +579,30 @@ def status_topologia(request):
     except Exception as e:
         logger.exception("Erro ao buscar status da topologia")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
+    finally:
+        _fechar_tunel(tunel)
+
+
+
+@login_required(login_url='login')
+def listar_itens_zabbix(request):
+    cliente_id = request.GET.get('cliente_id')
+    host_id    = request.GET.get('host_id')
+    busca      = request.GET.get('q', '')
+
+    if not _pode_acessar_cliente(request, cliente_id):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    tunel = None
+    try:
+        config = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
+        config, tunel = _get_config_com_tunel(config, cliente_id)
+        itens  = services.listar_itens(config, host_id, busca)
+        return JsonResponse({'itens': itens})
+    except ZabbixConfig.DoesNotExist:
+        return JsonResponse({'error': 'Zabbix não configurado'}, status=400)
+    except Exception as e:
+        logger.exception("Erro ao listar itens")
+        return JsonResponse({'error': str(e)}, status=500)
+    finally:
+        _fechar_tunel(tunel)

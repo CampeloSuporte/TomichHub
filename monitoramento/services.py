@@ -246,6 +246,66 @@ def listar_interfaces(config, host_id: str) -> list:
 
 
 # ──────────────────────────────────────────────────────────────
+# HISTÓRICO DE ITENS
+# ──────────────────────────────────────────────────────────────
+
+def historico_item(config, item_id, hours=1):
+    auth = _get_auth_token(config)
+    time_from = int(time.time()) - (hours * 3600)
+
+    # Buscar metadados do item
+    item_info = _rpc(config.url, 'item.get', {
+        'itemids': [item_id],
+        'output': ['value_type', 'units', 'name', 'lastvalue', 'lastclock'],
+    }, auth)
+
+    value_type = 3
+    units = ''
+    if item_info:
+        value_type = int(item_info[0].get('value_type', 3))
+        units = item_info[0].get('units', '')
+
+    result = _rpc(config.url, 'history.get', {
+        'itemids':   [item_id],
+        'history':   value_type,
+        'time_from': time_from,
+        'sortfield': 'clock',
+        'sortorder': 'ASC',
+        'limit':     1000,
+    }, auth)
+
+    if not result:
+        return []
+
+    pontos = [{'t': int(p['clock']), 'v': float(p['value'])} for p in result]
+
+    units_lower = units.lower()
+
+    # ✅ Já é taxa (bps, pps, etc.) — retorna direto sem calcular delta
+    if any(u in units_lower for u in ('bps', 'pps', 'b/s', 'bit')):
+        return pontos
+
+    # ✅ Contador acumulativo de bytes — calcula delta e converte para bps
+    if value_type == 3 and len(pontos) >= 2:
+        taxa = []
+        for i in range(1, len(pontos)):
+            dt = pontos[i]['t'] - pontos[i-1]['t']
+            if dt <= 0:
+                continue
+            delta = pontos[i]['v'] - pontos[i-1]['v']
+            if delta < 0:
+                # Contador reiniciou (reboot do equipamento)
+                continue
+            # Bytes → bits
+            bps = (delta * 8) / dt
+            taxa.append({'t': pontos[i]['t'], 'v': bps})
+        return taxa
+
+    # Qualquer outro tipo — retorna direto
+    return pontos
+
+
+# ──────────────────────────────────────────────────────────────
 # STATUS EM TEMPO REAL
 # ──────────────────────────────────────────────────────────────
 
@@ -310,56 +370,6 @@ def status_items(config, item_ids: list) -> dict:
     }
 
 
-def historico_item(config, item_id: str, limit: int = 60, hours: int = 1) -> list:
-    """
-    Busca histórico de um item Zabbix.
-    - hours: janela de tempo a buscar (1, 3, 6, 12, 24)
-    - limit: máximo de pontos (calculado automaticamente pelo período)
-    """
-    auth      = _get_auth_token(config)
-    time_from = int(time.time()) - (hours * 3600)
-
-    # Mais pontos para períodos maiores (máx 1000)
-    limit = min(hours * 120, 1000)
-
-    # Descobre o value_type real do item para consultar o histórico correto
-    items = _rpc(config.url, "item.get", {
-        "output":  ["itemid", "value_type"],
-        "itemids": item_id,
-    }, auth)
-    value_type = int(items[0]["value_type"]) if items else 3
-
-    history = _rpc(config.url, "history.get", {
-        "output":    "extend",
-        "history":   value_type,   # tipo correto: 3=uint (tráfego), 0=float
-        "itemids":   item_id,
-        "time_from": time_from,
-        "sortfield": "clock",
-        "sortorder": "DESC",
-        "limit":     limit,
-    }, auth)
-
-    # Fallback: tenta outros tipos caso o principal retorne vazio
-    if not history:
-        for fallback_type in [3, 0, 1]:
-            if fallback_type == value_type:
-                continue
-            history = _rpc(config.url, "history.get", {
-                "output":    "extend",
-                "history":   fallback_type,
-                "itemids":   item_id,
-                "time_from": time_from,
-                "sortfield": "clock",
-                "sortorder": "DESC",
-                "limit":     limit,
-            }, auth)
-            if history:
-                break
-
-    history.reverse()
-    return [{"t": int(h["clock"]), "v": float(h["value"])} for h in history]
-
-
 # ──────────────────────────────────────────────────────────────
 # UTILITÁRIOS
 # ──────────────────────────────────────────────────────────────
@@ -373,3 +383,54 @@ def format_bps(value_str) -> str:
     if v >= 1_000_000:     return f"{v/1_000_000:.1f} Mbps"
     if v >= 1_000:         return f"{v/1_000:.1f} Kbps"
     return f"{v:.0f} bps"
+
+
+def listar_itens(config, host_id: str, busca: str = '') -> list:
+    """
+    Retorna todos os itens numéricos ativos do host.
+    O usuário seleciona In e Out separadamente.
+    """
+    auth = _get_auth_token(config)
+
+    params = {
+        "output":  ["itemid", "name", "key_", "lastvalue", "units", "value_type"],
+        "hostids": host_id,
+        "filter":  {"status": "0"},
+        # Apenas tipos numéricos: 0=float, 3=unsigned int
+        "search":  {"name": busca} if busca else {},
+        "limit":   2000,
+    }
+
+    try:
+        items = _rpc(config.url, "item.get", params, auth)
+    except Exception as e:
+        logger.error("item.get error: %s", e)
+        return []
+
+    # Filtrar apenas tipos numéricos
+    result = []
+    for it in items:
+        vt = int(it.get("value_type", 99))
+        if vt not in (0, 3):  # 0=float, 3=unsigned
+            continue
+        result.append({
+            "itemid":     it["itemid"],
+            "name":       it["name"],
+            "key":        it["key_"],
+            "lastvalue":  it.get("lastvalue", ""),
+            "units":      it.get("units", ""),
+            "value_type": vt,
+        })
+
+    # Ordenar: itens com "bit" ou "bps" no nome/units primeiro
+    def _sort(i):
+        n = i["name"].lower()
+        u = i["units"].lower()
+        if any(k in n for k in ("bits received", "bits sent", "bit receiv", "bit sent")):
+            return 0
+        if any(k in u for k in ("bps", "bit")):
+            return 1
+        return 2
+
+    result.sort(key=_sort)
+    return result

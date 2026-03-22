@@ -1,7 +1,7 @@
 {% load static %}
 <!--
   ABA MONITORAMENTO — tab_monitoramento.html
-  Versão simplificada: apenas Gráficos de Tráfego + Config Zabbix API.
+  Seleção direta de itens Zabbix (In/Out separados).
 -->
 
 <script>
@@ -36,9 +36,9 @@
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (d.existe) {
-          var u = document.getElementById('grph-zbx-url');
+          var u   = document.getElementById('grph-zbx-url');
           var usr = document.getElementById('grph-zbx-user');
-          if (u) u.value = d.url || '';
+          if (u)   u.value   = d.url     || '';
           if (usr) usr.value = d.usuario || '';
         }
       })
@@ -108,36 +108,13 @@
     if (window.GRAPH && typeof window.GRAPH.hostSearchDebounce === 'function') window.GRAPH.hostSearchDebounce(v);
   };
 
-  window.grphIfaceChange = function() {
-    if (window.GRAPH && typeof window.GRAPH.ifaceChange === 'function') window.GRAPH.ifaceChange();
+  window.grphFiltrarItens = function(direcao, v) {
+    if (window.GRAPH && typeof window.GRAPH.filtrarItens === 'function') window.GRAPH.filtrarItens(direcao, v);
   };
 
-  window.grphFiltrarIfaces = function(v) {
-    if (!window.GRAPH) return;
-    var hostid = document.getElementById('grph-m-hostid') && document.getElementById('grph-m-hostid').value;
-    var cache  = window.GRAPH._ifacesCache;
-    var ifaces = cache && hostid ? cache[hostid] : null;
-    if (!ifaces) return;
-    window.GRAPH._renderIfaceList(ifaces, v);
-  };
-
-  window.grphSelecionarIface = function(name, inId, outId) {
-    var val  = document.getElementById('grph-m-iface-val');
-    var inp  = document.getElementById('grph-m-iface-search');
-    var list = document.getElementById('grph-m-iface-list');
-    var prev = document.getElementById('grph-m-preview');
-
-    if (val)  val.value = JSON.stringify({ iface: name, inId: inId || null, outId: outId || null });
-    if (inp)  inp.value = name;
-    if (list) list.style.display = 'none';
-
-    if (prev) {
-      var inHtml  = inId  ? '<b style="color:#00ff88">'  + inId  + '</b>' : '<span style="color:#64748b">—</span>';
-      var outHtml = outId ? '<b style="color:#00d9ff">'  + outId + '</b>' : '<span style="color:#64748b">—</span>';
-      prev.style.display = 'block';
-      prev.innerHTML =
-        '<div class="grph-preview-row"><span>In Item ID</span>'  + inHtml  + '</div>' +
-        '<div class="grph-preview-row"><span>Out Item ID</span>' + outHtml + '</div>';
+  window.grphSelecionarItem = function(direcao, itemJson) {
+    if (window.GRAPH && typeof window.GRAPH.selecionarItem === 'function') {
+      window.GRAPH.selecionarItem(direcao, itemJson);
     }
   };
 </script>
@@ -238,6 +215,8 @@
     </div>
 
     <div class="grph-modal-body">
+
+      <!-- HOST -->
       <label class="grph-label">Host Zabbix *</label>
       <div class="grph-search-wrap">
         <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
@@ -249,11 +228,11 @@
                oninput="grphHostSearch(this.value)"/>
       </div>
       <div id="grph-m-results" class="grph-search-results" style="display:none;"></div>
-      <div id="grph-m-badge"   class="grph-host-badge"    style="display:none;"></div>
+      <div id="grph-m-badge" class="grph-host-badge" style="display:none;"></div>
       <input type="hidden" id="grph-m-hostid"/>
       <input type="hidden" id="grph-m-hostname"/>
 
-      <!-- ── TÍTULO PERSONALIZADO ─────────────────────── -->
+      <!-- TÍTULO PERSONALIZADO -->
       <label class="grph-label" style="margin-top:18px;">
         Título do gráfico
         <span class="grph-badge-optional">opcional</span>
@@ -265,23 +244,52 @@
         <input id="grph-m-titulo" type="text" class="grph-input grph-input-icon-pad"
                placeholder="Ex: Link Cliente ABC — 100Mbps"/>
       </div>
-      <p class="grph-hint">Exibido no lugar do nome do host no cabeçalho do card. Deixe vazio para usar o nome do host.</p>
+      <p class="grph-hint">Deixe vazio para usar o nome do host.</p>
 
-      <label class="grph-label" style="margin-top:18px;">Interface / Item *</label>
-      <div class="grph-search-wrap" id="grph-iface-wrap" style="display:none;">
-        <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
-          <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
-          <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input id="grph-m-iface-search" type="text" class="grph-input grph-input-search"
-               placeholder="Filtrar interfaces… (ex: GigabitEthernet, vlan)"
-               oninput="grphFiltrarIfaces(this.value)"/>
-      </div>
-      <div id="grph-m-iface-list" class="grph-search-results" style="display:none; max-height:240px;"></div>
-      <input type="hidden" id="grph-m-iface-val"/>
-      <p class="grph-hint">Interfaces com ↓↑ têm itens In+Out detectados automaticamente.</p>
+      <!-- ITENS IN/OUT — aparece após selecionar host -->
+      <div id="grph-itens-wrap" style="display:none;">
 
-      <div id="grph-m-preview" class="grph-preview-box" style="display:none;"></div>
+        <!-- ITEM IN (DOWNLOAD) -->
+        <label class="grph-label" style="margin-top:18px;">
+          <span style="color:#00ff88;">↓</span> Item Download (Bits received) *
+        </label>
+        <div class="grph-search-wrap">
+          <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="grph-m-item-in-search" type="text" class="grph-input grph-input-search"
+                 placeholder="Buscar item… ex: Bits received"
+                 oninput="grphFiltrarItens('in', this.value)"/>
+        </div>
+        <div id="grph-m-item-in-badge" class="grph-host-badge"
+             style="display:none; background:rgba(0,255,136,.06); border-color:rgba(0,255,136,.2); color:#00ff88; margin-bottom:4px;"></div>
+        <div id="grph-m-item-in-list" class="grph-search-results" style="display:none; max-height:180px;"></div>
+        <input type="hidden" id="grph-m-item-in-id"/>
+
+        <!-- ITEM OUT (UPLOAD) -->
+        <label class="grph-label" style="margin-top:14px;">
+          <span style="color:#00d9ff;">↑</span> Item Upload (Bits sent) *
+        </label>
+        <div class="grph-search-wrap">
+          <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="grph-m-item-out-search" type="text" class="grph-input grph-input-search"
+                 placeholder="Buscar item… ex: Bits sent"
+                 oninput="grphFiltrarItens('out', this.value)"/>
+        </div>
+        <div id="grph-m-item-out-badge" class="grph-host-badge"
+             style="display:none; background:rgba(0,217,255,.06); border-color:rgba(0,217,255,.2); color:#00d9ff; margin-bottom:4px;"></div>
+        <div id="grph-m-item-out-list" class="grph-search-results" style="display:none; max-height:180px;"></div>
+        <input type="hidden" id="grph-m-item-out-id"/>
+
+        <!-- PREVIEW IDs -->
+        <div id="grph-m-preview" class="grph-preview-box" style="display:none; margin-top:12px;"></div>
+
+      </div><!-- /#grph-itens-wrap -->
+
     </div>
 
     <div class="grph-modal-footer">
@@ -357,39 +365,30 @@
      ESTILOS
 ════════════════════════════════════════════════════════ -->
 <style>
-/* ── Reset ────────────────────────────────────────────── */
 #tab-monitoramento * { box-sizing: border-box; }
 #tab-monitoramento {
   display: flex; flex-direction: column;
   height: calc(100vh - 130px); min-height: 600px;
   background: #080f1a; border-radius: 10px; overflow: hidden;
 }
-
-/* ── Toolbar ──────────────────────────────────────────── */
 .grph-toolbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 18px; flex-shrink: 0; gap: 10px; flex-wrap: wrap;
   background: linear-gradient(180deg, #0d1829 0%, #0a1520 100%);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.grph-toolbar-left, .grph-toolbar-right {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-}
+.grph-toolbar-left, .grph-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .grph-toolbar-brand {
   display: flex; align-items: center; gap: 8px;
   font-size: .82rem; font-weight: 700; color: #e2e8f0;
   letter-spacing: .3px; padding-right: 12px;
   border-right: 1px solid rgba(255,255,255,0.08);
 }
-
-/* ── Live pill ────────────────────────────────────────── */
 .grph-live-pill {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(0,255,136,0.07);
-  border: 1px solid rgba(0,255,136,0.2);
+  background: rgba(0,255,136,0.07); border: 1px solid rgba(0,255,136,0.2);
   border-radius: 20px; padding: 4px 10px;
-  font-size: .7rem; font-weight: 700; color: #00ff88;
-  letter-spacing: .5px;
+  font-size: .7rem; font-weight: 700; color: #00ff88; letter-spacing: .5px;
 }
 .grph-live-dot {
   width: 7px; height: 7px; border-radius: 50%;
@@ -397,11 +396,8 @@
 }
 .grph-live-interval { color: #334155; font-weight: 400; font-size: .68rem; }
 @keyframes grph-blink { 0%,100%{opacity:1} 50%{opacity:.2} }
-
-/* ── Layout toggle ────────────────────────────────────── */
 .grph-layout-toggle {
-  display: flex; background: #0a1520;
-  border: 1px solid #1e293b; border-radius: 6px; padding: 2px;
+  display: flex; background: #0a1520; border: 1px solid #1e293b; border-radius: 6px; padding: 2px;
 }
 .grph-layout-btn {
   display: flex; align-items: center; justify-content: center;
@@ -410,8 +406,6 @@
 }
 .grph-layout-btn.active { background: #1e293b; color: #e2e8f0; }
 .grph-layout-btn:hover:not(.active) { color: #94a3b8; }
-
-/* ── Buttons ──────────────────────────────────────────── */
 .grph-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 13px; border-radius: 7px;
@@ -420,53 +414,32 @@
   transition: all .15s; letter-spacing: .2px;
 }
 .grph-btn:hover { background: #1e293b; border-color: #334155; color: #e2e8f0; }
-.grph-btn-primary {
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
-  border-color: #3b82f6; color: #fff;
-}
+.grph-btn-primary { background: linear-gradient(135deg, #1d4ed8, #2563eb); border-color: #3b82f6; color: #fff; }
 .grph-btn-primary:hover { background: linear-gradient(135deg, #2563eb, #3b82f6); }
 .grph-btn-ghost { background: transparent; }
 .grph-btn-ghost:hover { background: #0d1829; }
-
-/* ── Grid ─────────────────────────────────────────────── */
 .grph-grid {
   flex: 1; overflow-y: auto; padding: 18px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
   gap: 18px; align-content: start; background: #080f1a;
 }
-.grph-grid.grph-layout-list {
-  grid-template-columns: 1fr;
-}
-
-/* ── Empty state ──────────────────────────────────────── */
+.grph-grid.grph-layout-list { grid-template-columns: 1fr; }
 .grph-empty {
-  grid-column: 1/-1;
-  display: flex; flex-direction: column;
+  grid-column: 1/-1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 14px; padding: 80px 20px; text-align: center;
 }
 .grph-empty-icon {
-  width: 120px; height: 80px; display: flex;
-  align-items: center; justify-content: center;
-  background: rgba(59,130,246,.04);
-  border: 1px solid rgba(59,130,246,.1);
+  width: 120px; height: 80px; display: flex; align-items: center; justify-content: center;
+  background: rgba(59,130,246,.04); border: 1px solid rgba(59,130,246,.1);
   border-radius: 16px; padding: 16px;
 }
-.grph-empty-title {
-  margin: 0; font-size: 1.05rem; font-weight: 700;
-  color: #e2e8f0; letter-spacing: .2px;
-}
+.grph-empty-title { margin: 0; font-size: 1.05rem; font-weight: 700; color: #e2e8f0; letter-spacing: .2px; }
 .grph-empty-sub { margin: 0; font-size: .82rem; color: #475569; max-width: 320px; line-height: 1.5; }
-
-/* ── Card ─────────────────────────────────────────────── */
 .grph-card {
-  background: #0d1829;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px; overflow: hidden;
-  display: flex; flex-direction: column;
-  transition: border-color .2s, box-shadow .2s;
-  position: relative;
+  background: #0d1829; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+  transition: border-color .2s, box-shadow .2s; position: relative;
 }
 .grph-card:hover {
   border-color: rgba(59,130,246,.25);
@@ -478,12 +451,9 @@
   opacity: 0; transition: opacity .2s;
 }
 .grph-card:hover .grph-card-glow { opacity: 1; }
-
-/* ── Card header ──────────────────────────────────────── */
 .grph-card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
   background: rgba(255,255,255,0.015);
 }
 .grph-card-info { display: flex; flex-direction: column; gap: 3px; }
@@ -491,28 +461,20 @@
 .grph-poll-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: #1e293b; border: 1px solid #334155;
-  transition: background .3s, border-color .3s;
-  flex-shrink: 0;
+  transition: background .3s, border-color .3s; flex-shrink: 0;
 }
-.grph-poll-dot.pulsing {
-  background: #00ff88; border-color: #00ff88;
-  animation: grph-blink .6s ease-in-out 3;
-}
-.grph-poll-dot.grph-dot-active {
-  background: rgba(0,255,136,.3); border-color: rgba(0,255,136,.6);
-}
+.grph-poll-dot.pulsing { background: #00ff88; border-color: #00ff88; animation: grph-blink .6s ease-in-out 3; }
+.grph-poll-dot.grph-dot-active { background: rgba(0,255,136,.3); border-color: rgba(0,255,136,.6); }
 .grph-host {
   font-size: .85rem; font-weight: 700; color: #e2e8f0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;
 }
-/* Hostname secundário (quando há título personalizado) */
 .grph-host-sub {
   font-size: .68rem; color: #334155; font-weight: 400;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;
   display: flex; align-items: center; gap: 4px; margin-top: 1px;
 }
 .grph-iface { font-size: .7rem; color: #475569; display: flex; align-items: center; }
-
 .grph-card-acts { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .grph-icon-btn {
   display: flex; align-items: center; justify-content: center;
@@ -522,84 +484,55 @@
 }
 .grph-icon-btn:hover { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 .grph-icon-btn.grph-danger:hover { background: rgba(220,38,38,.15); border-color: rgba(220,38,38,.3); color: #ef4444; }
-
-/* ── Stats row ────────────────────────────────────────── */
 .grph-stats-row {
   display: flex; align-items: stretch;
-  background: rgba(0,0,0,.2);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,.2); border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.grph-stat-block {
-  flex: 1; display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
-}
-.grph-stat-divider {
-  width: 1px; background: rgba(255,255,255,0.05); margin: 8px 0;
-}
-.grph-stat-arrow {
-  font-size: 1.1rem; font-weight: 700; line-height: 1; flex-shrink: 0;
-}
+.grph-stat-block { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.grph-stat-divider { width: 1px; background: rgba(255,255,255,0.05); margin: 8px 0; }
+.grph-stat-arrow { font-size: 1.1rem; font-weight: 700; line-height: 1; flex-shrink: 0; }
 .grph-stat-in  .grph-stat-arrow { color: #00ff88; }
 .grph-stat-out .grph-stat-arrow { color: #00d9ff; }
 .grph-stat-peak .grph-stat-arrow { color: #f59e0b; }
 .grph-stat-val {
   font-family: 'SF Mono','Fira Code','Courier New',monospace;
-  font-size: .82rem; font-weight: 700; color: #e2e8f0;
-  letter-spacing: -.3px;
+  font-size: .82rem; font-weight: 700; color: #e2e8f0; letter-spacing: -.3px;
 }
 .grph-stat-label { font-size: .62rem; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
-
-/* ── Canvas ───────────────────────────────────────────── */
-.grph-canvas-wrap {
-  height: 180px; padding: 10px 8px 4px;
-  background: #080f1a; position: relative;
-}
+.grph-canvas-wrap { height: 180px; padding: 10px 8px 4px; background: #080f1a; position: relative; }
 .grph-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
-
-/* ── Card footer ──────────────────────────────────────── */
 .grph-footer {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 16px; font-size: .66rem;
-  background: rgba(0,0,0,.15);
-  border-top: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,.15); border-top: 1px solid rgba(255,255,255,0.04);
 }
 .grph-ts { color: #334155; }
-.grph-interval {
-  display: flex; align-items: center; gap: 4px; color: #334155;
-}
+.grph-interval { display: flex; align-items: center; gap: 4px; color: #334155; }
 .grph-interval-dot {
   width: 5px; height: 5px; border-radius: 50%;
   background: #334155; animation: grph-blink 2s ease-in-out infinite;
 }
-
-/* ── Period selector ──────────────────────────────────── */
 .grph-period-sel {
-  display: flex; gap: 2px;
-  background: #080f1a; border: 1px solid #1e293b;
-  border-radius: 6px; padding: 2px;
+  display: flex; gap: 2px; background: #080f1a;
+  border: 1px solid #1e293b; border-radius: 6px; padding: 2px;
 }
 .grph-period-btn {
   padding: 2px 7px; border: none; border-radius: 4px;
   background: transparent; color: #475569;
-  font-size: .65rem; font-weight: 600; cursor: pointer;
-  transition: all .15s; letter-spacing: .3px;
+  font-size: .65rem; font-weight: 600; cursor: pointer; transition: all .15s; letter-spacing: .3px;
 }
-.grph-period-btn.active  { background: #1e293b; color: #e2e8f0; }
+.grph-period-btn.active { background: #1e293b; color: #e2e8f0; }
 .grph-period-btn:hover:not(.active) { color: #94a3b8; }
-
-/* ── Fullscreen overlay ───────────────────────────────── */
 .grph-fullscreen-overlay {
   position: fixed; inset: 0; z-index: 9500;
   background: rgba(0,0,0,.85); backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
 }
 .grph-fullscreen-modal {
-  width: 100%; max-width: 1100px;
-  background: #0d1829; border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px; display: flex; flex-direction: column;
-  box-shadow: 0 40px 80px rgba(0,0,0,.6);
-  max-height: calc(100vh - 48px); overflow: hidden;
+  width: 100%; max-width: 1100px; background: #0d1829;
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 40px 80px rgba(0,0,0,.6); max-height: calc(100vh - 48px); overflow: hidden;
 }
 .grph-fullscreen-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -614,12 +547,7 @@
 .grph-fs-stat-out { color: #00d9ff; }
 .grph-fullscreen-canvas-wrap { flex: 1; padding: 20px; min-height: 0; height: 420px; }
 .grph-fullscreen-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
-.grph-fullscreen-footer {
-  padding: 10px 24px; border-top: 1px solid rgba(255,255,255,0.04);
-  font-size: .7rem; color: #334155; text-align: right;
-}
-
-/* ── Modal ────────────────────────────────────────────── */
+.grph-fullscreen-footer { padding: 10px 24px; border-top: 1px solid rgba(255,255,255,0.04); font-size: .7rem; color: #334155; text-align: right; }
 .grph-overlay {
   position: fixed; inset: 0; z-index: 9000;
   background: rgba(0,0,0,.75); backdrop-filter: blur(6px);
@@ -627,10 +555,9 @@
 }
 .grph-modal {
   background: #0d1829; border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; width: 500px; max-width: 95vw; max-height: 92vh;
+  border-radius: 14px; width: 520px; max-width: 95vw; max-height: 92vh;
   display: flex; flex-direction: column;
-  box-shadow: 0 32px 64px rgba(0,0,0,.5);
-  overflow: hidden;
+  box-shadow: 0 32px 64px rgba(0,0,0,.5); overflow: hidden;
 }
 .grph-modal-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -640,20 +567,17 @@
 .grph-modal-title-wrap { display: flex; align-items: center; gap: 10px; }
 .grph-modal-title-wrap h3 { margin: 0; font-size: .95rem; color: #e2e8f0; font-weight: 700; }
 .grph-modal-close {
-  background: none; border: none; color: #475569;
-  cursor: pointer; font-size: 1.1rem; line-height: 1;
-  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: #475569; cursor: pointer;
+  font-size: 1.1rem; line-height: 1; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
   border-radius: 6px; transition: all .15s;
 }
 .grph-modal-close:hover { background: rgba(255,255,255,.05); color: #e2e8f0; }
-.grph-modal-body   { padding: 20px 22px; overflow-y: auto; flex: 1; }
+.grph-modal-body { padding: 20px 22px; overflow-y: auto; flex: 1; }
 .grph-modal-footer {
   padding: 14px 22px; border-top: 1px solid rgba(255,255,255,0.06);
-  display: flex; justify-content: flex-end; gap: 8px;
-  background: rgba(0,0,0,.1);
+  display: flex; justify-content: flex-end; gap: 8px; background: rgba(0,0,0,.1);
 }
-
-/* ── Form elements ────────────────────────────────────── */
 .grph-label {
   display: block; font-size: .76rem; font-weight: 600;
   color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
@@ -661,78 +585,49 @@
 .grph-input, .grph-select {
   width: 100%; padding: 9px 12px;
   background: #080f1a; border: 1px solid #1e293b; border-radius: 7px;
-  color: #e2e8f0; font-size: .82rem; outline: none;
-  transition: border-color .15s;
+  color: #e2e8f0; font-size: .82rem; outline: none; transition: border-color .15s;
 }
 .grph-input:focus, .grph-select:focus { border-color: #3b82f6; }
 .grph-input::placeholder { color: #334155; }
 .grph-input-search { padding-left: 36px; }
 .grph-search-wrap { position: relative; }
-.grph-search-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  color: #475569; pointer-events: none;
-}
-
-/* ── Título input com ícone ───────────────────────────── */
+.grph-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #475569; pointer-events: none; }
 .grph-input-icon-wrap { position: relative; }
-.grph-input-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  color: #475569; pointer-events: none;
-}
+.grph-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #475569; pointer-events: none; }
 .grph-input-icon-pad { padding-left: 36px; }
-
-/* ── Badge opcional ───────────────────────────────────── */
 .grph-badge-optional {
   font-size: .58rem; background: rgba(100,116,139,0.15); color: #64748b;
   padding: 2px 6px; border-radius: 4px; margin-left: 6px;
   font-weight: 500; vertical-align: middle; text-transform: lowercase;
   letter-spacing: 0; border: 1px solid rgba(100,116,139,0.2);
 }
-
 .grph-hint { font-size: .7rem; color: #475569; margin: 5px 0 0; }
 .grph-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.grph-badge {
-  font-size: .62rem; background: #1e3a8a; color: #93c5fd;
-  padding: 2px 7px; border-radius: 4px; margin-left: 6px;
-  font-weight: 600; vertical-align: middle;
-}
-
-/* ── Search results ───────────────────────────────────── */
+.grph-badge { font-size: .62rem; background: #1e3a8a; color: #93c5fd; padding: 2px 7px; border-radius: 4px; margin-left: 6px; font-weight: 600; vertical-align: middle; }
 .grph-search-results {
   background: #080f1a; border: 1px solid #1e293b; border-radius: 8px;
   margin-top: 4px; max-height: 200px; overflow-y: auto;
 }
 .grph-ri {
-  padding: 10px 14px; cursor: pointer; display: flex;
-  flex-direction: column; gap: 3px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  transition: background .1s;
+  padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 3px;
+  border-bottom: 1px solid rgba(255,255,255,0.04); transition: background .1s;
 }
 .grph-ri:last-child { border-bottom: none; }
 .grph-ri:hover { background: rgba(59,130,246,.06); }
 .grph-ri-main { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: #e2e8f0; }
 .grph-ri-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.grph-ri small { font-size: .7rem; color: #475569; padding-left: 15px; }
-
-/* ── Host badge ───────────────────────────────────────── */
+.grph-ri small { font-size: .7rem; color: #475569; }
 .grph-host-badge {
   background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.2);
   border-radius: 6px; padding: 7px 12px; font-size: .78rem; color: #00ff88;
   margin-top: 8px; font-weight: 600;
 }
-
-/* ── Preview box ──────────────────────────────────────── */
 .grph-preview-box {
   background: rgba(0,0,0,.3); border: 1px solid #1e293b;
-  border-radius: 7px; padding: 10px 14px; margin-top: 10px; font-size: .76rem; color: #64748b;
+  border-radius: 7px; padding: 10px 14px; font-size: .76rem; color: #64748b;
 }
-.grph-preview-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 3px 0;
-}
+.grph-preview-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
 .grph-preview-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); margin-bottom: 3px; padding-bottom: 6px; }
-
-/* ── Alert ────────────────────────────────────────────── */
 .grph-alert { padding: 10px 14px; border-radius: 7px; font-size: .8rem; margin-top: 12px; }
 .grph-alert.success { background: rgba(5,150,105,.12); border: 1px solid rgba(5,150,105,.25); color: #34d399; }
 .grph-alert.error   { background: rgba(220,38,38,.12);  border: 1px solid rgba(220,38,38,.25);  color: #f87171; }
@@ -752,49 +647,10 @@ const GRAPH = (() => {
   let clienteId     = null;
   let charts        = [];
   let nextChartId   = 1;
-  let ifacesCache   = {};
+  let itensCache    = {};   // cache de itens por hostid
   let _hostTimer    = null;
   let _editingChart = null;
   let _fullscreenId = null;
-
-  /* ── Persistência localStorage ────────────────────────── */
-  function _storageKey() {
-    return 'grph_charts_' + (window.CLIENTE_ID || 'default');
-  }
-
-  function _salvarStorage() {
-    try {
-      const data = charts.map(c => ({
-        id:        c.id,
-        hostid:    c.hostid,
-        hostname:  c.hostname,
-        titulo:    c.titulo  || '',   // ← título personalizado
-        ifaceName: c.ifaceName,
-        inId:      c.inId,
-        outId:     c.outId,
-        hours:     c.hours || 1,
-      }));
-      localStorage.setItem(_storageKey(), JSON.stringify(data));
-      localStorage.setItem(_storageKey() + '_nextId', String(nextChartId));
-    } catch(e) { console.warn('[GRAPH] localStorage write error:', e); }
-  }
-
-  function _carregarStorage() {
-    try {
-      const raw = localStorage.getItem(_storageKey());
-      const nid = localStorage.getItem(_storageKey() + '_nextId');
-      if (nid) nextChartId = parseInt(nid) || 1;
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      charts = data.map(c => ({
-        ...c,
-        titulo:        c.titulo  || '',   // ← restaura título
-        hours:         c.hours || 1,
-        chartInstance: null, fsChartInstance: null,
-        _interval:     null, _fsSync: false,
-      }));
-    } catch(e) { console.warn('[GRAPH] localStorage read error:', e); }
-  }
 
   // ── Paleta ────────────────────────────────────────────────
   const C = {
@@ -804,18 +660,46 @@ const GRAPH = (() => {
     outFill: 'rgba(0,217,255,0.08)',
     grid:    'rgba(255,255,255,0.04)',
     text:    '#475569',
-    border:  '#1e293b',
   };
 
   const URLS = {
-    zbxHosts:  '/monitoramento/zabbix/hosts/',
-    zbxIfaces: '/monitoramento/zabbix/interfaces/',
-    history:   '/monitoramento/zabbix/history/',
+    zbxHosts: '/monitoramento/zabbix/hosts/',
+    zbxItens: '/monitoramento/zabbix/itens/',
+    history:  '/monitoramento/zabbix/history/',
   };
 
   async function _get(url) {
     const r = await fetch(url);
     return r.json();
+  }
+
+  // ── Persistência ──────────────────────────────────────────
+  function _storageKey() { return 'grph_charts_v2_' + (window.CLIENTE_ID || 'default'); }
+
+  function _salvarStorage() {
+    try {
+      localStorage.setItem(_storageKey(), JSON.stringify(
+        charts.map(c => ({
+          id: c.id, hostid: c.hostid, hostname: c.hostname,
+          titulo: c.titulo || '', ifaceName: c.ifaceName,
+          inId: c.inId, outId: c.outId, hours: c.hours || 1,
+        }))
+      ));
+      localStorage.setItem(_storageKey() + '_nid', String(nextChartId));
+    } catch(e) { console.warn('[GRAPH] storage write:', e); }
+  }
+
+  function _carregarStorage() {
+    try {
+      const nid = localStorage.getItem(_storageKey() + '_nid');
+      if (nid) nextChartId = parseInt(nid) || 1;
+      const raw = localStorage.getItem(_storageKey());
+      if (!raw) return;
+      charts = JSON.parse(raw).map(c => ({
+        ...c, titulo: c.titulo || '', hours: c.hours || 1,
+        chartInstance: null, fsChartInstance: null, _interval: null, _fsSync: false,
+      }));
+    } catch(e) { console.warn('[GRAPH] storage read:', e); }
   }
 
   // ─────────────────────────────────────────────────────────
@@ -825,10 +709,6 @@ const GRAPH = (() => {
     clienteId = window.CLIENTE_ID || null;
     _carregarStorage();
     _renderGrid();
-    _bindKeyboard();
-  }
-
-  function _bindKeyboard() {
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && _fullscreenId !== null) fecharFullscreen();
     });
@@ -841,12 +721,7 @@ const GRAPH = (() => {
     const grid = document.getElementById('grph-grid');
     if (!grid) return;
     grid.innerHTML = '';
-
-    if (charts.length === 0) {
-      grid.innerHTML = _emptyState();
-      return;
-    }
-
+    if (!charts.length) { grid.innerHTML = _emptyState(); return; }
     charts.forEach(c => {
       const card = document.createElement('div');
       card.className = 'grph-card';
@@ -858,62 +733,47 @@ const GRAPH = (() => {
   }
 
   function _emptyState() {
-    return `
-      <div class="grph-empty">
-        <div class="grph-empty-icon">
-          <svg viewBox="0 0 120 80" width="120" height="80">
-            <defs>
-              <linearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#00ff88" stop-opacity="0.4"/>
-                <stop offset="100%" stop-color="#00d9ff" stop-opacity="0.4"/>
-              </linearGradient>
-            </defs>
-            <rect x="4"  y="50" width="16" height="26" rx="3" fill="url(#emptyGrad)" opacity=".5"/>
-            <rect x="26" y="32" width="16" height="44" rx="3" fill="url(#emptyGrad)" opacity=".6"/>
-            <rect x="48" y="40" width="16" height="36" rx="3" fill="url(#emptyGrad)" opacity=".7"/>
-            <rect x="70" y="20" width="16" height="56" rx="3" fill="url(#emptyGrad)" opacity=".8"/>
-            <rect x="92" y="10" width="16" height="66" rx="3" fill="url(#emptyGrad)"/>
-            <polyline points="12,45 34,28 56,36 78,16 100,6"
-                      stroke="#3b82f6" stroke-width="2" fill="none"
-                      stroke-dasharray="4,3" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <h3 class="grph-empty-title">Nenhum gráfico configurado</h3>
-        <p class="grph-empty-sub">Adicione interfaces Zabbix para monitorar tráfego em tempo real.</p>
-        <button class="grph-btn grph-btn-primary" onclick="window.GRAPH.abrirModalAdd()">
-          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-          Adicionar Monitor
-        </button>
-      </div>`;
+    return `<div class="grph-empty">
+      <div class="grph-empty-icon">
+        <svg viewBox="0 0 120 80" width="120" height="80">
+          <defs><linearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00ff88" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#00d9ff" stop-opacity="0.4"/>
+          </linearGradient></defs>
+          <rect x="4"  y="50" width="16" height="26" rx="3" fill="url(#emptyGrad)" opacity=".5"/>
+          <rect x="26" y="32" width="16" height="44" rx="3" fill="url(#emptyGrad)" opacity=".6"/>
+          <rect x="48" y="40" width="16" height="36" rx="3" fill="url(#emptyGrad)" opacity=".7"/>
+          <rect x="70" y="20" width="16" height="56" rx="3" fill="url(#emptyGrad)" opacity=".8"/>
+          <rect x="92" y="10" width="16" height="66" rx="3" fill="url(#emptyGrad)"/>
+          <polyline points="12,45 34,28 56,36 78,16 100,6"
+                    stroke="#3b82f6" stroke-width="2" fill="none" stroke-dasharray="4,3" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h3 class="grph-empty-title">Nenhum gráfico configurado</h3>
+      <p class="grph-empty-sub">Adicione itens Zabbix para monitorar tráfego em tempo real.</p>
+      <button class="grph-btn grph-btn-primary" onclick="window.GRAPH.abrirModalAdd()">
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Adicionar Monitor
+      </button>
+    </div>`;
   }
 
   function _cardHTML(c) {
     const hours = c.hours || 1;
     const periodBtns = [1, 3, 6, 12, 24].map(h =>
-      `<button class="grph-period-btn ${h === hours ? 'active' : ''}"
-               onclick="GRAPH.setPeriod(${c.id}, ${h})">${h}h</button>`
+      `<button class="grph-period-btn ${h === hours ? 'active' : ''}" onclick="GRAPH.setPeriod(${c.id},${h})">${h}h</button>`
     ).join('');
-
-    // Título exibido = título personalizado (se definido) ou hostname
     const displayTitle = c.titulo || c.hostname || '—';
-    // Se há título personalizado, mostra o hostname como info secundária
-    const subHostHtml = c.titulo
-      ? `<span class="grph-host-sub">
-           <svg viewBox="0 0 24 24" width="9" height="9" style="opacity:.4;flex-shrink:0">
-             <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
-             <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-           </svg>
-           ${c.hostname || ''}
-         </span>`
+    const subHostHtml  = c.titulo
+      ? `<span class="grph-host-sub"><svg viewBox="0 0 24 24" width="9" height="9" style="opacity:.4;flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>${c.hostname || ''}</span>`
       : '';
-
     return `
       <div class="grph-card-glow"></div>
       <div class="grph-card-header">
         <div class="grph-card-info">
           <div class="grph-card-title-row">
             <span class="grph-poll-dot" id="grph-dot-${c.id}"></span>
-            <span class="grph-host" title="${c.hostname || ''}">${displayTitle}</span>
+            <span class="grph-host" title="${c.hostname||''}">${displayTitle}</span>
           </div>
           ${subHostHtml}
           <span class="grph-iface">
@@ -925,65 +785,38 @@ const GRAPH = (() => {
         </div>
         <div class="grph-card-acts">
           <button class="grph-icon-btn" onclick="GRAPH.toggleFullscreen(${c.id})" title="Expandir">
-            <svg viewBox="0 0 24 24" width="13" height="13">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"
-                    stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
           </button>
           <button class="grph-icon-btn" onclick="GRAPH.abrirModalEdit(${c.id})" title="Editar">
-            <svg viewBox="0 0 24 24" width="13" height="13">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                    stroke="currentColor" stroke-width="2" fill="none"/>
-              <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"
-                    stroke="currentColor" stroke-width="2" fill="none"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
           </button>
           <button class="grph-icon-btn grph-danger" onclick="GRAPH.removerChart(${c.id})" title="Remover">
-            <svg viewBox="0 0 24 24" width="13" height="13">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width="13" height="13"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
         </div>
       </div>
-
       <div class="grph-stats-row">
         <div class="grph-stat-block grph-stat-in">
           <span class="grph-stat-arrow">↓</span>
-          <div>
-            <div class="grph-stat-val" id="grph-in-${c.id}">—</div>
-            <div class="grph-stat-label">Download</div>
-          </div>
+          <div><div class="grph-stat-val" id="grph-in-${c.id}">—</div><div class="grph-stat-label">Download</div></div>
         </div>
         <div class="grph-stat-divider"></div>
         <div class="grph-stat-block grph-stat-out">
           <span class="grph-stat-arrow">↑</span>
-          <div>
-            <div class="grph-stat-val" id="grph-out-${c.id}">—</div>
-            <div class="grph-stat-label">Upload</div>
-          </div>
+          <div><div class="grph-stat-val" id="grph-out-${c.id}">—</div><div class="grph-stat-label">Upload</div></div>
         </div>
         <div class="grph-stat-divider"></div>
         <div class="grph-stat-block grph-stat-peak">
           <svg viewBox="0 0 24 24" width="12" height="12" style="opacity:.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-          <div>
-            <div class="grph-stat-val" id="grph-peak-${c.id}">—</div>
-            <div class="grph-stat-label">Pico (${hours}h)</div>
-          </div>
+          <div><div class="grph-stat-val" id="grph-peak-${c.id}">—</div><div class="grph-stat-label">Pico (${hours}h)</div></div>
         </div>
       </div>
-
-      <div class="grph-canvas-wrap">
-        <canvas id="grph-cv-${c.id}"></canvas>
-      </div>
-
+      <div class="grph-canvas-wrap"><canvas id="grph-cv-${c.id}"></canvas></div>
       <div class="grph-footer">
         <span class="grph-ts" id="grph-ts-${c.id}">Aguardando dados...</span>
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="grph-period-sel" id="grph-period-${c.id}">${periodBtns}</div>
-          <span class="grph-interval">
-            <span class="grph-interval-dot"></span>
-            15s
-          </span>
+          <span class="grph-interval"><span class="grph-interval-dot"></span>15s</span>
         </div>
       </div>`;
   }
@@ -991,60 +824,27 @@ const GRAPH = (() => {
   // ─────────────────────────────────────────────────────────
   // CHART.JS
   // ─────────────────────────────────────────────────────────
-  function _chartConfig(mini = false) {
+  function _chartConfig() {
     return {
       type: 'line',
       data: { labels: [], datasets: [
-        {
-          label: 'Download ↓', data: [],
-          borderColor: C.in, backgroundColor: C.inFill,
-          borderWidth: mini ? 1.5 : 2, pointRadius: 0,
-          fill: true, tension: 0.4,
-          spanGaps: true,
-        },
-        {
-          label: 'Upload ↑', data: [],
-          borderColor: C.out, backgroundColor: C.outFill,
-          borderWidth: mini ? 1.5 : 2, pointRadius: 0,
-          fill: true, tension: 0.4,
-          spanGaps: true,
-        },
+        { label: 'Download ↓', data: [], borderColor: C.in,  backgroundColor: C.inFill,  borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, spanGaps: true },
+        { label: 'Upload ↑',   data: [], borderColor: C.out, backgroundColor: C.outFill, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, spanGaps: true },
       ]},
       options: {
-        animation: false,
-        responsive: true,
-        maintainAspectRatio: false,
+        animation: false, responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: {
-            display: !mini,
-            labels: { color: '#64748b', font: { size: 10 }, boxWidth: 10, padding: 12 },
-          },
+          legend: { display: true, labels: { color: '#64748b', font: { size: 10 }, boxWidth: 10, padding: 12 } },
           tooltip: {
-            backgroundColor: '#0f172a',
-            borderColor: '#334155',
-            borderWidth: 1,
-            titleColor: '#e2e8f0',
-            bodyColor: '#94a3b8',
-            padding: 12,
-            cornerRadius: 8,
+            backgroundColor: '#0f172a', borderColor: '#334155', borderWidth: 1,
+            titleColor: '#e2e8f0', bodyColor: '#94a3b8', padding: 12, cornerRadius: 8,
             callbacks: { label: ctx => `  ${ctx.dataset.label}: ${_fmtBps(ctx.raw)}` },
           },
         },
         scales: {
-          x: {
-            display: !mini,
-            ticks: { color: C.text, font: { size: 9 }, maxRotation: 0, maxTicksLimit: 8 },
-            grid: { color: C.grid },
-            border: { color: 'transparent' },
-          },
-          y: {
-            min: 0,
-            display: !mini,
-            ticks: { color: C.text, font: { size: 9 }, callback: v => _fmtBps(v) },
-            grid: { color: C.grid },
-            border: { color: 'transparent' },
-          },
+          x: { display: true, ticks: { color: C.text, font: { size: 9 }, maxRotation: 0, maxTicksLimit: 8 }, grid: { color: C.grid }, border: { color: 'transparent' } },
+          y: { min: 0, display: true, ticks: { color: C.text, font: { size: 9 }, callback: v => _fmtBps(v) }, grid: { color: C.grid }, border: { color: 'transparent' } },
         },
       },
     };
@@ -1053,14 +853,11 @@ const GRAPH = (() => {
   function _initChart(c) {
     const canvas = document.getElementById(`grph-cv-${c.id}`);
     if (!canvas) return;
-
     if (typeof Chart === 'undefined') {
-      canvas.parentElement.innerHTML =
-        '<p style="color:#475569;text-align:center;padding:24px;font-size:.78rem;">Chart.js não encontrado.</p>';
+      canvas.parentElement.innerHTML = '<p style="color:#475569;text-align:center;padding:24px;font-size:.78rem;">Chart.js não encontrado.</p>';
       return;
     }
-
-    c.chartInstance = new Chart(canvas, _chartConfig(false));
+    c.chartInstance = new Chart(canvas, _chartConfig());
     _startPolling(c);
   }
 
@@ -1071,15 +868,12 @@ const GRAPH = (() => {
     const c = charts.find(x => x.id === id);
     if (!c) return;
     c.hours = hours;
-
     const peakLabel = document.querySelector(`#grph-card-${id} .grph-stat-peak .grph-stat-label`);
     if (peakLabel) peakLabel.textContent = `Pico (${hours}h)`;
-
     const sel = document.getElementById(`grph-period-${id}`);
     if (sel) sel.querySelectorAll('.grph-period-btn').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.textContent) === hours);
     });
-
     _salvarStorage();
     _fetchHistory(c);
   }
@@ -1104,16 +898,10 @@ const GRAPH = (() => {
 
     const hours = c.hours || 1;
     const fsPeriodBtns = [1, 3, 6, 12, 24].map(h =>
-      `<button class="grph-period-btn ${h === hours ? 'active' : ''}"
-               onclick="GRAPH.setFsPeriod(${c.id}, ${h})" style="font-size:.72rem;padding:3px 9px;">${h}h</button>`
+      `<button class="grph-period-btn ${h === hours ? 'active' : ''}" onclick="GRAPH.setFsPeriod(${c.id},${h})" style="font-size:.72rem;padding:3px 9px;">${h}h</button>`
     ).join('');
-
-    // No fullscreen: título = título personalizado (se definido) ou hostname
     const fsTitle = c.titulo || c.hostname || '—';
-    // Sub-linha: se há título, mostra hostname; senão mostra a interface
-    const fsSub   = c.titulo
-      ? `${c.hostname || ''} &nbsp;·&nbsp; ${c.ifaceName || ''}`
-      : (c.ifaceName || '—');
+    const fsSub   = c.titulo ? `${c.hostname||''} · ${c.ifaceName||''}` : (c.ifaceName || '—');
 
     overlay.innerHTML = `
       <div class="grph-fullscreen-modal">
@@ -1125,38 +913,29 @@ const GRAPH = (() => {
           <div class="grph-fullscreen-actions">
             <div class="grph-period-sel" id="grph-fs-period" style="margin-right:8px;">${fsPeriodBtns}</div>
             <div class="grph-fs-stats">
-              <span class="grph-fs-stat-in" id="grph-fs-in">↓ —</span>
+              <span class="grph-fs-stat-in"  id="grph-fs-in">↓ —</span>
               <span class="grph-fs-stat-out" id="grph-fs-out">↑ —</span>
             </div>
             <button class="grph-icon-btn" onclick="GRAPH.fecharFullscreen()" title="Fechar">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-              </svg>
+              <svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
             </button>
           </div>
         </div>
-        <div class="grph-fullscreen-canvas-wrap">
-          <canvas id="grph-fs-canvas"></canvas>
-        </div>
-        <div class="grph-fullscreen-footer">
-          <span id="grph-fs-ts">—</span>
-        </div>
+        <div class="grph-fullscreen-canvas-wrap"><canvas id="grph-fs-canvas"></canvas></div>
+        <div class="grph-fullscreen-footer"><span id="grph-fs-ts">—</span></div>
       </div>`;
 
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
     if (typeof Chart !== 'undefined') {
-      const fsCanvas = document.getElementById('grph-fs-canvas');
-      c.fsChartInstance = new Chart(fsCanvas, _chartConfig(false));
-
+      c.fsChartInstance = new Chart(document.getElementById('grph-fs-canvas'), _chartConfig());
       if (c.chartInstance) {
         c.fsChartInstance.data = JSON.parse(JSON.stringify(c.chartInstance.data));
         c.fsChartInstance.update('none');
       }
       c._fsSync = true;
     }
-
     _updateFsStats(c);
   }
 
@@ -1166,8 +945,8 @@ const GRAPH = (() => {
       c._fsSync = false;
       if (c.fsChartInstance) { c.fsChartInstance.destroy(); c.fsChartInstance = null; }
     }
-    const overlay = document.getElementById('grph-fullscreen-overlay');
-    if (overlay) overlay.style.display = 'none';
+    const ov = document.getElementById('grph-fullscreen-overlay');
+    if (ov) ov.style.display = 'none';
     document.body.style.overflow = '';
     _fullscreenId = null;
   }
@@ -1181,15 +960,15 @@ const GRAPH = (() => {
   }
 
   function _updateFsStats(c) {
-    const elIn  = document.getElementById('grph-fs-in');
-    const elOut = document.getElementById('grph-fs-out');
-    const elTs  = document.getElementById('grph-fs-ts');
-    const srcIn  = document.getElementById(`grph-in-${c.id}`);
-    const srcOut = document.getElementById(`grph-out-${c.id}`);
-    const srcTs  = document.getElementById(`grph-ts-${c.id}`);
-    if (elIn  && srcIn)  elIn.textContent  = '↓ ' + (srcIn.textContent  || '—');
-    if (elOut && srcOut) elOut.textContent = '↑ ' + (srcOut.textContent || '—');
-    if (elTs  && srcTs)  elTs.textContent  = srcTs.textContent;
+    const si = document.getElementById(`grph-in-${c.id}`);
+    const so = document.getElementById(`grph-out-${c.id}`);
+    const st = document.getElementById(`grph-ts-${c.id}`);
+    const fi = document.getElementById('grph-fs-in');
+    const fo = document.getElementById('grph-fs-out');
+    const ft = document.getElementById('grph-fs-ts');
+    if (fi && si) fi.textContent = '↓ ' + (si.textContent || '—');
+    if (fo && so) fo.textContent = '↑ ' + (so.textContent || '—');
+    if (ft && st) ft.textContent = st.textContent;
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1209,39 +988,28 @@ const GRAPH = (() => {
     if (dot) dot.classList.add('pulsing');
 
     try {
-      const hours = c.hours || 1;
-      const ids   = [c.inId, c.outId].filter(Boolean);
+      const hours   = c.hours || 1;
+      const ids     = [c.inId, c.outId].filter(Boolean);
       const results = await Promise.all(
-        ids.map(id => _get(
-          `${URLS.history}?cliente_id=${clienteId}&item_id=${id}&hours=${hours}`
-        ))
+        ids.map(id => _get(`${URLS.history}?cliente_id=${clienteId}&item_id=${id}&hours=${hours}`))
       );
 
       function _norm(raw) {
         if (!raw) return [];
-        let arr;
-        if (Array.isArray(raw)) {
-          arr = raw;
-        } else {
-          arr = raw.history || raw.data || raw.result || raw.items || [];
-          if (!Array.isArray(arr)) return [];
-        }
+        const arr = raw.history || raw.data || raw.result || (Array.isArray(raw) ? raw : []);
         return arr.map(p => ({
-          t: parseInt(p.t  || p.clock || 0),
+          t: parseInt(p.t || p.clock || 0),
           v: parseFloat(p.v !== undefined ? p.v : (p.value !== undefined ? p.value : 0)),
         })).filter(p => p.t > 0);
       }
 
       const histIn  = c.inId  ? _norm(results[0]) : [];
       const histOut = c.outId ? _norm(results[c.inId ? 1 : 0]) : [];
+      if (!histIn.length && !histOut.length) return;
 
-      if (histIn.length === 0 && histOut.length === 0) return;
-
-      const allTs = [...new Set([...histIn.map(p => p.t), ...histOut.map(p => p.t)])].sort((a, b) => a - b);
-      if (!allTs.length) return;
-
-      const mapIn   = Object.fromEntries(histIn.map(p  => [p.t, p.v]));
-      const mapOut  = Object.fromEntries(histOut.map(p => [p.t, p.v]));
+      const allTs  = [...new Set([...histIn.map(p => p.t), ...histOut.map(p => p.t)])].sort((a, b) => a - b);
+      const mapIn  = Object.fromEntries(histIn.map(p  => [p.t, p.v]));
+      const mapOut = Object.fromEntries(histOut.map(p => [p.t, p.v]));
       const labels  = allTs.map(_fmtTime);
       const dataIn  = allTs.map(t => mapIn[t]  !== undefined ? parseFloat(mapIn[t])  : null);
       const dataOut = allTs.map(t => mapOut[t] !== undefined ? parseFloat(mapOut[t]) : null);
@@ -1252,7 +1020,6 @@ const GRAPH = (() => {
         c.chartInstance.data.datasets[1].data = dataOut;
         c.chartInstance.update('none');
       }
-
       if (c._fsSync && c.fsChartInstance) {
         c.fsChartInstance.data.labels           = labels;
         c.fsChartInstance.data.datasets[0].data = dataIn;
@@ -1263,18 +1030,16 @@ const GRAPH = (() => {
 
       const lastIn  = dataIn.filter(v => v !== null).at(-1);
       const lastOut = dataOut.filter(v => v !== null).at(-1);
-      const peakIn  = Math.max(...dataIn.filter(v => v !== null), 0);
+      const peakIn  = Math.max(...dataIn.filter(v  => v !== null), 0);
       const peakOut = Math.max(...dataOut.filter(v => v !== null), 0);
-      const lastTs  = allTs[allTs.length - 1];
 
       _setText(`grph-in-${c.id}`,   _fmtBps(lastIn));
       _setText(`grph-out-${c.id}`,  _fmtBps(lastOut));
       _setText(`grph-peak-${c.id}`, _fmtBps(Math.max(peakIn, peakOut)));
-      _setText(`grph-ts-${c.id}`,   `Atualizado às ${_fmtTime(lastTs)}`);
-
+      _setText(`grph-ts-${c.id}`,   `Atualizado às ${_fmtTime(allTs[allTs.length - 1])}`);
       if (dot) dot.classList.toggle('grph-dot-active', (lastIn || 0) > 0 || (lastOut || 0) > 0);
 
-    } catch (e) {
+    } catch(e) {
       console.error('[GRAPH] poll error:', e);
     } finally {
       setTimeout(() => {
@@ -1284,13 +1049,10 @@ const GRAPH = (() => {
     }
   }
 
-  function _setText(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  }
+  function _setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
   // ─────────────────────────────────────────────────────────
-  // MODAIS
+  // MODAL — ABRIR/FECHAR/RESET
   // ─────────────────────────────────────────────────────────
   function abrirModalAdd() {
     _editingChart = null;
@@ -1305,17 +1067,30 @@ const GRAPH = (() => {
     _editingChart = id;
     _resetModal();
     document.getElementById('grph-modal-title').textContent = 'Editar Monitor';
-    if (c.hostname) {
-      document.getElementById('grph-m-search').value   = c.hostname;
-      document.getElementById('grph-m-hostid').value   = c.hostid;
-      document.getElementById('grph-m-hostname').value = c.hostname;
-      const badge = document.getElementById('grph-m-badge');
-      badge.textContent = `✓ ${c.hostname}`; badge.style.display = 'block';
-      _carregarInterfaces(c.hostid, c.ifaceName);
+
+    document.getElementById('grph-m-search').value   = c.hostname || '';
+    document.getElementById('grph-m-hostid').value   = c.hostid   || '';
+    document.getElementById('grph-m-hostname').value = c.hostname || '';
+    document.getElementById('grph-m-titulo').value   = c.titulo   || '';
+
+    const badge = document.getElementById('grph-m-badge');
+    if (badge && c.hostname) { badge.textContent = `✓ ${c.hostname}`; badge.style.display = 'block'; }
+
+    // Carregar itens e pré-selecionar
+    if (c.hostid) {
+      _carregarItens(c.hostid).then(() => {
+        const itens = itensCache[c.hostid] || [];
+        if (c.inId) {
+          const item = itens.find(i => i.itemid === c.inId);
+          _selecionarItemInterno('in', item || { itemid: c.inId, name: c.ifaceName + ' (In)' });
+        }
+        if (c.outId) {
+          const item = itens.find(i => i.itemid === c.outId);
+          _selecionarItemInterno('out', item || { itemid: c.outId, name: c.ifaceName + ' (Out)' });
+        }
+        _atualizarPreview();
+      });
     }
-    // Popula título personalizado
-    const tituloEl = document.getElementById('grph-m-titulo');
-    if (tituloEl) tituloEl.value = c.titulo || '';
 
     document.getElementById('grph-modal').style.display = 'flex';
   }
@@ -1323,20 +1098,24 @@ const GRAPH = (() => {
   function fecharModal() { document.getElementById('grph-modal').style.display = 'none'; }
 
   function _resetModal() {
-    ['grph-m-search','grph-m-hostid','grph-m-hostname','grph-m-iface-search','grph-m-iface-val','grph-m-titulo'].forEach(id => {
+    ['grph-m-search','grph-m-hostid','grph-m-hostname','grph-m-titulo',
+     'grph-m-item-in-id','grph-m-item-in-search',
+     'grph-m-item-out-id','grph-m-item-out-search'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-    const badge = document.getElementById('grph-m-badge');
-    if (badge) badge.style.display = 'none';
+    ['grph-m-badge','grph-m-item-in-badge','grph-m-item-out-badge','grph-m-preview'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
     const results = document.getElementById('grph-m-results');
     if (results) results.style.display = 'none';
-    const preview = document.getElementById('grph-m-preview');
-    if (preview) preview.style.display = 'none';
-    const wrap = document.getElementById('grph-iface-wrap');
+    const wrap = document.getElementById('grph-itens-wrap');
     if (wrap) wrap.style.display = 'none';
-    const list = document.getElementById('grph-m-iface-list');
-    if (list) { list.innerHTML = ''; list.style.display = 'none'; }
+    ['grph-m-item-in-list','grph-m-item-out-list'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+    });
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1355,8 +1134,7 @@ const GRAPH = (() => {
       box.innerHTML = '<div class="grph-ri"><span style="color:#64748b">Nenhum host encontrado</span></div>';
     } else {
       box.innerHTML = data.hosts.map(h => `
-        <div class="grph-ri"
-             onclick="GRAPH.selecionarHost('${h.hostid}','${(h.name||h.host).replace(/'/g,"\\'")}')">
+        <div class="grph-ri" onclick="GRAPH.selecionarHost('${h.hostid}','${(h.name||h.host).replace(/'/g,"\\'")}')">
           <div class="grph-ri-main">
             <span class="grph-ri-dot" style="background:${h.available==='up'?'#00ff88':'#ef4444'}"></span>
             <span>${h.name || h.host}</span>
@@ -1372,124 +1150,145 @@ const GRAPH = (() => {
     document.getElementById('grph-m-hostname').value = name;
     document.getElementById('grph-m-search').value   = name;
     document.getElementById('grph-m-results').style.display = 'none';
-    document.getElementById('grph-m-preview').style.display = 'none';
     const badge = document.getElementById('grph-m-badge');
     badge.textContent = `✓ ${name}`; badge.style.display = 'block';
-    _carregarInterfaces(hostid, null);
-  }
 
-  async function _carregarInterfaces(hostid, preselect) {
-    const wrap = document.getElementById('grph-iface-wrap');
-    const list = document.getElementById('grph-m-iface-list');
-    const val  = document.getElementById('grph-m-iface-val');
+    // Limpar seleções anteriores
+    ['in','out'].forEach(d => {
+      const id = document.getElementById(`grph-m-item-${d}-id`);
+      const s  = document.getElementById(`grph-m-item-${d}-search`);
+      const b  = document.getElementById(`grph-m-item-${d}-badge`);
+      if (id) id.value = ''; if (s) s.value = ''; if (b) b.style.display = 'none';
+    });
     const prev = document.getElementById('grph-m-preview');
-
-    if (wrap) wrap.style.display = 'none';
-    if (list) { list.innerHTML = '<div class="grph-ri"><span style="color:#475569">Buscando itens…</span></div>'; list.style.display = 'block'; }
-    if (val)  val.value = '';
     if (prev) prev.style.display = 'none';
 
-    if (ifacesCache[hostid]) {
-      _preencherIfaces(ifacesCache[hostid], preselect);
+    _carregarItens(hostid);
+  }
+
+  async function _carregarItens(hostid) {
+    const wrap   = document.getElementById('grph-itens-wrap');
+    const inList = document.getElementById('grph-m-item-in-list');
+    const outList= document.getElementById('grph-m-item-out-list');
+
+    if (wrap) wrap.style.display = 'block';
+    const loading = '<div class="grph-ri"><span style="color:#475569">Buscando itens…</span></div>';
+    if (inList)  { inList.innerHTML  = loading; inList.style.display  = 'block'; }
+    if (outList) { outList.innerHTML = loading; outList.style.display = 'block'; }
+
+    if (itensCache[hostid]) {
+      _renderItens(itensCache[hostid]);
+      _autoDetectar(itensCache[hostid]);
       return;
     }
 
     try {
-      const data = await _get(`${URLS.zbxIfaces}?cliente_id=${clienteId}&host_id=${hostid}`);
-      if (data.error || !data.interfaces?.length) {
-        if (list) list.innerHTML = '<div class="grph-ri"><span style="color:#ef4444">Nenhum item encontrado neste host</span></div>';
+      const data = await _get(`${URLS.zbxItens}?cliente_id=${clienteId}&host_id=${hostid}`);
+      if (data.error || !data.itens?.length) {
+        const msg = '<div class="grph-ri"><span style="color:#ef4444">Nenhum item numérico encontrado</span></div>';
+        if (inList)  inList.innerHTML  = msg;
+        if (outList) outList.innerHTML = msg;
         return;
       }
-      ifacesCache[hostid] = data.interfaces;
-      _preencherIfaces(data.interfaces, preselect);
+      itensCache[hostid] = data.itens;
+      _renderItens(data.itens);
+      _autoDetectar(data.itens);
     } catch(e) {
-      if (list) list.innerHTML = `<div class="grph-ri"><span style="color:#ef4444">Erro: ${e.message}</span></div>`;
+      const msg = `<div class="grph-ri"><span style="color:#ef4444">Erro: ${e.message}</span></div>`;
+      if (inList)  inList.innerHTML  = msg;
+      if (outList) outList.innerHTML = msg;
     }
   }
 
-  function _preencherIfaces(ifaces, preselect) {
-    const wrap = document.getElementById('grph-iface-wrap');
-    const inp  = document.getElementById('grph-m-iface-search');
-    if (wrap) wrap.style.display = 'block';
-    if (inp)  inp.value = '';
-    _renderIfaceList(ifaces, '');
+  function _autoDetectar(itens) {
+    // Só auto-detecta se ainda não há seleção
+    const inId  = document.getElementById('grph-m-item-in-id').value;
+    const outId = document.getElementById('grph-m-item-out-id').value;
+    if (inId && outId) return;
 
-    if (preselect) {
-      const found = ifaces.find(i => i.name === preselect);
-      if (found) _selecionarIface(found);
-    }
-  }
-
-  function _renderIfaceList(ifaces, filtro) {
-    const list = document.getElementById('grph-m-iface-list');
-    if (!list) return;
-    const f = filtro.toLowerCase();
-    const filtered = f ? ifaces.filter(i => i.name.toLowerCase().includes(f)) : ifaces;
-
-    if (!filtered.length) {
-      list.innerHTML = '<div class="grph-ri"><span style="color:#475569">Nenhum resultado</span></div>';
-      list.style.display = 'block';
-      return;
-    }
-
-    list.innerHTML = filtered.map(i => {
-      const temAmbos = i.in_id && i.out_id;
-      const temUm    = i.in_id || i.out_id;
-      const badge    = temAmbos
-        ? '<span style="color:#00ff88;font-size:.68rem;margin-left:6px">↓↑</span>'
-        : temUm
-          ? '<span style="color:#f59e0b;font-size:.68rem;margin-left:6px">~</span>'
-          : '';
-      return `<div class="grph-ri grph-iface-item"
-                   data-name="${i.name.replace(/"/g,'&quot;')}"
-                   data-in="${i.in_id || ''}"
-                   data-out="${i.out_id || ''}"
-                   style="cursor:pointer">
-        <div class="grph-ri-main">${i.name}${badge}</div>
-        <small style="color:#475569;padding-left:0">
-          In: ${i.in_id ? '<span style="color:#00ff88">✓</span>' : '—'} &nbsp;
-          Out: ${i.out_id ? '<span style="color:#00d9ff">✓</span>' : '—'}
-        </small>
-      </div>`;
-    }).join('');
-
-    list.querySelectorAll('.grph-iface-item').forEach(function(el) {
-      el.addEventListener('click', function() {
-        grphSelecionarIface(
-          el.dataset.name,
-          el.dataset.in  || null,
-          el.dataset.out || null
-        );
+    if (!inId) {
+      const inItem = itens.find(i => {
+        const n = i.name.toLowerCase();
+        return n.includes('bits received') || n.includes('bit receiv') ||
+               n.includes('traffic in')   || n.includes('entrada');
       });
+      if (inItem) _selecionarItemInterno('in', inItem);
+    }
+    if (!outId) {
+      const outItem = itens.find(i => {
+        const n = i.name.toLowerCase();
+        return n.includes('bits sent') || n.includes('bit sent') ||
+               n.includes('traffic out') || n.includes('saída');
+      });
+      if (outItem) _selecionarItemInterno('out', outItem);
+    }
+    _atualizarPreview();
+  }
+
+  function _renderItens(itens, filtro, direcao) {
+    const dirs = direcao ? [direcao] : ['in', 'out'];
+    const f = (filtro || '').toLowerCase();
+    dirs.forEach(dir => {
+      const list = document.getElementById(`grph-m-item-${dir}-list`);
+      if (!list) return;
+      const filtered = f ? itens.filter(i => i.name.toLowerCase().includes(f) || i.key.toLowerCase().includes(f)) : itens;
+      if (!filtered.length) {
+        list.innerHTML = '<div class="grph-ri"><span style="color:#475569">Nenhum item</span></div>';
+        list.style.display = 'block';
+        return;
+      }
+      list.innerHTML = filtered.map(i => {
+        const lastVal = i.lastvalue ? ` <span style="color:#475569;font-size:.68rem">${i.lastvalue} ${i.units}</span>` : '';
+        const itemJson = JSON.stringify(i).replace(/"/g, '&quot;');
+        return `<div class="grph-ri" onclick="grphSelecionarItem('${dir}', '${itemJson}')">
+          <div class="grph-ri-main">${i.name}${lastVal}</div>
+          <small>${i.key}</small>
+        </div>`;
+      }).join('');
+      list.style.display = 'block';
     });
-    list.style.display = 'block';
   }
 
-  function _selecionarIface(iface) {
-    const val  = document.getElementById('grph-m-iface-val');
-    const inp  = document.getElementById('grph-m-iface-search');
-    const list = document.getElementById('grph-m-iface-list');
-    if (val)  val.value = JSON.stringify({ iface: iface.name, inId: iface.in_id, outId: iface.out_id });
-    if (inp)  inp.value = iface.name;
-    if (list) list.style.display = 'none';
-    _exibirPreviewIds(iface);
+  function filtrarItens(direcao, valor) {
+    const hostid = document.getElementById('grph-m-hostid').value;
+    const itens  = itensCache[hostid];
+    if (!itens) return;
+    _renderItens(itens, valor, direcao);
   }
 
-  function ifaceChange() {}
+  function selecionarItem(direcao, itemJson) {
+    let item = itemJson;
+    if (typeof item === 'string') {
+      try { item = JSON.parse(item.replace(/&quot;/g, '"')); } catch { return; }
+    }
+    _selecionarItemInterno(direcao, item);
+    _atualizarPreview();
+  }
 
-  function _exibirPreviewIds(iface) {
-    const prev = document.getElementById('grph-m-preview');
+  function _selecionarItemInterno(direcao, item) {
+    const idEl     = document.getElementById(`grph-m-item-${direcao}-id`);
+    const searchEl = document.getElementById(`grph-m-item-${direcao}-search`);
+    const badgeEl  = document.getElementById(`grph-m-item-${direcao}-badge`);
+    const listEl   = document.getElementById(`grph-m-item-${direcao}-list`);
+    if (idEl)     idEl.value     = item.itemid;
+    if (searchEl) searchEl.value = item.name;
+    if (badgeEl)  { badgeEl.textContent = `✓ ${item.name}`; badgeEl.style.display = 'block'; }
+    if (listEl)   listEl.style.display  = 'none';
+  }
+
+  function _atualizarPreview() {
+    const inId  = document.getElementById('grph-m-item-in-id').value;
+    const outId = document.getElementById('grph-m-item-out-id').value;
+    const prev  = document.getElementById('grph-m-preview');
     if (!prev) return;
-    prev.style.display = 'block';
-    prev.innerHTML = `
-      <div class="grph-preview-row">
-        <span>In Item ID</span>
-        <b style="color:#00ff88">${iface.in_id  || '<span style="color:#64748b">—</span>'}</b>
-      </div>
-      <div class="grph-preview-row">
-        <span>Out Item ID</span>
-        <b style="color:#00d9ff">${iface.out_id || '<span style="color:#64748b">—</span>'}</b>
-      </div>`;
+    if (inId || outId) {
+      prev.style.display = 'block';
+      prev.innerHTML =
+        `<div class="grph-preview-row"><span>In Item ID</span><b style="color:#00ff88">${inId || '<span style="color:#64748b">—</span>'}</b></div>` +
+        `<div class="grph-preview-row"><span>Out Item ID</span><b style="color:#00d9ff">${outId || '<span style="color:#64748b">—</span>'}</b></div>`;
+    } else {
+      prev.style.display = 'none';
+    }
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1498,12 +1297,18 @@ const GRAPH = (() => {
   function salvarChart() {
     const hostid   = document.getElementById('grph-m-hostid').value;
     const hostname = document.getElementById('grph-m-hostname').value;
-    const raw      = document.getElementById('grph-m-iface-val').value;
+    const inId     = document.getElementById('grph-m-item-in-id').value  || null;
+    const outId    = document.getElementById('grph-m-item-out-id').value || null;
     const titulo   = (document.getElementById('grph-m-titulo') || {}).value?.trim() || '';
 
-    if (!hostid || !raw) { alert('Selecione um host e uma interface.'); return; }
-    let d;
-    try { d = JSON.parse(raw); } catch { alert('Interface inválida.'); return; }
+    if (!hostid)         { alert('Selecione um host.');                             return; }
+    if (!inId && !outId) { alert('Selecione pelo menos um item (Download ou Upload).'); return; }
+
+    // Montar ifaceName a partir dos itens selecionados
+    const itens     = itensCache[hostid] || [];
+    const inItem    = itens.find(i => i.itemid === inId);
+    const outItem   = itens.find(i => i.itemid === outId);
+    const ifaceName = inItem?.name || outItem?.name || '—';
 
     if (_editingChart !== null) {
       const c = charts.find(x => x.id === _editingChart);
@@ -1511,19 +1316,15 @@ const GRAPH = (() => {
         if (c._interval)     clearInterval(c._interval);
         if (c.chartInstance) c.chartInstance.destroy();
         Object.assign(c, {
-          hostid, hostname, titulo,
-          ifaceName: d.iface,
-          inId: d.inId||null, outId: d.outId||null,
-          hours: c.hours || 1,
+          hostid, hostname, titulo, ifaceName,
+          inId, outId, hours: c.hours || 1,
           chartInstance: null, _interval: null,
         });
       }
     } else {
       charts.push({
-        id: nextChartId++, hostid, hostname, titulo,
-        ifaceName: d.iface,
-        inId: d.inId||null, outId: d.outId||null,
-        hours: 1,
+        id: nextChartId++, hostid, hostname, titulo, ifaceName,
+        inId, outId, hours: 1,
         chartInstance: null, fsChartInstance: null, _interval: null, _fsSync: false,
       });
     }
@@ -1536,8 +1337,8 @@ const GRAPH = (() => {
     const idx = charts.findIndex(c => c.id === id);
     if (idx === -1) return;
     const c = charts[idx];
-    if (c._interval)      clearInterval(c._interval);
-    if (c.chartInstance)  c.chartInstance.destroy();
+    if (c._interval)     clearInterval(c._interval);
+    if (c.chartInstance) c.chartInstance.destroy();
     if (_fullscreenId === id) fecharFullscreen();
     charts.splice(idx, 1);
     _salvarStorage();
@@ -1566,12 +1367,11 @@ const GRAPH = (() => {
   // ─────────────────────────────────────────────────────────
   return {
     init, abrirModalAdd, abrirModalEdit, fecharModal,
-    hostSearchDebounce, selecionarHost, ifaceChange,
+    hostSearchDebounce, selecionarHost,
+    filtrarItens, selecionarItem,
     salvarChart, removerChart, atualizarTodos,
     toggleFullscreen, fecharFullscreen,
     setPeriod, setFsPeriod,
-    _renderIfaceList, _selecionarIface,
-    get _ifacesCache() { return ifacesCache; },
   };
 })();
 

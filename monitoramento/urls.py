@@ -30,4 +30,5 @@ urlpatterns = [
     # ── Status em tempo real ─────────────────────────────────
     path('status/',             views.status_topologia,        name='status'),
     path('zabbix/history/', views.historico_item_zabbix, name='zbx_history'),
+    path('zabbix/itens/', views.listar_itens_zabbix, name='listar_itens_zabbix'),
 ]
