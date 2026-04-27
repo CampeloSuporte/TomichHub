@@ -19,6 +19,10 @@ from .decorators import (
     cliente_or_admin_required,
     cliente_can_view_cliente
 )
+from django.http import HttpResponseRedirect
+import logging
+logger = logging.getLogger(__name__)
+from django.http import HttpResponse
 import json
 import pexpect
 import telnetlib
@@ -52,13 +56,13 @@ def listar_clientes(request):
     - Admins podem ver qualquer cliente
     """
     id_cliente = request.GET.get('id')
-    
+
     if not id_cliente:
         messages.error(request, 'Cliente não especificado.')
         return redirect('quadro_geral')
-    
+
     cliente = get_object_or_404(Cliente, id=id_cliente)
-    
+
     # ✅ VALIDAÇÃO: Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         # Se é cliente, verificar se é o próprio cliente
@@ -70,7 +74,7 @@ def listar_clientes(request):
         except Cliente.DoesNotExist:
             messages.error(request, 'Você não é um cliente válido.')
             return redirect('login')
-    
+
     # Restante do código existente...
     funcao_selecionada = request.GET.get('funcao')
     modelos = Modelo_equipamento.objects.all()
@@ -118,7 +122,7 @@ def cadastrar_cliente(request):
         usuario = User.objects.all()
         return render(request, 'cadastrar_cliente.html', {
             'clientes': clientes, 'usuario': usuario})
-    
+
     elif request.method == 'POST':
         nome_empresa = request.POST.get('nome_empresa')
         email = request.POST.get('email')
@@ -231,7 +235,7 @@ def cadastrar_acesso(request):
 
         messages.success(request, 'Acesso cadastrado com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     else:
         return redirect('cadastrar_cliente')
 
@@ -264,20 +268,20 @@ def editar_cliente(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('id')
         cliente = get_object_or_404(Cliente, id=cliente_id)
-        
+
         email = request.POST.get('email')
         telefone = request.POST.get('telefone')
-        
+
         # Verifica se email já existe em outro cliente
         if Cliente.objects.filter(email=email).exclude(id=cliente_id).exists():
             messages.error(request, 'Erro: Já existe um cliente com esse email cadastrado.')
             return redirect('cadastrar_cliente')
-        
+
         # Verifica se telefone já existe em outro cliente
         if Cliente.objects.filter(telefone=telefone).exclude(id=cliente_id).exists():
             messages.error(request, 'Erro: Já existe um cliente com esse telefone cadastrado.')
             return redirect('cadastrar_cliente')
-        
+
         # Atualiza os dados
         cliente.nome_empresa = request.POST.get('nome_empresa')
         cliente.cnpj = request.POST.get('cnpj')
@@ -288,11 +292,11 @@ def editar_cliente(request):
         cliente.telefone = telefone
         cliente.email = email
         cliente.usuario_id = request.POST.get('usuario')
-        
+
         cliente.save()
         messages.success(request, "Cliente atualizado com sucesso!")
         return redirect('cadastrar_cliente')
-    
+
     messages.error(request, "Método não permitido.")
     return redirect('cadastrar_cliente')
 
@@ -303,15 +307,15 @@ def deletar_cliente(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('id')
         cliente = get_object_or_404(Cliente, id=cliente_id)
-        
+
         nome_empresa = cliente.nome_empresa
-        
+
         # Deleta o cliente (os acessos relacionados serão deletados automaticamente se houver CASCADE)
         cliente.delete()
-        
+
         messages.success(request, f'Cliente "{nome_empresa}" excluído com sucesso!')
         return redirect('cadastrar_cliente')
-    
+
     messages.error(request, 'Método não permitido.')
     return redirect('cadastrar_cliente')
 
@@ -324,13 +328,13 @@ def buscar_acesso(request, acesso_id):
     """
     try:
         acesso = Acesso.objects.get(id=acesso_id)
-        
+
         # ✅ Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             cliente = Cliente.objects.get(usuario=request.user)
             if acesso.cliente.id != cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
-        
+
         data = {
             'id': acesso.id,
             'tipo': acesso.tipo,
@@ -352,14 +356,14 @@ def buscar_acesso(request, acesso_id):
             'backup_template_nome': acesso.backup_template.nome if acesso.backup_template else '',
             'backup_automatico': acesso.backup_automatico,
         }
-        
+
         return JsonResponse(data)
-        
+
     except Acesso.DoesNotExist:
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-        
+
 
 @login_required(login_url='login')
 def editar_acesso(request, acesso_id):
@@ -433,9 +437,9 @@ def deletar_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
     cliente_id = acesso.cliente.id
     tipo_acesso = acesso.tipo
-    
+
     acesso.delete()
-    
+
     messages.success(request, f'Acesso "{tipo_acesso}" excluído com sucesso!')
     return redirect(f"{reverse('listar_clientes')}?id={cliente_id}")
 
@@ -561,16 +565,16 @@ def editar_topologia(request, topologia_id):
     """Edita o link DrawIO de uma topologia"""
     if request.method == 'POST':
         topologia = get_object_or_404(ImagemTopologia, id=topologia_id)
-        
+
         topologia.nome = request.POST.get('nome', topologia.nome)
         topologia.drawio_url = request.POST.get('drawio_url', '').strip()
         topologia.drawio_url = topologia.drawio_url if topologia.drawio_url else None
-        
+
         topologia.save()
-        
+
         messages.success(request, 'Topologia atualizada com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={topologia.cliente.id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -594,7 +598,7 @@ def editar_imagem_topologia(request, topologia_id):
     if request.method == 'POST':
         topologia = get_object_or_404(ImagemTopologia, id=topologia_id)
         cliente_id = topologia.cliente.id
-        
+
         # ✅ Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
@@ -605,34 +609,34 @@ def editar_imagem_topologia(request, topologia_id):
             except Cliente.DoesNotExist:
                 messages.error(request, 'Sem permissão.')
                 return redirect('listar_clientes')
-        
+
         # ✅ Obter a nova imagem
         imagem = request.FILES.get('imagem')
-        
+
         if not imagem:
             messages.error(request, 'Nenhuma imagem selecionada.')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        
+
         # ✅ Validar se é imagem
         nome_arquivo = imagem.name.lower()
         valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
-        
+
         if not any(nome_arquivo.endswith(ext) for ext in valid_extensions):
             messages.error(request, 'Apenas imagens são permitidas (JPG, PNG, GIF, SVG, WEBP).')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        
+
         # ✅ Deletar imagem antiga se existir
         if topologia.imagem and topologia.imagem.storage.exists(topologia.imagem.name):
             topologia.imagem.delete(save=False)
-        
+
         # ✅ Atualizar com nova imagem
         topologia.imagem = imagem
         topologia.nome = request.POST.get('nome', imagem.name)
         topologia.save()
-        
+
         messages.success(request, f'Imagem de topologia atualizada com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -640,7 +644,7 @@ def editar_imagem_topologia(request, topologia_id):
 def buscar_vpn(request, vpn_id):
     try:
         vpn = ArquivoVPN.objects.get(id=vpn_id)
-        
+
         data = {
             'id': vpn.id,
             'nome': vpn.nome,
@@ -648,9 +652,9 @@ def buscar_vpn(request, vpn_id):
             'senha': vpn.senha or '',
             'private_key': vpn.private_key or '',
         }
-        
+
         return JsonResponse(data)
-        
+
     except ArquivoVPN.DoesNotExist:
         return JsonResponse({'error': 'VPN não encontrada'}, status=404)
     except Exception as e:
@@ -662,19 +666,19 @@ def editar_vpn(request, vpn_id):
     if request.method == 'POST':
         try:
             vpn = get_object_or_404(ArquivoVPN, id=vpn_id)
-            
+
             vpn.usuario = request.POST.get('usuario')
             vpn.senha = request.POST.get('senha')
             vpn.private_key = request.POST.get('private_key')
-            
+
             vpn.save()
-            
+
             messages.success(request, 'Configuração VPN atualizada com sucesso!')
             return redirect(f"{reverse('listar_clientes')}?id={vpn.cliente.id}")
         except Exception as e:
             messages.error(request, f'Erro ao editar VPN: {str(e)}')
             return redirect(f"{reverse('listar_clientes')}?id={vpn.cliente.id}")
-    
+
     return redirect('listar_clientes')
 
 
@@ -697,13 +701,13 @@ def cadastrar_categoria(request):
             nome=nome,
             descricao=descricao
         )
-        
+
         return JsonResponse({
             'id': categoria.id,
             'nome': categoria.nome,
             'message': 'Categoria cadastrada com sucesso!'
         })
-    
+
     return JsonResponse({'error': 'Método não permitido'}, status=405)
 
 
@@ -711,7 +715,7 @@ def cadastrar_categoria(request):
 def buscar_categorias(request):
     query = request.GET.get('q', '')
     categorias = Categoria.objects.filter(nome__icontains=query)[:10]
-    
+
     results = [{'id': cat.id, 'nome': cat.nome} for cat in categorias]
     return JsonResponse({'results': results})
 
@@ -722,19 +726,19 @@ def listar_chamados_cliente(request):
     Cliente só pode listar seus próprios chamados
     """
     cliente_id = request.GET.get('id')
-    
+
     # ✅ Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         cliente = Cliente.objects.get(usuario=request.user)
         if str(cliente.id) != str(cliente_id):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+
     cliente = get_object_or_404(Cliente, id=cliente_id)
-    
+
     chamados = Chamado.objects.filter(cliente=cliente).select_related(
         'categoria', 'responsavel', 'criado_por'
     ).prefetch_related('comentarios')
-    
+
     return JsonResponse({
         'chamados': [{
             'id': chamado.id,
@@ -796,7 +800,7 @@ def cadastrar_chamado(request):
         except Exception as e:
             messages.error(request, f'Erro ao cadastrar chamado: {str(e)}')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -806,7 +810,7 @@ def buscar_chamado(request, chamado_id):
         chamado = Chamado.objects.select_related(
             'categoria', 'cliente', 'responsavel', 'criado_por'
         ).prefetch_related('comentarios__usuario').get(id=chamado_id)
-        
+
         data = {
             'id': chamado.id,
             'titulo': chamado.titulo,
@@ -829,9 +833,9 @@ def buscar_chamado(request, chamado_id):
                 'is_internal': comentario.is_internal
             } for comentario in chamado.comentarios.all()]
         }
-        
+
         return JsonResponse(data)
-        
+
     except Chamado.DoesNotExist:
         return JsonResponse({'error': 'Chamado não encontrado'}, status=404)
     except Exception as e:
@@ -843,21 +847,21 @@ def editar_chamado(request, chamado_id):
     if request.method == 'POST':
         try:
             chamado = get_object_or_404(Chamado, id=chamado_id)
-            
+
             chamado.titulo = request.POST.get('titulo')
             chamado.descricao = request.POST.get('descricao')
             chamado.prioridade = request.POST.get('prioridade')
             chamado.departamento = request.POST.get('departamento')
             chamado.status = request.POST.get('status')
-            
+
             categoria_id = request.POST.get('categoria')
             chamado.categoria_id = categoria_id if categoria_id else None
-            
+
             responsavel_id = request.POST.get('responsavel')
             chamado.responsavel_id = responsavel_id if responsavel_id else None
-            
+
             chamado.save()
-            
+
             # Adicionar comentário de atualização se houver
             comentario_novo = request.POST.get('comentario_novo')
             if comentario_novo:
@@ -866,14 +870,14 @@ def editar_chamado(request, chamado_id):
                     usuario=request.user,
                     comentario=comentario_novo
                 )
-            
+
             messages.success(request, f'Chamado #{chamado.id} atualizado com sucesso!')
             return redirect(f"{reverse('listar_clientes')}?id={chamado.cliente.id}")
-            
+
         except Exception as e:
             messages.error(request, f'Erro ao editar chamado: {str(e)}')
             return redirect('listar_clientes')
-    
+
     return redirect('listar_clientes')
 
 
@@ -883,12 +887,12 @@ def deletar_chamado(request, chamado_id):
         chamado = get_object_or_404(Chamado, id=chamado_id)
         cliente_id = chamado.cliente.id
         chamado_numero = chamado.id
-        
+
         chamado.delete()
-        
+
         messages.success(request, f'Chamado #{chamado_numero} excluído com sucesso!')
         return redirect(f"{reverse('listar_clientes')}?id={cliente_id}")
-    
+
     return redirect('listar_clientes')
 
 
@@ -899,7 +903,7 @@ def adicionar_comentario(request, chamado_id):
             chamado = get_object_or_404(Chamado, id=chamado_id)
             comentario_texto = request.POST.get('comentario')
             is_internal = request.POST.get('is_internal') == 'true'
-            
+
             if comentario_texto:
                 ComentarioChamado.objects.create(
                     chamado=chamado,
@@ -910,13 +914,13 @@ def adicionar_comentario(request, chamado_id):
                 messages.success(request, 'Comentário adicionado com sucesso!')
             else:
                 messages.error(request, 'O comentário não pode estar vazio.')
-                
+
             return redirect(f"{reverse('listar_clientes')}?id={chamado.cliente.id}")
-            
+
         except Exception as e:
             messages.error(request, f'Erro ao adicionar comentário: {str(e)}')
             return redirect('listar_clientes')
-    
+
     return redirect('listar_clientes')
 
 
@@ -928,13 +932,13 @@ def buscar_usuarios(request):
         Q(first_name__icontains=query) |
         Q(last_name__icontains=query)
     )[:10]
-    
+
     results = [{
         'id': user.id,
         'nome': user.get_full_name() or user.username,
         'username': user.username
     } for user in usuarios]
-    
+
     return JsonResponse({'results': results})
 
 
@@ -945,13 +949,13 @@ def buscar_clientes_chamado(request):
         Q(nome_empresa__icontains=query) |
         Q(cnpj__icontains=query)
     )[:10]
-    
+
     results = [{
         'id': cliente.id,
         'nome': cliente.nome_empresa,
         'cnpj': cliente.cnpj
     } for cliente in clientes]
-    
+
     return JsonResponse({'results': results})
 
 
@@ -970,12 +974,12 @@ def cadastrar_proxy(request):
         usuario = request.POST.get('usuario')
         senha = request.POST.get('senha')
         ativo = request.POST.get('ativo') == 'on'
-        
+
         # Validações básicas
         if not all([cliente_id, nome, host, porta, usuario, senha]):
             messages.error(request, 'Preencha todos os campos obrigatórios.')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        
+
         # Criar proxy
         try:
             ProxyServer.objects.create(
@@ -990,9 +994,9 @@ def cadastrar_proxy(request):
             messages.success(request, f'Túnel SSH "{nome}" cadastrado com sucesso!')
         except Exception as e:
             messages.error(request, f'Erro ao cadastrar túnel: {str(e)}')
-        
+
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -1001,7 +1005,7 @@ def buscar_proxy(request, proxy_id):
     """Busca dados de um proxy específico (AJAX)"""
     try:
         proxy = ProxyServer.objects.get(id=proxy_id)
-        
+
         data = {
             'id': proxy.id,
             'nome': proxy.nome,
@@ -1012,9 +1016,9 @@ def buscar_proxy(request, proxy_id):
             'ativo': proxy.ativo,
             'data_criacao': proxy.data_criacao.strftime('%d/%m/%Y %H:%M')
         }
-        
+
         return JsonResponse(data)
-        
+
     except ProxyServer.DoesNotExist:
         return JsonResponse({'error': 'Túnel SSH não encontrado'}, status=404)
     except Exception as e:
@@ -1027,23 +1031,23 @@ def editar_proxy(request, proxy_id):
     if request.method == 'POST':
         try:
             proxy = get_object_or_404(ProxyServer, id=proxy_id)
-            
+
             proxy.nome = request.POST.get('nome')
             proxy.host = request.POST.get('host')
             proxy.porta = int(request.POST.get('porta', 22))
             proxy.usuario = request.POST.get('usuario')
             proxy.senha = request.POST.get('senha')
             proxy.ativo = request.POST.get('ativo') == 'on'
-            
+
             proxy.save()
-            
+
             messages.success(request, f'Túnel SSH "{proxy.nome}" atualizado com sucesso!')
             return redirect(reverse('listar_clientes') + f'?id={proxy.cliente.id}')
-            
+
         except Exception as e:
             messages.error(request, f'Erro ao editar túnel: {str(e)}')
             return redirect('listar_clientes')
-    
+
     return redirect('listar_clientes')
 
 
@@ -1054,12 +1058,12 @@ def deletar_proxy(request, proxy_id):
         proxy = get_object_or_404(ProxyServer, id=proxy_id)
         cliente_id = proxy.cliente.id
         nome = proxy.nome
-        
+
         proxy.delete()
-        
+
         messages.success(request, f'Túnel SSH "{nome}" excluído com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -1068,13 +1072,13 @@ def testar_proxy(request, proxy_id):
     """Testa a conexão com um servidor proxy (AJAX)"""
     try:
         proxy = ProxyServer.objects.get(id=proxy_id)
-        
+
         import paramiko
-        
+
         # Tentar conectar ao proxy
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
+
         ssh_client.connect(
             hostname=proxy.host,
             port=proxy.porta,
@@ -1084,14 +1088,14 @@ def testar_proxy(request, proxy_id):
             look_for_keys=False,
             allow_agent=False
         )
-        
+
         ssh_client.close()
-        
+
         return JsonResponse({
             'success': True,
             'message': f'✓ Conexão com túnel "{proxy.nome}" bem-sucedida!'
         })
-        
+
     except paramiko.AuthenticationException:
         return JsonResponse({
             'success': False,
@@ -1111,15 +1115,15 @@ def toggle_proxy_status(request, proxy_id):
         proxy = ProxyServer.objects.get(id=proxy_id)
         proxy.ativo = not proxy.ativo
         proxy.save()
-        
+
         status_texto = 'ativado' if proxy.ativo else 'desativado'
-        
+
         return JsonResponse({
             'success': True,
             'ativo': proxy.ativo,
             'message': f'Túnel SSH "{proxy.nome}" {status_texto} com sucesso!'
         })
-        
+
     except ProxyServer.DoesNotExist:
         return JsonResponse({'error': 'Túnel SSH não encontrado'}, status=404)
     except Exception as e:
@@ -1136,24 +1140,24 @@ def cliente_dashboard(request):
     """
     if not request.user.is_authenticated:
         return redirect('login')
-    
+
     # Se for admin, redireciona para o dashboard do admin
     if request.user.is_staff or request.user.is_superuser:
         return redirect('quadro_geral')
-    
+
     # Buscar cliente vinculado
     try:
         cliente = Cliente.objects.get(usuario=request.user)
     except Cliente.DoesNotExist:
         messages.error(request, 'Você não está vinculado a um cliente.')
         return redirect('login')
-    
+
     # Buscar chamados abertos do cliente
     chamados_abertos = Chamado.objects.filter(
         cliente=cliente,
         status__in=['aberto', 'em_andamento']
     ).order_by('-data_criacao')[:5]
-    
+
     return render(request, 'cliente_dashboard.html', {
         'cliente': cliente,
         'chamados_abertos': chamados_abertos,
@@ -1164,10 +1168,10 @@ def executar_backup_acesso(request, acesso_id):
     """Executa backup manual"""
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Não autenticado'}, status=401)
-    
+
     try:
         acesso = Acesso.objects.get(id=acesso_id)
-        
+
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
@@ -1176,21 +1180,21 @@ def executar_backup_acesso(request, acesso_id):
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
-        
+
         # Verificar se backup está habilitado
         if not acesso.backup_habilitado:
             return JsonResponse({
                 'error': 'Backup não está habilitado para este acesso'
             }, status=400)
-        
+
         if not acesso.backup_template:
             return JsonResponse({
                 'error': 'Template de backup não configurado'
             }, status=400)
-        
+
         # Executar backup
         resultado = realizar_backup(acesso, request.user)
-        
+
         if resultado['sucesso']:
             return JsonResponse({
                 'success': True,
@@ -1203,7 +1207,7 @@ def executar_backup_acesso(request, acesso_id):
             return JsonResponse({
                 'error': resultado['erro']
             }, status=500)
-            
+
     except Acesso.DoesNotExist:
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
     except Exception as e:
@@ -1214,10 +1218,10 @@ def executar_backup_acesso(request, acesso_id):
 def listar_backups_cliente(request):
     """Lista backups do cliente"""
     cliente_id = request.GET.get('id')
-    
+
     if not cliente_id:
         return JsonResponse({'error': 'Cliente não especificado'}, status=400)
-    
+
     # Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         try:
@@ -1226,28 +1230,28 @@ def listar_backups_cliente(request):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+
     cliente = get_object_or_404(Cliente, id=cliente_id)
-    
+
     # Buscar backups
     backups = BackupLog.objects.filter(cliente=cliente).select_related(
         'acesso', 'template', 'executado_por'
     ).order_by('-data_backup')
-    
+
     # Validar arquivos
     backups_validos = []
     backups_para_deletar = []
-    
+
     for backup in backups:
         arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
         if os.path.exists(arquivo_path):
             backups_validos.append(backup)
         else:
             backups_para_deletar.append(backup.id)
-    
+
     if backups_para_deletar:
         BackupLog.objects.filter(id__in=backups_para_deletar).delete()
-    
+
     return JsonResponse({
         'backups': [{
             'id': backup.id,
@@ -1265,7 +1269,122 @@ def listar_backups_cliente(request):
         } for backup in backups_validos]
     })
 
+def _executar_comandos_pexpect(host_conexao, porta_conexao, usuario, senha, comandos):
+    """
+    Usa pexpect (SSH real) para OLTs com firmware SSH limitado (Parks FIBERLINK).
+    Paramiko invoke_shell não é compatível — o firmware fecha o canal imediatamente.
+    pexpect spawna o binário ssh do sistema, que negocia corretamente com o OLT.
+    """
+    ssh_cmd = (
+        f"ssh -o StrictHostKeyChecking=no "
+        f"-o UserKnownHostsFile=/dev/null "
+        f"-o IdentitiesOnly=yes "
+        f"-o PubkeyAuthentication=no "
+        f"-o PreferredAuthentications=password "
+        f"-o ConnectTimeout=15 "
+        f"-o ServerAliveInterval=10 "
+        f"-o ServerAliveCountMax=3 "
+        f"-o LogLevel=ERROR "
+        f"-o NumberOfPasswordPrompts=1 "
+        f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+        f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
+        f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
+        f"-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
+        f"-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512 "
+        f"-p {porta_conexao} {usuario}@{host_conexao}"
+    )
 
+    print(f"    🔧 pexpect SSH: {usuario}@{host_conexao}:{porta_conexao}")
+
+    process = pexpect.spawn(ssh_cmd, timeout=30, encoding=None, maxread=262144)
+    process.setwinsize(50, 200)
+
+    # ✅ Autenticar
+    index = process.expect([
+        b"password:",
+        b"Password:",
+        rb".*[#>$\]].*",
+        pexpect.TIMEOUT,
+        pexpect.EOF
+    ], timeout=15)
+
+    if index in (0, 1):
+        print(f"    🔐 Enviando senha...")
+        process.sendline(senha.encode() if isinstance(senha, str) else senha)
+        time.sleep(1)
+        try:
+            process.expect([rb".*[#>$\]].*", pexpect.TIMEOUT], timeout=10)
+        except:
+            pass
+    elif index == 3:
+        raise Exception("Timeout ao aguardar prompt de autenticação SSH")
+    elif index == 4:
+        raise Exception("Conexão SSH encerrada antes de autenticar")
+
+    print(f"    ✅ Autenticado via pexpect")
+
+    # ✅ Desabilitar paginação
+    process.send(b'terminal length 0\r')
+    time.sleep(1)
+    try:
+        process.read_nonblocking(size=65536, timeout=2)
+    except:
+        pass
+
+    output = ""
+
+    for i, comando in enumerate(comandos, 1):
+        if 'terminal length' in comando.lower():
+            print(f"  [{i}/{len(comandos)}] {comando} (já enviado — ignorando)")
+            continue
+
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+
+        try:
+            process.send(comando.encode() + b'\r')
+
+            silencio = 8.0 if any(k in comando.lower() for k in ('show run', 'show tech', 'show version')) else 3.0
+
+            resultado_bytes = b""
+            deadline = time.time() + 180
+            ultimo_dado = time.time()
+
+            while time.time() < deadline:
+                try:
+                    chunk = process.read_nonblocking(size=65536, timeout=0.1)
+                    if chunk:
+                        resultado_bytes += chunk
+                        ultimo_dado = time.time()
+                except pexpect.exceptions.TIMEOUT:
+                    if time.time() - ultimo_dado >= silencio:
+                        break
+                except (pexpect.exceptions.EOF, OSError):
+                    break
+
+            resultado = resultado_bytes.decode('utf-8', errors='replace')
+            resultado = limpar_ansi(resultado)
+            linhas = resultado.split('\n')
+            if linhas and comando.strip() in linhas[0]:
+                linhas = linhas[1:]
+            resultado = '\n'.join(linhas)
+            output += resultado + "\n"
+            print(f"    ✅ {len(resultado)} bytes")
+
+        except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+
+    try:
+        process.send(b'exit\r')
+        time.sleep(0.5)
+        process.close()
+    except:
+        pass
+
+    return output
+
+    
 def realizar_backup(acesso, usuario=None):
     inicio = time.time()
     ssh_tunnel = None
@@ -1293,8 +1412,11 @@ def realizar_backup(acesso, usuario=None):
 
         is_huawei = 'huawei' in modelo_nome
         is_a10    = 'a10'    in modelo_nome
+        is_cisco  = 'cisco'  in modelo_nome
+        is_zte    = 'zte'    in modelo_nome
+        is_parks  = 'parks'  in modelo_nome
 
-        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10}")
+        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks}")
 
         # ✅ Criar túnel se IP privado
         if eh_privado:
@@ -1332,42 +1454,56 @@ def realizar_backup(acesso, usuario=None):
         backup_dir = preparar_diretorio_backup(acesso.cliente.id, acesso.id)
         print(f"\n📁 Diretório: {backup_dir}")
 
-        # ✅ Conectar via Paramiko
-        print(f"\n{'='*80}")
-        print(f"🔐 CONECTANDO VIA PARAMIKO")
-        print(f"{'='*80}")
-
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(
-            hostname=host_conexao,
-            port=porta_conexao,
-            username=acesso.usuario,
-            password=acesso.senha,
-            timeout=30,
-            look_for_keys=False,
-            allow_agent=False,
-            banner_timeout=30,
-        )
-        print(f"✅ Conectado!")
-
-        # ✅ Executar comandos conforme fabricante
-        print(f"\n{'='*80}")
-        print(f"📋 EXECUTANDO COMANDOS")
-        print(f"{'='*80}")
-
         comandos = acesso.backup_template.get_comandos_list()
         print(f"🔢 Total de comandos: {len(comandos)}")
 
-        if is_huawei:
-            output = _executar_comandos_huawei(client, comandos)
-        elif is_a10:
-            output = _executar_comandos_a10(client, comandos, acesso.senha_adm)
-        else:
-            # MikroTik, Cisco, Datacom, Juniper, etc.
-            output = _executar_comandos_sem_pty(client, comandos)
+        # ✅ Parks usa pexpect (SSH real) — Paramiko invoke_shell não é compatível
+        if is_parks:
+            print(f"\n{'='*80}")
+            print(f"📋 EXECUTANDO COMANDOS (pexpect — Parks FIBERLINK)")
+            print(f"{'='*80}")
+            output = _executar_comandos_pexpect(
+                host_conexao, porta_conexao,
+                acesso.usuario, acesso.senha,
+                comandos
+            )
 
-        client.close()
+        else:
+            # ✅ Demais fabricantes: Paramiko
+            print(f"\n{'='*80}")
+            print(f"🔐 CONECTANDO VIA PARAMIKO")
+            print(f"{'='*80}")
+
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(
+                hostname=host_conexao,
+                port=porta_conexao,
+                username=acesso.usuario,
+                password=acesso.senha,
+                timeout=30,
+                look_for_keys=False,
+                allow_agent=False,
+                banner_timeout=30,
+            )
+            client.get_transport().set_keepalive(10)
+            print(f"✅ Conectado!")
+
+            print(f"\n{'='*80}")
+            print(f"📋 EXECUTANDO COMANDOS")
+            print(f"{'='*80}")
+
+            if is_huawei:
+                output = _executar_comandos_huawei(client, comandos)
+            elif is_a10:
+                output = _executar_comandos_a10(client, comandos, acesso.senha_adm)
+            elif is_cisco or is_zte:
+                output = _executar_comandos_cisco(client, comandos, acesso.usuario, acesso.senha)
+            else:
+                # MikroTik, Datacom, Juniper, etc.
+                output = _executar_comandos_sem_pty(client, comandos)
+
+            client.close()
 
         if len(output.strip()) < 100:
             raise Exception("Backup vazio ou muito pequeno. Verifique os comandos do template.")
@@ -1448,11 +1584,11 @@ def _executar_comandos_a10(client, comandos, senha_enable):
     """
     A10 Thunder: invoke_shell com enable password.
     Fluxo:
-      1. Aguarda prompt >
-      2. Envia 'enable'
-      3. Envia senha_enable
-      4. Aguarda prompt #
-      5. Executa comandos do template
+    1. Aguarda prompt >
+    2. Envia 'enable'
+    3. Envia senha_enable
+    4. Aguarda prompt #
+    5. Executa comandos do template
     """
     output = ""
 
@@ -1552,12 +1688,136 @@ def _executar_comandos_sem_pty(client, comandos):
             output += f"ERRO: {str(e)}\n"
     return output
 
+def _executar_comandos_cisco(client, comandos, usuario='', senha=''):
+    """
+    Cisco IOS/IOS-XE, ZTE C300 e Parks FIBERLINK.
+    Versão diagnóstico: loga tudo que o OLT envia para identificar o problema.
+    """
+    output = ""
+
+    try:
+        client.get_transport().set_keepalive(10)
+    except Exception:
+        pass
+
+    try:
+        channel = client.invoke_shell(term='vt100', width=200, height=50)
+    except Exception as e:
+        raise Exception(f"Falha ao abrir shell interativo: {e}")
+
+    channel.settimeout(120)
+
+    # ✅ Aguardar mais tempo — Parks pode demorar para exibir o prompt
+    time.sleep(5)
+    banner = _ler_ate_silencio(channel, silencio=4.0, max_wait=20)
+    banner_lower = banner.lower()
+
+    # ✅ LOG COMPLETO — essencial para diagnóstico
+    print(f"\n{'='*60}")
+    print(f"📋 BANNER COMPLETO DO OLT:")
+    print(f"{'='*60}")
+    print(repr(banner))
+    print(f"{'='*60}")
+    print(f"Canal fechado após banner? {channel.closed}")
+    print(f"{'='*60}\n")
+
+    # ✅ Responder ao login interativo se detectado
+    if any(k in banner_lower for k in ('login:', 'username:', 'user:')):
+        print(f"    🔐 Prompt de usuário detectado — enviando usuário...")
+        channel.send(usuario + '\n')
+        time.sleep(2)
+        resposta = _ler_ate_silencio(channel, silencio=3.0, max_wait=15)
+        print(f"\n📋 RESPOSTA APÓS USUÁRIO:\n{repr(resposta)}\n")
+
+        if any(k in resposta.lower() for k in ('password:', 'passwd:', 'senha:')):
+            print(f"    🔐 Prompt de senha — enviando senha...")
+            channel.send(senha + '\n')
+            time.sleep(2)
+            resposta2 = _ler_ate_silencio(channel, silencio=3.0, max_wait=15)
+            print(f"\n📋 RESPOSTA APÓS SENHA:\n{repr(resposta2)}\n")
+
+    elif any(k in banner_lower for k in ('password:', 'passwd:', 'senha:')):
+        print(f"    🔐 Prompt de senha direto — enviando senha...")
+        channel.send(senha + '\n')
+        time.sleep(2)
+        resposta = _ler_ate_silencio(channel, silencio=3.0, max_wait=15)
+        print(f"\n📋 RESPOSTA APÓS SENHA:\n{repr(resposta)}\n")
+
+    else:
+        print(f"    ✅ Sem prompt de login detectado — seguindo...")
+
+    # ✅ Log do estado do canal ANTES de tentar enviar comandos
+    print(f"Canal fechado antes dos comandos? {channel.closed}")
+
+    # ✅ NÃO interrompe mais aqui — tenta continuar e loga o que acontece
+    # Desabilitar paginação
+    try:
+        print("  [0] terminal length 0")
+        channel.send('terminal length 0\n')
+        time.sleep(1)
+        resp_tl = _ler_ate_silencio(channel, silencio=2.0, max_wait=10)
+        print(f"\n📋 RESPOSTA APÓS terminal length 0:\n{repr(resp_tl)}\n")
+    except Exception as e:
+        print(f"    ❌ Falha ao enviar terminal length 0: {e}")
+        raise Exception(
+            f"Falha ao enviar 'terminal length 0': {e}. "
+            f"Verifique o log acima para ver o que o OLT enviou."
+        )
+
+    for i, comando in enumerate(comandos, 1):
+        if 'terminal length' in comando.lower():
+            print(f"  [{i}/{len(comandos)}] {comando} (já enviado — ignorando)")
+            continue
+
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        print(f"  Canal fechado antes de '{comando}'? {channel.closed}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+
+        try:
+            channel.send(comando + '\n')
+
+            silencio = 8.0 if any(k in comando.lower() for k in ('show run', 'show tech', 'show version')) else 3.0
+            resultado = _ler_ate_silencio(channel, silencio=silencio, max_wait=180)
+
+            print(f"\n📋 RESPOSTA DE '{comando}':\n{repr(resultado[:500])}\n")
+
+            if resultado:
+                resultado = limpar_ansi(resultado)
+                linhas = resultado.split('\n')
+                if linhas and comando.strip() in linhas[0]:
+                    linhas = linhas[1:]
+                resultado = '\n'.join(linhas)
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+            else:
+                print(f"    ⚠️ Output vazio")
+
+        except Exception as e:
+            err = str(e).lower()
+            print(f"    ❌ Erro em '{comando}': {e}")
+            output += f"ERRO: {str(e)}\n"
+            if any(k in err for k in ('socket', 'closed', 'eof', 'reset', 'broken')):
+                raise Exception(
+                    f"Conexão perdida em '{comando}': {e}. "
+                    f"Verifique o log completo do banner acima."
+                )
+
+    try:
+        channel.send('exit\n')
+        time.sleep(0.5)
+        channel.close()
+    except Exception:
+        pass
+
+    return output
+
+
 
 def _executar_comandos_huawei(client, comandos):
     """
     Huawei VRP: invoke_shell com terminal de 10000 colunas.
     - screen-length 0 temporary precisa rodar na mesma sessão
-      que display current-configuration
+    que display current-configuration
     - Terminal largo evita quebra de linha
     """
     import re
@@ -1656,23 +1916,23 @@ def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120,modelo=N
     ✅ MELHORADO: Lê output até detectar silence + pós-processamento de linhas
     """
     print(f"       🔍 Detectando fim do comando por silence...")
-    
+
     resultado = ""
     tempo_inicio = time.time()
     ultimo_dado = time.time()
     silence_count = 0
     bytes_totais = 0
-    
+
     while True:
         tempo_decorrido = time.time() - tempo_inicio
-        
+
         if tempo_decorrido > max_timeout:
             print(f"       ⚠️ Timeout máximo ({max_timeout}s) atingido")
             break
-        
+
         try:
             dados = ssh_process.read_nonblocking(timeout=0.1, size=65536)
-            
+
             if dados:
                 resultado += dados
                 bytes_totais += len(dados)
@@ -1682,31 +1942,31 @@ def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120,modelo=N
             else:
                 silence_count += 1
                 tempo_silencio = time.time() - ultimo_dado
-                
+
                 if tempo_silencio >= silence_timeout:
                     print(f"       ✅ Silence detectado ({tempo_silencio:.1f}s) - comando terminou")
                     break
-                
+
                 time.sleep(0.1)
-        
+
         except pexpect.exceptions.TIMEOUT:
             tempo_silencio = time.time() - ultimo_dado
-            
+
             if tempo_silencio >= silence_timeout:
                 print(f"       ✅ Silence detectado ({tempo_silencio:.1f}s) - comando terminou")
                 break
-            
+
             time.sleep(0.1)
-        
+
         except Exception as e:
             print(f"       ⚠️ Erro ao ler: {str(e)}")
             break
-    
+
     print(f"       ✅ Leitura completa: {bytes_totais} bytes, {time.time() - tempo_inicio:.1f}s")
-    
+
     # ✅ NOVO: Pós-processamento para limpar linhas quebradas
     resultado_limpo = limpar_output_por_fabricante(resultado, modelo)
-    
+
     return resultado_limpo
 
 
@@ -1717,10 +1977,10 @@ def limpar_output_por_fabricante(texto, modelo):
     # 1. Detectar fabricante
     fabricante = detectar_fabricante(modelo)
     print(f"       🏭 Fabricante detectado: {fabricante}")
-    
+
     # 2. Aplicar limpeza básica (códigos ANSI) para todos
     texto = remover_codigos_ansi(texto)
-    
+
     # 3. Aplicar limpeza específica
     if fabricante == 'MIKROTIK':
         return limpar_output_mikrotik(texto)
@@ -1736,13 +1996,13 @@ def detectar_fabricante(modelo):
     """
     if not modelo:
         return 'DESCONHECIDO'
-    
+
     modelo_nome = ''
     if hasattr(modelo, 'nome'):
         modelo_nome = modelo.nome.upper()
     elif isinstance(modelo, str):
         modelo_nome = modelo.upper()
-    
+
     if 'MIKROTIK' in modelo_nome or 'ROUTERBOARD' in modelo_nome:
         return 'MIKROTIK'
     elif 'CISCO' in modelo_nome:
@@ -1768,17 +2028,17 @@ def remover_codigos_ansi(texto):
     Remove códigos ANSI - aplica-se a TODOS os fabricantes
     """
     import re
-    
+
     # Remover sequências ANSI
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     texto = ansi_escape.sub('', texto)
-    
+
     # Remover caracteres de controle (exceto \n e \r)
     texto = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', texto)
-    
+
     # Remover [K
     texto = texto.replace('[K', '')
-    
+
     return texto
 
 
@@ -1788,39 +2048,39 @@ def limpar_output_generico(texto):
     MANTÉM quebras de linha originais!
     """
     import re
-    
+
     print(f"       🔧 Aplicando limpeza genérica (mantém quebras de linha)...")
-    
+
     # Normalizar line breaks
     texto = texto.replace('\r\n', '\n').replace('\r', '\n')
-    
+
     linhas = texto.split('\n')
     linhas_limpas = []
     linha_anterior = ''
-    
+
     for linha in linhas:
         linha_strip = linha.strip()
-        
+
         # ✅ Manter linhas vazias (não mais de 3 consecutivas)
         if not linha_strip:
             if linha_anterior != '' or (linhas_limpas and linhas_limpas[-1] != ''):
                 linhas_limpas.append(linha)
                 linha_anterior = ''
             continue
-        
+
         # Remover apenas prompts duplicados óbvios
         if linha_strip.endswith('#') or linha_strip.endswith('>'):
             if linha_anterior and (linha_anterior.endswith('#') or linha_anterior.endswith('>')):
                 continue
-        
+
         linhas_limpas.append(linha)
         linha_anterior = linha_strip
-    
+
     texto_final = '\n'.join(linhas_limpas)
-    
+
     # Remover apenas 4+ linhas vazias consecutivas
     texto_final = re.sub(r'\n{4,}', '\n\n\n', texto_final)
-    
+
     return texto_final
 
 def limpar_output_mikrotik(texto):
@@ -1901,11 +2161,11 @@ def limpar_output_mikrotik(texto):
 
 def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
     print(f"📤 SSH: Conectando a {host}:{porta}...")
-    
+
     ssh_path = "/usr/bin/ssh"
     if not os.path.exists(ssh_path):
         ssh_path = "ssh"
-    
+
     ssh_cmd = (
         f"{ssh_path} -o StrictHostKeyChecking=no "
         f"-o UserKnownHostsFile=/dev/null "
@@ -1919,14 +2179,14 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         f"-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512 "
         f"-p {porta} {usuario}@{host}"
     )
-    
+
     ssh_process = None
     tentativas = 3
-    
+
     for tentativa in range(tentativas):
         try:
             print(f"   [Tentativa {tentativa + 1}/{tentativas}]")
-            
+
             if tentativa < 2:
                 ssh_process = pexpect.spawn(
                     ssh_cmd,
@@ -1943,7 +2203,7 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                     encoding='utf-8',
                     maxread=65536
                 )
-            
+
             # ✅ CORREÇÃO PRINCIPAL: PTY com largura de 10000 colunas
             # Impede que RouterOS (e qualquer equipamento) quebre linhas longas.
             # Deve ser chamado ANTES da autenticação para que o SSH negocie
@@ -1951,7 +2211,7 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
             ssh_process.setwinsize(24, 10000)
             print(f"   ✅ Spawn OK! PTY: 24x10000")
             break
-            
+
         except FileNotFoundError as e:
             print(f"   ❌ FileNotFoundError: {str(e)}")
             if tentativa < tentativas - 1:
@@ -1965,16 +2225,16 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except Exception as e:
             print(f"   ❌ Erro inesperado: {str(e)}")
             raise
-    
+
     try:
         print(f"📤 Aguardando autenticação...")
-        
+
         index = ssh_process.expect([
             "password:",
             "Password:",
             r".*[#>$\]].*",
         ], timeout=30)
-        
+
         if index in (0, 1):
             print(f"🔐 Enviando senha...")
             ssh_process.sendline(senha)
@@ -1983,17 +2243,17 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                 ssh_process.read_nonblocking(timeout=1.0, size=65536)
             except:
                 pass
-        
+
         print(f"⏳ Aguardando sistema estabilizar (3s)...")
         time.sleep(3)
-        
+
         print(f"🧹 Limpando buffer com CTRL+U...")
         ssh_process.send("\x15")
         time.sleep(0.5)
-        
+
         ssh_process.send("\r")
         time.sleep(0.5)
-        
+
         try:
             ssh_process.expect([r".*[\#\>\$\]]\s*$", r">", r"\$", r"\]"], timeout=3)
             print(f"✅ Prompt detectado!")
@@ -2002,7 +2262,7 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                 ssh_process.read_nonblocking(timeout=0.5, size=65536)
             except:
                 pass
-        
+
         print(f"🔧 Desabilitando paginação...")
         ssh_process.send("terminal length 0\r")
         time.sleep(0.8)
@@ -2010,7 +2270,7 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
             ssh_process.read_nonblocking(timeout=1.0, size=65536)
         except:
             pass
-        
+
         print(f"🎨 Desabilitando cores ANSI do MikroTik...")
         ssh_process.send("set colors=never\r")
         time.sleep(0.8)
@@ -2018,14 +2278,14 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
             ssh_process.read_nonblocking(timeout=1.0, size=65536)
         except:
             pass
-        
+
         ssh_process.send("\r")
         time.sleep(1)
         try:
             ssh_process.read_nonblocking(timeout=1.0, size=65536)
         except:
             pass
-        
+
         print(f"🔐 SINCRONIZANDO...")
         for tentativa_sync in range(3):
             ssh_process.send("\r")
@@ -2036,9 +2296,9 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                 break
             except pexpect.exceptions.TIMEOUT:
                 continue
-        
+
         time.sleep(2)
-        
+
         try:
             while True:
                 dados = ssh_process.read_nonblocking(timeout=0.2, size=65536)
@@ -2046,10 +2306,10 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
                     break
         except:
             pass
-        
+
         print(f"✅✅✅ SSH: 100% PRONTO! ✅✅✅")
         return ssh_process
-        
+
     except pexpect.exceptions.EOF:
         raise Exception("❌ Conexão SSH encerrada inesperadamente")
     except Exception as e:
@@ -2059,78 +2319,78 @@ def conectar_ssh_backup(host, porta, usuario, senha, senha_adm, timeout=120):
         except:
             pass
         raise Exception(f"Erro SSH: {str(e)}")
-    
-    
+
+
 
 def conectar_telnet_backup(host, porta, usuario, senha, timeout=120):
     """
     ✅ MEGA CORRIGIDO: Robustez TOTAL para Telnet também
     """
     print(f"📤 Telnet: Conectando a {host}:{porta}...")
-    
+
     telnet_cmd = f"telnet {host} {porta}"
-    
+
     telnet_process = pexpect.spawn(
         telnet_cmd,
         timeout=timeout,
         encoding='utf-8',
         maxread=65536  # 64KB
     )
-    
+
     try:
         print(f"📤 Aguardando login prompt...")
-        
+
         # ✅ PASSO 1: Aguardar login
         telnet_process.expect([
             "login:",
             "username:",
             "user:",
         ], timeout=15)
-        
+
         print(f"🔐 Enviando usuário...")
         telnet_process.sendline(usuario)
         time.sleep(0.5)
-        
+
         # ✅ PASSO 2: Aguardar senha
         telnet_process.expect([
             "password:",
             "Password:",
         ], timeout=10)
-        
+
         print(f"🔐 Enviando senha...")
         telnet_process.sendline(senha)
         time.sleep(0.5)
-        
+
         # ✅ PASSO 3: Aguardar prompt
         telnet_process.expect([
             r".*[\#\>\$\]]\s*$",
         ], timeout=15)
-        
+
         print(f"✅ Autenticado!")
-        
+
         # ✅ PASSO 4: Estabilizar (3s)
         print(f"⏳ Aguardando estabilizar (3s)...")
         time.sleep(3)
-        
+
         # ✅ PASSO 5: Limpar
         print(f"🧹 Limpando...")
         telnet_process.send("\x15")  # Ctrl+U
         time.sleep(0.5)
         telnet_process.send("\r")
         time.sleep(0.5)
-        
+
         try:
             telnet_process.read_nonblocking(timeout=1.0, size=65536)
         except:
             pass
-        
+
         # ✅ PASSO 6: Sincronizar múltiplas vezes
         print(f"🔐 SINCRONIZANDO...")
         for tentativa in range(3):
             print(f"   Tentativa {tentativa + 1}/3...")
             telnet_process.send("\r")
             time.sleep(0.5)
-            
+
             try:
                 telnet_process.expect([r".*[\#\>\$\]]\s*$"], timeout=2)
                 print(f"   ✅ Prompt respondeu!")
@@ -2138,11 +2398,11 @@ def conectar_telnet_backup(host, porta, usuario, senha, timeout=120):
             except pexpect.exceptions.TIMEOUT:
                 print(f"   ⚠️ Timeout")
                 continue
-        
+
         # ✅ PASSO 7: Aguardar final
         print(f"⏳ Aguardando final (2s)...")
         time.sleep(2)
-        
+
         # ✅ PASSO 8: Limpar buffer
         print(f"🧹 Limpando buffer...")
         try:
@@ -2152,10 +2412,10 @@ def conectar_telnet_backup(host, porta, usuario, senha, timeout=120):
                     break
         except:
             pass
-        
+
         print(f"✅✅✅ Telnet: 100% PRONTO! ✅✅✅")
         return telnet_process
-        
+
     except pexpect.exceptions.TIMEOUT:
         raise Exception("❌ Timeout ao autenticar Telnet")
     except pexpect.exceptions.EOF:
@@ -2168,13 +2428,13 @@ def conectar_telnet_backup(host, porta, usuario, senha, timeout=120):
             pass
         raise Exception(f"Erro Telnet: {str(e)}")
 
-    
 
-               
+
+
 def detectar_protocolo(porta):
     """Detecta protocolo pela porta"""
     porta_int = int(porta)
-    
+
     if porta_int == 22:
         return 'ssh'
     elif porta_int == 23:
@@ -2195,9 +2455,9 @@ def preparar_diretorio_backup(cliente_id, acesso_id):
     base_dir = os.path.join(settings.MEDIA_ROOT, 'backups')
     cliente_dir = os.path.join(base_dir, f'cliente_{cliente_id}')
     acesso_dir = os.path.join(cliente_dir, f'acesso_{acesso_id}')
-    
+
     os.makedirs(acesso_dir, exist_ok=True)
-    
+
     return acesso_dir
 
 
@@ -2206,7 +2466,7 @@ def mapear_device_type(modelo_nome):
     Mapeia modelo do equipamento para device_type do Netmiko
     """
     modelo_lower = modelo_nome.lower()
-    
+
     if 'cisco' in modelo_lower:
         if 'ios-xe' in modelo_lower or 'catalyst' in modelo_lower:
             return 'cisco_ios'
@@ -2216,25 +2476,25 @@ def mapear_device_type(modelo_nome):
             return 'cisco_asa'
         else:
             return 'cisco_ios'
-    
+
     elif 'huawei' in modelo_lower:
         return 'huawei'
-    
+
     elif 'mikrotik' in modelo_lower:
         return 'mikrotik_routeros'
-    
+
     elif 'juniper' in modelo_lower:
         return 'juniper_junos'
-    
+
     elif 'dell' in modelo_lower:
         return 'dell_os10'
-    
+
     elif 'hp' in modelo_lower or 'aruba' in modelo_lower:
         return 'hp_procurve'
-    
+
     elif 'extreme' in modelo_lower:
         return 'extreme'
-    
+
     else:
         return 'cisco_ios'  # Fallback
 
@@ -2262,13 +2522,13 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
     Cria túnel com socket forwarding
     """
     print(f"🔧 Criando túnel SSH...")
-    
+
     try:
         # Conectar ao proxy
         print(f"📤 Conectando ao proxy...")
         ssh_proxy = paramiko.SSHClient()
         ssh_proxy.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
+
         ssh_proxy.connect(
             hostname=proxy_server['host'],
             port=int(proxy_server['porta']),
@@ -2278,17 +2538,17 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
             look_for_keys=False,
             allow_agent=False
         )
-        
+
         print(f"✅ Conectado ao proxy!")
-        
+
         # Encontrar porta local
         sock_temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock_temp.bind(('127.0.0.1', 0))
         local_port = sock_temp.getsockname()[1]
         sock_temp.close()
-        
+
         print(f"📍 Porta local: {local_port}")
-        
+
         # Criar servidor
         print(f"🔗 Iniciando servidor de forwarding...")
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -2296,9 +2556,9 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
         server_socket.bind(('127.0.0.1', local_port))
         server_socket.listen(5)
         server_socket.settimeout(1)
-        
+
         print(f"✅ Servidor escutando em 127.0.0.1:{local_port}")
-        
+
         # Função de forwarding
         def forward_tunnel(client_socket, remote_host, remote_port, transport):
             """Forwarda dados via tunnel"""
@@ -2308,7 +2568,7 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
                     (remote_host, int(remote_port)),
                     ('127.0.0.1', local_port)
                 )
-                
+
                 def forward_data(src, dst, direction):
                     """Forwards data"""
                     try:
@@ -2328,7 +2588,7 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
                             dst.close()
                         except:
                             pass
-                
+
                 t1 = threading.Thread(
                     target=forward_data, 
                     args=(client_socket, channel, "C→R")
@@ -2341,13 +2601,13 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
                 t2.daemon = True
                 t1.start()
                 t2.start()
-                
+
             except Exception as e:
                 try:
                     client_socket.close()
                 except:
                     pass
-        
+
         # Thread de aceitação
         def accept_connections(server_socket, transport, remote_host, remote_port):
             """Accepts connections"""
@@ -2372,7 +2632,7 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
                     server_socket.close()
                 except:
                     pass
-        
+
         # Iniciar thread
         transport = ssh_proxy.get_transport()
         accept_thread = threading.Thread(
@@ -2381,10 +2641,10 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
         )
         accept_thread.daemon = True
         accept_thread.start()
-        
+
         print(f"✅ Túnel criado!")
         time.sleep(0.5)
-        
+
         return {
             'tunnel': None,
             'ssh_client': ssh_proxy,
@@ -2395,7 +2655,7 @@ def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=
             'transport': transport,
             'accept_thread': accept_thread
         }
-        
+
     except Exception as e:
         print(f"❌ Erro: {str(e)}")
         raise
@@ -2422,10 +2682,10 @@ def listar_backups_cliente(request):
     ✅ CORRIGIDO: Verifica se arquivo existe antes de exibir
     """
     cliente_id = request.GET.get('id')
-    
+
     if not cliente_id:
         return JsonResponse({'error': 'Cliente não especificado'}, status=400)
-    
+
     # Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         try:
@@ -2434,18 +2694,18 @@ def listar_backups_cliente(request):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+
     cliente = get_object_or_404(Cliente, id=cliente_id)
-    
+
     # Buscar backups
     backups = BackupLog.objects.filter(cliente=cliente).select_related(
         'acesso', 'template', 'executado_por'
     ).order_by('-data_backup')
-    
+
     # ✅ PASSO 1: Verificar quais arquivos existem e quais são órfãos
     backups_validos = []
     backups_para_deletar = []
-    
+
     for backup in backups:
         arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
         if os.path.exists(arquivo_path):
@@ -2454,12 +2714,12 @@ def listar_backups_cliente(request):
             # Arquivo foi deletado manualmente da VM
             backups_para_deletar.append(backup.id)
             print(f"⚠️ Backup órfão: {backup.arquivo_path}")
-    
+
     # ✅ PASSO 2: Remover registros órfãos do banco
     if backups_para_deletar:
         BackupLog.objects.filter(id__in=backups_para_deletar).delete()
         print(f"✅ {len(backups_para_deletar)} registro(s) órfão(s) removido(s)")
-    
+
     # ✅ PASSO 3: Retornar apenas backups válidos
     return JsonResponse({
         'backups': [{
@@ -2484,26 +2744,26 @@ def download_backup(request, backup_id):
     """Download de backup"""
     try:
         backup = BackupLog.objects.get(id=backup_id)
-        
+
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             cliente = Cliente.objects.get(usuario=request.user)
             if backup.cliente.id != cliente.id:
                 messages.error(request, 'Sem permissão')
                 return redirect('listar_clientes')
-        
+
         arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
-        
+
         if not os.path.exists(arquivo_path):
             messages.error(request, 'Arquivo não encontrado')
             return redirect('listar_clientes')
-        
+
         return FileResponse(
             open(arquivo_path, 'rb'),
             as_attachment=True,
             filename=os.path.basename(arquivo_path)
         )
-        
+
     except BackupLog.DoesNotExist:
         messages.error(request, 'Backup não encontrado')
         return redirect('listar_clientes')
@@ -2519,22 +2779,22 @@ def deletar_backup(request, backup_id):
         try:
             backup = get_object_or_404(BackupLog, id=backup_id)
             cliente_id = backup.cliente.id
-            
+
             # Deletar arquivo
             arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
             if os.path.exists(arquivo_path):
                 os.remove(arquivo_path)
-            
+
             # Deletar registro
             backup.delete()
-            
+
             messages.success(request, 'Backup excluído!')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-            
+
         except Exception as e:
             messages.error(request, f'Erro: {str(e)}')
             return redirect('listar_clientes')
-    
+
     return redirect('listar_clientes')
 
 
@@ -2542,7 +2802,7 @@ def deletar_backup(request, backup_id):
 def buscar_templates_backup(request):
     """Busca templates de backup"""
     templates = BackupTemplate.objects.filter(ativo=True).order_by('fabricante', 'nome')
-    
+
     return JsonResponse({
         'templates': [{
             'id': t.id,
@@ -2568,7 +2828,7 @@ def ping_acesso(request, acesso_id):
     """Realiza ping para um acesso (via proxy se necessário)"""
     try:
         acesso = Acesso.objects.get(id=acesso_id)
-        
+
         # ✅ Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
@@ -2577,44 +2837,44 @@ def ping_acesso(request, acesso_id):
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
-        
+
         host = acesso.host
         eh_privado = is_private_ip(host)
-        
+
         print(f"\n{'='*80}")
         print(f"🔍 PING REQUEST")
         print(f"{'='*80}")
         print(f"Host: {host}")
         print(f"IP Privado? {eh_privado}")
-        
+
         # ✅ Se IP privado, executar via proxy
         if eh_privado:
             print(f"⚠️ IP PRIVADO - Usando proxy SSH")
-            
+
             proxy = ProxyServer.objects.filter(
                 cliente=acesso.cliente,
                 ativo=True
             ).first()
-            
+
             if not proxy:
                 return JsonResponse({
                     'error': 'IP privado sem proxy SSH ativo',
                     'host': host,
                     'status': 'erro'
                 }, status=400)
-            
+
             resultado = ping_via_proxy(proxy, host)
         else:
             # ✅ IP público, ping direto
             print(f"✅ IP PÚBLICO - Ping direto")
             resultado = ping_direto(host)
-        
+
         print(f"{'='*80}")
         print(f"Resultado: {resultado}")
         print(f"{'='*80}\n")
-        
+
         return JsonResponse(resultado)
-    
+
     except Acesso.DoesNotExist:
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
     except Exception as e:
@@ -2630,17 +2890,17 @@ def ping_direto(host, packets=10):
     try:
         import subprocess
         import platform
-        
+
         # ✅ Detectar sistema operacional
         sistema = platform.system()
-        
+
         if sistema == 'Windows':
             cmd = ['ping', '-n', str(packets), host]
         else:  # Linux/Mac
             cmd = ['ping', '-c', str(packets), host]
-        
+
         print(f"📤 Executando: {' '.join(cmd)}")
-        
+
         # ✅ Executar ping com timeout
         resultado = subprocess.run(
             cmd,
@@ -2648,16 +2908,16 @@ def ping_direto(host, packets=10):
             text=True,
             timeout=30
         )
-        
+
         output = resultado.stdout
         return_code = resultado.returncode
-        
+
         print(f"Return code: {return_code}")
         print(f"Output:\n{output}")
-        
+
         # ✅ Parsear resultado
         return parsear_output_ping(output, host, return_code)
-    
+
     except subprocess.TimeoutExpired:
         return {
             'host': host,
@@ -2684,11 +2944,11 @@ def ping_via_proxy(proxy, host, packets=10):
     """
     try:
         print(f"📡 Ping via proxy SSH")
-        
+
         # ✅ Conectar ao proxy
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
+
         ssh_client.connect(
             hostname=proxy.host,
             port=proxy.porta,
@@ -2698,27 +2958,27 @@ def ping_via_proxy(proxy, host, packets=10):
             look_for_keys=False,
             allow_agent=False
         )
-        
+
         print(f"✅ Conectado ao proxy")
-        
+
         # ✅ Executar ping no servidor remoto
         cmd_ping = f'ping -c {packets} {host}'
         print(f"📤 Executando no proxy: {cmd_ping}")
-        
+
         stdin, stdout, stderr = ssh_client.exec_command(cmd_ping, timeout=30)
-        
+
         output = stdout.read().decode('utf-8', errors='ignore')
         error = stderr.read().decode('utf-8', errors='ignore')
-        
+
         ssh_client.close()
-        
+
         print(f"Output:\n{output}")
         if error:
             print(f"Error:\n{error}")
-        
+
         # ✅ Parsear resultado
         return parsear_output_ping(output, host, 0)
-    
+
     except Exception as e:
         print(f"❌ Erro ping via proxy: {str(e)}")
         return {
@@ -2738,7 +2998,7 @@ def parsear_output_ping(output, host, return_code):
     """
     try:
         import re
-        
+
         # ✅ Se return_code é diferente de 0, host não respondeu
         if return_code != 0 and 'transmitted' not in output.lower():
             return {
@@ -2750,21 +3010,21 @@ def parsear_output_ping(output, host, return_code):
                 'pacotes_perdidos': 0,
                 'output': output[:500]
             }
-        
+
         # ✅ Padrão Linux: "10 packets transmitted, 10 received, 0% packet loss"
         linux_pattern = r'(\d+)\s+packets? transmitted[,.]?\s+(\d+)\s+(?:packets? )?received'
-        
+
         # ✅ Procurar padrão Linux
         match_linux = re.search(linux_pattern, output)
         if match_linux:
             enviados = int(match_linux.group(1))
             recebidos = int(match_linux.group(2))
             perdidos = enviados - recebidos
-            
+
             # ✅ Procurar tempo
             time_pattern = r'min/avg/max(?:/stddev)?\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)'
             match_time = re.search(time_pattern, output)
-            
+
             tempos = {}
             if match_time:
                 tempos = {
@@ -2772,7 +3032,7 @@ def parsear_output_ping(output, host, return_code):
                     'avg': float(match_time.group(2)),
                     'max': float(match_time.group(3))
                 }
-            
+
             return {
                 'host': host,
                 'status': 'sucesso' if recebidos > 0 else 'timeout',
@@ -2783,7 +3043,7 @@ def parsear_output_ping(output, host, return_code):
                 'tempos': tempos,
                 'mensagem': f'{recebidos}/{enviados} packets recebidos' if recebidos > 0 else 'Sem resposta'
             }
-        
+
         # ✅ Se não encontrou padrão
         return {
             'host': host,
@@ -2791,7 +3051,7 @@ def parsear_output_ping(output, host, return_code):
             'mensagem': 'Não foi possível parsear resultado do ping',
             'output': output[:300]
         }
-    
+
     except Exception as e:
         print(f"❌ Erro ao parsear: {str(e)}")
         return {
@@ -2800,7 +3060,7 @@ def parsear_output_ping(output, host, return_code):
             'mensagem': f'Erro ao parsear resultado: {str(e)}',
             'output': output[:300]
         }
-    
+
 
 @login_required(login_url='login')
 def cadastrar_bloco_ip(request):
@@ -2811,19 +3071,19 @@ def cadastrar_bloco_ip(request):
         bloco = request.POST.get('bloco')
         asn = request.POST.get('asn')
         irr_registry = request.POST.get('irr_registry')
-        
+
         # Validações básicas
         if not all([cliente_id, tipo, bloco]):
             messages.error(request, 'Preencha todos os campos obrigatórios.')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        
+
         # Validar formato do bloco IP
         try:
             ipaddress.ip_network(bloco)
         except ValueError:
             messages.error(request, f'Formato de bloco IP inválido: {bloco}')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        
+
         # Criar bloco
         try:
             BlocoIP.objects.create(
@@ -2836,9 +3096,9 @@ def cadastrar_bloco_ip(request):
             messages.success(request, f'Bloco {bloco} cadastrado com sucesso!')
         except Exception as e:
             messages.error(request, f'Erro ao cadastrar bloco: {str(e)}')
-        
+
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -2847,7 +3107,7 @@ def buscar_bloco_ip(request, bloco_id):
     """Busca dados de um bloco IP específico (AJAX)"""
     try:
         bloco = BlocoIP.objects.get(id=bloco_id)
-        
+
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
@@ -2856,7 +3116,7 @@ def buscar_bloco_ip(request, bloco_id):
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
-        
+
         data = {
             'id': bloco.id,
             'tipo': bloco.tipo,
@@ -2871,9 +3131,9 @@ def buscar_bloco_ip(request, bloco_id):
             'rpki_mensagem': bloco.rpki_mensagem or '',
             'irr_mensagem': bloco.irr_mensagem or ''
         }
-        
+
         return JsonResponse(data)
-        
+
     except BlocoIP.DoesNotExist:
         return JsonResponse({'error': 'Bloco não encontrado'}, status=404)
     except Exception as e:
@@ -2886,7 +3146,7 @@ def editar_bloco_ip(request, bloco_id):
     if request.method == 'POST':
         try:
             bloco = get_object_or_404(BlocoIP, id=bloco_id)
-            
+
             # Verificar permissão
             if not request.user.is_staff and not request.user.is_superuser:
                 try:
@@ -2897,28 +3157,28 @@ def editar_bloco_ip(request, bloco_id):
                 except Cliente.DoesNotExist:
                     messages.error(request, 'Sem permissão')
                     return redirect('listar_clientes')
-            
+
             bloco.bloco = request.POST.get('bloco')
             bloco.tipo = request.POST.get('tipo')
             bloco.asn = request.POST.get('asn')
             bloco.irr_registry = request.POST.get('irr_registry')
-            
+
             # Validar formato do bloco IP
             try:
                 ipaddress.ip_network(bloco.bloco)
             except ValueError:
                 messages.error(request, f'Formato de bloco IP inválido: {bloco.bloco}')
                 return redirect(reverse('listar_clientes') + f'?id={bloco.cliente.id}')
-            
+
             bloco.save()
-            
+
             messages.success(request, f'Bloco {bloco.bloco} atualizado com sucesso!')
             return redirect(reverse('listar_clientes') + f'?id={bloco.cliente.id}')
-            
+
         except Exception as e:
             messages.error(request, f'Erro ao editar bloco: {str(e)}')
             return redirect('listar_clientes')
-    
+
     return redirect('listar_clientes')
 
 
@@ -2929,17 +3189,17 @@ def deletar_bloco_ip(request, bloco_id):
         bloco = get_object_or_404(BlocoIP, id=bloco_id)
         cliente_id = bloco.cliente.id
         bloco_texto = bloco.bloco
-        
+
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             messages.error(request, 'Apenas administradores podem deletar blocos IP')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-        
+
         bloco.delete()
-        
+
         messages.success(request, f'Bloco {bloco_texto} excluído com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-    
+
     return redirect('listar_clientes')
 
 
@@ -2948,7 +3208,7 @@ def validar_bloco_rpki_irr(request, bloco_id):
     """Executa validação RPKI/IRR manual para um bloco"""
     try:
         bloco = BlocoIP.objects.get(id=bloco_id)
-        
+
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
@@ -2957,10 +3217,10 @@ def validar_bloco_rpki_irr(request, bloco_id):
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
-        
+
         # Executar validação
         resultado = executar_validacao_rpki_irr(bloco)
-        
+
         if resultado['sucesso']:
             return JsonResponse({
                 'success': True,
@@ -2976,7 +3236,7 @@ def validar_bloco_rpki_irr(request, bloco_id):
             return JsonResponse({
                 'error': resultado['erro']
             }, status=500)
-            
+
     except BlocoIP.DoesNotExist:
         return JsonResponse({'error': 'Bloco não encontrado'}, status=404)
     except Exception as e:
@@ -2987,10 +3247,10 @@ def validar_bloco_rpki_irr(request, bloco_id):
 def listar_blocos_cliente(request):
     """Lista blocos IP de um cliente (AJAX)"""
     cliente_id = request.GET.get('id')
-    
+
     if not cliente_id:
         return JsonResponse({'error': 'Cliente não especificado'}, status=400)
-    
+
     # Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         try:
@@ -2999,12 +3259,12 @@ def listar_blocos_cliente(request):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+
     cliente = get_object_or_404(Cliente, id=cliente_id)
-    
+
     # Buscar blocos
     blocos = BlocoIP.objects.filter(cliente=cliente).order_by('tipo', 'bloco')
-    
+
     return JsonResponse({
         'blocos': [{
             'id': bloco.id,
@@ -3035,7 +3295,7 @@ def executar_validacao_rpki_irr(bloco):
     """
     import time
     inicio = time.time()
-    
+
     try:
         print(f"\n{'='*80}")
         print(f"🔍 INICIANDO VALIDAÇÃO RPKI/IRR")
@@ -3044,27 +3304,27 @@ def executar_validacao_rpki_irr(bloco):
         print(f"Tipo: {bloco.get_tipo_display()}")
         print(f"ASN: {bloco.asn}")
         print(f"IRR Registry: {bloco.irr_registry}")
-        
+
         # ✅ VALIDAÇÃO RPKI
         rpki_resultado = validar_rpki(bloco.bloco, bloco.asn)
-        
+
         # ✅ VALIDAÇÃO IRR
         irr_resultado = validar_irr(bloco.bloco, bloco.asn, bloco.irr_registry)
-        
+
         # ✅ Atualizar bloco
         bloco.rpki_valido = rpki_resultado['valido']
         bloco.rpki_status = rpki_resultado['status']
         bloco.rpki_mensagem = rpki_resultado['mensagem']
-        
+
         bloco.irr_valido = irr_resultado['valido']
         bloco.irr_status = irr_resultado['status']
         bloco.irr_mensagem = irr_resultado['mensagem']
-        
+
         bloco.ultima_validacao = datetime.now()
         bloco.save()
-        
+
         duracao = time.time() - inicio
-        
+
         # ✅ Registrar log
         ValidacaoRPKI_IRR_Log.objects.create(
             bloco=bloco,
@@ -3076,7 +3336,7 @@ def executar_validacao_rpki_irr(bloco):
             irr_detalhes=irr_resultado['detalhes'],
             duracao_segundos=duracao
         )
-        
+
         print(f"\n{'='*80}")
         print(f"✅ VALIDAÇÃO CONCLUÍDA!")
         print(f"{'='*80}")
@@ -3084,14 +3344,14 @@ def executar_validacao_rpki_irr(bloco):
         print(f"IRR: {irr_resultado['status']} - {irr_resultado['mensagem']}")
         print(f"Duração: {duracao:.2f}s")
         print(f"{'='*80}\n")
-        
+
         return {
             'sucesso': True,
             'rpki': rpki_resultado,
             'irr': irr_resultado,
             'duracao': duracao
         }
-        
+
     except Exception as e:
         erro = f"Erro na validação: {str(e)}"
         print(f"\n❌ {erro}\n")
@@ -3100,22 +3360,22 @@ def executar_validacao_rpki_irr(bloco):
 def validar_rpki(bloco, asn):
     """
     ✅ CORRIGIDO v6: Usa RIPE Stat RPKI Validation
-    
+
     API: https://stat.ripe.net/data/rpki-validation/data.json
     Parâmetros:
-      - resource: ASN (ex: 268858)
-      - prefix: Bloco IP (ex: 45.174.160.0/23)
-    
+    - resource: ASN (ex: 268858)
+    - prefix: Bloco IP (ex: 45.174.160.0/23)
+
     Resposta:
-      - status: "valid", "invalid", "unknown"
-      - validating_roas: lista de ROAs que cobrem o prefixo
-    
+    - status: "valid", "invalid", "unknown"
+    - validating_roas: lista de ROAs que cobrem o prefixo
+
     🔑 Simples, eficiente e funciona!
     """
     print(f"\n{'='*60}")
     print(f"📡 VALIDANDO RPKI: {bloco} (AS{asn})")
     print(f"{'='*60}")
-    
+
     if not asn:
         return {
             'valido': False,
@@ -3123,10 +3383,10 @@ def validar_rpki(bloco, asn):
             'mensagem': 'ASN não informado',
             'detalhes': 'ASN é necessário para validação'
         }
-    
+
     asn_limpo = asn.replace('AS', '').replace('as', '').strip()
     print(f"ASN limpo: {asn_limpo}")
-    
+
     # ==========================
     # API PRIMÁRIA: RIPE Stat RPKI Validation
     # ==========================
@@ -3135,29 +3395,29 @@ def validar_rpki(bloco, asn):
         url = f"https://stat.ripe.net/data/rpki-validation/data.json?resource=AS{asn_limpo}&prefix={bloco}"
         print(f"      URL: {url}")
         print(f"      Conectando...", end=" ", flush=True)
-        
+
         resp = requests.get(url, timeout=15, headers={'User-Agent': 'CONEXA-CRM/1.0'})
         print(f"✅ {resp.status_code}")
-        
+
         if resp.status_code == 200:
             data = resp.json()
-            
+
             # Extrair informações
             dados = data.get('data', {})
             status = dados.get('status', 'unknown').lower()
             validating_roas = dados.get('validating_roas', [])
-            
+
             print(f"      📋 Status: {status}")
             print(f"      📋 ROAs encontradas: {len(validating_roas)}")
-            
+
             # ==========================
             # Processar Status
             # ==========================
-            
+
             # ✅ VÁLIDO
             if status == 'valid':
                 print(f"      ✅ ROA VÁLIDA!")
-                
+
                 # Detalhar ROAs
                 detalhes_roas = []
                 for roa in validating_roas:
@@ -3166,20 +3426,20 @@ def validar_rpki(bloco, asn):
                     max_length = roa.get('max_length', '?')
                     validity = roa.get('validity', '?')
                     detalhes_roas.append(f"{prefix} AS{origin} (/{max_length})")
-                
+
                 detalhes_texto = "\n   ".join(detalhes_roas) if detalhes_roas else "ROA válido"
-                
+
                 return {
                     'valido': True,
                     'status': 'Valid',
                     'mensagem': 'ROA válido encontrado',
                     'detalhes': f'{bloco} é coberto por ROA válida:\n   {detalhes_texto}'
                 }
-            
+
             # ❌ INVÁLIDO
             elif status == 'invalid':
                 print(f"      ❌ ROA INVÁLIDA!")
-                
+
                 # Detalhar conflito
                 conflitos = []
                 if validating_roas:
@@ -3189,27 +3449,27 @@ def validar_rpki(bloco, asn):
                         conflitos.append(f"AS{origin} para {prefix}")
                 else:
                     conflitos.append("Conflito não especificado")
-                
+
                 detalhes_texto = " ou ".join(conflitos)
-                
+
                 return {
                     'valido': False,
                     'status': 'Invalid',
                     'mensagem': 'ROA inválido - conflito detectado',
                     'detalhes': f'{bloco} entra em conflito com ROA(s): {detalhes_texto}'
                 }
-            
+
             # ⏳ DESCONHECIDO
             elif status == 'unknown':
                 print(f"      ⏳ ROA NÃO ENCONTRADO")
-                
+
                 return {
                     'valido': False,
                     'status': 'Unknown',
                     'mensagem': 'ROA não encontrado',
                     'detalhes': f'{bloco} / AS{asn_limpo} não possui ROA publicado. Publique em: https://my.lacnic.net'
                 }
-            
+
             else:
                 print(f"      ❓ Status desconhecido: {status}")
                 return {
@@ -3218,7 +3478,7 @@ def validar_rpki(bloco, asn):
                     'mensagem': f'Status desconhecido: {status}',
                     'detalhes': f'Resposta: {data}'
                 }
-        
+
         else:
             print(f"❌ Status HTTP: {resp.status_code}")
             return {
@@ -3227,7 +3487,7 @@ def validar_rpki(bloco, asn):
                 'mensagem': f'Erro HTTP {resp.status_code}',
                 'detalhes': f'RIPE Stat retornou erro: {resp.text[:200]}'
             }
-    
+
     except requests.exceptions.Timeout:
         print(f"⏱️ Timeout")
         return {
@@ -3238,7 +3498,7 @@ def validar_rpki(bloco, asn):
         }
     except Exception as e:
         print(f"❌ {type(e).__name__}: {e}")
-    
+
     # ==========================
     # FALLBACK: Cloudflare RPKI (se RIPE falhar)
     # ==========================
@@ -3247,17 +3507,17 @@ def validar_rpki(bloco, asn):
         url = f"https://rpki.cloudflare.com/api/v1/validity/{asn_limpo}/{bloco}"
         print(f"      URL: {url}")
         print(f"      Conectando...", end=" ", flush=True)
-        
+
         resp = requests.get(url, timeout=10, headers={'User-Agent': 'CONEXA-CRM/1.0'})
         print(f"✅ {resp.status_code}")
-        
+
         if resp.status_code == 200:
             data = resp.json()
             validity = data.get('validity', {})
             state = validity.get('state', '').upper()
-            
+
             print(f"      📋 State: {state}")
-            
+
             if state == 'VALID':
                 print(f"      ✅ ROA VÁLIDA")
                 return {
@@ -3274,10 +3534,10 @@ def validar_rpki(bloco, asn):
                     'mensagem': 'ROA inválido',
                     'detalhes': f'ROA conflita para {bloco} e AS{asn_limpo}'
                 }
-    
+
     except Exception as e:
         print(f"      ⚠️ Indisponível")
-    
+
     # ==========================
     # Nenhuma API funcionou
     # ==========================
@@ -3296,14 +3556,14 @@ def consultar_lacnic_whois(bloco, asn):
     NÃO para inferir status de ROA (isso é responsabilidade de APIs RPKI)
     """
     print(f"      Consultando whois.lacnic.net:43...")
-    
+
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(15)
-        
+
         sock.connect(('whois.lacnic.net', 43))
         sock.send(f"{bloco}\n".encode())
-        
+
         response = b""
         sock.settimeout(5)
         try:
@@ -3314,12 +3574,12 @@ def consultar_lacnic_whois(bloco, asn):
                 response += data
         except socket.timeout:
             pass
-        
+
         sock.close()
-        
+
         output = response.decode('utf-8', errors='ignore')
         output_lower = output.lower()
-        
+
         resultado = {
             'encontrado': False,
             'inetnum': None,
@@ -3327,25 +3587,25 @@ def consultar_lacnic_whois(bloco, asn):
             'owner': None,
             'raw': output
         }
-        
+
         if 'inetnum:' in output_lower or 'inet6num:' in output_lower:
             resultado['encontrado'] = True
-            
+
             # Extrair informações
             for linha in output.split('\n'):
                 linha_lower = linha.lower()
-                
+
                 if linha_lower.startswith('inetnum:') or linha_lower.startswith('inet6num:'):
                     resultado['inetnum'] = linha.split(':', 1)[1].strip()
-                
+
                 if linha_lower.startswith('aut-num:'):
                     resultado['asn'] = linha.split(':', 1)[1].strip()
-                
+
                 if linha_lower.startswith('owner:'):
                     resultado['owner'] = linha.split(':', 1)[1].strip()
-        
+
         return resultado
-        
+
     except Exception as e:
         print(f"      ⚠️ Erro: {type(e).__name__}")
         return {'encontrado': False}
@@ -3354,16 +3614,16 @@ def consultar_lacnic_whois(bloco, asn):
 def descobrir_status_roa(bloco, asn, dados_lacnic):
     """
     Tenta descobrir se a ROA existe baseado em dados do LACNIC
-    
+
     Lógica:
     1. Se ASN no LACNIC == ASN da query → provável que tenha ROA ou está em processo
     2. Se ASN diferente → ROA pode ter conflito
     3. Se não tem ASN → ainda pode estar em processo
     """
     print(f"\n   Analisando dados LACNIC para ROA...")
-    
+
     asn_lacnic = dados_lacnic.get('asn', '').replace('AS', '').replace('as', '').strip()
-    
+
     # Caso 1: ASN coincide
     if asn_lacnic and asn_lacnic == asn:
         print(f"      ✅ ASN coincide: {asn}")
@@ -3373,7 +3633,7 @@ def descobrir_status_roa(bloco, asn, dados_lacnic):
             'mensagem': 'ASN confirmado no LACNIC',
             'detalhes': f'{bloco} registrado para AS{asn} no LACNIC. ROA provavelmente válido.'
         }
-    
+
     # Caso 2: ASN diferente
     elif asn_lacnic:
         print(f"      ⚠️ ASN diferente: esperado AS{asn}, encontrado AS{asn_lacnic}")
@@ -3383,7 +3643,7 @@ def descobrir_status_roa(bloco, asn, dados_lacnic):
             'mensagem': 'ASN não coincide',
             'detalhes': f'{bloco} está registrado para AS{asn_lacnic} no LACNIC, não AS{asn}. ROA pode ter conflito.'
         }
-    
+
     # Caso 3: Bloco registrado mas sem ASN
     else:
         print(f"      ℹ️ Bloco registrado mas sem ASN específico")
@@ -3408,41 +3668,41 @@ def validar_irr(bloco, asn, irr_registry):
         print(f"Bloco: {bloco}")
         print(f"ASN: {asn}")
         print(f"Registry: {irr_registry}")
-        
+
         if not irr_registry:
             irr_registry = 'LACNIC'
-        
+
         asn_limpo = asn.replace('AS', '').replace('as', '').strip() if asn else ''
-        
+
         # Lista de servidores para tentar
         servidores = []
-        
+
         # ✅ LACNIC tem formato especial (TESTADO)
         if irr_registry.upper() == 'LACNIC':
             servidores.append(('whois.lacnic.net', 'LACNIC', 'inetnum'))
-        
+
         # Adicionar servidor primário padrão
         servidor_primario = get_whois_server(irr_registry)
         if servidor_primario != 'whois.lacnic.net':
             servidores.append((servidor_primario, irr_registry, 'route'))
-        
+
         # Adicionar RADB como fallback
         if servidor_primario != 'whois.radb.net':
             servidores.append(('whois.radb.net', 'RADB', 'route'))
-        
+
         # Adicionar RIPE como segundo fallback
         if servidor_primario != 'whois.ripe.net':
             servidores.append(('whois.ripe.net', 'RIPE', 'route'))
-        
+
         # Tentar cada servidor
         for idx, (whois_server, registry_name, tipo_query) in enumerate(servidores, 1):
             print(f"\n[{idx}/{len(servidores)}] Tentando {registry_name} ({whois_server})...")
-            
+
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(15)
                 sock.connect((whois_server, 43))
-                
+
                 # ✅ Queries diferentes para LACNIC vs outros
                 if tipo_query == 'inetnum':
                     # LACNIC: consultar inetnum/inet6num
@@ -3459,15 +3719,15 @@ def validar_irr(bloco, asn, irr_registry):
                         f"-i origin AS{asn_limpo}\n" if asn_limpo else f"{bloco}\n",  # Por origin
                         f"{bloco}\n",                   # Query simples
                     ]
-                
+
                 for query_idx, query in enumerate(queries, 1):
                     print(f"   Query {query_idx}: {query.strip()}")
-                    
+
                     sock.send(query.encode())
-                    
+
                     response = b""
                     sock.settimeout(5)
-                    
+
                     try:
                         while True:
                             data = sock.recv(4096)
@@ -3476,31 +3736,31 @@ def validar_irr(bloco, asn, irr_registry):
                             response += data
                     except socket.timeout:
                         pass
-                    
+
                     output = response.decode('utf-8', errors='ignore').lower()
-                    
+
                     print(f"   Recebido: {len(output)} bytes")
-                    
+
                     # ✅ Padrões diferentes para LACNIC vs outros
                     if tipo_query == 'inetnum':
                         # LACNIC: procurar inetnum/inet6num
                         padroes = ['inetnum:', 'inet6num:', 'owner:', 'ownerid:', 'aut-num:']
                         encontrou = any(padrao in output for padrao in padroes)
-                        
+
                         if encontrou:
                             print(f"   ✅ Prefixo encontrado no LACNIC!")
-                            
+
                             # Extrair inetnum e ASN
                             linhas = output.split('\n')
                             inetnum_encontrado = None
                             asn_encontrado = None
-                            
+
                             for linha in linhas:
                                 if 'inetnum:' in linha or 'inet6num:' in linha:
                                     inetnum_encontrado = linha.split(':', 1)[1].strip()
                                 if 'aut-num:' in linha:
                                     asn_encontrado = linha.split(':', 1)[1].strip().replace('as', '')
-                            
+
                             # Verificar se tem AS
                             if asn_limpo and asn_encontrado == asn_limpo:
                                 print(f"   ✅ ASN encontrado e confere!")
@@ -3533,10 +3793,10 @@ def validar_irr(bloco, asn, irr_registry):
                         padroes_route = ['route:', 'route6:', 'origin:']
                         encontrou_route = any(padrao in output for padrao in padroes_route)
                         encontrou_asn = asn_limpo and (f'as{asn_limpo}' in output or asn_limpo in output)
-                        
+
                         if encontrou_route:
                             print(f"   ✅ Route encontrado!")
-                            
+
                             if encontrou_asn:
                                 print(f"   ✅ ASN encontrado!")
                                 sock.close()
@@ -3563,16 +3823,16 @@ def validar_irr(bloco, asn, irr_registry):
                                     'mensagem': f'Route encontrado em {registry_name}',
                                     'detalhes': f'{bloco} encontrado (ASN não verificado)'
                                 }
-                    
+
                     # Resetar socket para próxima query
                     if query_idx < len(queries):
                         sock.close()
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         sock.settimeout(15)
                         sock.connect((whois_server, 43))
-                
+
                 sock.close()
-                
+
             except socket.timeout:
                 print(f"   ⏱️ Timeout")
                 continue
@@ -3582,7 +3842,7 @@ def validar_irr(bloco, asn, irr_registry):
             except Exception as e:
                 print(f"   ❌ Erro: {str(e)}")
                 continue
-        
+
         # Se não encontrou em nenhum servidor
         print(f"\n❌ Route/Inetnum não encontrado em nenhum servidor")
         return {
@@ -3591,7 +3851,7 @@ def validar_irr(bloco, asn, irr_registry):
             'mensagem': f'Route não encontrado',
             'detalhes': f'Nenhum route/inetnum encontrado para {bloco} em {irr_registry}, RADB ou RIPE'
         }
-        
+
     except Exception as e:
         print(f"\n❌ ERRO CRÍTICO: {str(e)}")
         return {
@@ -3612,7 +3872,7 @@ def get_whois_server(irr_registry):
         'AFRINIC': 'whois.afrinic.net',
         'RADB': 'whois.radb.net',
     }
-    
+
     return servidores.get(irr_registry.upper(), 'whois.radb.net')
 
 
@@ -3622,7 +3882,7 @@ def get_whois_server(irr_registry):
 def listar_comentarios_acesso(request, acesso_id):
     """Lista comentários de um acesso específico"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    
+
     # ✅ CORRIGIDO: Verificação de permissão CORRETA - staff/superuser são permitidos
     if not request.user.is_staff and not request.user.is_superuser:
         try:
@@ -3631,9 +3891,9 @@ def listar_comentarios_acesso(request, acesso_id):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+
     comentarios = acesso.comentarios.all()
-    
+
     dados = []
     for com in comentarios:
         dados.append({
@@ -3643,7 +3903,7 @@ def listar_comentarios_acesso(request, acesso_id):
             'data_criacao': com.data_criacao.strftime('%d/%m/%Y %H:%M:%S'),
             'data_atualizacao': com.data_atualizacao.strftime('%d/%m/%Y %H:%M:%S') if com.data_atualizacao != com.data_criacao else None,
         })
-    
+
     return JsonResponse({
         'success': True,
         'comentarios': dados,
@@ -3654,7 +3914,7 @@ def listar_comentarios_acesso(request, acesso_id):
 def adicionar_comentario_acesso(request, acesso_id):
     """Adiciona um novo comentário ao acesso"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    
+
     # ✅ CORRIGIDO: Verificação de permissão CORRETA
     if not request.user.is_staff and not request.user.is_superuser:
         try:
@@ -3663,21 +3923,21 @@ def adicionar_comentario_acesso(request, acesso_id):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
             return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+
     comentario_texto = request.POST.get('comentario', '').strip()
-    
+
     if not comentario_texto:
         return JsonResponse({'error': 'Comentário não pode estar vazio'}, status=400)
-    
+
     if len(comentario_texto) > 5000:
         return JsonResponse({'error': 'Comentário muito longo (máximo 5000 caracteres)'}, status=400)
-    
+
     comentario = ComentarioAcesso.objects.create(
         acesso=acesso,
         usuario=request.user,
         comentario=comentario_texto
     )
-    
+
     return JsonResponse({
         'success': True,
         'message': 'Comentário adicionado com sucesso',
@@ -3695,14 +3955,14 @@ def adicionar_comentario_acesso(request, acesso_id):
 def deletar_comentario_acesso(request, comentario_id):
     """Deleta um comentário do acesso"""
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
-    
+
     # Verificar permissão - apenas o autor ou admin pode deletar
     if request.user != comentario.usuario and not request.user.is_staff:
         return JsonResponse({'error': 'Sem permissão para deletar'}, status=403)
-    
+
     acesso = comentario.acesso
     comentario.delete()
-    
+
     return JsonResponse({
         'success': True,
         'message': 'Comentário deletado com sucesso'
@@ -3714,22 +3974,22 @@ def deletar_comentario_acesso(request, comentario_id):
 def editar_comentario_acesso(request, comentario_id):
     """Edita um comentário existente"""
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
-    
+
     # Verificar permissão - apenas o autor ou admin pode editar
     if request.user != comentario.usuario and not request.user.is_staff:
         return JsonResponse({'error': 'Sem permissão para editar'}, status=403)
-    
+
     novo_texto = request.POST.get('comentario', '').strip()
-    
+
     if not novo_texto:
         return JsonResponse({'error': 'Comentário não pode estar vazio'}, status=400)
-    
+
     if len(novo_texto) > 5000:
         return JsonResponse({'error': 'Comentário muito longo (máximo 5000 caracteres)'}, status=400)
-    
+
     comentario.comentario = novo_texto
     comentario.save()
-    
+
     return JsonResponse({
         'success': True,
         'message': 'Comentário atualizado com sucesso',
@@ -3761,14 +4021,1032 @@ def _error_page(msg: str) -> str:
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
-  body{{background:#0d1117;color:#ccc;font-family:'Courier New',monospace;
-       display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
-  .box{{background:#161b22;border:1px solid #30363d;border-radius:8px;
+body{{background:#0d1117;color:#ccc;font-family:'Courier New',monospace;
+    display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
+.box{{background:#161b22;border:1px solid #30363d;border-radius:8px;
         padding:40px;max-width:520px;text-align:center}}
-  p{{color:#8b949e;line-height:1.6}}
+p{{color:#8b949e;line-height:1.6}}
 </style></head><body>
 <div class="box">
-  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
-  <h2 style="color:#f85149">Erro de Conexão</h2>
-  <p>{msg}</p>
+<div style="font-size:48px;margin-bottom:16px">⚠️</div>
+<h2 style="color:#f85149">Erro de Conexão</h2>
+<p>{msg}</p>
 </div></body></html>"""
+
+
+
+# ──────────────────────────────────────────────────────────────
+# PROXY WEB — acesso HTTP/HTTPS via túnel SSH para IPs privados
+# ──────────────────────────────────────────────────────────────
+
+
+# ──────────────────────────────────────────────────────────────
+# PROXY WEB — acesso HTTP/HTTPS via túnel SSH para IPs privados
+# ──────────────────────────────────────────────────────────────
+
+
+import re as _re
+import ssl as _ssl
+from http.client import HTTPResponse as _HTTPResponse
+from io import BytesIO as _BytesIO
+from urllib.parse import urlparse as _urlparse
+
+
+def _web_parse_response(raw: bytes):
+    class FakeSocket:
+        def __init__(self, data):
+            self._file = _BytesIO(data)
+        def makefile(self, *args, **kwargs):
+            return self._file
+
+    r = _HTTPResponse(FakeSocket(raw))
+    r.begin()
+
+    headers = {}
+    cookies_raw = []
+    for k, v in r.getheaders():
+        if k.lower() == 'set-cookie':
+            cookies_raw.append(v)
+        else:
+            headers[k] = v
+
+    content = r.read()
+    enc = headers.get('Content-Encoding', '')
+    if enc == 'gzip':
+        import gzip
+        content = gzip.decompress(content)
+    elif enc == 'deflate':
+        import zlib
+        content = zlib.decompress(content)
+
+    class _R:
+        pass
+
+    resp = _R()
+    resp.status_code  = r.status
+    resp.headers      = headers
+    resp.content      = content
+    resp.cookies_raw  = cookies_raw
+    resp.content_type = headers.get('Content-Type', 'text/html; charset=utf-8')
+    return resp
+
+
+_web_ssh_registry: dict = {}
+_web_ssh_lock = threading.Lock()
+
+def _web_get_ssh_client(proxy) -> paramiko.SSHClient:
+    """
+    Retorna cliente SSH cacheado. Detecta transport degradado de forma mais
+    agressiva: verifica is_active() E tenta um keepalive real antes de reutilizar.
+    """
+    key = f"web_ssh:{proxy.id}"
+    with _web_ssh_lock:
+        entry = _web_ssh_registry.get(key)
+        if entry:
+            client = entry['client']
+            transport = client.get_transport()
+            ativo = False
+            if transport and transport.is_active():
+                try:
+                    # Keepalive real — detecta canal morto que is_active() não detecta
+                    transport.send_ignore()
+                    ativo = True
+                except Exception:
+                    ativo = False
+
+            if not ativo:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+                del _web_ssh_registry[key]
+            else:
+                return client
+
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            hostname=proxy.host,
+            port=int(proxy.porta),
+            username=proxy.usuario,
+            password=proxy.senha,
+            timeout=15,
+            look_for_keys=False,
+            allow_agent=False,
+            banner_timeout=15,
+        )
+        client.get_transport().set_keepalive(30)
+        _web_ssh_registry[key] = {'client': client}
+        logger.info("WEB_PROXY: nova conexão SSH para proxy %s", proxy.nome)
+        return client
+
+
+def _web_rewrite_html(content: bytes, proxy_base: str,
+                       target_host: str = '', porta_web: int = 0,
+                       scheme: str = 'http') -> bytes:
+    try:
+        html = content.decode('utf-8', errors='replace')
+    except Exception:
+        return content
+
+    # ── Reescrever URLs absolutas com o host do equipamento ──────────────
+    if target_host:
+        for proto in ('https', 'http'):
+            for porta_variante in (f':{porta_web}', ''):
+                prefixo = f'{proto}://{target_host}{porta_variante}'
+                html = html.replace(prefixo, proxy_base.rstrip('/path=').rstrip('='))
+
+    # ── Reescrever caminhos relativos em atributos HTML ───────────────────
+    for attr in ('href', 'src', 'action', 'data-src', 'data-url'):
+        html = _re.sub(rf'({attr}\s*=\s*["\'])/', rf'\1{proxy_base}/', html)
+
+    html = _re.sub(r'(url\s*\(\s*["\']?)/', rf'\1{proxy_base}/', html)
+    html = _re.sub(r"(location(?:\.href)?\s*=\s*['\"])/", rf"\1{proxy_base}/", html)
+
+    # ── Remover meta refresh ──────────────────────────────────────────────
+    html = _re.sub(
+        r'<meta[^>]+http-equiv=["\']refresh["\'][^>]*>',
+        '<!-- meta refresh removido pelo proxy -->',
+        html, flags=_re.IGNORECASE
+    )
+
+    inject = f"""
+<script>
+(function() {{
+  var PB = '{proxy_base}';
+  var BASE = PB.split('?')[0];
+  var TARGET_HOST = '{target_host}';
+
+  // ── Neutralizar reloads e redirects problemáticos ──────────────────
+  
+  // Lista de paths que causam loop (login, reload, etc.)
+  var _paginasProblematicas = [
+    '/login.html', '/login', '/Login', '/Login.html',
+    '/action/login_first.html', '/action/login_first',
+    '/action/login',
+    '/cgi-bin/login', '/cgi-bin/luci',
+    '/weblogin.html', '/webLogin.html',
+  ];
+
+  // Verificar se URL é a mesma página atual (reload)
+  function _ehReload(url) {{
+    if (!url) return false;
+    try {{
+      var atual = window.location.href;
+      var normalizado = url.indexOf('http') === 0 ? url : window.location.origin + url;
+      return normalizado === atual || normalizado === atual + '/';
+    }} catch(e) {{ return false; }}
+  }}
+
+  // Verificar se URL é página de login conhecida
+  function _ehLogin(url) {{
+    if (!url) return false;
+    var urlLower = url.toLowerCase();
+    for (var i = 0; i < _paginasProblematicas.length; i++) {{
+      var p = _paginasProblematicas[i].toLowerCase();
+      if (urlLower === p || urlLower.indexOf(p + '?') === 0 ||
+          urlLower.indexOf(p + '#') === 0) {{
+        return true;
+      }}
+    }}
+    return false;
+  }}
+
+  // Verificar se deve bloquear (reload ou login quando já estamos em login)
+  var currentPath = window.location.pathname + window.location.search;
+  var jaEstamosEmLogin = _ehLogin(window.location.pathname);
+
+  function _deveBloquear(url) {{
+    if (!url) return false;
+    var path = url;
+    // Extrair path de URL absoluta
+    if (url.indexOf('://') !== -1) {{
+      try {{ path = new URL(url).pathname; }} catch(e) {{}}
+    }}
+    // Bloquear reload da mesma página
+    if (_ehReload(url)) {{
+      console.warn('[PROXY] reload bloqueado:', url);
+      return true;
+    }}
+    // Bloquear loop de login (se já estamos em login, não redirecionar para login)
+    if (jaEstamosEmLogin && _ehLogin(path)) {{
+      console.warn('[PROXY] loop de login bloqueado:', url);
+      return true;
+    }}
+    return false;
+  }}
+
+  // ── Neutralizar setTimeout/setInterval que fazem reload ──────────────
+  var _origSetTimeout = window.setTimeout;
+  var _origSetInterval = window.setInterval;
+
+  window.setTimeout = function(fn, delay) {{
+    // Bloquear timeouts muito curtos (< 3s) que provavelmente são reloads
+    // mas só se a função for string (eval) contendo location/reload
+    if (typeof fn === 'string') {{
+      var fnLower = fn.toLowerCase();
+      if (fnLower.indexOf('location') !== -1 || fnLower.indexOf('reload') !== -1) {{
+        console.warn('[PROXY] setTimeout com location bloqueado');
+        return 0;
+      }}
+    }}
+    return _origSetTimeout.apply(this, arguments);
+  }};
+
+  // ── Interceptar location.href setter ─────────────────────────────────
+  try {{
+    var _href_desc = Object.getOwnPropertyDescriptor(Location.prototype, 'href');
+    if (_href_desc && _href_desc.set) {{
+      var _orig_href_set = _href_desc.set;
+      Object.defineProperty(Location.prototype, 'href', {{
+        get: _href_desc.get,
+        set: function(url) {{
+          if (_deveBloquear(url)) return;
+          // Reescrever paths relativos
+          if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
+            url = PB + url;
+          return _orig_href_set.call(this, url);
+        }},
+        configurable: true
+      }});
+    }}
+  }} catch(e) {{}}
+
+  // ── Interceptar location.replace ─────────────────────────────────────
+  var _replace = window.location.replace.bind(window.location);
+  window.location.replace = function(url) {{
+    if (_deveBloquear(url)) return;
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
+      url = PB + url;
+    return _replace(url);
+  }};
+
+  // ── Interceptar location.assign ──────────────────────────────────────
+  var _assign = window.location.assign.bind(window.location);
+  window.location.assign = function(url) {{
+    if (_deveBloquear(url)) return;
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
+      url = PB + url;
+    return _assign(url);
+  }};
+
+  // ── Interceptar location.reload ──────────────────────────────────────
+  var _reload = window.location.reload.bind(window.location);
+  window.location.reload = function() {{
+    console.warn('[PROXY] location.reload() bloqueado');
+    // Não recarregar — pode causar loop
+  }};
+
+  // ── Interceptar fetch() ───────────────────────────────────────────────
+  var _f = window.fetch;
+  window.fetch = function(url, opts) {{
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
+      url = PB + url;
+    return _f.call(this, url, opts);
+  }};
+
+  // ── Interceptar XMLHttpRequest ────────────────────────────────────────
+  var _xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(m, url) {{
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
+      url = PB + url;
+    return _xhrOpen.apply(this, arguments);
+  }};
+
+  // ── Reescrever forms ──────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {{
+    document.querySelectorAll('form').forEach(function(form) {{
+      var action = form.getAttribute('action') || '';
+      if (action && action.startsWith('/') && !action.startsWith(BASE)) {{
+        form.setAttribute('action', PB + action);
+      }}
+    }});
+
+    // Neutralizar meta refresh que sobrou
+    document.querySelectorAll('meta[http-equiv="refresh"], meta[http-equiv="Refresh"]')
+      .forEach(function(m) {{
+        m.parentNode.removeChild(m);
+        console.warn('[PROXY] meta refresh removido pelo DOM');
+      }});
+  }});
+
+}})();
+</script>"""
+
+    base_tag = f'<base href="{proxy_base}/">\n'
+    html = _re.sub(
+        r'(<head[^>]*>)',
+        r'\1\n' + base_tag + inject,
+        html, count=1, flags=_re.IGNORECASE
+    )
+    return html.encode('utf-8')
+
+# ── Cookie jar por acesso ─────────────────────────────────────────────────
+_web_cookie_jar  = {}
+_web_cookie_lock = threading.Lock()
+
+def _get_acesso_cookies(acesso_id: str) -> dict:
+    with _web_cookie_lock:
+        return dict(_web_cookie_jar.get(str(acesso_id), {}))
+
+def _update_acesso_cookies(acesso_id: str, cookies_raw: list):
+    with _web_cookie_lock:
+        jar = _web_cookie_jar.setdefault(str(acesso_id), {})
+        for sc in cookies_raw:
+            parts = [p.strip() for p in sc.split(';')]
+            if parts and '=' in parts[0]:
+                n, v = parts[0].split('=', 1)
+                jar[n.strip()] = v.strip()
+
+
+@login_required(login_url='login')
+def proxy_web_acesso(request, acesso_id):
+    import requests as req_lib
+
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+
+    # ── Permissão ─────────────────────────────────────────────────────
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente_obj = Cliente.objects.get(usuario=request.user)
+            if acesso.cliente.id != cliente_obj.id:
+                return HttpResponse('Sem permissao', status=403)
+        except Cliente.DoesNotExist:
+            return HttpResponse('Sem permissao', status=403)
+
+    url_prefix   = f'/clientes/acessos/{acesso_id}/web/'
+    request_path = request.path
+
+    # ── Path veio na URL em vez de query string ───────────────────────
+    if 'porta' not in request.GET and request_path != url_prefix:
+        extra_path = '/' + request_path[len(url_prefix):].lstrip('/')
+        referer    = request.META.get('HTTP_REFERER', '')
+        porta_ref  = '80'
+        scheme_ref = 'http'
+        if 'porta=' in referer:
+            import re
+            m = re.search(r'porta=(\d+)', referer)
+            if m:
+                porta_ref = m.group(1)
+            m2 = re.search(r'scheme=(\w+)', referer)
+            if m2:
+                scheme_ref = m2.group(1)
+        return HttpResponseRedirect(
+            f'/clientes/acessos/{acesso_id}/web/'
+            f'?porta={porta_ref}&scheme={scheme_ref}&path={extra_path}'
+        )
+
+    # ── Parâmetros ────────────────────────────────────────────────────
+    porta_web       = int(request.GET.get('porta', 80))
+    scheme          = request.GET.get('scheme', 'http')
+    path            = request.GET.get('path', '/')
+    _redirect_count = int(request.GET.get('_rc', 0))
+
+    if not path.startswith('/'):
+        path = '/' + path
+
+    # Corrigir scheme pela porta
+    if porta_web in (443, 8443, 4443):
+        scheme = 'https'
+    elif porta_web in (80, 8080, 8888, 3000, 8000, 8081, 8082):
+        scheme = 'http'
+
+    # Query string extra (sem os parâmetros internos do proxy)
+    qs_params = request.GET.copy()
+    for p in ('porta', 'scheme', 'path', '_rc'):
+        qs_params.pop(p, None)
+    qs        = qs_params.urlencode()
+    full_path = path + ('?' + qs if qs else '')
+
+    target_host = acesso.host
+    proxy_base  = f'/clientes/acessos/{acesso_id}/web/?porta={porta_web}&scheme={scheme}&path='
+
+    STRIP = {
+        'x-frame-options', 'content-security-policy',
+        'x-content-security-policy', 'x-webkit-csp',
+        'content-security-policy-report-only',
+        'content-encoding', 'transfer-encoding',
+    }
+
+    body = request.body if request.method in ('POST', 'PUT', 'PATCH') else b''
+
+    # ── Cookies ───────────────────────────────────────────────────────
+    browser_cookies = request.META.get('HTTP_COOKIE', '')
+    session_cookies = _get_acesso_cookies(str(acesso_id))
+    if session_cookies:
+        extra         = '; '.join(f'{k}={v}' for k, v in session_cookies.items())
+        cookie_header = (browser_cookies + '; ' + extra).strip('; ')
+    else:
+        cookie_header = browser_cookies
+
+    req_headers = {'Cookie': cookie_header}
+
+    # ── Proxy SSH se IP privado ───────────────────────────────────────
+    proxy_srv = None
+    if is_private_ip(target_host):
+        proxy_srv = ProxyServer.objects.filter(
+            cliente=acesso.cliente, ativo=True
+        ).first()
+        if not proxy_srv:
+            return HttpResponse(
+                _error_page(f'IP privado ({target_host}) sem proxy SSH ativo.'),
+                content_type='text/html', status=400
+            )
+
+    # ── Fazer requisição ──────────────────────────────────────────────
+    def fazer_request(req_path):
+        if proxy_srv:
+            logger.info("WEB_PROXY SSH: %s://%s:%s%s", scheme, target_host, porta_web, req_path)
+            return _web_do_request(
+                proxy_srv, target_host, porta_web, scheme,
+                req_path, request.method, req_headers, body
+            )
+        else:
+            url = f"{scheme}://{target_host}:{porta_web}{req_path}"
+            logger.info("WEB_PROXY DIRETO: %s", url)
+            r = req_lib.request(
+                request.method, url,
+                headers={
+                    'User-Agent':      'Mozilla/5.0 (CONEXA-CRM/proxy)',
+                    'Accept':          'text/html,application/xhtml+xml,*/*',
+                    'Accept-Encoding': 'identity',
+                    'Cookie':          cookie_header,
+                },
+                data=body or None,
+                allow_redirects=False,
+                timeout=(10, 15),
+                verify=False,
+                stream=False,
+            )
+            class _R: pass
+            resp              = _R()
+            resp.status_code  = r.status_code
+            resp.headers      = dict(r.headers)
+            resp.content      = r.content
+            resp.cookies_raw  = []
+            resp.content_type = r.headers.get('Content-Type', 'text/html')
+            logger.info("WEB_PROXY DIRETO RESP: status=%s size=%d", r.status_code, len(r.content))
+            return resp
+
+    try:
+        resp = fazer_request(full_path)
+
+        if resp is None:
+            return HttpResponse(
+                _error_page(
+                    f'Sem resposta de {target_host}:{porta_web}.<br><br>'
+                    f'Verifique se o proxy SSH está ativo e o equipamento acessível.'
+                ),
+                content_type='text/html', status=502
+            )
+
+        logger.info("WEB_PROXY RESP: status=%s type=%s size=%s",
+                    resp.status_code,
+                    getattr(resp, 'content_type', '?'),
+                    len(resp.content))
+
+        headers      = dict(resp.headers)
+        status_code  = resp.status_code
+        content      = resp.content
+        content_type = headers.get('Content-Type', 'text/html; charset=utf-8')
+        cookies_raw  = getattr(resp, 'cookies_raw', [])
+
+        if cookies_raw:
+            _update_acesso_cookies(str(acesso_id), cookies_raw)
+
+        # ── Tratar redirects HTTP ─────────────────────────────────────
+        if status_code in (301, 302, 303, 307, 308):
+
+            # Parar após muitos redirects
+            if _redirect_count >= 6:
+                logger.warning("WEB_PROXY: muitos redirects (%d) em %s", _redirect_count, full_path)
+                return HttpResponse(
+                    _error_page(
+                        f'Muitos redirects em <b>{target_host}</b>.<br><br>'
+                        f'O equipamento pode exigir autenticação ou estar em loop.<br><br>'
+                        f'<a href="/clientes/acessos/{acesso_id}/web/'
+                        f'?porta={porta_web}&scheme={scheme}&path=/" '
+                        f'style="color:#58a6ff">Tentar página inicial</a>'
+                    ),
+                    content_type='text/html', status=200
+                )
+
+            location = headers.get('Location', '/')
+            p        = _urlparse(location)
+
+            redirect_netloc = p.netloc or ''
+            redirect_host   = redirect_netloc.split(':')[0] if redirect_netloc else target_host
+            redirect_scheme = p.scheme if p.scheme else scheme
+            redirect_path   = p.path or '/'
+            redirect_qs_str = ('?' + p.query) if p.query else ''
+
+            # Porta do redirect
+            if ':' in redirect_netloc:
+                try:
+                    redirect_porta = int(redirect_netloc.split(':')[1])
+                except ValueError:
+                    redirect_porta = 443 if redirect_scheme == 'https' else 80
+            elif redirect_scheme == 'https':
+                redirect_porta = 443
+            else:
+                redirect_porta = 80
+
+            mesmo_host   = (redirect_host == target_host or not redirect_netloc)
+            host_privado = redirect_host and is_private_ip(redirect_host)
+
+            if mesmo_host or host_privado:
+                # Redirect para mesma path = loop imediato
+                if redirect_path == path and not p.query:
+                    logger.warning("WEB_PROXY: redirect para mesma path %s", path)
+                    # Mostrar o conteúdo que temos em vez de mensagem de erro
+                    # (a página pode já ser utilizável mesmo com redirect)
+                    if content and len(content) > 100 and b'<html' in content.lower():
+                        if 'text/html' in content_type:
+                            content      = _web_rewrite_html(content, proxy_base, target_host, porta_web, scheme)
+                            content_type = 'text/html; charset=utf-8'
+                        return HttpResponse(content, content_type=content_type, status=200)
+
+                    return HttpResponse(
+                        _error_page(
+                            f'O equipamento <b>{target_host}</b> redirecionou para a mesma '
+                            f'página: <b>{path}</b><br><br>'
+                            f'Pode ser necessário autenticação prévia.<br><br>'
+                            f'<a href="/clientes/acessos/{acesso_id}/web/'
+                            f'?porta={porta_web}&scheme={scheme}&path=/" '
+                            f'style="color:#58a6ff">Tentar página inicial</a>'
+                        ),
+                        content_type='text/html', status=200
+                    )
+
+                new_loc = (
+                    f'/clientes/acessos/{acesso_id}/web/'
+                    f'?porta={redirect_porta}&scheme={redirect_scheme}'
+                    f'&path={redirect_path}{redirect_qs_str}'
+                    f'&_rc={_redirect_count + 1}'
+                )
+                logger.info("WEB_PROXY REDIRECT: %s → %s (rc=%d)",
+                            location, new_loc, _redirect_count + 1)
+                response = HttpResponse(status=302)
+                response['Location'] = new_loc
+            else:
+                logger.info("WEB_PROXY REDIRECT externo: %s", location)
+                response = HttpResponse(status=302)
+                response['Location'] = location
+
+            for sc in cookies_raw:
+                parts = [pt.strip() for pt in sc.split(';')]
+                if parts and '=' in parts[0]:
+                    n, v = parts[0].split('=', 1)
+                    response.set_cookie(n.strip(), v.strip(), path='/', samesite='Lax')
+            return response
+
+        # ── Reescrever HTML ───────────────────────────────────────────
+        if 'text/html' in content_type:
+            content      = _web_rewrite_html(content, proxy_base, target_host, porta_web, scheme)
+            content_type = 'text/html; charset=utf-8'
+
+        response = HttpResponse(content, content_type=content_type, status=status_code)
+
+        for k, v in headers.items():
+            if k.lower() not in STRIP:
+                try:
+                    response[k] = v
+                except Exception:
+                    pass
+
+        if 'X-Frame-Options' in response:
+            del response['X-Frame-Options']
+        if 'Content-Security-Policy' in response:
+            del response['Content-Security-Policy']
+
+        for sc in cookies_raw:
+            parts = [pt.strip() for pt in sc.split(';')]
+            if parts and '=' in parts[0]:
+                n, v = parts[0].split('=', 1)
+                response.set_cookie(n.strip(), v.strip(), path='/', samesite='Lax')
+
+        return response
+
+    except Exception as e:
+        logger.exception("WEB_PROXY erro acesso_id=%s target=%s:%s path=%s",
+                         acesso_id, target_host, porta_web, full_path)
+        return HttpResponse(
+            _error_page(
+                f'Erro ao conectar em <b>{target_host}:{porta_web}</b><br><br>'
+                f'<small>{str(e)}</small>'
+            ),
+            content_type='text/html', status=500
+        )
+
+
+def _web_do_request(proxy_srv, target_host, target_port, scheme,
+                    full_path, method, req_headers, body=b''):
+    if scheme == 'https':
+        return _web_do_request_https(
+            proxy_srv, target_host, target_port,
+            full_path, method, req_headers, body
+        )
+
+    client    = _web_get_ssh_client(proxy_srv)
+    transport = client.get_transport()
+
+    try:
+        _tmp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _tmp.bind(('127.0.0.1', 0))
+        orig_port = _tmp.getsockname()[1]
+        _tmp.close()
+    except Exception:
+        orig_port = 12345
+
+    channel = None
+    logger.info("WEB_PROXY HTTP: abrindo canal para %s:%s%s", target_host, target_port, full_path)
+    for attempt in range(2):
+        try:
+            channel = transport.open_channel(
+                'direct-tcpip',
+                (target_host, int(target_port)),
+                ('127.0.0.1', orig_port),
+                timeout=15,
+            )
+            break
+        except Exception as exc:
+            if attempt == 0:
+                logger.warning("WEB_PROXY: open_channel falhou (%s), reconectando...", exc)
+                with _web_ssh_lock:
+                    key = f"web_ssh:{proxy_srv.id}"
+                    if key in _web_ssh_registry:
+                        try: _web_ssh_registry[key]['client'].close()
+                        except: pass
+                        del _web_ssh_registry[key]
+                client    = _web_get_ssh_client(proxy_srv)
+                transport = client.get_transport()
+            else:
+                raise
+
+    try:
+        safe_headers = {
+            'Host':            f"{target_host}:{target_port}",
+            'Connection':      'close',
+            'User-Agent':      'Mozilla/5.0 (CONEXA-CRM/proxy)',
+            'Accept-Encoding': 'identity',
+            'Accept':          'text/html,application/xhtml+xml,*/*',
+        }
+        for h in ('Cookie', 'Authorization', 'Content-Type'):
+            if h in req_headers:
+                safe_headers[h] = req_headers[h]
+        if body:
+            safe_headers['Content-Length'] = str(len(body))
+
+        lines = [f"{method} {full_path} HTTP/1.0"]
+        lines += [f"{k}: {v}" for k, v in safe_headers.items()]
+        channel.sendall(("\r\n".join(lines) + "\r\n\r\n").encode('utf-8'))
+        if body:
+            channel.sendall(body)
+
+        # ── Leitura robusta: não depende apenas de EOF ──────────────────
+        # Muitos equipamentos (roteadores, OLTs) demoram para fechar o canal
+        # TCP mesmo com HTTP/1.0. Usamos leitura por Content-Length quando
+        # disponível, e timeout com select() como fallback.
+        response_bytes = _ler_resposta_http_canal(channel, timeout_total=20)
+
+        if not response_bytes:
+            raise Exception(
+                f"Sem resposta HTTP de {target_host}:{target_port} — "
+                "verifique se o host está acessível pelo proxy SSH."
+            )
+        logger.info("WEB_PROXY HTTP: leitura concluída, %d bytes", len(response_bytes))
+        return _web_parse_response(response_bytes)
+
+    finally:
+        try: channel.close()
+        except: pass
+
+def _ler_resposta_http_canal(channel, timeout_total=20):
+    """
+    Lê resposta HTTP de um canal paramiko de forma robusta.
+
+    Estratégia em 3 fases:
+    1. Lê headers até encontrar \\r\\n\\r\\n (com timeout de 10s)
+    2. Se tiver Content-Length: lê exatamente N bytes do body
+    3. Sem Content-Length: lê até EOF ou silêncio de 2s (fallback)
+
+    Isso evita o travamento quando o equipamento não fecha o canal TCP
+    imediatamente após enviar a resposta HTTP/1.0.
+    """
+    import select
+
+    HEADER_TIMEOUT  = 10   # segundos para receber os headers completos
+    BODY_CHUNK_TIMEOUT = 3 # segundos de silêncio para declarar fim do body
+    MAX_BODY        = 10 * 1024 * 1024  # 10MB
+
+    # ── Fase 1: ler até \r\n\r\n ────────────────────────────────────────
+    header_buf = b""
+    deadline   = time.time() + HEADER_TIMEOUT
+
+    while b"\r\n\r\n" not in header_buf:
+        if time.time() > deadline:
+            raise Exception("Timeout aguardando headers HTTP do equipamento")
+
+        try:
+            r, _, _ = select.select([channel], [], [], 0.5)
+        except Exception:
+            break
+
+        if r:
+            chunk = channel.recv(4096)
+            if not chunk:
+                break  # EOF antes dos headers completos
+            header_buf += chunk
+        # se não tem dados, continua esperando até deadline
+
+    if b"\r\n\r\n" not in header_buf:
+        # Retorna o que tiver — talvez seja uma resposta malformada
+        return header_buf
+
+    # ── Separar headers do body inicial ────────────────────────────────
+    sep_pos      = header_buf.index(b"\r\n\r\n")
+    headers_raw  = header_buf[:sep_pos]
+    body_inicial = header_buf[sep_pos + 4:]
+
+    # ── Extrair Content-Length dos headers ─────────────────────────────
+    content_length = None
+    for linha in headers_raw.split(b"\r\n"):
+        if linha.lower().startswith(b"content-length:"):
+            try:
+                content_length = int(linha.split(b":", 1)[1].strip())
+            except Exception:
+                pass
+            break
+
+    # ── Fase 2: body por Content-Length (preferido) ────────────────────
+    if content_length is not None:
+        body_buf = bytearray(body_inicial)
+        deadline = time.time() + timeout_total
+
+        while len(body_buf) < content_length:
+            if time.time() > deadline:
+                logger.warning("WEB_PROXY: timeout lendo body (Content-Length=%d, lido=%d)",
+                               content_length, len(body_buf))
+                break
+
+            faltam = content_length - len(body_buf)
+            try:
+                r, _, _ = select.select([channel], [], [], 1.0)
+            except Exception:
+                break
+
+            if r:
+                chunk = channel.recv(min(faltam, 65536))
+                if not chunk:
+                    break  # EOF
+                body_buf += chunk
+
+        return header_buf[:sep_pos + 4] + bytes(body_buf)
+
+    # ── Fase 3: body por EOF / silêncio (fallback) ─────────────────────
+    # Usado quando não há Content-Length (chunked, conexões antigas, etc.)
+    body_buf   = bytearray(body_inicial)
+    ultimo_dado = time.time()
+    deadline    = time.time() + timeout_total
+
+    while True:
+        if time.time() > deadline:
+            break
+
+        try:
+            r, _, _ = select.select([channel], [], [], 0.2)
+        except Exception:
+            break
+
+        if r:
+            chunk = channel.recv(65536)
+            if not chunk:
+                break  # EOF — fim garantido
+            body_buf  += chunk
+            ultimo_dado = time.time()
+            if len(body_buf) > MAX_BODY:
+                break
+        else:
+            # Sem dados: verifica silêncio
+            if time.time() - ultimo_dado >= BODY_CHUNK_TIMEOUT:
+                break
+
+    return header_buf[:sep_pos + 4] + bytes(body_buf)
+
+
+def _ler_resposta_http_ssl(ssl_sock, timeout_total=20):
+    """
+    Mesma lógica de _ler_resposta_http_canal, mas para sockets SSL.
+    Usa ssl_sock.recv() com settimeout() em vez de select().
+    """
+    HEADER_TIMEOUT      = 10
+    BODY_CHUNK_TIMEOUT  = 3
+    MAX_BODY            = 10 * 1024 * 1024
+
+    # Fase 1: headers
+    header_buf = b""
+    ssl_sock.settimeout(1.0)
+    deadline = time.time() + HEADER_TIMEOUT
+
+    while b"\r\n\r\n" not in header_buf:
+        if time.time() > deadline:
+            raise Exception("Timeout aguardando headers HTTPS do equipamento")
+        try:
+            chunk = ssl_sock.recv(4096)
+            if not chunk:
+                break
+            header_buf += chunk
+        except socket.timeout:
+            continue
+        except (_ssl.SSLError, OSError):
+            break
+
+    if b"\r\n\r\n" not in header_buf:
+        return header_buf
+
+    sep_pos      = header_buf.index(b"\r\n\r\n")
+    headers_raw  = header_buf[:sep_pos]
+    body_inicial = header_buf[sep_pos + 4:]
+
+    content_length = None
+    for linha in headers_raw.split(b"\r\n"):
+        if linha.lower().startswith(b"content-length:"):
+            try:
+                content_length = int(linha.split(b":", 1)[1].strip())
+            except Exception:
+                pass
+            break
+
+    # Fase 2: body por Content-Length
+    if content_length is not None:
+        body_buf = bytearray(body_inicial)
+        deadline = time.time() + timeout_total
+        ssl_sock.settimeout(2.0)
+
+        while len(body_buf) < content_length:
+            if time.time() > deadline:
+                break
+            try:
+                faltam = content_length - len(body_buf)
+                chunk  = ssl_sock.recv(min(faltam, 65536))
+                if not chunk:
+                    break
+                body_buf += chunk
+            except socket.timeout:
+                continue
+            except (_ssl.SSLError, OSError):
+                break
+
+        return header_buf[:sep_pos + 4] + bytes(body_buf)
+
+    # Fase 3: fallback por silêncio
+    body_buf    = bytearray(body_inicial)
+    ultimo_dado = time.time()
+    deadline    = time.time() + timeout_total
+    ssl_sock.settimeout(0.5)
+
+    while True:
+        if time.time() > deadline:
+            break
+        try:
+            chunk = ssl_sock.recv(65536)
+            if not chunk:
+                break
+            body_buf   += chunk
+            ultimo_dado = time.time()
+            if len(body_buf) > MAX_BODY:
+                break
+        except socket.timeout:
+            if time.time() - ultimo_dado >= BODY_CHUNK_TIMEOUT:
+                break
+        except (_ssl.SSLError, OSError):
+            break
+
+    return header_buf[:sep_pos + 4] + bytes(body_buf)
+
+def _web_do_request_https(proxy_srv, target_host, target_port,
+                          full_path, method, req_headers, body=b''):
+    client    = _web_get_ssh_client(proxy_srv)
+    transport = client.get_transport()
+
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(('127.0.0.1', 0))
+    srv.listen(1)
+    local_port = srv.getsockname()[1]
+    srv.settimeout(15)
+
+    stop = threading.Event()
+
+    def _copy(src, dst):
+        try:
+            src.settimeout(1.0)
+        except: pass
+        try:
+            while not stop.is_set():
+                try:
+                    data = src.recv(65536)
+                    if not data:
+                        break
+                    dst.sendall(data)
+                except socket.timeout:
+                    continue
+                except: break
+        except: pass
+        finally:
+            stop.set()
+            for s in (src, dst):
+                try: s.close()
+                except: pass
+
+    def _tunnel_accept():
+        try:
+            conn, _ = srv.accept()
+            conn.settimeout(60)
+            try:
+                ch = transport.open_channel(
+                    'direct-tcpip',
+                    (target_host, int(target_port)),
+                    ('127.0.0.1', local_port),
+                    timeout=15,
+                )
+                ch.settimeout(1.0)
+                threading.Thread(target=_copy, args=(conn, ch),  daemon=True).start()
+                threading.Thread(target=_copy, args=(ch,  conn), daemon=True).start()
+            except Exception as exc:
+                logger.error("HTTPS tunnel open_channel falhou: %s", exc)
+                stop.set()
+                try: conn.close()
+                except: pass
+        except Exception as exc:
+            logger.error("HTTPS tunnel accept falhou: %s", exc)
+            stop.set()
+        finally:
+            try: srv.close()
+            except: pass
+
+    threading.Thread(target=_tunnel_accept, daemon=True).start()
+    time.sleep(0.3)
+
+    ssl_sock = None
+    raw_sock = None
+    try:
+        ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode    = _ssl.CERT_NONE
+        try:
+            ctx.minimum_version = _ssl.TLSVersion.TLSv1
+        except AttributeError:
+            pass
+
+        last_err = None
+        for attempt in range(3):
+            try:
+                raw_sock = socket.create_connection(('127.0.0.1', local_port), timeout=10)
+                break
+            except Exception as e:
+                last_err = e
+                time.sleep(0.3)
+        else:
+            raise Exception(f"Bridge TCP inacessível: {last_err}")
+
+        ssl_sock = ctx.wrap_socket(raw_sock, server_hostname=target_host)
+        ssl_sock.settimeout(30)
+
+        safe_headers = {
+            'Host':            f"{target_host}:{target_port}",
+            'Connection':      'close',
+            'User-Agent':      'Mozilla/5.0 (CONEXA-CRM/proxy)',
+            'Accept-Encoding': 'identity',
+            'Accept':          'text/html,application/xhtml+xml,*/*',
+        }
+        for h in ('Cookie', 'Authorization', 'Content-Type'):
+            if h in req_headers:
+                safe_headers[h] = req_headers[h]
+        if body:
+            safe_headers['Content-Length'] = str(len(body))
+
+        # ✅ HTTP/1.0 — servidor fecha após resposta, EOF = fim garantido
+        lines = [f"{method} {full_path} HTTP/1.0"]
+        lines += [f"{k}: {v}" for k, v in safe_headers.items()]
+        ssl_sock.sendall(("\r\n".join(lines) + "\r\n\r\n").encode('utf-8'))
+        if body:
+            ssl_sock.sendall(body)
+
+        logger.info("WEB_PROXY HTTPS: enviando request para %s:%s%s", target_host, target_port, full_path)
+        response_bytes = _ler_resposta_http_ssl(ssl_sock, timeout_total=20)
+        logger.info("WEB_PROXY HTTPS: leitura concluída, %d bytes", len(response_bytes))
+
+        if not response_bytes:
+            raise Exception(
+                f"Sem resposta HTTPS de {target_host}:{target_port}"
+            )
+
+        return _web_parse_response(response_bytes)
+
+    finally:
+        stop.set()
+        for s in (ssl_sock, raw_sock):
+            try:
+                if s: s.close()
+            except: pass

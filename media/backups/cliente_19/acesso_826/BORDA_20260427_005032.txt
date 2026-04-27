@@ -1,0 +1,1388 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Villaggionet - Rodrigo Goncalves
+Equipamento: BORDA
+Host: 179.48.68.10:56022
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M4
+Template: Backup Huawei
+Data: 27/04/2026 00:50:32
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+Info: The configuration takes effect on the current user terminal interface only.
+<BGP>
+
+============================================================
+Comando: display current-configuration
+============================================================
+!Software Version V800R021C00SPC100
+!Last configuration was updated at 2026-04-10 17:43:18-03:00 by suporte
+!Last configuration was saved at 2026-04-10 17:50:50-03:00 by suporte
+#
+sysname BGP
+#
+undo FTP server-source all-interface
+undo FTP ipv6 server-source all-interface
+#
+undo user-security-policy enable
+#
+service-template template-default0
+#
+service-template template-default1
+#
+service-template template-default2
+#
+service-template template-default3
+#
+service-template template-default4
+#
+ntp-service disable
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+ntp-service refclock-master 2
+#
+vlan batch 858
+#
+rsa peer-public-key 10.63.5.234
+ public-key-code begin
+ 3082010A
+  02820101
+    00A2584D D94C3175 656A2D3E 9F1A833D 74DA6F48 FB6DB24E 4DD382F9 0FEF864D
+    741AAB67 8E309EBF 9DC58B00 18F61780 AE427EC0 3CB89F32 E656B8DA 82726ADB
+    ADF76D5C CCED5ACE 20CA632C 47BB3EDD 17220E4A 23F897D6 CC4615A8 68C75DDE
+    B6880B57 A0D5E9B0 8F5A3374 94A5BCC8 64875B20 3381E5B5 F53CD3E8 F52F9C06
+    FF221D89 D08CC6BD AB02BF8C A9F7FC8B 621D7FCC 258EC5B7 DD0B3857 8C55C76B
+    93172F2B 59BF6CC5 83657FA0 912D37B7 B0EC73AF 69643420 4F46D4B0 0CC7C2B9
+    A192A656 CC5F4070 8F380D83 3C99A919 5D9C8B24 DCAE0CA4 320239D2 C931A044
+    7E540BFF 41CEEAE6 6B47F23C B4D7DBDE 180F97DA E9818ADD 19A1A368 967010BB
+    71
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+ecc peer-public-key 10.255.255.1
+ public-key-code begin
+  04001988 C680E604 A1D30EEA 9EF12281 551A1CEA 4D0FCA0C 5A4A6AA9 9ECF3742
+  664DBF87 DDEE1721 94E1EF35 3DFF7C0F E1A00804 F56F742B 0243E3D3 B08C879E
+  05A29100 5F7B2A20 DB7B28A4 48FE0C98 C08BA58B 89658741 1BEEE294 2296FA04
+  8C79D7E9 D0DCEDF6 21DE7A00 3CBCA419 5315B788 616132B7 7BFC78D0 4F76D961
+  463D8847 93
+ public-key-code end
+ peer-public-key end
+#
+ecc peer-public-key 172.31.255.226
+ public-key-code begin
+  04001988 C680E604 A1D30EEA 9EF12281 551A1CEA 4D0FCA0C 5A4A6AA9 9ECF3742
+  664DBF87 DDEE1721 94E1EF35 3DFF7C0F E1A00804 F56F742B 0243E3D3 B08C879E
+  05A29100 5F7B2A20 DB7B28A4 48FE0C98 C08BA58B 89658741 1BEEE294 2296FA04
+  8C79D7E9 D0DCEDF6 21DE7A00 3CBCA419 5315B788 616132B7 7BFC78D0 4F76D961
+  463D8847 93
+ public-key-code end
+ peer-public-key end
+#
+undo icmp name timestamp-reply send
+#
+as-notation plain
+#
+ip netstream as-mode 32
+ip netstream timeout active 1
+ip netstream timeout inactive 15
+ip netstream export version 9 origin-as bgp-nexthop ttl
+ip netstream export template sequence-number fixed
+ip netstream export index-switch 32
+ip netstream export template timeout-rate 1
+ip netstream sampler fix-packets 1024 inbound
+ip netstream sampler fix-packets 1024 outbound
+ip netstream export source 10.255.255.253
+ip netstream export host 172.31.100.26 3057
+ip netstream export template option timeout-rate 1
+ip netstream export template option application-label
+#
+ipv6 netstream as-mode 32
+ipv6 netstream timeout active 1
+ipv6 netstream timeout inactive 15
+ipv6 netstream export version 9 origin-as bgp-nexthop ttl
+ipv6 netstream export template sequence-number fixed
+ipv6 netstream export index-switch 32
+ipv6 netstream export template timeout-rate 1
+ipv6 netstream sampler fix-packets 1024 inbound
+ipv6 netstream sampler fix-packets 1024 outbound
+ipv6 netstream export source ipv6 2804:75C0:1000:1::1
+ipv6 netstream export host ipv6 2804:75C0:1000:1::B 3057
+ipv6 netstream export template option timeout-rate 1
+#
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+vlan 858
+ description WAN LINK ALTERNA
+ name WAN-LINK-ALTERNA
+#
+mpls lsr-id 10.255.255.253
+#
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+#
+bridge-domain 1
+#
+mpls ldp
+ #
+ ipv4-family
+#
+dhcp server request-packet all-interface disable
+#
+acl number 2000
+ description Permitir Consultas SNMP
+ rule 1 permit source 179.48.70.149 0
+ rule 2 permit source 179.48.70.152 0
+ rule 3 permit source 172.31.100.14 0
+ rule 4 permit source 179.48.68.193 0
+ rule 5 permit source 172.31.100.2 0
+ rule 6 permit source 179.48.68.13 0
+ rule 7 permit source 172.31.100.26 0
+ rule 8 permit source 179.48.70.157 0
+ rule 9 permit source 179.48.68.76 0
+ rule 10 permit source 179.48.68.0 0.0.3.255
+ rule 11 permit source 172.31.100.38 0
+ rule 15 deny
+#
+acl name SAFE-NETWORK advance
+ rule 5 permit ip source 179.48.68.0 0.0.0.255
+#
+aaa
+ local-user tomich password irreversible-cipher $1c${_-1%1-nJM$`q%L>@tvz,z*aPE`sY\OyNkhLGZXnUk[9SI3nv^K$
+ local-user tomich service-type ftp telnet ssh snmp
+ local-user tomich level 3
+ local-user tomich state block fail-times 3 interval 5
+ local-user lucascampelo password irreversible-cipher $1c$Hi*j8wx29.$v1$q3QEh+0\%`.1$:o4X3,WTLRrZiQnU7.#``5fF$
+ local-user lucascampelo service-type telnet ssh
+ local-user lucascampelo level 3
+ local-user lucascampelo state block fail-times 10 interval 5
+ local-user backup password irreversible-cipher $1c$jYQq5=-5D;$}I$t&*-}V,lyf;Eo+nH!02sKAluNSHc&O$$2jv.*$
+ local-user backup service-type ssh
+ local-user backup level 3
+ local-user backup state block fail-times 3 interval 5
+ local-user suporte password irreversible-cipher $1c$Ez4(,wW'HE$Q)js%iXdc&%rP&P2>h*U9QD5T3I>mWB1VvS$_SpQ$
+ local-user suporte service-type ssh
+ local-user suporte level 3
+ local-user suporte state block fail-times 3 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+#
+ospfv3 1
+ router-id 10.255.255.253
+ import-route direct
+ default-route-advertise
+ area 0.0.0.0
+ area 0.0.0.1
+#
+interface Vlanif858
+ description WAN LINK ALTERNA
+ shutdown
+ ipv6 enable
+ ip address 10.100.1.70 255.255.255.252
+ ipv6 address 2804:4DC:FE::202/126
+ ip netstream inbound
+ ip netstream outbound
+ ipv6 netstream inbound
+ ipv6 netstream outbound
+#
+interface Eth-Trunk0.41
+ vlan-type dot1q 41
+ ip address 172.16.16.1 255.255.255.252
+ ospf cost 11
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk0.130
+ vlan-type dot1q 130
+ mtu 9600
+ description CG-NAT
+ ipv6 enable
+ ip address 172.31.255.1 255.255.255.252
+ ipv6 address 2804:75C0:1411:FFFF::1/126
+ statistic enable
+ ospf network-type p2p
+#
+interface Eth-Trunk0.150
+ vlan-type dot1q 150
+ description PTP PARA HUAWEI BACKUP
+ ipv6 enable
+ ip address 172.31.255.13 255.255.255.252
+ ipv6 address auto link-local
+ statistic enable
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk0.1130
+ vlan-type dot1q 1130
+ description CGNAT HILLSTONE
+ ip address 172.31.255.17 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.1200
+ vlan-type dot1q 1200
+ description CLIENTE ANDRE FIK ON - PELA LIKER
+ ip address 172.31.200.29 255.255.255.252
+#
+interface Eth-Trunk0.1314
+ vlan-type dot1q 1314
+ description WAN - BR-DIGITAL
+ shutdown
+ ipv6 enable
+ ip address 201.16.69.157 255.255.255.254
+ ipv6 address 2804:B:FFFD:380::2/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.1555
+ vlan-type dot1q 1555
+ ip address 179.48.68.17 255.255.255.252
+#
+interface Eth-Trunk0.1621
+ vlan-type dot1q 1621
+ description DINAMICA CDN
+ ipv6 enable
+ ip address 10.66.12.6 255.255.255.252
+ ipv6 address 2804:10A0:8020:1621::2/64
+ ipv6 address auto link-local
+ statistic enable
+ ip netstream inbound
+ ip netstream outbound
+ ipv6 netstream inbound
+ ipv6 netstream outbound
+#
+interface Eth-Trunk0.2033
+ vlan-type dot1q 2033
+ description DINAMICA IX
+ shutdown
+ ipv6 enable
+ ip address 10.66.12.2 255.255.255.252
+ ipv6 address 2804:10A0:8020:2033::2/64
+ ipv6 address auto link-local
+ statistic enable
+ ip netstream inbound
+ ip netstream outbound
+ ipv6 netstream inbound
+ ipv6 netstream outbound
+#
+interface Eth-Trunk0.2046
+ vlan-type dot1q 2046
+ description WAN DINAMICA LINK
+ ipv6 enable
+ ip address 10.66.12.54 255.255.255.252
+ ipv6 address 2804:10A0:8020:2046::2/64
+ statistic enable
+#
+interface Eth-Trunk0.2050
+ vlan-type dot1q 2050
+ description CLIENTE NETSINI ROTA PRINCIPAL PELA W-NET
+ ipv6 enable
+ ip address 172.31.200.53 255.255.255.252
+ ipv6 address 2804:5894:C000::6/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2501
+ vlan-type dot1q 2501
+ description CLIENTE VINICIUS PITU - NOVO
+ ipv6 enable
+ ip address 172.31.200.81 255.255.255.252
+ ipv6 address FD00:0:1:400::1D/64
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2502
+ vlan-type dot1q 2502
+ description CLIENTE VINICIUS PITU - IPv4
+ ip address 172.31.200.5 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2506
+ vlan-type dot1q 2506
+ description CLIENTE ANDRE - IPv4
+ ip address 172.31.200.37 255.255.255.252
+ statistic enable
+ qos car cir 1000000 cbs 1000000 green pass red discard inbound
+ qos car cir 1000000 cbs 1000000 green pass red discard outbound
+#
+interface Eth-Trunk0.2507
+ vlan-type dot1q 2507
+ description CLIENTE MICHAEL VELOXNET - PELO SW CENTRAL PORTA 20
+ ip address 172.31.200.1 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2509
+ vlan-type dot1q 2509
+ description PROJETO CDN - CGNAT-NET-SINI-IPv4 - ROTA PELA LIKER
+ ip address 172.31.200.21 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2510
+ vlan-type dot1q 2510
+ description PROJETO CDN - CGNAT-NET-SINI-IPv4 - ROTA PELA W-NET
+ ip address 172.31.200.41 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2512
+ vlan-type dot1q 2512
+ description CLIENTE MICHAEL VELOXNET - PELO SW DE MORADA
+ ip address 172.31.200.25 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2513
+ vlan-type dot1q 2513
+ description CLIENTE BRUNO E IGOR - IPv4
+ ip address 172.31.200.45 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2514
+ vlan-type dot1q 2514
+ description CLIENTE BRUNO E IGOR - IPv6
+ ipv6 enable
+ ipv6 address FD00:0:1:400::D/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2515
+ vlan-type dot1q 2515
+ description BGP LIKER IPv6  - PROJETO CDN
+ ipv6 enable
+ ipv6 address FC00:CAFE:CAFE:FFFF::2/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2516
+ vlan-type dot1q 2516
+ description CLIENTE PAPELARIA VENANCIO
+ ip address 172.31.201.1 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2518
+ vlan-type dot1q 2518
+ description CLIENTE NETSINI ROTA BACKUP PELA LIKER
+ ipv6 enable
+ ip address 172.31.200.65 255.255.255.252
+ ipv6 address 2804:5894:C000::A/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2565
+ vlan-type dot1q 2565
+ description CLIENTE AGILIZA - IX LOCAL
+ shutdown
+ ipv6 enable
+ ip address 172.31.200.33 255.255.255.252
+ ipv6 address 2804:75C0:1000::1/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2566
+ vlan-type dot1q 2566
+ description CLIENTE AGILIZA LINK
+ ipv6 enable
+ ip address 172.31.200.61 255.255.255.252
+ ipv6 address FD00:0:1:400::11/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2567
+ vlan-type dot1q 2567
+ description CLIENTE AGILIZA - CDN
+ shutdown
+ ipv6 enable
+ ip address 172.31.200.69 255.255.255.252
+ ipv6 address FD00:0:1:400::15/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2609
+ vlan-type dot1q 2609
+ description PROJETO CDN - CGNAT-NET-SINI-IPv6 - ROTA PELA LIKER
+ ipv6 enable
+ ipv6 address FD00:0:1:400::5/126
+ ipv6 address auto link-local
+#
+interface Eth-Trunk0.2610
+ vlan-type dot1q 2610
+ description PROJETO CDN - CGNAT-NET-SINI-IPv6 - ROTA PELA W-NET
+ ipv6 enable
+ ipv6 address FD00:0:1:400::9/126
+ ipv6 address auto link-local
+#
+interface Eth-Trunk0.2700
+ vlan-type dot1q 2700
+ description PTT LOCAL - TOMICH TECNOLOGIA
+ ip address 10.27.27.2 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2705
+ vlan-type dot1q 2705
+ description CLIENTE LAN TELECOM
+ shutdown
+ ipv6 enable
+ ip address 172.31.200.9 255.255.255.252
+ ipv6 address FD00:0:1:400::19/126
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.2802
+ vlan-type dot1q 2802
+ description CLIENTE EMPRESA - MMA
+ ipv6 enable
+ ip address 179.48.70.98 255.255.255.254
+ ipv6 address 2804:75C0:3000::1/64
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.3000
+ vlan-type dot1q 3000
+ description IPv6 SERVIDOR DELL 128 GB
+ ipv6 enable
+ ip address 179.48.70.161 255.255.255.240
+ ip address 172.31.100.13 255.255.255.252 sub
+ ip address 179.48.70.145 255.255.255.240 sub
+ ipv6 address 2804:75C0:1000:1::1/64
+ ipv6 address FE00:CAFE:CAFE:1::1/64
+ ipv6 address auto link-local
+ statistic enable
+ ospf network-type p2mp
+ ospf timer hello 10
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk0.3001
+ vlan-type dot1q 3001
+ description TOMICH / VILLAGGIONET
+ ip address 172.31.200.57 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.3002
+ vlan-type dot1q 3002
+ description TOMICH IPv6
+ shutdown
+ ipv6 enable
+ ipv6 address 2804:75C0:1000:2::1/64
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.3003
+ vlan-type dot1q 3003
+ description PROXMOX 02 - RESERVA
+ ipv6 enable
+ ipv6 address 2804:75C0:1000:3::1/64
+ ipv6 address auto link-local
+ statistic enable
+#
+interface Eth-Trunk0.3009
+ vlan-type dot1q 3009
+ description CLIENTE HOSTPOT
+ ip address 172.31.100.29 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.3510
+ vlan-type dot1q 3510
+ description ena
+ ip address 10.35.10.2 255.255.255.252
+#
+interface Eth-Trunk10.3012
+ vlan-type dot1q 3012
+ ip address 10.63.5.233 255.255.255.252
+ statistic enable
+#
+interface Ethernet0/0/0
+ undo shutdown
+#
+interface GigabitEthernet0/1/2.2256
+ vlan-type dot1q 2256
+ description WAN FORTE TELECOM
+ shutdown
+ ipv6 enable
+ ip address 10.200.251.158 255.255.255.252
+ ipv6 address 2804:30FC::BA/126
+ ipv6 address auto link-local
+ statistic enable
+ binding tunnel gre
+#
+interface GigabitEthernet0/1/6
+ undo shutdown
+#
+interface GigabitEthernet0/1/7
+ description WAN K2 PEERINGDB
+ undo shutdown
+ ipv6 enable
+ statistic enable
+#
+interface GigabitEthernet0/1/7.447
+ vlan-type dot1q 447
+ description K2 - LINK
+ ipv6 enable
+ ip address 10.63.5.206 255.255.255.252
+ ipv6 address FC00:0:1C00::4A/126
+ statistic enable
+ ip netstream inbound
+ ip netstream outbound
+ ipv6 netstream inbound
+ ipv6 netstream outbound
+#
+interface LoopBack0
+ ipv6 enable
+ ip address 10.255.255.253 255.255.255.255
+ ipv6 address 2804:75C0:FFFF:CAFE::1/128
+#
+interface LoopBack1
+ ipv6 enable
+ ip address 179.48.68.10 255.255.255.255
+#
+interface LoopBack2
+#
+interface LoopBack15
+ ip address 189.50.34.0 255.255.255.255
+#
+interface Virtual-Ethernet0/3/31.141
+ vlan-type dot1q 141
+ ipv6 enable
+ ip address 10.99.99.1 255.255.255.252
+ ipv6 address 2001:DB8:FFFF:E221::1/126
+ statistic enable
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospf cost 12
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface NULL0
+#
+bgp 271067
+ graceful-restart
+ graceful-restart peer-reset
+ undo check-first-as
+ peer 10.63.5.205 as-number 53181
+ peer 10.63.5.205 description K2-LINK
+ peer 10.66.12.1 as-number 28173
+ peer 10.66.12.1 description DINAMICA-IX
+ peer 10.66.12.1 ignore
+ peer 10.66.12.5 as-number 28173
+ peer 10.66.12.5 description DINAMICA-CDN
+ peer 10.66.12.53 as-number 28173
+ peer 10.66.12.53 description DINAMICA-LINK
+ peer 172.31.200.10 as-number 269186
+ peer 172.31.200.10 description LAN-TELECOM-CDN
+ peer 172.31.200.34 as-number 265906
+ peer 172.31.200.34 description CLIENTE-AGILIZA-IX-LOCAL
+ peer 172.31.200.34 ignore
+ peer 172.31.200.54 as-number 268137
+ peer 172.31.200.54 description NETSINI-v4
+ peer 172.31.200.62 as-number 265906
+ peer 172.31.200.62 description CLIENTE-AGILIZA-LINK
+ peer 172.31.200.66 as-number 268137
+ peer 172.31.200.66 description NETSINI ROTA BACKUP PELA LIKER
+ peer 172.31.200.70 as-number 265906
+ peer 172.31.200.70 description CLIENTE-AGILIZA-CDN
+ peer 172.31.200.70 ignore
+ peer 2804:10A0:4::1 as-number 28173
+ peer 2804:10A0:4::1 description IPV6-DINAMICA-CDN
+ peer 2804:10A0:61:1630::1 as-number 28173
+ peer 2804:10A0:61:1630::1 description DINAMICA-IX
+ peer 2804:10A0:61:1630::1 ignore
+ peer 2804:10A0:8020:1621::1 as-number 28173
+ peer 2804:10A0:8020:1621::1 description IPV6-DINAMICA-CDN
+ peer 2804:10A0:8020:2033::1 as-number 28173
+ peer 2804:10A0:8020:2033::1 description DINAMICA-IX
+ peer 2804:10A0:8020:2046::1 as-number 28173
+ peer 2804:10A0:8020:2046::1 description DINAMICA-LINK
+ peer 2804:5894:C000::5 as-number 268137
+ peer 2804:5894:C000::5 description IPv6-NET-SINI
+ peer 2804:5894:C000::9 as-number 268137
+ peer 2804:5894:C000::9 description IPv6-NET-SINI-BACKUP
+ peer 2804:75C0:1000::2 as-number 265906
+ peer 2804:75C0:1000::2 description IPv6-AGILIZA-IX-LOCAL
+ peer FC00:0:1C00::49 as-number 53181
+ peer FC00:0:1C00::49 description K2-LINK
+ peer FD00:0:1:400::12 as-number 265906
+ peer FD00:0:1:400::12 description IPv6-AGILIZA-LINK
+ peer FD00:0:1:400::16 as-number 265906
+ peer FD00:0:1:400::16 description IPv6-AGILIZA-CDN
+ peer FD00:0:1:400::1A as-number 269186
+ peer FD00:0:1:400::1A description LAN-TELECOM-CDN
+ group IBGP internal
+ peer 172.31.255.2 as-number 271067
+ peer 172.31.255.2 group IBGP
+ peer 172.31.255.2 description IBGP-CGNAT
+ group IBGP-BACKUP-COLINA internal
+ peer 172.31.255.14 as-number 271067
+ peer 172.31.255.14 group IBGP-BACKUP-COLINA
+ peer 172.31.255.14 description IBGP-BACKUP-COLINA
+ group IBGP-HILLSTONE internal
+ peer 172.31.255.18 as-number 271067
+ peer 172.31.255.18 group IBGP-HILLSTONE
+ peer 172.31.255.18 description IBGP-HILLSTONE
+ #
+ ipv4-family unicast
+  undo synchronization
+  dampening
+  network 179.48.68.0 255.255.252.0
+  network 179.48.68.0 255.255.254.0
+  network 179.48.68.0 255.255.255.0
+  network 179.48.69.0 255.255.255.0
+  network 179.48.70.0 255.255.254.0
+  network 179.48.70.0 255.255.255.0
+  network 179.48.71.0 255.255.255.0
+  prefix origin-validation enable
+  bestroute origin-as-validation
+  peer 10.63.5.205 enable
+  peer 10.63.5.205 route-policy AS53181-K2-LINK-V4_in import
+  peer 10.63.5.205 route-policy AS53181-K2-LINK-V4_out export
+  peer 10.63.5.205 advertise-community
+  peer 10.63.5.205 advertise-ext-community
+  peer 10.63.5.205 preferred-value 130
+  peer 10.66.12.1 enable
+  peer 10.66.12.1 route-policy AS28173-DINAMICA-IX-V4_in import
+  peer 10.66.12.1 route-policy AS28173-DINAMICA-IX-V4_out export
+  peer 10.66.12.5 enable
+  peer 10.66.12.5 route-policy AS28173-DINAMICA-CDN-V4_in import
+  peer 10.66.12.5 route-policy AS28173-DINAMICA-CDN-V4_out export
+  peer 10.66.12.53 enable
+  peer 10.66.12.53 route-policy AS28173-DINAMICA-LINK-V4_in import
+  peer 10.66.12.53 route-policy AS28173-DINAMICA-LINK-V4_out export
+  peer 172.31.200.10 enable
+  peer 172.31.200.10 route-policy AS269186-LAN-TELECOM-IPv4_in import
+  peer 172.31.200.10 route-policy AS269186-LAN-TELECOM-IPv4_out export
+  peer 172.31.200.34 enable
+  peer 172.31.200.34 route-policy AS265906-AGILIZA-IPv4_in import
+  peer 172.31.200.34 route-policy AS265906-AGILIZA-IPv4-IX_out export
+  peer 172.31.200.54 enable
+  peer 172.31.200.54 route-policy AS268137-NET-SINI-IPv4_in import
+  peer 172.31.200.54 route-policy AS268137-NET-SINI-IPv4_out export
+  peer 172.31.200.54 default-route-advertise
+  peer 172.31.200.62 enable
+  peer 172.31.200.62 route-policy AS265906-AGILIZA-IPv4_in import
+  peer 172.31.200.62 route-policy AS265906-AGILIZA-IPv4-LINK_out export
+  peer 172.31.200.66 enable
+  peer 172.31.200.66 route-policy AS268137-NET-SINI-IPv4_in import
+  peer 172.31.200.66 route-policy AS268137-NET-SINI-IPv4_out export
+  peer 172.31.200.66 default-route-advertise
+  peer 172.31.200.70 enable
+  peer 172.31.200.70 route-policy AS265906-AGILIZA-IPv4_in import
+  peer 172.31.200.70 route-policy AS265906-AGILIZA-IPv4-CDN_out export
+  peer IBGP enable
+  peer IBGP route-policy RP-IBGP-V4-IN import
+  peer IBGP route-policy RP-IBGP-V4-OUT export
+  peer IBGP next-hop-local
+  peer IBGP default-route-advertise
+  peer 172.31.255.2 enable
+  peer 172.31.255.2 group IBGP
+  peer IBGP-BACKUP-COLINA enable
+  peer IBGP-BACKUP-COLINA route-policy RP-IBGP-BACKUP-COLINA_in import
+  peer IBGP-BACKUP-COLINA route-policy RP-IBGP-BACKUP-COLINA_out export
+  peer IBGP-BACKUP-COLINA next-hop-local
+  peer IBGP-BACKUP-COLINA default-route-advertise
+  peer 172.31.255.14 enable
+  peer 172.31.255.14 group IBGP-BACKUP-COLINA
+  peer IBGP-HILLSTONE enable
+  peer IBGP-HILLSTONE route-policy RP-IBGP-V4-IN import
+  peer IBGP-HILLSTONE route-policy RP-IBGP-V4-OUT export
+  peer IBGP-HILLSTONE next-hop-local
+  peer IBGP-HILLSTONE default-route-advertise
+  peer 172.31.255.18 enable
+  peer 172.31.255.18 group IBGP-HILLSTONE
+ #
+ ipv6-family unicast
+  undo synchronization
+  network 2804:75C0:: 32
+  network 2804:75C0:: 33
+  network 2804:75C0:: 34
+  network 2804:75C0:4000:: 34
+  network 2804:75C0:8000:: 33
+  network 2804:75C0:8000:: 34
+  network 2804:75C0:C000:: 34
+  prefix origin-validation enable
+  peer 2804:10A0:8020:1621::1 enable
+  peer 2804:10A0:8020:1621::1 route-policy AS28173-DINAMICA-CDN-V6_in import
+  peer 2804:10A0:8020:1621::1 route-policy AS28173-DINAMICA-CDN-V6_out export
+  peer 2804:10A0:8020:2033::1 enable
+  peer 2804:10A0:8020:2033::1 route-policy AS28173-DINAMICA-IX-V6_in import
+  peer 2804:10A0:8020:2033::1 route-policy AS28173-DINAMICA-IX-V6_out export
+  peer 2804:10A0:8020:2046::1 enable
+  peer 2804:10A0:8020:2046::1 route-policy AS28173-DINAMICA-LINK-V6_in import
+  peer 2804:10A0:8020:2046::1 route-policy AS28173-DINAMICA-LINK-V6_out export
+  peer 2804:5894:C000::5 enable
+  peer 2804:5894:C000::5 route-policy AS268137-NET-SINI-IPv6_in import
+  peer 2804:5894:C000::5 route-policy AS268137-NET-SINI-IPv6_out export
+  peer 2804:5894:C000::5 default-route-advertise
+  peer 2804:5894:C000::9 enable
+  peer 2804:5894:C000::9 route-policy AS268137-NET-SINI-IPv6_in import
+  peer 2804:5894:C000::9 route-policy AS268137-NET-SINI-IPv6_out export
+  peer 2804:75C0:1000::2 enable
+  peer 2804:75C0:1000::2 route-policy AS265906-AGILIZA-IPv6_in import
+  peer 2804:75C0:1000::2 route-policy AS265906-AGILIZA-IPv6-IX_out export
+  peer FC00:0:1C00::49 enable
+  peer FC00:0:1C00::49 route-policy AS53181-K2-LINK-V6_in import
+  peer FC00:0:1C00::49 route-policy AS53181-K2-LINK-V6_out export
+  peer FD00:0:1:400::12 enable
+  peer FD00:0:1:400::12 route-policy AS265906-AGILIZA-IPv6_in import
+  peer FD00:0:1:400::12 route-policy AS265906-AGILIZA-IPv6-LINK_out export
+  peer FD00:0:1:400::16 enable
+  peer FD00:0:1:400::16 route-policy AS265906-AGILIZA-IPv6_in import
+  peer FD00:0:1:400::16 route-policy AS265906-AGILIZA-IPv6-CDN_out export
+  peer FD00:0:1:400::1A enable
+  peer FD00:0:1:400::1A route-policy AS269186-LAN-TELECOM-IPv6_in import
+  peer FD00:0:1:400::1A route-policy AS269186-LAN-TELECOM-IPv6_out export
+#
+rpki
+ #
+ session 179.48.70.153
+  tcp port 3323
+  connect-interface LoopBack0
+#
+ospf 1 router-id 10.255.255.253
+ default-route-advertise always
+ filter-policy ip-prefix PUBLIC-CGNAT import
+ import-route direct
+ import-route static
+ opaque-capability disable
+ area 0.0.0.0
+  network 172.16.16.0 0.0.0.3
+  network 179.48.68.20 0.0.0.3
+#
+route-policy AS265906-AGILIZA-IPv4-CDN_out deny node 1
+#
+route-policy AS265906-AGILIZA-IPv4-CDN_out permit node 10
+ if-match community-filter CDN-DINAMICA
+#
+route-policy AS265906-AGILIZA-IPv4-CDN_out deny node 100
+#
+route-policy AS265906-AGILIZA-IPv4-IX_out deny node 1
+#
+route-policy AS265906-AGILIZA-IPv4-IX_out permit node 10000
+ if-match community-filter PTT-DINAMICA
+#
+route-policy AS265906-AGILIZA-IPv4-IX_out deny node 15000
+#
+route-policy AS265906-AGILIZA-IPv4-LINK_out permit node 10000
+ if-match community-filter LINK-K2
+#
+route-policy AS265906-AGILIZA-IPv4_in permit node 10
+ if-match ip-prefix AGILIZA_22a24
+#
+route-policy AS265906-AGILIZA-IPv4_in deny node 1000
+#
+route-policy AS265906-AGILIZA-IPv6-CDN_out permit node 1000
+ if-match community-filter CDN-DINAMICA
+#
+route-policy AS265906-AGILIZA-IPv6-CDN_out deny node 1500
+#
+route-policy AS265906-AGILIZA-IPv6-IX_out permit node 1000
+ if-match community-filter PTT-DINAMICA
+#
+route-policy AS265906-AGILIZA-IPv6-IX_out deny node 1500
+#
+route-policy AS265906-AGILIZA-IPv6-LINK_out permit node 1000
+ if-match community-filter LINK-K2
+#
+route-policy AS265906-AGILIZA-IPv6-LINK_out deny node 1500
+#
+route-policy AS265906-AGILIZA-IPv6_in permit node 10
+ if-match ipv6 address prefix-list PL-AGILIZA_32a48
+#
+route-policy AS265906-AGILIZA-IPv6_in deny node 3000
+#
+route-policy AS268137-NET-SINI-IPv4-BACKUP_in permit node 10
+ if-match ip-prefix NETSINI_22a24
+#
+route-policy AS268137-NET-SINI-IPv4-BACKUP_in deny node 1000
+#
+route-policy AS268137-NET-SINI-IPv4-BACKUP_out permit node 10000
+#
+route-policy AS268137-NET-SINI-IPv4_in permit node 10
+ if-match ip-prefix NETSINI_22a24
+#
+route-policy AS268137-NET-SINI-IPv4_in deny node 1000
+#
+route-policy AS268137-NET-SINI-IPv4_out permit node 10000
+#
+route-policy AS268137-NET-SINI-IPv6_in permit node 10
+ if-match ipv6 address prefix-list PL-NET-SINI_32_FULL
+#
+route-policy AS268137-NET-SINI-IPv6_in deny node 3000
+#
+route-policy AS268137-NET-SINI-IPv6_out permit node 1000
+#
+route-policy AS269186-LAN-TELECOM-IPv4_in permit node 10
+ if-match ip-prefix LAN-TELECOM_22a24
+#
+route-policy AS269186-LAN-TELECOM-IPv4_in deny node 1000
+#
+route-policy AS269186-LAN-TELECOM-IPv4_out permit node 10
+ if-match community-filter CDN-DINAMICA
+#
+route-policy AS269186-LAN-TELECOM-IPv4_out permit node 140
+ if-match ip-prefix LAN-TELECOM_24_108
+#
+route-policy AS269186-LAN-TELECOM-IPv4_out permit node 150
+ if-match ip-prefix LAN-TELECOM_24_109
+#
+route-policy AS269186-LAN-TELECOM-IPv4_out permit node 160
+ if-match ip-prefix LAN-TELECOM_24_110
+#
+route-policy AS269186-LAN-TELECOM-IPv4_out permit node 170
+ if-match ip-prefix LAN-TELECOM_24_111
+#
+route-policy AS269186-LAN-TELECOM-IPv6_in permit node 10
+ if-match ipv6 address prefix-list PL-LAN-TELECOM_32a48
+#
+route-policy AS269186-LAN-TELECOM-IPv6_in deny node 3000
+#
+route-policy AS269186-LAN-TELECOM-IPv6_out permit node 1000
+ if-match community-filter CDN-DINAMICA
+#
+route-policy AS269186-LAN-TELECOM-IPv6_out deny node 1500
+#
+route-policy AS28173-DINAMICA-CDN-V4_in deny node 1
+ if-match ip-prefix BOGONS-V4-IN
+#
+route-policy AS28173-DINAMICA-CDN-V4_in deny node 2
+ if-match ip-prefix AGILIZA_IN
+#
+route-policy AS28173-DINAMICA-CDN-V4_in deny node 3
+ if-match ip-prefix NETSINI_22a24
+#
+route-policy AS28173-DINAMICA-CDN-V4_in deny node 4
+ if-match ip-prefix MEU_FULL
+#
+route-policy AS28173-DINAMICA-CDN-V4_in permit node 10
+ if-match ip-prefix FULL-ROUTING-V4-IN
+ apply local-preference 3000
+ apply community 65001:100 additive
+#
+route-policy AS28173-DINAMICA-CDN-V4_in deny node 1000
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 10
+ if-match ip-prefix PL-MEU_24_68
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 20
+ if-match ip-prefix PL-MEU_24_69
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 30
+ if-match ip-prefix PL-MEU_24_70
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 40
+ if-match ip-prefix PL-MEU_24_71
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 50
+ if-match ip-prefix NETSINI_24_1
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 60
+ if-match ip-prefix NETSINI_24_2
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 70
+ if-match ip-prefix NETSINI_24_3
+#
+route-policy AS28173-DINAMICA-CDN-V4_out permit node 80
+ if-match ip-prefix NETSINI_24_4
+#
+route-policy AS28173-DINAMICA-CDN-V4_out deny node 1000
+#
+route-policy AS28173-DINAMICA-CDN-V6_in deny node 1
+ if-match ipv6 address prefix-list BOGONS-V6-IN
+#
+route-policy AS28173-DINAMICA-CDN-V6_in deny node 2
+ if-match ipv6 address prefix-list PL-NET-SINI_32a48
+#
+route-policy AS28173-DINAMICA-CDN-V6_in deny node 3
+ if-match ipv6 address prefix-list PL-MEU_32a48
+#
+route-policy AS28173-DINAMICA-CDN-V6_in deny node 4
+ if-match ipv6 address prefix-list PL-AGILIZA_32a48
+#
+route-policy AS28173-DINAMICA-CDN-V6_in permit node 10
+ if-match ipv6 address prefix-list PL-FULLROUTING-IPV6
+ apply community 65001:100 additive
+#
+route-policy AS28173-DINAMICA-CDN-V6_in deny node 3000
+#
+route-policy AS28173-DINAMICA-CDN-V6_out permit node 10
+ if-match ipv6 address prefix-list PL-VILLAGGIONET_32a34
+#
+route-policy AS28173-DINAMICA-CDN-V6_out permit node 30
+ if-match ipv6 address prefix-list PL-NETSINI_32a34
+#
+route-policy AS28173-DINAMICA-CDN-V6_out permit node 50
+ if-match ipv6 address prefix-list PL-LAN-TELECOM_32a34
+#
+route-policy AS28173-DINAMICA-CDN-V6_out deny node 3000
+#
+route-policy AS28173-DINAMICA-IX-V4_in deny node 1
+ if-match ip-prefix BOGONS-V4-IN
+#
+route-policy AS28173-DINAMICA-IX-V4_in deny node 10
+ if-match ip-prefix AGILIZA_22a24
+#
+route-policy AS28173-DINAMICA-IX-V4_in deny node 20
+ if-match ip-prefix NETSINI_22a24
+#
+route-policy AS28173-DINAMICA-IX-V4_in deny node 50
+ if-match ip-prefix MEU_FULL
+#
+route-policy AS28173-DINAMICA-IX-V4_in permit node 100
+ if-match ip-prefix FULL-ROUTING-V4-IN
+ apply local-preference 2000
+ apply community 65001:200 additive
+#
+route-policy AS28173-DINAMICA-IX-V4_in deny node 1000
+#
+route-policy AS28173-DINAMICA-IX-V4_out permit node 10
+ if-match ip-prefix PL-MEU_23
+#
+route-policy AS28173-DINAMICA-IX-V4_out permit node 20
+ if-match ip-prefix PL-MEU_23_1
+#
+route-policy AS28173-DINAMICA-IX-V4_out permit node 40
+ if-match ip-prefix NETSINI_23_1
+#
+route-policy AS28173-DINAMICA-IX-V4_out permit node 50
+ if-match ip-prefix NETSINI_23_2
+#
+route-policy AS28173-DINAMICA-IX-V4_out deny node 1000
+#
+route-policy AS28173-DINAMICA-IX-V6_in deny node 1
+ if-match ipv6 address prefix-list BOGONS-V6-IN
+#
+route-policy AS28173-DINAMICA-IX-V6_in deny node 2
+ if-match ipv6 address prefix-list PL-NET-SINI_32a48
+#
+route-policy AS28173-DINAMICA-IX-V6_in deny node 3
+ if-match ipv6 address prefix-list PL-MEU_32a48
+#
+route-policy AS28173-DINAMICA-IX-V6_in deny node 4
+ if-match ipv6 address prefix-list PL-AGILIZA_32a48
+#
+route-policy AS28173-DINAMICA-IX-V6_in permit node 10
+ if-match ipv6 address prefix-list PL-FULLROUTING-IPV6
+ apply community 65001:200 additive
+#
+route-policy AS28173-DINAMICA-IX-V6_in deny node 3000
+#
+route-policy AS28173-DINAMICA-IX-V6_out permit node 10
+ if-match ipv6 address prefix-list PL-VILLAGGIONET_32a33
+#
+route-policy AS28173-DINAMICA-IX-V6_out permit node 30
+ if-match ipv6 address prefix-list PL-NETSINI_32a33
+#
+route-policy AS28173-DINAMICA-IX-V6_out deny node 3000
+#
+route-policy AS28173-DINAMICA-LINK-V4_in permit node 0
+ if-match ip-prefix DEFAULT-ROUTE
+ apply local-preference 2000
+#
+route-policy AS28173-DINAMICA-LINK-V4_in deny node 1
+ if-match ip-prefix BOGONS-V4-IN
+#
+route-policy AS28173-DINAMICA-LINK-V4_in deny node 10
+ if-match ip-prefix AGILIZA_22a24
+#
+route-policy AS28173-DINAMICA-LINK-V4_in deny node 20
+ if-match ip-prefix NETSINI_22a24
+#
+route-policy AS28173-DINAMICA-LINK-V4_in deny node 50
+ if-match ip-prefix MEU_FULL
+#
+route-policy AS28173-DINAMICA-LINK-V4_in permit node 100
+ if-match ip-prefix FULL-ROUTING-V4-IN
+ apply local-preference 5000
+ apply community 65001:400 additive
+#
+route-policy AS28173-DINAMICA-LINK-V4_in deny node 1000
+#
+route-policy AS28173-DINAMICA-LINK-V4_out permit node 10
+ if-match ip-prefix PL-MEU_23
+#
+route-policy AS28173-DINAMICA-LINK-V4_out permit node 20
+ if-match ip-prefix PL-MEU_23_1
+#
+route-policy AS28173-DINAMICA-LINK-V4_out permit node 30
+ if-match ip-prefix AGILIZA_22
+#
+route-policy AS28173-DINAMICA-LINK-V4_out permit node 40
+ if-match ip-prefix NETSINI_23_1
+#
+route-policy AS28173-DINAMICA-LINK-V4_out permit node 50
+ if-match ip-prefix NETSINI_23_2
+#
+route-policy AS28173-DINAMICA-LINK-V4_out deny node 1000
+#
+route-policy AS28173-DINAMICA-LINK-V6_in deny node 1
+ if-match ipv6 address prefix-list BOGONS-V6-IN
+#
+route-policy AS28173-DINAMICA-LINK-V6_in deny node 2
+ if-match ipv6 address prefix-list PL-NET-SINI_32a48
+#
+route-policy AS28173-DINAMICA-LINK-V6_in deny node 3
+ if-match ipv6 address prefix-list PL-MEU_32a48
+#
+route-policy AS28173-DINAMICA-LINK-V6_in deny node 4
+ if-match ipv6 address prefix-list PL-AGILIZA_32a48
+#
+route-policy AS28173-DINAMICA-LINK-V6_in permit node 10
+ if-match ipv6 address prefix-list PL-FULLROUTING-IPV6
+ apply community 65001:400 additive
+#
+route-policy AS28173-DINAMICA-LINK-V6_in deny node 3000
+#
+route-policy AS28173-DINAMICA-LINK-V6_out permit node 10
+ if-match ipv6 address prefix-list PL-VILLAGGIONET_32a33
+#
+route-policy AS28173-DINAMICA-LINK-V6_out permit node 20
+ if-match ipv6 address prefix-list PL-AGILIZA_32
+#
+route-policy AS28173-DINAMICA-LINK-V6_out permit node 30
+ if-match ipv6 address prefix-list PL-NETSINI_32a33
+#
+route-policy AS28173-DINAMICA-LINK-V6_out deny node 3000
+#
+route-policy AS53181-K2-LINK-V4_in permit node 0
+ if-match ip-prefix DEFAULT-ROUTE
+ apply local-preference 100
+#
+route-policy AS53181-K2-LINK-V4_in deny node 1
+ if-match ip-prefix BOGONS-V4-IN
+#
+route-policy AS53181-K2-LINK-V4_in deny node 20
+ if-match ip-prefix NETSINI_22a24
+#
+route-policy AS53181-K2-LINK-V4_in deny node 30
+ if-match ip-prefix AGILIZA_22a24
+#
+route-policy AS53181-K2-LINK-V4_in deny node 40
+ if-match ip-prefix MEU_FULL
+#
+route-policy AS53181-K2-LINK-V4_in permit node 100
+ if-match ip-prefix FULL-ROUTING-V4-IN
+ apply local-preference 100
+ apply community 65001:300 additive
+#
+route-policy AS53181-K2-LINK-V4_in deny node 1000
+#
+route-policy AS53181-K2-LINK-V4_out permit node 10
+ if-match ip-prefix AGILIZA_22
+ apply community 53181:1607 additive
+#
+route-policy AS53181-K2-LINK-V4_out permit node 20
+ if-match ip-prefix NETSINI_22
+#
+route-policy AS53181-K2-LINK-V4_out permit node 30
+ if-match ip-prefix PL-MEU_22
+ apply community 53181:1607 additive
+#
+route-policy AS53181-K2-LINK-V4_out deny node 1000
+#
+route-policy AS53181-K2-LINK-V6_in deny node 1
+ if-match ipv6 address prefix-list BOGONS-V6-IN
+#
+route-policy AS53181-K2-LINK-V6_in deny node 2
+ if-match ipv6 address prefix-list PL-NET-SINI_32a48
+#
+route-policy AS53181-K2-LINK-V6_in deny node 3
+ if-match ipv6 address prefix-list PL-MEU_32a48
+#
+route-policy AS53181-K2-LINK-V6_in deny node 4
+ if-match ipv6 address prefix-list PL-AGILIZA_32a48
+#
+route-policy AS53181-K2-LINK-V6_in permit node 10
+ if-match ipv6 address prefix-list PL-FULLROUTING-IPV6
+ apply local-preference 4000
+ apply community 65001:300 additive
+#
+route-policy AS53181-K2-LINK-V6_in deny node 1000
+#
+route-policy AS53181-K2-LINK-V6_out permit node 10
+ if-match ipv6 address prefix-list PL-VILLAGGIONET_32
+#
+route-policy AS53181-K2-LINK-V6_out permit node 20
+ if-match ipv6 address prefix-list PL-NET-SINI_32
+#
+route-policy AS53181-K2-LINK-V6_out permit node 30
+ if-match ipv6 address prefix-list PL-AGILIZA_32
+#
+route-policy AS53181-K2-LINK-V6_out deny node 3000
+#
+route-policy RP-IBGP-BACKUP-COLINA_in permit node 1
+ if-match ip-prefix MEU_FULL-24/32
+#
+route-policy RP-IBGP-BACKUP-COLINA_in deny node 1000
+#
+route-policy RP-IBGP-BACKUP-COLINA_out permit node 1
+ if-match ip-prefix FULL-ROUTING-V4-IN
+#
+route-policy RP-IBGP-BACKUP-COLINA_out deny node 1000
+#
+route-policy RP-IBGP-V4-IN permit node 1
+ if-match ip-prefix MEU_FULL-24/32
+#
+route-policy RP-IBGP-V4-IN permit node 2
+ if-match ip-prefix ACEITA-IPS-PRIVADOS
+#
+route-policy RP-IBGP-V4-OUT permit node 1
+ if-match ip-prefix DEFAULT-ROUTE
+#
+ip ip-prefix ACEITA-IPS-PRIVADOS index 10 permit 172.31.255.8 30 greater-equal 30 less-equal 32
+ip ip-prefix ACEITA-IPS-PRIVADOS index 20 permit 10.100.100.0 30 greater-equal 30 less-equal 32
+ip ip-prefix ACEITA-IPS-PRIVADOS index 30 permit 10.200.200.0 30 greater-equal 30 less-equal 32
+ip ip-prefix ACEITA-IPS-PRIVADOS index 40 permit 172.18.100.0 30 greater-equal 30 less-equal 32
+ip ip-prefix ACEITA-IPS-PRIVADOS index 50 permit 172.18.100.4 30 greater-equal 30 less-equal 32
+ip ip-prefix AGILIZA_22 index 10 permit 128.201.240.0 22 greater-equal 22 less-equal 22
+ip ip-prefix AGILIZA_22a24 index 10 permit 128.201.240.0 22 greater-equal 22 less-equal 24
+ip ip-prefix AGILIZA_23_1 index 10 permit 128.201.240.0 23 greater-equal 23 less-equal 23
+ip ip-prefix AGILIZA_23_2 index 10 permit 128.201.242.0 23 greater-equal 23 less-equal 23
+ip ip-prefix AGILIZA_24_240 index 10 permit 128.201.240.0 24 greater-equal 24 less-equal 24
+ip ip-prefix AGILIZA_24_241 index 10 permit 128.201.241.0 24 greater-equal 24 less-equal 24
+ip ip-prefix AGILIZA_24_242 index 10 permit 128.201.242.0 24 greater-equal 24 less-equal 24
+ip ip-prefix AGILIZA_24_243 index 10 permit 128.201.243.0 24 greater-equal 24 less-equal 24
+ip ip-prefix AGILIZA_IN index 10 permit 128.201.240.0 22 greater-equal 22 less-equal 24
+ip ip-prefix BOGONS-V4-IN index 10 deny 10.0.0.0 8 greater-equal 8 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 20 deny 100.64.0.0 10 greater-equal 10 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 30 deny 127.0.0.0 8 greater-equal 8 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 40 deny 169.254.0.0 16 greater-equal 16 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 50 deny 172.16.0.0 12 greater-equal 12 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 60 deny 192.0.0.0 24 greater-equal 24 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 70 deny 192.0.2.0 24
+ip ip-prefix BOGONS-V4-IN index 80 deny 192.88.99.0 24
+ip ip-prefix BOGONS-V4-IN index 90 deny 192.168.0.0 16 greater-equal 16 less-equal 32
+ip ip-prefix BOGONS-V4-IN index 100 deny 198.18.0.0 15
+ip ip-prefix BOGONS-V4-IN index 110 deny 198.51.100.0 24
+ip ip-prefix BOGONS-V4-IN index 120 deny 203.0.113.0 24
+ip ip-prefix BOGONS-V4-IN index 130 deny 224.0.0.0 4
+ip ip-prefix BOGONS-V4-IN index 140 deny 240.0.0.0 4
+ip ip-prefix BOGONS-V4-IN index 150 deny 0.0.0.0 8
+ip ip-prefix BOGONS-V4-IN index 160 deny 255.255.255.255 32
+ip ip-prefix DEFAULT-ROUTE index 10 permit 0.0.0.0 0
+ip ip-prefix FULL-ROUTING-V4-IN index 10 permit 0.0.0.0 0 greater-equal 8 less-equal 24
+ip ip-prefix LAN-TELECOM_22a24 index 10 permit 45.180.108.0 22 greater-equal 22 less-equal 24
+ip ip-prefix LAN-TELECOM_23_1 index 10 permit 45.180.108.0 23 greater-equal 23 less-equal 23
+ip ip-prefix LAN-TELECOM_23_2 index 10 permit 45.180.110.0 23 greater-equal 23 less-equal 23
+ip ip-prefix LAN-TELECOM_24_108 index 10 permit 45.180.108.0 24 greater-equal 24 less-equal 24
+ip ip-prefix LAN-TELECOM_24_109 index 10 permit 45.180.109.0 24 greater-equal 24 less-equal 24
+ip ip-prefix LAN-TELECOM_24_110 index 10 permit 45.180.110.0 24 greater-equal 24 less-equal 24
+ip ip-prefix LAN-TELECOM_24_111 index 10 permit 45.180.111.0 24 greater-equal 24 less-equal 24
+ip ip-prefix MAXLEN-V4-IN index 10 deny 0.0.0.0 0 greater-equal 25 less-equal 32
+ip ip-prefix MAXLEN-V4-IN index 20 deny 0.0.0.0 0 greater-equal 1 less-equal 7
+ip ip-prefix MAXLEN-V4-IN index 90 permit 0.0.0.0 0 less-equal 32
+ip ip-prefix MEU_FULL index 10 permit 179.48.68.0 22 greater-equal 22 less-equal 24
+ip ip-prefix MEU_FULL-24/32 index 10 permit 179.48.68.0 22 greater-equal 22 less-equal 32
+ip ip-prefix NETSINI_22 index 10 permit 45.169.200.0 22 greater-equal 22 less-equal 22
+ip ip-prefix NETSINI_22a24 index 10 permit 45.169.200.0 22 greater-equal 22 less-equal 24
+ip ip-prefix NETSINI_22a25 index 10 permit 45.169.200.0 22 greater-equal 22 less-equal 25
+ip ip-prefix NETSINI_23_1 index 10 permit 45.169.200.0 23 greater-equal 23 less-equal 23
+ip ip-prefix NETSINI_23_2 index 10 permit 45.169.202.0 23 greater-equal 23 less-equal 23
+ip ip-prefix NETSINI_24_1 index 10 permit 45.169.200.0 24 greater-equal 24 less-equal 24
+ip ip-prefix NETSINI_24_2 index 10 permit 45.169.201.0 24 greater-equal 24 less-equal 24
+ip ip-prefix NETSINI_24_3 index 10 permit 45.169.202.0 24 greater-equal 24 less-equal 24
+ip ip-prefix NETSINI_24_4 index 10 permit 45.169.203.0 24 greater-equal 24 less-equal 24
+ip ip-prefix PL-CGNAT index 10 deny 100.64.0.0 20 greater-equal 20 less-equal 32
+ip ip-prefix PL-MEU_22 index 10 permit 179.48.68.0 22 greater-equal 22 less-equal 22
+ip ip-prefix PL-MEU_23 index 10 permit 179.48.68.0 23
+ip ip-prefix PL-MEU_23_1 index 10 permit 179.48.70.0 23
+ip ip-prefix PL-MEU_24_68 index 10 permit 179.48.68.0 24
+ip ip-prefix PL-MEU_24_69 index 10 permit 179.48.69.0 24
+ip ip-prefix PL-MEU_24_70 index 10 permit 179.48.70.0 24
+ip ip-prefix PL-MEU_24_71 index 10 permit 179.48.71.0 24
+ip ip-prefix PUBLIC-CGNAT index 10 deny 179.48.71.128 25 greater-equal 32 less-equal 32
+ip ip-prefix PUBLIC-CGNAT index 50 permit 0.0.0.0 0 greater-equal 8 less-equal 32
+ip ip-prefix site-problema index 10 deny 54.207.0.0 17 greater-equal 17 less-equal 17
+ip community-filter basic CDN-DINAMICA index 10 permit 65001:100
+ip community-filter basic LINK-DINAMICA index 10 permit 65001:400
+ip community-filter basic LINK-K2 index 10 permit 65001:300
+ip community-filter basic PTT-DINAMICA index 10 permit 65001:200
+#
+ip route-static 10.100.100.0 255.255.255.252 172.31.255.18 description ROTA HILLSTONE - DNS
+ip route-static 10.188.188.0 255.255.255.0 172.31.200.58 description IPS OPENVPN TOMICH
+ip route-static 10.199.199.0 255.255.255.0 172.31.201.2 description IPS PAPELARIA VENANCIO - GERENCIA SWITCHS
+ip route-static 100.64.0.0 255.192.0.0 NULL0 description BLACKHOLE
+ip route-static 172.18.100.0 255.255.255.0 172.31.255.18 description IPS GERENCIA SWITCHS
+ip route-static 172.31.100.0 255.255.255.0 172.31.255.18
+ip route-static 172.31.255.0 255.255.255.0 172.31.255.18 description GERENCIA SWS
+ip route-static 172.31.255.4 255.255.255.252 172.31.255.18 description ROTA PARA BNG
+ip route-static 179.48.68.0 255.255.252.0 NULL0
+ip route-static 179.48.68.0 255.255.254.0 NULL0
+ip route-static 179.48.68.0 255.255.255.0 NULL0
+ip route-static 179.48.68.0 255.255.255.0 172.31.255.18 description CGNAT HILLSTONE
+ip route-static 179.48.68.0 255.255.255.252 172.31.200.32 description IPs PUBLICOS AGILIZA TEST
+ip route-static 179.48.68.0 255.255.255.252 172.31.200.34 description IPs PUBLICOS AGILIZA TEST
+ip route-static 179.48.68.11 255.255.255.255 10.99.99.1 description LOOPBACK IP PUBLICO CAIXA PPPoE
+ip route-static 179.48.68.11 255.255.255.255 172.31.255.18
+ip route-static 179.48.68.12 255.255.255.255 10.99.99.1
+ip route-static 179.48.68.13 255.255.255.255 172.18.100.18
+ip route-static 179.48.68.13 255.255.255.255 172.31.255.18 preference 1
+ip route-static 179.48.68.20 255.255.255.252 172.31.100.30 description HOTSPOT VILLAGGIONET
+ip route-static 179.48.68.64 255.255.255.224 172.31.200.58 description /27 TOMICH TECNOLOGIA
+ip route-static 179.48.68.96 255.255.255.255 172.31.200.58 description /32 TOMICH TECNOLOGIA
+ip route-static 179.48.68.192 255.255.255.192 172.31.255.2 description CGNAT
+ip route-static 179.48.69.0 255.255.255.0 NULL0
+ip route-static 179.48.69.0 255.255.255.0 172.31.255.18 description CGNAT HILLSTONE
+ip route-static 179.48.70.0 255.255.254.0 NULL0
+ip route-static 179.48.70.0 255.255.255.0 NULL0
+ip route-static 179.48.70.0 255.255.255.224 172.31.200.82 description CLIENTE PROVEDOR VINICIUS PITU - NOVO
+ip route-static 179.48.70.32 255.255.255.255 172.31.201.2 description CLIENTE PAPELARIA VENANCIO
+ip route-static 179.48.70.64 255.255.255.248 172.31.200.6 description /29 PROVEDOR VINICIUS DA SILVA TRINDADE - PITU
+ip route-static 179.48.70.72 255.255.255.252 172.31.200.30 description /30 ANDRE - FIK ON - PELA LIKER
+ip route-static 179.48.70.76 255.255.255.252 172.31.200.26 description /30 PROVEDOR MICHAEL VELOXNET
+ip route-static 179.48.70.81 255.255.255.255 172.31.200.10 description /32 VILLAGGIONET
+ip route-static 179.48.70.81 255.255.255.255 172.31.200.62 description /32 VILLAGGIONET
+ip route-static 179.48.70.82 255.255.255.255 172.31.200.10 description /32 VILLAGGIONET
+ip route-static 179.48.70.100 255.255.255.252 172.31.200.54 description /30 NETSINI
+ip route-static 179.48.70.104 255.255.255.248 172.31.200.38 description /29 PROVEDOR FIK ON ANDRE
+ip route-static 179.48.70.112 255.255.255.252 172.31.200.46 description PROVEDOR BRUNOE IGOR
+ip route-static 179.48.70.120 255.255.255.248 172.31.200.2 description /29 VELOXNET - central
+ip route-static 179.48.70.144 255.255.255.240 172.31.255.18 description IPS PUBLICOS PROXMOX 01
+ip route-static 179.48.70.158 255.255.255.255 10.171.171.2 description FASTNETMON
+ip route-static 179.48.70.192 255.255.255.192 10.63.5.234
+ip route-static 179.48.70.240 255.255.255.240 10.63.5.234 description TESTE-NAT-CISCO
+ip route-static 179.48.71.0 255.255.255.0 NULL0
+ip route-static 179.48.71.0 255.255.255.128 172.31.255.2 description CGNAT
+ip route-static 179.48.71.128 255.255.255.128 172.31.255.18 description CLIENTES COM IPs PUBLICOS
+ip route-static 179.48.71.254 255.255.255.255 172.31.200.1 description /32 CLIENTE NOVO PROVEDOR
+#
+ipv6 route-static 2804:75C0:: 32 NULL0
+ipv6 route-static 2804:75C0:: 33 NULL0
+ipv6 route-static 2804:75C0:: 34 NULL0
+ipv6 route-static 2804:75C0:1000:2::1 128 FE00:CAFE:CAFE:1::2
+ipv6 route-static 2804:75C0:1400:: 40 2804:75C0:1000:2::2 description BLOCO /40 TOMICH
+ipv6 route-static 2804:75C0:2000:: 40 FD00:0:1:400::E description CLIENTE PROVEDOR BRUNO E IGOR
+ipv6 route-static 2804:75C0:2100:: 40 FD00:0:1:400::1E description CLIENTE PROVEDOR VINICIUS PITU - NOVO
+ipv6 route-static 2804:75C0:4000:: 34 NULL0
+ipv6 route-static 2804:75C0:8000:: 33 NULL0
+ipv6 route-static 2804:75C0:8000:: 34 NULL0
+ipv6 route-static 2804:75C0:C000:: 34 NULL0
+#
+ip ipv6-prefix BOGONS-V6-IN index 10 deny :: 8
+ip ipv6-prefix BOGONS-V6-IN index 20 deny 100:: 64
+ip ipv6-prefix BOGONS-V6-IN index 30 deny 2001:2:: 48
+ip ipv6-prefix BOGONS-V6-IN index 40 deny 2001:10:: 28
+ip ipv6-prefix BOGONS-V6-IN index 50 deny 2001:DB8:: 32
+ip ipv6-prefix BOGONS-V6-IN index 60 deny 2001:: 23
+ip ipv6-prefix BOGONS-V6-IN index 70 deny 3FFE:: 16
+ip ipv6-prefix BOGONS-V6-IN index 80 deny FEC0:: 10
+ip ipv6-prefix BOGONS-V6-IN index 90 deny FC00:: 7
+ip ipv6-prefix BOGONS-V6-IN index 100 deny FE80:: 10
+ip ipv6-prefix BOGONS-V6-IN index 110 deny FF00:: 8
+ip ipv6-prefix BOGONS-V6-IN index 120 deny 2002:: 16
+ip ipv6-prefix PL-AGILIZA_32 index 10 permit 2804:3FAC:: 32 greater-equal 32 less-equal 32
+ip ipv6-prefix PL-AGILIZA_32_FULL index 10 permit 2804:3FAC:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-AGILIZA_32a33 index 10 permit 2804:3FAC:: 32 greater-equal 32 less-equal 33
+ip ipv6-prefix PL-AGILIZA_32a34 index 10 permit 2804:3FAC:: 32 greater-equal 32 less-equal 34
+ip ipv6-prefix PL-AGILIZA_32a36 index 10 permit 2804:3FAC:: 32 greater-equal 32 less-equal 36
+ip ipv6-prefix PL-AGILIZA_32a48 index 10 permit 2804:3FAC:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-FULLROUTING-IPV6 index 10 permit :: 0 less-equal 48
+ip ipv6-prefix PL-LAN-TELECOM_32 index 10 permit 2804:60B8:: 32 greater-equal 32 less-equal 32
+ip ipv6-prefix PL-LAN-TELECOM_32_FULL index 10 permit 2804:60B8:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-LAN-TELECOM_32a33 index 10 permit 2804:60B8:: 32 greater-equal 32 less-equal 33
+ip ipv6-prefix PL-LAN-TELECOM_32a34 index 10 permit 2804:60B8:: 32 greater-equal 32 less-equal 34
+ip ipv6-prefix PL-LAN-TELECOM_32a36 index 10 permit 2804:60B8:: 32 greater-equal 32 less-equal 36
+ip ipv6-prefix PL-LAN-TELECOM_32a48 index 10 permit 2804:60B8:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-MEU_32 index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 32
+ip ipv6-prefix PL-MEU_32_FULL index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-MEU_32a36 index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 36
+ip ipv6-prefix PL-MEU_32a48 index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-NET-SINI_32 index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 32
+ip ipv6-prefix PL-NET-SINI_32_FULL index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-NET-SINI_32a36 index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 36
+ip ipv6-prefix PL-NET-SINI_32a48 index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-NETSINI_32a33 index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 33
+ip ipv6-prefix PL-NETSINI_32a34 index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 34
+ip ipv6-prefix PL-NETSINI_32a36 index 10 permit 2804:5894:: 32 greater-equal 32 less-equal 36
+ip ipv6-prefix PL-VILLAGGIONET_32 index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 32
+ip ipv6-prefix PL-VILLAGGIONET_32_FULL index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PL-VILLAGGIONET_32a33 index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 33
+ip ipv6-prefix PL-VILLAGGIONET_32a34 index 10 permit 2804:75C0:: 32 greater-equal 32 less-equal 34
+#
+snmp-agent
+snmp-agent acl 2000
+snmp-agent local-engineid 800007DB03084F0A233065
+snmp-agent community read cipher %^%#&F$|3QtO&:~27$(qlQo~IKU2QcnN7WnL2}-b)lw,Cqi~89IX(1=Q`bT3c4KT3E1n,~=wM#H}WTA'3YRE%^%# alias __CommunityAliasName_01_44734
+snmp-agent community read cipher %^%#bQ<F82NhWB`P,:3d3yH"O7+Y,s`u{@awR=VEBwhPQN{OOyrec=D6>KQ|%Te~&O&J8jK!7Q)zgj#g/lS:%^%# alias __CommunityAliasName_02_11803
+#
+snmp-agent sys-info contact noc@tomich.com.br
+snmp-agent sys-info location Datacenter
+snmp-agent sys-info version v2c v3
+snmp-agent community complexity-check disable
+#
+snmp-agent mib-view included mibview mib-2
+snmp-agent mib-view included mib2view mib-2
+#
+snmp-agent protocol source-status all-interface
+snmp-agent protocol source-status ipv6 all-interface
+#
+undo snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+stelnet server enable
+snetconf server enable
+ssh server authentication-retries 5
+ssh ipv4 server port 56022
+ssh ipv6 server port 22002
+ssh user lucascampelo
+ssh server-source all-interface
+undo ssh ipv6 server-source all-interface
+ssh server ip-block disable
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh server hmac sha2_512 sha2_256
+ssh server key-exchange dh_group_exchange_sha256
+#
+ssh server publickey ecc rsa
+#
+ssh server dh-exchange min-len 2048
+#
+ssh client first-time enable
+ssh client peer 10.255.255.1 assign ecc-key 10.255.255.1
+ssh client peer 10.63.5.234 assign rsa-key 10.63.5.234
+#
+ssh client publickey ecc rsa
+#
+ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh client hmac sha2_512 sha2_256 sha1
+ssh client key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+user-interface maximum-vty 21
+#
+user-interface vty 0 4
+ acl SAFE-NETWORK inbound
+ authentication-mode aaa
+ user privilege level 3
+ idle-timeout 35791 0
+ protocol inbound ssh
+#
+local-aaa-server
+#
+return
+<BGP>

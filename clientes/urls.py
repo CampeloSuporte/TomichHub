@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 from .documentacao_views import (
     salvar_doc_config,
@@ -88,4 +88,5 @@ urlpatterns = [
     path('doc/config/buscar/<int:cliente_id>/', buscar_doc_config, name='buscar_doc_config'),
     path('doc/proxy/<int:cliente_id>/<str:tipo>/', proxy_documentacao, {'path': ''}, name='proxy_doc_root'),
     path('doc/proxy/<int:cliente_id>/<str:tipo>/<path:path>', proxy_documentacao, name='proxy_doc'),
+    re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web(?:/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
 ]

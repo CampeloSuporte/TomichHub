@@ -1,0 +1,103 @@
+
+#====== Script CGNAT by Redes Brasil ==========================
+        
+/ip firewall address-list add list=rede-privada-para-cgnat address=100.64.0.0/24
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-target=cgnat src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.0/29 portas=1024-3039" jump-target=100.64.0.0/29 src-address=100.64.0.0/29
+/ip firewall nat add chain=100.64.0.0/29 comment="100.64.0.0/29 ==> portas=1024-3039" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=1024-3039
+/ip firewall nat add chain=100.64.0.0/29 comment="100.64.0.0/29 ==> portas=1024-3039" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=1024-3039
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.8/29 portas=3040-5055" jump-target=100.64.0.8/29 src-address=100.64.0.8/29
+/ip firewall nat add chain=100.64.0.8/29 comment="100.64.0.8/29 ==> portas=3040-5055" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=3040-5055
+/ip firewall nat add chain=100.64.0.8/29 comment="100.64.0.8/29 ==> portas=3040-5055" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=3040-5055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.16/29 portas=5056-7071" jump-target=100.64.0.16/29 src-address=100.64.0.16/29
+/ip firewall nat add chain=100.64.0.16/29 comment="100.64.0.16/29 ==> portas=5056-7071" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=5056-7071
+/ip firewall nat add chain=100.64.0.16/29 comment="100.64.0.16/29 ==> portas=5056-7071" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=5056-7071
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.24/29 portas=7072-9087" jump-target=100.64.0.24/29 src-address=100.64.0.24/29
+/ip firewall nat add chain=100.64.0.24/29 comment="100.64.0.24/29 ==> portas=7072-9087" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=7072-9087
+/ip firewall nat add chain=100.64.0.24/29 comment="100.64.0.24/29 ==> portas=7072-9087" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=7072-9087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.32/29 portas=9088-11103" jump-target=100.64.0.32/29 src-address=100.64.0.32/29
+/ip firewall nat add chain=100.64.0.32/29 comment="100.64.0.32/29 ==> portas=9088-11103" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=9088-11103
+/ip firewall nat add chain=100.64.0.32/29 comment="100.64.0.32/29 ==> portas=9088-11103" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=9088-11103
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.40/29 portas=11104-13119" jump-target=100.64.0.40/29 src-address=100.64.0.40/29
+/ip firewall nat add chain=100.64.0.40/29 comment="100.64.0.40/29 ==> portas=11104-13119" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=11104-13119
+/ip firewall nat add chain=100.64.0.40/29 comment="100.64.0.40/29 ==> portas=11104-13119" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=11104-13119
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.48/29 portas=13120-15135" jump-target=100.64.0.48/29 src-address=100.64.0.48/29
+/ip firewall nat add chain=100.64.0.48/29 comment="100.64.0.48/29 ==> portas=13120-15135" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=13120-15135
+/ip firewall nat add chain=100.64.0.48/29 comment="100.64.0.48/29 ==> portas=13120-15135" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=13120-15135
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.56/29 portas=15136-17151" jump-target=100.64.0.56/29 src-address=100.64.0.56/29
+/ip firewall nat add chain=100.64.0.56/29 comment="100.64.0.56/29 ==> portas=15136-17151" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=15136-17151
+/ip firewall nat add chain=100.64.0.56/29 comment="100.64.0.56/29 ==> portas=15136-17151" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=15136-17151
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.64/29 portas=17152-19167" jump-target=100.64.0.64/29 src-address=100.64.0.64/29
+/ip firewall nat add chain=100.64.0.64/29 comment="100.64.0.64/29 ==> portas=17152-19167" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=17152-19167
+/ip firewall nat add chain=100.64.0.64/29 comment="100.64.0.64/29 ==> portas=17152-19167" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=17152-19167
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.72/29 portas=19168-21183" jump-target=100.64.0.72/29 src-address=100.64.0.72/29
+/ip firewall nat add chain=100.64.0.72/29 comment="100.64.0.72/29 ==> portas=19168-21183" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=19168-21183
+/ip firewall nat add chain=100.64.0.72/29 comment="100.64.0.72/29 ==> portas=19168-21183" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=19168-21183
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.80/29 portas=21184-23199" jump-target=100.64.0.80/29 src-address=100.64.0.80/29
+/ip firewall nat add chain=100.64.0.80/29 comment="100.64.0.80/29 ==> portas=21184-23199" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=21184-23199
+/ip firewall nat add chain=100.64.0.80/29 comment="100.64.0.80/29 ==> portas=21184-23199" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=21184-23199
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.88/29 portas=23200-25215" jump-target=100.64.0.88/29 src-address=100.64.0.88/29
+/ip firewall nat add chain=100.64.0.88/29 comment="100.64.0.88/29 ==> portas=23200-25215" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=23200-25215
+/ip firewall nat add chain=100.64.0.88/29 comment="100.64.0.88/29 ==> portas=23200-25215" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=23200-25215
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.96/29 portas=25216-27231" jump-target=100.64.0.96/29 src-address=100.64.0.96/29
+/ip firewall nat add chain=100.64.0.96/29 comment="100.64.0.96/29 ==> portas=25216-27231" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=25216-27231
+/ip firewall nat add chain=100.64.0.96/29 comment="100.64.0.96/29 ==> portas=25216-27231" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=25216-27231
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.104/29 portas=27232-29247" jump-target=100.64.0.104/29 src-address=100.64.0.104/29
+/ip firewall nat add chain=100.64.0.104/29 comment="100.64.0.104/29 ==> portas=27232-29247" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=27232-29247
+/ip firewall nat add chain=100.64.0.104/29 comment="100.64.0.104/29 ==> portas=27232-29247" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=27232-29247
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.112/29 portas=29248-31263" jump-target=100.64.0.112/29 src-address=100.64.0.112/29
+/ip firewall nat add chain=100.64.0.112/29 comment="100.64.0.112/29 ==> portas=29248-31263" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=29248-31263
+/ip firewall nat add chain=100.64.0.112/29 comment="100.64.0.112/29 ==> portas=29248-31263" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=29248-31263
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.120/29 portas=31264-33279" jump-target=100.64.0.120/29 src-address=100.64.0.120/29
+/ip firewall nat add chain=100.64.0.120/29 comment="100.64.0.120/29 ==> portas=31264-33279" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=31264-33279
+/ip firewall nat add chain=100.64.0.120/29 comment="100.64.0.120/29 ==> portas=31264-33279" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=31264-33279
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.128/29 portas=33280-35295" jump-target=100.64.0.128/29 src-address=100.64.0.128/29
+/ip firewall nat add chain=100.64.0.128/29 comment="100.64.0.128/29 ==> portas=33280-35295" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=33280-35295
+/ip firewall nat add chain=100.64.0.128/29 comment="100.64.0.128/29 ==> portas=33280-35295" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=33280-35295
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.136/29 portas=35296-37311" jump-target=100.64.0.136/29 src-address=100.64.0.136/29
+/ip firewall nat add chain=100.64.0.136/29 comment="100.64.0.136/29 ==> portas=35296-37311" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=35296-37311
+/ip firewall nat add chain=100.64.0.136/29 comment="100.64.0.136/29 ==> portas=35296-37311" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=35296-37311
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.144/29 portas=37312-39327" jump-target=100.64.0.144/29 src-address=100.64.0.144/29
+/ip firewall nat add chain=100.64.0.144/29 comment="100.64.0.144/29 ==> portas=37312-39327" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=37312-39327
+/ip firewall nat add chain=100.64.0.144/29 comment="100.64.0.144/29 ==> portas=37312-39327" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=37312-39327
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.152/29 portas=39328-41343" jump-target=100.64.0.152/29 src-address=100.64.0.152/29
+/ip firewall nat add chain=100.64.0.152/29 comment="100.64.0.152/29 ==> portas=39328-41343" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=39328-41343
+/ip firewall nat add chain=100.64.0.152/29 comment="100.64.0.152/29 ==> portas=39328-41343" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=39328-41343
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.160/29 portas=41344-43359" jump-target=100.64.0.160/29 src-address=100.64.0.160/29
+/ip firewall nat add chain=100.64.0.160/29 comment="100.64.0.160/29 ==> portas=41344-43359" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=41344-43359
+/ip firewall nat add chain=100.64.0.160/29 comment="100.64.0.160/29 ==> portas=41344-43359" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=41344-43359
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.168/29 portas=43360-45375" jump-target=100.64.0.168/29 src-address=100.64.0.168/29
+/ip firewall nat add chain=100.64.0.168/29 comment="100.64.0.168/29 ==> portas=43360-45375" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=43360-45375
+/ip firewall nat add chain=100.64.0.168/29 comment="100.64.0.168/29 ==> portas=43360-45375" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=43360-45375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.176/29 portas=45376-47391" jump-target=100.64.0.176/29 src-address=100.64.0.176/29
+/ip firewall nat add chain=100.64.0.176/29 comment="100.64.0.176/29 ==> portas=45376-47391" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=45376-47391
+/ip firewall nat add chain=100.64.0.176/29 comment="100.64.0.176/29 ==> portas=45376-47391" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=45376-47391
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.184/29 portas=47392-49407" jump-target=100.64.0.184/29 src-address=100.64.0.184/29
+/ip firewall nat add chain=100.64.0.184/29 comment="100.64.0.184/29 ==> portas=47392-49407" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=47392-49407
+/ip firewall nat add chain=100.64.0.184/29 comment="100.64.0.184/29 ==> portas=47392-49407" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=47392-49407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.192/29 portas=49408-51423" jump-target=100.64.0.192/29 src-address=100.64.0.192/29
+/ip firewall nat add chain=100.64.0.192/29 comment="100.64.0.192/29 ==> portas=49408-51423" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=49408-51423
+/ip firewall nat add chain=100.64.0.192/29 comment="100.64.0.192/29 ==> portas=49408-51423" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=49408-51423
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.200/29 portas=51424-53439" jump-target=100.64.0.200/29 src-address=100.64.0.200/29
+/ip firewall nat add chain=100.64.0.200/29 comment="100.64.0.200/29 ==> portas=51424-53439" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=51424-53439
+/ip firewall nat add chain=100.64.0.200/29 comment="100.64.0.200/29 ==> portas=51424-53439" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=51424-53439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.208/29 portas=53440-55455" jump-target=100.64.0.208/29 src-address=100.64.0.208/29
+/ip firewall nat add chain=100.64.0.208/29 comment="100.64.0.208/29 ==> portas=53440-55455" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=53440-55455
+/ip firewall nat add chain=100.64.0.208/29 comment="100.64.0.208/29 ==> portas=53440-55455" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=53440-55455
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.216/29 portas=55456-57471" jump-target=100.64.0.216/29 src-address=100.64.0.216/29
+/ip firewall nat add chain=100.64.0.216/29 comment="100.64.0.216/29 ==> portas=55456-57471" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=55456-57471
+/ip firewall nat add chain=100.64.0.216/29 comment="100.64.0.216/29 ==> portas=55456-57471" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=55456-57471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.224/29 portas=57472-59487" jump-target=100.64.0.224/29 src-address=100.64.0.224/29
+/ip firewall nat add chain=100.64.0.224/29 comment="100.64.0.224/29 ==> portas=57472-59487" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=57472-59487
+/ip firewall nat add chain=100.64.0.224/29 comment="100.64.0.224/29 ==> portas=57472-59487" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=57472-59487
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.232/29 portas=59488-61503" jump-target=100.64.0.232/29 src-address=100.64.0.232/29
+/ip firewall nat add chain=100.64.0.232/29 comment="100.64.0.232/29 ==> portas=59488-61503" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=59488-61503
+/ip firewall nat add chain=100.64.0.232/29 comment="100.64.0.232/29 ==> portas=59488-61503" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=59488-61503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.240/29 portas=61504-63519" jump-target=100.64.0.240/29 src-address=100.64.0.240/29
+/ip firewall nat add chain=100.64.0.240/29 comment="100.64.0.240/29 ==> portas=61504-63519" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=61504-63519
+/ip firewall nat add chain=100.64.0.240/29 comment="100.64.0.240/29 ==> portas=61504-63519" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=61504-63519
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.248/29 portas=63520-65535" jump-target=100.64.0.248/29 src-address=100.64.0.248/29
+/ip firewall nat add chain=100.64.0.248/29 comment="100.64.0.248/29 ==> portas=63520-65535" protocol=tcp action=netmap to-addresses=187.61.110.160/29 to-ports=63520-65535
+/ip firewall nat add chain=100.64.0.248/29 comment="100.64.0.248/29 ==> portas=63520-65535" protocol=udp action=netmap to-addresses=187.61.110.160/29 to-ports=63520-65535
+/ip firewall nat add chain=srcnat comment="100.64.0.0/24 ==> 187.61.110.160/29" action=netmap src-address=100.64.0.0/24 to-addresses=187.61.110.160/29
+#Fim do Script

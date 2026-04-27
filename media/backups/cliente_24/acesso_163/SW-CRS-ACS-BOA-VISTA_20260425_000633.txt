@@ -1,0 +1,188 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: SW-CRS-ACS-BOA-VISTA
+Host: 172.27.2.5:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 25/04/2026 00:06:33
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/23/2026 21:51:07 by RouterOS 6.49.13
+# software id = V2PJ-387Z
+#
+# model = CRS309-1G-8S+
+# serial number = HE508Z0X1M5
+/interface bridge add name=switch protocol-mode=none vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] l2mtu=10218 mtu=10218 name=ether1_energia
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] auto-negotiation=no l2mtu=10218 mtu=10218 name=sfp-sfpplus1_novo-jardim speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full l2mtu=10218 mtu=10218 name="sfp-sfpplus2 - P2P-RB-4011" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] l2mtu=10218 mtu=10218 name=sfp-sfpplus3_olt-pon2
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] auto-negotiation=no l2mtu=10218 mtu=10218 name=sfp-sfpplus4_olt-gerencia
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment=P2P-SW-HU-PONTE-ALTA l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus7 ] l2mtu=10218 mtu=10218
+/interface ethernet set [ find default-name=sfp-sfpplus8 ] l2mtu=10218 mtu=10218
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/snmp community set [ find default=yes ] name=jmatelecom-ro
+/interface bridge port add bridge=switch interface=ether1_energia pvid=430
+/interface bridge port add bridge=switch interface="sfp-sfpplus2 - P2P-RB-4011"
+/interface bridge port add bridge=switch disabled=yes frame-types=admit-only-untagged-and-priority-tagged interface=sfp-sfpplus3_olt-pon2 pvid=432
+/interface bridge port add bridge=switch frame-types=admit-only-untagged-and-priority-tagged interface=sfp-sfpplus4_olt-gerencia pvid=432
+/interface bridge port add bridge=switch interface=sfp-sfpplus1_novo-jardim
+/interface bridge port add bridge=switch interface=sfp-sfpplus5
+/interface bridge port add bridge=switch interface=sfp-sfpplus6
+/interface bridge port add bridge=switch interface=sfp-sfpplus7
+/interface bridge port add bridge=switch interface=sfp-sfpplus8
+/ip neighbor discovery-settings set discover-interface-list=all
+/interface bridge vlan add bridge=switch comment=PON1 tagged="sfp-sfpplus2 - P2P-RB-4011" untagged=sfp-sfpplus3_olt-pon2 vlan-ids=431
+/interface bridge vlan add bridge=switch comment=PON2 tagged="sfp-sfpplus2 - P2P-RB-4011" untagged=sfp-sfpplus3_olt-pon2,sfp-sfpplus4_olt-gerencia vlan-ids=432
+/interface bridge vlan add bridge=switch comment="OLT GERENCIA" disabled=yes tagged=sfp-sfpplus1_novo-jardim,sfp-sfpplus5 untagged=sfp-sfpplus4_olt-gerencia vlan-ids=439
+/interface bridge vlan add bridge=switch comment="VLAN OSPF DNO" tagged=sfp-sfpplus1_novo-jardim,sfp-sfpplus5 vlan-ids=540
+/interface bridge vlan add bridge=switch comment=OSPF-RT-PE-BOA-VISTA tagged="sfp-sfpplus5,sfp-sfpplus2 - P2P-RB-4011" vlan-ids=541
+/interface bridge vlan add bridge=switch comment=OSPF-RT-PE-BOA-VISTA tagged="sfp-sfpplus1_novo-jardim,sfp-sfpplus2 - P2P-RB-4011" vlan-ids=542
+/interface bridge vlan add bridge=switch tagged="sfp-sfpplus1_novo-jardim,sfp-sfpplus2 - P2P-RB-4011" vlan-ids=411-421,2702
+/interface bridge vlan add bridge=switch tagged="sfp-sfpplus2 - P2P-RB-4011" untagged=sfp-sfpplus1_novo-jardim vlan-ids=20
+/interface bridge vlan add bridge=switch comment=OSPF-RT-PE-NOVO-JARDIM tagged=sfp-sfpplus1_novo-jardim,sfp-sfpplus5 vlan-ids=544
+/interface pppoe-server server add disabled=no interface=sfp-sfpplus3_olt-pon2 service-name=service1
+/ip address add address=192.168.163.114/28 interface=switch network=192.168.163.112
+/ip address add address=172.27.2.5/28 interface=switch network=172.27.2.0
+/ip dns set servers=192.168.160.1,192.168.160.2,8.8.8.8
+/ip route add distance=1 gateway=172.27.2.1
+/ip route add distance=1 gateway=192.168.163.57
+/ip route add distance=1 gateway=192.168.163.113
+/ip service set telnet address=192.168.160.0/21 disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www address=192.168.160.0/21 disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-interfaces=all trap-version=2
+/system clock set time-zone-autodetect=no time-zone-name=America/Araguaina
+/system identity set name=SW-CRS-ACS-BOA-VISTA
+/system ntp client set enabled=yes primary-ntp=192.168.160.1 secondary-ntp=192.168.160.2
+/system package update set channel=long-term
+/system routerboard settings set boot-os=router-os
+/system scheduler add interval=1d name=bkp_interno on-event=bkpinterno policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=mar/22/2024 start-time=04:05:00
+/system scheduler add interval=1d name=bkp_procyon on-event=bkp_ftp_procyon policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=mar/22/2024 start-time=04:00:00
+/system script add dont-require-permissions=no name=EFETUAR_BACKUP_SISTEMA owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":log info \"INICIANDO BACKUP\";\r\
+    \n\r\
+    \n:global filename;\r\
+    \n:global senha \"x9y5@4xn\";\r\
+    \n\r\
+    \n:global date [/system clock get date];\r\
+    \n:global time [/system clock get time];\r\
+    \n:global name [/system identity get name];\r\
+    \n\r\
+    \n:global months (\"jan\",\"feb\",\"mar\",\"apr\",\"may\",\"jun\",\"jul\",\"aug\",\"sep\",\"oct\",\"nov\",\"dec\");\r\
+    \n:global hour [:pick \$time 0 2];\r\
+    \n:global min [:pick \$time 3 5];\r\
+    \n:global sec [:pick \$time 6 8];\r\
+    \n:global month [:pick \$date 0 3];\r\
+    \n:set month ([ :find \$months \$month -1 ] + 1);\r\
+    \n\r\
+    \n:if (\$month < 10) do={ :set month (\"0\" . \$month); }\r\
+    \n\r\
+    \n:global day [:pick \$date 4 6];\r\
+    \n:global year [:pick \$date 7 11];\r\
+    \n:set filename (\"BACKUP_\".\$name. \"_\" .\$year.\"-\".\$month.\"-\".\$day.\"_\".\$hour.\"-\".\$min.\"-\".\$sec);\r\
+    \n\r\
+    \n/system backup save name=\$filename password=\$senha;\r\
+    \n\r\
+    \n\r\
+    \n:log info \"GERANDO RSC\";\r\
+    \n:global rsc \$filename;\r\
+    \n\r\
+    \n/export file=\$rsc;\r\
+    \n\r\
+    \n:log info \"BACKUP FINALIZADO\""
+/system script add dont-require-permissions=no name=bkpinterno owner=victor policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local password \"!@#jma123\"\r\
+    \n:local username \"bkpftp\"\r\
+    \n:local ftpserver \"45.169.4.109\"\r\
+    \n\r\
+    \n# months array\r\
+    \n:local months (\"\"jan\"\",\"\"feb\"\",\"\"mar\"\",\"\"apr\"\",\"\"may\"\",\"\"jun\"\",\"\"jul\"\",\"\"aug\"\",\"\"sep\"\",\"\"oct\"\",\"\"nov\"\",\"\"dec\"\");\r\
+    \n\r\
+    \n# get time\r\
+    \n:local ts [/system clock get time]\r\
+    \n:set ts ([:pick \$ts 0 2].[:pick \$ts 3 5].[:pick \$ts 6 8])\r\
+    \n\r\
+    \n# get Date\r\
+    \n:local ds [/system clock get date]\r\
+    \n:local month [:pick \$ds 0 3];\r\
+    \n:local mm ([:find \$months \$month -1] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n# set \$ds to format YYYY-MM-DD\r\
+    \n:set ds ([:pick \$ds 7 11].\$mm.[:pick \$ds 4 6]);\r\
+    \n\r\
+    \n# file name for config export - file name will be UMDB-servername-date-time.rsc\r\
+    \n:local filename ([/system identity get name].\"-\".\$ds.\"-\".\$ts.\".rsc\")\r\
+    \n\r\
+    \n# backup the data\r\
+    \n#/tool user-manager database save name=\$filename\r\
+    \n/export compact file=\$filename\r\
+    \n:log warning message=\"Config export finished (2/2).\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$filename\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"/SW BOA VISTA/\$filename\" upload=yes\r\
+    \n\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n# Delete created backup files once they have been uploaded\r\
+    \n# so they don't accumulate and fill up storage space on the router.\r\
+    \n\r\
+    \n/file remove \"\$filename\"\r\
+    \n\r\
+    \n:log info \"Local Backup Files Deleted Successfully\""
+/system script add dont-require-permissions=no name=bkp_ftp_procyon owner=victor policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local password \"procyon1q2w\"\r\
+    \n:local username \"bkpprocyon\"\r\
+    \n:local ftpserver \"191.252.193.112\"\r\
+    \n\r\
+    \n# months array\r\
+    \n:local months (\"\"jan\"\",\"\"feb\"\",\"\"mar\"\",\"\"apr\"\",\"\"may\"\",\"\"jun\"\",\"\"jul\"\",\"\"aug\"\",\"\"sep\"\",\"\"oct\"\",\"\"nov\"\",\"\"dec\"\");\r\
+    \n\r\
+    \n# get time\r\
+    \n:local ts [/system clock get time]\r\
+    \n:set ts ([:pick \$ts 0 2].[:pick \$ts 3 5].[:pick \$ts 6 8])\r\
+    \n\r\
+    \n# get Date\r\
+    \n:local ds [/system clock get date]\r\
+    \n:local month [:pick \$ds 0 3];\r\
+    \n:local mm ([:find \$months \$month -1] + 1);\r\
+    \n:if (\$mm < 10) do={ :set mm (\"0\" . \$mm); }\r\
+    \n# set \$ds to format YYYY-MM-DD\r\
+    \n:set ds ([:pick \$ds 7 11].\$mm.[:pick \$ds 4 6]);\r\
+    \n\r\
+    \n# file name for config export - file name will be UMDB-servername-date-time.rsc\r\
+    \n:local filename ([/system identity get name].\"-\".\$ds.\"-\".\$ts.\".rsc\")\r\
+    \n\r\
+    \n# backup the data\r\
+    \n#/tool user-manager database save name=\$filename\r\
+    \n/export compact file=\$filename\r\
+    \n:log warning message=\"Config export finished (2/2).\"\r\
+    \n\r\
+    \n# Upload backup file to FTP server.\r\
+    \n/tool fetch address=\$ftpserver src-path=\"\$filename\" \\\r\
+    \nuser=\$username mode=ftp password=\$password \\\r\
+    \ndst-path=\"/Mikrotiks/JMA/SW BOA VISTA/\$filename\" upload=yes\r\
+    \n\r\
+    \n:log info \"Backup Uploaded Successfully\"\r\
+    \n\r\
+    \n# Delete created backup files once they have been uploaded\r\
+    \n# so they don't accumulate and fill up storage space on the router.\r\
+    \n\r\
+    \n/file remove \"\$filename\"\r\
+    \n\r\
+    \n:log info \"Local Backup Files Deleted Successfully\""
+/tool romon set enabled=yes id=48:A9:8A:5E:B9:43 secrets=jma
+

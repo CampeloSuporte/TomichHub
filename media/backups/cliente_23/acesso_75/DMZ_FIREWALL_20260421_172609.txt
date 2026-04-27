@@ -1,0 +1,387 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: CALLFRAN
+Equipamento: DMZ FIREWALL
+Host: 45.228.38.43:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 21/04/2026 17:26:09
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/21/2026 17:25:22 by RouterOS 6.49.8
+# software id = D0RT-I6G9
+#
+# model = CCR1009-7G-1C-1S+
+# serial number = 91500BC09F4D
+/interface bridge add name=bridge_momosa_ptp protocol-mode=none
+/interface bridge add name=loopback-LINK protocol-mode=none
+/interface ethernet set [ find default-name=combo1 ] auto-negotiation=no mac-address=C4:AD:34:43:F7:80 name=CB01_
+/interface ethernet set [ find default-name=ether1 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full mac-address=C4:AD:34:43:F7:81 name=G01_SERVER_WTD
+/interface ethernet set [ find default-name=ether2 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full mac-address=C4:AD:34:43:F7:82 name=G02_REDE_INTERNA
+/interface ethernet set [ find default-name=ether3 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full loop-protect=on mac-address=C4:AD:34:43:F7:83 name=G03_SERVER_PBS
+/interface ethernet set [ find default-name=ether4 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full loop-protect=on loop-protect-disable-time=15h mac-address=C4:AD:34:43:F7:84 name="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS"
+/interface ethernet set [ find default-name=ether5 ] mac-address=C4:AD:34:43:F7:85 name=G05_GERENCIA_OL_PARKS_ALIANCA
+/interface ethernet set [ find default-name=ether6 ] mac-address=C4:AD:34:43:F7:86 name=G06_GERENCIA_SRV-02
+/interface ethernet set [ find default-name=ether7 ] mac-address=C4:AD:34:43:F7:87 name=G07_
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,5000M-full,10000M-full auto-negotiation=no mac-address=C4:AD:34:43:F7:7F name=Sp01_SW_6730_HUAWEI
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-495-REDE_NEUTRA_RAPIDUS vlan-id=495
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-895-REDE_NEUTRA_RAPIDUS vlan-id=895
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-1050-FRANCIVALDO-BELA-VISTA vlan-id=1050
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-1053-A-INTELBRAS-BELA-VISTA vlan-id=1053
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-1057-A-PIRANGAS-BELA-VISTA vlan-id=1057
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-1103-VMS_CALLFRAN vlan-id=1103
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-1220-GERENCIA-SW-BELA-VISTA vlan-id=1220
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN-1999-TESTE vlan-id=1999
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN3509-TESTECGNAT vlan-id=3509
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=VLAN3512-TESTECGNAT vlan-id=3512
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan150_CALLFRAN@LITE-BEAM172.16.201.3 vlan-id=150
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan151_callfran.net/areias_CAIXADAGUA 5640 Canal172.16.201.5" vlan-id=151
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan152_callfran.net/areias_APC5M18_172.16.201.9 vlan-id=152
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan153_rede cabeada" vlan-id=153
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan154_callfran.net/areias_canal172.16.201.7 vlan-id=154
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan155_AP_AREIAS_PAU-FERRO172.16.201.4 vlan-id=155
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan156_AP_5A20_AREIAS172.10.201.8:64001/172.16.201.2 vlan-id=156
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan157_CALLFRANTEC@POV.AREIAS. B_172.16.201.10" vlan-id=157
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan159-GERENCIA-OLT-AREIAS vlan-id=159
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan410_ptp mimosa 192.168.101.2" vlan-id=410
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan411_ptp mimosa 192.168.101.3" vlan-id=411
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan500_MGMT_SW01 vlan-id=500
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1001-GERENCIA-SERRA-BATATEIRA vlan-id=1001
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1002-GERENCIA-RESIDENCIAL_SF vlan-id=1002
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1003 vlan-id=1003
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1004 vlan-id=1004
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1005 vlan-id=1005
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1007-CASTELO-BRANCO vlan-id=1007
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1008 vlan-id=1008
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1009 vlan-id=1009
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1020 vlan-id=1020
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1021 vlan-id=1021
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1022 vlan-id=1022
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1023 vlan-id=1023
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1201 vlan-id=1201
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1202 vlan-id=1202
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1203 vlan-id=1203
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1204 vlan-id=1204
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name=vlan1205 vlan-id=1205
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=vlan3459-PTP-BORDA-BGP-IPV4 vlan-id=3459
+/interface vlan add interface=Sp01_SW_6730_HUAWEI name=vlan3490-PTP-BORDA-BGP-IPV6 vlan-id=3490
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan_600_gerencia antenas Olerias  ubiquit" vlan-id=600
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan_601_gerencia antenas Olerias  ubiquit" vlan-id=601
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan_602_gerencia antenas Olerias  ubiquit" vlan-id=602
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan_603_gerencia antenas Olerias  ubiquit" vlan-id=603
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan_604_gerencia antenas Olerias  ubiquit" vlan-id=604
+/interface vlan add interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" name="vlan_605_gerencia antenas Olerias  ubiquit" vlan-id=605
+/interface bonding add disabled=yes mode=802.3ad name=bonding1 slaves=G01_SERVER_WTD transmit-hash-policy=layer-2-and-3
+/interface list add include=dynamic name=WAN
+/interface list add exclude=WAN include=all name=LAN
+/ip ipsec peer add disabled=yes name=l2tp-in-server passive=yes
+/ip ipsec proposal set [ find default=yes ] disabled=yes
+/ip pool add name=L2TP ranges=192.168.197.2-192.168.197.255
+/ip pool add name=OVPN_pool ranges=192.168.255.2-192.168.255.255
+/ip pool add name=l2tp ranges=192.168.111.2-192.168.111.254
+/ip pool add name=POOL_OpenVPN ranges=192.168.250.128/25
+/ip pool add name=dhcp_rede_interna ranges=192.168.65.2-192.168.65.254
+/ip pool add name=dhcp_pool41 ranges=192.168.65.2-192.168.65.254
+/ip pool add name=dhcp_pool42 ranges=192.168.66.2-192.168.66.254
+/ip dhcp-server add address-pool=dhcp_pool41 disabled=no interface=G02_REDE_INTERNA name=dhcp1
+/ipv6 pool add name=pool1 prefix=fd00:100:1::/64 prefix-length=64
+/ppp profile set *0 only-one=yes
+/ppp profile add local-address=192.168.111.1 name=L2TP remote-address=l2tp
+/ppp profile add change-tcp-mss=yes local-address=192.168.250.1 name=OPEN_VPN rate-limit=50m/50m remote-address=POOL_OpenVPN use-encryption=yes
+/routing bgp instance set default as=271699 disabled=yes router-id=10.199.1.1
+/routing ospf instance set [ find default=yes ] in-filter=ospfv2-in out-filter=ospfv2-out redistribute-connected=as-type-1 redistribute-static=as-type-1 router-id=45.228.38.42
+/routing ospf-v3 instance set [ find default=yes ] redistribute-connected=as-type-1 redistribute-static=as-type-1 router-id=172.25.255.3
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=callfraninfonet write-access=yes
+/system logging action set 1 disk-file-count=5
+/system logging action add disk-file-count=1 disk-file-name=info_log disk-lines-per-file=5000 name=info target=disk
+/system logging action add disk-file-count=1 disk-file-name=critical_log disk-lines-per-file=5000 name=critical target=disk
+/system logging action add disk-file-count=1 disk-file-name=error_log disk-lines-per-file=5000 name=error target=disk
+/system logging action add disk-file-count=1 disk-file-name=warning_log disk-lines-per-file=5000 name=warning target=disk
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge=bridge_momosa_ptp interface="vlan410_ptp mimosa 192.168.101.2"
+/interface bridge port add bridge=bridge_momosa_ptp interface="vlan411_ptp mimosa 192.168.101.3"
+/ip firewall connection tracking set enabled=yes
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface l2tp-server server set allow-fast-path=yes default-profile=L2TP ipsec-secret=penetw one-session-per-host=yes use-ipsec=yes
+/interface ovpn-server server set auth=sha1 certificate=Servidor-OPEN cipher=aes256 default-profile=OPEN_VPN enabled=yes port=61194 require-client-certificate=yes
+/ip address add address=192.168.250.5/30 comment="DNS01_IP PRIVADO" interface=VLAN-1103-VMS_CALLFRAN network=192.168.250.4
+/ip address add address=192.168.250.9/30 comment="DNS02_IP PRIVADO" interface=VLAN-1103-VMS_CALLFRAN network=192.168.250.8
+/ip address add address=172.16.25.1/24 comment="antena rede piranga apc5m90" interface=vlan1009 network=172.16.25.0
+/ip address add address=192.168.250.1/30 comment="ILO_MGMT servidor 01" disabled=yes interface=Sp01_SW_6730_HUAWEI network=192.168.250.0
+/ip address add address=172.16.202.1/24 comment="rede lite beam olerias" disabled=yes interface=vlan155_AP_AREIAS_PAU-FERRO172.16.201.4 network=172.16.202.0
+/ip address add address=172.22.253.1/24 comment="jua 4 ubnt painel" disabled=yes interface=vlan1003 network=172.22.253.0
+/ip address add address=172.17.254.1/24 comment="apc5m18 ceasa" disabled=yes interface=vlan1005 network=172.17.254.0
+/ip address add address=172.21.253.1/24 comment="apc 5m 18 antena malhda da areia" disabled=yes interface=vlan1021 network=172.21.253.0
+/ip address add address=172.18.254.1/24 comment="antena dija jua 4" disabled=yes interface=vlan1201 network=172.18.254.0
+/ip address add address=172.17.253.1/24 disabled=yes interface=vlan1201 network=172.17.253.0
+/ip address add address=172.29.0.1/30 interface=vlan500_MGMT_SW01 network=172.29.0.0
+/ip address add address=192.168.65.1/24 comment="MEU PC" interface=G02_REDE_INTERNA network=192.168.65.0
+/ip address add address=10.200.200.1/30 comment="SERVIDOR PBS" interface=G03_SERVER_PBS network=10.200.200.0
+/ip address add address=172.18.253.1/24 comment="apc 5m 90 *ULTRA GAS*" disabled=yes interface=vlan1004 network=172.18.253.0
+/ip address add address=172.23.253.1/24 comment="painel intelbras apc 5m 90 +" disabled=yes interface=vlan1022 network=172.23.253.0
+/ip address add address=172.20.36.1/30 comment="SERVIDOR FTP - RPKI" interface=VLAN-1103-VMS_CALLFRAN network=172.20.36.0
+/ip address add address=172.16.253.1/24 comment="rede itaberaba ptp power bean" disabled=yes interface=vlan1204 network=172.16.253.0
+/ip address add address=172.20.35.22/30 comment=PTP-BORDA-BGP-IPV4 interface=vlan3459-PTP-BORDA-BGP-IPV4 network=172.20.35.20
+/ip address add address=172.20.35.1/30 comment=ZABBIX interface=VLAN-1103-VMS_CALLFRAN network=172.20.35.0
+/ip address add address=172.20.35.69/30 comment=GRAFANA interface=VLAN-1103-VMS_CALLFRAN network=172.20.35.68
+/ip address add address=172.22.252.1/24 comment="ANTENA MARINALDO SERRA BATATEIRA" disabled=yes interface=VLAN-895-REDE_NEUTRA_RAPIDUS network=172.22.252.0
+/ip address add address=172.20.36.9/30 comment=SERVIDOR-PHP-IPAM interface=VLAN-1103-VMS_CALLFRAN network=172.20.36.8
+/ip address add address=172.19.254.1/24 comment="antena jason " disabled=yes interface=vlan1020 network=172.19.254.0
+/ip address add address=172.16.203.1/24 comment="PTP iurd jua8 " disabled=yes interface=vlan1008 network=172.16.203.0
+/ip address add address=172.16.201.1/24 comment="rede areias" interface=vlan155_AP_AREIAS_PAU-FERRO172.16.201.4 network=172.16.201.0
+/ip address add address=172.20.37.25/29 comment="PTP REDE CASTELO BRANCO" interface=vlan1007-CASTELO-BRANCO network=172.20.37.24
+/ip address add address=172.20.37.17/29 comment="PTP REDE SERRA DA BATATEIRA" interface=vlan1001-GERENCIA-SERRA-BATATEIRA network=172.20.37.16
+/ip address add address=172.20.37.1/29 comment="PTP REDE RESIDENCIA S\C3O FRANCISCO" interface=vlan1002-GERENCIA-RESIDENCIAL_SF network=172.20.37.0
+/ip address add address=172.20.37.9/29 comment="PTP REDE OLERIAS J.P" disabled=yes interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS" network=172.20.37.8
+/ip address add address=192.168.101.1/29 comment="ACESSO PTP MIMOSA  final 2 e 3    vlan 400 e 401" interface=bridge_momosa_ptp network=192.168.101.0
+/ip address add address=172.21.252.1/24 comment="antenas oleria ubiquit aps" interface=VLAN-895-REDE_NEUTRA_RAPIDUS network=172.21.252.0
+/ip address add address=45.228.38.42 comment="NAT BLOCO CALLFRAN" interface=loopback-LINK network=45.228.38.42
+/ip address add address=45.228.38.36 comment="EMBY SERVER" interface=VLAN-1103-VMS_CALLFRAN network=45.228.38.37
+/ip address add address=45.228.38.43 comment="NAT BLOCO CALLFRAN" interface=loopback-LINK network=45.228.38.43
+/ip address add address=45.228.38.49/29 comment="DNS PUBLICO/IXC " disabled=yes interface=G01_SERVER_WTD network=45.228.38.48
+/ip address add address=45.228.38.38 comment=IXC_SOFT interface=VLAN-1103-VMS_CALLFRAN network=45.228.38.39
+/ip address add address=45.228.38.32 comment="IXC CURINGA" interface=VLAN-1103-VMS_CALLFRAN network=45.228.38.33
+/ip address add address=172.21.188.1/24 comment="VLAN-1050-FRANCIVALDO-BELA-VISTA " interface=VLAN-1050-FRANCIVALDO-BELA-VISTA network=172.21.188.0
+/ip address add address=172.22.188.1/24 comment="VLAN-1057-A-PIRANGAS-BELA-VISTA " disabled=yes interface=VLAN-1057-A-PIRANGAS-BELA-VISTA network=172.22.188.0
+/ip address add address=172.25.188.1/24 comment=VLAN-1053-A-INTELBRAS-BELA-VISTA disabled=yes interface=VLAN-1053-A-INTELBRAS-BELA-VISTA network=172.25.188.0
+/ip address add address=172.25.255.3 interface=loopback-LINK network=172.25.255.3
+/ip address add address=172.20.36.17/30 comment=SERVIDOR-VM-CHECK-MK interface=VLAN-1103-VMS_CALLFRAN network=172.20.36.16
+/ip address add address=45.228.38.40 comment="SPED TESTE" disabled=yes interface=VLAN-1103-VMS_CALLFRAN network=45.228.38.41
+/ip address add address=10.170.255.1/30 comment="SVR-01 CALLFRAN" interface=G01_SERVER_WTD network=10.170.255.0
+/ip address add address=10.201.201.1/30 comment="SVR-02 CALLFRAN" interface=G06_GERENCIA_SRV-02 network=10.201.201.0
+/ip address add address=192.168.245.5/30 interface=G05_GERENCIA_OL_PARKS_ALIANCA network=192.168.245.4
+/ip address add address=172.20.36.21/30 comment="SERVIDOR-VM-MINHA-CONEX\C3O" interface=VLAN-1103-VMS_CALLFRAN network=172.20.36.20
+/ip address add address=172.20.35.97/30 interface=VLAN-895-REDE_NEUTRA_RAPIDUS network=172.20.35.96
+/ip address add address=192.168.245.9/30 interface=vlan159-GERENCIA-OLT-AREIAS network=192.168.245.8
+/ip address add address=172.20.35.109/30 comment=ZABBIX interface=VLAN-1103-VMS_CALLFRAN network=172.20.35.108
+/ip address add address=172.16.100.161/30 interface=VLAN-1220-GERENCIA-SW-BELA-VISTA network=172.16.100.160
+/ip address add address=10.202.202.1/30 comment="SVR WTD" interface=G01_SERVER_WTD network=10.202.202.0
+/ip address add address=172.16.253.1/24 comment="rede itaberaba ptp power bean" disabled=yes interface=VLAN-495-REDE_NEUTRA_RAPIDUS network=172.16.253.0
+/ip address add address=198.18.1.1/30 interface=VLAN-1103-VMS_CALLFRAN network=198.18.1.0
+/ip dhcp-server alert add disabled=no interface=CB01_
+/ip dhcp-server alert add disabled=no interface=G03_SERVER_PBS
+/ip dhcp-server alert add disabled=no interface="G04_CRS326__ACESSO AOS EQUIPAMENTOS ANTENAS"
+/ip dhcp-server alert add disabled=no interface=G05_GERENCIA_OL_PARKS_ALIANCA
+/ip dhcp-server alert add disabled=no interface=G06_GERENCIA_SRV-02
+/ip dhcp-server alert add disabled=no interface=G07_
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server alert add disabled=no
+/ip dhcp-server network add address=192.168.65.0/24 dns-server=192.168.250.6 gateway=192.168.65.1
+/ip dns set servers=192.168.250.6,192.168.250.10,2804:7fa0:4008::6,2804:7fa0:400a::10
+/ip firewall address-list add address=172.16.0.0/12 comment="**********REDE PRIVADA**************" list=PRIVADOS
+/ip firewall address-list add address=10.0.0.0/8 list=PRIVADOS
+/ip firewall address-list add address=192.168.0.0/16 list=PRIVADOS
+/ip firewall address-list add address=192.168.250.6 comment="***********BLOCOS COM NAT************" list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=192.168.250.10 comment=DNS2 list=NAT_BLOCO_CALLFRAN_43
+/ip firewall address-list add address=10.170.255.2 comment=Servers_MGMT list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=192.168.65.0/24 comment="COMPUTADOR CLAUDIO" list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=192.168.0.0/16 comment=**********PREFIXO********** list=Prefixo
+/ip firewall address-list add address=10.0.0.0/8 list=Prefixo
+/ip firewall address-list add address=172.16.0.0/12 list=Prefixo
+/ip firewall address-list add address=45.228.38.0/24 list=Prefixo
+/ip firewall address-list add address=45.228.38.0/24 list=PRIVADOS
+/ip firewall address-list add address=172.20.35.0/30 comment="servidor zabbix" list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=172.20.35.68/30 comment="servidor grafana" list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=172.20.36.0/30 comment="servidor rpki/ftp" list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=172.16.0.0/12 comment=***************TRUSTED*************** list=Trusted
+/ip firewall address-list add address=10.0.0.0/8 list=Trusted
+/ip firewall address-list add address=192.168.0.0/16 list=Trusted
+/ip firewall address-list add address=10.1.1.3 list=HARPIN
+/ip firewall address-list add address=10.1.1.2 list=HARPIN
+/ip firewall address-list add address=45.228.38.0/24 list=Trusted
+/ip firewall address-list add address=172.20.36.16/30 comment=vm-checkmk list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=10.200.200.2 comment=PBS list=NAT_BLOCO_CALLFRAN_43
+/ip firewall address-list add address=10.201.201.2 comment="SRV 02" list=NAT_BLOCO_CALLFRAN_43
+/ip firewall address-list add address=192.168.244.2 list=HARPIN
+/ip firewall address-list add address=172.20.35.98 list=HARPIN
+/ip firewall address-list add address=172.20.35.94 list=HARPIN
+/ip firewall address-list add address=172.20.35.62 list=HARPIN
+/ip firewall address-list add address=172.20.35.110 comment=Servers_MGMT list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=100.64.16.0/21 list=PRIVADOS
+/ip firewall address-list add address=179.48.68.73 list=Trusted
+/ip firewall address-list add address=10.202.202.2 comment="SRV wtd" list=NAT_BLOCO_CALLFRAN_43
+/ip firewall address-list add address=192.168.66.0/24 comment="teste sw tplink" list=NAT_BLOCO_CALLFRAN_42
+/ip firewall address-list add address=100.64.16.0/21 list=Prefixo
+/ip firewall address-list add address=198.18.1.2 comment="SRV wtd" list=NAT_BLOCO_CALLFRAN_43
+/ip firewall address-list add address=179.0.110.0/24 list=Trusted
+/ip firewall address-list add address=100.64.16.0/21 list=Trusted
+/ip firewall filter add action=fasttrack-connection chain=forward connection-state=established,related
+/ip firewall filter add action=drop chain=input comment="BLOQUEI ACESSO WINBOX" dst-port=8296 protocol=tcp src-address-list=!Trusted
+/ip firewall filter add action=jump chain=forward comment=DNS01_Filter dst-address=192.168.250.6 jump-target=DNS01_Filter
+/ip firewall filter add action=accept chain=DNS01_Filter comment=ICMP limit=110,5:packet protocol=icmp
+/ip firewall filter add action=accept chain=DNS01_Filter comment=Establish/Related connection-state=established,related
+/ip firewall filter add action=accept chain=DNS01_Filter comment=Confiaveis src-address-list=Trusted
+/ip firewall filter add action=accept chain=DNS01_Filter comment=UDP_53 dst-port=53 protocol=udp src-address-list=Prefixo
+/ip firewall filter add action=accept chain=DNS01_Filter comment=UDP_853_DoT dst-port=853 protocol=udp src-address-list=Prefixo
+/ip firewall filter add action=accept chain=DNS01_Filter comment=TCP_53 dst-port=53 protocol=tcp src-address-list=Prefixo
+/ip firewall filter add action=accept chain=DNS01_Filter comment=TCP_853_DoT dst-port=853 protocol=tcp src-address-list=Prefixo
+/ip firewall filter add action=drop chain=DNS01_Filter comment=Drop src-address-list=!Trusted
+/ip firewall filter add action=jump chain=forward comment=DNS02_Filter dst-address=192.168.250.10 jump-target=DNS02_Filter
+/ip firewall filter add action=accept chain=DNS02_Filter comment=ICMP limit=110,5:packet protocol=icmp
+/ip firewall filter add action=accept chain=DNS02_Filter comment=Establish/Related connection-state=established,related
+/ip firewall filter add action=accept chain=DNS02_Filter comment=Confiaveis src-address-list=Trusted
+/ip firewall filter add action=accept chain=DNS02_Filter comment=UDP_53 dst-port=53 protocol=udp src-address-list=Prefixo
+/ip firewall filter add action=accept chain=DNS02_Filter comment=UDP_853_DoT dst-port=853 protocol=udp src-address-list=Prefixo
+/ip firewall filter add action=accept chain=DNS02_Filter comment=TCP_53 dst-port=53 protocol=tcp src-address-list=Prefixo
+/ip firewall filter add action=accept chain=DNS02_Filter comment=TCP_853_DoT dst-port=853 protocol=tcp src-address-list=Prefixo
+/ip firewall filter add action=drop chain=DNS02_Filter comment=Drop src-address-list=!Trusted
+/ip firewall filter add action=drop chain=input comment="BLOQUEIO SNMP EXTERNO" port=161,162 protocol=udp src-address-list=!Prefixo
+/ip firewall filter add action=drop chain=input comment="BLOQUEIO SSH EXTERNO" port=22 protocol=tcp src-address-list=!Trusted
+/ip firewall filter add action=drop chain=forward comment="BLOQUEIO SSH INTERNO" port=22 protocol=tcp src-address-list=!Trusted
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT BLOCO_CALLFRAN_42" dst-address-list=!PRIVADOS out-interface=vlan3459-PTP-BORDA-BGP-IPV4 src-address-list=NAT_BLOCO_CALLFRAN_42 to-addresses=45.228.38.42
+/ip firewall nat add action=src-nat chain=srcnat comment="NAT BLOCO_CALLFRAN_43" dst-address-list=!PRIVADOS out-interface=vlan3459-PTP-BORDA-BGP-IPV4 src-address-list=NAT_BLOCO_CALLFRAN_43 to-addresses=45.228.38.43
+/ip firewall nat add action=src-nat chain=srcnat comment="VPN L2TP IP NOVO" src-address=192.168.111.0/24 to-addresses=45.228.38.42
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SERVIDOR FTP/RPKI" dst-address=45.228.38.42 dst-port=9099 protocol=tcp to-addresses=172.20.36.2 to-ports=3000
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SERVIDOR FTP/RPKI" dst-address=45.228.38.42 dst-port=80,443 protocol=tcp to-addresses=192.168.8.200
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO OLT ALIAN\C7A (CLAUDIO)" dst-address=45.228.38.42 dst-port=9091 protocol=tcp to-addresses=192.168.245.6 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO OLT BELA VISTA" dst-address=45.228.38.42 dst-port=9085 protocol=tcp src-address-list=Trusted to-addresses=192.168.244.2 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO OLT BELA VISTA" dst-address=45.228.38.42 dst-port=2121 protocol=tcp to-addresses=192.168.244.2 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SW REDE OLERIAS" dst-address=45.228.38.42 dst-port=9086 protocol=tcp src-address-list=Trusted to-addresses=172.20.35.98 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SW REDE AREIAS" dst-address=45.228.38.42 dst-port=9087 protocol=tcp src-address-list=Trusted to-addresses=172.20.35.94 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO SW CRS326" dst-address=45.228.38.42 dst-port=9088 protocol=tcp src-address-list=Trusted to-addresses=172.20.35.62 to-ports=22002
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO ZABBIX" dst-address=45.228.38.42 dst-port=9092 protocol=tcp to-addresses=172.20.35.2 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO ZABBIX" dst-address=45.228.38.42 dst-port=9093 protocol=tcp to-addresses=172.20.35.110 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO PHP-IPAM" dst-address=45.228.38.42 dst-port=9096 protocol=tcp to-addresses=172.20.36.10 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO ZABBIX" dst-address=45.228.38.42 dst-port=9999 protocol=tcp to-addresses=172.20.35.70 to-ports=3000
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO CHECK MK" dst-address=45.228.38.42 dst-port=9998 protocol=tcp to-addresses=172.20.36.18 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO ZABBIX" dst-address=45.228.38.42 dst-port=9095 protocol=tcp to-addresses=172.20.35.110 to-ports=22552
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO GRAFANA" dst-address=45.228.38.42 dst-port=9094 protocol=tcp to-addresses=172.20.35.110 to-ports=3030
+/ip firewall nat add action=dst-nat chain=dstnat comment="ACESSO EXTERNO GRAFANA" dst-address=45.228.38.42 dst-port=9095 protocol=tcp to-addresses=172.20.35.110 to-ports=22552
+/ip firewall nat add action=dst-nat chain=dstnat comment=ALC_SW_CRS-326_CLAUDIO_CLIENTES dst-address=45.228.38.42 dst-port=8297 protocol=tcp to-addresses=172.29.0.2 to-ports=8297
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT PROXMOX SRV-01 CALLFRAN" dst-address=45.228.38.42 dst-port=9060 protocol=tcp to-addresses=10.170.255.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECT PROXMOX SRV-02 CALLFRAN" dst-address=45.228.38.42 dst-port=9088 protocol=tcp to-addresses=10.201.201.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO WINDOWS 2012 SERVER - EASY PARKS" dst-address=45.228.38.42 dst-port=9094 protocol=tcp to-addresses=10.170.255.22 to-ports=3389
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO ATN BELA VISTA" dst-address=45.228.38.42 dst-port=9095 protocol=tcp to-addresses=10.1.1.2 to-ports=2299
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO ATN BELA NILTON" dst-address=45.228.38.42 dst-port=9097 protocol=tcp to-addresses=10.1.1.3 to-ports=2299
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO PROXMOX SRV WTD" dst-address=45.228.38.42 dst-port=9089 protocol=tcp to-addresses=10.202.202.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO PROXMOX SRVPBS CALLFRAN" dst-address=45.228.38.42 dst-port=9098 protocol=tcp to-addresses=10.200.200.2 to-ports=8007
+/ip firewall nat add action=dst-nat chain=dstnat comment="REDIRECIONAMENTO SRV MINHA CONEXAO" dst-address=45.228.38.42 dst-port=9090 protocol=tcp to-addresses=172.20.36.22 to-ports=9090
+/ip firewall nat add action=src-nat chain=srcnat comment=HARPIN dst-address-list=HARPIN to-addresses=45.228.38.42
+/ip ipsec identity add disabled=yes peer=l2tp-in-server secret=12345678
+/ip ipsec policy set 0 disabled=yes
+/ip route add check-gateway=ping comment=GATEWAY distance=1 gateway=172.20.35.21 pref-src=45.228.38.42
+/ip service set telnet disabled=yes
+/ip service set ftp address=192.168.245.6/32,192.168.244.2/32,192.168.242.2/32
+/ip service set www disabled=yes
+/ip service set ssh address=179.0.110.0/24,192.168.65.0/24,179.48.68.73/32 port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=8296
+/ip service set api-ssl disabled=yes
+/ip ssh set always-allow-password-login=yes forwarding-enabled=both
+/ipv6 address add address=2804:7fa0:4008::1 advertise=no comment=DNS01 interface=VLAN-1103-VMS_CALLFRAN
+/ipv6 address add address=2804:7fa0:4008:2::1 advertise=no comment="EMBY TV/MINHACONEX\C3O" interface=VLAN-1103-VMS_CALLFRAN
+/ipv6 address add address=2804:7fa0:4010::1 comment="REDE INTERNA" interface=G02_REDE_INTERNA
+/ipv6 address add address=fc00::1a/126 advertise=no comment=PTP-BORDA-BGP-IPV6 interface=vlan3490-PTP-BORDA-BGP-IPV6
+/ipv6 address add address=2804:7fa0:400a:2::1 advertise=no comment=SPEED-TEST disabled=yes interface=VLAN-1103-VMS_CALLFRAN
+/ipv6 address add address=2804:7fa0:400a::1 advertise=no comment=DNS02 interface=VLAN-1103-VMS_CALLFRAN
+/ipv6 firewall address-list add address=2804:7fa0:4000::/34 list=Prefixo
+/ipv6 firewall filter add action=jump chain=forward comment=DNS01_Filter dst-address=2804:7fa0:4008::6/128 jump-target=DNS01_Filter
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=ICMP limit=110,5:packet protocol=icmpv6
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=Establish/Related connection-state=established,related
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=Confiaveis src-address-list=Trusted
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=UDP_53 dst-port=53 protocol=udp src-address-list=Prefixo
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=UDP_853_DoT dst-port=853 protocol=udp src-address-list=Prefixo
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=TCP_53 dst-port=53 protocol=tcp src-address-list=Prefixo
+/ipv6 firewall filter add action=accept chain=DNS01_Filter comment=TCP_853_DoT dst-port=853 protocol=tcp src-address-list=Prefixo
+/ipv6 firewall filter add action=drop chain=DNS01_Filter comment=Drop
+/ipv6 firewall filter add action=jump chain=forward comment=DNS02_Filter dst-address=2804:7fa0:400a::10/128 jump-target=DNS02_Filter
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=ICMP limit=110,5:packet protocol=icmpv6
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=Establish/Related connection-state=established,related
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=Confiaveis src-address-list=Trusted
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=UDP_53 dst-port=53 protocol=udp src-address-list=Prefixo
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=UDP_853_DoT dst-port=853 protocol=udp src-address-list=Prefixo
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=TCP_53 dst-port=53 protocol=tcp src-address-list=Prefixo
+/ipv6 firewall filter add action=accept chain=DNS02_Filter comment=TCP_853_DoT dst-port=853 protocol=tcp src-address-list=Prefixo
+/ipv6 firewall filter add action=drop chain=DNS02_Filter comment=Drop
+/ipv6 nd set [ find default=yes ] other-configuration=yes
+/lcd set enabled=no touch-screen=disabled
+/ppp aaa set interim-update=20m use-radius=yes
+/ppp secret add name=lucascampelo password=1q2w3e4r5T!@# profile=L2TP service=l2tp
+/ppp secret add name=open-vpn-.tomich password=57u2S7-DR3zf profile=L2TP service=ovpn
+/routing ospf area range add advertise=no area=backbone range=172.20.35.20/30
+/routing ospf network add area=backbone network=172.20.35.20/30
+/routing ospf network add area=backbone network=45.228.38.32/31
+/routing ospf-v3 interface add area=backbone interface=vlan3490-PTP-BORDA-BGP-IPV6 network-type=point-to-point
+/snmp set enabled=yes trap-version=2
+/system clock set time-zone-name=America/Bahia
+/system identity set name=ALC_FW01
+/system logging add action=error disabled=yes topics=error,!ppp,!pppoe
+/system logging add action=critical disabled=yes topics=critical
+/system logging add action=warning disabled=yes topics=warning,!script,!ppp,!pppoe
+/system logging add action=info disabled=yes topics=info,!ppp,!script,!pppoe
+/system ntp client set enabled=yes primary-ntp=2804:7fa0:4000:1:ffff:ffff:ffff:fffe secondary-ntp=192.168.203.2 server-dns-names=192.168.250.6,192.168.250.10
+/system package update set channel=long-term
+/system routerboard settings set auto-upgrade=yes
+/system scheduler add disabled=yes interval=6h name=Backup_Automatico on-event="/system script run bkp_auto" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/13/2021 start-time=00:00:00
+/system scheduler add comment=BACKUP-EMAIL interval=1d name=backup-email on-event=backup policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=may/28/2023 start-time=04:00:00
+/system scheduler add interval=1d name=backup-ftp-penetwork on-event=backup-ftp-penetwork policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=oct/22/2024 start-time=04:00:00
+/system script add dont-require-permissions=no name=backup owner=callfran policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="/system backup save name=BACKUP-AUTH2_ALC_CALLFRAN_192.140.67.80:8296\r\
+    \n:delay 2s\r\
+    \n:global data [/system clock get date]\r\
+    \n:global hora [/system clock get time]\r\
+    \n:local nomerb [/system identity get name]\r\
+    \n/export file=BACKUPTXT\r\
+    \n:delay 5s \r\
+    \n/tool e-mail send to=\"backupcallfran@outlook.com\" subject=\"BACKUP-AUTH2_ALC_CALLFRAN_192.140.67.80:8296: Backup  realizado em \$data as \$hora\" file=\"BACKUP-AUTH2_ALC_CALLFRAN_192.140.67.80:8296.backup, BACKUPTXT\" body=\"Em anexo, arquivo de backup do \$nomerb realizado as \$hora de \$data.\""
+/system script add dont-require-permissions=no name=pppoe owner=callfran policy=read source=":global lista [/interface pppoe-server server find]; \r\
+    \n:global total [len \$lista];\r\
+    \n:global contador 0;\r\
+    \n:put \"{\\\"data\\\":[\"; \r\
+    \n:foreach i in=\$lista do={ \r\
+    \n :local servidor [/interface pppoe-server server get value-name=service-name number=\$i]; \r\
+    \n :local clientes [/interface pppoe-server find where service=\$servidor];\r\
+    \n :local ativos [len \$clientes];\r\
+    \n :if ( \$contador < \$total-1) do={;\r\
+    \n  :put \"{\\\"Id\\\":\\\"\$i\\\",\\\"Service\\\":\\\"\$servidor\\\",\\\"Ativos\\\":\\\"\$ativos\\\"},\";} else={;\r\
+    \n  :put \"{\\\"Id\\\":\\\"\$i\\\",\\\"Service\\\":\\\"\$servidor\\\",\\\"Ativos\\\":\\\"\$ativos\\\"}\";};\r\
+    \n :set contador (\$contador + 1);\r\
+    \n};\r\
+    \n:put \"]}\";\r\
+    \n"
+/system script add dont-require-permissions=no name=script1 owner=claudionoc policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="/queue simple remove [find name!=1]"
+/system script add dont-require-permissions=no name=backup-ftp-penetwork owner=penetw policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local ftpUser \"callfran\"\r\
+    \n:local ftpPassword \"callfran@23@\"\r\
+    \n:local ftpServer \"172.20.36.2\"\r\
+    \n:local ftpPort 21\r\
+    \n:local ftpDestinationFolder \"/home/mikrotik/\"\r\
+    \n\r\
+    \n:local fname ([/system identity get name] . \" (\" . [/system routerboard get model] . \" [\" . [/system clock get time] . \"]).backup\")\r\
+    \n:local fname1 ([/system identity get name] . \" (\" . [/system routerboard get model] . \" [\" . [/system clock get time] . \"]).rsc\")\r\
+    \n\r\
+    \n/system backup save dont-encrypt=yes name=\$fname\r\
+    \n:log info message=\"Gerando Arquivo de Backup\";\r\
+    \n/export file=\$fname1\r\
+    \n:log info message=\"Gerando Arquivo de Export\";\r\
+    \n\r\
+    \n/tool fetch address=\$ftpServer port=\$ftpPort src-path=\$fname1 user=\$ftpUser password=\$ftpPassword mode=ftp dst-path=(\$ftpDestinationFolder . \$fname1) upload=yes;\r\
+    \n:log warning message=\"Arquivo de Backup Enviado para o Servidor FTP\";\r\
+    \n\r\
+    \n/tool fetch address=\$ftpServer port=\$ftpPort src-path=\$fname user=\$ftpUser password=\$ftpPassword mode=ftp dst-path=(\$ftpDestinationFolder . \$fname) upload=yes;\r\
+    \n:log warning message=\"Arquivo de Export Enviado para o Servidor FTP\";\r\
+    \n\r\
+    \n/file remove [find name=\$fname];\r\
+    \n:log info message=\"Arquivo de Backup Removido\";\r\
+    \n\r\
+    \n/file remove [find name=\$fname1];\r\
+    \n:log info message=\"Arquivo de Export Removido\";\r\
+    \n\r\
+    \n:log warning message=\"Processo de backup finalizado com sucesso\";"
+/tool e-mail set address=smtp.office365.com from=backupcallfran@outlook.com password=callfran@23@ port=587 start-tls=yes user=backupcallfran@outlook.com
+/tool netwatch add comment="{IXCSoft Netwatch}" down-script="/ppp secret ; :foreach i in [ find comment~\"IXCSoft PPPOE\" ] do={ enable  \$i };" host=45.228.38.39 interval=5m up-script="/ppp secret ; :foreach i in [ find comment~\"IXCSoft PPPOE\" ] do={ disable \$i }; /ppp active; :foreach p in [find comment~\"IXCSoft\"] do={ remove \$p; :delay 1};"
+/tool romon set enabled=yes secrets=call2315@
+

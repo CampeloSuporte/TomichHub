@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Terminal</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,41 +17,58 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
+            /* Previne bounce/scroll indesejado no iOS */
+            position: fixed; overscroll-behavior: none;
         }
         .terminal-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
 
-        /* HEADER */
+        /* ─── HEADER ─── */
         .terminal-header {
-            background: rgba(0, 20, 10, 0.8); border-bottom: 2px solid #00ff88;
-            padding: 12px 20px; display: flex; align-items: center; gap: 20px;
-            flex-wrap: wrap; min-height: 60px; flex-shrink: 0;
+            background: rgba(0, 20, 10, 0.95);
+            border-bottom: 2px solid #00ff88;
+            padding: 10px 14px;
+            display: flex; align-items: center; gap: 12px;
+            flex-shrink: 0; min-height: 50px;
         }
-        .terminal-title { font-size: 14px; font-weight: 600; color: #00ff88; flex: 1; font-family: 'JetBrains Mono', monospace; }
-        .terminal-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+        .terminal-title { font-size: 13px; font-weight: 700; color: #00ff88; flex: 1; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888; white-space: nowrap; }
         .terminal-status.connected { color: #00ff88; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; animation: pulse 1s infinite; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #888; flex-shrink: 0; animation: pulse 1s infinite; }
         .status-dot.connected { background: #00ff88; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        /* TABS */
+        /* Botão menu mobile no header */
+        .btn-mobile-menu {
+            display: none;
+            background: transparent; border: 1px solid #333; color: #888;
+            width: 34px; height: 34px; border-radius: 4px; cursor: pointer;
+            font-size: 16px; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: 0.2s;
+        }
+        .btn-mobile-menu:hover, .btn-mobile-menu:active { border-color: #00ff88; color: #00ff88; }
+
+        /* ─── TABS ─── */
         .terminal-tabs {
             display: flex; background: #000; border-bottom: 1px solid #222;
-            overflow-x: auto; gap: 5px; padding: 8px 10px; min-height: 40px; flex-shrink: 0;
+            overflow-x: auto; gap: 4px; padding: 6px 8px; min-height: 38px; flex-shrink: 0;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
         }
+        .terminal-tabs::-webkit-scrollbar { display: none; }
         .terminal-tab {
             background: rgba(50,50,50,0.5); border: 1px solid #333; border-bottom: none;
-            color: #888; padding: 8px 15px; cursor: pointer; font-size: 12px;
-            border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 8px;
+            color: #888; padding: 6px 12px; cursor: pointer; font-size: 11px;
+            border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 6px;
             white-space: nowrap; transition: all 0.2s; font-family: 'JetBrains Mono', monospace;
+            user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        .terminal-tab:hover { background: rgba(100,100,100,0.5); color: #00ff88; }
+        .terminal-tab:active { background: rgba(100,100,100,0.5); }
         .terminal-tab.active { background: #0a0a0a; border: 1px solid #00ff88; border-bottom: 1px solid #0a0a0a; color: #00ff88; }
-        .terminal-tab-close { cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        .terminal-tab-close { cursor: pointer; opacity: 0.6; transition: 0.2s; padding: 2px 4px; /* área de toque maior */ }
         .terminal-tab-close:hover { color: #ff4444; opacity: 1; }
-        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: #888; }
+        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: #888; flex-shrink: 0; }
         .terminal-tab-status.connected { background: #00ff88; }
 
-        /* CONTEÚDO */
+        /* ─── CONTEÚDO ─── */
         .terminal-content { flex: 1; overflow: hidden; background: #000; display: flex; flex-direction: column; position: relative; min-height: 0; }
         .terminal-pane { width: 100%; height: 100%; display: none; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
         .terminal-pane.active { display: flex; }
@@ -63,35 +80,99 @@
             font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
         }
 
-        /* FOOTER */
+        /* ─── FOOTER ─── */
         .terminal-footer {
-            background: rgba(0, 20, 10, 0.5); border-top: 1px solid #333;
-            padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap; min-height: 50px; flex-shrink: 0;
+            background: rgba(0, 20, 10, 0.8);
+            border-top: 1px solid #1a2a1a;
+            padding: 8px 12px;
+            display: flex; gap: 6px;
+            overflow-x: auto; flex-shrink: 0;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+            min-height: 46px; align-items: center;
         }
+        .terminal-footer::-webkit-scrollbar { display: none; }
         .btn-terminal {
-            background: transparent; border: 1px solid #555; color: #aaa;
-            padding: 6px 12px; border-radius: 3px; cursor: pointer;
+            background: transparent; border: 1px solid #333; color: #888;
+            padding: 6px 10px; border-radius: 3px; cursor: pointer;
             font-family: 'JetBrains Mono', monospace; font-size: 11px;
             font-weight: 500; transition: 0.2s; text-transform: uppercase;
+            white-space: nowrap; flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
         }
         .btn-terminal:hover { border-color: #00ff88; color: #00ff88; }
+        .btn-terminal:active { background: rgba(0,255,136,0.08); border-color: #00ff88; color: #00ff88; }
         .btn-terminal.btn-wiki { border-color: #00d9ff; color: #00d9ff; }
-        .btn-terminal.btn-wiki:hover { background: rgba(0, 217, 255, 0.1); }
+        .btn-terminal.btn-wiki:hover, .btn-terminal.btn-wiki:active { background: rgba(0,217,255,0.1); }
         .btn-terminal.btn-cores-off { border-color: #444; color: #444; }
 
-        /* ESTADO VAZIO */
+        /* ─── BOTÃO TECLADO MOBILE ─── */
+        .btn-mobile-keyboard {
+            display: none;
+            position: fixed; bottom: 58px; right: 14px;
+            background: rgba(0,255,136,0.12); border: 2px solid #00ff88;
+            color: #00ff88; width: 48px; height: 48px;
+            border-radius: 50%; cursor: pointer; font-size: 22px;
+            align-items: center; justify-content: center;
+            z-index: 9000; box-shadow: 0 0 18px rgba(0,255,136,0.25);
+            transition: 0.2s; -webkit-tap-highlight-color: transparent;
+        }
+        .btn-mobile-keyboard:active { transform: scale(0.93); background: rgba(0,255,136,0.22); }
+
+        /* Input escondido que captura teclado virtual no iOS/Android */
+        #mobileKeyboardInput {
+            position: fixed; top: -9999px; left: -9999px;
+            width: 1px; height: 1px; opacity: 0;
+            background: transparent; border: none; outline: none;
+            color: transparent; font-size: 16px; /* iOS: evita zoom em input */
+            -webkit-user-select: text; user-select: text;
+        }
+
+        /* ─── ESTADO VAZIO ─── */
         .terminal-empty {
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; height: 100%; color: #555; font-size: 14px; gap: 15px;
+            justify-content: center; height: 100%; color: #555; font-size: 13px; gap: 12px;
         }
-        .terminal-empty-text { text-align: center; line-height: 1.6; font-family: 'JetBrains Mono', monospace; }
+        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'JetBrains Mono', monospace; padding: 0 20px; }
+
+        /* ─── MENU MOBILE (drawer de ações) ─── */
+        .mobile-menu-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7); z-index: 8999;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-menu-overlay.aberto { display: block; }
+        .mobile-menu-drawer {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #111; border-top: 2px solid #00ff88;
+            border-radius: 14px 14px 0 0;
+            padding: 8px 0 env(safe-area-inset-bottom, 12px);
+            transform: translateY(100%); transition: transform 0.28s ease;
+            z-index: 9001; max-height: 80vh; overflow-y: auto;
+        }
+        .mobile-menu-drawer.aberto { transform: translateY(0); }
+        .mobile-menu-handle {
+            width: 36px; height: 4px; background: #333; border-radius: 2px;
+            margin: 8px auto 14px; cursor: grab;
+        }
+        .mobile-menu-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 22px; cursor: pointer; transition: background 0.15s;
+            font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #aaa;
+            border-bottom: 1px solid #1a1a1a;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-menu-item:active { background: rgba(0,255,136,0.05); }
+        .mobile-menu-item:last-child { border-bottom: none; }
+        .mobile-menu-item span:first-child { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+        .mobile-menu-item.item-wiki { color: #00d9ff; }
+        .mobile-menu-item.item-danger { color: #ff5555; }
+        .mobile-menu-separator { height: 6px; background: #0d0d0d; margin: 4px 0; }
+
         .debug-panel { display: none !important; }
         .btn-terminal.reconnecting { border-color: #ffa500; color: #ffa500; animation: pulseOrange 1s infinite; }
         @keyframes pulseOrange { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-        /* ============================================
-           WIKI SIDEBAR
-        ============================================ */
+        /* ─── WIKI SIDEBAR ─── */
         .wiki-sidebar {
             position: fixed; top: 0; right: -9999px; width: 480px; height: 100vh;
             background: #111; border-left: 2px solid #00ff88;
@@ -130,7 +211,7 @@
         body.wiki-resizing .wiki-width-indicator { color: #00ff88; border-color: #00ff88; }
         .btn-wiki-action {
             background: transparent; border: 1px solid #2a2a2a; color: #555;
-            width: 26px; height: 26px; border-radius: 3px; cursor: pointer; font-size: 12px;
+            width: 32px; height: 32px; border-radius: 3px; cursor: pointer; font-size: 13px;
             display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; line-height: 1;
         }
         .btn-wiki-action:hover { border-color: #00ff88; color: #00ff88; }
@@ -139,23 +220,24 @@
         .wiki-size-presets { display: flex; gap: 3px; align-items: center; }
         .btn-preset {
             background: transparent; border: 1px solid #1e1e1e; color: #444;
-            padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 9px;
+            padding: 3px 7px; border-radius: 2px; cursor: pointer; font-size: 9px;
             font-family: 'JetBrains Mono', monospace; transition: 0.15s; white-space: nowrap;
         }
         .btn-preset:hover { border-color: #00ff88; color: #00ff88; }
         .wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
         .wiki-search-input {
             width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
-            padding: 9px 13px; border-radius: 3px; font-family: 'JetBrains Mono', monospace;
-            font-size: 12px; outline: none; transition: border-color 0.2s;
+            padding: 10px 13px; border-radius: 3px; font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; outline: none; transition: border-color 0.2s;
+            -webkit-appearance: none;
         }
         .wiki-search-input:focus { border-color: #00ff88; }
         .wiki-search-input::placeholder { color: #444; }
-        .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+        .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; -webkit-overflow-scrolling: touch; }
         .wiki-sidebar-results::-webkit-scrollbar { width: 4px; }
         .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
         .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background 0.15s; }
-        .wiki-result-item:hover { background: rgba(0,255,136,0.04); }
+        .wiki-result-item:active { background: rgba(0,255,136,0.04); }
         .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #555; }
         .wiki-result-categoria { color: #00d9ff; font-size: 10px; }
         .wiki-favorito { color: #ffd700; margin-left: auto; font-size: 10px; }
@@ -164,14 +246,12 @@
         .wiki-result-footer { display: flex; gap: 6px; }
         .wiki-fabricante { background: rgba(0,217,255,0.12); color: #00d9ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
         .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: #555; font-size: 12px; }
-
-        /* ARTIGO */
         .wiki-artigo-view { color: #ccc; font-size: 12px; line-height: 1.6; }
         .btn-voltar-wiki {
             display: flex; align-items: center; gap: 8px; width: 100%;
             background: #0a0a0a; border: none; border-bottom: 1px solid #1e1e1e;
-            color: #00d9ff; padding: 10px 16px; cursor: pointer;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: left; transition: background 0.15s;
+            color: #00d9ff; padding: 12px 16px; cursor: pointer;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: left; transition: background 0.15s;
         }
         .btn-voltar-wiki:hover { background: #141414; }
         .wiki-artigo-header { padding: 16px; border-bottom: 1px solid #1e1e1e; background: #0e0e0e; }
@@ -202,8 +282,6 @@
             background: rgba(0,255,136,0.1); color: #00ff88; padding: 1px 5px;
             border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
         }
-
-        /* WRAPPER DE CÓDIGO */
         .wiki-code-wrapper { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; margin: 12px 0; }
         .wiki-code-toolbar { background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 5px; }
         .wiki-code-toolbar-title { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
@@ -216,8 +294,9 @@
         .wiki-code-title-text { color: #888; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-bloco {
             background: transparent; border: 1px solid #2a2a2a; color: #555;
-            padding: 3px 9px; border-radius: 2px; cursor: pointer; font-size: 10px;
+            padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
             font-family: 'JetBrains Mono', monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
         }
         .btn-bloco:hover { color: #aaa; border-color: #444; }
         .btn-bloco.btn-editar:hover  { color: #ffa500; border-color: #ffa500; }
@@ -231,7 +310,7 @@
             border-bottom: 1px solid rgba(255,165,0,0.15); color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
         }
         .wiki-bloco-edit-aviso.visivel { display: flex; }
-        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0a0a0a; border-left: 3px solid #00ff88; }
+        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0a0a0a; border-left: 3px solid #00ff88; -webkit-overflow-scrolling: touch; }
         .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
         .wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
         .wiki-codigo-pre code .ln::before {
@@ -246,8 +325,9 @@
         .wiki-codigo-editor {
             width: 100%; min-height: 80px; max-height: 420px; background: #0d0d0d; color: #e8e8e8;
             border: none; outline: none; resize: vertical; font-family: 'JetBrains Mono', monospace;
-            font-size: 11px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
+            font-size: 12px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
             scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
+            -webkit-overflow-scrolling: touch;
         }
         .wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
         .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
@@ -261,13 +341,13 @@
         .wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
         .btn-resetar {
             background: transparent; border: 1px solid #2a2a2a; color: #555;
-            padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
+            padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
             font-family: 'JetBrains Mono', monospace; transition: 0.2s;
         }
         .btn-resetar:hover { color: #ff5555; border-color: #ff5555; }
         .btn-enviar-grande {
             background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;
-            padding: 5px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
+            padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
             font-family: 'JetBrains Mono', monospace; font-weight: 600; transition: 0.2s;
             display: flex; align-items: center; gap: 6px;
         }
@@ -278,10 +358,8 @@
             40%  { box-shadow: 0 0 20px rgba(0,255,136,0.55); }
             100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
         }
-
-        /* VARIÁVEIS */
         .wiki-vars-panel { background: rgba(255,170,0,0.03); border-top: 1px solid rgba(255,170,0,0.12); overflow: hidden; transition: max-height 0.3s ease; }
-        .wiki-vars-toggle { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; cursor: pointer; background: rgba(255,170,0,0.05); border-bottom: 1px solid rgba(255,170,0,0.08); transition: background 0.15s; }
+        .wiki-vars-toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; background: rgba(255,170,0,0.05); border-bottom: 1px solid rgba(255,170,0,0.08); transition: background 0.15s; }
         .wiki-vars-toggle:hover { background: rgba(255,170,0,0.09); }
         .wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #ffa500; text-transform: uppercase; letter-spacing: 0.8px; }
         .wiki-vars-badge { background: rgba(255,170,0,0.2); color: #ffa500; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
@@ -295,12 +373,12 @@
         .wiki-var-row { display: flex; align-items: center; gap: 8px; }
         .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'JetBrains Mono', monospace; }
         .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
-        .wiki-var-inp { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 5px 10px; border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; }
+        .wiki-var-inp { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
         .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
         .wiki-var-inp::placeholder { color: #3a3a3a; }
         .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
         .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #1a1a1a; flex-wrap: wrap; }
-        .btn-vars-limpar { background: transparent; border: 1px solid #2a2a2a; color: #555; padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s; }
+        .btn-vars-limpar { background: transparent; border: 1px solid #2a2a2a; color: #555; padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s; }
         .btn-vars-limpar:hover { color: #ff5555; border-color: #ff5555; }
         .wiki-vars-preview-wrap { display: none; }
         .wiki-vars-preview-wrap.visivel { display: block; }
@@ -314,7 +392,7 @@
         .wiki-bloco-lang { font-size: 9px; color: #444; background: #0a0a0a; padding: 2px 7px; border-radius: 10px; border: 1px solid #222; }
         .wiki-bloco-descricao { padding: 8px 12px; color: #666; font-size: 11px; border-bottom: 1px solid #1e1e1e; margin: 0; }
         .wiki-toast {
-            position: fixed; bottom: 70px; right: 20px; background: #111;
+            position: fixed; bottom: 70px; right: 16px; background: #111;
             border: 1px solid #00ff88; color: #00ff88; padding: 8px 16px;
             border-radius: 3px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
             z-index: 99999; opacity: 0; transform: translateY(8px);
@@ -323,6 +401,67 @@
         .wiki-toast.visivel { opacity: 1; transform: translateY(0); }
         .wiki-toast.erro { border-color: #ff5555; color: #ff5555; }
         .wiki-toast.vars { border-color: #ffa500; color: #ffa500; }
+
+        /* ═══════════════════════════════════════
+           RESPONSIVO MOBILE
+        ═══════════════════════════════════════ */
+        @media (max-width: 640px) {
+            body { font-size: 12px; }
+
+            /* Header compacto */
+            .terminal-header { padding: 8px 12px; min-height: 46px; gap: 8px; }
+            .terminal-title { font-size: 12px; }
+            .terminal-status span { display: none; } /* Esconde texto, mantém dot */
+            .btn-mobile-menu { display: flex; }
+
+            /* Tabs menores */
+            .terminal-tabs { padding: 5px 6px; min-height: 34px; gap: 3px; }
+            .terminal-tab { padding: 5px 10px; font-size: 10px; }
+
+            /* Footer escondido no mobile — ações no drawer */
+            .terminal-footer { display: none; }
+
+            /* Botão teclado flutuante */
+            .btn-mobile-keyboard { display: flex; }
+
+            /* Wiki: tela cheia no mobile */
+            .wiki-sidebar { width: 100vw !important; min-width: unset; border-left: none; border-top: 2px solid #00ff88; }
+            .wiki-resize-handle { display: none; }
+            .wiki-size-presets { display: none; }
+            .wiki-width-indicator { display: none; }
+            .btn-wiki-action.maximizar { display: none; }
+            .wiki-search-input { font-size: 16px; /* Evita zoom no iOS */ }
+            .wiki-var-inp { font-size: 16px; /* Evita zoom no iOS */ }
+            .wiki-codigo-editor { font-size: 13px; }
+
+            /* Artigo wiki: ajustes */
+            .wiki-artigo-header h2 { font-size: 14px; }
+            .wiki-artigo-conteudo { padding: 12px; }
+
+            /* Terminal: fonte menor para caber mais */
+            .xterm { font-size: 11px; }
+        }
+
+        @media (max-width: 400px) {
+            .terminal-tab { padding: 4px 8px; font-size: 10px; max-width: 130px; overflow: hidden; }
+            .terminal-tab span:not(.terminal-tab-status):not(.terminal-tab-close) {
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;
+            }
+        }
+
+        /* Tablet (641–1024px): footer horizontal scrollável */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .terminal-header { padding: 10px 16px; }
+            .terminal-footer { padding: 8px 12px; }
+            .btn-terminal { padding: 6px 10px; font-size: 10px; }
+        }
+
+        /* Orientação paisagem em celular pequeno: header ainda mais compacto */
+        @media (max-height: 400px) and (max-width: 900px) {
+            .terminal-header { min-height: 36px; padding: 5px 10px; }
+            .terminal-tabs { min-height: 28px; padding: 3px 6px; }
+            .terminal-tab { padding: 3px 8px; }
+        }
     </style>
 </head>
 <body>
@@ -333,24 +472,27 @@
                 <div class="status-dot connected"></div>
                 <span id="statusText">Pronto para conexões</span>
             </div>
+            <!-- Botão hamburguer apenas mobile -->
+            <button class="btn-mobile-menu" onclick="abrirMenuMobile()" title="Menu">☰</button>
         </div>
         <div class="terminal-tabs" id="terminalTabs"></div>
         <div class="terminal-content" id="terminalContent" style="flex:1;min-height:0;">
             <div class="terminal-pane active">
                 <div class="terminal-empty">
-                    <div>⏳</div>
+                    <div style="font-size:32px;">⏳</div>
                     <div class="terminal-empty-text">
                         <p>Nenhum terminal conectado</p>
-                        <p style="font-size:11px;color:#777;">Clique em "Acessar" na página principal para abrir um terminal</p>
+                        <p style="font-size:11px;color:#777;margin-top:6px;">Clique em "Acessar" na página principal para abrir um terminal</p>
                     </div>
                 </div>
             </div>
         </div>
+        <!-- Footer desktop -->
         <div class="terminal-footer">
             {% if request.user.is_staff %}
             <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
             {% endif %}
-            <button class="btn-terminal" onclick="limparTela()">✕ Limpar Tela</button>
+            <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
             <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
             <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
             <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
@@ -358,8 +500,47 @@
         </div>
     </div>
 
+    <!-- Input escondido para capturar teclado virtual mobile -->
+    <input type="text" id="mobileKeyboardInput" inputmode="text" autocomplete="off"
+           autocorrect="off" autocapitalize="off" spellcheck="false" readonly>
+
+    <!-- Botão teclado flutuante (só mobile) -->
+    <button class="btn-mobile-keyboard" id="btnMobileKeyboard" onclick="ativarTecladoMobile()" title="Teclado">⌨</button>
+
+    <!-- Overlay do menu mobile -->
+    <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="fecharMenuMobile()"></div>
+    <div class="mobile-menu-drawer" id="mobileMenuDrawer">
+        <div class="mobile-menu-handle"></div>
+        <div class="mobile-menu-item" onclick="ativarTecladoMobile();fecharMenuMobile()">
+            <span>⌨</span><span>Abrir Teclado</span>
+        </div>
+        <div class="mobile-menu-item" onclick="limparTela();fecharMenuMobile()">
+            <span>✕</span><span>Limpar Tela</span>
+        </div>
+        <div class="mobile-menu-item" onclick="toggleColorize();fecharMenuMobile()">
+            <span>🎨</span><span id="menuColorizeLabel">Cores: ON</span>
+        </div>
+        <div class="mobile-menu-item" onclick="reconectarTerminalAtivo();fecharMenuMobile()">
+            <span>↻</span><span>Reconectar</span>
+        </div>
+        {% if request.user.is_staff %}
+        <div class="mobile-menu-separator"></div>
+        <div class="mobile-menu-item item-wiki" onclick="toggleWikiSidebar();fecharMenuMobile()">
+            <span>📖</span><span>Wiki</span>
+        </div>
+        {% endif %}
+        <div class="mobile-menu-separator"></div>
+        <div class="mobile-menu-item item-danger" onclick="fecharTodosTerminais();fecharMenuMobile()">
+            <span>⏻</span><span>Fechar Todos Terminais</span>
+        </div>
+        <div class="mobile-menu-item item-danger" onclick="window.close()">
+            <span>✕</span><span>Fechar Aba</span>
+        </div>
+    </div>
+
     <div class="debug-panel" id="debugPanel" style="display:none;"></div>
 
+    <!-- Wiki Sidebar -->
     <div id="wikiSidebar" class="wiki-sidebar">
         <div class="wiki-resize-handle" id="wikiResizeHandle" title="Arraste para redimensionar"></div>
         <div class="wiki-sidebar-header">
@@ -390,6 +571,86 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
     <script>
+
+    // ============================================================
+    // DETECÇÃO MOBILE
+    // ============================================================
+    const isMobile = () => window.matchMedia('(max-width: 640px)').matches
+                        || ('ontouchstart' in window && window.innerWidth < 900);
+
+    // ============================================================
+    // MENU MOBILE
+    // ============================================================
+    function abrirMenuMobile() {
+        document.getElementById('mobileMenuOverlay').classList.add('aberto');
+        document.getElementById('mobileMenuDrawer').classList.add('aberto');
+    }
+    function fecharMenuMobile() {
+        document.getElementById('mobileMenuOverlay').classList.remove('aberto');
+        document.getElementById('mobileMenuDrawer').classList.remove('aberto');
+    }
+
+    // ============================================================
+    // TECLADO VIRTUAL MOBILE
+    // ============================================================
+    const mobileInput = document.getElementById('mobileKeyboardInput');
+    let _mobileInputBuffer = '';
+
+    function ativarTecladoMobile() {
+        if (!terminalManager.activeTerminal) {
+            mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return;
+        }
+        mobileInput.removeAttribute('readonly');
+        mobileInput.value = '';
+        mobileInput.focus();
+        setTimeout(() => mobileInput.focus(), 100);
+        mostrarToast('⌨ Teclado ativado — digite normalmente');
+    }
+
+    // Captura entrada do teclado virtual
+    mobileInput.addEventListener('input', function(e) {
+        const tObj = terminalManager.activeTerminal
+            ? terminalManager.terminals.get(terminalManager.activeTerminal)
+            : null;
+        if (!tObj || !tObj.socket || tObj.socket.readyState !== WebSocket.OPEN) return;
+
+        const val = this.value;
+        if (val.length > 0) {
+            const cmd = val.replace(/\x7f/g, '\x08');
+            tObj.socket.send(JSON.stringify({ action: 'command', command: cmd }));
+        }
+        this.value = '';
+    });
+
+    mobileInput.addEventListener('keydown', function(e) {
+        const tObj = terminalManager.activeTerminal
+            ? terminalManager.terminals.get(terminalManager.activeTerminal)
+            : null;
+        if (!tObj || !tObj.socket || tObj.socket.readyState !== WebSocket.OPEN) return;
+
+        let special = null;
+        if (e.key === 'Enter')     special = '\r';
+        if (e.key === 'Backspace') special = '\x08';
+        if (e.key === 'Tab')       { e.preventDefault(); special = '\t'; }
+        if (e.key === 'Escape')    special = '\x1b';
+        if (e.key === 'ArrowUp')   special = '\x1b[A';
+        if (e.key === 'ArrowDown') special = '\x1b[B';
+        if (e.key === 'ArrowRight')special = '\x1b[C';
+        if (e.key === 'ArrowLeft') special = '\x1b[D';
+        if (e.ctrlKey && e.key === 'c') special = '\x03';
+        if (e.ctrlKey && e.key === 'z') special = '\x1a';
+        if (e.ctrlKey && e.key === 'l') special = '\x0c';
+
+        if (special) {
+            e.preventDefault();
+            tObj.socket.send(JSON.stringify({ action: 'command', command: special }));
+        }
+    });
+
+    // Ao perder foco no mobile, reativa readonly para não mostrar teclado indesejado
+    mobileInput.addEventListener('blur', function() {
+        setTimeout(() => { this.setAttribute('readonly', ''); }, 200);
+    });
 
     // ============================================================
     // TOAST
@@ -813,7 +1074,7 @@
     // RECONECTAR
     // ============================================================
     function reconectarTerminalAtivo() {
-        if (!terminalManager.activeTerminal) { alert('Nenhum terminal ativo.'); return; }
+        if (!terminalManager.activeTerminal) { mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return; }
         const id = terminalManager.activeTerminal;
         const tObj = terminalManager.terminals.get(id); if (!tObj) return;
         if (tObj.socket) { try { tObj.socket.close(); } catch(e) {} tObj.socket = null; }
@@ -834,7 +1095,7 @@
     function addDebug(msg) { if (!DEBUG) return; console.log(msg); }
 
     // ============================================================
-    // ✅ COLORIZAÇÃO
+    // COLORIZAÇÃO
     // ============================================================
     const COLORS = {
         RESET:'\x1b[0m', IPV4:'\x1b[1;94m', IPV6:'\x1b[1;94m', PROTOCOL:'\x1b[36m',
@@ -851,6 +1112,8 @@
             btn.textContent = colorizeEnabled ? '🎨 Cores: ON' : '🎨 Cores: OFF';
             btn.classList.toggle('btn-cores-off', !colorizeEnabled);
         }
+        const lbl = document.getElementById('menuColorizeLabel');
+        if (lbl) lbl.textContent = colorizeEnabled ? 'Cores: ON' : 'Cores: OFF';
         mostrarToast(colorizeEnabled ? '🎨 Colorização ativada' : '🎨 Colorização desativada');
     }
 
@@ -906,14 +1169,20 @@
         abrirTerminal(acessoData) {
             const terminalId = `terminal-${++this.tabCounter}`;
             try {
+                // Tamanho de fonte menor no mobile para melhor aproveitamento da tela
+                const fontSizeMobile = window.innerWidth < 400 ? 10 : window.innerWidth < 640 ? 11 : 13;
                 const terminal = new Terminal({
-                    cursorBlink: true, fontSize: 13,
+                    cursorBlink: true,
+                    fontSize: fontSizeMobile,
                     fontFamily: "'JetBrains Mono','Courier New',monospace",
                     fontWeight: 400, fontWeightBold: 600, lineHeight: 1.2, letterSpacing: 0,
                     theme: { background:'#000000', foreground:'#ffffff', cursor:'#ffffff', cursorAccent:'#000000' },
                     scrollback: 5000, rows: 24, cols: 120,
                     allowTransparency: true, windowsMode: false, convertEol: true,
                     rendererType: 'canvas',
+                    // No mobile evita seleção indesejada por touch
+                    disableStdin: false,
+                    rightClickSelectsWord: false,
                 });
                 const fitAddon = new FitAddon.FitAddon();
                 terminal.loadAddon(fitAddon);
@@ -926,6 +1195,14 @@
                 pane.className = 'terminal-pane'; pane.id = `pane-${terminalId}`;
                 pane.style.flex = '1'; pane.style.overflow = 'hidden';
                 pane.style.display = 'none'; pane.style.minHeight = '0'; pane.style.minWidth = '0';
+
+                // No mobile: tap no terminal = ativar input escondido
+                pane.addEventListener('touchend', (e) => {
+                    if (isMobile() && terminalManager.activeTerminal === terminalId) {
+                        e.preventDefault();
+                        ativarTecladoMobile();
+                    }
+                }, { passive: false });
 
                 const content = document.getElementById('terminalContent');
                 content.querySelectorAll('.terminal-pane.active').forEach(p => {
@@ -945,10 +1222,6 @@
                 terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
                 terminal.writeln('\x1b[1;36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
 
-                // ✅ BACKSPACE FIX: xterm.js envia \x7f (DEL) ao pressionar Backspace.
-                // Equipamentos de rede (OLTs, Cisco IOS, Juniper legado) esperam \x08 (BS/Ctrl-H).
-                // A conversão é incondicional — todos os equipamentos de rede aceitam \x08,
-                // e o backend (consumers.py) também faz a mesma conversão como garantia dupla.
                 terminal.onData(input => {
                     if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
                         const cmd = input.replace(/\x7f/g, '\x08');
@@ -964,9 +1237,13 @@
             const tabs = document.getElementById('terminalTabs');
             const tab = document.createElement('div');
             tab.className = 'terminal-tab active'; tab.id = `tab-${terminalId}`;
+            // No mobile: texto mais curto na aba
+            const label = isMobile()
+                ? acessoData.host
+                : `${acessoData.tipo} - ${acessoData.host}`;
             tab.innerHTML = `
                 <div class="terminal-tab-status connected"></div>
-                <span>${acessoData.tipo} - ${acessoData.host}</span>
+                <span>${label}</span>
                 <span class="terminal-tab-close"
                       onclick="event.stopPropagation();terminalManager.fecharTerminal('${terminalId}')">✕</span>`;
             tab.onclick = () => this.ativarTerminal(terminalId);
@@ -988,7 +1265,7 @@
                 tObj.pane.classList.add('active'); tObj.pane.style.display = 'flex';
                 const tab = document.getElementById(`tab-${terminalId}`);
                 if (tab) tab.classList.add('active');
-                setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} tObj.terminal.focus(); }, 50);
+                setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} if (!isMobile()) tObj.terminal.focus(); }, 50);
             }
         }
 
@@ -1055,12 +1332,25 @@
     }
     function fecharTodosTerminais() { terminalManager.fecharTodos(); }
 
-    window.addEventListener('resize', () => {
+    // ============================================================
+    // RESIZE — inclui refit ao girar tela e ao teclado virtual aparecer
+    // ============================================================
+    function refitTerminalAtivo() {
         if (terminalManager.activeTerminal) {
             const t = terminalManager.terminals.get(terminalManager.activeTerminal);
             if (t) { try { t.fitAddon.fit(); } catch(e) {} }
         }
-    });
+    }
+
+    window.addEventListener('resize', refitTerminalAtivo);
+
+    // Refit quando o teclado virtual do celular abre/fecha (muda o visualViewport)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            // Dá um tick para o layout estabilizar antes de refazer o fit
+            requestAnimationFrame(refitTerminalAtivo);
+        });
+    }
 
     // ============================================================
     // WIKI — REDIMENSIONAMENTO
@@ -1098,10 +1388,7 @@
             handle.classList.remove('arrastando'); document.body.classList.remove('wiki-resizing');
             sidebar.style.transition = 'right 0.3s ease, width 0.2s ease';
             localStorage.setItem(WIKI_WIDTH_KEY, sidebar.offsetWidth);
-            if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
-                const t = terminalManager.terminals.get(terminalManager.activeTerminal);
-                if (t) { try { t.fitAddon.fit(); } catch(_) {} }
-            }
+            refitTerminalAtivo();
         });
         handle.addEventListener('touchstart', function(e) {
             if (isMaximized) return; e.preventDefault();
@@ -1123,12 +1410,7 @@
             sidebar.classList.toggle('maximizado', isMaximized);
             if (btnMax) { btnMax.textContent = isMaximized ? '⤡' : '⤢'; btnMax.title = isMaximized ? 'Restaurar tamanho' : 'Maximizar'; }
             if (indicator) indicator.textContent = isMaximized ? '100%' : (parseInt(localStorage.getItem(WIKI_WIDTH_KEY) || 480) + 'px');
-            setTimeout(() => {
-                if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
-                    const t = terminalManager.terminals.get(terminalManager.activeTerminal);
-                    if (t) { try { t.fitAddon.fit(); } catch(_) {} }
-                }
-            }, 250);
+            setTimeout(refitTerminalAtivo, 250);
         };
 
         window.setWikiWidth = function(w) {
@@ -1137,12 +1419,7 @@
             sidebar.style.width = clamped + 'px';
             if (indicator) indicator.textContent = clamped + 'px';
             localStorage.setItem(WIKI_WIDTH_KEY, clamped);
-            setTimeout(() => {
-                if (typeof terminalManager !== 'undefined' && terminalManager.activeTerminal) {
-                    const t = terminalManager.terminals.get(terminalManager.activeTerminal);
-                    if (t) { try { t.fitAddon.fit(); } catch(_) {} }
-                }
-            }, 250);
+            setTimeout(refitTerminalAtivo, 250);
         };
 
         document.addEventListener('keydown', function(e) {
@@ -1151,15 +1428,18 @@
                 toggleWikiSidebar();
             }
         });
+
+        // Fechar wiki com swipe para direita (mobile)
+        let touchStartX = 0;
+        sidebar.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        sidebar.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            if (dx > 80 && sidebar.classList.contains('aberto')) toggleWikiSidebar();
+        }, { passive: true });
     })();
 
     window.addEventListener('load', () => {
-        setTimeout(() => {
-            if (terminalManager.activeTerminal) {
-                const t = terminalManager.terminals.get(terminalManager.activeTerminal);
-                if (t) t.fitAddon.fit();
-            }
-        }, 100);
+        setTimeout(refitTerminalAtivo, 100);
     });
     </script>
 </body>

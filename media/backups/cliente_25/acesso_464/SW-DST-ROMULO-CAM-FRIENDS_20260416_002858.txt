@@ -1,0 +1,83 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-DST-ROMULO-CAM-FRIENDS
+Host: 10.13.0.8:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 16/04/2026 00:28:58
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# 1970-06-17 13:48:33 by RouterOS 7.16.2
+# software id = 8110-KUWS
+#
+# model = CRS310-1G-5S-4S+
+# serial number = HJA0A6KT07B
+/interface bridge add name=bridge1 vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] name="ether1 - CAMERA"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - RC X ITB"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - P2P-SW-DST-ALT-P2"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] name="sfp-sfpplus3 - UPLINK OLT "
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] name="sfp-sfpplus4 "
+/interface ethernet set [ find default-name=sfp1 ] auto-negotiation=no name="sfp1 -  P2P-OLT-LAGOA-DAS-MOCAS"
+/interface ethernet set [ find default-name=sfp2 ] auto-negotiation=no speed=10M-baseT-full
+/interface vlan add interface=bridge1 name=VLAN1651-GERENCIA vlan-id=1651
+/port set 0 baud-rate=auto name=serial0
+/snmp community set [ find default=yes ] name=friends*
+/interface bridge port add bridge=bridge1 disabled=yes interface="sfp-sfpplus1 - RC X ITB"
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus3 - UPLINK OLT "
+/interface bridge port add bridge=bridge1 interface="sfp1 -  P2P-OLT-LAGOA-DAS-MOCAS"
+/interface bridge port add bridge=bridge1 frame-types=admit-only-untagged-and-priority-tagged interface="ether1 - CAMERA" pvid=60
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus2 - P2P-SW-DST-ALT-P2"
+/ip firewall connection tracking set enabled=no
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN OLT RC" tagged="sfp-sfpplus1 - RC X ITB,sfp-sfpplus3 - UPLINK OLT ,sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp1 -  P2P-OLT-LAGOA-DAS-MOCAS" vlan-ids=1655
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 tagged="sfp-sfpplus1 - RC X ITB,sfp-sfpplus2 - P2P-SW-DST-ALT-P2" untagged="ether1 - CAMERA" vlan-ids=60
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN QUICE" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB" vlan-ids=1660,1662,1669
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN PILAR" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB" vlan-ids=1650
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN MEDRADO" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB" vlan-ids=1657
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN JGA" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB" vlan-ids=1680
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN TRANSP-INFORNET" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB" vlan-ids=10
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN PEDRA VERM" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB" vlan-ids=1676
+/interface bridge vlan
+# sfp-sfpplus1 - RC X ITB not a bridge port
+add bridge=bridge1 comment="VLAN GERENCIA" tagged="sfp-sfpplus2 - P2P-SW-DST-ALT-P2,sfp-sfpplus1 - RC X ITB,bridge1" vlan-ids=1651
+/ip address add address=10.13.0.8/24 interface=VLAN1651-GERENCIA network=10.13.0.0
+/ip route add disabled=no distance=1 dst-address=0.0.0.0/0 gateway=10.13.0.1 routing-table=main scope=30 suppress-hw-offload=no target-scope=10
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set enabled=yes trap-version=2
+/system console set [ find ] disabled=yes
+/system identity set name=SW-DST-ROMULO-CAM-FRIENDS
+/system note set show-at-login=no
+/system routerboard settings set enter-setup-on=delete-key
+/tool romon set enabled=yes
+

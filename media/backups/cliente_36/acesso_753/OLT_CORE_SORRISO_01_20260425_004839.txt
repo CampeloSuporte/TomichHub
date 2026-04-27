@@ -1,0 +1,2673 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ALTA RADIO LTDA
+Equipamento: OLT CORE SORRISO 01
+Host: 10.40.40.1:22
+Acesso: VIA PROXY SSH
+Modelo: OLT HUAWEI MA5800
+Template: backup olt huawei
+Data: 25/04/2026 00:48:39
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: enable
+============================================================
+
+OLT1-SORRISO#
+
+============================================================
+Comando: config
+============================================================
+
+OLT1-SORRISO(config)#
+
+============================================================
+Comando: undo interactive
+============================================================
+  Interactive function is disabled
+
+OLT1-SORRISO(config)#
+
+============================================================
+Comando: undo smart
+============================================================
+  Interactive function is disabled
+
+OLT1-SORRISO(config)#
+
+============================================================
+Comando: scroll
+============================================================
+
+OLT1-SORRISO(config)#
+
+============================================================
+Comando: display  current-configuration
+============================================================
+[MA5600V800R015: 5800]
+#
+[sysmode]
+  <sysmode>
+ switch adsl mode to rfc2662 vdsl mode to tr129
+ xpon mode switch-to profile-mode
+ voice-spec set vag-num 8
+ protocol support h248
+ system ex-mode backup 
+ system workscene msan 
+ router mode basic 
+#
+[global-config]
+  <global-config>
+ sysname OLT1-SORRISO
+ terminal user name buildrun_new_password root *J$1a$d-jP#@l!\*$m,F`N}OQn(hzB`$ HsmiL6mk]#bD4d<H@2Z.<7=Y($* 7 0000:00:00:00:00:00 2025:02:08:12:30:02 root 1 "
+-----" 0
+ terminal user name buildrun_new_password smartoltusr *[$1a$c[a,0Cm{=-$lg:q-yY5@->")C)bfrj&Kr|{I=j%]@o&%.~*90%~$* 0 2019:10:03:13:09:33 2025:02:08:12:32:39 root 2 "-----" 0
+ terminal user name buildrun_new_password mkauth *[$1a$b%.*(('}@F$Ie%+@$z"x1fi` F-WUs;!lQDp.$5>|Q/#E`4x{b+/$* 0 2020:04:15:20:55:48 2025:02:08:12:32:20 root 3 "Data_Huawei" 0
+ terminal user name buildrun_new_password sgpsgp *[$1a$zo509bCtOU$KHn>71g"=
+6SbL62Y"!*H]G=u-|\2#-)4HOC+r1%~$* 0 2020:07:16:14:59:36 2022:07:21:17:02:25 root 4 "AAA" 0
+ terminal user name buildrun_new_password suporte-ti *[$1a$J^)e>]\TlN$Aobq!NWPb!%)Tb%x(+c2Pl>S=am$Q*z\sG4Lp])N$* 0 2020:11:03:00:32:07 2025:02:08:12:32:55 root 5 "-----" 0
+ terminal user name buildrun_new_password wilercarlos *I$1a$ewuh+]pIXK$t~T:Kr:f</(|&z*Hl#7,U1Y,JwHH\+&zVJC/uCrW$* 0 2021:03:22:09:01:14 2025:02:08:12:33:14 root 6 "-----" 0
+ terminal user name buildrun_new_password master *[$1a$&v|s*UY5b6$>UZ'S;|z$I/-] jDT]ABR3t)W)Pd{/<yo=|*%]QZ6$* 0 2023:07:27:09:28:56 2025:02:08:12:33:21 root 7 "-----" 0
+ terminal user name buildrun_new_password smartolt *[$1a$O0ZpU,HM*!$nt"M+,*^Y/
+36Z=%Uh/3CK2ts4r8u!.vM.CCF&e9.$* 0 2026:01:23:10:55:28 2026:01:23:10:55:28 root 8 "-----" 0
+ terminal user name buildrun_new_password ixcprovedor *O$1a$]:mT1ju.a2$<fY"Wl)
+ECU`|3((]c;^FZg.f~xdHU$c0T7I12Ux!$* 0 2026:02:05:07:49:10 2026:02:05:07:49:10 
+root 9 "-----" 0
+ terminal user name buildrun_new_password tomich *[$1a$|]w7.q7xq6$|=0=NL0'NY;;
+8V)_qxfQ8W&p+WC-RAaG=hV8JgVY$* 0 2026:03:18:11:18:16 2026:03:18:11:18:16 root 10 "-----" 0
+ system lock interval 1
+ system lock condition 15
+ terminal user name history_password root *J$1a$}DPr2-*0wS$'AuS&y7s'@`|gY8+]]
+fShkx=Ff]k8T@2IB-Tq9wG$* *J$1a$_<[T@v}B81$k5x[>1Bt3.lqt_*<LL&#e&'\7-40n"bV``.B2!wA$* *J$1a$33P}@_Z>o&$Rg)!FHzT[.5Lq(1d/J;-O3fC7gYZ\=751iGafT=O$* *J$1a$%)h;9DQ/ E~$yVQKKw;.3H{ROC.}4*g&xA\i(ykg|J;Zl_IdAb[Y$*
+ terminal user name history_password smartoltusr *[$1a$C2Uh,a7IUP$2*JIHggMq"9~
+fC$;,6{+'"*|;7AQ4R;:b='xW\r4$* *[$1a$~CN|7F1v&Q$_vapQmC)y,x;Lj%j:PL=bW~<'
+-ACiGEthXILMDxQ$*
+ terminal user name history_password mkauth *[$1a$-{"f9&`/7B$&T7I!^W13~sc8O:X&
+AeM4\]OYag#~9fon^0c+EoW$*
+ terminal user name history_password sgpsgp *[$1a$I-Z5#_.]d8$hIsW%J0",GHIp{
+SYEEw5]1;,"&-Nl$235+G*fY="$*
+ terminal user name history_password suporte-ti *[$1a$3l(;3B(S{($yVk)(V"Yj0e^*2~7>eg!mOJy!4CD[@LL$EI4x-\I$*
+ terminal user name history_password wilercarlos *I$1a$9c}GE;&wK~$xh_,1xI0TB.
+hedB(L&6>SAN&73SJ|5hOE,4\N,9A$* *I$1a$e|fFVm%lrK$yGMLSu\4|QRg2TQf`!:<Cb(V4Ke^^% oEVNLmnf=>$*
+ terminal user name history_password master *[$1a$$@]qMe(_/1$1ht^3OF*:RrXYu*
+iT6X1K4R,Q&2(J8B`O#)|vX`9$*
+ undo traffic table ip index 1
+ traffic table ip index 1 name "DOWN_ATP_450Mbps" cir 460800 cbs 10240000 pir 
+460800 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 7 name "DOWN_ATP_500Mbps" cir 512000 cbs 10240000 pir 
+512000 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 8 name "SMARTOLT-1G-UP" cir 1048064 cbs 10240000 pir 
+1048064 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 9 name "SMARTOLT-1G-DOWN" cir 1048064 cbs 10240000 pir  1048064 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 10 name "UP_ALTA_1GIGA" cir 1024000 cbs 10240000 pir 
+1024000 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 11 name "DOWN_ALTA_1GIGA" cir 1024000 cbs 10240000 pir  1024000 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 12 name "SMARTOLT-VOIPMNG-10M" cir 2048 cbs 67536 pir 
+10432 pbs 335824 color-mode color-blind priority 2 inner-priority 2 
+priority-policy local-setting
+ traffic table ip index 15 name "UP_ATP_400Mbps" cir 409600 cbs 10240000 pir 
+409600 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 17 name "DOWN_ATP_350Mbps" cir 358400 cbs 10240000 pir  358400 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 18 name "10Mbps" cir 10240 cbs 329680 pir 10240 pbs 
+329680 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 19 name "20Mbps" cir 20480 cbs 657360 pir 20480 pbs 
+657360 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 20 name "30Mbps" cir 30720 cbs 985040 pir 30720 pbs 
+985040 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 21 name "40Mbps" cir 40960 cbs 1312720 pir 40960 pbs 
+1312720 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 22 name "50Mbps" cir 51200 cbs 1640400 pir 51200 pbs 
+1640400 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 23 name "60Mbps" cir 61440 cbs 1968080 pir 61440 pbs 
+1968080 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 24 name "100Mbps" cir 102400 cbs 3278800 pir 102400 pbs 3278800 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 29 name "SMARTOLT-40Mbps-UP" cir 40960 cbs 1312720 pir  40960 pbs 1312720 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 36 name "200Mbps" cir 204800 cbs 6555600 pir 204800 pbs 6555600 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 37 name "120Mbps" cir 128000 cbs 4098000 pir 128000 pbs 4098000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 40 name "300 Mbps" cir 307200 cbs 9832400 pir 307200 pbs 9832400 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 42 name "UP_180Mbps" cir 184320 cbs 10240000 pir 614400 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 43 name "UP_30Mbps" cir 30720 cbs 10240000 pir 30720 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 44 name "UP_40Mbps" cir 40960 cbs 10240000 pir 40960 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 45 name "UP_50Mbps" cir 51200 cbs 10240000 pir 51200 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 47 name "UP_300Mbps" cir 307200 cbs 10240000 pir 307200 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 48 name "DOWN_300Mbps" cir 307200 cbs 10240000 pir 
+307200 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 49 name "DOWN_200Mbps" cir 204800 cbs 10240000 pir 
+204800 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 50 name "UP_100Mbps" cir 102400 cbs 10240000 pir 102400 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 52 name "DOWN_120Mbps" cir 122880 cbs 10240000 pir 
+122880 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 57 name "UP_20Mbps" cir 20480 cbs 10240000 pir 20480 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 58 name "DOWN_20Mbps" cir 20480 cbs 10240000 pir 20480  pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 59 name "UP_10Mbps" cir 10240 cbs 10240000 pir 10240 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 60 name "DOWN_50Mbps" cir 51200 cbs 10240000 pir 51200  pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 63 name "DOWN_ATP_20Mbps" cir 20480 cbs 657360 pir 20480 pbs 657360 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 64 name "DOWN_ATP_10Mbps" cir 10240 cbs 329680 pir 10240 pbs 329680 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 65 name "DOWN_ATP_30Mbps" cir 30720 cbs 985040 pir 30720 pbs 985040 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 67 name "DOWN_ATP_600Mbps" cir 614400 cbs 10240000 pir  614400 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 69 name "UP_ATP_10Mbps" cir 10240 cbs 329680 pir 10240  pbs 329680 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 70 name "UP_ATP_30Mbps" cir 30720 cbs 985040 pir 30720  pbs 985040 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 71 name "UP_ATP_40Mbps" cir 40960 cbs 1312720 pir 40960 pbs 1312720 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 72 name "UP_ATP_50Mbps" cir 51200 cbs 1640400 pir 51200 pbs 1640400 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 73 name "UP_ATP_60Mbps" cir 61440 cbs 1968080 pir 61440 pbs 1968080 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 74 name "UP_ATP_70Mbps" cir 71680 cbs 2295760 pir 71680 pbs 2295760 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 75 name "UP_ATP_120Mbps" cir 122880 cbs 3934160 pir 
+122880 pbs 3934160 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 76 name "DOWN_ATP_40Mbps" cir 40960 cbs 1312720 pir 
+40960 pbs 1312720 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 77 name "UP_ATP_200Mbps" cir 204800 cbs 6555600 pir 
+204800 pbs 6555600 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 78 name "DOWN_ATP_50Mbps" cir 51200 cbs 1640400 pir 
+51200 pbs 1640400 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 79 name "DOWN_ATP_60Mbps" cir 61440 cbs 1968080 pir 
+61440 pbs 1968080 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 80 name "DOWN_ATP_70Mbps" cir 71680 cbs 2295760 pir 
+71680 pbs 2295760 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 81 name "DOWN_ATP_120Mbps" cir 122880 cbs 3934160 pir 
+122880 pbs 3934160 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 82 name "DOWN_ATP_200Mbps" cir 204800 cbs 6555600 pir 
+204800 pbs 6555600 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 83 name "DOWN_ATP_300Mbps" cir 307200 cbs 9832400 pir 
+307200 pbs 9832400 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 84 name "DOWN_ATP_400Mbps" cir 409600 cbs 10240000 pir  409600 pbs 10240000 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 85 name "DOWN_ATP_100Mbps" cir 102400 cbs 3278800 pir 
+102400 pbs 3278800 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 86 name "DOWN_ATP_VOIP_1Mbps" cir 1024 cbs 34768 pir 
+1024 pbs 34768 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 87 name "UP_ATP_VOIP_1Mbps" cir 1024 cbs 34768 pir 1024 pbs 34768 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 101 name "INTERNET_100_DOWN" cir 9984 cbs 329680 pir 
+102400 pbs 329680 color-mode color-blind priority 0 priority-policy 
+local-setting
+ traffic table ip index 102 name "INTERNET_20_UP" cir 4096 cbs 329680 pir 20480 pbs 329680 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 238 name "L2L_100M" cir 102400 cbs 3278800 pir 102400 
+pbs 3278800 color-mode color-blind priority 3 priority-policy local-setting
+ ftp set user01 *$)F}v4[.2h~,UJF:DA`I'Lo.+=Amh5Dx{$8'$},>QxSD5b)MI4%`j8}1F"6=^
+hs6Gyt)Q2Q9j$*
+ dba-profile add profile-id 10 profile-name "SMARTOLT_DEFAULT_TCONT_1G" type4 
+max 1048000
+ dba-profile add profile-id 11 profile-name "SMARTOLT_DEFAULT_TCONT_1G_EPON" 
+type4 max 1000000
+ dba-profile add profile-id 12 profile-name "SMARTOLT_DEFAULT_TCONT_XGPON" type4 max 2488000
+ dba-profile add profile-id 13 profile-name "SMARTOLT_DEFAULT_TCONT_XGSPON" 
+type4 max 9952000
+ dba-profile add profile-id 14 profile-name "SMARTOLT_DEFAULT_TCONT_10G_EPON" 
+type4 max 9952000
+ dba-profile add profile-id 230 profile-name "DBA-GLOBAL" type4 max 1024000
+ dba-profile add profile-id 231 profile-name "DBA-IPTV" type2 assure 5120
+ dba-profile add profile-id 232 profile-name "DBA-VoIp" type1 fix 1024 
+bandwidth_compensate no
+ dba-profile add profile-id 238 profile-name "DBA_GLOBAL_L2L" type4 max 1024000
+ dba-profile add profile-id 240 profile-name "DBA-GLOBAL1" type4 max 1024000
+ dba-profile add profile-id 241 profile-name "DBA-IPTV1" type2 assure 5120
+ dba-profile add profile-id 242 profile-name "DBA-VoIp1" type1 fix 1024 
+bandwidth_compensate no
+ dba-profile add profile-id 260 profile-name "DBA-GLOBAL_GREEN" type4 max 102656
+ dba-profile add profile-id 261 profile-name "DBA-IPTV_GREEN" type2 assure 5120
+ dba-profile add profile-id 262 profile-name "DBA-VoIp_GREEN" type1 fix 1024 
+bandwidth_compensate no
+ dba-profile add profile-id 270 profile-name "DBA-GLOBAL_ALTA" type4 max 102656
+ dba-profile add profile-id 271 profile-name "DBA-IPTV_ALTA" type2 assure 5120
+ dba-profile add profile-id 272 profile-name "DBA-VoIp_ALTA" type1 fix 1024 
+bandwidth_compensate no
+ dba-profile add profile-id 280 profile-name "DBA-GLOBAL_ALTA_VLAN124" type4 max 1024000
+ dba-profile add profile-id 281 profile-name "DBA-IPTV_ALTA_VLAN124" type2 
+assure 5120
+ dba-profile add profile-id 282 profile-name "DBA-VoIp_ALTA_VLAN124" type1 fix  1024 bandwidth_compensate no
+ dba-profile add profile-id 290 profile-name "DBA-GLOBAL_ENTREGA_LINK" type4 max 102656
+ dba-profile add profile-id 291 profile-name "DBA-IPTV_ENTREGA_LINK" type2 
+assure 5120
+ dba-profile add profile-id 292 profile-name "DBA-VoIp_ENTREGA_LINK" type1 fix  1024 bandwidth_compensate no
+ dba-profile add profile-id 300 profile-name "DBA-GLOBAL_ENTREGA_OLHO_VIVO" 
+type4 max 102656
+ dba-profile add profile-id 301 profile-name "DBA-IPTV_ENTREGA_OLHO_VIVO" type2 assure 5120
+ dba-profile add profile-id 302 profile-name "DBA-VoIp_ENTREGA_OLHO_VIVO" type1 fix 1024 bandwidth_compensate no
+ dba-profile add profile-id 303 profile-name "DBA-GLOBAL_SUPORTE-ONLINE" type4  max 102656
+ dba-profile add profile-id 304 profile-name "DBA-IPTV_SUPORTE-ONLINE" type2 
+assure 5120
+ dba-profile add profile-id 305 profile-name "DBA-VoIp_SUPORTE-ONLINE" type1 fix 1024 bandwidth_compensate no
+ dba-profile add profile-id 401 profile-name "SERVICE-L2L-CLIENTE" type4 max 
+1024000
+ ont-lineprofile epon profile-id 1 profile-name "SMARTOLT_FLEXIBLE_EPON"
+  llid dba-profile-id 11
+  commit
+ ont-lineprofile epon profile-id 7 profile-name "SMARTOLT_FLEXIBLE_10G_EPON"
+  llid dba-profile-id 14
+  commit
+ ont-srvprofile gpon profile-id 1 profile-name "HG8546M"
+  ont-port pots 1 eth 4 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 2 profile-name "HG8245H"
+  ont-port pots 2 eth 4 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 3 profile-name "EG8145X6-10"
+  ont-port pots 2 eth 4 catv adaptive 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 4 profile-name "HG8010H"
+  ont-port eth 1 catv adaptive 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 10 profile-name "ONT_1ETH"
+  ont-port pots adaptive eth adaptive 
+  port vlan eth 1 translation 101 user-vlan 101
+  port vlan eth 2 translation 101 user-vlan 101
+  port vlan eth 3 translation 101 user-vlan 101
+  port vlan eth 4 translation 101 user-vlan 101
+  commit
+ ont-srvprofile gpon profile-id 11 profile-name "OLHO_VIVO"
+  ont-port pots adaptive eth adaptive 
+  port vlan eth 1 translation 3041 user-vlan 3041
+  port vlan eth 2 translation 3041 user-vlan 3041
+  port vlan eth 3 translation 3041 user-vlan 3041
+  port vlan eth 4 translation 3041 user-vlan 3041
+  commit
+ ont-srvprofile gpon profile-id 30 profile-name "ONT_EDGE"
+  ont-port pots 1 eth 2 
+  port vlan eth 1 translation 101 user-vlan 101
+  commit
+ ont-srvprofile gpon profile-id 100 profile-name "HG8245Hi"
+  ont-port pots 2 eth 4 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 201 profile-name "NTV_L2L"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  port vlan eth 1 transparent
+  port vlan eth 2 transparent
+  port vlan eth 3 transparent
+  port vlan eth 4 transparent
+  commit
+ ont-srvprofile gpon profile-id 230 profile-name "SRV-TRIPLE_PLAY"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 100 user-vlan 100
+  port vlan eth 2 translation 100 user-vlan 100
+  port vlan eth 3 translation 100 user-vlan 100
+  port vlan eth 4 translation 129 user-vlan 129
+  port vlan iphost translation 54 user-vlan 54
+  commit
+ ont-srvprofile gpon profile-id 238 profile-name "SRV_L2L_A"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  port vlan eth 1 transparent
+  port vlan eth 2 transparent
+  port vlan eth 3 transparent
+  port vlan eth 4 transparent
+  commit
+ ont-srvprofile gpon profile-id 240 profile-name "SRV-TRIPLE_PLAY_NE8000"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 126 user-vlan 126
+  port vlan eth 2 translation 126 user-vlan 126
+  port vlan eth 3 translation 126 user-vlan 126
+  port vlan eth 4 translation 126 user-vlan 126
+  port vlan iphost translation 55 user-vlan 55
+  commit
+ ont-srvprofile gpon profile-id 260 profile-name "SRV-TRIPLE_PLAY_GREEN"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 711 user-vlan 711
+  port vlan eth 2 translation 711 user-vlan 711
+  port vlan eth 3 translation 711 user-vlan 711
+  port vlan eth 4 translation 711 user-vlan 711
+  port vlan iphost translation 714 user-vlan 714
+  commit
+ ont-srvprofile gpon profile-id 270 profile-name "SRV-TRIPLE_PLAY_ALTA"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 125 user-vlan 125
+  port vlan eth 2 translation 125 user-vlan 125
+  port vlan eth 3 translation 125 user-vlan 125
+  port vlan eth 4 translation 125 user-vlan 125
+  port vlan iphost translation 55 user-vlan 55
+  commit
+ ont-srvprofile gpon profile-id 280 profile-name "SRV-TRIPLE_PLAY_ALTA_VLAN124"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 124 user-vlan 124
+  port vlan eth 2 translation 124 user-vlan 124
+  port vlan eth 3 translation 124 user-vlan 124
+  port vlan eth 4 translation 124 user-vlan 124
+  port vlan iphost translation 55 user-vlan 55
+  commit
+ ont-srvprofile gpon profile-id 290 profile-name "SRV-TRIPLE_PLAY_ENTREGA_LINK"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 1138 user-vlan 1138
+  port vlan eth 2 translation 1138 user-vlan 1138
+  port vlan eth 3 translation 1138 user-vlan 1138
+  port vlan eth 4 translation 1138 user-vlan 1138
+  port vlan iphost translation 1138 user-vlan 1138
+  commit
+ ont-srvprofile gpon profile-id 300 profile-name "SRV-TRIPLE_PLAY_OLHO"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 3041 user-vlan 3041
+  port vlan eth 2 translation 3041 user-vlan 3041
+  port vlan eth 3 translation 3041 user-vlan 3041
+  port vlan eth 4 translation 3041 user-vlan 3041
+  port vlan iphost translation 3041 user-vlan 3041
+  commit
+ ont-srvprofile gpon profile-id 303 profile-name "suporte-online"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 811 user-vlan 811
+  port vlan eth 2 translation 811 user-vlan 811
+  port vlan eth 3 translation 811 user-vlan 811
+  port vlan eth 4 translation 811 user-vlan 811
+  port vlan iphost translation 811 user-vlan 811
+  commit
+ ont-srvprofile gpon profile-id 813 profile-name "srv-profile_813"
+  ont-port pots 2 eth 4 catv 1 
+  port q-in-q eth 1 enable 
+  commit
+ ont-srvprofile gpon profile-id 3069 profile-name "OLHO_VIVO01"
+  ont-port pots adaptive eth adaptive catv adaptive 
+  multicast-forward untag
+  port vlan eth 1 translation 3069 user-vlan 3069
+  port vlan eth 2 translation 3069 user-vlan 3069
+  port vlan eth 3 translation 3069 user-vlan 3069
+  port vlan eth 4 translation 3069 user-vlan 3069
+  port vlan iphost translation 3069 user-vlan 3069
+  commit
+ ont-lineprofile gpon profile-id 0 profile-name "line-profile_default_0"
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 0
+  commit
+  quit
+ ont-lineprofile gpon profile-id 2 profile-name "SMARTOLT_FLEXIBLE_GPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 10
+  tcont 2 dba-profile-id 10
+  tcont 3 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 3 profile-name "generic_tcont1_gemport_1_V100"
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem mapping 1 1 vlan 100
+  commit
+  quit
+ ont-lineprofile gpon profile-id 4 profile-name "ATP_tcont1_gemport_1_V101"
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem mapping 1 1 vlan 101
+  commit
+  quit
+ ont-lineprofile gpon profile-id 5 profile-name "SMARTOLT_FLEXIBLE_XGPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 12
+  tcont 2 dba-profile-id 12
+  tcont 3 dba-profile-id 12
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 6 profile-name "SMARTOLT_FLEXIBLE_XGSPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 13
+  tcont 2 dba-profile-id 13
+  tcont 3 dba-profile-id 13
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 10 profile-name "INTER_1ETH"
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem mapping 1 1 vlan 101
+  commit
+  quit
+ ont-lineprofile gpon profile-id 11 profile-name "OLHO_VIVO"
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem mapping 1 1 vlan 3041
+  commit
+  quit
+ ont-lineprofile gpon profile-id 26 profile-name "L2Vlan1060_carran.com"
+  tcont 4 dba-profile-id 1
+  gem add 1 eth tcont 4
+  gem mapping 1 0 vlan 3041
+  commit
+  quit
+ ont-lineprofile gpon profile-id 30 profile-name "INTER_EDGE"
+  qos-mode gem-car
+  tcont 5 dba-profile-id 10
+  gem add 37 eth tcont 5
+  gem mapping 37 1 vlan 101
+  commit
+  quit
+ ont-lineprofile gpon profile-id 41 profile-name "LP_QINQ_INT_L2L"
+  tcont 1 dba-profile-id 1
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 1
+  commit
+  quit
+ ont-lineprofile gpon profile-id 100 profile-name "REDE_NEUTRA_GPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 10
+  tcont 2 dba-profile-id 10
+  tcont 3 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 230 profile-name "LINE-TRIPLE_PLAY"
+  tr069-management enable
+  tcont 5 dba-profile-id 230
+  tcont 6 dba-profile-id 231
+  tcont 7 dba-profile-id 232
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 100
+  gem mapping 6 0 vlan 129
+  gem mapping 7 0 vlan 54
+  commit
+  quit
+ ont-lineprofile gpon profile-id 238 profile-name "LINE_L2L_A"
+  mapping-mode port
+  tcont 5 dba-profile-id 238
+  gem add 5 eth tcont 5
+  gem mapping 5 0 eth 1
+  commit
+  quit
+ ont-lineprofile gpon profile-id 240 profile-name "LINE-TRIPLE_PLAY_NE8000"
+  tr069-management enable
+  tcont 5 dba-profile-id 240
+  tcont 6 dba-profile-id 241
+  tcont 7 dba-profile-id 242
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 126
+  gem mapping 6 0 vlan 4000
+  gem mapping 7 0 vlan 55
+  commit
+  quit
+ ont-lineprofile gpon profile-id 260 profile-name "LINE-TRIPLE_PLAY_GREEN"
+  tr069-management enable
+  tcont 5 dba-profile-id 260
+  tcont 6 dba-profile-id 261
+  tcont 7 dba-profile-id 262
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 711
+  gem mapping 6 0 vlan 715
+  gem mapping 7 0 vlan 714
+  commit
+  quit
+ ont-lineprofile gpon profile-id 270 profile-name "LINE-TRIPLE_PLAY_ALTA"
+  tr069-management enable
+  tcont 5 dba-profile-id 270
+  tcont 6 dba-profile-id 271
+  tcont 7 dba-profile-id 272
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 125
+  gem mapping 6 0 vlan 4000
+  gem mapping 7 0 vlan 55
+  commit
+  quit
+ ont-lineprofile gpon profile-id 280 profile-name "
+LINE-TRIPLE_PLAY_ALTA_VLAN124"
+  tcont 5 dba-profile-id 280
+  tcont 6 dba-profile-id 281
+  tcont 7 dba-profile-id 282
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 124
+  gem mapping 6 0 vlan 4000
+  gem mapping 7 0 vlan 55
+  commit
+  quit
+ ont-lineprofile gpon profile-id 290 profile-name "
+LINE-TRIPLE_PLAY_ENTREGA_LINK"
+  tr069-management enable
+  tcont 5 dba-profile-id 290
+  tcont 6 dba-profile-id 291
+  tcont 7 dba-profile-id 292
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 1138
+  gem mapping 6 0 vlan 1139
+  gem mapping 7 0 vlan 1140
+  commit
+  quit
+ ont-lineprofile gpon profile-id 300 profile-name "
+LINE-TRIPLE_PLAY_ENTREGA_OLHO"
+  tr069-management enable
+  tcont 5 dba-profile-id 300
+  tcont 6 dba-profile-id 301
+  tcont 7 dba-profile-id 302
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 3041
+  gem mapping 6 0 vlan 3042
+  gem mapping 7 0 vlan 3043
+  commit
+  quit
+ ont-lineprofile gpon profile-id 303 profile-name "LINE-SUPORTE-ONLINE"
+  tr069-management enable
+  tcont 5 dba-profile-id 303
+  tcont 6 dba-profile-id 304
+  tcont 7 dba-profile-id 305
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 811
+  gem mapping 6 0 vlan 812
+  gem mapping 7 0 vlan 813
+  commit
+  quit
+ ont-lineprofile gpon profile-id 813 profile-name "line-profile_813"
+  tcont 1 dba-profile-id 303
+  gem add 0 eth tcont 1
+  gem mapping 0 0 vlan 813
+  commit
+  quit
+ ont-lineprofile gpon profile-id 2301 profile-name "LINE"
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 1
+  gem mapping 1 0 vlan 2301
+  gem mapping 2 0 vlan 3690
+  commit
+  quit
+ ont-lineprofile gpon profile-id 3041 profile-name "LINE-L2L-MATRIZ-CLIENTE"
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 1
+  gem mapping 1 0 vlan 3041
+  gem mapping 2 0 vlan 3690
+  commit
+  quit
+ ont-lineprofile gpon profile-id 3069 profile-name "OLHO_VIVO01"
+  tr069-management enable
+  tcont 5 dba-profile-id 300
+  gem add 5 eth tcont 5
+  gem mapping 5 0 vlan 3069
+  commit
+  quit
+#
+[device-config]
+  <device-config>
+ frame set 0 desc "olt-datcom"
+ board add 0/1 H807GPBH 
+ board add 0/2 H807GPBH 
+ board add 0/3 H807GPBH 
+ board add 0/11 H807GPBH 
+ board add 0/12 H806GPBD 
+ board add 0/13 H805GPBD 
+ board add 0/14 H805GPFD 
+ board add 0/15 H805GPFD 
+ board add 0/16 H807GPBD 
+ board add 0/17 H801GICF 
+ board add 0/18 H801X2CS 
+ board add standby
+#
+[public-config]
+  <public-config>
+ timezone GMT- 03:00
+ time time-stamp local
+ time date-format DD/MM/YYYY
+ snmp-agent local-engineid 800007DB03F02FA7BB310101
+ snmp-agent community read $:D6P3(Xo61>D&nLUuqQ&W%Aml2cQOi<}d%.VpHG`=GiW-r|G$ 
+ snmp-agent community write $NS:#B&OM>*mU|F8Q^j[/*f\;Sj|zI9fWE2!{(&SkJh&CaI@0$ 
+ snmp-agent community write $#8;~8sbEw0-;V<FC`(_2=xCA\;7gJO9Sw'^`oWLyM)^FAP.&$ 
+ snmp-agent community write $0Xb|8&f\i)6S9j/GvbP(Jbd1nbFO8`z}<EU@lb#:Ly>BAN)z$ 
+ snmp-agent community read $@rWi;+<e0.+]BKEk5t~@i8$m6"SoWsjI`<nR.zLAi#A,Y(%($ 
+ snmp-agent community write $&A^4>w&`g.VszW.(V!%SzV1EKkw9"La_t(f,24*UR9U""bLU$ 
+ snmp-agent community read $3Z<ZD~aC>@#\e<H/QilB3@cY-P.:8%F[<7#x|r1Y;Qe<*-H)$ 
+ snmp-agent community write $D4Et&|"zA!]0)AC>:soMIO2L8auK1j.~%:ID5z%<[.IW8JL;$ 
+ snmp-agent community read $h"rP7z(N#~A.\FA"y(5L^LWJ&"%=U"6KXGE`D,R`nW'3=]f8$ 
+ snmp-agent community read $+qs#'4w0k<os:+Uk8J!8@CT"GOP+Rb{L2FjWqa#)NY:,d-+1$ 
+ snmp-agent community write $K[Rh#yD4t5iIRd)Yx~)!u&OhF>\.MNx6L&$!"T$%%&|JMT>z$ 
+ snmp-agent trap enable standard
+ snmp-profile add profile-id 1 profile-name "SNMP_L2L" v2c "$7R:6F}X&
+GPUO31L35EY%[_sUk$4kY'Nc2=bk2_4C2)~(myWh$" "$4V0})Q8g(Q2~wK;6$S@Y(($Y"3"M@+l54Y.hgD="Gn8.;.4:$" 10.40.40.1 162 "$F:<kM-7'OU'CSR1IoLG0DG"~=G'~=rP-)B~V4xROkKxNw<"\$"
+#
+[vlan-config]
+  <vlan-config>
+ vlan 10 smart
+ vlan 20 to 21 smart
+ vlan 54 to 55 smart
+ vlan 100 to 103 smart
+ vlan 124 to 126 smart
+ vlan 128 to 130 smart
+ vlan 200 to 204 smart
+ vlan 300 smart
+ vlan 305 smart
+ vlan 400 smart
+ vlan 500 smart
+ vlan 633 smart
+ vlan 711 smart
+ vlan 811 smart
+ vlan 813 smart
+ vlan 1000 smart
+ vlan 1138 smart
+ vlan 1210 smart
+ vlan 1931 smart
+ vlan 2103 smart
+ vlan 2178 smart
+ vlan 2301 smart
+ vlan 2378 smart
+ vlan 3041 smart
+ vlan 3069 smart
+ vlan 3690 smart
+ vlan 4000 to 4001 smart
+ vlan 4040 smart
+ vlan desc 10 description "internet"
+ vlan desc 21 description "L2L_DAVINCI"
+ vlan desc 54 description "VLANID_54_VOIP"
+ vlan desc 102 description "VLANID_102_CONDOMINIO_ECOVILLE"
+ vlan desc 125 description "OLT-PMS01-01 PORTA 10 GIGAS "
+ vlan desc 200 description "Gerencia Inband"
+ vlan desc 633 description "TRANSPORTE VOIP GOLDNET"
+ vlan desc 2378 description "REGIONAL PARAFUSOS EIRELI "
+ vlan desc 4040 description "L2L_GOLDNET"
+ vlan attrib 1000 q-in-q
+ vlan attrib 3690 q-in-q
+ port vlan 20 0/17 0
+ port vlan 55 0/17 0
+ port vlan 55 0/17 1
+ port vlan 100 0/17 0
+ port vlan 101 to 102 0/17 1
+ port vlan 124 to 125 0/18 0
+ port vlan 126 0/17 1
+ port vlan 129 0/17 0
+ port vlan 200 0/8 0
+ port vlan 300 0/17 1
+ port vlan 500 0/17 0
+ port vlan 633 0/8 1
+ port vlan 711 0/18 1
+ port vlan 811 0/18 1
+ port vlan 813 0/8 0
+ port vlan 813 0/8 1
+ port vlan 813 0/18 1
+ port vlan 1000 0/17 0
+ port vlan 1138 0/18 1
+ port vlan 1210 0/17 0
+ port vlan 1931 0/18 1
+ port vlan 2103 0/8 1
+ port vlan 2178 0/8 1
+ port vlan 2378 0/8 1
+ port vlan 2378 0/17 1
+ port vlan 3041 0/18 1
+ port vlan 3069 0/18 1
+ port vlan 4000 to 4001 0/17 1
+ port vlan 4040 0/18 1
+#
+[vlan-srvprof]
+  <vlan-srvprof>
+ vlan service-profile profile-id 10 profile-name "SERVICE-L2L-CLIENTE"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy multicast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  rip tunnel enable
+  vtp-cdp tunnel enable
+  dhcp mode layer-2
+  security anti-ipspoofing disable
+  security anti-macspoofing disable
+  user-bridging enable
+  igmp mismatch transparent
+  commit
+ vlan service-profile profile-id 20 profile-name "VLAN_SERVICE_A"
+ vlan service-profile profile-id 21 profile-name "L2L-DAVINCI-PATOS"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  dhcp mode layer-2
+  user-bridging enable
+  commit
+ vlan service-profile profile-id 30 profile-name "LAN-TO-LAN-3041"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy multicast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  rip tunnel enable
+  vtp-cdp tunnel enable
+  dhcp mode layer-2
+  security anti-ipspoofing disable
+  security anti-macspoofing disable
+  user-bridging enable
+  igmp mismatch transparent
+  commit
+ vlan service-profile profile-id 41 profile-name "QINQ_SV3041_L2L_INT"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  dhcp mode layer-2
+  user-bridging enable
+  commit
+ vlan service-profile profile-id 100 profile-name "L2L-GOLDNET"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  dhcp mode layer-2
+  user-bridging enable
+  commit
+ vlan service-profile profile-id 201 profile-name "L2L-NTV"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  dhcp mode layer-2
+  user-bridging enable
+  commit
+ vlan service-profile profile-id 238 profile-name "VLAN_SERVICE_A_L2L"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy multicast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  rip tunnel enable
+  vtp-cdp tunnel enable
+  dhcp mode layer-2
+  security anti-ipspoofing disable
+  security anti-macspoofing disable
+  user-bridging enable
+  igmp mismatch transparent
+  commit
+ vlan service-profile profile-id 256 profile-name "L2L-DAVINCI"
+  forwarding vlan-mac
+  packet-policy broadcast forward
+  packet-policy unicast forward
+  bpdu tunnel enable
+  dhcp mode layer-2
+  user-bridging enable
+  commit
+ vlan bind service-profile 20 profile-id 256
+ vlan bind service-profile 21 profile-id 21
+ vlan bind service-profile 3069 profile-id 256
+ vlan bind service-profile 4040 profile-id 100
+#
+[vomci-voip-config]
+  <vomci-voip-config>
+ ont-sipagent-profile add profile-id 10 profile-name sip-agent-profile_10
+ ont-sipagent-profile modify profile-id 10 proxy-server 179.189.84.187 
+proxy-server-port 5060 outbound-server 179.189.84.187 outbound-server-port 5060 home-domain softswitch.goldnettelecom.com.br
+#
+[gpon]
+  <gpon-0/1>
+ interface gpon 0/1
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ ont add 0 0 sn-auth "485754434EF437AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "aline@altatelecom.com.br" 
+ ont add 0 1 sn-auth "4857544364234AAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2188 - pmslayssaferreira" 
+ ont add 0 2 sn-auth "4857544353278DAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2906 - pmsedercentro" 
+ ont add 0 4 sn-auth "48575443FC0906AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2609 - pmsrosanaanjos" 
+ ont add 0 5 sn-auth "48575443DBD181A5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2595 - pmskaick" 
+ ont add 0 6 sn-auth "485754434C3D03B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3179 - pmsmarianunes" 
+ ont add 1 1 sn-auth "48575443237221AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2440 - pmsclaudiomax" 
+ ont add 1 2 sn-auth "485754434EF2C3AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2262 - victorgabriel@altatelecom.com.br" 
+ ont add 2 0 sn-auth "48575443025F27B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsescolamaria" 
+ ont add 3 0 sn-auth "48575443235DD4AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "casa@altatelecom.com.br" 
+ ont add 3 1 sn-auth "48575443300FFFAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "franciscochagas@altatelecom.com.br" 
+ ont add 3 2 sn-auth "485754438D649AB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3387 - pmsvitta" 
+ ont add 4 0 sn-auth "48575443236148AC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "1424 - mariadefatimar@altatelecom.com.br" 
+ ont add 4 1 sn-auth "485754434C6DDDB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3207 - pmsgabriel3" 
+ ont add 4 2 sn-auth "48575443FC1A18AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsdonizetenunes" 
+ ont add 4 3 sn-auth "4857544317099EAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "alineferreira2@altatelecom.com.br" 
+ ont add 4 4 sn-auth "485754439DB04DAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "taissilva@altatelecom.com.br" 
+ ont add 4 5 sn-auth "48575443C2DC43A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1049 - pmssandraaparecida" 
+ ont add 4 6 sn-auth "48575443217670B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmssandysousa" 
+ ont add 4 8 sn-auth "485754434EF3D0AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmswillian" 
+ ont add 5 0 sn-auth "485754434EF3CFAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mariaconceicao1052@altatelecom.com.br" 
+ ont add 5 1 sn-auth "48575443642228AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2823 - pmssimao" 
+ ont add 5 2 sn-auth "48575443E76FEF9E" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn23SUPORTONLINE" 
+ ont add 6 0 sn-auth "485754431F2598AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "charlessantos@altatelecom.com.br" 
+ ont add 6 2 sn-auth "485754434C357AB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3071 - pmsmatheusluiz" 
+ ont add 6 3 sn-auth "465354540000C5A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2425 - pmsmariadelourdes" 
+ ont add 6 5 sn-auth "48575443FC13F6AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2627 - pmsdeyvison" 
+ ont add 7 0 sn-auth "48575443532708AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2966 - pmsgow" 
+ ont add 7 1 sn-auth "485754436C84A17E" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - ISABEL DOS REIS SOARES" 
+ ont add 7 2 sn-auth "48575443533CA9AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3310 - pmsaline12" 
+ ont port native-vlan 0 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 2 eth 1 vlan 811 priority 0 
+ ont port native-vlan 6 3 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 1 eth 1 vlan 711 priority 0 
+#
+  <gpon-0/2>
+ interface gpon 0/2
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ shutdown 7 
+ port 7 ont-auto-find enable
+ ont add 0 0 sn-auth "48575443C06D66AA" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "diogines" 
+ ont add 0 1 sn-auth "48575443A9532DAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "emilia@altatelecom.com.br" 
+ ont add 0 2 sn-auth "48575443FC1313AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2482 - pmsjpg" 
+ ont add 1 0 sn-auth "48575443A724A494" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2588 - pmsguilherme01" 
+ ont add 1 1 sn-auth "4857544322524DAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "Porta 01 CTO 02 01 07" 
+ ont add 2 0 sn-auth "48575443C2B547A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2004 - jorgecamargp@altatelecom.com.br" 
+ ont add 2 1 sn-auth "4857544399707AAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "elisangela1533@altatelecom.com.br" 
+ ont add 3 0 sn-auth "485754434481E1AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "cassia@altatelecom.com.br" 
+ ont add 3 1 sn-auth "485754432684FF9F" omci ont-lineprofile-id 2 
+ont-srvprofile-id 4 desc "AT 02 03 06_descr_02" 
+ ont add 3 2 sn-auth "48575443997344AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2603 - pmsandressa" 
+ ont add 4 0 sn-auth "4857544323B439AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "martasilva@altatelecom.com.br" 
+ ont add 4 1 sn-auth "485754434C3184B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsgiovanna" 
+ ont add 4 2 sn-auth "4857544366F188AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "722 - pmsinholita" 
+ ont add 4 3 sn-auth "485754434CFE57A9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "488 - mariadefatima@altatelecom.com.br" 
+ ont add 4 4 sn-auth "485754439ED379A5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2646 - pmswelington" 
+ ont add 4 5 sn-auth "4857544366F180AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2770 - pmshsilva" 
+ ont add 4 6 sn-auth "485754432AF3FBAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "giovanna1356@altatelecom.com.br" 
+ ont add 4 7 sn-auth "48575443FC172FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2376 - pmsalessandro" 
+ ont add 4 8 sn-auth "485754434EF3E2AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2381 - pmsmarcelovinha" 
+ ont add 4 9 sn-auth "48575443306046AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2386 - pmsmarcelovinha1" 
+ ont add 4 10 sn-auth "4857544347FBACA6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "1070 - igreja" 
+ ont add 4 11 sn-auth "48575443FC17C2AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2399 - pmsryanrocha" 
+ ont add 5 0 sn-auth "48575443C2D208A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "979 - zenaidepereira" 
+ ont add 5 1 sn-auth "485754431A680F9D" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "alef" 
+ ont add 5 2 sn-auth "485754432C4304A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "marcelo@altatelecom.com.br" 
+ ont add 5 3 sn-auth "4857544339356EA9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "marcoscelios@altatelecom.com.br" 
+ ont add 5 4 sn-auth "48575443A75BAB94" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1965 - maria15@altatelecom.com.br" 
+ ont add 5 5 sn-auth "465354540000C709" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2426 - pmsdayane" 
+ ont add 5 6 sn-auth "485754434EF2FAAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2100 - marta@altatelecom.com.br" 
+ ont add 5 7 sn-auth "48575443534453AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2886 - pmssilvaniaoliveira" 
+ ont add 5 8 sn-auth "48575443025D8BB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmscleonilda397" 
+ ont add 5 9 sn-auth "48575443FC0E1DAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2493 - pmsreginaldojosebarbosa" 
+ ont add 5 10 sn-auth "485754434C2F96B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsdouglas" 
+ ont add 5 11 sn-auth "485754434EF3D6AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "weslenpadilha1226@altatelecom.com.br" 
+ ont add 5 12 sn-auth "48575443025DFFB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsgeralda10" 
+ ont add 5 13 sn-auth "48575443AFF3F9A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2505 - pmscamillasimao" 
+ ont add 5 14 sn-auth "48575443336C06A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "982 - isordinamaria" 
+ ont add 5 15 sn-auth "48575443569EE180" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - APARECIDA MARTINS AZEVEDO" 
+ ont add 5 16 sn-auth "485754436DC956AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3008 - pmsluisfernandomeira" 
+ ont add 5 17 sn-auth "48575443532812AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2893 - pmsbeatriz2" 
+ ont add 5 18 sn-auth "485754433D7B65B2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2929 - pmsemerson1" 
+ ont add 5 19 sn-auth "48575443FC24FEAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2498 - pmsvalmir" 
+ ont add 5 20 sn-auth "48575443E9B023A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "893 - dircereis" 
+ ont add 5 21 sn-auth "485754434C3601B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3136 - pmsgraciela" 
+ ont add 5 22 sn-auth "485754438D6CDFB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3024 - pmscarlosmiranda" 
+ ont add 5 23 sn-auth "485754431AB9AB8B" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "CHEILA TAMARA JESUS PEREIRA" 
+ ont add 5 24 sn-auth "48575443026157B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsyagoassis" 
+ ont add 6 0 sn-auth "48575443DEF2E9AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "alceu@altatelecom.com.br" 
+ ont add 6 1 sn-auth "48575443063775AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "caixa certa  a 8 porm no tem no sistema" 
+ ont add 6 2 sn-auth "48575443A19D09AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mariaeulalia@altatelecom.com.br" 
+ ont add 6 3 sn-auth "485754432DEB4EAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "maracarvalho@atp" 
+ ont add 6 4 sn-auth "48575443217938B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3288 - pmsantonia" 
+ ont add 6 5 sn-auth "485754434EF3D9AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2108 - gabriela15@altatelecom.com.br" 
+ ont add 6 6 sn-auth "485754434EF477AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "tamyris@altatelecom.com.br" 
+ ont add 6 7 sn-auth "485754439A3B9EAA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "485754439A3B9EAA" 
+ ont add 6 8 sn-auth "48575443FC1FDAAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2394 - pmsmariaaparecida" 
+ ont add 6 9 sn-auth "48575443FC0FE3AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2439 - pmsjoaobatista25" 
+ ont add 6 10 sn-auth "48575443F9872AA5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2510 - pmsdeuseles" 
+ ont add 6 11 sn-auth "48575443FC07C8AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2678 - pmsnathalia" 
+ ont add 6 12 sn-auth "485754434C3112B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3126 - pmslorraine" 
+ ont add 6 13 sn-auth "485754437BFA7EA6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "807 - americanlavanderia" 
+ ont add 6 14 sn-auth "485754434C330CB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3222 - pmsjanaina2" 
+ ont add 6 15 sn-auth "4857544345B4A9AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3301 - pmsfilhocoelho" 
+ ont add 6 16 sn-auth "4857544366F3B4A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "275 - rosaniasouza@atp" 
+ ont add 6 17 sn-auth "48575443AEF373B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3404 - pmsmatheusqueiroz" 
+ ont add 6 18 sn-auth "485754439DB74DB4" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn21SUPORTONLINE" 
+ ont add 6 19 sn-auth "4857544345ADDAAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3437 - pmswalysson" 
+ ont add 6 20 sn-auth "485754439FACA9B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsvaniaverissimo" 
+ ont port native-vlan 1 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 3 1 eth 1 vlan 811 priority 0 
+ ont port native-vlan 5 1 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 4 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 5 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 15 eth 1 vlan 711 priority 0 
+ ont port native-vlan 5 23 eth 1 vlan 711 priority 0 
+ ont port native-vlan 6 18 eth 1 vlan 811 priority 0 
+#
+  <gpon-0/3>
+ interface gpon 0/3
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ ont add 0 0 sn-auth "48575443259889AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "tamires@altatelecom.com.br" 
+ ont add 0 1 sn-auth "485754436FBC229E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmspablo1" 
+ ont add 0 2 sn-auth "485754439F634BA5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "rubens@altatelecom.com.br" 
+ ont add 0 3 sn-auth "485754434EF2F6AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmairaduraes" 
+ ont add 0 4 sn-auth "465354540000C5C3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsreinaldoborges" 
+ ont port native-vlan 0 4 eth 1 vlan 124 priority 0 
+#
+  <gpon-0/11>
+ interface gpon 0/11
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ ont add 0 0 sn-auth "4857544352755AAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "samyramartuchelli@altatelecom.com.br" 
+ ont add 0 1 sn-auth "485754433332DCA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsjaymevilaca" 
+ ont add 0 2 sn-auth "48575443C5BB6E5E" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - MARCUS VINICIUS SOUZA MACHADO" 
+ ont add 1 0 sn-auth "48575443210CD8AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "wallyson@altatelecom.com.br" 
+ ont add 1 1 sn-auth "48575443025DE2B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsleticiaamaral" 
+ ont add 2 0 sn-auth "4857544315B14BA9" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "joao1@altatelecom.com.br" 
+ ont add 2 1 sn-auth "485754438057DE9E" omci ont-lineprofile-id 303 
+ont-srvprofile-id 303 desc "SUPORTE ONLINE - FABIO" 
+ ont add 2 2 sn-auth "485754432116F3AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1482 - josevitorio@altatelecom.com.br" 
+ ont add 2 3 sn-auth "485754434EF461AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "flaviogoncalves@altatelecom.com.br" 
+ ont add 2 4 sn-auth "4857544334F9E8A2" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "2038 - pmdaiane" 
+ ont add 3 0 sn-auth "485754439FC2FB56" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "emporio@altatelecom.com.br" 
+ ont add 3 1 sn-auth "48575443352F45AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "paulowilson@altatelecom.com.br" 
+ ont add 3 2 sn-auth "48575443A42DA4AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "eleuzina@altatelecom.com.br" 
+ ont add 3 3 sn-auth "48575443996A04AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2092 - parque@altatelecom.com.br" 
+ ont add 3 4 sn-auth "485754434C33F6B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1361 - ntvfratele@altatelecom.com.br" 
+ ont add 3 5 sn-auth "48575443D483589E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3260 - pmsparque1" 
+ ont add 3 6 sn-auth "485754439FAE6DB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmiriele" 
+ ont add 4 0 sn-auth "48575443FC0D44AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1445 - geovane@altatelecom.com.br" 
+ ont add 4 1 sn-auth "485754436DC6EDAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2035 - pmsassis123" 
+ ont add 4 2 sn-auth "48575443760E07AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "wesllen@altatelecom.com.br" 
+ ont add 4 4 sn-auth "48575443D453E69E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2460 - pmscharles" 
+ ont add 4 5 sn-auth "485754437E818CB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3328 - pmsjoaopaulosilva" 
+ ont add 4 6 sn-auth "485754434EF40EAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2102 - dayane4321@altatelecom.com.br" 
+ ont add 4 7 sn-auth "485754437A3DB8A2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "655 - republica@atp" 
+ ont add 4 8 sn-auth "4857544366EF2AAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2790 - pmssandradasilva" 
+ ont add 4 9 sn-auth "48575443A32250AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "989 - pmsnelsonbarcelos" 
+ ont add 5 0 sn-auth "48575443169F65AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "kesser@altatelecom.com.br" 
+ ont add 5 1 sn-auth "48575443505914AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1768 - marcelopereira@altatelecom.com.br" 
+ ont add 5 2 sn-auth "485754433FCF6AA6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1782 - gesiane@altatelecom.com.br" 
+ ont add 5 3 sn-auth "48575443332FFBA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "854 - virginiagoncalves" 
+ ont add 5 4 sn-auth "485754434EF2EFAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2147 - augustohenrique1351@altatelecom.com.br" 
+ ont add 5 5 sn-auth "48575443FC1755AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2392 - pmssimone" 
+ ont add 5 6 sn-auth "485754434C388FB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3131 - pmskarunasilva" 
+ ont add 5 7 sn-auth "48575443DABC85A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "952 - robertoalvesoli" 
+ ont add 6 0 sn-auth "48575443642243AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2751 - pmsgilsondeoliveira" 
+ ont add 6 1 sn-auth "4857544366ECABAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2811 - pmsfrancielle" 
+ ont add 6 2 sn-auth "485754434C3219B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1319 - antonioferreira@altatelecom.com.br" 
+ ont add 7 0 sn-auth "485754434EF2FBAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "JEFFERSON RICARDO LELES DA SILVA " 
+ ont add 7 1 sn-auth "485754438B427CA3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "834 - agnaldoinacio" 
+ ont add 7 4 sn-auth "48575443A40BEFAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "gilberto12@altatelecom.com.br" 
+ ont add 7 5 sn-auth "465354540000BF97" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2432 - pmsdirlei" 
+ ont port native-vlan 0 2 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 3 0 eth 1 vlan 126 priority 0 
+ ont port native-vlan 3 3 eth 1 vlan 124 priority 0 
+ ont port native-vlan 3 5 eth 1 vlan 124 priority 0 
+ ont port native-vlan 4 4 eth 1 vlan 124 priority 0 
+ ont port native-vlan 4 6 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 1 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 5 eth 1 vlan 124 priority 0 
+#
+  <gpon-0/12>
+ interface gpon 0/12
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ ont add 0 0 sn-auth "4857544398B80E05" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "inova@atp" 
+ ont add 0 1 sn-auth "4857544366F4C5A6" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "escritorioinova@atp" 
+ ont add 0 3 sn-auth "4857544333392AA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "construtorajpg" 
+ ont add 0 4 sn-auth "48575443C2D0BBA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "rayane@altatelecom" 
+ ont add 0 5 sn-auth "48575443ECC3B2AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "luizabastos@altatelecom.com.br" 
+ ont add 0 6 sn-auth "48575443D4C457AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "35 - pmsfernandobarbosa" 
+ ont add 1 0 sn-auth "48575443FC0976AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "693 - mariac@altatelecom.com.br" 
+ ont add 1 1 sn-auth "485754434C3AA6B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1182 - pmslayane1715" 
+ ont add 1 2 sn-auth "48575443278580A7" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "gabrielacarvalho" 
+ ont add 1 3 sn-auth "485754432C7C32A9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "brunobastos@altatelecom.com.br" 
+ ont add 1 4 sn-auth "48575443446D03A7" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "rafaeldouglasar" 
+ ont add 1 5 sn-auth "48575443259AF8AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "lorranysilva" 
+ ont add 1 6 sn-auth "4857544391A81FB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "959 - pmsmarinateresa" 
+ ont add 1 7 sn-auth "4857544366F2E7AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1035 - iuregeraldo" 
+ ont add 1 8 sn-auth "485754434C2F87B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3130 - pmsthaisazevedo" 
+ ont add 1 9 sn-auth "48575443527599AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "vanessacarvalho" 
+ ont add 1 10 sn-auth "485754435274DDAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "rodrigosantos@netuai.net" 
+ ont add 1 11 sn-auth "48575443C2D183A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "leonidia" 
+ ont add 1 12 sn-auth "485754433073BBAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1222 - mariajoseri" 
+ ont add 1 13 sn-auth "48575443C054A1AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "marlonaparecido@altatelecom.com.br" 
+ ont add 1 14 sn-auth "485754435274DBAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "joicegrahl" 
+ ont add 1 15 sn-auth "485754434EF40AAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "romulogarcia@altatelecom.com.br" 
+ ont add 1 16 sn-auth "48575443FC0802AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "26 - pmsedsonkiyoto" 
+ ont add 1 17 sn-auth "48575443A4684D9E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2654 - pmsjeane" 
+ ont add 1 18 sn-auth "48575443C03D03AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1406 - layne@altatelecom.com.br" 
+ ont add 1 19 sn-auth "48575443E5043CA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "loyanegomes@altatelecom.com.br" 
+ ont add 1 20 sn-auth "48575443224E29AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1554 - wanderson12@altatelecom.com.br" 
+ ont add 1 21 sn-auth "4857544302607FB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsironi" 
+ ont add 1 22 sn-auth "4857544325A7C7AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "leonardopatos@altatelecom.com.br" 
+ ont add 1 23 sn-auth "48575443013716AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1710 - lauramaciel@altatelecom.com.br" 
+ ont add 1 24 sn-auth "485754439AC996AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "daniel@altatelecom.com.br" 
+ ont add 1 25 sn-auth "485754434BFBD1AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "eni1044@altatelecom.com.br" 
+ ont add 1 26 sn-auth "4857544345B3F4AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3272 - pmsamandasousa" 
+ ont add 1 27 sn-auth "48575443AEF957B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1370 - pmsadrianedesouza" 
+ ont add 1 28 sn-auth "485754432363C6AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2705 - pmswandersonpaulo" 
+ ont add 1 29 sn-auth "48575443FC14B6AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsryan" 
+ ont add 1 30 sn-auth "485754434C6C30B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1807 - pmscristiana" 
+ ont add 1 31 sn-auth "485754433782C99A" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2888 - pmsatilla" 
+ ont add 2 0 sn-auth "48575443B41E86A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "meduarda@atp" 
+ ont add 2 1 sn-auth "48575443A63850A5" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "lucasnunes@atp" 
+ ont add 2 2 sn-auth "485754437619C2A4" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "dario2@atp" 
+ ont add 2 3 sn-auth "4857544315B316A9" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmmarcelaluiza" 
+ ont add 2 4 sn-auth "4857544352732FAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "joseluciano" 
+ ont add 2 5 sn-auth "4857544368282EA6" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "nelson@atp" 
+ ont add 2 6 sn-auth "48575443211142AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sania@altatelecom.com.br" 
+ ont add 2 7 sn-auth "48575443C046FAAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "rodrigoaparecido@altatelecom.com.br" 
+ ont add 2 8 sn-auth "485754434C3711B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3158 - pmsjosebarbosa" 
+ ont add 2 9 sn-auth "4857544374F7D5AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "leandrohenriques" 
+ ont add 2 10 sn-auth "48575443DFA3A9A6" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "lucasaugusto" 
+ ont add 2 11 sn-auth "485754438404A9A6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "matheuscouto@atp" 
+ ont add 2 12 sn-auth "4857544366F09FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "917 - pmsrafafbemvindos" 
+ ont add 2 13 sn-auth "48575443673511A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "gabrielagomes" 
+ ont add 2 14 sn-auth "48575443671957A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "ronaldoferreira" 
+ ont add 2 15 sn-auth "48575443C2CF85A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "rosilenesoares" 
+ ont add 2 16 sn-auth "48575443C2D7C6A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "dayaneaparecidas" 
+ ont add 2 17 sn-auth "48575443ED185DAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "marialuiza@altatelecom.com.br" 
+ ont add 2 18 sn-auth "4857544305A751AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "douglas@altatelecom.com.br" 
+ ont add 2 19 sn-auth "485754434D02CEA9" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "luziavitoria@altatelecom.com.br" 
+ ont add 2 20 sn-auth "485754432AD569AC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "elainealminda@altatelecom.com.br" 
+ ont add 2 21 sn-auth "48575443A2F4D1AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "lucasoliveira" 
+ ont add 2 22 sn-auth "48575443ED0F449B" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 2 23 sn-auth "48575443ED09FAAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "marianevieira@atp" 
+ ont add 2 24 sn-auth "48575443A4265CAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "apoliana@altatelecom.com.br" 
+ ont add 2 25 sn-auth "48575443225350AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "leonardo@altatelecom.com.br" 
+ ont add 2 26 sn-auth "48575443FC1631AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsjosevitor" 
+ ont add 2 27 sn-auth "48575443FC19CCAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1942 - pmssilviopereira" 
+ ont add 2 28 sn-auth "48575443997684AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "diego1719@altatelecom.com.br" 
+ ont add 2 29 sn-auth "485754439FACC0B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmslayce" 
+ ont add 2 30 sn-auth "48575443236D59AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2762 - pmsluanbessa" 
+ ont add 2 31 sn-auth "48575443997225AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2721 - pmsalvaroaugusto" 
+ ont add 2 32 sn-auth "485754439A39DFAA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "simonebueno@altatelecom.com.br" 
+ ont add 2 33 sn-auth "485754433D7C04B2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2923 - pmskellen" 
+ ont add 2 34 sn-auth "485754432ADD0CAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1878 - maetiago@altatelecom.com.br" 
+ ont add 2 35 sn-auth "485754434C3AEBB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3304 - pmsthayllorsantos" 
+ ont add 2 36 sn-auth "4857544399753FAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsiasmin" 
+ ont add 2 37 sn-auth "485754434F0ADFAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsizabelagalvao" 
+ ont add 2 38 sn-auth "48575443025E23B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmspaulina" 
+ ont add 2 40 sn-auth "485754439FAEE0B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmurilohenrique" 
+ ont add 3 0 sn-auth "48575443C04691AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2285 - jmarcelino@altatelecom.com.br" 
+ ont add 3 1 sn-auth "485754434C3472B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "638 - pmsmvaldizelia" 
+ ont add 3 2 sn-auth "4857544323B39BAA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "carmelino@atp" 
+ ont add 3 3 sn-auth "485754433073ECAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "danilonascimento@altatelecom.com.br" 
+ ont add 3 4 sn-auth "48575443FCF9A3AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2512 - pmsangelicadearaujo" 
+ ont add 3 5 sn-auth "48575443AEF408B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3392 - pmscaio" 
+ ont add 3 6 sn-auth "4857544309DFE6AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "helio0858@altatelecom.com.br" 
+ ont add 4 0 sn-auth "485754438B137BAC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmgilmardonizete" 
+ ont add 4 1 sn-auth "485754439A5C66AC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmgermagel" 
+ ont add 4 2 sn-auth "4857544352ECE4A9" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmandre" 
+ ont add 4 3 sn-auth "48575443E543C6AB" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmsebastiaohelder" 
+ ont add 4 4 sn-auth "485754439AC2C9AC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmsamoeleduardo" 
+ ont add 4 5 sn-auth "48575443FD8E65AB" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmrogeriogontijo" 
+ ont add 4 7 sn-auth "485754433817B7A3" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmgeisimar" 
+ ont add 4 8 sn-auth "48575443C365659F" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "2062 - pmandregur" 
+ ont add 4 9 sn-auth "48575443AD0CFB9A" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - SEBASTIO ELDER ANDRADE " 
+ ont add 5 0 sn-auth "48575443FF21B0A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "agnaldonoronha" 
+ ont add 5 1 sn-auth "485754438D59B2B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3386 - pmsgulhermesilva" 
+ ont add 5 2 sn-auth "48575443CA495BA6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "gustavoluizo@atp" 
+ ont add 5 3 sn-auth "48575443CB1715A3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1119 - pmsmarcella" 
+ ont add 5 4 sn-auth "48575443A2F7F2AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmhiaggoaquino" 
+ ont add 5 5 sn-auth "485754432115FEAC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "1472 - lessandro1@altatelecom.com.br" 
+ ont add 5 6 sn-auth "465354540000DF8F" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "835 - terezinha@altatelecom.com.br" 
+ ont add 5 7 sn-auth "48575443210BDEAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1501 - dayane@altatelecom.com.br" 
+ ont add 5 8 sn-auth "48575443259A49AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "felipecruz@altatelecom.com.br" 
+ ont add 5 9 sn-auth "48575443382A88A5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "caixa 8 porta 4 " 
+ ont add 5 10 sn-auth "48575443FC2725AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "370 - pmslarissarodrigues" 
+ ont add 5 11 sn-auth "485754434F09D4AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sara@altatelecom.com.br" 
+ ont add 5 12 sn-auth "48575443E5015BA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "laryssafeitosa@altatelecom.com.br" 
+ ont add 5 13 sn-auth "485754436427D5AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2689 - pmsantoniojose" 
+ ont add 5 14 sn-auth "485754438B1196AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "cesa@altatelecom.com.br" 
+ ont add 5 15 sn-auth "4857544386580FA5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "12 05 08 PORTA 06" 
+ ont add 5 16 sn-auth "48575443C2CE06A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1823 - franciscocharles@altatelecom.com.br" 
+ ont add 5 17 sn-auth "4857544392E8A3AC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmfrancinogeraldo" 
+ ont add 5 18 sn-auth "48575443FC210CAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2450 - pmsvitoria" 
+ ont add 5 19 sn-auth "48575443159FFDA9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2322 - valdelanio@altatelecom.com.br" 
+ ont add 5 20 sn-auth "48575443FC2A9DAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "958 - pmssuelencristina" 
+ ont add 5 21 sn-auth "48575443FC2C37AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsbrunogoncalves" 
+ ont add 5 22 sn-auth "4857544366EDD2AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2819 - pmsmariasilva" 
+ ont add 5 23 sn-auth "48575443532396AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2902 - pmsantonio2" 
+ ont add 5 24 sn-auth "48575443534469AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2903 - pmswellen" 
+ ont add 5 25 sn-auth "4857544366F196AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2953 - pmsjanio" 
+ ont add 5 26 sn-auth "48575443615AF5AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3110 - pmswesley2" 
+ ont add 6 0 sn-auth "4857544367CA9B9F" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 6 1 sn-auth "4857544327FB67AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "edergeraldo" 
+ ont add 6 2 sn-auth "485754435DA0F191" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmirtes" 
+ ont add 6 3 sn-auth "4857544325AB52AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1609 - marilda@altatelecom.com.br" 
+ ont add 6 4 sn-auth "48575443A41801AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mariavaz@altatelecom.com.br" 
+ ont add 6 5 sn-auth "48575443B41590A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "andreik" 
+ ont add 6 6 sn-auth "48575443521A30AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1190 - pmsamandaoliveira" 
+ ont add 6 7 sn-auth "48575443D4C5EEAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "julialuiza" 
+ ont add 6 8 sn-auth "4857544315AE9CA9" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "isabelladornelas@altatelecom.com.br" 
+ ont add 6 9 sn-auth "48575443C2D4A2A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "antoniocluiz@altatelecom.com.br" 
+ ont add 6 10 sn-auth "485754434C3C2FB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3018 - pmsnairobi" 
+ ont add 6 11 sn-auth "4857544352759AAB" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "maria12@altatelecom.com.br" 
+ ont add 6 12 sn-auth "485754439FAC23B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsvania" 
+ ont add 6 13 sn-auth "48575443760E2AAA" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "gabriela@altatelecom.com.br" 
+ ont add 6 14 sn-auth "485754439FD41156" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "zoom@altatelecom.com.br" 
+ ont add 6 15 sn-auth "48575443259AF0AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1629 - antoniojose@altatelecom.com.br" 
+ ont add 6 16 sn-auth "48575443025E8DB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsrobson" 
+ ont add 6 17 sn-auth "485754432AA366AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "douglascarvalho@altatelecom.com.br" 
+ ont add 6 19 sn-auth "485754439975BAAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1963 - edmarferreirasilva@altatelecom.com.br" 
+ ont add 6 20 sn-auth "48575443996A6BAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "neusaamaral@altatelecom.com.br" 
+ ont add 6 21 sn-auth "48575443CFFC4630" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - SARAH GABRIELLE ALVES DUARTE" 
+ ont add 6 22 sn-auth "48575443FC2AEAAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2859 - pmsevandro" 
+ ont add 6 23 sn-auth "485754434EF424AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2863 - pmskaliny" 
+ ont add 6 24 sn-auth "485754434C39E1B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3095 - pmsalfa" 
+ ont add 7 0 sn-auth "48575443085E299E" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "ONT_NO_DESCRIPTION" 
+ ont add 7 1 sn-auth "48575443582FF69E" omci ont-lineprofile-id 10 
+ont-srvprofile-id 10 desc "ONT_NO_DESCRIPTION" 
+ ont add 7 2 sn-auth "485754438374BE9A" omci ont-lineprofile-id 10 
+ont-srvprofile-id 10 desc "ONT_NO_DESCRIPTION" 
+ ont add 7 3 sn-auth "48575443025DE1B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "cacaushow" 
+ ont add 7 4 sn-auth "485754434EF486AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "boticariomajor@altatelecom.com.br" 
+ ont add 7 5 sn-auth "4857544374FBA6AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "porta02" 
+ ont add 7 6 sn-auth "48575443EBC4D2A6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "manoeldesousa" 
+ ont add 7 7 sn-auth "485754439B30E804" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "ntv" 
+ ont add 7 8 sn-auth "48575443BDA7E356" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 7 9 sn-auth "485754436DBC2AAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2996 - pmsduda" 
+ ont add 7 10 sn-auth "485754434EF3E7AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "cromg1@altatelecom.com.br" 
+ ont add 7 11 sn-auth "48575443FC199BAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1839 - carlosreis@altatelecom.com.br" 
+ ont add 7 12 sn-auth "48575443AB9D97A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "itau@altatelecom.com.br" 
+ ont add 7 13 sn-auth "485754430DB885AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "luciadonato@altatelecom.com.br" 
+ ont add 7 14 sn-auth "48575443242C7D90" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2816 - pmscaixa1" 
+ ont add 7 15 sn-auth "485754434C367CB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3138 - pmssileia" 
+ ont add 7 16 sn-auth "485754434EF3C3AD" omci ont-lineprofile-id 290 
+ont-srvprofile-id 290 desc "2179 - mauriciocamargo@altatelecom.com.br" 
+ ont add 7 17 sn-auth "48575443C0476EAB" omci ont-lineprofile-id 300 
+ont-srvprofile-id 300 desc "2229 - olhovivo@altatelecom.cm.br" 
+ ont add 7 18 sn-auth "485754434EF3CEAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsursula" 
+ ont add 7 19 sn-auth "48575443D488C99E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2314 - pmssabia" 
+ ont add 7 20 sn-auth "4857544374B8B74C" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2336 - pmfaep" 
+ ont add 7 21 sn-auth "48575443FA39F448" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2593 - pmscenterpatos" 
+ ont add 7 22 sn-auth "48575443B44E3B9E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2815 - pmscaixa023" 
+ ont add 7 23 sn-auth "48575443C862F74E" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn30ESTRUTECH" 
+ ont add 7 24 sn-auth "485754434C377CB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3240 - pmsbioativa" 
+ ont add 7 25 sn-auth "4857544368E7FAAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3243 - pmscng" 
+ ont add 7 26 sn-auth "48575443D324F9A3" omci ont-lineprofile-id 3069 
+ont-srvprofile-id 3069 desc "3275 - pmsolhovivo01" 
+ ont add 7 27 sn-auth "48575443BD4917A2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3282 - pmsolhovivo001" 
+ ont add 7 28 sn-auth "485754436C8EE67E" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - UARLEI BORGES BARCELOS" 
+ ont add 7 29 sn-auth "48575443164217A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsradbank" 
+ ont port native-vlan 1 6 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 17 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 31 eth 1 vlan 124 priority 0 
+ ont port native-vlan 2 12 eth 1 vlan 124 priority 0 
+ ont port native-vlan 4 9 eth 1 vlan 711 priority 0 
+ ont port native-vlan 5 6 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 11 eth 1 vlan 124 priority 0 
+ ont port native-vlan 6 2 eth 1 vlan 124 priority 0 
+ ont port native-vlan 6 14 eth 1 vlan 126 priority 0 
+ ont port native-vlan 6 21 eth 1 vlan 711 priority 0 
+ ont port native-vlan 7 1 eth 1 vlan 3041 priority 0 
+ ont port native-vlan 7 4 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 8 eth 1 vlan 1138 priority 0 
+ ont port native-vlan 7 14 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 16 eth 1 vlan 1138 priority 0 
+ ont port car 7 16 eth 1 inbound 24 outbound 24 
+ ont port native-vlan 7 16 eth 2 vlan 1138 priority 0 
+ ont port car 7 16 eth 2 inbound 24 outbound 24 
+ ont port native-vlan 7 16 eth 3 vlan 1138 priority 0 
+ ont port car 7 16 eth 3 inbound 22 outbound 60 
+ ont port native-vlan 7 16 eth 4 vlan 1138 priority 0 
+ ont port car 7 16 eth 4 inbound 22 outbound 60 
+ ont port native-vlan 7 17 eth 4 vlan 3041 priority 0 
+ ont port native-vlan 7 19 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 20 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 21 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 22 eth 1 vlan 124 priority 0 
+ ont port native-vlan 7 23 eth 1 vlan 811 priority 0 
+ ont port native-vlan 7 26 eth 2 vlan 3069 priority 0 
+ ont port native-vlan 7 28 eth 1 vlan 711 priority 0 
+ ont port native-vlan 7 29 eth 1 vlan 124 priority 0 
+#
+  <gpon-0/13>
+ interface gpon 0/13
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ ont add 0 0 sn-auth "48575443E2654296" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "allanhenrique@atp" 
+ ont add 0 1 sn-auth "485754431AD1AC43" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "djalmarodrigues@atp" 
+ ont add 0 2 sn-auth "485754439634349F" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 0 3 sn-auth "48575443A584D743" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "hericarosa@atp" 
+ ont add 0 5 sn-auth "485754434EF2F0AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1927 - pmsvinicius1602" 
+ ont add 0 10 sn-auth "48575443A2FA1FAA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "bruno" 
+ ont add 1 0 sn-auth "4857544327F087AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "5t1" 
+ ont add 1 1 sn-auth "48575443BE376D88" omci ont-lineprofile-id 2 
+ont-srvprofile-id 4 desc "AT.13.05.05_descr_04" 
+ ont add 1 2 sn-auth "48575443F1CD4FA3" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "lilianaparecida@atp" 
+ ont add 1 4 sn-auth "48575443A2F9D9AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "nilza1516@altatelecom.com.br" 
+ ont add 1 5 sn-auth "48575443DBD9B943" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "mariahelena@atp" 
+ ont add 1 6 sn-auth "4857544323597EAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "alisson@altatelecom.com.br" 
+ ont add 1 7 sn-auth "48575443C2D353A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1949 - viniciuscasa" 
+ ont add 1 8 sn-auth "4857544376064FA4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "maicon@atp" 
+ ont add 1 9 sn-auth "48575443A761CA94" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1275 - pmsgabrielaregina" 
+ ont add 1 10 sn-auth "4857544333FC4EA4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "geraldogervasio@atp" 
+ ont add 1 11 sn-auth "48575443E2655796" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sala-u1@atp" 
+ ont add 1 12 sn-auth "48575443FC1C85AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "994 - secretaria" 
+ ont add 1 13 sn-auth "4857544378F4229D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "pauloseverino@atp" 
+ ont add 1 14 sn-auth "485754431618FEA6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala02unidade1@altatelecom.com.br" 
+ ont add 1 15 sn-auth "485754437AAF07A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala03unidade1@altatelecom.com.br" 
+ ont add 1 16 sn-auth "485754438A6694AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "6m2" 
+ ont add 1 17 sn-auth "4857544305062C43" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "jucimar@atp" 
+ ont add 1 18 sn-auth "485754432CFF8868" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "joseluiz@atp" 
+ ont add 1 20 sn-auth "485754434C308FB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3115 - pmssometom" 
+ ont add 1 21 sn-auth "485754437ABE4FA6" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 1 22 sn-auth "48575443BD5257A7" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala06unidade1@altatelecom.com.br" 
+ ont add 1 23 sn-auth "48575443E266FA96" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "secretaria-u1" 
+ ont add 1 24 sn-auth "48575443E264DB96" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "evandro" 
+ ont add 1 25 sn-auth "485754432B2666AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala05unidade1@altatelecom.com.br" 
+ ont add 1 26 sn-auth "48575443335511A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "alexandradelucca@altatelecom.com.br" 
+ ont add 1 27 sn-auth "48575443351C75A2" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "elena-u1@atp" 
+ ont add 1 28 sn-auth "485754433755A09A" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala10unidade1@altatelecom.com.br" 
+ ont add 1 29 sn-auth "485754431095BB08" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "salinha-mdu" 
+ ont add 1 30 sn-auth "485754434D0177A9" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "harmonia" 
+ ont add 1 31 sn-auth "48575443C05012AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "cortes@autatelecom.com.br" 
+ ont add 1 33 sn-auth "48575443305CCAAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "marcioleal0818@altatelecom.com.br" 
+ ont add 1 34 sn-auth "48575443096D91AF" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2613 - pmssalinha01" 
+ ont add 2 0 sn-auth "48575443761F09A4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "guilherme@atp" 
+ ont add 2 1 sn-auth "48575443C2D85CA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "rosanaheloisam" 
+ ont add 2 2 sn-auth "48575443A2F810AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmitalojunio" 
+ ont add 2 3 sn-auth "48575443462189A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "jessicag@atp" 
+ ont add 2 4 sn-auth "48575443C2D359A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "daniela@altatelecom.com.br" 
+ ont add 2 5 sn-auth "485754434C3761B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3134 - pmslucianafatima" 
+ ont add 2 6 sn-auth "48575443210C65AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1492 - genice@altatelecom.com.br" 
+ ont add 2 7 sn-auth "4857544325A792AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1631 - narcisio@altatelecom.com.br" 
+ ont add 2 8 sn-auth "485754434EF3F2AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "caixa 02 PORTA 02 " 
+ ont add 2 9 sn-auth "48575443C04682AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "adriano1005@altatelecom.com.br" 
+ ont add 2 10 sn-auth "4857544327FB55AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "josemaria@altatelecom.com.br" 
+ ont add 2 11 sn-auth "48575443393384A9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "edi@altatelecom.com.br" 
+ ont add 2 12 sn-auth "485754434BFD18AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "edidefatima@altatelecom.com.br" 
+ ont add 2 13 sn-auth "48575443224DC9AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "darlene@altatelecom.com.br" 
+ ont add 2 14 sn-auth "48575443EBB8C8A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "ronaldopinheiro@altatelecom.com.br" 
+ ont add 2 15 sn-auth "485754439D8EF9AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "ronimarsantos@altatelecom.com.br" 
+ ont add 2 16 sn-auth "485754434EF3DAAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "evaldotavares1737@altatelecom.com.br" 
+ ont add 2 17 sn-auth "48575443335A2DA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "PORTA 07 " 
+ ont add 2 18 sn-auth "485754434EF380AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "lucasfreitas@altatelecom.com.br" 
+ ont add 2 19 sn-auth "48575443760E14AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1345 - pmsanalucia" 
+ ont add 2 20 sn-auth "48575443F1A0A0A3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2514 - pmsverarepetidor1" 
+ ont add 2 21 sn-auth "4857544366EAC7AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2456 - pmsgilmar" 
+ ont add 2 22 sn-auth "48575443C863BB4E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2647 - pmsassociacao" 
+ ont add 2 23 sn-auth "485754434BAA4E9C" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2669 - pmsdalliane" 
+ ont add 2 24 sn-auth "4857544366EB6DAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2737 - pmsjosecaixeta" 
+ ont add 2 25 sn-auth "485754431A95BF88" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2740 - pmsanamaria" 
+ ont add 2 26 sn-auth "48575443AEE2E6B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3410 - pmslucileia" 
+ ont add 2 27 sn-auth "485754432F0BACB4" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn14GREEN" 
+ ont add 3 0 sn-auth "48575443210E5DAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "278 - pmsmmarta" 
+ ont add 3 1 sn-auth "485754434EF3DCAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "josevandilson@altatelecom.com.br" 
+ ont add 3 2 sn-auth "485754430B7E99A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "estruturare@altatelecom.com.br" 
+ ont add 3 3 sn-auth "48575443A28EC4A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "claudiamarcia" 
+ ont add 3 6 sn-auth "4857544322568AAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1592 - antonio1645@altatelecom.com.br" 
+ ont add 3 7 sn-auth "48575443C307A47F" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - MICHELLE SIQUEIRA SILVA" 
+ ont add 3 8 sn-auth "4857544313AB9DA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "rkm@altatelecom.com.br" 
+ ont add 3 9 sn-auth "4857544316D8FDAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "elianedefatima@altatelecom.com.br" 
+ ont add 3 11 sn-auth "4857544387E8D6AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "andra@altatelecom.com.br" 
+ ont add 3 13 sn-auth "485754434EF3CAAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2177 - denisgervasio0816@altatelecom.com.br" 
+ ont add 4 0 sn-auth "4857544369BCB2A7" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "elienecristina@atp" 
+ ont add 4 1 sn-auth "485754437B3CE2A6" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "484 - gledsoncasa@atp" 
+ ont add 4 2 sn-auth "48575443AEDEE8B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1558 - regane@altatelecom.com.br" 
+ ont add 4 3 sn-auth "48575443E239E39D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "celiosantos@atp" 
+ ont add 4 4 sn-auth "4857544377473AB1" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "priscilassantos@atptelecom" 
+ ont add 4 5 sn-auth "48575443CCDED0B0" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2476 - pmscarla1" 
+ ont add 4 6 sn-auth "485754436222164E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "valerialima@atp" 
+ ont add 4 7 sn-auth "485754431EB9698E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "samaraviana@atp" 
+ ont add 4 8 sn-auth "485754431633278E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "victorhenrique@atp" 
+ ont add 4 9 sn-auth "485754434C3B39B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3151 - pmsubiraci2" 
+ ont add 4 10 sn-auth "48575443F1E398A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "marielle@atp" 
+ ont add 4 11 sn-auth "48575443A72EBEA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "cristinamoreira" 
+ ont add 4 12 sn-auth "485754435C095CA6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "osvaldolopes" 
+ ont add 4 13 sn-auth "4857544367145FA3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "yaratamires" 
+ ont add 4 14 sn-auth "4857544367193DA3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "marianacristinap" 
+ ont add 4 15 sn-auth "48575443224C25AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "marianilza@altatelecom.com.br" 
+ ont add 4 16 sn-auth "485754436423B0AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2805 - pmsnilzalimafuncionario" 
+ ont add 4 18 sn-auth "4857544345B81FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3319 - pmsmarcosroberto01" 
+ ont add 4 19 sn-auth "48575443E4B5D5AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - FERNANDA DOS SANTOS JESUS" 
+ ont add 5 0 sn-auth "48575443BB50AEAA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmssecretaria1unidade2" 
+ ont add 5 1 sn-auth "48575443A321A3AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sala05-unid02" 
+ ont add 5 2 sn-auth "485754439FBACA56" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sala04@altatelecom.com.br" 
+ ont add 5 3 sn-auth "485754438D57DEB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "kleiber@altatelecom.com.br" 
+ ont add 5 4 sn-auth "485754432AE82EAC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "boticarioshopping@altatelecom.com.br" 
+ ont add 5 5 sn-auth "485754438B757BA4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmssala02unidade2" 
+ ont add 5 6 sn-auth "485754435C5AE8A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sala01" 
+ ont add 5 7 sn-auth "485754431490E68E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "jamil@atp" 
+ ont add 5 8 sn-auth "485754430DC739AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala03unidade2@altatelecom.com.br" 
+ ont add 5 9 sn-auth "48575443393CF1A9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "willmarth@altatelecom.com.br" 
+ ont add 5 10 sn-auth "48575443C041BFAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1202 - matheusmiguelloja@altatelecom.com.br" 
+ ont add 5 11 sn-auth "48575443CC6C8BB0" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2579 - pmsbetania" 
+ ont add 5 12 sn-auth "48575443E266F896" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 5 13 sn-auth "48575443E4C4DCA5" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "mariaalmira@atp" 
+ ont add 5 14 sn-auth "48575443A661E49B" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala12unidade1@altatelecom.com.br" 
+ ont add 5 15 sn-auth "48575443565DF9AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala09@altatelecom.com.br" 
+ ont add 5 16 sn-auth "48575443A7A71A94" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn19SUPORTONLINE" 
+ ont add 5 17 sn-auth "485754434D0385A9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "jpgnsf@altatelecom.com.br" 
+ ont add 5 18 sn-auth "4857544385BEE3A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sala01-u2@atp" 
+ ont add 5 19 sn-auth "48575443D79063A7" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sala05unidade2@altatelecom.com.br" 
+ ont add 5 20 sn-auth "48575443A2F8E4AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "salaestudo@altatelecom.com.br" 
+ ont add 5 21 sn-auth "48575443FBEBFEAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1324 - clientepatio@altatelecom.com.br" 
+ ont add 5 22 sn-auth "485754432653179F" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn26SUPORTONLINE" 
+ ont add 5 23 sn-auth "485754432A831DAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "racasol@altatelecom.com.br" 
+ ont add 5 24 sn-auth "4857544306171EAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "cristiane12@altatelecom.com.br" 
+ ont add 5 25 sn-auth "48575443167586A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "630 - pmssala11unidade1" 
+ ont add 5 26 sn-auth "48575443A414AAAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "osvaldo@altatelecom.com.br" 
+ ont add 5 27 sn-auth "48575443A42096AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "centroespirita@altatelecom.com.br" 
+ ont add 5 28 sn-auth "485754431E1D5592" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmssala06unidade2" 
+ ont add 6 0 sn-auth "48575443EF29DE5E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "sarahcristina@atp" 
+ ont add 6 1 sn-auth "485754433D7864B2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "591 - franciscamaria@atp" 
+ ont add 6 2 sn-auth "48575443A2F57FAA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmjorgeferreira" 
+ ont add 6 3 sn-auth "4857544353257FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2889 - pmsnathaliajeronymo" 
+ ont add 6 4 sn-auth "485754434C36EEB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3081 - pmsronaldoaugusto" 
+ ont add 6 5 sn-auth "48575443AEDE3DB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "636 - pedrowagner@altatelecom.com.br" 
+ ont add 6 6 sn-auth "485754432598C9AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2169 - everton369@altatelecom.com.br" 
+ ont add 6 7 sn-auth "48575443C2E0B1A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "danielsilva@altatelecom.com.br" 
+ ont add 6 8 sn-auth "4857544345AD00AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1649 - pmsmaria08" 
+ ont add 6 9 sn-auth "48575443A41723AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "13 06 05 PORTA 01" 
+ ont add 6 10 sn-auth "48575443A42669AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mariadocarmos1352@altatelecom.com.br" 
+ ont add 6 11 sn-auth "4857544345B7AEAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2141 - danielrosa1607@altateleco.com.br" 
+ ont add 6 12 sn-auth "48575443A2574AAC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM (4845)" 
+ ont add 6 13 sn-auth "48575443D4B3C8AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsatlantico" 
+ ont add 6 14 sn-auth "485754430A3B5BAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsatlanticodvr" 
+ ont add 6 15 sn-auth "4857544325A8A6AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmariarosangela" 
+ ont add 7 0 sn-auth "485754434C3259B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3180 - pmsanilcerocha" 
+ ont add 7 1 sn-auth "48575443335CD8A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "551 - pmsedilene104" 
+ ont add 7 2 sn-auth "48575443642200AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3196 - pmsnathaliaalves" 
+ ont add 7 3 sn-auth "48575443E76520AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "patricia@altatelecom.com.br" 
+ ont add 7 4 sn-auth "485754434EF3E9AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "luciamariana1640@altatelecom.com.br" 
+ ont add 7 5 sn-auth "485754439996F9A0" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "670 - nathaliabraga@altatelecom.com.br" 
+ ont add 7 6 sn-auth "48575443FC2914AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "luzia@altatelecom.com.br" 
+ ont add 7 7 sn-auth "48575443FF252DA5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "938 - josewilsonsousa@altatelecom.com.br" 
+ ont add 7 8 sn-auth "4857544345B243AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2107 - pmselianealves65" 
+ ont port native-vlan 0 1 eth 1 vlan 101 priority 0 
+ ont port native-vlan 0 3 eth 1 vlan 101 priority 0 
+ ont port native-vlan 1 1 eth 1 vlan 811 priority 0 
+ ont port native-vlan 1 5 eth 1 vlan 101 priority 0 
+ ont port native-vlan 1 8 eth 1 vlan 101 priority 0 
+ ont port native-vlan 1 9 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 11 eth 1 vlan 126 priority 0 
+ ont port native-vlan 1 14 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 17 eth 1 vlan 101 priority 0 
+ ont port native-vlan 1 18 eth 1 vlan 101 priority 0 
+ ont port native-vlan 1 20 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 21 eth 1 vlan 21 priority 0 
+ ont port native-vlan 1 21 eth 2 vlan 21 priority 0 
+ ont port native-vlan 1 23 eth 1 vlan 21 priority 0 
+ ont port native-vlan 1 23 eth 2 vlan 101 priority 0 
+ ont port car 1 23 eth 2 inbound 77 outbound 83 
+ ont port native-vlan 1 23 eth 3 vlan 21 priority 0 
+ ont port native-vlan 1 23 eth 4 vlan 21 priority 0 
+ ont port native-vlan 1 25 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 27 eth 1 vlan 21 priority 0 
+ ont port native-vlan 1 27 eth 2 vlan 21 priority 0 
+ ont port native-vlan 1 27 eth 3 vlan 21 priority 0 
+ ont port native-vlan 1 28 eth 1 vlan 124 priority 0 
+ ont port native-vlan 2 22 eth 1 vlan 124 priority 0 
+ ont port native-vlan 2 23 eth 1 vlan 124 priority 0 
+ ont port native-vlan 2 25 eth 1 vlan 124 priority 0 
+ ont port native-vlan 3 6 eth 1 vlan 125 priority 0 
+ ont port native-vlan 4 1 eth 1 vlan 124 priority 0 
+ ont port native-vlan 4 3 eth 1 vlan 101 priority 0 
+ ont port native-vlan 4 4 eth 1 vlan 101 priority 0 
+ ont port native-vlan 4 6 eth 1 vlan 101 priority 0 
+ ont port native-vlan 4 7 eth 1 vlan 101 priority 0 
+ ont port native-vlan 4 8 eth 1 vlan 101 priority 0 
+ ont port native-vlan 5 2 eth 1 vlan 126 priority 0 
+ ont port native-vlan 5 5 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 8 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 11 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 12 eth 1 vlan 21 priority 0 
+ ont port native-vlan 5 12 eth 2 vlan 21 priority 0 
+ ont port native-vlan 5 12 eth 3 vlan 21 priority 0 
+ ont port native-vlan 5 14 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 16 eth 1 vlan 811 priority 0 
+ ont port native-vlan 5 18 eth 1 vlan 126 priority 0 
+ ont port native-vlan 5 19 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 20 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 21 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 22 eth 1 vlan 811 priority 0 
+ ont port native-vlan 5 25 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 28 eth 1 vlan 124 priority 0 
+ ont port native-vlan 6 0 eth 1 vlan 101 priority 0 
+ ont port native-vlan 7 2 eth 1 vlan 124 priority 0 
+#
+  <gpon-0/14>
+ interface gpon 0/14
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 range min-distance 0 max-distance 25
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 range min-distance 0 max-distance 30
+ port 7 ont-auto-find enable
+ port 8 range min-distance 0 max-distance 30
+ port 8 ont-auto-find enable
+ port 9 ont-auto-find enable
+ port 10 ont-auto-find enable
+ port 11 ont-auto-find enable
+ port 12 range min-distance 0 max-distance 45
+ port 12 ont-auto-find enable
+ port 13 range min-distance 0 max-distance 45
+ port 13 ont-auto-find enable
+ port 14 range min-distance 0 max-distance 30
+ port 14 ont-auto-find enable
+ port 15 range min-distance 0 max-distance 45
+ port 15 ont-auto-find enable
+ ont add 0 0 sn-auth "485754433D7B64B2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "198 - lucasbernardes@atp" 
+ ont add 0 1 sn-auth "48575443A84AD984" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "marlenefidelis@atp" 
+ ont ipconfig 0 1 ip-index 1 dhcp vlan 54 priority 5
+ ont voip config-method 0 1 omci
+ ont add 0 2 sn-auth "48575443E68940A1" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "josedosreis@atp" 
+ ont add 0 3 sn-auth "48575443673E14A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "nathalia@atp" 
+ ont add 0 4 sn-auth "48575443C045A8AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sirleneaparecida" 
+ ont add 0 5 sn-auth "485754435B8B9DA4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "diogojunio" 
+ ont add 0 6 sn-auth "465354540000C5BA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "60 - pmslucasfernandes1" 
+ ont add 0 7 sn-auth "48575443997813AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "825 - cleidenilce" 
+ ont add 0 8 sn-auth "48575443AE2DE3A5" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "camila" 
+ ont add 0 9 sn-auth "48575443300E50AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "robertoteixeira" 
+ ont add 0 10 sn-auth "485754433333CFA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "987 - pmsneumarioramos" 
+ ont add 0 11 sn-auth "48575443235E98AC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "sabrynaaparecida@altatelecom.com.br" 
+ ont add 0 12 sn-auth "485754432112E1AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1486 - erlainecasa@altatelecom.com.br" 
+ ont add 0 13 sn-auth "485754434F09A3AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "976 - alencassiacasa" 
+ ont add 0 14 sn-auth "485754439968A9AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "165 - rogerio1711@altatelecom.com.br" 
+ ont add 0 15 sn-auth "48575443FD8023AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "eurogesso@altatelecom.com.br" 
+ ont add 0 16 sn-auth "485754439968E0AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "joseoliveirados0844@altatelecom.com.br" 
+ ont add 0 17 sn-auth "485754434F075EAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "leonardo0903@altatelecom.com.br" 
+ ont add 0 18 sn-auth "48575443236C70AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1026 - henriquecamargos@altatelecom.com.br" 
+ ont add 0 19 sn-auth "48575443FC0B8AAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2486 - PMSLUZIA" 
+ ont add 0 20 sn-auth "48575443A2327CAF" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2562 - pmsrodrigo" 
+ ont add 0 21 sn-auth "485754439977F5AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2040 - pmscarolaine" 
+ ont add 0 22 sn-auth "4857544302F6F6AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2628 - pmsjaqueline" 
+ ont add 0 23 sn-auth "4857544366F5E5AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2785 - pmsrhayane" 
+ ont add 0 24 sn-auth "485754434EF405AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2842 - pmswendre" 
+ ont add 0 25 sn-auth "48575443FC1A5AAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2438 - pmsdaniela" 
+ ont add 0 26 sn-auth "485754434C3049B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "770 - pmssilasisaac" 
+ ont add 0 27 sn-auth "4857544332AB0E9D" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2989 - pmsbraz" 
+ ont add 0 28 sn-auth "485754438F406A61" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - GELVANE CARLOS DA CUNHA" 
+ ont add 0 29 sn-auth "4857544325A669AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2569 - pmslucasgoncalves" 
+ ont add 0 30 sn-auth "4857544302612AB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmarcosinova" 
+ ont add 1 0 sn-auth "485754438C839D9A" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 1 1 sn-auth "48575443B37DE2A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "paroquiarosario1@altatelecom.com.br" 
+ ont add 1 2 sn-auth "48575443C2CE8CA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "mariajose@atp" 
+ ont add 1 3 sn-auth "48575443D27A259D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "vitorgarcia@atp" 
+ ont add 1 4 sn-auth "48575443C2D74CA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "erlencristina" 
+ ont add 1 5 sn-auth "48575443351805A2" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "andressacastro@atp" 
+ ont add 1 6 sn-auth "485754439969F0AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2817 - pmsoswaldopredio" 
+ ont add 1 7 sn-auth "48575443E4EA10A4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "atptelecom" 
+ ont add 1 8 sn-auth "48575443E50B9EA4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "goldnet@atp" 
+ ont add 1 9 sn-auth "48575443F47A5C9F" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "ONT_NO_DESCRIPTION" 
+ ont add 1 10 sn-auth "48575443F72CD39D" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "ONT_NO_DESCRIPTION" 
+ ont add 1 11 sn-auth "48575443A4726F9E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "498 - pmsfernandagonzaga" 
+ ont add 1 12 sn-auth "48575443FC15EBAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2421 - pmsflavio" 
+ ont add 1 13 sn-auth "48575443E266F196" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "amarildo" 
+ ont add 1 14 sn-auth "48575443AEE2C6B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "930 - pmscamilaandrade" 
+ ont add 1 15 sn-auth "48575443A19DA0AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "juliana@altatelecom" 
+ ont add 1 16 sn-auth "485754430D1D54A3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1410 - pmslojacamera" 
+ ont add 1 17 sn-auth "48575443EF3A525E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "annygoncalves@atp" 
+ ont add 1 18 sn-auth "48575443225ADBAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1544 - bar@altatelecom.com.br" 
+ ont add 1 19 sn-auth "485754434C3993B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3073 - pmsrafaelprocom" 
+ ont add 1 20 sn-auth "485754432E59B9A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "paroquia@atp" 
+ ont add 1 21 sn-auth "4857544383B2EFA6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "escritorio@atp" 
+ ont add 1 22 sn-auth "485754432AD77DAC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "2042 - pmfabricialima" 
+ ont add 1 23 sn-auth "48575443AE3652A5" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "lojatera" 
+ ont add 1 24 sn-auth "48575443A321A5AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "allanavparacatu" 
+ ont add 1 25 sn-auth "48575443996C9EAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "leandroromagnolicasa@altatelecom.com.br" 
+ ont add 1 26 sn-auth "48575443A86C379E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "48575443A86C379E" 
+ ont add 1 27 sn-auth "485754432114FEAC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "fabiocomercio" 
+ ont add 1 28 sn-auth "48575443839080A6" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "adriele" 
+ ont add 1 29 sn-auth "48575443C83AF14E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2686 - pmsacademia" 
+ ont add 1 30 sn-auth "48575443300E80AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "polyana" 
+ ont add 1 31 sn-auth "4857544315AC2CA9" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "danielafernandes@altatelecom.com.br" 
+ ont add 1 32 sn-auth "48575443526354AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2435 - altateste" 
+ ont add 1 33 sn-auth "485754435DA0D591" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2696 - pmsluciana" 
+ ont add 1 34 sn-auth "485754434EF428AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sawmotos@altatelecom.com.br" 
+ ont add 1 35 sn-auth "48575443C13A4BAA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2279 - joycehellen@altatelecom.com.br" 
+ ont add 1 36 sn-auth "48575443C04536AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "arnaldoluiz@altatelecom.com.br" 
+ ont add 1 37 sn-auth "485754438D4DEEB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "danielaaraujo@altatelecom.com.br" 
+ ont add 1 38 sn-auth "485754432599EEAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "juninhoacad@altatelecom.com.br" 
+ ont add 1 39 sn-auth "4857544325A4BCAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1619 - pmsgilsontolentino1" 
+ ont add 1 40 sn-auth "48575443A1A851AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1678 - maekesser@altatelecom.com.br" 
+ ont add 1 41 sn-auth "48575443FC2302AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2441 - pmssandoval" 
+ ont add 1 42 sn-auth "485754430DE90DAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "PORTA 01 DA BETEL" 
+ ont add 1 43 sn-auth "485754434EF464AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mariagoncalves@altatelecom.com.br" 
+ ont add 1 44 sn-auth "4857544366F282AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2745 - pmsdaltonjunio" 
+ ont add 1 45 sn-auth "48575443FA840448" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - ANA LUCIA CARNEIRO" 
+ ont add 1 46 sn-auth "48575443F2491C9E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2764 - pmsallan" 
+ ont add 1 47 sn-auth "4857544366EB4EAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2789 - pmsdiegoamadeu" 
+ ont add 1 48 sn-auth "48575443C06E27AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2874 - pmsgeovanacristina" 
+ ont add 1 49 sn-auth "48575443FC1ABEAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2880 - pmszenaida" 
+ ont add 1 50 sn-auth "48575443532C60AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2930 - pmsedio" 
+ ont add 1 51 sn-auth "485754434B9BE09C" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2992 - pmsalta" 
+ ont add 1 52 sn-auth "485754434EF42CAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3375 - pmssuelijesus" 
+ ont add 2 0 sn-auth "48575443844978A6" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "mariaamorim@atp" 
+ ont add 2 1 sn-auth "4857544339C6D58D" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "duda" 
+ ont add 2 2 sn-auth "485754437622A1A4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "mabadia@atp" 
+ ont add 2 3 sn-auth "485754435CDA736F" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "carrilho@atp" 
+ ont add 2 4 sn-auth "48575443FC18E1AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "maria911@altatelecom.com.br" 
+ ont add 2 5 sn-auth "485754432119B8AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "ronaldo1020@altatelecom.com.br" 
+ ont add 2 6 sn-auth "48575443162DB08E" omci ont-lineprofile-id 4 
+ont-srvprofile-id 2 desc "nivaldosebastiao@atp" 
+ ont add 2 7 sn-auth "485754438432F3A6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "pauloricardoatp" 
+ ont add 2 8 sn-auth "485754437E9011A6" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "paulaamaraalves" 
+ ont add 2 9 sn-auth "48575443A6553FA5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "josefernandes@atp" 
+ ont add 2 10 sn-auth "48575443C0632DAA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "CLIENTE EST NA PORTA 03" 
+ ont add 2 11 sn-auth "48575443667E5EA6" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "2112 - pmyuriran335" 
+ ont add 2 12 sn-auth "48575443A2F537AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1759 - arlenefurtado@altatelecom.com.br" 
+ ont add 2 13 sn-auth "485754433060DBAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "washingtonmendes" 
+ ont add 2 14 sn-auth "48575443235977AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1458 - pmskarina12367" 
+ ont add 2 15 sn-auth "48575443226034AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1528 - alline@altatelecom.com.br" 
+ ont add 2 16 sn-auth "48575443259E7FAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "mariadasgracas@altatelecom.com.br" 
+ ont add 2 17 sn-auth "4857544325A87DAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1624 - eliete@altatelecom.com.br" 
+ ont add 2 18 sn-auth "48575443642410AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2818 - pmselainecintra" 
+ ont add 2 19 sn-auth "485754434EF403AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "eliomarfernandes@altatelecom.com.br" 
+ ont add 2 20 sn-auth "4857544366EE79AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1056 - pmsmariaaparecida12" 
+ ont add 2 21 sn-auth "48575443996FFBAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2676 - pmsanaclara" 
+ ont add 2 22 sn-auth "48575443FAB27548" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - NATALIA NATYELY DE OLIVEIRA CAMPOS" 
+ ont add 2 23 sn-auth "48575443C04D7BAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2862 - pmsrodrigobrandao1" 
+ ont add 2 24 sn-auth "48575443B494B79E" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - IZAMARA DAIANE NAIMEG" 
+ ont add 2 25 sn-auth "48575443C0519DAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2983 - pmscarina" 
+ ont add 2 26 sn-auth "48575443FF20A4A5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3225 - pmsdirleicesar" 
+ ont add 2 27 sn-auth "485754434C3240B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3245 - pmsryan2" 
+ ont add 2 28 sn-auth "4857544345B863AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2813 - pmsaline" 
+ ont add 2 29 sn-auth "48575443026161B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmselaine" 
+ ont add 2 30 sn-auth "48575443025F93B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmssilvanasouza" 
+ ont add 3 0 sn-auth "48575443F1C676A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "ruanitalo@atp" 
+ ont add 3 1 sn-auth "485754439A3977AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "fabioalbino@atp" 
+ ont add 3 2 sn-auth "4857544321155FAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "1555 - matheusjorge@altatelecom.com.br" 
+ ont add 3 3 sn-auth "4857544313A293A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "joaoalbino1" 
+ ont add 3 4 sn-auth "4857544366F17DAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3165 - pmsjosemilton" 
+ ont add 3 5 sn-auth "48575443A2F961AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "gilcelia" 
+ ont add 3 6 sn-auth "4857544383E0BAA6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "geraldo" 
+ ont add 3 7 sn-auth "48575443224C3CAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "257 - pmsdeividnunes" 
+ ont add 3 8 sn-auth "485754434EF22FAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3198 - pmsroberto" 
+ ont add 3 9 sn-auth "48575443F19AFEA3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "saosebastiao@altatelecom.com.br" 
+ ont add 3 10 sn-auth "48575443F1E395A3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "gabrielhenrique@autatelecom.com.br" 
+ ont add 3 11 sn-auth "485754439A3A16AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "nathalia@altatelecom.com.br" 
+ ont add 3 12 sn-auth "48575443C05323AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "EST NA PORTA 01 " 
+ ont add 3 13 sn-auth "485754434EF47AAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "terezinha1323@altatelecom.com.br" 
+ ont add 3 14 sn-auth "48575443218050B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3343 - pmscarollyne" 
+ ont add 3 15 sn-auth "48575443211101AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "antonio@altatelecom.com.br" 
+ ont add 3 16 sn-auth "48575443C0524CAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsgildo" 
+ ont add 3 17 sn-auth "48575443760E28AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2410 - pmsexalstino" 
+ ont add 3 18 sn-auth "48575443FC0D04AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2760 - pmsanny" 
+ ont add 3 19 sn-auth "48575443998F8FA5" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - RENAN REGO BARROSO" 
+ ont add 3 20 sn-auth "48575443B69D4C5A" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - ISA" 
+ ont add 4 0 sn-auth "4857544312A56FAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "vicented@altatelecom.com.br" 
+ ont add 4 1 sn-auth "485754438D84E426" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "378 - renatarocha@altatelecom.com.br" 
+ ont add 4 2 sn-auth "48575443DDD1EAA5" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmmateusaquino" 
+ ont add 4 3 sn-auth "48575443159F66A9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "gabrielpacheco@altatelecom.com.br" 
+ ont add 4 4 sn-auth "48575443225489AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mariana1002@altatelecom.com.br" 
+ ont add 5 0 sn-auth "485754436B31A366" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "samanthasousa@atp" 
+ ont add 5 1 sn-auth "48575443AD491B8D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "antoniaivoneide@atp" 
+ ont add 5 2 sn-auth "48575443E31E60A5" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "luanasilva@atp" 
+ ont add 5 3 sn-auth "4857544325A3C7AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "francielle15@altatelecom.com.br" 
+ ont add 5 4 sn-auth "48575443F1E1DBA3" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "julianocandido@atp" 
+ ont add 5 5 sn-auth "48575443C0457AAB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2736 - pmsjorinha" 
+ ont add 5 6 sn-auth "48575443A2FAA4AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "618 - pmsfabianamachado" 
+ ont add 5 7 sn-auth "485754437E818FB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "792 - edcarlosalves@altatelecom.com.br" 
+ ont add 5 8 sn-auth "48575443853CE737" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "auricelia@atp" 
+ ont add 5 9 sn-auth "485754433A8B94A6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "miichele@altatelecom.com.br" 
+ ont add 5 10 sn-auth "4857544313AE2EA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2857 - pmsjaniele" 
+ ont add 5 11 sn-auth "48575443DDD1BFA5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1176 - danielaofreitas" 
+ ont add 5 12 sn-auth "4857544325A5BCAC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "sousa@altatelecom.com.br" 
+ ont add 5 13 sn-auth "485754435DA43091" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - MARIA ABADIA DA INDEPENDENCIA 
+PEREIRA" 
+ ont add 5 14 sn-auth "48575443261A059F" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3027 - pmscleria" 
+ ont add 5 15 sn-auth "485754434C38EAB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3063 - pmsmichely" 
+ ont add 5 16 sn-auth "48575443FC0CDFAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3197 - pmsvictoriavieira" 
+ ont add 5 17 sn-auth "48575443E261C0A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "557 - ednacasa@atp" 
+ ont add 5 18 sn-auth "48575443F1DBF7A3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1407 - pmsrepharley" 
+ ont add 6 0 sn-auth "48575443EA3CB09C" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "cristianojose@atp" 
+ ont add 6 1 sn-auth "4857544325E0C5AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "olivar@atp" 
+ ont add 6 2 sn-auth "48575443C2D8E9A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "286 - pmserivaldocalixto" 
+ ont add 6 3 sn-auth "48575443B6E25BA0" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "vicentechacara@atp" 
+ ont add 6 4 sn-auth "4857544313A266A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "izabel@atp" 
+ ont add 6 5 sn-auth "48575443A32024AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "rafaelgleidson@altatelecom.com.br" 
+ ont add 6 6 sn-auth "485754432EA51780" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "292 - lazaroanacleto@atp" 
+ ont add 6 7 sn-auth "485754434C3431B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "289 - heliaelias@altatelecom.com.br" 
+ ont add 6 8 sn-auth "48575443A705A6AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "adaulto@atp" 
+ ont add 6 9 sn-auth "48575443E7652AB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmichelle1" 
+ ont add 6 10 sn-auth "485754437615BEA4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "davigodinho@atp" 
+ ont add 6 11 sn-auth "485754437605B8A4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "wellingtonneves@atp" 
+ ont add 6 12 sn-auth "48575443FC126FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "365 - pmsjunio862" 
+ ont add 6 13 sn-auth "485754439D8B3C8D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "itamar@atp" 
+ ont add 6 14 sn-auth "4857544368D4AF73" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "marcos@atp" 
+ ont add 6 15 sn-auth "485754438634529B" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "sinomar@atp" 
+ ont add 6 16 sn-auth "4857544382C4F4B1" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "franklinreinaldo@atp" 
+ ont add 6 17 sn-auth "48575443B15710A5" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "marcelogomes@atp" 
+ ont add 6 18 sn-auth "48575443FC1EC8AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "833 - pmssidney" 
+ ont add 6 19 sn-auth "48575443C2D75DA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "clinicalamica@altatelecom.com.br" 
+ ont add 6 20 sn-auth "48575443C2D6CDA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "welitonpereira" 
+ ont add 6 21 sn-auth "485754434D01AEA9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "eulisaparecido@altatelecom.com.br" 
+ ont add 6 22 sn-auth "48575443672501A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "joseborgesc" 
+ ont add 6 23 sn-auth "48575443C144DCAA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "diegopereirac" 
+ ont add 6 24 sn-auth "48575443746A0F4C" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1058 - pmscleiberrodrigues" 
+ ont add 6 25 sn-auth "485754432A978AAB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "joaocesar" 
+ ont add 6 26 sn-auth "48575443C051B9AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1379 - pmscelsorodrigues033" 
+ ont add 6 27 sn-auth "
+485754434EF3E5AD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "
+valdineisilva@altatelecom.com.br" 
+ ont add 6 28 sn-auth "485754434C3820B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1457 - pmselianealves" 
+ ont add 6 29 sn-auth "4857544321220DAC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "helio@altatelecom.com.br" 
+ ont add 6 30 sn-auth "48575443211A04AC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "1475 - heloisa@altatelecom.com.br" 
+ ont add 6 31 sn-auth "485754434F094AAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "conreteira@altatelecom.com.br" 
+ ont add 6 32 sn-auth "48575443210E61AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "carvao@altatelecom.com.br" 
+ ont add 6 33 sn-auth "48575443225AC4AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "984 - lucionunes@altatelecom.com.br" 
+ ont add 6 34 sn-auth "48575443242E3090" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2246 - pmsbrunolopes" 
+ ont add 6 35 sn-auth "485754434EF388AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "vasconcelosprf@altatelecom.com.br" 
+ ont add 6 36 sn-auth "48575443AFEC05A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "901 - pmsgustavoboaventura" 
+ ont add 6 37 sn-auth "48575443E752859E" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "GREEN TELECOM - UBIRAJARA GONALVES BARBOSA" 
+ ont add 7 0 sn-auth "48575443B4168EA5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "mftransporte@atp" 
+ ont add 7 1 sn-auth "48575443FC0F0EAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "444 - pmsosvaldojose" 
+ ont add 7 2 sn-auth "485754435C07F5A6" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "restauranteavenue@atp" 
+ ont add 7 3 sn-auth "
+48575443C044507E" omci ont-lineprofile-id 2 ont-srvprofile-id 2 desc "
+transporto@atp" 
+ ont add 7 4 sn-auth "4857544352B7779D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "cumpimavenue@atp" 
+ ont add 7 5 sn-auth "48575443CA4BD3A6" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "ferramentatransp@atp" 
+ ont add 7 6 sn-auth "485754434C383FB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "449 - pmspostoavenue" 
+ ont add 7 7 sn-auth "48575443C9C2BD6E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "samuelbatista@atp" 
+ ont add 7 8 sn-auth "485754436726CFA3" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "445 - marciofernando@atp" 
+ ont add 7 9 sn-auth "48575443B1F8E6A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "trucks@atp" 
+ ont add 7 10 sn-auth "485754436722DFA3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "elizandro@atp" 
+ ont add 7 11 sn-auth "485754430A5C0977" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "fernandohenrique@atp" 
+ ont add 7 12 sn-auth "48575443C04621AB" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "gfm@atp" 
+ ont add 7 13 sn-auth "4857544391AD18B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "592 - pmssandra02" 
+ ont add 7 14 sn-auth "48575443761389AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "494 - pmscesar" 
+ ont add 7 15 sn-auth "48575443C2BCBDA8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "adalcino@atp" 
+ ont add 7 16 sn-auth "485754431DD7E6A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "839 - leonardoaero@altatelecom.com.br" 
+ ont add 7 17 sn-auth "4857544341787B8D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "valmir@atp" 
+ ont add 7 18 sn-auth "48575443FB841147" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "tiagogaudencio@atp" 
+ ont add 7 19 sn-auth "
+48575443162C138E" omci ont-lineprofile-id 2 ont-srvprofile-id 2 desc "justmix@
+atp" 
+ ont add 7 20 sn-auth "48575443160DA08E" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "mayron@atp" 
+ ont add 7 21 sn-auth "48575443AEE668B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsjoice" 
+ ont add 7 22 sn-auth "48575443671BC2A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "lucashenrique" 
+ ont add 7 23 sn-auth "485754439A39E2AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "jacaramdas@altatelecom.com.br" 
+ ont add 7 24 sn-auth "4857544327F6B0AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "jardelbraz" 
+ ont add 7 25 sn-auth "48575443225B0CAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1134 - pmsjosedivino" 
+ ont add 7 26 sn-auth "48575443E4F8D8A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "istanleycasa" 
+ ont add 7 27 sn-auth "48575443E4B777A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "paulosimao" 
+ ont add 7 28 sn-auth "48575443226635AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1421 - pmssimonegoncalves" 
+ ont add 7 29 sn-auth "4857544366F4ECAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2733 - pmsfernandaemidio" 
+ ont add 7 30 sn-auth "48575443259BE1AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "reger@altatelecom.com.br" 
+ ont add 7 31 sn-auth "48575443225739AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "transtavares@altatelecom.com.br" 
+ ont add 7 32 sn-auth "48575443FC0FE5AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmslucia" 
+ ont add 7 33 sn-auth "4857544366F45EAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2820 - pmsmariaabadia" 
+ ont add 7 34 sn-auth "48575443FC110AAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2881 - pmsdanilopaulista" 
+ ont add 7 35 sn-auth "
+48575443E766E0AB" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2193 - agrominas@altatelecom.com.br" 
+ ont add 7 36 sn-auth "48575443FC0DC3AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsangela" 
+ ont add 7 37 sn-auth "4857544302602BB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsfribontransportes" 
+ ont add 7 38 sn-auth "48575443B1662EA5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2515 - pmsmariaizaura" 
+ ont add 7 39 sn-auth "48575443EF99D7AF" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2537 - pmshellen" 
+ ont add 7 40 sn-auth "48575443EF9ABCAF" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2539 - pmsloja2" 
+ ont add 7 41 sn-auth "485754434C3C9CB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsagromercantil" 
+ ont add 7 42 sn-auth "48575443E9BCB6A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2585 - pmsronievon" 
+ ont add 7 43 sn-auth "485754434C3AF4B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3141 - pmsstanley123" 
+ ont add 7 44 sn-auth "485754434C3A7DB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3171 - pmsamandamartins" 
+ ont add 7 45 sn-auth "485754439971A4AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3209 - pmsmarcioqueiroz" 
+ ont add 7 46 sn-auth "4857544315BD6EA2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "635 - pms1500transportes" 
+ ont add 7 47 sn-auth "485754438D52C3B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3398 - pmstransportadora" 
+ ont add 7 48 sn-auth "48575443A2284CAF" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsg10transportes" 
+ ont add 7 49 sn-auth "485754434C367DB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsjose1" 
+ ont add 8 0 sn-auth "
+485754433F24449F" omci ont-lineprofile-id 2 ont-srvprofile-id 2 desc "transanto@atp" 
+ ont add 8 1 sn-auth "485754434EF41FAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "PORTA 02 do Splitter novo " 
+ ont add 8 2 sn-auth "48575443E4E2D7A4" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "quermes@atp" 
+ ont add 8 3 sn-auth "48575443525894AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1109 - pmsipranchas" 
+ ont add 8 4 sn-auth "48575443F7EC24AF" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "506 - gaucha@atp" 
+ ont add 8 5 sn-auth "485754432F44E97D" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "285 - pmsrutileiasilva" 
+ ont add 8 6 sn-auth "485754434EF2D4AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "281 - luciahelena@altatelecom.com.br" 
+ ont add 8 7 sn-auth "48575443E05133AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "kemi@altatelecom.com.br" 
+ ont add 8 8 sn-auth "48575443226430AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "lontano@altatelecom.com.br" 
+ ont add 8 9 sn-auth "485754434EF3E0AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "postochicoxavier@atp" 
+ ont add 8 10 sn-auth "48575443FC2A9FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "304 - transvidal@altatelecom.com.br" 
+ ont add 8 11 sn-auth "48575443760D3CAA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "vitaro@altatelecom.com.br" 
+ ont add 8 12 sn-auth "48575443614825A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2297 - joaopedrofernandes@altatelecom.com.br" 
+ ont add 8 13 sn-auth "485754439F7005A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "lorenadeoliveira@altatelecom.com.br" 
+ ont add 8 14 sn-auth "48575443A17A1EAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "luanadosreis@atp" 
+ ont add 8 15 sn-auth "
+48575443307091AB" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "
+cristiane" 
+ ont add 8 16 sn-auth "48575443C2D5A7A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "426 - pmsvasconcelosescritorio" 
+ ont add 8 17 sn-auth "48575443FC11BDAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "429 - pmsmasterlavajato" 
+ ont add 8 18 sn-auth "48575443225B0EAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "480 - postochico2@altatelecom.com.br" 
+ ont add 8 19 sn-auth "485754434EF2F8AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "797 - pmshevaniamaria" 
+ ont add 8 20 sn-auth "485754434C3D90B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "957 - pmsrodomaior" 
+ ont add 8 21 sn-auth "485754434C37FEB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "622 - pmslazio" 
+ ont add 8 22 sn-auth "48575443A9757543" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsmaquinacartao" 
+ ont add 8 23 sn-auth "48575443DAA33EA4" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "interservice@atp" 
+ ont add 8 24 sn-auth "4857544366EDE4AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2767 - pmsceliodedeus" 
+ ont add 8 25 sn-auth "48575443E027C5A1" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "mpcaminhoes" 
+ ont add 8 26 sn-auth "48575443F263599E" omci ont-lineprofile-id 813 
+ont-srvprofile-id 813 desc "ONT_NO_DESCRIPTION" 
+ ont add 8 27 sn-auth "48575443BD3B3AA7" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "sidtransportes@altatelecom.com.br" 
+ ont add 8 28 sn-auth "48575443AEE62BB4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1446 - wanderson@altatelecom.com.br" 
+ ont add 8 29 sn-auth "48575443670D3DA3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "isabelagnascimento" 
+ ont add 8 30 sn-auth "
+48575443235F5CAC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "
+cristianelopes@altatelecom.com.br" 
+ ont add 8 31 sn-auth "48575443670D44A3" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "givanildogomes" 
+ ont add 8 34 sn-auth "48575443C3855FA7" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "concretoeldorado" 
+ ont add 8 38 sn-auth "485754432369B3AC" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "bianca@altatelecom.com.br" 
+ ont add 8 39 sn-auth "485754432AE789AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2571 - pmsmiguelalves" 
+ ont add 8 40 sn-auth "48575443615BAFA7" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2858 - pmsgauchaplacasolar" 
+ ont add 8 43 sn-auth "4857544333E819A4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "josepereira@autatelecom.com.br" 
+ ont add 8 44 sn-auth "485754437908B7AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "scanpatos@altatelecom.com.br" 
+ ont add 9 0 sn-auth "48575443225077AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2313 - laiane@altatelecom.com.br" 
+ ont add 9 1 sn-auth "485754434C5BF3B1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3250 - pmsmilena" 
+ ont add 9 2 sn-auth "48575443E55513AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "jarles@altatelecom.com.br" 
+ ont add 9 3 sn-auth "4857544366F557AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2747 - pmsmeduarda" 
+ ont add 9 5 sn-auth "485754434EF407AD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "josimar543@altatelecom.com.br" 
+ ont add 10 0 sn-auth "48575443C2D495A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "alzirafreitas" 
+ ont add 10 1 sn-auth "48575443C2E536A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "frankdias@atp" 
+ ont add 10 2 sn-auth "485754433D838FB2" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1456 - pmsraquelcristina1" 
+ ont add 10 3 sn-auth "485754432118D8AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "fabiopereira@altatelecom.com.br" 
+ ont add 10 4 sn-auth "48575443259676AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "terezinhadefatima@altatelecom.com.br" 
+ ont add 10 5 sn-auth "485754439A3B93AA" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "evandror@altatelecom.com.br" 
+ ont add 10 6 sn-auth "485754434EF2EDAD" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "claudiaparecida@altatelecom.com.br" 
+ ont add 10 7 sn-auth "48575443C2DF90A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "lessandro@altatelecom.com.br" 
+ ont add 10 8 sn-auth "48575443828293A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2690 - pmsandreiasoares" 
+ ont add 10 9 sn-auth "48575443DDBBB7A5" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "silvanapereira" 
+ ont add 10 10 sn-auth "48575443C04F76AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "mariav@altatelecom.com.br" 
+ ont add 10 11 sn-auth "48575443BDEACA56" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "associacao@altatelecom.com.br" 
+ ont add 10 12 sn-auth "485754432AD7A5AC" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "pmemanuellesantos" 
+ ont add 10 13 sn-auth "4857544366F29BAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1407 - pmsharley" 
+ ont add 10 14 sn-auth "485754432180F6B5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1754 - pmsfabiorosa" 
+ ont add 10 15 sn-auth "485754432C896CA9" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "rodrigooliveira@altatelecom.com.br" 
+ ont add 10 16 sn-auth "48575443C13479AA" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1872 - eliane1001@altatelecom.com.br" 
+ ont add 10 17 sn-auth "48575443E510CEA8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "heric@altatelecom.com.br" 
+ ont add 10 18 sn-auth "48575443C2D259A8" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "cacildamaria" 
+ ont add 10 19 sn-auth "48575443A75F9194" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1658 - pmssagradafamilia" 
+ ont add 10 20 sn-auth "48575443E797009E" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2868 - pmsmariaregina" 
+ ont add 10 21 sn-auth "48575443996EE9AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "CARLOS ANTNIO RIBEIRO " 
+ ont add 10 22 sn-auth "485754434C34ABB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3213 - pmsandressasoares" 
+ ont add 10 23 sn-auth "48575443FC233FAE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2462 - pmskeila" 
+ ont add 10 24 sn-auth "485754434B96F49C" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "999 - pmssebastiaoteixeira" 
+ ont add 11 0 sn-auth "48575443A1C008AC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "mauriciobrandao@atp" 
+ ont add 11 1 sn-auth "4857544385EAF58D" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "thayanealves@atp" 
+ ont add 11 2 sn-auth "485754432253D5AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "841 - eleniceafonso@altatelecom.com.br" 
+ ont add 11 3 sn-auth "485754439FAC79B4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "talita14@altatelecom.com.br" 
+ ont add 11 4 sn-auth "48575443E1AED7A4" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "cristinafernandes@atp" 
+ ont add 11 5 sn-auth "4857544312A228AB" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "wender@altatelecom.com.br" 
+ ont add 11 6 sn-auth "4857544366F5F7A6" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2589 - pmswilha" 
+ ont add 11 7 sn-auth "48575443A2F7E4AA" omci ont-lineprofile-id 260 
+ont-srvprofile-id 260 desc "luizarthur" 
+ ont add 11 8 sn-auth "48575443FC2BB2AE" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1315 - migueljose@altatelecom.com.br" 
+ ont add 11 9 sn-auth "48575443C047A3AB" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "thayanealvrs@altatelecom.com.br" 
+ ont add 11 10 sn-auth "48575443225C9FAC" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "1675 - luis121@altatelecom.com.br" 
+ ont add 11 11 sn-auth "48575443DAA81AA4" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "2596 - pmsgustavocandido" 
+ ont add 11 12 sn-auth "48575443E01B4BB0" omci ont-lineprofile-id 100 
+ont-srvprofile-id 100 desc "ixcn29GREEN" 
+ ont add 11 13 sn-auth "485754434C398AB1" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "3155 - pmslucienesilva" 
+ ont add 12 0 sn-auth "48575443211EE1AC" omci ont-lineprofile-id 270 
+ont-srvprofile-id 270 desc "marcela@altatelecom.com.br" 
+ ont add 12 1 sn-auth "485754437607EFA4" omci ont-lineprofile-id 2 
+ont-srvprofile-id 2 desc "jairmanoel@atp" 
+ ont add 12 2 sn-auth "48575443C2CFE6A8" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "primiciasdocerrado@atp" 
+ ont add 12 3 sn-auth "48575443459BB0A7" omci ont-lineprofile-id 240 
+ont-srvprofile-id 240 desc "tiagopereira@atp" 
+ ont add 12 4 sn-auth "485754430261AEB5" omci ont-lineprofile-id 280 
+ont-srvprofile-id 280 desc "pmsantenor" 
+ ont add 12 5 sn-auth "48575443A83E0BA5" omci ont-lineprofile-id 230 
+ont-srvprofile-id 230 desc "marciorodrigues@atp" 
+

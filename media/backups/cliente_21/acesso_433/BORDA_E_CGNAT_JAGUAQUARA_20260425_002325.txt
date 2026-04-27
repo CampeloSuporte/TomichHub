@@ -1,0 +1,792 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Savnet Servicos & Internet LTDA
+Equipamento: BORDA E CGNAT JAGUAQUARA
+Host: 201.7.173.224:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 25/04/2026 00:23:25
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/25/2026 00:23:12 by RouterOS 6.44.5
+# software id = Y8RQ-MJHY
+#
+# model = CCR1036-8G-2S+
+# serial number = C6C80B912454
+/interface bridge add name=LOOPBACK
+/interface ethernet set [ find default-name=ether1 ] comment=OLT
+/interface ethernet set [ find default-name=ether3 ] comment="OLT ZTE"
+/interface ethernet set [ find default-name=ether5 ] comment="L(38)"
+/interface ethernet set [ find default-name=ether6 ] comment="FONTE JFA" speed=10Mbps
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=1000M-half,1000M-full,10000M-full comment="WAN - ROTA PRINCIPAL - ITAQUARA - SANTA INES- UBAIRA"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment="WAN - ROTA BACKUP - SWITCH FORNECEDOR - UBAIRA"
+/interface vlan add comment="L(27)" interface=ether2 name="vlan 1591 - PACPON - RUA DO MERCADO TRINDADE" vlan-id=1591
+/interface vlan add interface=ether1 name=vlan9_GERENCIA-OLT vlan-id=9
+/interface vlan add comment="L(06)" interface=ether1 name=vlan10 vlan-id=10
+/interface vlan add interface=ether2 name="vlan10 OLT CDATA" vlan-id=10
+/interface vlan add comment="L(05)" interface=ether1 name=vlan20 vlan-id=20
+/interface vlan add interface=sfp-sfpplus1 name="vlan20 GERENCIA OLT ITAQUARA" vlan-id=20
+/interface vlan add comment="L(24)" interface=ether1 name=vlan30 vlan-id=30
+/interface vlan add comment="L(08)" interface=ether1 name=vlan40 vlan-id=40
+/interface vlan add interface=sfp-sfpplus1 name="vlan100 GERENCIA OLT" vlan-id=100
+/interface vlan add interface=sfp-sfpplus1 name=vlan340 vlan-id=340
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1201 OLT TEOLANDIA PON-01" vlan-id=1201
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1202 OLT TEOLANDIA PON-02" vlan-id=1202
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1203 OLT TEOLANDIA PON-03" vlan-id=1203
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1204 OLT TEOLANDIA PON-04" vlan-id=1204
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1205 OLT TEOLANDIA PON-05" vlan-id=1205
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1206 OLT TEOLANDIA PON-06" vlan-id=1206
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1207 OLT TEOLANDIA PON-07" vlan-id=1207
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1208 OLT TEOLANDIA PON-08" vlan-id=1208
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1251 OLT TRES BRACOS PON-01" vlan-id=1251
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1252 OLT TRES BRACOS PON-02" vlan-id=1252
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1253 OLT TRES BRACOS PON-03" vlan-id=1253
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1254 OLT TRES BRACOS PON-04" vlan-id=1254
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1255 OLT TRES BRACOS PON-05" vlan-id=1255
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1256 OLT TRES BRACOS PON-06" vlan-id=1256
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1257 OLT TRES BRACOS PON-07" vlan-id=1257
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1258 OLT TRES BRACOS PON-08" vlan-id=1258
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1259 OLT TRES BRACOS PON-09" vlan-id=1259
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1260 OLT TRES BRACOS PON-10" vlan-id=1260
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1292 RAMAL-02-RUA DA RISADA" vlan-id=1292
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1293 RAMAL-03" vlan-id=1293
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1294 RAMAL-04-RUA ANISIO OLIVEIRA" vlan-id=1294
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1295 RAMAL-05-RUA DO FUNDEC" vlan-id=1295
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1297 PACPON-03-PEDRO MENEZES" vlan-id=1297
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1301 OLT COCAO PON-01" vlan-id=1301
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1302 OLT COCAO PON-02" vlan-id=1302
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1303 OLT COCAO PON-03" vlan-id=1303
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1304 OLT COCAO PON-04" vlan-id=1304
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1351 OLT CRAVOLANDIA PON-01" vlan-id=1351
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1352 OLT CRAVOLANDIA PON-02" vlan-id=1352
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1353 OLT CRAVOLANDIA PON-03" vlan-id=1353
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1354 OLT CRAVOLANDIA PON-04" vlan-id=1354
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1355 OLT CRAVOLANDIA PON-05" vlan-id=1355
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1401 OLT SANTA IN\CAS PON-01" vlan-id=1401
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1402 OLT SANTA IN\CAS PON-02" vlan-id=1402
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1403 OLT SANTA INES PON-03" vlan-id=1403
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1404 OLT SANTA INES PON-04" vlan-id=1404
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1405 OLT SANTA INES PON-05" vlan-id=1405
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1406 OLT SANTA INES PON-06" vlan-id=1406
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1407 OLT SANTA INES PON-07" vlan-id=1407
+/interface vlan add disabled=yes interface=sfp-sfpplus1 name="vlan1408 OLT SANTA INES PON-08" vlan-id=1408
+/interface vlan add interface=sfp-sfpplus1 name="vlan1451 OLT ITAQUARA PON-01" vlan-id=1451
+/interface vlan add comment="L(57)" interface=sfp-sfpplus1 name="vlan1452 OLT ITAQUARA PON-02" vlan-id=1452
+/interface vlan add comment="L(43)" interface=sfp-sfpplus1 name="vlan1453 OLT ITAQUARA PON-03" vlan-id=1453
+/interface vlan add comment="L(1454)" interface=sfp-sfpplus1 name="vlan1454 OLT ITAQUARA PON-04" vlan-id=1454
+/interface vlan add comment="L(23)" interface=sfp-sfpplus1 name="vlan1455 OLT ITAQUARA PON-05" vlan-id=1455
+/interface vlan add comment="L(03)" interface=sfp-sfpplus1 name="vlan1456 OLT ITAQUARA PON-06" vlan-id=1456
+/interface vlan add comment="L(04)" interface=sfp-sfpplus1 name="vlan1457 OLT ITAQUARA PON-07" vlan-id=1457
+/interface vlan add interface=sfp-sfpplus1 name="vlan1458 OLT ITAQUARA PON-08" vlan-id=1458
+/interface vlan add interface=sfp-sfpplus1 name="vlan1491 - RAMAL-01 -  VLAN_1491_R01 - jardim europa" vlan-id=1491
+/interface vlan add interface=sfp-sfpplus1 name="vlan1492 - RAMAL-02 -  VLAN_1492_R2 Baitinga" vlan-id=1492
+/interface vlan add interface=sfp-sfpplus1 name="vlan1493 - RAMAL-03 -  VLAN_1493_R3 Av. Agenor Araujo" vlan-id=1493
+/interface vlan add interface=sfp-sfpplus1 name="vlan1494 - RAMAL-04 -  VLAN_1494_R4 Lt. Agenor Araujo" vlan-id=1494
+/interface vlan add interface=sfp-sfpplus1 name="vlan1496 - RAMAL-06 -  VLAN_1496_R6 Rua Nova" vlan-id=1496
+/interface vlan add interface=ether3 name="vlan1550 GERENCIA OLT ZTE" vlan-id=1550
+/interface vlan add comment="L(51)" interface=ether3 name="vlan1551 PON-01" vlan-id=1551
+/interface vlan add comment="L(41)" interface=ether3 name="vlan1552 PON-02" vlan-id=1552
+/interface vlan add comment="L(44)" interface=ether3 name="vlan1553 PON-03" vlan-id=1553
+/interface vlan add comment="L(32)" interface=ether3 name="vlan1554 PON-04" vlan-id=1554
+/interface vlan add comment="L(19)" interface=ether3 name="vlan1555 PON-05" vlan-id=1555
+/interface vlan add comment="L(28)" interface=ether3 name="vlan1556 PON-06" vlan-id=1556
+/interface vlan add comment="L(01)" interface=ether3 name="vlan1557 PON-07" vlan-id=1557
+/interface vlan add comment="L(01)" interface=ether3 name="vlan1558 PON-08" vlan-id=1558
+/interface vlan add comment="L(04)" interface=ether3 name="vlan1559 PON-09" vlan-id=1559
+/interface vlan add comment="L(01)" interface=ether3 name="vlan1560 PON-10" vlan-id=1560
+/interface vlan add comment="L(22)" interface=ether3 name="vlan1561 PON-11" vlan-id=1561
+/interface vlan add interface=ether3 name="vlan1562 PON-12" vlan-id=1562
+/interface vlan add interface=ether3 name="vlan1563 PON-13" vlan-id=1563
+/interface vlan add interface=ether3 name="vlan1564 PON-14" vlan-id=1564
+/interface vlan add interface=ether3 name="vlan1565 PON-15" vlan-id=1565
+/interface vlan add interface=ether3 name="vlan1566 PON-16" vlan-id=1566
+/interface vlan add interface=ether3 name="vlan1571 PON-1 SLOT2" vlan-id=1571
+/interface vlan add interface=ether3 name="vlan1572 PON-2 SLOT2" vlan-id=1572
+/interface vlan add interface=ether3 name="vlan1573 PON-3 SLOT2" vlan-id=1573
+/interface vlan add interface=ether3 name="vlan1578 PON-8 SLOT2" vlan-id=1578
+/interface vlan add interface=ether2 name="vlan1590 PACPON CEARA" vlan-id=1590
+/interface vlan add comment="L(19)ATENDE S\C3O JORGE E JATOBA" interface=ether2 name="vlan1592 PACPON-08 CRUZEIRO - RUA MATEUS" vlan-id=1592
+/interface vlan add comment="L(05)" interface=ether2 name="vlan1593 - PACPON-7 ORCACRUZEIRO" vlan-id=1593
+/interface vlan add disabled=yes interface=ether2 name="vlan1594 - PACPON-CRUZEIRO" vlan-id=1594
+/interface vlan add comment="Ddesativa 18/10/24" disabled=yes interface=ether2 name="vlan1595 Pacpon-VANDO MOVEIS" vlan-id=1595
+/interface vlan add disabled=yes interface=ether2 name="vlan1596 Pacpon-Sao-joao-batista" vlan-id=1596
+/interface vlan add comment="(L-05) - ATENDE S\C3O JORGE E JATOBA" interface=ether3 name="vlan1597 PACPON-1 APS" vlan-id=1597
+/interface vlan add comment="L(05)" interface=ether2 name="vlan1598 - PACPON SALAO FAEL" vlan-id=1598
+/interface vlan add comment="L(04)ATENDE S\C3O JORGE E JATOBA" interface=ether2 name="vlan1599 PACPON SAO JORGE" vlan-id=1599
+/interface vlan add comment="L(457)" interface=sfp-sfpplus1 name=vlan3001-WAN vlan-id=3001
+/interface vlan add interface=sfp-sfpplus2 name=vlan3895-WAN-LINK-BACKUP vlan-id=3895
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/ip pool add name=Remote-1 ranges=100.64.0.0/21
+/ip pool add name=Local-1 ranges=10.64.0.0/21
+/ip pool add name=pool_cancelado ranges=192.168.199.2-192.168.199.60
+/ip pool add name=pool_bloqueado ranges=192.168.190.2-192.168.190.60
+/ppp profile set *0 local-address=Local-1 remote-address=Remote-1
+/ppp profile add local-address=Local-1 name="400 megas" only-one=yes rate-limit=400m/400m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="40 megas" only-one=yes rate-limit=50m/40m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="60 megas" only-one=yes rate-limit=60m/60m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="27 megas" only-one=yes rate-limit=27m/27m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="Plano 50 megas" only-one=yes rate-limit=50m/50m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="Plano 150M" only-one=yes rate-limit=150m/150m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="9 megas" only-one=yes rate-limit=50m/9m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="16 megas" only-one=yes rate-limit=50m/16m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="plano 7 megas" only-one=yes rate-limit=50m/7m remote-address=Remote-1 use-upnp=yes
+/ppp profile add comment="!!!!!!!!plano 12 megas!!!!!!!!!!!" local-address=Local-1 name="12 megas" only-one=yes rate-limit=100m/12m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="100 megas" only-one=yes rate-limit=100m/100m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="30 megas" only-one=yes rate-limit=50m/30m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="profile 1" only-one=yes rate-limit=50m/10m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name=1M only-one=yes rate-limit=50m/1m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name=2M only-one=yes rate-limit=50m/2m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name=3M only-one=yes rate-limit=50m/3m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="link full" rate-limit=100m/100m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="4 megas" only-one=yes rate-limit=50m/4m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="plano 6 megas" only-one=yes rate-limit=50m/6m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="bloqueio parcial" only-one=yes rate-limit=1k/1k remote-address=Remote-1
+/ppp profile add local-address=Local-1 name="5 megas" only-one=yes rate-limit=50m/5m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="plano davi" only-one=yes rate-limit=50m/7m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="thamile plano" only-one=yes rate-limit=50m/8m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="8 megas" on-down=";" only-one=yes rate-limit=50m/8m remote-address=Remote-1 use-upnp=yes
+/ppp profile add local-address=Local-1 name="15 megas" only-one=yes rate-limit=50m/15m remote-address=Remote-1 use-upnp=yes
+/snmp community set [ find default=yes ] name=SAVNET.10
+/ip firewall connection tracking set enabled=yes generic-timeout=2m icmp-timeout=3s tcp-established-timeout=30m
+/interface pppoe-server server add authentication=pap disabled=no interface=vlan10 service-name=VLAN10
+/interface pppoe-server server add authentication=pap disabled=no interface=vlan20 service-name=VLAN20
+/interface pppoe-server server add authentication=pap disabled=no interface=vlan30 service-name=VLAN30
+/interface pppoe-server server add authentication=pap disabled=no interface=vlan40 service-name=VLAN40
+/interface pppoe-server server add authentication=pap disabled=no interface=ether1 service-name=service1
+/interface pppoe-server server add interface=ether2 service-name=service2
+/interface pppoe-server server add disabled=no interface=ether3 service-name=service3
+/interface pppoe-server server add disabled=no interface=ether8 service-name=service4
+/interface pppoe-server server add authentication=pap disabled=no interface=ether5 service-name=service5
+/interface pppoe-server server add authentication=pap disabled=no service-name="vlan1551 PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1552 PON-02" service-name="vlan1552 PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1553 PON-03" service-name="vlan1553 PON-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1554 PON-04" service-name="vlan1554 PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1555 PON-05" service-name="vlan1555 PON-05"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1556 PON-06" service-name="vlan1556 PON-06"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1557 PON-07" service-name="vlan1557 PON-07"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1558 PON-08" service-name="vlan1558 PON-08"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1559 PON-09" service-name="vlan1559 PON-09"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1560 PON-10" service-name="vlan1560 PON-10"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1561 PON-11" service-name="vlan1561 PON-11"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1562 PON-12" service-name="vlan1562 PON-12"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1563 PON-13" service-name="vlan1563 PON-13"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1564 PON-14" service-name="vlan1564 PON-14"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1565 PON-15" service-name="vlan1565 PON-15"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1566 PON-16" service-name="vlan1566 PON-16"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1452 OLT ITAQUARA PON-02" service-name="vlan1452 OLT ITAQUARA PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1451 OLT ITAQUARA PON-01" service-name="vlan1451 OLT ITAQUARA PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1453 OLT ITAQUARA PON-03" service-name="vlan1453 OLT ITAQUARA PON-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1454 OLT ITAQUARA PON-04" service-name="vlan1454 OLT ITAQUARA PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1455 OLT ITAQUARA PON-05" service-name="vlan1455 OLT ITAQUARA PON-05"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1456 OLT ITAQUARA PON-06" service-name="vlan1456 OLT ITAQUARA PON-06"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1457 OLT ITAQUARA PON-07" service-name="vlan1457 OLT ITAQUARA PON-07"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1458 OLT ITAQUARA PON-08" service-name="vlan1458 OLT ITAQUARA PON-08"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan10 OLT CDATA" service-name=service6
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1599 PACPON SAO JORGE" service-name="vlan1599 PACPON SAO JORGE"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1598 - PACPON SALAO FAEL" service-name="vlan1598 -PACPON SALAO FAEL"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1597 PACPON-1 APS" service-name="vlan1597 PACPON-1 APS"
+/interface pppoe-server server add disabled=no interface="vlan1596 Pacpon-Sao-joao-batista" service-name="vlan1596 Pacpon-Sao-joao-batista"
+/interface pppoe-server server add disabled=no interface="vlan1595 Pacpon-VANDO MOVEIS" service-name="vlan1595 Pacpon-VANDO MOVEIS"
+/interface pppoe-server server add disabled=no service-name="vlan1594 - PACPON-6 PACPON CRUZEIRO"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1593 - PACPON-7 ORCACRUZEIRO" service-name="vlan1593 - PACPON-7 ORCACRUZEIRO"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1592 PACPON-08 CRUZEIRO - RUA MATEUS" service-name="vlan1592 PACPON-08 CRUZEIRO - RUA MATEUS"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan 1591 - PACPON - RUA DO MERCADO TRINDADE" service-name="vlan 1591 - PAPON - RUA DO MERCADO TRINDADE"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1493 - RAMAL-03 -  VLAN_1493_R3 Av. Agenor Araujo" service-name="vlan1493 - RAMAL-03 -  VLAN_1493_R3 Av. Agenor Araujo"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1496 - RAMAL-06 -  VLAN_1496_R6 Rua Nova" service-name="vlan1496 - RAMAL-06 -  VLAN_1496_R6 Rua Nova"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1492 - RAMAL-02 -  VLAN_1492_R2 Baitinga" service-name="vlan1492 - RAMAL-02 -  VLAN_1492_R2 Baitinga"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1494 - RAMAL-04 -  VLAN_1494_R4 Lt. Agenor Araujo" service-name="vlan1494 - RAMAL-04 -  VLAN_1494_R4 Lt. Agenor Araujo"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1491 - RAMAL-01 -  VLAN_1491_R01 - jardim europa" service-name="vlan1491 - RAMAL-13 -  VLAN_1491_R13 - jardim europa"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1590 PACPON CEARA" service-name="vlan1590 PACPON CEARA"
+/interface pppoe-server server add disabled=no interface="vlan1201 OLT TEOLANDIA PON-01"
+/interface pppoe-server server add disabled=no interface="vlan1551 PON-01" service-name="vlan1551 PON-01 ZTE"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1571 PON-1 SLOT2" service-name="vlan1571 PON-1 SLOT2"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1573 PON-3 SLOT2" service-name="vlan1573 PON-3 SLOT2"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1572 PON-2 SLOT2" service-name="vlan1572 PON-2 SLOT2"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1578 PON-8 SLOT2" service-name="vlan1578 PON-8 SLOT2"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1401 OLT SANTA IN\CAS PON-01" service-name="VLAN 1401 OLT SANTA INES PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1201 OLT TEOLANDIA PON-01" service-name="vlan1201 OLT TEOLANDIA PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1403 OLT SANTA INES PON-03" service-name="vlan 1403 OLT SANTA INES PON-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1404 OLT SANTA INES PON-04" service-name="vlan 1404 OLT SANTA INES PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1405 OLT SANTA INES PON-05" service-name="vlan 1405 OLT SANTA INES PON-05"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1406 OLT SANTA INES PON-06" service-name="vlan1406 OLT SANTA INES PON-06"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1407 OLT SANTA INES PON-07" service-name="vlan1407 OLT SANTA INES PON-07"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1408 OLT SANTA INES PON-08" service-name="vlan1408 OLT SANTA INES PON-08"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1251 OLT TRES BRACOS PON-01" service-name="vlan1251 OLT TRES BRACOS PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1253 OLT TRES BRACOS PON-03" service-name="vlan1253 OLT TRES BRACOS PON-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1254 OLT TRES BRACOS PON-04" service-name="vlan1254 OLT TRES BRACOS PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1256 OLT TRES BRACOS PON-06" service-name="vlan1256 OLT TRES BRACOS PON-06"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1260 OLT TRES BRACOS PON-10" service-name="vlan1260 OLT TRES BRACOS PON-10"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1255 OLT TRES BRACOS PON-05" service-name="vlan1255 OLT TRES BRACOS PON-05"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1257 OLT TRES BRACOS PON-07" service-name="vlan1257 OLT TRES BRACOS PON-07"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1258 OLT TRES BRACOS PON-08" service-name="vlan1258 OLT TRES BRACOS PON-08"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1259 OLT TRES BRACOS PON-09" service-name="vlan1259 OLT TRES BRACOS PON-09"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1252 OLT TRES BRACOS PON-02" service-name="vlan1252 OLT TRES BRACOS PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1351 OLT CRAVOLANDIA PON-01" service-name="vlan1351 OLT TRES BRACOS PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1352 OLT CRAVOLANDIA PON-02" service-name="vlan1352 OLT CRAVOLANDIA PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1355 OLT CRAVOLANDIA PON-05" service-name="vlan1355 OLT CRAVOLANDIA PON-05"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1354 OLT CRAVOLANDIA PON-04" service-name="vlan1354 OLT CRAVOLANDIA PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1301 OLT COCAO PON-01" service-name="vlan1301 OLT COCAO PON-01"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1302 OLT COCAO PON-02" service-name="vlan1302 OLT COCAO PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1303 OLT COCAO PON-03" service-name="vlan1303 OLT COCAO PON-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1304 OLT COCAO PON-04" service-name="vlan1304 OLT COCAO PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1402 OLT SANTA IN\CAS PON-02" service-name="vlan1402 OLT SANTA INES PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1202 OLT TEOLANDIA PON-02" service-name="vlan1202 OLT TEOLANDIA PON-02"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1203 OLT TEOLANDIA PON-03" service-name="vlan1203 OLT TEOLANDIA PON-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1204 OLT TEOLANDIA PON-04" service-name="vlan1204 OLT TEOLANDIA PON-04"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1205 OLT TEOLANDIA PON-05" service-name="vlan1205 OLT TEOLANDIA PON-05"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1206 OLT TEOLANDIA PON-06" service-name="vlan1206 OLT TEOLANDIA PON-06"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1207 OLT TEOLANDIA PON-07" service-name="vlan1207 OLT TEOLANDIA PON-07"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1208 OLT TEOLANDIA PON-08" service-name="vlan1208 OLT TEOLANDIA PON-08"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1292 RAMAL-02-RUA DA RISADA" service-name="vlan1292 RAMAL-02-RUA DA RISADA"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1293 RAMAL-03" service-name="vlan1293 RAMAL-03"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1294 RAMAL-04-RUA ANISIO OLIVEIRA" service-name="vlan1294 RAMAL-04-RUA ANISIO OLIVEIRA"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1295 RAMAL-05-RUA DO FUNDEC" service-name="vlan1295 RAMAL-05-RUA DO FUNDEC"
+/interface pppoe-server server add authentication=pap disabled=no interface="vlan1297 PACPON-03-PEDRO MENEZES" service-name="vlan1297 PACPON-03-PEDRO MENEZES"
+/ip address add address=172.31.255.10/30 comment="WAN - BGP HUAWEI - FIBRA SAVNET" interface=vlan3001-WAN network=172.31.255.8
+/ip address add address=201.7.173.224 comment="IP's DO CGNAT - 201.7.173.128/25" interface=LOOPBACK network=201.7.173.224
+/ip address add address=192.168.168.1/30 interface=vlan9_GERENCIA-OLT network=192.168.168.0
+/ip address add address=192.168.24.1/24 interface=ether5 network=192.168.24.0
+/ip address add address=192.168.68.1/24 comment="AP POSTE -ATENDE A PALMEIRA E SAMUEL CATUSSO" interface="vlan1597 PACPON-1 APS" network=192.168.68.0
+/ip address add address=10.192.199.2/30 comment="WAN - LINK BACKUP - BGP HUAWEI - FIBRA DO FORNECEDOR" interface=vlan3895-WAN-LINK-BACKUP network=10.192.199.0
+/ip address add address=201.7.168.128 comment="IPS PUBLICOS 201.7.168.128/25 - CGNAT" disabled=yes interface=LOOPBACK network=201.7.168.128
+/ip address add address=192.168.220.5/30 comment="FONTE JFA" interface=ether6 network=192.168.220.4
+/ip address add address=192.168.221.1/30 comment="GERENCIA OLT ITAQUARA" interface="vlan100 GERENCIA OLT" network=192.168.221.0
+/ip address add address=192.168.224.1/30 comment="GERENCIA OLT ZTE" interface="vlan1550 GERENCIA OLT ZTE" network=192.168.224.0
+/ip address add address=10.99.100.1/30 interface=vlan340 network=10.99.100.0
+/ip dns set servers=8.8.8.8,1.1.1.1
+/ip firewall address-list add address=100.64.0.0/23 list=rede-privada-para-cgnat
+/ip firewall address-list add address=100.64.0.0/21 list=rede-privada-para-cgnat
+/ip firewall address-list add address=201.7.170.248 comment="IXCProvedor endereco IP do sistema" list=rede_local
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-address=!201.7.170.248 protocol=tcp src-address=192.168.6.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-address=!201.7.170.248 protocol=tcp src-address-list=aviso_bloqueio
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-port=!53 protocol=udp src-address=192.168.6.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-port=!53 protocol=udp src-address-list=aviso_bloqueio
+/ip firewall nat add action=redirect chain=dstnat comment="ACESSO WINBOX EXTERNO PELO IP 201.7.173.128" dst-address=201.7.173.128 dst-port=9291 protocol=tcp to-ports=9291
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-target=cgnat out-interface=vlan3001-WAN src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.0/25 portas=1024-5055" jump-target=100.64.0.0/25 out-interface=vlan3001-WAN src-address=100.64.0.0/25
+/ip firewall nat add action=netmap chain=100.64.0.0/25 comment="100.64.0.0/25 ==> portas=1024-5055" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=1024-5055
+/ip firewall nat add action=netmap chain=100.64.0.0/25 comment="100.64.0.0/25 ==> portas=1024-5055" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=1024-5055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.128/25 portas=5056-9087" jump-target=100.64.0.128/25 out-interface=vlan3001-WAN src-address=100.64.0.128/25
+/ip firewall nat add action=netmap chain=100.64.0.128/25 comment="100.64.0.128/25 ==> portas=5056-9087" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=5056-9087
+/ip firewall nat add action=netmap chain=100.64.0.128/25 comment="100.64.0.128/25 ==> portas=5056-9087" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=5056-9087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1.0/25 portas=9088-13119" jump-target=100.64.1.0/25 out-interface=vlan3001-WAN src-address=100.64.1.0/25
+/ip firewall nat add action=netmap chain=100.64.1.0/25 comment="100.64.1.0/25 ==> portas=9088-13119" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=9088-13119
+/ip firewall nat add action=netmap chain=100.64.1.0/25 comment="100.64.1.0/25 ==> portas=9088-13119" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=9088-13119
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1.128/25 portas=13120-17151" jump-target=100.64.1.128/25 out-interface=vlan3001-WAN src-address=100.64.1.128/25
+/ip firewall nat add action=netmap chain=100.64.1.128/25 comment="100.64.1.128/25 ==> portas=13120-17151" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=13120-17151
+/ip firewall nat add action=netmap chain=100.64.1.128/25 comment="100.64.1.128/25 ==> portas=13120-17151" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=13120-17151
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2.0/25 portas=17152-21183" jump-target=100.64.2.0/25 out-interface=vlan3001-WAN src-address=100.64.2.0/25
+/ip firewall nat add action=netmap chain=100.64.2.0/25 comment="100.64.2.0/25 ==> portas=17152-21183" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=17152-21183
+/ip firewall nat add action=netmap chain=100.64.2.0/25 comment="100.64.2.0/25 ==> portas=17152-21183" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=17152-21183
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2.128/25 portas=21184-25215" jump-target=100.64.2.128/25 out-interface=vlan3001-WAN src-address=100.64.2.128/25
+/ip firewall nat add action=netmap chain=100.64.2.128/25 comment="100.64.2.128/25 ==> portas=21184-25215" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=21184-25215
+/ip firewall nat add action=netmap chain=100.64.2.128/25 comment="100.64.2.128/25 ==> portas=21184-25215" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=21184-25215
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3.0/25 portas=25216-29247" jump-target=100.64.3.0/25 out-interface=vlan3001-WAN src-address=100.64.3.0/25
+/ip firewall nat add action=netmap chain=100.64.3.0/25 comment="100.64.3.0/25 ==> portas=25216-29247" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=25216-29247
+/ip firewall nat add action=netmap chain=100.64.3.0/25 comment="100.64.3.0/25 ==> portas=25216-29247" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=25216-29247
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3.128/25 portas=29248-33279" jump-target=100.64.3.128/25 out-interface=vlan3001-WAN src-address=100.64.3.128/25
+/ip firewall nat add action=netmap chain=100.64.3.128/25 comment="100.64.3.128/25 ==> portas=29248-33279" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=29248-33279
+/ip firewall nat add action=netmap chain=100.64.3.128/25 comment="100.64.3.128/25 ==> portas=29248-33279" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=29248-33279
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4.0/25 portas=33280-37311" jump-target=100.64.4.0/25 out-interface=vlan3001-WAN src-address=100.64.4.0/25
+/ip firewall nat add action=netmap chain=100.64.4.0/25 comment="100.64.4.0/25 ==> portas=33280-37311" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=33280-37311
+/ip firewall nat add action=netmap chain=100.64.4.0/25 comment="100.64.4.0/25 ==> portas=33280-37311" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=33280-37311
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4.128/25 portas=37312-41343" jump-target=100.64.4.128/25 out-interface=vlan3001-WAN src-address=100.64.4.128/25
+/ip firewall nat add action=netmap chain=100.64.4.128/25 comment="100.64.4.128/25 ==> portas=37312-41343" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=37312-41343
+/ip firewall nat add action=netmap chain=100.64.4.128/25 comment="100.64.4.128/25 ==> portas=37312-41343" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=37312-41343
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5.0/25 portas=41344-45375" jump-target=100.64.5.0/25 out-interface=vlan3001-WAN src-address=100.64.5.0/25
+/ip firewall nat add action=netmap chain=100.64.5.0/25 comment="100.64.5.0/25 ==> portas=41344-45375" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=41344-45375
+/ip firewall nat add action=netmap chain=100.64.5.0/25 comment="100.64.5.0/25 ==> portas=41344-45375" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=41344-45375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5.128/25 portas=45376-49407" jump-target=100.64.5.128/25 out-interface=vlan3001-WAN src-address=100.64.5.128/25
+/ip firewall nat add action=netmap chain=100.64.5.128/25 comment="100.64.5.128/25 ==> portas=45376-49407" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=45376-49407
+/ip firewall nat add action=netmap chain=100.64.5.128/25 comment="100.64.5.128/25 ==> portas=45376-49407" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=45376-49407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6.0/25 portas=49408-53439" jump-target=100.64.6.0/25 out-interface=vlan3001-WAN src-address=100.64.6.0/25
+/ip firewall nat add action=netmap chain=100.64.6.0/25 comment="100.64.6.0/25 ==> portas=49408-53439" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=49408-53439
+/ip firewall nat add action=netmap chain=100.64.6.0/25 comment="100.64.6.0/25 ==> portas=49408-53439" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=49408-53439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6.128/25 portas=53440-57471" jump-target=100.64.6.128/25 out-interface=vlan3001-WAN src-address=100.64.6.128/25
+/ip firewall nat add action=netmap chain=100.64.6.128/25 comment="100.64.6.128/25 ==> portas=53440-57471" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=53440-57471
+/ip firewall nat add action=netmap chain=100.64.6.128/25 comment="100.64.6.128/25 ==> portas=53440-57471" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=53440-57471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7.0/25 portas=57472-61503" jump-target=100.64.7.0/25 out-interface=vlan3001-WAN src-address=100.64.7.0/25
+/ip firewall nat add action=netmap chain=100.64.7.0/25 comment="100.64.7.0/25 ==> portas=57472-61503" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=57472-61503
+/ip firewall nat add action=netmap chain=100.64.7.0/25 comment="100.64.7.0/25 ==> portas=57472-61503" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=57472-61503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7.128/25 portas=61504-65535" jump-target=100.64.7.128/25 out-interface=vlan3001-WAN src-address=100.64.7.128/25
+/ip firewall nat add action=netmap chain=100.64.7.128/25 comment="100.64.7.128/25 ==> portas=61504-65535" out-interface=vlan3001-WAN protocol=tcp to-addresses=201.7.173.128/25 to-ports=61504-65535
+/ip firewall nat add action=netmap chain=100.64.7.128/25 comment="100.64.7.128/25 ==> portas=61504-65535" out-interface=vlan3001-WAN protocol=udp to-addresses=201.7.173.128/25 to-ports=61504-65535
+/ip firewall nat add action=netmap chain=srcnat comment="100.64.0.0/21 ==> 201.7.173.128/25=======================================================================================" out-interface=vlan3001-WAN src-address=100.64.0.0/21 to-addresses=201.7.173.128/25
+/ip firewall nat add action=jump chain=srcnat comment="Jump ==> CGNAT" jump-target=cgnat out-interface=vlan3895-WAN-LINK-BACKUP src-address-list=rede-privada-para-cgnat
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.0/25 portas=1024-5055" jump-target=100.64.0.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.0.0/25
+/ip firewall nat add action=netmap chain=100.64.0.0/25 comment="100.64.0.0/25 ==> portas=1024-5055" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=1024-5055
+/ip firewall nat add action=netmap chain=100.64.0.0/25 comment="100.64.0.0/25 ==> portas=1024-5055" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=1024-5055
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.0.128/25 portas=5056-9087" jump-target=100.64.0.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.0.128/25
+/ip firewall nat add action=netmap chain=100.64.0.128/25 comment="100.64.0.128/25 ==> portas=5056-9087" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=5056-9087
+/ip firewall nat add action=netmap chain=100.64.0.128/25 comment="100.64.0.128/25 ==> portas=5056-9087" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=5056-9087
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1.0/25 portas=9088-13119" jump-target=100.64.1.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.1.0/25
+/ip firewall nat add action=netmap chain=100.64.1.0/25 comment="100.64.1.0/25 ==> portas=9088-13119" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=9088-13119
+/ip firewall nat add action=netmap chain=100.64.1.0/25 comment="100.64.1.0/25 ==> portas=9088-13119" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=9088-13119
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.1.128/25 portas=13120-17151" jump-target=100.64.1.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.1.128/25
+/ip firewall nat add action=netmap chain=100.64.1.128/25 comment="100.64.1.128/25 ==> portas=13120-17151" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=13120-17151
+/ip firewall nat add action=netmap chain=100.64.1.128/25 comment="100.64.1.128/25 ==> portas=13120-17151" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=13120-17151
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2.0/25 portas=17152-21183" jump-target=100.64.2.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.2.0/25
+/ip firewall nat add action=netmap chain=100.64.2.0/25 comment="100.64.2.0/25 ==> portas=17152-21183" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=17152-21183
+/ip firewall nat add action=netmap chain=100.64.2.0/25 comment="100.64.2.0/25 ==> portas=17152-21183" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=17152-21183
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.2.128/25 portas=21184-25215" jump-target=100.64.2.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.2.128/25
+/ip firewall nat add action=netmap chain=100.64.2.128/25 comment="100.64.2.128/25 ==> portas=21184-25215" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=21184-25215
+/ip firewall nat add action=netmap chain=100.64.2.128/25 comment="100.64.2.128/25 ==> portas=21184-25215" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=21184-25215
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3.0/25 portas=25216-29247" jump-target=100.64.3.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.3.0/25
+/ip firewall nat add action=netmap chain=100.64.3.0/25 comment="100.64.3.0/25 ==> portas=25216-29247" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=25216-29247
+/ip firewall nat add action=netmap chain=100.64.3.0/25 comment="100.64.3.0/25 ==> portas=25216-29247" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=25216-29247
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.3.128/25 portas=29248-33279" jump-target=100.64.3.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.3.128/25
+/ip firewall nat add action=netmap chain=100.64.3.128/25 comment="100.64.3.128/25 ==> portas=29248-33279" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=29248-33279
+/ip firewall nat add action=netmap chain=100.64.3.128/25 comment="100.64.3.128/25 ==> portas=29248-33279" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=29248-33279
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4.0/25 portas=33280-37311" jump-target=100.64.4.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.4.0/25
+/ip firewall nat add action=netmap chain=100.64.4.0/25 comment="100.64.4.0/25 ==> portas=33280-37311" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=33280-37311
+/ip firewall nat add action=netmap chain=100.64.4.0/25 comment="100.64.4.0/25 ==> portas=33280-37311" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=33280-37311
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.4.128/25 portas=37312-41343" jump-target=100.64.4.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.4.128/25
+/ip firewall nat add action=netmap chain=100.64.4.128/25 comment="100.64.4.128/25 ==> portas=37312-41343" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=37312-41343
+/ip firewall nat add action=netmap chain=100.64.4.128/25 comment="100.64.4.128/25 ==> portas=37312-41343" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=37312-41343
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5.0/25 portas=41344-45375" jump-target=100.64.5.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.5.0/25
+/ip firewall nat add action=netmap chain=100.64.5.0/25 comment="100.64.5.0/25 ==> portas=41344-45375" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=41344-45375
+/ip firewall nat add action=netmap chain=100.64.5.0/25 comment="100.64.5.0/25 ==> portas=41344-45375" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=41344-45375
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.5.128/25 portas=45376-49407" jump-target=100.64.5.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.5.128/25
+/ip firewall nat add action=netmap chain=100.64.5.128/25 comment="100.64.5.128/25 ==> portas=45376-49407" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=45376-49407
+/ip firewall nat add action=netmap chain=100.64.5.128/25 comment="100.64.5.128/25 ==> portas=45376-49407" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=45376-49407
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6.0/25 portas=49408-53439" jump-target=100.64.6.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.6.0/25
+/ip firewall nat add action=netmap chain=100.64.6.0/25 comment="100.64.6.0/25 ==> portas=49408-53439" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=49408-53439
+/ip firewall nat add action=netmap chain=100.64.6.0/25 comment="100.64.6.0/25 ==> portas=49408-53439" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=49408-53439
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.6.128/25 portas=53440-57471" jump-target=100.64.6.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.6.128/25
+/ip firewall nat add action=netmap chain=100.64.6.128/25 comment="100.64.6.128/25 ==> portas=53440-57471" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=53440-57471
+/ip firewall nat add action=netmap chain=100.64.6.128/25 comment="100.64.6.128/25 ==> portas=53440-57471" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=53440-57471
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7.0/25 portas=57472-61503" jump-target=100.64.7.0/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.7.0/25
+/ip firewall nat add action=netmap chain=100.64.7.0/25 comment="100.64.7.0/25 ==> portas=57472-61503" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=57472-61503
+/ip firewall nat add action=netmap chain=100.64.7.0/25 comment="100.64.7.0/25 ==> portas=57472-61503" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=57472-61503
+/ip firewall nat add action=jump chain=cgnat comment="Jump para rede ==> 100.64.7.128/25 portas=61504-65535" jump-target=100.64.7.128/25 out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.7.128/25
+/ip firewall nat add action=netmap chain=100.64.7.128/25 comment="100.64.7.128/25 ==> portas=61504-65535" out-interface=vlan3895-WAN-LINK-BACKUP protocol=tcp to-addresses=201.7.173.128/25 to-ports=61504-65535
+/ip firewall nat add action=netmap chain=100.64.7.128/25 comment="100.64.7.128/25 ==> portas=61504-65535" out-interface=vlan3895-WAN-LINK-BACKUP protocol=udp to-addresses=201.7.173.128/25 to-ports=61504-65535
+/ip firewall nat add action=netmap chain=srcnat comment="100.64.0.0/21 ==> 201.7.173.128/25" out-interface=vlan3895-WAN-LINK-BACKUP src-address=100.64.0.0/21 to-addresses=201.7.173.128/25
+/ip route add check-gateway=ping comment="ROTA BACKUP - LINK BACKUP" distance=1 gateway=10.192.199.1
+/ip route add check-gateway=ping distance=2 gateway=172.31.255.9
+/ip route add comment="IP's de CGNAT" distance=1 dst-address=201.7.173.128/25 type=blackhole
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api address=201.7.170.248/32
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ppp aaa set interim-update=20m use-radius=yes
+/ppp secret add comment="VENCE TODO DIA 20\"\"\"\" PIX" disabled=yes name=kaio password=kaio123 profile="8 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"VENCE TODO DIA 25\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"BOLETO" disabled=yes name=deraldo password=deraldo2305 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"VENCE TODO DIA 10\"\"\"\"\"\"\"\"\"\" PIX'" disabled=yes name=cassulo password=cassulo123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"vence todo dia 10\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" BOLETO" disabled=yes name=ozineide password=ozineide123 profile="8 megas" service=pppoe
+/ppp secret add comment="VENCE TODO DIA 28 PIX" disabled=yes name=gloria2305 password=gloria2305 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"VENCE TODO DIA 15\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" PIX" disabled=yes name=flavia11 password=flavia11 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 10!!!!!!!!!!!!!!!!!!!!!! 60 reais PIX" disabled=yes name=anapo password=anapo123 profile="100 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"VENCE TODO DIA 21\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" PIX " disabled=yes name=daniel password=daniel123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 20\"\"\"\"\"\"\"\"\"\"\"\"\" BOLETO" disabled=yes name=claudia password=claudia123 profile="8 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 11\"\"\"\"\"\"\"\"\"\"\"\"BATE PIX" disabled=yes name=arlete password=arlete123 profile="8 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"vence todo dia 15\"\"\"\"\"\"\"\"\"\"\"P NA CASA" disabled=yes name=nenem password=nenem123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!todo dia 30!!!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=cristiane password=cristiane123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!todo dia 6!!!!!!!!!!!!!!!!!!!!!! P NA CASA" disabled=yes name=donamaria password=donamaria123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!dia9 esse \EF\BF\BD bendengo !!!!!!!!!!!!! valdenor BOLETO" disabled=yes name=barril password=barril123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!vencetodo dia 10!!!!!!!!!! P NA CASA" disabled=yes name=bila230588 password=bila230588 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!vence todo dia 10!!!!!!!!!!!!!!!!!!!!! BOLETO!" disabled=yes name=mila password=mila123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!vence todo dia 12!!!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=tanieleigreja password=tanieleigreja123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!vence dia 30!!!!!!!!!!!!! PASSAR NA CASA" disabled=yes name=elvis password=elvis123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!!! PIX" disabled=yes name=igo123 password=igo123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 10!!!!!!!!!!!!!!!!!!PIX!" disabled=yes name=rogerio password=rogerio123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!!!!!!!!!! P NA CASA" disabled=yes name=dulceespetinho password=dulceespetinho123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!!!BOLETO" disabled=yes name=vanderleia password=vanderleia123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!vence todo dia 12!!!!!!!!!!!!!!!P NA CASA" disabled=yes name=netoseco password=netoseco123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!dia 10!!!!!!!!!!!!!!!!! PIX" disabled=yes name=flamengo2305 password=flamengo2305 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!vence todo dia 2!!!!!!!!!!!!!!! PIX" disabled=yes name=edilne password=edilne123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!1todo dia 10!!!!!!!! PIX" disabled=yes name=nei123 password=nei123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!vence todo dia 20!!!!!!!!!!!!!!!BOLETO" disabled=yes name=carol password=carol123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!dia 30!!!!!!!!!!!!!!! P NA CASA" name=vinicius123 password=vinicius123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!11todo dia 15!!!!!!!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=valdineielias password=valdineielias profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!todo  dia 20!!!!!!!!!!!!!!!!!so paga agora em agosto P NA CASA" disabled=yes name=leda password=leda123 profile="Plano 150M" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia  15 !!!!!!!!!!!!!!!! PIX" disabled=yes name=janebloco password=janebloco profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!zelia de jesus coelhoBOLETO" disabled=yes name=semterra1 password=semterra123 profile="40 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 30 rede jarlam 60\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" PIX" disabled=yes name=joilsonchaveiro password=joilson123 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 25!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  BOLETO" disabled=yes name=mato123 password=mato123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!todo dia 30!!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=nelia password=nelia123 profile="40 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!vence todo dia 06!!!!!!!!! cliente novo P NA CASA" disabled=yes name=orlando password=orlando123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!vence todo dia 06!!!!!!!!!!!!!!!!!!!! velhinha BOLETO" disabled=yes name=silvania password=silvania123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!todo dia 12!!!!!!!!!!!!!!!!! 40 reais PIX" disabled=yes name=aricelma password=aricelma123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!vence todo dia 08!!!!!!!!! julia ferreira BOLETO" disabled=yes name=bia password=bia123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!todo dia 6!!!!!!!!! PIX" disabled=yes name=javam password=javam123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!todo dia 7!!!!!!!!!!!!! P NA CASA" disabled=yes name=goi password=goi123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"''vence todo dia 10\"\"\"\"\"\"\"\"\" P NA CASA\"\"\"" disabled=yes name=gildazio password=gildazio123 profile="8 megas" service=pppoe
+/ppp secret add comment="padaria PIX FLAVIA" name=lenoteste password=lenoteste profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!vene todo dia 25!!!!!!!!!!!!!!!!!!!!!!!! BOLETO" disabled=yes name=renatotaxi password=renatotaxi123 profile="8 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"todo dia 25\"\"\"\"\"\"\"\"\"\"\"\"Reinaldo da Cruz Santos BOLETO" disabled=yes name=nengaloja password=nengaloja123 profile="27 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!todo dia 25!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=orca password=orca123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!vence todo dia 9!!!rafael!!!!!! BOLETO" disabled=yes name=eluzai password=eluzai123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!kal 50 dia 6!!!!!!!!!!!!! BOLETO" disabled=yes name=kal password=kal123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!todo dia 10!!!!!!!!!BOLETO" disabled=yes name=gal123 password=gal123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!TODO DIA 15!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=dulcilucas password=dulci123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!todo dia 27!!!!!!!!!!!!!!! ABAIXO DA PARATY LAJES 40'reais BOLETO" disabled=yes name=ana password=ana123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!todo dia 28 !!!!!!!!!!! 40 reaisBOLETO" disabled=yes name=andre password=andre123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!dia 30!!!!!!!!!!!!!!!PIX" disabled=yes name=zefinha password=zefinha123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!vence to dia 25!!!!!!!!!!!!!!!!!!!! P  NA CASA" name=josecarlos password=josecarlos123 profile="27 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"erisvaldoo vence todo dia 5 vizinho marcio!!!!! BOLETO" disabled=yes name=semterra5 password=semterra5 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!dia 30!!!!!!!!!!!!!telma BOLETO" disabled=yes name=seuvalter password=seuvalter123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!1TODO DIA 29!\"!!!!!!!!!!!!!!!! 50 reais BOLETO" disabled=yes name=aleciobar password=aleciobar profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!todo dia2!!!!!!!!!!! P NA CASA" disabled=yes name=neiasheila password=neiasheila profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!vence todo dia 30!!!!!!!! 2020!!!!!!!!!! 50 PIX" disabled=yes name=ray password=ray123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!TODO DIA 07!!!!!!!!!!!!gregorio BOLETO" disabled=yes name=nubiaalan password=nubiaalan profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 14\"\"\"\"\"\"\"\"\"\"\"\" P NA CASA" disabled=yes name=buiao password=buiao profile=2M service=pppoe
+/ppp secret add comment="!!!!!!!!!!!todo dia 30!!!!!!!! NAO PAGA" name=vitoria password=vitoria123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"todo dia 18!!!!!!!!!!!!PIX!!!!!" disabled=yes name=totin password=totin123 profile="30 megas" service=pppoe
+/ppp secret add comment="65!!!!!!!!!!!!!!!!!!!!vence todo dia 29!!!!!!!!!!!!!!!!!! BOLETO" disabled=yes name=deposito password=deposito123 profile="100 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!VENCE TODO DIA 10!1!!!!!!40!!!crislanBOLETO" disabled=yes name=renatin password=renatin123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!vence trodo dia 10!!!!!!!!!!!!mae walace PIX" disabled=yes name=fatima password=fatima123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!TODO DIA 30!!!!!! BOLETO" disabled=yes name=celina password=celina123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!todo dia10!!!!!!!!!!!!!!JOSE PEREIRA COSTA BOLETO" disabled=yes name=cecilio password=cecilio123 profile="30 megas" service=pppoe
+/ppp secret add comment="!\"!!!!!!!!!!!!!!!!!!!vence todo dia 22!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=josiele password=josiele123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!todo dia 30!!!!!!!!!!!!!!!!!!!!!!50thiago de jesus silva BOLETO" disabled=yes name=tico password=tico123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!todo dia 25!!!!!!!!!!!!!!BOLETO" disabled=yes name=gena password=gena123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 12!!!!!!! PASSAR NA CASA" disabled=yes name=soniapalmeira password=soniapalmeira profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!todo dia 30!!!!!!!!!!!!!!!!!!!!!!!!!!! P NA CASA" disabled=yes name=ernestina password=ernestina123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!todo dia 26!!!!!!!!!!!!!! BOLETO" disabled=yes name=nilmaflores password=nilmaflores profile="40 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!todo dia 29!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=luiscarlosruac password=luiscarlosruac profile="100 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!todo dia 01!!!!!!!!!!!!!11  BOLETO" disabled=yes name=ailma password=ailma123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!vence todo dia 05!!!! 40 reias PIX" disabled=yes name=andreia123 password=andreia123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!vence dia 28!!!!!!! PIX" disabled=yes name=rosane password=rosane123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!todo dia 26!!!!!!!!!!!vPABLIA sueli BOLETO" disabled=yes name=sueli password=sueli123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!vence todo dia 22\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" P NA CASA" disabled=yes name=demioficina password=demioficina profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!vence todo dia 7!!!!!!!!!!!!! PIX" disabled=yes name=erickruaa password=erick123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!vizinha anapo n 740 vence dia 10 BOLETO" disabled=yes name=daniela123 password=daniela123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!todo dia 8!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=ivoneruaa password=ivone123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!todo dia 15!!!!!!!!!!!!!!! PIX" disabled=yes name=kailane password=kailane123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!todo dia 10!!!!!!!!!!!!!vizinha deposito PIX" disabled=yes name=laciane password=laciane123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!todo dia 30!!!!!!!!! BOLETO" disabled=yes name=ritaruac password=ritaruac123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!todo dia 25!!!!!!!!!!!!PIX" disabled=yes name=silvan password=silvan123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!vence todo dia 1!!!!!!! grampo de tita BOLETO" disabled=yes name=joelson password=joelson123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!todo dia 10!!!!!!!!!!!!!!!!" disabled=yes name=zete password=zete123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!TODO DIA 6!@!!!!!!!! VANDO MOVEIS BOLETO" disabled=yes name=vando password=vando123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 13!!!!!!!!!!!!!11 P NA CASA" disabled=yes name=pauloonibus password=paulo123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!todo dia 6!!!!!!!!!!!!!!! frente demi oficina!! P NA CASA " disabled=yes name=denilda password=denilda123 profile="plano 6 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!todo dia 06!!!!!!!!!!!!!!!!!!!!!PIX" name=ingred password=ingred123 profile="9 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"funcinaria geiza gil dia 21\"\"\"\"\"\" 40 reais BOLETO" disabled=yes name=alenitaruab password=alenita123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!todo dia 30!!!!!!!!!!!!!!!!!!!!40 BOLETO" disabled=yes name=barbara password=barbara123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!todo dia 30!\"!!!!!!!!!!!!!!!!!!!!!!!!!!BOLETO!" disabled=yes name=samara password=samara123 profile="9 megas" service=pppoe
+/ppp secret add comment="@!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 5!!!!!!!!!!!!!!!!!!!LIDIANE FERREIRA BOLETO" disabled=yes name=lidianeferreira password=lidiane123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!todo dia 14!!!!!!!!! PIX" name=luciana password=luciana123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!todo dia 22\"\"\"\"\"CASA DA LOIRA BOLETO" disabled=yes name=cleoniceruaa password=cleonice123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!todo dia 10 \"\"\"\"\"\"\"\"\"\"\"\"\"\"eutania BOLETO" disabled=yes name=taniaruac password=tania123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!todo dia 23!!!!!!!!!roberto bloco BOLETO" disabled=yes name=tacio password=tacio123 profile="9 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"todo dia 05!!!!!!!!!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=elisangelaruac password=elisangela123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!todo dia 27 leleu internet mas roteador BOLETO" disabled=yes name=geise password=geise123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!1todo dia 10!!!!!!!!! BOLETO" disabled=yes name=marienfermeira password=mari123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!em frente ao predio de terezinha dia 25!!!!!!! BOLETO" disabled=yes name=sandrateka password=sandra123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!todo dia 27!!!!!!!!!!!!!!!!! BOLETO" disabled=yes name=nelsonsacolao password=nelson123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!TODO DIA 06.!!!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=nilzaray password=nilzaray123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!! Joao taxi!!!!dia 16!!!!!!!!!!! BOLETO" disabled=yes name=login password=login123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!vence todo dia 10!!!!!!!!!!!vizinha edilneBOLETO" disabled=yes name=elem password=elem123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!vence todo dia 12!!!!!!!!!!!!!!BOLETO" disabled=yes name=nadidimi password=nadi123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!todo dia 01!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=zenildadasilva password=zenilda123 profile="27 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!!!!!!!!!!! P NA CASA" disabled=yes name=letifuncionaria password=leticia123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!! MINHA IRMA VENCE TODO DIA 30!!! IRMA" disabled=yes name=jacileneirma password=jacilene123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!TODO DIA 1!!!!!!!!!!!BOLETO" disabled=yes name=maeadriel password=adriel123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 22!!!!!!!!! funcion\C3\A1ria gloria BOLETO" disabled=yes name=juciara password=juciara123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!TODO DIA 30!!!!!!!!!!!!!! VIZINHA LETICIA BOLETO" disabled=yes name=lucianasantos password=luciana123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!tia bruna TODO DIA 17!!!!!!!!!!!!!!!P NA CASA" disabled=yes name=marizete password=marizete123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!TODO DIA 7!!!!!!!!!!!!!! VIZINHA BARBARA CRUZEIRO BOLETO" disabled=yes name=marisa password=marisa123 profile="8 megas" service=pppoe
+/ppp secret add comment="Todo dia 30\"\"\"\"\"\"\"\"eliana santos oliveira BOLETO" disabled=yes name=eliana11 password=eliana11 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vizinha barbara!!!!!!TODO DIA 30!!!!! Hilda Maria de Jesus BatistaBOLETO" disabled=yes name=niely password=niely123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!todo dia 15!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=lailson1 password=lailson123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!TODO DIA 4!!!!BOLETO" disabled=yes name=damiana password=damiana123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!11!1!!1!!!TODO  DIA 301!!!1!!!IGREJA CATOLICA SEM TERRA BOLETO" disabled=yes name=mariana password=mariana123 profile="27 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!TODO DIA 30!!!!!!!!!!! BOLETO" disabled=yes name=marilia password=marilia123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 25!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! BOLETO" disabled=yes name=bruno23 password=bruno23 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!TODO DIA 10 rosemeire\"\"\"\"\"\"\"\"BOLETO" disabled=yes name=roseruac password=rose123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 24 !!!!!!!!!!BOLETO" disabled=yes name=rosileideruac password=rosileide123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!TODO DIA 17 CASA EX DE BOZO!!!" disabled=yes name=samuel23 password=samuel123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 30\"\"\"\"\"\"\"\"\"\"deve roteador 100 reais BOLETO" disabled=yes name=joceni password=joceni123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!vence todo dia 1 !!!!!!!!!reais BOLETO" disabled=yes name=ailma2 password=ailma2 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!VENCE TODO DIA 25!!!!!!!!!!! BOLETO" disabled=yes name=nora password=nora123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!FILHA VO BIA VENCE TODO DIA 27 BOLETO" disabled=yes name=joci password=joci123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!VENCE TODO DIA 4!!!!!!!!!!!!!!!!!BOLETO!" disabled=yes name=juciarahelena password=juciara2305 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!mora na rua de joginho!!!!!!!!!!!vence todo dia 23 BOLETO" disabled=yes name=elizabetejojin password=elizabete123 profile="9 megas" service=pppoe
+/ppp secret add comment="loja login" name=44 password=44 profile="60 megas" service=pppoe
+/ppp secret add comment="LOGIN LOJA" name=loja password=loja123 profile="60 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!vence todo dia 25!!!!!!!!!!!!!!BOLETO!!!" disabled=yes name=viviane password=viviane123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!vizinha gilneide 2 BOLETO" disabled=yes name=miralva password=miralva123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 7!!!!!!!!!!!! vizinha barretos construcaoBOLETO" disabled=yes name=mariaangela password=maria123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!todo dia 10!!!!!!!!!!!!!!!!!!! irmao deni PIX" disabled=yes name=sandrao password=sandrao123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!mae mari vence todo dia 13!!!!!!!!!!!!!!!BOLETO" disabled=yes name=zuleidemari password=zuleide123 profile="12 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"VENCE DIA 18 MARCOS PIX" disabled=yes name=josecarlos230588 password=josecarlos230588 profile="16 megas" service=pppoe
+/ppp secret add comment="mesma gildazio nao colocar na listaP NA CASA" disabled=yes name=neisom password=neisom123 profile="plano 7 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!mesma casa roze vence dia 18!!!!!!!!!!!PIX BLOQUEIO TEMPORARIO MAS VAI VOLTAR" disabled=yes name=vera2305 password=vera2305 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!vence todo dia 10!!!!!!!!!!!!!!!!!!!lana nubia BOLETO" disabled=yes name=box4040 password=box4040 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 5!!!!!!!!!!!!!!!!!!!!!! BOLETO" disabled=yes name=edna password=edna230588 profile="40 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 28 vizinha picole BOLETO" disabled=yes name=cidapicole password=cida123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 10!!!!!!!!!!!!!pai edna BOLETO" disabled=yes name=florival password=florival123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!!!!!!!! PIX" disabled=yes name=atrevida password=atrevida123 profile="plano 7 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!VENCE TODO DIA 30\"\"\"\"\"\"\"\"\" MAS ROTEADOR CASA EX BOZO P NA CASA" disabled=yes name=rosalia password=rosalia123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!VENCE TODO DIA 15!!!!!!!!!!!!PIX" disabled=yes name=zetesaojoao password=zete2305 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!LADO DA CASA DE ROGERIO VENCE DIA 16\"\"\"\"\"\"\"\"\"\"\"\"PIX" disabled=yes name=marialva password=marialva123 profile="9 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"marcia aninha vence todo dia 27 PIX" disabled=yes name=casa password=casa123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!roteador de gilberto!!!!!!!todo dia 30!!!! BOLETO" disabled=yes name=marialicia password=marialicia123 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!vence todo dia 25!!!!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=ilmabolo password=ilmabolo123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!40 vence todo dia 06!!!!!!!!!!!!!!!!! monga BOLETO" disabled=yes name=fabiana230588 password=fabiana230588 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 30!!!!!!!!!!!!!!!!!!vizinha damiana BOLETO" disabled=yes name=gildetedamiana password=gildete123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!TODO DIA 10!!!!!!!!!! BOLETO" disabled=yes name=marianelza password=marianelza123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!todo dia 24!!!!!!!!!!!!!! BOLETO" disabled=yes name=talitaaiala password=talita123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!TODO DIA 10!!!!!!!!!!!!!!BOLETO" disabled=yes name=isabelcoxinha password=isabel123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 6!!!!!!! PIX" disabled=yes name=ivonesampaioruaa password=ivonesampaio123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!TODO DIA 10!!!!!!!!!!!!!!!! MAE MANOEL BOLETO" disabled=yes name=julietamanoel password=julieta123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!vence todo dia 09!!!!!!!!!!!!!!! Vizinha reis carroceriaBOLETO" disabled=yes name=silvanareiscarroceria password=silvana1234 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!VENCE TODO DIA 23 RUA SHEILA CEARA BOLETO" disabled=yes name=daniele password=daniele123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 28!!!! FUNDO IGREJA DA F\C9 BOLETO" name=soniaalmeida password=sonia1234 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!parente roberto antena vence todo dia 10!!!!!!!!!!!!! BOLETO" disabled=yes name=emersonroberto password=emerson123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!TODO DIA 23!!!! VIZINHO KEL PIX" disabled=yes name=gilmardejesus password=gilmar12345 profile="16 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!vence todo dia 27 vizinha sheila ceara!!!!!!! BOLETO" disabled=yes name=daiara password=daiara123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!TODO DIA 10!!!!!!!!!!!!!! BOLETO" disabled=yes name=dinhomercado password=dinho123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!SEILMAvence todo dia25!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=kalmalvina password=kalmalvina123 profile="30 megas" service=pppoe
+/ppp secret add comment="nao paga" disabled=yes name=orlandomercado password=orlandomercado profile="16 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!todo dia 15!!!!!!!!!!!!!!!BOLETO" disabled=yes name=ivanilda2525 password=ivanilda2525 profile="27 megas" service=pppoe
+/ppp secret add comment="tava desativado pediu reativa\C3\A7\C3\A3o " disabled=yes name=valdeliceruaa password=valdeliceruaa profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!dicinho oficina vence todo dia 15\"\"\"\" BOLETO" disabled=yes name=dicinhooficina password=dicinho123 profile="12 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"VENCE TODO DIA 3\"\"\"\"\"\"\"FRENTE OFICINA MOTO ROBERTO maria jose santos BOLETO" disabled=yes name=duda password=duda123 profile="12 megas" service=pppoe
+/ppp secret add comment="NAO PAGA" disabled=yes name=igrejacatolica password=igrejacatolica profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!!!!vence todo dia 15!!!!!!!!!!!!!!!!!BOLETO" disabled=yes name=maeazeni password=maeazeni123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!VENCE TODO DIA 20 VIZINHO BERTOSO BOLETO" disabled=yes name=nair password=nair123 profile="8 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 28\"\"\"\"\"\"\"\"\"\"\"''so paga em dezembro PIX" disabled=yes name=fabioeletricista password=fabioeletricista profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!TODO DIA 10!!!!!!!!!! BOLETO luciene de jesus da silva" disabled=yes name=lucieneruab2 password=luciene123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!vence todo dia 3\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"BOLETO" disabled=yes name=ozenirruaa password=ozenir2305 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!! TODO DIA 28!!!!!!!!!! VIZINHO ANA BOLETO" disabled=yes name=railton password=railton123 profile="12 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"vence dia 30\"\"\"\"\"\"\" PIX" disabled=yes name=tonhasalao password=tonha123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!proximo a erineildo!!!!!!!!!! todo dia 28 BOLETO" disabled=yes name=joelmasoares password=joelmasoares123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!mulher zeu guarda vence dia 30\"\"\"\"\"\"\"\"\"\"internet e tv P NA CASA" disabled=yes name=edileuzazeu password=edileuzazeu123 profile="27 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"VENCE TODO DIA 10\"\"\"\"\"\"\"\"\"\"\" PIX" name=matheus password=matheus123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!mae nega de patcho!!!!!!!!! P NA CASA" disabled=yes name=silvanira password=silvanira123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!vence todo dia 27!!!!!!!!!! PIX" disabled=yes name=liquidificador password=liquidificador123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"MERCADO LADO POSTO DE GASOLINA DIA 5\"\"\"\"\"BOLETO" disabled=yes name=valdemirmercado password=valdemir123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence dia 10!!!!!!!! PIX" disabled=yes name=jessicaarara password=jessicaarara123 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!TODO DIA 30!!!!!!!!!!!!!BOLETO" disabled=yes name=ednapredioval password=edna230588 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!TODO DIA 25!!!!!!!! VIZINHO IRMA MARCOS BOLETO" disabled=yes name=marisvaldosouza password=marisvaldo123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!TODO DIA 26!!!!!!!!!!!!!!!!!! PIX" disabled=yes name=milton password=milton123 profile="30 megas" service=pppoe
+/ppp secret add comment="roteador meu BOLETO" disabled=yes name=jaquelineneto password=jaqueline123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!TODO DIA 26!!!!!!!!!!!! ESQUINA DO BLOCO DO PEDREIRO BOLETO" disabled=yes name=eliasdossantos password=eliasdossantos123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!! TODO DIA 30 !!!!!!!!!!!!! PIX" disabled=yes name=diane password=diane123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 5!!!!!!!!!!!!!! PIX" disabled=yes name=samaramacario password=samaramacario profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!dia 5!!!!!!!!!! PIX" disabled=yes name=salaocruzeiro password=salaocruzeiro profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!TODO DIA 05!!!!!!!!!!!! PIX" disabled=yes name=janielevitoria password=janiele123 profile="30 megas" service=pppoe
+/ppp secret add comment="VENCE TODO DIA 25\"\"\"\"\"\"\"\"\"\" ROTEADOR COMODATO BOLETO" disabled=yes name=mariacelia password=mariacelia123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!TODO DIA 30!!!!!!!!!!! m\C3\A3e Nando azevedo BOLETO" disabled=yes name=mariasantos password=mariasantos123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!TODO DIA 18!!!!!!!!!!!!! BOLETO" disabled=yes name=glecianei password=glecianei123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"casa jane fundo vence todo dia 30\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" BOLETO" disabled=yes name=ilzajane password=ilzajane123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!TODO DIA 25!!!!!!!!!!!!!BOLETO" disabled=yes name=gilsonmalvina password=gilsonmalvina123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"dia 30!!!!!!!!!!!!!!!!!! BOLETO" disabled=yes name=mulhermarcioruac password=mulhermarcio123 profile="8 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!TODO DIA 10!!!!!!!!!!!!!!! BOLETO" disabled=yes name=indiarahamilton password=indiara123 profile="27 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!N\EF\BF\BDO TEM CONTRATO!!!!!!!!!VENCI TODO DIA 16 P NA CASA" disabled=yes name=miguel password=miguel123 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 24!!!!!!!!!!!!!!!PIX" disabled=yes name=gilsonricardo password=gilsonricardo123 profile="16 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 5\"\"\"\"\"\"\"PIX" disabled=yes name=adriano password=adriano123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!TODO DIA 25!!!!!!!!!!!! MICHEL BOLETO" disabled=yes name=gildetechandles password=gildetechandles profile="12 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"dia 27\"\"\"\"\"\"\"\"\"\"  PIX" disabled=yes name=juciane password=juciane123 profile="100 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!TODO DIA 10!!! PIX" disabled=yes name=soraiajuciane password=soraiajuciane123 profile="100 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!TODO DIA 5!!!!!!!!!!! VIZINHA PADARIA DE THEBA BOLETO" disabled=yes name=alinerodrigues password=alinerodrigues123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!TODO DIA 8!!!!!! RUA PABLIA P NA CASA" disabled=yes name=josemaycon password=josemaycon123 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=zenildacasca password=zenildacasca123 profile="16 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!CASA QUE MIRALVA MORAVA VIZINHA GILNEIDE BOLETO" disabled=yes name=edinilton password=edinilton123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!TODO DIA 1!!!!! IRMA ESPOSA MARCOS BOLETO" disabled=yes name=katianepereira password=katiane123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!vence todo dia 20!!!!!!!!!!! casa luiz henrique BOLETO" disabled=yes name=jaksonposto password=jaksonposto123 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=claudiofernandes password=claudio123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 25!!!!!!!!!!!! BOLETO" disabled=yes name=taianejordania password=taianejordania123 profile="9 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=esmeraldoingrid password=esmeraldo123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 10 boleto meio 2024 Maria amorin BOLETO" disabled=yes name=marianelson password=marianelson123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"vence dia 30!!!!!!!!!!! makinhaBOLETO" disabled=yes name=janieleoliveira password=janieleoliveira123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"dia 30!!!!!!!!! BOLETO" disabled=yes name=tikinjatoba password=tikinjatoba123 profile="27 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=rogeriopaulista password=rogerio230588 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=casamaria password=casamaria123 profile="40 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence dia 18\"\"\"\"\"\"\"\"\"PIX " disabled=yes name=neishow password=neishow123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence dia 10 casa jonatas BOLETO" disabled=yes name=andreia9090 password=andreia9090 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!dia 22!!!!!!!!!!!!!!PIX" disabled=yes name=noel password=noel123 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=nelzaquadra password=nelzaquadra123 profile="100 megas" service=pppoe
+/ppp secret add comment=PIX disabled=yes name=jobar230588 password=jobar230588 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=pastelaria password=pastelaria123 profile="40 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=clebersonruac password=cleberson123 profile="9 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!vence dia 15!!!!!!!!!!!!!!!BOLETO" disabled=yes name=joilda password=joilda123 profile="9 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"irma geane bar\"\"\"\"\"\"\"\"\"\"\"\"\" BOLETO" disabled=yes name=joseanesilva password=joseanesilva123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 20 juciara pereira de queiroz BOLETO" disabled=yes name=juciaraandreia password=juciaraandreia123 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment=PIX disabled=yes name=alancelha password=alan123 profile="30 megas" service=pppoe
+/ppp secret add comment="julival crispina BOLETO" disabled=yes name=elienebispo password=eliene123 profile="9 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"vence dia 18\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" BOLETO" disabled=yes name=kaique password=kaique123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="PIX " disabled=yes name=aninhasoares password=aninha123 profile="30 megas" service=pppoe
+/ppp secret add comment="PIX DIA 12" disabled=yes name=netoneinha password=neto123 profile="12 megas" service=pppoe
+/ppp secret add comment="PIX DIA 15" disabled=yes name=batista password=batista123 profile="60 megas" service=pppoe
+/ppp secret add comment="NAO PAGA" disabled=yes name=vitoriajatoba password=vitoriajatoba profile="27 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 30 PIX" disabled=yes name=filholailson password=filholailson123 profile="27 megas" service=pppoe
+/ppp secret add comment=PIX disabled=yes name=cristianelailson password=cristiane123 profile="16 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!vence todo dia 3!!!!!!!BOLETO" disabled=yes name=valreide password=valreide123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 10!!!!!!!!!!!!!!! roteador comodato BOLETO" disabled=yes name=vidracaria password=vidracaria123 profile="60 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=jarlan password=jarlan123 profile="100 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 15!!!!!!! PIX" disabled=yes name=mirelemeire password=mirele123 profile="30 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 7!!!!!!!! rubalo BOLETO" disabled=yes name=anarubens password=rubens123 profile="16 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"parente jose carlos luizinho BOLETO" disabled=yes name=mariavando password=mariavando123 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=anaclaudiadermi password=anaclaudia123 profile="30 megas" service=pppoe
+/ppp secret add comment=PIX disabled=yes name=ivani password=ivani123 profile="100 megas" service=pppoe
+/ppp secret add comment=BOLETO name=abnaldo password=abnaldo123 profile="40 megas" service=pppoe
+/ppp secret add comment=PIX disabled=yes name=francielesilva password=francielesilva123 profile="30 megas" service=pppoe
+/ppp secret add comment="BOLETO CASA QUE RITA DE CASSIA MORAVA" disabled=yes name=elizamoura password=eliza123 profile="16 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=gorete password=gorete123 profile="100 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=ednelson password=ednelson123 profile="60 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=gilsonvilarino password=gilson123 profile="60 megas" service=pppoe
+/ppp secret add comment=BOLETO name=jamilson password=jamilson123 profile="9 megas" service=pppoe
+/ppp secret add comment="PIX DIA 30" disabled=yes name=rojerioloja password=rojerioloja123 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=arlessommalvina1 password=arlessom123 profile="40 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=evanildooficina password=evanildo123 profile="30 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=jamilemalvina1 password=jamile2305 profile="60 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=juciaramalvina1 password=juciara123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment=BOLETO disabled=yes name=joanavandomoveis password=joana123 profile="9 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence todo dia 24\"\"\"\"\"\"\"\"\"\"\"\"\"\"\" boleto" disabled=yes name=neidemarcio password=neidemarcio123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!!!!vence di 30!!!!!!!!!!!!!!!" disabled=yes name=geisaerenildo password=geisaerenildo123 profile="30 megas" service=pppoe
+/ppp secret add comment="essa \EF\BF\BD vanessa amorim silva\"\"\"\"\"\"\"\"\"vence dia 10 boleto frente jose roberto" disabled=yes name=ivanildafernandes password=ivanilda123 profile="bloqueio parcial" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!vence todo dia 10!!!!!!!!!!! passar na casa" disabled=yes name=lorival password=lorival123 profile="27 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"vence dia 15\"\"\"\"\"\"\"\"\"\"\" valor 55 boleto" disabled=yes name=marialuiza password=marialuiza123 profile="Plano 50 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!vence dia 15 passar na casa!!!!!!!!!!!" disabled=yes name=jakson23 password=jakson23 profile="30 megas" service=pppoe
+/ppp secret add comment="vence dia 25 passar na casa" disabled=yes name=laurentina password=laurentina123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!dia 25 passar na casa!!!!!!!" disabled=yes name=fabio123 password=fabio123 profile="30 megas" service=pppoe
+/ppp secret add comment="vence todo dia 20!!!!!!!!!!!!!! BOLETO mae flavia" disabled=yes name=ivoneteflavia password=ivonete123 profile="40 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"BOLETO\"\"" disabled=yes name=tikinbar password=tikinbar123 profile="27 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"boleto\"\"\"\"\"\"\"\"" disabled=yes name=marilianovo password=marilia123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!!!BOLETO\"\"\"\"\"\"\"\"\"\"\"" disabled=yes name=thiagoneguinha password=thiagoneguinha123 profile="40 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"boleto vizinha rosinha\"\"\"\"\"\"\"" disabled=yes name=marianeto password=marianeto123 profile="40 megas" service=pppoe
+/ppp secret add disabled=yes name=gleice password=gleice123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!vence todo dia 5 pix\"\"\"\"\"\"\"\"\"\"\"\"\"\"" disabled=yes name=gilneide password=gilneide123 profile="12 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"boleto vence dia 28!!!!!!!!!!!!!!!!!" disabled=yes name=edvaldodeotado password=edvaldo123 profile="60 megas" service=pppoe
+/ppp secret add disabled=yes name=leilanesilva password=leilane123 profile="60 megas" service=pppoe
+/ppp secret add disabled=yes name=gabrieltonha password=gabrieltonha123 profile="12 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!LOGIN CASA!!!!!!!!!" disabled=yes name=porao password=porao123 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=fabiomoura password=fabiomoura123 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=dicileia password=dicileia123 profile="60 megas" service=pppoe
+/ppp secret add disabled=yes name=gessicaruac password=gessicaruac123 profile="100 megas" service=pppoe
+/ppp secret add comment="\"\"\"\"\"\"\"\"\"\"\"tia alan passar na casa \"\"\"\"\"\"\"\"" disabled=yes name=mariadasgracas password=maria123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!!!!!!!!boleto dia 10!!!!!!!!!!!!!!!fazer boleto" disabled=yes name=analuiza password=analuiza123 profile="60 megas" service=pppoe
+/ppp secret add disabled=yes name=cristianedejesus password=cristianedejesus123 profile="Plano 50 megas" service=pppoe
+/ppp secret add disabled=yes name=ivonesantos password=ivonesantos123 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=alineoliveirasantos password=aline123 profile="60 megas" service=pppoe
+/ppp secret add disabled=yes name=tamilenascimento password=tamilenascimento123 profile="30 megas" service=pppoe
+/ppp secret add comment="!!!!!!!!!TODO DIA 10!!!!!!!!!!!!" disabled=yes name=elenicesantos password=elenice123 profile="100 megas" service=pppoe
+/ppp secret add disabled=yes name=universokids password=universokids123 profile="100 megas" service=pppoe
+/ppp secret add disabled=yes name=cizelia password=cizelia123 profile="Plano 150M" service=pppoe
+/ppp secret add disabled=yes name=elias123 password=elias123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=elaine2 password=elaine2 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=veranicevalci password=veranice123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=franciely password=franciely1234 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=jorgeigreja password=jorgeigreja profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=euvardisantos password=euvardi123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=adriel password=adriel123 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=academia password=academia123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=ozenir password=ozenir123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=silvanakinho password=silvana123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=edileuza2305 password=edileuza2305 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=patriciavalci password=patriciavalci123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=cintia password=cintia123 profile="15 megas" service=pppoe
+/ppp secret add name=brunasemterrazete password=brunasemterra123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=oclai password=oclai123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=moacir password=moacir123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=marciooliveira password=marcio123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=fabioruaa password=fabioruaa profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=nildapablia password=nildapablia123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=edileide password=edileide123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=elianamacario password=elianamacario123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=eloiza password=eloiza123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=aiala password=aiala123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=zoidegato password=zoidegato123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=gean password=gean123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=nelson password=nelson123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=igrejasemterra password=igrejasemterra profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=josecarlos1111 password=josecarlos1111 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=anepizza password=anepizza profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=katielesemterra password=katiele11 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=veralucia123 password=veralucia123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=1414 password=1414 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=elainejuciara password=elaine123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=joginho password=joginho123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=andresouza password=andresouza123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=voualace password=voualace123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=fabriciatonha password=fabricia123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=elias password=elias123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=marineidefrancisca password=marineidefrancisca profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=leilaruac password=leila123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=luziadim password=luziadim123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=alinedin password=alinedin123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=adeilsonalmeida password=adeilson123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=manuanapo password=manu123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=vanildaruac password=vanilda123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=joselinapereira password=joselina123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=ritadecassia123 password=ritadecassia123 profile="27 megas" service=pppoe
+/ppp secret add name=manoel password=manoel123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=samaramendes password=samara1234 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=elianapaula password=elianapaula123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=iramilton password=iramilton123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=andrecasa password=andrecasa profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=analucia password=analucia123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=jumair password=jumair123 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=mariacelina password=mariacelina123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=nelsinho password=nelsinho123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=nete password=nete123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=meire password=meire123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=denisepel password=denise123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=vanice password=vanice123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=elisangelavizinha password=elisangelavizinha123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=kauane password=kauane123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=jaislanaiala password=jaislan123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=thiago password=thiago123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=antoniasouza password=antonia123 profile="15 megas" service=pppoe
+/ppp secret add disabled=yes name=lucineiasilva password=lucineia123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=djanira password=djanira123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=clinica password=clinica123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=jadsonsouza password=jadsonsouza123 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=kekeu password=kekeu123 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=franciele23 password=franciele23 profile="27 megas" service=pppoe
+/ppp secret add disabled=yes name=valdecipredio password=valdeci123 profile="12 megas" service=pppoe
+/ppp secret add disabled=yes name=gabrielasilva password=gabriela123 profile="27 megas" service=pppoe
+/ppp secret add comment="Instala\E7\E3o dia 15.05.24" disabled=yes name=adailtondasilva password=adailton123 profile="100 megas" service=pppoe
+/ppp secret add name=leandro password=051116 profile="60 megas" service=pppoe
+/ppp secret add comment="LOGIN DE TESTE LENON" name=lenonteste password=lenonteste profile="30 megas" service=pppoe
+/ppp secret add name=pmita password=4589 profile="30 megas" service=pppoe
+/ppp secret add disabled=yes name=julianosilva password=210624 service=pppoe
+/ppp secret add name=mateuss password=020425 profile="400 megas" service=pppoe
+/radius add address=201.7.170.248 comment="IXCProvedor configuracao radius" secret=radiusixcsoft service=ppp,hotspot,wireless src-address=201.7.173.224 timeout=3s
+/radius add address=187.73.63.50 disabled=yes secret=savnetrb service=ppp,login,hotspot src-address=201.7.173.224
+/radius add address=45.174.128.109 disabled=yes secret=radiusixcsoft service=ppp src-address=201.7.173.224 timeout=3s
+/radius incoming set accept=yes
+/snmp set enabled=yes trap-generators="" trap-version=2
+/system identity set name="CGNAT - JAGUAQUARA"
+/system script add dont-require-permissions=no name=backup_ftp owner=robenilson policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="# Criando Vari\E1veis\r\
+    \n:global arquivo ( [/system identity get name] );\r\
+    \n\r\
+    \n# Gerando Arquivo Backup\r\
+    \n:log info \"Iniciando Backup...\"\r\
+    \n/system backup save name=\$arquivo\r\
+    \n:log info \"Backup Concluido\"\r\
+    \n\r\
+    \n# Gerando Arquivo export\r\
+    \n/export file=\$arquivo\r\
+    \n:log info \"Tempo aproximado 5s\"\r\
+    \n:delay 5s\r\
+    \n\r\
+    \n# Enviando arquivo de Backup\r\
+    \n:log info \"Enviando Backup por FTP...\"\r\
+    \n:log info \"Tempo aproximado 5s\"\r\
+    \n/tool fetch address=201.7.170.42 src-path=\"\$arquivo.rsc\" user=savnet mode=ftp password=savnet dst-path=\"\$arquivo.rsc\" upload=yes\r\
+    \n:delay 5s\r\
+    \n/tool fetch address=201.7.170.42 src-path=\"\$arquivo.backup\" user=savnet mode=ftp password=savnet dst-path=\"\$arquivo.backup\" upload=yes\r\
+    \n:log info \"Backup Enviando com Sucesso\"\r\
+    \n\r\
+    \n# Deletando Arquivos de Backup\r\
+    \n:log info \"Deletando Arquivos na RB\"\r\
+    \n/file remove \"\$arquivo.backup\"\r\
+    \n/file remove \"\$arquivo.rsc\"\r\
+    \n:log info \"Arquivos Deletados\""
+/tool romon set enabled=yes secrets=101
+

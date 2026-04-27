@@ -1,0 +1,1642 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Sartor Internet LTDA
+Equipamento: SW-HU-CPD
+Host: 198.19.255.1:4721
+Acesso: VIA PROXY SSH
+Modelo: SW HUAWEI 6730
+Template: Backup Huawei
+Data: 26/03/2026 00:53:48
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+Info: The configuration takes effect on the current user terminal interface only.
+<SW-HU-CORE-SINOP>
+
+============================================================
+Comando: display current-configuration
+============================================================
+!Software Version V600R024C00SPC500
+!Last configuration was updated at 2026-03-14 10:47:41-04:00 by sartor
+!Last configuration was saved at 2026-01-19 14:46:21-04:00 by sartor
+#
+pki realm default
+#
+clock timezone America/Cuiaba minus 04:00:00
+#
+sysname SW-HU-CORE-SINOP
+#
+undo ftp server source all-interface
+undo ftp ipv6 server source all-interface
+#
+ssl policy default
+ pki-domain default
+ ssl minimum version tls1.2
+ cipher-suite exclude key-exchange rsa
+ cipher-suite exclude cipher mode cbc
+ cipher-suite exclude hmac sha1
+ diffie-hellman modulus 3072
+ ecdh group curve brainpool
+ signature algorithm-list ed25519 ed448 rsa-pss-pss-sha256 rsa-pss-pss-sha384 rsa-pss-pss-sha512 rsa-pss-rsae-sha256 rsa-pss-rsae-sha384 rsa-pss-rsae-sha512
+#
+info-center source aaa channel 2
+info-center loghost source LoopBack0
+info-center loghost 198.18.1.11 port 1514
+info-center timestamp log short-date precision-time millisecond without-timezone
+#
+device board 1 board-type S6750-H36C
+#
+wlan
+ traffic-profile name default
+ security-profile name default
+ ssid-profile name default
+ vap-profile name default
+ regulatory-domain-profile name default
+ air-scan-profile name default
+ rrm-profile name default
+ radio-2g-profile name default
+ radio-5g-profile name default
+ ap-system-profile name default
+ port-link-profile name default
+ wired-port-profile name default
+ ap-group name default
+ provision-ap
+#
+authentication-profile name default_authen_profile
+authentication-profile name dot1x_authen_profile
+authentication-profile name dot1xmac_authen_profile
+authentication-profile name mac_authen_profile
+authentication-profile name multi_authen_profile
+authentication-profile name portal_authen_profile
+#
+drop-profile default
+#
+ntp ipv6 server disable
+ntp server source-interface all disable
+ntp ipv6 server source-interface all disable
+ntp unicast-peer 198.18.1.15 source-interface LoopBack0
+ntp server source-interface LoopBack0
+#
+vlan batch 10 20 to 21 100 to 105 108 148 153 to 156 507 to 508 547 to 549 601 to 606 755
+vlan batch 911 949 980 1000 to 1001 1104 to 1105 1171 to 1172 1299 1367 1385 1903
+vlan batch 1906 to 1907 1920 1930 to 1933 1942 1944 to 1945 1999 to 2000 2900 to 2902 3000 to 3004 3010 to 3017 3019 to 3026
+vlan batch 3028 to 3031 3034 to 3037 3039 to 3046 3049 to 3051 3053 to 3064 3066 3069 to 3071 3073 to 3074 3076 to 3077 3080 to 3086
+vlan batch 3200 3202 3204 3209 to 3210 3212 to 3214 3216 to 3217 3222 3227 3231 to 3232 3235 to 3236
+vlan batch 3238 to 3242 3244 3257 to 3259 3261 3267 3269 to 3271 3273 to 3275 3278 to 3279 3536 3538
+vlan batch 3614 3618 to 3619 3628 3631 3633 3635 3690 3707 to 3708 3800 to 3803 3805 to 3811
+vlan batch 3815 3820 to 3823 3929 3998
+#
+lnp disable
+#
+error-down auto-recovery cause link-flap interval 30
+#
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+as-auth
+#
+diffserv domain default
+#
+ip vpn-instance _management_vpn_
+ ipv4-family
+#
+bfd
+#
+vlan 10
+#
+vlan 20
+ description 20-VLAN-VMS-SERVIDORES
+#
+vlan 21
+ description VMS-SRV-PROXMOX
+#
+vlan 100
+ description P2P-SW-ENLACE-CPD
+#
+vlan 101
+ description P2P-SW-DT-CORE-CPD
+#
+vlan 102
+#
+vlan 103
+ description P2P-NE8000-BGP
+#
+vlan 104
+ description P2P-NE8000-BNG
+#
+vlan 105
+ description P2P-SW-SRVS-CORE-CPD
+#
+vlan 108
+ description 108-LINK-EBGP-GTR-NMV
+#
+vlan 148
+ description 148-SW-DT-POSTE-BR
+#
+vlan 153
+ description CDN-GOOGLE
+#
+vlan 154
+ description CDN-NETFLIX
+#
+vlan 155
+ description CDN-FACEBOOK
+#
+vlan 156
+ description P2P-V6-CCR-SRVS-x-BGP
+#
+vlan 507
+ description 507-LINK-ALLREDE-PAI-SNP
+#
+vlan 508
+ description 508-LINK-ALLREDE
+#
+vlan 547
+ description SVLANS-FIBRASIL
+#
+vlan 548
+ description SVLANS-FIBRASIL
+#
+vlan 549
+ description SVLANS-FIBRASIL
+#
+vlan 601
+ description SVLANS-FIBRASIL
+#
+vlan 602
+ description SVLANS-FIBRASIL
+#
+vlan 603
+ description SVLANS-FIBRASIL
+#
+vlan 604
+ description SVLANS-FIBRASIL
+#
+vlan 605
+ description SVLANS-FIBRASIL
+#
+vlan 606
+ description SVLANS-FIBRASIL
+#
+vlan 755
+ description 755-LINK-EBGP-INVINET-ARIP
+#
+vlan 911
+ name 911-PPPOE-OLT-PESQUEIRO
+#
+vlan 949
+ description eBGP-TURBONET
+#
+vlan 980
+ description 980-LINK-EBGP-INVINET-JUINA
+#
+vlan 1000
+ description P2P-CGNAT-BGP
+#
+vlan 1001
+ description P2P-CGNAT-BNG
+#
+vlan 1104
+ description PTT-TITANIA-CBA-IPV4
+#
+vlan 1105
+ description PTT-TITANIA-CBA-IPV6
+#
+vlan 1171
+ description 1171-TRANSP-STARTNET-AVATO
+#
+vlan 1172
+ description 1172-TRANSP-START-ALLREDE->SINOP
+#
+vlan 1299
+ description 1299-RB-FAZENDA-SUMAUMA
+#
+vlan 1367
+ description AVATO-BKP1
+#
+vlan 1385
+ description AVATO-BKP2
+#
+vlan 1903
+ description OSPF-PAINEIRA-TRANSP-ALL-REDE
+#
+vlan 1906
+ description TRANSP-ALLREDE-SNP-GDN-1906
+#
+vlan 1907
+ description LINK-ALLREDE
+#
+vlan 1920
+ description P2P-SW-HU-CUIABA
+#
+vlan 1930
+ description 1930-REDE-NEUTRA-LUCAS-ALL-REDE
+#
+vlan 1931
+ description 1931-REDE-NEUTRA-LUCAS-ALL-REDE
+#
+vlan 1932
+ description 1932-REDE-NEUTRA-LUCAS-ALL-REDE
+#
+vlan 1933
+ description 1933-REDE-NEUTRA-LUCAS-ALL-REDE
+#
+vlan 1942
+ description TRANSP-ALLREDE-LUCAS-RIO-VERDE
+#
+vlan 1944
+ description OSPF-TRANSP-ALL-TANG-SNP
+ name OSPF-TRANSP-ALL-TANG-SNP
+#
+vlan 1945
+ description OSPF-TRANSP-ALL-CZN-SNP
+ name OSPF-TRANSP-ALL-CZN-SNP
+#
+vlan 1999
+ description 1999-TRANSP-ALLREDE-PORTOxSNP
+#
+vlan 2000
+ description PPPOE-TESTE
+#
+vlan 2900
+ description 2900-PPPOE-PON1-FAZ_SP-SNP-FAZ.SP
+#
+vlan 2901
+ description 2900-PPPOE-PON2-FAZ_SP-SNP-FAZ.SP
+#
+vlan 2902
+ description 2900-PPPOE-RB-FAZ_SP-SNP-FAZ.SP
+#
+vlan 3000
+ description 3000-OLT-JUINA-PL1
+#
+vlan 3001
+ description 3001-OLT-JUINA-PL2
+#
+vlan 3002
+ description 3002-OLT-JUINA-PL3
+#
+vlan 3003
+ description 3003-OLT-JUINA-PL4
+#
+vlan 3004
+ description 3004-OLT-JUINA-PL5
+#
+vlan 3010
+ description 3010-OLT-CASTANHEIRA-PL1
+#
+vlan 3011
+ description 3011-OLT-CASTANHEIRA-PL2
+#
+vlan 3012
+ description 3012-OLT-CASTANHEIRA-PL3
+#
+vlan 3013
+ description 3013-OLT-JURUENA-PL1
+#
+vlan 3014
+ description 3014-OLT-JURUENA-PL2
+#
+vlan 3015
+ description 3015-OLT-JURUENA-PL3
+#
+vlan 3016
+ description 3016-OLT-JURUENA-PL4
+#
+vlan 3017
+ description 3017-OLT-JURUENA-PL5
+#
+vlan 3019
+ description 3019-OLT-JAPURANA-PL1
+#
+vlan 3020
+ description 3020-OLT-JAPURANA-PL2
+#
+vlan 3021
+ description 3021-OLT-COTRIGUACU-PL1
+#
+vlan 3022
+ description 3022-OLT-COTRIGUACU-PL2
+#
+vlan 3023
+ description 3023-OLT-COTRIGUACU-PL3
+#
+vlan 3024
+ description 3024-OLT-NOVA-BANDEIRANTES-PL1
+#
+vlan 3025
+ description 3025-OLT-NOVA-BANDEIRANTES-PL2
+#
+vlan 3026
+ description 3023-OLT-NOVA-BANDEIRANTES-PL3
+#
+vlan 3028
+ description 3028-OLT-NOVA-MONTE-VERDE-PL1
+#
+vlan 3029
+ description 3029-OLT-NOVA-MONTE-VERDE-PL2
+#
+vlan 3030
+ description 3030-OLT-NOVA-MONTE-VERDE-PL3
+#
+vlan 3031
+ description 3031-OLT-NOVA-MONTE-VERDE-PL4
+#
+vlan 3034
+ description 3034-OLT-COLNIZA-PL1
+#
+vlan 3035
+ description 3035-OLT-COLNIZA-PL2
+#
+vlan 3036
+ description 3036-OLT-COLNIZA-PL3
+#
+vlan 3037
+ description 3037-PPPOE-COLN-PL4-COL-SNP
+#
+vlan 3039
+ description 3039-OLT-ARIPUANA-PL1
+#
+vlan 3040
+ description 3040-OLT-ARIPUANA-PL2
+#
+vlan 3041
+ description 3041-OLT-ARIPUANA-PL3
+#
+vlan 3042
+ description 3042-OLT-ARIPUANA-PL4
+#
+vlan 3043
+ description 3043-OLT-BRASNORTE-PL1
+#
+vlan 3044
+ description 3044-OLT-BRASNORTE-PL2
+#
+vlan 3045
+ description 3045-OLT-BRASNORTE-PL3
+#
+vlan 3046
+ description 3046-OLT-BRASNORTE-PL4
+#
+vlan 3049
+ description 3049-OLT-BRIANORTE-PL1
+#
+vlan 3050
+ description 3050-OLT-ITANHANGA-PL1
+#
+vlan 3051
+ description 3051-OLT-ITANHANGA-PL2
+#
+vlan 3053
+ description PPPOE-OLT-IPIRANGA-DO-NORTE-PL1
+#
+vlan 3054
+ description PPPOE-OLT-IPIRANGA-DO-NORTE-PL2
+#
+vlan 3055
+ description PPPOE-OLT-IPIRANGA-DO-NORTE-PL3
+#
+vlan 3056
+ description PPPOE-OLT-IPIRANGA-DO-NORTE-PL4
+#
+vlan 3057
+ description 3057-OLT-JUARA-PL1
+#
+vlan 3058
+ description 3058-OLT-JUARA-PL2
+#
+vlan 3059
+ description 3059-OLT-JUARA-PL3
+#
+vlan 3060
+ description 3060-OLT-JUARA-PL4
+#
+vlan 3061
+ description 3061-OLT-JUARA-PL5
+#
+vlan 3062
+ description 3062-OLT-JUARA-PL6
+#
+vlan 3063
+ description 3063-OLT-TUTILANDIA
+#
+vlan 3064
+ description 3064-OLT-COTRIGUACU-GAUXA
+#
+vlan 3066
+ description 3066-OLT-NOVA-UNIAO-PL1
+#
+vlan 3069
+ description 3069-OLT-TAPURAH-PL1
+#
+vlan 3070
+ description 3070-OLT-TAPURAH-PL2
+#
+vlan 3071
+ description 3071-OLT-TAPURAH-PL3
+#
+vlan 3073
+ description 3073-POP-NOVO-HORIZONTE
+#
+vlan 3074
+ description 3074-OLT-AGUA-DA-PRATA
+#
+vlan 3076
+ description 3076-OLT-PORTO-GAUCHO-PL1
+#
+vlan 3077
+ description 3077-OLT-PORTO-GAUCHO-PL2
+#
+vlan 3080
+ description 3080-OLT-FONTANILHAS-POSTE-BR
+#
+vlan 3081
+ description 3081-OLT-AMERICANA-P1
+#
+vlan 3082
+ description 3082-OLT-ALTA-FLORESTA
+#
+vlan 3083
+ description 3083-OLT-TIBAJI
+#
+vlan 3084
+ description VLAN-PPPOE-OLT-HU-SINOP
+#
+vlan 3085
+ description 3084-OLT-LUCAS-DO-RIO-VERDE
+#
+vlan 3086
+ name 3086-OLT-TABAPORAH
+#
+vlan 3200
+ description 3200-NUCLEO-PAINEIRA-TINK
+#
+vlan 3202
+ description 3202-NUCLEO-PAINEIRA-02
+#
+vlan 3204
+ description 3204-NUCLEO-FRUTA
+#
+vlan 3209
+ description 3209-NUCLEO-FLORESTA
+#
+vlan 3210
+ description 3210-NUCLEO-MUNDO-NOVO
+#
+vlan 3212
+ description 3212-NUCLEO-TIBAJI
+#
+vlan 3213
+ description 3213-NUCLEO-BIFE
+#
+vlan 3214
+ description 3214-NUCLEO-BR
+#
+vlan 3216
+ description 3216-NUCLEO-PARAGUAI
+#
+vlan 3217
+ description 3217-NUCLEO-ITANHANGA
+#
+vlan 3222
+ description 3222-NUCLEO-ASSENTAMENTO
+#
+vlan 3227
+ description 3227-NUCLEO-BRIANORTE
+#
+vlan 3231
+ description 3231-NUCLEO-TOCA
+#
+vlan 3232
+ description 3232-NUCLEO-RIO-DO-SANGUE
+#
+vlan 3235
+ description 3235-NUCLEO-AMALIA
+#
+vlan 3236
+ description 3236-NUCLEO-SAO-BENTO
+#
+vlan 3238
+ description 3238-NUCLEO-OSMAR
+#
+vlan 3239
+ description 3239-NUCLEO-RENAN
+#
+vlan 3240
+ description 3240-NUCLEO-LINHA-J
+#
+vlan 3241
+ description 3241-NUCLEO-TASIANA-02
+#
+vlan 3242
+ description 3242-NUCLEO-TASIANA
+#
+vlan 3244
+ description 3244-NUCLEO-CILO-ESTRELA
+#
+vlan 3257
+ description 3257-NUCLEO-FONTANILHAS
+#
+vlan 3258
+ description 3258-NUCLEO-ZENI
+#
+vlan 3259
+ description 3259-NUCLEO-BR-CAST
+#
+vlan 3261
+ description 3261-NUCLEO-PONTE-BARCO
+#
+vlan 3267
+ description 3267-OLT-ASSENTAMENTO-PL1
+#
+vlan 3269
+ description 3269-NUCLEO-TASIANA-OLT
+#
+vlan 3270
+ description 3270-NUCLEO-AGROVILA
+#
+vlan 3271
+ description 3271-NUCLEO-JAPURANA
+#
+vlan 3273
+ description 3273-POP-SIMIONE-02
+#
+vlan 3274
+ description 3274-OLT-SIMIONE
+#
+vlan 3275
+ description 3275-OLT-OPTFOCUS-SIMIONE
+#
+vlan 3278
+ description 3278-OLT-REG-CASTANHEIRA
+#
+vlan 3279
+ description 3279-OLT-BALSA
+#
+vlan 3536
+ description AVATO-BKP3
+#
+vlan 3538
+#
+vlan 3614
+ description TRANS-ALLREDE-IPIRANGAxSINOP
+#
+vlan 3618
+ description 3618-TRANSP-ALLREDE-SNP-JUR-VPWS
+#
+vlan 3619
+ description 3619-DEDICADO-IMPACTO-NETWORK
+#
+vlan 3628
+ description 3628-LINK-DOWNSTREAM-FLEXLINK
+#
+vlan 3631
+ description 3631-LINK-ATUAL-ITANHANGA
+#
+vlan 3633
+ description 3633-TRASNP-BSINTERNET-CDN
+#
+vlan 3635
+ description 3635-LINK-TOP-FIBRA-CASTANHEIRA
+#
+vlan 3690
+ description P2P-SW-HU-ALTA-FLORESTA
+#
+vlan 3707
+ description BGP-AVATO-ROTA-1
+#
+vlan 3708
+ description BGP-AVATO-ROTA-2
+#
+vlan 3800
+ description 3800-TRANSP-TACPAR-SNP_COL
+#
+vlan 3801
+ description 3801-TRANSP-TACPAR-SNP_COL
+#
+vlan 3802
+ description 3802-TRANSP-TACPAR-SNP_COL
+#
+vlan 3803
+ description 3803-TRANSP-TACPAR-SNP_COL
+#
+vlan 3805
+ description 3805-TRANSP-TACPAR-SNP_COL
+#
+vlan 3806
+ description 3806-TRANSP-TACPAR-SNP_COL
+#
+vlan 3807
+ description TRANSP-TECPAR-COTRI-3807
+#
+vlan 3808
+ description TRANSP-TECPAR-COTRI-3808
+#
+vlan 3809
+ description TRANSP-TECPAR-SNP-NHORIZ-3809
+#
+vlan 3810
+ description TRANSP-TECPAR-SNP-NHORIZ-3810
+#
+vlan 3811
+ description TRANSP-TECPAR-SNP-NHORIZ-3811
+#
+vlan 3815
+ description 3815-PTT-GB-ONLINE
+#
+vlan 3820
+ description TRANSP-TECPAR-SNP-COTRI-3820
+#
+vlan 3821
+ description TRANSP-TECPAR-SNP-COTRI-3821
+#
+vlan 3822
+ description TRANSP-TECPAR-SNP-SORRISO-3822
+#
+vlan 3823
+ description TRANSP-TECPAR-SNP-SORRISO-3823
+#
+vlan 3929
+ description 3929-TRANSP-ALL-REDE
+#
+vlan 3998
+ description 3998-CAMERAS-FULLCAM
+#
+mpls lsr-id 198.19.255.1
+#
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+#
+mpls l2vpn
+#
+vsi 1171-TRANSP-STARTNET-AVATO
+ pwsignal ldp
+  vsi-id 1171
+  flow-label both
+  peer 172.27.255.56
+ mtu 9000
+#
+vsi 1172-TRANSP-STARTNET-AVATO
+ pwsignal ldp
+  vsi-id 1172
+  flow-label both
+  peer 172.27.255.56
+ mtu 9000
+#
+vsi 3000-PPPOE-OLT-JUINA-PL1
+ pwsignal ldp
+  vsi-id 3000
+  flow-label both
+  peer 172.27.255.73
+ mtu 1550
+#
+vsi 3001-PPPOE-OLT-JUINA-PL2
+ pwsignal ldp
+  vsi-id 3001
+  flow-label both
+  peer 172.27.255.73
+ mtu 1550
+#
+vsi 3002-PPPOE-OLT-JUINA-PL3
+ pwsignal ldp
+  vsi-id 3002
+  flow-label both
+  peer 172.27.255.73
+ mtu 1550
+#
+vsi 3003-PPPOE-OLT-JUINA-PL4
+ pwsignal ldp
+  vsi-id 3003
+  flow-label both
+  peer 172.27.255.73
+ mtu 1550
+#
+vsi 3004-PPPOE-OLT-JUINA-PL5
+ pwsignal ldp
+  vsi-id 3004
+  flow-label both
+  peer 172.27.255.73
+ mtu 1550
+#
+vsi 3010-OLT-CASTANHEIRA-PL1
+ pwsignal ldp
+  vsi-id 3010
+  flow-label both
+  peer 172.25.255.5
+ mtu 1550
+#
+vsi 3011-OLT-CASTANHEIRA-PL2
+ pwsignal ldp
+  vsi-id 3011
+  flow-label both
+  peer 172.25.255.5
+ mtu 1550
+#
+vsi 3012-OLT-CASTANHEIRA-PL3
+ pwsignal ldp
+  vsi-id 3012
+  flow-label both
+  peer 172.25.255.5
+ mtu 1550
+#
+vsi 3034-PPPOE-COLN-PL1-COL-SNP
+ pwsignal ldp
+  vsi-id 3034
+  flow-label both
+  peer 172.25.255.93
+ mtu 1550
+#
+vsi 3053-PPPOE-OLT-IPIRANGA-PL1
+ pwsignal ldp
+  vsi-id 3053
+  flow-label both
+  peer 172.27.255.50
+ mtu 1550
+#
+vsi 3054-PPPOE-OLT-IPIRANGA-PL2
+ pwsignal ldp
+  vsi-id 3054
+  flow-label both
+  peer 172.27.255.50
+ mtu 1550
+#
+vsi 3055-PPPOE-OLT-IPIRANGA-PL3
+ pwsignal ldp
+  vsi-id 3055
+  flow-label both
+  peer 172.27.255.50
+ mtu 1550
+#
+vsi 3056-PPPOE-OLT-IPIRANGA-PL4
+ pwsignal ldp
+  vsi-id 3056
+  flow-label both
+  peer 172.27.255.50
+ mtu 1550
+#
+vsi 3066-OLT-NOVA-UNIAO
+ pwsignal ldp
+  vsi-id 3066
+  flow-label both
+  peer 172.25.255.93
+ mtu 1550
+#
+vsi 3073-POP-NOVO-HORIZONTE
+ pwsignal ldp
+  vsi-id 3073
+  flow-label both
+  peer 172.27.255.202
+ mtu 1550
+#
+vsi 3074-OLT-AGUA-DA-PRATA
+ pwsignal ldp
+  vsi-id 3074
+  flow-label both
+  peer 172.27.255.53
+ mtu 1550
+#
+vsi 3200-PPPOE-NU-THINK-PA-SNP
+ pwsignal ldp
+  vsi-id 3200
+  flow-label both
+  peer 172.27.255.53
+ mtu 1550
+#
+vsi 3267-OLT-ASSENTAMENTO-PL1
+ pwsignal ldp
+  vsi-id 3267
+  flow-label both
+  peer 172.25.255.5
+ mtu 1550
+#
+vsi 3269-PPPOE-TASIANA-OLT
+ pwsignal ldp
+  vsi-id 3269
+  flow-label both
+  peer 198.19.255.10
+ mtu 1550
+#
+vsi 3631-LINK-ATUAL-ITANHANGA
+ pwsignal ldp
+  vsi-id 3631
+  flow-label both
+  peer 172.25.255.76
+ mtu 1550
+#
+vsi 3633-TRASNP-BSINTERNET-CDN
+ pwsignal ldp
+  vsi-id 3633
+  flow-label both
+  peer 172.25.255.125
+ mtu 9000
+#
+vsi 3635-LINK-TOP-FIBRA-CASTANHEIRA
+ pwsignal ldp
+  vsi-id 3635
+  flow-label both
+  peer 172.25.255.5
+ mtu 1550
+#
+vsi 3929-TRANSP-ALL-REDE
+ pwsignal ldp
+  vsi-id 3929
+  flow-label both
+  peer 172.27.255.60
+ mtu 1550
+#
+vsi 507-LINK-ALLREDE-PAI-SNP
+ pwsignal ldp
+  vsi-id 507
+  flow-label both
+  peer 172.27.255.53
+ mtu 1550
+#
+vsi 601-SVLAN-FIBRASIL
+ pwsignal ldp
+  vsi-id 601
+  flow-label both
+  peer 198.19.255.14
+ mtu 1550
+#
+vsi 602-SVLAN-FIBRASIL
+ pwsignal ldp
+  vsi-id 602
+  flow-label both
+  peer 198.19.255.14
+ mtu 1550
+#
+vsi 603-SVLAN-FIBRASIL
+ pwsignal ldp
+  vsi-id 603
+  flow-label both
+  peer 198.19.255.14
+ mtu 1550
+#
+vsi 911-PPPOE-OLT-PESQUEIRO
+ pwsignal ldp
+  vsi-id 911
+  flow-label both
+  peer 172.27.255.121
+  peer 198.19.255.10
+ mtu 1550
+#
+explicit-path SNP-PAI-BRAS
+ next hop 198.18.103.238 index 1
+ next hop 198.18.100.186 index 2
+ next hop 172.27.255.56 index 3
+#
+mpls ldp
+ #
+ ipv4-family
+#
+mpls ldp remote-peer sw-itanhanga
+ remote-ip 172.25.255.76
+#
+mpls ldp remote-peer peer-sw-dt-castanheira
+ remote-ip 172.25.255.5
+#
+mpls ldp remote-peer peer-sw-dt-dd-juina
+ remote-ip 172.27.255.73
+#
+mpls ldp remote-peer peer-sw-dt-paineira
+ remote-ip 172.27.255.53
+#
+mpls ldp remote-peer peer-sw-dt-ipiranga
+ remote-ip 172.27.255.50
+#
+mpls ldp remote-peer peer-sw-hu-brasnorte
+ remote-ip 172.27.255.56
+#
+mpls ldp remote-peer peer-sw-dt-amp-juina
+ remote-ip 198.19.255.10
+#
+mpls ldp remote-peer peer-sw-hu-colniza
+ remote-ip 172.25.255.93
+#
+mpls ldp remote-peer peer-sw-dt-balsa
+ remote-ip 172.25.255.75
+#
+mpls ldp remote-peer peer-sw-dt-faz-sp
+ remote-ip 198.19.255.8
+#
+mpls ldp remote-peer peer-sw-dt-tabaporah
+ remote-ip 172.27.255.121
+#
+mpls ldp remote-peer peer-sw-hu-juruena
+ remote-ip 172.25.255.90
+#
+mpls ldp remote-peer peer-sw-hu-porto
+ remote-ip 172.27.255.60
+#
+mpls ldp remote-peer peer-sw-hu-nvo-horizonte
+ remote-ip 172.27.255.202
+#
+domain sartor admin
+#
+aaa
+ authentication-scheme default
+  authentication-mode local
+ authentication-scheme radius
+  authentication-mode radius
+ authentication-scheme sartor
+  authentication-mode local radius
+ authorization-scheme default
+  authorization-mode local
+ accounting-scheme default
+  accounting-mode none
+ accounting-scheme sartor
+  accounting-mode radius
+ local-aaa-user password policy administrator
+  password history record number 0
+  password expire 0
+ domain default
+  authentication-scheme default
+  accounting-scheme default
+ domain default_admin
+  authentication-scheme default
+  accounting-scheme default
+ domain sartor
+  authentication-scheme sartor
+  accounting-scheme sartor
+  radius-server sartor
+ local-user oxidized password irreversible-cipher $1d$[m0X,NC"f)TPt=I2$,w$/UZB(K.@gJZ$)'j1C~]XlY7:P\X8MR;GE"I73$
+ local-user oxidized privilege level 3
+ local-user oxidized service-type ssh
+ local-user sartor password irreversible-cipher $1d$X*1p+7(qT8z;)h(T$(<[D-o>Mn9&DcMJ=`97:(n*h#oS2~L~KmpXK|[h:$
+ local-user sartor privilege level 3
+ local-user sartor service-type ssh ftp http
+#
+radius-server template sartor
+ radius-server shared-key cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:x(uOMS5&t:/T;(2`<d%7\1N:1!!!!!2jp5!!!!!!>!!!!eOD@19M)T9#}TA3m'e^3)bu~0Gy3+.0e&9(loti-%+%#
+ radius-server accounting 198.18.1.9 1813 source ip-address 198.19.255.1 weight 80
+ radius-server authentication 198.18.1.9 1812 source ip-address 198.19.255.1 weight 80
+ radius-server retransmit 2 
+ undo radius-server user-name domain-included
+#
+free-rule-template name default_free_rule
+#
+portal-access-profile name portal_access_profile
+#
+dot1x-access-profile name dot1x_access_profile
+#
+mac-access-profile name mac_access_profile
+#
+remote-unit
+#
+stack
+#
+license
+#
+warranty
+#
+isis purge-source-trace disable
+#
+ospfv3 1
+ router-id 198.19.255.1
+ area 0.0.0.0
+#
+interface Vlanif100
+ mtu 9198
+ description P2P-SW-ENLACE-CPD
+ ipv6 enable
+ ip address 198.18.103.53 255.255.255.252
+ ipv6 address auto link-local
+ ipv6 mtu 9198
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:!4>N(vUwR))dnLWVTb:-TBxIM!!!!!2jp5!!!!!!6!!!!nO%m=xcsD4O\:]IYHqb-Ea/sHR&&fY!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif101
+ mtu 9198
+ description P2P-SW-DT-CORE-CPD
+ ipv6 enable
+ ip address 198.18.103.57 255.255.255.252
+ ipv6 address auto link-local
+ ipv6 mtu 9198
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospfv3 bfd enable
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:$R"~U2p(34^kw5@*IU{8sdg2A!!!!!2jp5!!!!!!6!!!!c7GD*`3StJN&}DZ)z7fT\{`p-:y<9%!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf bfd enable
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif102
+ description P2P-CGNAT-VCORP
+ ip address 198.18.103.65 255.255.255.252
+ ospf enable 1 area 0.0.0.0
+#
+interface Vlanif103
+ mtu 9198
+ description P2P-NE8000-BGP
+ ipv6 enable
+ ip address 198.18.103.69 255.255.255.252
+ ipv6 address auto link-local
+ ipv6 mtu 9198
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospfv3 bfd enable
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:CS`[8uV31B0pi$CHfj>.2FWW,!!!!!2jp5!!!!!!6!!!!W":!*c}6SPA(p>5WMfgU2#ii@fFY)+!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf bfd enable
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif104
+ mtu 9198
+ description P2P-NE8000-BNG
+ ipv6 enable
+ ip address 198.18.103.73 255.255.255.252
+ ipv6 address auto link-local
+ ipv6 mtu 9198
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospfv3 bfd enable
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:!f1UDsM;k>>-]h+=\Ic5Y/oNH!!!!!2jp5!!!!!!6!!!!BibLHCFfS7*W:q6QAzf)&U*N0&913*!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf bfd enable
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif105
+ mtu 9198
+ description P2P-SW-SRVS-CORE-CPD
+ ipv6 enable
+ ip address 198.18.103.185 255.255.255.252
+ ipv6 address auto link-local
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:IpuH,B\.N!vw"e)KvH9U7jlgL!!!!!2jp5!!!!!!6!!!!{{OR#1~/R0[NghX|(s*DjnlVCS'ED>!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif507
+ description 507-LINK-ALLREDE-PAI-SNP
+ l2 binding vsi 507-LINK-ALLREDE-PAI-SNP
+#
+interface Vlanif601
+ description 601-SVLAN-FIBRASIL
+#
+interface Vlanif602
+ description 602-SVLAN-FIBRASIL
+#
+interface Vlanif603
+ description 603-SVLAN-FIBRASIL
+#
+interface Vlanif911
+ description 911-PPPOE-OLT-PESQUEIRO
+ l2 binding vsi 911-PPPOE-OLT-PESQUEIRO
+#
+interface Vlanif1171
+ description 1171-TRANSP-STARTNET-AVATO
+ l2 binding vsi 1171-TRANSP-STARTNET-AVATO
+ statistics enable
+#
+interface Vlanif1172
+ description 1172-TRANSP-STARTNET-AVATO
+ l2 binding vsi 1172-TRANSP-STARTNET-AVATO
+ statistics enable
+#
+interface Vlanif1903
+ mtu 9000
+ description OSPF-PAINEIRA-TRANSP-ALL-REDE
+ ip address 198.18.103.237 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:DJ7TG>g,[3yB#[Br3oZOTh|kR!!!!!2jp5!!!!!!6!!!!&iol>E@W\;@DSU#L|>^3Podp~B*G^D!!!!!!!!!!%+%#
+ ospf cost 20000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+ statistics enable
+#
+interface Vlanif1920
+ description P2P-SW-HU-CUIABA
+ ip address 198.18.101.225 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:7eqd~R4tL5cOfRHrB\OHQ#Ea.!!!!!2jp5!!!!!!6!!!!vMb30R2fAKZ@L7HVbw+*v*XL)E]h.1!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif1942
+ mtu 9000
+ description TRANSP-ALLREDE-LUCAS-RIO-VERDE
+ ip address 198.18.102.213 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:5d_h*|=h_,fjMDIL;M!RW@q;6!!!!!2jp5!!!!!!6!!!!n01xK5v2G72mr(8+,'y(G=L+D\6nGB!!!!!!!!!!%+%#
+ ospf cost 20000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif1944
+ mtu 9000
+ description OSPF-TRANSP-ALL-TANG-SNP
+ ip address 198.18.104.45 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:u5Ui.3P"aRcQ+j2xmZv.pkv0H!!!!!2jp5!!!!!!6!!!!u)%SX;gGe2.khK"-zD.:}[Ak/oen|C!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+ statistics enable
+#
+interface Vlanif1945
+ mtu 9000
+ description OSPF-TRANSP-ALL-CZN-SNP
+ ip address 198.18.104.49 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:lIuT/ye*lJ'5wOMfT6-(-g&7E!!!!!2jp5!!!!!!6!!!!*w1m>:2uV=U'9785Z*I%Tf!%Uxt:#H!!!!!!!!!!%+%#
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+ statistics enable
+#
+interface Vlanif1999
+ mtu 9198
+ description 1999-TRANSP-ALLREDE-PORTOxSNP
+ ip address 198.18.103.162 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:t(qqWRYlYV=s(#,<s_hI:EenW!!!!!2jp5!!!!!!6!!!!cZ:.<UofXO5'BaT*U"U<75rJ0%(&b0!!!!!!!!!!%+%#
+ ospf cost 50000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif2900
+ mtu 1550
+ description 2900-PPPOE-PON1-FAZ_SP-SNP-FAZ.SP
+ mpls l2vc 198.19.255.8 2900
+#
+interface Vlanif2901
+ mtu 1550
+ description 2900-PPPOE-PON2-FAZ_SP-SNP-FAZ.SP
+ mpls l2vc 198.19.255.8 2901
+#
+interface Vlanif2902
+ mtu 1550
+ description 2900-PPPOE-RB-FAZ_SP-SNP-FAZ.SP
+ mpls l2vc 198.19.255.8 2902
+#
+interface Vlanif3000
+ l2 binding vsi 3000-PPPOE-OLT-JUINA-PL1
+#
+interface Vlanif3001
+ l2 binding vsi 3001-PPPOE-OLT-JUINA-PL2
+#
+interface Vlanif3002
+ l2 binding vsi 3002-PPPOE-OLT-JUINA-PL3
+#
+interface Vlanif3003
+ l2 binding vsi 3003-PPPOE-OLT-JUINA-PL4
+#
+interface Vlanif3004
+ l2 binding vsi 3004-PPPOE-OLT-JUINA-PL5
+#
+interface Vlanif3010
+ l2 binding vsi 3010-OLT-CASTANHEIRA-PL1
+#
+interface Vlanif3011
+ l2 binding vsi 3011-OLT-CASTANHEIRA-PL2
+#
+interface Vlanif3012
+ l2 binding vsi 3012-OLT-CASTANHEIRA-PL3
+#
+interface Vlanif3034
+ l2 binding vsi 3034-PPPOE-COLN-PL1-COL-SNP
+#
+interface Vlanif3035
+ mtu 1550
+ description 3035-PPPOE-COLN-PL2-COL-SNP
+ mpls l2vc 172.25.255.93 3035
+#
+interface Vlanif3036
+ mtu 1550
+ description 3036-PPPOE-COLN-PL3-COL-SNP
+ mpls l2vc 172.25.255.93 3036
+#
+interface Vlanif3037
+ mtu 1550
+ description 3037-PPPOE-COLN-PL4-COL-SNP
+ mpls l2vc 172.25.255.93 3037
+#
+interface Vlanif3053
+ description 3053-PPPOE-OLT-IPIRANGA-PL1
+ l2 binding vsi 3053-PPPOE-OLT-IPIRANGA-PL1
+#
+interface Vlanif3054
+ description 3054-PPPOE-OLT-IPIRANGA-PL2
+ l2 binding vsi 3054-PPPOE-OLT-IPIRANGA-PL2
+#
+interface Vlanif3055
+ description 3055-PPPOE-OLT-IPIRANGA-PL3
+ l2 binding vsi 3055-PPPOE-OLT-IPIRANGA-PL3
+#
+interface Vlanif3056
+ description 3056-PPPOE-OLT-IPIRANGA-PL4
+ l2 binding vsi 3056-PPPOE-OLT-IPIRANGA-PL4
+#
+interface Vlanif3066
+ description 3066-OLT-NOVA-UNIAO
+ l2 binding vsi 3066-OLT-NOVA-UNIAO
+#
+interface Vlanif3073
+ l2 binding vsi 3073-POP-NOVO-HORIZONTE
+#
+interface Vlanif3074
+ description 3074-OLT-AGUA-DA-PRATA
+ l2 binding vsi 3074-OLT-AGUA-DA-PRATA
+#
+interface Vlanif3086
+ mtu 1550
+ description 3086-OLT-TABAPORAH-SNP-TABA
+ mpls l2vc 172.27.255.121 3086
+#
+interface Vlanif3200
+ description 3200-PPPOE-NU-THINK-PA-SNP
+ l2 binding vsi 3200-PPPOE-NU-THINK-PA-SNP
+#
+interface Vlanif3267
+ l2 binding vsi 3267-OLT-ASSENTAMENTO-PL1
+#
+interface Vlanif3269
+ description 3269-PPPOE-TASIANA-OLT
+ l2 binding vsi 3269-PPPOE-TASIANA-OLT
+#
+interface Vlanif3279
+ mtu 1550
+ description 3279-PPPOE-OLT-BALSA
+#
+interface Vlanif3618
+ mtu 9000
+ description 3618-TRANSP-ALLREDE-SNP-JUR-VPWS
+ mpls l2vc 172.25.255.90 3618
+#
+interface Vlanif3631
+ description 3631-LINK-ATUAL-ITANHANGA
+ l2 binding vsi 3631-LINK-ATUAL-ITANHANGA
+#
+interface Vlanif3633
+ description 3633-TRASNP-BSINTERNET-CDN
+ l2 binding vsi 3633-TRASNP-BSINTERNET-CDN
+#
+interface Vlanif3635
+ l2 binding vsi 3635-LINK-TOP-FIBRA-CASTANHEIRA
+#
+interface Vlanif3690
+ mtu 9198
+ description OSPF-TRANSP-AVATO-SW-HU-ALTA-FLORESTA
+ ip address 198.18.101.150 255.255.255.252
+ ospf authentication-mode simple cipher %+%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:%d~,A]%R.5Qo/x#8tds=)~P|A!!!!!2jp5!!!!!!6!!!!7@J9UF\3b!~|D~~6ewF&N4:Y6HSbAG!!!!!!!!!!%+%#
+ ospf cost 10000
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls te
+ mpls rsvp-te
+ mpls ldp
+#
+interface Vlanif3800
+ mtu 9000
+ description 3800-TRANSP-TACPAR-SNP_COL
+ mpls l2vc 172.25.255.93 3800
+#
+interface Vlanif3801
+ mtu 9000
+ description 3801-TRANSP-TACPAR-SNP_COL
+ mpls l2vc 172.25.255.93 3801
+#
+interface Vlanif3802
+ mtu 9000
+ description 3802-TRANSP-TACPAR-SNP_COL
+ mpls l2vc 172.25.255.93 3802
+#
+interface Vlanif3803
+ mtu 9000
+ description 3803-TRANSP-TACPAR-SNP_COL
+ mpls l2vc 172.25.255.93 3803
+#
+interface Vlanif3805
+ mtu 9000
+ description 3805-TRANSP-TACPAR-SNP_COL
+ mpls l2vc 172.25.255.93 3805
+#
+interface Vlanif3806
+ mtu 9000
+ description 3806-TRANSP-TACPAR-SNP_COL
+ mpls l2vc 172.25.255.93 3806
+#
+interface Vlanif3820
+#
+interface Vlanif3929
+ description 3929-TRANSP-ALL-REDE
+ l2 binding vsi 3929-TRANSP-ALL-REDE
+#
+interface MEth0/0/0
+ ip address 192.168.1.253 255.255.255.0
+#
+interface Eth-Trunk0
+ description P2P-CGNAT-VCORP
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 102 1000 to 1001
+ stp disable
+ mode lacp-static
+#
+interface Eth-Trunk1
+ description P2P-AVATO-ROTA-1-FO_SARTOR-100GE_1/0/11-12
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 1171 to 1172 3690 3707 to 3708 3800 to 3803 3805 to 3811 3820 to 3823 3994
+ stp disable
+ mode lacp-static
+#
+interface 100GE1/0/1
+ description NE8000-BNG
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 21 104 148 547 to 549 601 to 606 911 1001 1299 1930 to 1933 2000
+ port trunk allow-pass vlan 2900 to 2902 3000 to 3004 3010 to 3017 3019 to 3026 3028 to 3031 3034 to 3037 3039 to 3046 3049 to 3051 3053 to 3064 3066
+ port trunk allow-pass vlan 3069 to 3071 3073 to 3074 3076 to 3077 3080 to 3086 3200 3202 3204 3209 to 3210 3212 to 3214 3216 to 3217
+ port trunk allow-pass vlan 3222 3227 3231 to 3232 3235 to 3236 3238 to 3242 3244 3257 to 3259 3261 3267 3269 to 3271
+ port trunk allow-pass vlan 3273 to 3275 3278 to 3279
+ stp disable
+ device transceiver 100GBASE-FIBER
+ fec mode rs
+#
+interface 100GE1/0/2
+ description NE8000-BGP
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 20 103 108 153 to 156 507 to 508 755 949 980 1000 1104 to 1105
+ port trunk allow-pass vlan 1907 3536 3619 3628 3631 3633 3635 3707 to 3708 3815 3998
+ stp disable
+ device transceiver 100GBASE-FIBER
+ fec mode rs
+#
+interface 100GE1/0/3
+ description P2P-SW-ENLACE-CPD
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 10 100 108 148 547 to 549 601 to 606 755 949 980 1104 to 1105
+ port trunk allow-pass vlan 1299 1367 1385 1903 1906 3013 to 3017 3019 to 3026 3028 to 3031 3039 to 3046 3049 to 3051
+ port trunk allow-pass vlan 3057 to 3064 3069 to 3071 3076 to 3077 3080 to 3083 3085 3202 3204 3209 to 3210 3212 to 3214 3216 to 3217
+ port trunk allow-pass vlan 3222 3227 3231 to 3232 3235 to 3236 3238 to 3242 3244 3257 to 3259 3261 3270 to 3271 3273 to 3275
+ port trunk allow-pass vlan 3278 to 3279 3538 3614 3619 3628 3807 to 3811 3820 to 3823 3994
+ stp disable
+ device transceiver 100GBASE-FIBER
+ fec mode none
+#
+interface 100GE1/0/4
+ description P2P-SW-DT-CORE-CPD
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 101 153 to 155 547 to 549 601 to 606 2000 3084 3815
+ stp disable
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/5
+ description P2P-CGNAT-VCORP
+ eth-trunk 0
+ device transceiver 40GBASE-FIBER
+#
+interface 100GE1/0/6
+ description P2P-CGNAT-VCORP
+ eth-trunk 0
+ device transceiver 40GBASE-COPPER
+#
+interface 100GE1/0/7
+ description P2P-SW-SRVS-CORE-CPD
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 10 20 to 21 105 156 3998
+ stp disable
+ device transceiver 40GBASE-FIBER
+#
+interface 100GE1/0/8
+ port link-type access
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/9
+ description P2P-ALLREDE
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 507 to 508 1903 1906 to 1907 1920 1930 to 1933 1942 1944 to 1945 1999 3614 3618
+ port trunk allow-pass vlan 3929
+ stp disable
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/10
+ description P2P-AVATO-ROTA-3-FO_AVATO
+ port link-type trunk
+ undo port trunk allow-pass vlan 1
+ port trunk allow-pass vlan 3536
+ stp disable
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/11
+ description P2P-AVATO-ROTA-1-FO_SARTOR
+ eth-trunk 1
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/12
+ description P2P-AVATO-ROTA-2-FO_SARTOR
+ eth-trunk 1
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/13
+ port link-type access
+ device transceiver 40GBASE-FIBER
+#
+interface 100GE1/0/14
+ port link-type access
+#
+interface 100GE1/0/15
+ port link-type access
+#
+interface 100GE1/0/16
+ port link-type access
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/17
+ port link-type access
+#
+interface 100GE1/0/18
+ port link-type access
+#
+interface 100GE1/0/19
+ port link-type access
+#
+interface 100GE1/0/20
+ port link-type access
+#
+interface 100GE1/0/21
+ port link-type access
+#
+interface 100GE1/0/22
+ port link-type access
+#
+interface 100GE1/0/23
+ port link-type access
+#
+interface 100GE1/0/24
+ port link-type access
+#
+interface 100GE1/0/25
+ port link-type access
+#
+interface 100GE1/0/26
+ port link-type access
+#
+interface 100GE1/0/27
+ port link-type access
+#
+interface 100GE1/0/28
+ port link-type access
+#
+interface 100GE1/0/29
+ port link-type access
+#
+interface 100GE1/0/30
+ port link-type access
+#
+interface 100GE1/0/31
+ port link-type access
+#
+interface 100GE1/0/32
+ port link-type access
+#
+interface 100GE1/0/33
+ port link-type access
+#
+interface 100GE1/0/34
+ port link-type access
+ device transceiver 100GBASE-FIBER
+#
+interface 100GE1/0/35
+ port link-type access
+#
+interface 100GE1/0/36
+ port link-type access
+#
+interface LoopBack0
+ ip address 198.19.255.1 255.255.255.255
+#
+interface Tunnel0
+ ip address unnumbered interface LoopBack0
+ tunnel-protocol mpls te
+ destination 172.27.255.56
+ mpls te record-route label
+ mpls te backup hot-standby
+ mpls te reserved-for-binding
+ mpls te tunnel-id 101
+ mpls te path explicit-path SNP-PAI-BRAS
+#
+interface NULL0
+#
+ospf 1 router-id 198.19.255.1
+ opaque-capability enable
+ area 0.0.0.0
+  network 198.19.255.1 0.0.0.0
+  mpls-te enable
+#
+snmp-agent
+snmp-agent local-engineid 800007DB03949010A6E4C1
+snmp-agent community read cipher %@%##!!!!!!!!!"!!!!"!!!!*!!!!7LTnVOK_g:nNpF"Diyo*3LGmFu\B%>u2un~!!!!!2jp5!!!!!!U!!!!YJvLFJ..d/IYQp+=VL9+!lFzU4K`9,mM'0;ld2TW[[|z%Iq}THfhny5<Z6l&X~\$9!!!!!!!!!!!!!!!%@%# alias __CommunityAliasName_01_19008
+#
+snmp-agent sys-info contact "Sartor Internet"
+snmp-agent sys-info location "CPD Sinop"
+snmp-agent sys-info version all
+#
+snmp-agent protocol source-interface LoopBack0
+undo snmp-agent protocol source-status all-interface
+undo snmp-agent protocol source-status ipv6 all-interface
+#
+undo snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+undo snmp-agent trap enable feature-name web trap-name hwPortalQuietUserClear
+#
+#
+stelnet server enable
+ssh server rsa-key min-length 3072
+ssh ipv4 server port 4721
+ssh ipv6 server port 4721
+ssh server-source all-interface
+undo ssh ipv6 server-source all-interface
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh server hmac sha2_512 sha2_256
+ssh server key-exchange dh_group_exchange_sha256 dh_group16_sha512 curve25519_sha256
+#
+ssh server publickey rsa_sha2_256 rsa_sha2_512
+#
+ssh server dh-exchange min-len 3072
+#
+ssh client publickey rsa_sha2_256 rsa_sha2_512
+#
+ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh client hmac sha2_512 sha2_256
+ssh client key-exchange dh_group_exchange_sha256 dh_group16_sha512 curve25519_sha256
+#
+tunnel-policy SNP-PAI-BRAS
+ tunnel binding destination 172.27.255.56 te Tunnel0
+#
+tunnel-policy sa
+#
+user-interface maximum-vty 5
+#
+user-interface con 0
+ authentication-mode password
+ set authentication password cipher $1d$y@V]59&&WQ@+2vRL$0K/;3w[0*Xjk)o~cVlZ)l2lH'u~'b7dg@5OI=`0'$
+#
+user-interface vty 0 4
+ authentication-mode aaa
+ protocol inbound ssh
+#
+ztp domain-type registration-center domain register.naas.huawei.com port 10020
+#
+web-manager enable port 8443
+web-manager http forward enable
+#
+return
+<SW-HU-CORE-SINOP>

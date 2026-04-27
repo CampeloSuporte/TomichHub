@@ -1,0 +1,648 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: CGNAT PATOS
+Host: 172.18.18.141:22
+Acesso: VIA PROXY SSH
+Modelo: CGNAT A10
+Template: Backup A10
+Data: 22/03/2026 19:48:12
+Executado por: lucas
+================================================================================
+
+
+============================================================
+Comando: enable
+============================================================
+                                     ^
+% Unrecognized command.Invalid input detected at '^' marker.
+
+CGN-PATOS-TH3030S-BOX1-vMaster[1/1]#
+
+============================================================
+Comando: terminal length 0
+============================================================
+CGN-PATOS-TH3030S-BOX1-vMaster[1/1]#
+
+============================================================
+Comando: show running-config
+============================================================
+!Current configuration: 11713 bytes     
+!Configuration last updated at 22:00:35 -03 Thu Mar 3 2016
+!Configuration last saved at 22:00:38 -03 Thu Mar 3 2016
+!64-bit Advanced Core OS (ACOS) version 4.1.4-GR1-P14, build 42 (May-22-2024,16:56)
+!
+vrrp-a common 
+  device-id 1 
+  set-id 1 
+  enable 
+  hello-interval 5 
+!
+device-context 1
+  vcs enable 
+!
+device-context 2
+  vcs enable 
+!
+vcs floating-ip 172.18.18.158 255.255.255.248 
+!
+vcs device 1 
+  interfaces ve 3001 
+  enable 
+!
+vcs device 2 
+  interfaces ve 3001 
+  enable 
+!
+access-list 1 permit 179.125.24.0 0.0.0.255 
+!
+access-list 1 permit 170.79.92.0 0.0.3.255 
+!
+access-list 1 permit 172.18.18.0 0.0.0.255 
+!
+access-list 1 permit 172.16.7.0 0.0.0.255 
+!
+access-list 1 permit 186.232.119.33 0.0.0.0 
+!
+access-list 1 permit 168.232.118.25 0.0.0.0 
+!
+access-list 1 permit 172.31.31.0 0.0.0.255 
+!
+access-list 100 permit tcp object-group MGMT any eq 22 
+!
+access-list 100 permit tcp object-group MGMT any eq 80 
+!
+access-list 100 permit tcp object-group MGMT any eq 443 
+!
+access-list 100 permit udp object-group MGMT any eq 161 
+!
+access-list 100 permit udp object-group MGMT any eq 123 
+!
+access-list 100 permit icmp code 0 any any 
+!
+access-list 100 permit icmp code 3 any any 
+!
+access-list 100 permit icmp code 8 any any 
+!
+admin-lockout duration 5 
+admin-lockout enable 
+!
+banner login ###################################################################################\n#        UNAUTHORIZED USE OF THIS SYSTEM IS STRICTLY PROHIBITED                   #\n#                 ____ ____  _____ _____ _   _    ____ ____ _   _                 #\n#                / ___|  _ \| ____| ____| \ | |  / ___/ ___| \ | |                #\n#               | |  _| |_) |  _| |  _| |  \| | | |  | |  _|  \| |                #\n#               | |_| |  _ <| |___| |___| |\  | | |__| |_| | |\  |                #\n#                \____|_| \_\_____|_____|_| \_|  \____\____|_| \_|                #\n#                                                                                 #\n#                  Please contact 'noc@greentelecom.net.br'                       #\n#         to gain access to this equipment if you need authorization              #\n#                                                                                 #\n###################################################################################
+!
+multi-config enable 
+!
+monitor disk 75 
+monitor memory 90 
+monitor ctrl-cpu 85 
+monitor data-cpu 85 
+!
+!
+system password-policy complexity Medium 
+!
+terminal history size 512 
+terminal idle-timeout 30 
+!
+allow-slb-cfg enable 
+!
+ip access-list FIREWALL-INSIDE 
+  deny tcp object-group CGNUSERS any eq 25 
+  deny tcp object-group CGNUSERS any range 135 139 
+  deny udp object-group CGNUSERS any range 135 139 
+  deny tcp object-group CGNUSERS any eq 445 
+  deny udp object-group CGNUSERS any eq 445 
+  deny tcp object-group CGNUSERS any eq 1900 
+  deny udp object-group CGNUSERS any eq 1900 
+  permit ip any any 
+!
+ip access-list FIREWALL-UPLINK 
+  deny tcp any object-group PUBLICIPS range 1 52 
+  deny tcp any object-group PUBLICIPS range 54 122 
+  deny tcp any object-group PUBLICIPS range 135 139 
+  deny udp any object-group PUBLICIPS range 135 139 
+  deny tcp any object-group PUBLICIPS eq 445 
+  deny udp any object-group PUBLICIPS eq 445 
+  deny tcp any object-group PUBLICIPS eq 1900 
+  deny udp any object-group PUBLICIPS eq 1900 
+  deny tcp any object-group PUBLICIPS range 124 1023 
+  deny udp any object-group PUBLICIPS range 1 52 
+  deny udp any object-group PUBLICIPS range 54 122 
+  deny udp any object-group PUBLICIPS range 124 1023 
+  permit ip any any 
+!
+ip access-list OSPF-IN 
+  deny ip 100.64.0.0 0.63.255.255 any 
+  permit ip any any 
+!
+ip anomaly-drop packet-deformity layer-3 
+ip anomaly-drop packet-deformity layer-4 
+ip anomaly-drop security-attack layer-3 
+ip anomaly-drop security-attack layer-4 
+ip anomaly-drop bad-content 127 
+ip anomaly-drop ip-option 
+ip anomaly-drop land-attack 
+ip anomaly-drop out-of-sequence 127 
+ip anomaly-drop ping-of-death 
+ip anomaly-drop tcp-no-flag 
+ip anomaly-drop tcp-syn-fin 
+ip anomaly-drop tcp-syn-frag 
+ip anomaly-drop zero-window 127 
+!
+device-context 1
+  ip frag cpu-threshold high 80 low 55 
+!
+device-context 2
+  ip frag cpu-threshold high 80 low 55 
+!
+ip tcp syn-cookie threshold 3 
+!
+ip dns primary 8.8.8.8 
+!
+ip dns secondary 1.1.1.1 
+!
+ip dns suffix greentelecom.net.br 
+!
+device-context 1
+  ip icmp disable redirect 
+  ip icmp disable unreachable 
+!
+device-context 2
+  ip icmp disable redirect 
+  ip icmp disable unreachable 
+!
+device-context 1
+  ip prefix-list BGP-IN seq 10 permit 0.0.0.0/0 
+!
+device-context 2
+  ip prefix-list BGP-IN seq 10 permit 0.0.0.0/0 
+!
+  ip prefix-list BGP-IN seq 20 permit 100.64.0.0/10 le 24 
+!
+vlan 1/2223 
+  router-interface ve 2223 
+  name VLAN-INSIDE 
+!
+vlan 1/2224 
+  tagged trunk 1
+  router-interface ve 2224 
+  name VLAN-OUTSIDE 
+!
+vlan 1/3000 
+  tagged trunk 1
+  router-interface ve 3000 
+  name VLAN-INSIDE 
+!
+vlan 1/3001 
+  tagged trunk 1
+  router-interface ve 3001 
+  name VLAN-SYNC 
+!
+vlan 2/2221 
+  tagged trunk 1
+  router-interface ve 2221 
+  name VLAN-INSIDE 
+!
+vlan 2/2222 
+  tagged trunk 1
+  router-interface ve 2222 
+  name VLAN-OUTSIDE 
+!
+vlan 2/2226 
+  tagged trunk 1
+  router-interface ve 2226 
+  name VLAN-OUTSIDE 
+!
+vlan 2/3000 
+  tagged trunk 1
+  router-interface ve 3000 
+  name VLAN-INSIDE 
+!
+vlan 2/3001 
+  tagged trunk 1
+  router-interface ve 3001 
+  name VLAN-SYNC 
+!
+device-context 1
+  ve-stats enable 
+!
+device-context 2
+  ve-stats enable 
+!
+device-context 2
+  lldp enable rx tx 
+!
+device-context 1
+  hostname CGN-PATOS-TH3030S-BOX1 
+!
+device-context 2
+  hostname CGN-CARMO-3030S-BOX2 
+!
+device-context 1
+  timezone America/Brasilia 
+!
+device-context 2
+  timezone America/Brasilia 
+!
+system-jumbo-global enable-jumbo 
+!
+web-service auto-redirt disable 
+web-service axapi-timeout-policy idle 30 
+web-service axapi-session-limit 100 
+web-service login-message "------------------------------------------\r\nGreen Telecom LTDA\r\nhttp://www.greentelecom.net.br/\r\nnoc@greentelecom.net.br\r\nTH3030S - CGNAT\r\nMGMT - 172.31.31.31\r\n-------------------------------------------\r\n" 
+!
+device-context 1
+  interface management 
+    ip default-gateway 172.31.31.1 
+!
+interface ethernet 1/1 
+!
+interface ethernet 1/2 
+!
+interface ethernet 1/3 
+!
+interface ethernet 1/4 
+!
+interface ethernet 1/5 
+!
+interface ethernet 1/6 
+!
+interface ethernet 1/7 
+!
+interface ethernet 1/8 
+!
+interface ethernet 1/9 
+  mtu 9216 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 1/10 
+  mtu 9216 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 1/11 
+  mtu 9216 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 1/12 
+  mtu 9216 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 2/1 
+!
+interface ethernet 2/2 
+!
+interface ethernet 2/3 
+!
+interface ethernet 2/4 
+!
+interface ethernet 2/5 
+!
+interface ethernet 2/6 
+!
+interface ethernet 2/7 
+!
+interface ethernet 2/8 
+!
+interface ethernet 2/9 
+  name NE8000-GI-0/7/1 
+  mtu 9216 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 2/10 
+  name NE8000-GI-0/7/7 
+  mtu 9216 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 2/11 
+  name NE8000-GI-0/7/8 
+  mtu 9216 
+  flow-control 
+  enable 
+  trunk-group 1 lacp 
+    timeout short 
+!
+interface ethernet 2/12 
+!
+interface ve 1/2223 
+!
+interface ve 1/2224 
+  name TRAFFIC-OUTSIDE 
+  access-list name FIREWALL-UPLINK in 
+  ip address 172.18.18.146 255.255.255.252 
+  ip nat outside 
+!
+interface ve 1/3000 
+  name TRAFFIC-INSIDE 
+  access-list name FIREWALL-INSIDE in 
+  ip address 172.18.18.138 255.255.255.248 
+  ip nat inside 
+!
+interface ve 1/3001 
+  ip address 172.18.18.154 255.255.255.248 
+!
+interface ve 2/2221 
+  name TRAFFIC-INSIDE 
+  access-list name FIREWALL-INSIDE in 
+  ip address 172.18.18.94 255.255.255.252 
+  ip nat inside 
+!
+interface ve 2/2222 
+  name TRAFFIC-OUTSIDE 
+  access-list name FIREWALL-UPLINK in 
+  ip address 172.18.18.98 255.255.255.252 
+  ip nat outside 
+!
+interface ve 2/2226 
+  name TRAFFIC-OUTSIDE 
+  access-list name FIREWALL-UPLINK in 
+  ip address 172.18.18.150 255.255.255.252 
+  ip nat outside 
+!
+interface ve 2/3000 
+  name TRAFFIC-INSIDE 
+  access-list name FIREWALL-INSIDE in 
+  ip address 172.18.18.140 255.255.255.248 
+  ip nat inside 
+!
+interface ve 2/3001 
+  name TRAFFIC-SYNC 
+  ip address 172.18.18.155 255.255.255.248 
+!
+device-context 1
+  vrrp-a fail-over-policy-template TRACK-DEFAULT 
+    trunk 1 weight 255 
+    route 0.0.0.0 0.0.0.0 weight 255 
+!
+device-context 2
+  vrrp-a fail-over-policy-template TRACK-DEFAULT 
+    trunk 1 weight 255 
+    route 0.0.0.0 0.0.0.0 weight 255 
+!
+vrrp-a vrid 0 
+  floating-ip 172.18.18.141 
+  device-context 1
+    blade-parameters 
+      priority 255 
+      fail-over-policy-template TRACK-DEFAULT 
+  device-context 2
+    blade-parameters 
+      priority 155 
+      fail-over-policy-template TRACK-DEFAULT 
+!
+vrrp-a vrid 1 
+  floating-ip 172.18.18.142 
+  device-context 1
+    blade-parameters 
+      priority 155 
+      fail-over-policy-template TRACK-DEFAULT 
+  device-context 2
+    blade-parameters 
+      priority 255 
+      fail-over-policy-template TRACK-DEFAULT 
+!
+vrrp-a interface trunk 1/1 
+  vlan 3000 
+!
+vrrp-a interface trunk 2/1 
+  vlan 3000 
+!
+device-context 1
+  enable-management service ssh 
+    ve 2224
+    ve 3000 to 3001 
+!
+device-context 2
+  enable-management service ssh 
+    ve 2226
+    ve 3000 to 3001 
+!
+device-context 2
+  enable-management service snmp 
+    ve 2221 to 2222 
+!
+device-context 1
+  enable-management service acl-v4 1 
+    management 
+!
+device-context 1
+  enable-management service acl-v4 100 
+    ve 2223 to 2224 
+!
+device-context 2
+  enable-management service acl-v4 1 
+    management 
+!
+device-context 2
+  enable-management service acl-v4 100 
+    ve 2226
+    ve 3000
+!
+device-context 1
+  ip route 100.64.0.0 /10 172.18.18.137 
+!
+device-context 2
+  ip route 100.64.0.0 /10 172.18.18.139 
+!
+ip-list POOL01-CARMO-INSIDE 
+  100.64.0.0 to 100.64.15.255 
+!
+ip-list POOL01-CARMO-OUTSIDE 
+  170.79.92.128 to 170.79.92.255 
+!
+ip-list POOL01-PATOS-INSIDE 
+  100.66.0.0 to 100.66.15.255 
+!
+ip-list POOL01-PATOS-OUTSIDE 
+  170.79.95.128 to 170.79.95.255 
+!
+ip-list POOL02-CARMO-INSIDE 
+  100.64.16.0 to 100.64.19.255 
+!
+ip-list POOL02-CARMO-OUTSIDE 
+  170.79.92.96 to 170.79.92.127 
+!
+ip-list POOL02-PATOS-INSIDE 
+  100.66.16.0 to 100.66.19.255 
+!
+ip-list POOL02-PATOS-OUTSIDE 
+  170.79.95.96 to 170.79.95.127 
+!
+cgnv6 ddos-protection packets-per-second ip 30000 action drop expiration 120 
+cgnv6 ddos-protection packets-per-second tcp 20000 
+cgnv6 ddos-protection packets-per-second udp 25000 
+cgnv6 ddos-protection packets-per-second other 12000 
+cgnv6 ddos-protection disable-nat-ip-by-bgp zone DDOS-ATTACK 
+!
+cgnv6 translation icmp-timeout fast 
+!
+cgnv6 translation service-timeout tcp 3389 600 
+!
+cgnv6 translation service-timeout tcp 1723 600 
+!
+cgnv6 translation service-timeout tcp 500 600 
+!
+cgnv6 translation service-timeout tcp 3306 600 
+!
+cgnv6 translation service-timeout tcp 4500 600 
+!
+cgnv6 translation service-timeout udp 500 600 
+!
+cgnv6 translation service-timeout udp 4500 600 
+!
+cgnv6 translation service-timeout udp 53 120 
+!
+cgnv6 lsn alg esp enable 
+!
+cgnv6 lsn alg pptp enable 
+!
+cgnv6 lsn alg rtsp enable 
+!
+cgnv6 lsn alg sip enable 
+!
+cgnv6 lsn alg mgcp enable 
+!
+cgnv6 lsn alg h323 enable 
+!
+cgnv6 lsn alg tftp enable 
+!
+cgnv6 lsn endpoint-independent-mapping tcp 
+  port 1 to 65535 
+!
+cgnv6 lsn endpoint-independent-mapping udp 
+  port 1 to 65535 
+!
+cgnv6 lsn endpoint-independent-filtering tcp 
+  port 1 to 65535 
+  session-limit 4096 
+!
+cgnv6 lsn endpoint-independent-filtering udp 
+  port 1 to 65535 
+  session-limit 4096 
+!
+cgnv6 lsn syn-timeout 3 
+cgnv6 lsn half-close-timeout 6 
+!
+cgnv6 nat icmp respond-to-ping 
+!
+cgnv6 resource-usage lsn-nat-addr-count 2048 
+cgnv6 resource-usage fixed-nat-ip-addr-count 4096 
+!
+cgnv6 lsn-rule-list DESTRULES 
+  ip 192.168.2.2/32 
+    tcp port 0 action pass-through 
+    udp port 0 action pass-through 
+    icmp action pass-through 
+    others action pass-through 
+!
+cgnv6 fixed-nat create-port-mapping-file 
+cgnv6 fixed-nat port-mapping-files-count 10 
+!
+cgnv6 fixed-nat inside ip-list POOL01-CARMO-INSIDE nat ip-list POOL01-CARMO-OUTSIDE vrid 1 dest-rule-list DESTRULES method use-all-nat-ips offset 0 respond-to-user-mac session-quota 20480 
+!
+cgnv6 fixed-nat inside ip-list POOL01-PATOS-INSIDE nat ip-list POOL01-PATOS-OUTSIDE dest-rule-list DESTRULES method use-all-nat-ips offset 0 respond-to-user-mac session-quota 20480 
+!
+cgnv6 fixed-nat inside ip-list POOL02-CARMO-INSIDE nat ip-list POOL02-CARMO-OUTSIDE vrid 1 dest-rule-list DESTRULES method use-all-nat-ips respond-to-user-mac 
+!
+cgnv6 fixed-nat inside ip-list POOL02-PATOS-INSIDE nat ip-list POOL02-PATOS-OUTSIDE dest-rule-list DESTRULES method use-all-nat-ips respond-to-user-mac 
+!
+device-context 1
+  bgp extended-asn-cap 
+!
+device-context 2
+  bgp extended-asn-cap 
+!
+device-context 1
+  router bgp 266296 
+    neighbor 172.18.18.145 remote-as 266296 
+    neighbor 172.18.18.145 route-map BGP-IN in 
+    neighbor 172.18.18.145 soft-reconfiguration inbound 
+    redistribute ip-nat 
+!
+device-context 2
+  router bgp 266296 
+    neighbor 172.18.18.149 remote-as 266296 
+    neighbor 172.18.18.149 route-map BGP-IN in 
+    neighbor 172.18.18.149 soft-reconfiguration inbound 
+    redistribute ip-nat 
+!
+device-context 1
+  route-map BGP-IN permit 10 
+    match ip address prefix-list BGP-IN 
+    set local-preference 1000 
+!
+device-context 2
+  route-map BGP-IN permit 10 
+    match ip address prefix-list BGP-IN 
+    set local-preference 1000 
+!
+sflow setting local-collection 
+!
+sflow collector ip 127.0.0.1 6343 
+!
+snmp-server contact noc@greentelecom.net.br 
+!
+snmp-server location "XXX - YY" 
+!
+snmp-server SNMPv1-v2c user ZABBIX 
+  community read encrypted Tt9RodILZ4bcWb0yweabR2D6Ey19jtexiRnbc/1Gv/0WZPRdCKKHdZbB5Y3W6R13 
+  remote 192.0.2.2 255.255.255.255 
+!
+snmp-server enable service 
+!
+!
+device-context 1
+  snmp-server enable traps routing bgp bgpEstablishedNotification 
+  snmp-server enable traps routing bgp bgpBackwardTransNotification 
+!
+device-context 2
+  snmp-server enable traps routing bgp bgpEstablishedNotification 
+  snmp-server enable traps routing bgp bgpBackwardTransNotification 
+!
+snmp-server enable traps snmp linkdown 
+snmp-server enable traps snmp linkup 
+!
+snmp-server enable traps vcs state-change 
+!
+snmp-server enable traps system control-cpu-high 
+snmp-server enable traps system data-cpu-high 
+snmp-server enable traps system file-sys-read-only 
+snmp-server enable traps system high-disk-use 
+snmp-server enable traps system high-memory-use 
+snmp-server enable traps system license-management 
+snmp-server enable traps system packet-drop 
+snmp-server enable traps system power 
+snmp-server enable traps system pri-disk 
+snmp-server enable traps system restart 
+snmp-server enable traps system sec-disk 
+snmp-server enable traps system shutdown 
+snmp-server enable traps system start 
+!
+snmp-server enable traps network trunk-port-threshold 
+!
+!
+object-group network CGNUSERS 
+  100.64.0.0 0.63.255.255 
+!
+object-group network MGMT 
+  179.125.24.0 0.0.0.255 
+  172.16.0.0 0.15.255.255 
+!
+object-group network PUBLICIPS 
+  170.79.92.128 0.0.0.127 
+  170.79.95.128 0.0.0.127 
+  170.79.92.96 0.0.0.31 
+!
+end
+!Current config commit point for partition 0 is 0 & config mode is classical-mode
+CGN-PATOS-TH3030S-BOX1-vMaster[1/1]#

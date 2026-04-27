@@ -1,0 +1,113 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Agiliza Assessoria e Consultoria Empresarial LTDA ME
+Equipamento: SW VENTURA MORADA
+Host: 172.31.1.4:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS326-24s+2Q+
+Template: Backup Mikrotik
+Data: 27/04/2026 00:10:49
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/27/2026 00:09:57 by RouterOS 6.47.9
+# software id = RXSP-0VTK
+#
+# model = CRS326-24S+2Q+
+# serial number = D84E0EB8D2AC
+/interface bridge add admin-mac=2C:C8:1B:CD:9D:6C auto-mac=no comment=defconf name=bridge priority=0x3000 protocol-mode=mstp vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] speed=1Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] comment="ROTA 1  (LARANJEIRAS) - POP VILLAGGIO LARANJEIRAS/ POP VENTURA MORADA"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] comment="ROTA 2 (ES-010 PARREIRAL) POP VILLAGGIO LARANJEIRAS/ POP VENTURA MORADA"
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="ROTA-2 ES010 UNESC AV TALMA RODRIGUES/  ANEL 10G DEDICADO TRIGALI BOM BISCOITO"
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] comment="SAIDA ponto a ponto optico CASTELANDIA"
+/interface ethernet set [ find default-name=sfp-sfpplus10 ] auto-negotiation=no
+/interface ethernet set [ find default-name=sfp-sfpplus18 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="LACP - OLT HUAWEI - PORTA 2"
+/interface ethernet set [ find default-name=sfp-sfpplus19 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="LACP - OLT HUAWEI - PORTA 3"
+/interface ethernet set [ find default-name=sfp-sfpplus21 ] comment="UPLINK OLT HUAWEI" disabled=yes
+/interface ethernet set [ find default-name=sfp-sfpplus22 ] comment="UPLINK OLT HUAWEI" disabled=yes speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus23 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="UPLINK OLT-3 BOULEVARD LAGOA DIGISTAR DOLT-14416 / 172.17.22.2/30"
+/interface ethernet set [ find default-name=sfp-sfpplus24 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full comment="UPLINK OLT-2 VENTURA DIGISTAR  DOLT-14416 / 172.17.23.2/30" speed=10Gbps
+/interface vlan add interface=sfp-sfpplus23 name=vlan4 vlan-id=4
+/interface vlan add interface=sfp-sfpplus24 name=vlan5 vlan-id=5
+/interface vlan add interface=bridge name="vlan3010-GERENCIA SWITCHS" vlan-id=3010
+/interface bonding add mode=802.3ad name=bonding1-LACP-VILLAGGIO-LARANJEIRAS slaves=sfp-sfpplus1,sfp-sfpplus2
+/interface bonding add mode=802.3ad name=bonding2-OLT-HUAWEI slaves=sfp-sfpplus18,sfp-sfpplus19 transmit-hash-policy=layer-2-and-3
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/ip hotspot profile set [ find default=yes ] html-directory=flash/hotspot
+/snmp community set [ find default=yes ] disabled=yes name=GSS-AGILIZA
+/snmp community add addresses=::/0 name=TOMICH
+/interface bridge msti add bridge=bridge identifier=1 vlan-mapping=3030
+/interface bridge port add bridge=bridge comment=defconf interface=ether1
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-1
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-2
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-3
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus1-4
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-1
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-2
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-3
+/interface bridge port add bridge=bridge comment=defconf interface=qsfpplus2-4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus3
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus4
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus5
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus6 pvid=609
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus7
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus8
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus9
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus10
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus11
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus12
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus13
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus14
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus15
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus16
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus17
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=sfp-sfpplus18
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=sfp-sfpplus19
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus20
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=sfp-sfpplus21
+/interface bridge port add bridge=bridge comment=defconf disabled=yes interface=sfp-sfpplus22
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus23
+/interface bridge port add bridge=bridge comment=defconf interface=sfp-sfpplus24
+/interface bridge port add bridge=bridge interface=bonding1-LACP-VILLAGGIO-LARANJEIRAS path-cost=5
+/interface bridge port add bridge=bridge interface=bonding2-OLT-HUAWEI
+/ip neighbor discovery-settings set discover-interface-list=all
+/interface bridge vlan add bridge=bridge comment="VLAN PARA OLT" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus24 vlan-ids=16
+/interface bridge vlan add bridge=bridge comment="VLAN ACESSO OLT BOULEVARD LAGOA" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,*26,sfp-sfpplus4 vlan-ids=3004
+/interface bridge vlan add bridge=bridge comment="VLANS PORTAS PON OLT BOULEVARD LAGOA" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus23,sfp-sfpplus4 vlan-ids=300-316,610
+/interface bridge vlan add bridge=bridge comment=UNESC disabled=yes tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus10 vlan-ids=1100
+/interface bridge vlan add bridge=bridge comment=UNESC tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus23,sfp-sfpplus4 vlan-ids=1110
+/interface bridge vlan add bridge=bridge comment="OLT VENTURA" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus24,sfp-sfpplus4 vlan-ids=200-216
+/interface bridge vlan add bridge=bridge comment="PPPoE SIERRA LOG MATRIZ" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,*26,sfp-sfpplus4 vlan-ids=1101
+/interface bridge vlan add bridge=bridge comment="PPPoE TRIGALI" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,*26,sfp-sfpplus4 vlan-ids=1102
+/interface bridge vlan add bridge=bridge comment="PPPoE PDV" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,*26,sfp-sfpplus4 vlan-ids=1104,1201
+/interface bridge vlan add bridge=bridge comment="PPPoE MARKET" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,*26,sfp-sfpplus4 vlan-ids=1105
+/interface bridge vlan add bridge=bridge comment="PPPoE JACARAIPE" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus23,sfp-sfpplus4 untagged=sfp-sfpplus6 vlan-ids=609
+/interface bridge vlan add bridge=bridge comment="PPPoE SIERRA LOG FILIAL" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus4 vlan-ids=1107
+/interface bridge vlan add bridge=bridge comment="PPPoE ABR-TOPMAX" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,*26,sfp-sfpplus4 vlan-ids=1108
+/interface bridge vlan add bridge=bridge comment="GERENCIA SWITCHS" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus4,bridge vlan-ids=3010
+/interface bridge vlan add bridge=bridge comment="CLIENTE NACIONAL GAS" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus4 vlan-ids=1109
+/interface bridge vlan add bridge=bridge comment="VLAN GERENCIA OLT" tagged=bonding1-LACP-VILLAGGIO-LARANJEIRAS,sfp-sfpplus22,sfp-sfpplus21,bonding2-OLT-HUAWEI vlan-ids=40,500
+/ip address add address=172.31.1.4/28 comment="IP GERENCIA" interface="vlan3010-GERENCIA SWITCHS" network=172.31.1.0
+/ip address add address=172.17.23.1/30 comment="OLT DIGISTAR" interface=vlan5 network=172.17.23.0
+/ip address add address=172.17.22.1/30 comment="Classe IP Gerencia OLT 3 " interface=vlan4 network=172.17.22.0
+/ip route add check-gateway=ping distance=1 gateway=172.31.1.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/ip tftp add disabled=yes ip-addresses=172.17.23.2 read-only=no real-filename=firm_maple_3.11q.img req-filename=firm_maple_3.11q.img
+/ip tftp add disabled=yes ip-addresses=172.17.22.2 read-only=no real-filename=firm_maple_3.11s.img req-filename=firm_maple_3.11s.img
+/snmp set enabled=yes trap-community=TOMICH trap-version=2
+/system identity set name="SWITCH  POP VENTURA MORADA"
+/system routerboard settings set boot-os=router-os
+/tool romon set enabled=yes id=00:00:00:00:00:22 secrets=Net.10
+

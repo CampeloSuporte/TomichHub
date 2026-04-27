@@ -433,7 +433,6 @@ def api_visualizar_fatura(request, fatura_id):
 # ============================================
 # HELPERS
 # ============================================
-
 def gerar_numero_fatura_unico():
     try:
         with transaction.atomic():
@@ -460,6 +459,41 @@ def gerar_numero_fatura_unico():
 
     except Exception as e:
         print(f"❌ Erro ao gerar número de fatura: {str(e)}")
+        raise
+
+    
+def gerar_numero_recibo_unico():
+    """
+    Gera número de recibo único com lock (thread-safe).
+    Usa select_for_update() para evitar race conditions.
+    
+    Retorna: 'REC00000001', 'REC00000002', etc.
+    """
+    try:
+        with transaction.atomic():
+            prefixo = 'REC'
+
+            ultimo_recibo = (
+                Pagamento.objects.filter(numero_recibo__startswith=prefixo)
+                .select_for_update()  # ← LOCK na base de dados
+                .order_by('-numero_recibo')
+                .first()
+            )
+
+            if ultimo_recibo:
+                try:
+                    # Extrai os últimos 8 dígitos (REC + 8 dígitos)
+                    ultimo_numero = int(ultimo_recibo.numero_recibo[-8:])
+                    novo_numero = ultimo_numero + 1
+                except (ValueError, IndexError):
+                    novo_numero = 1
+            else:
+                novo_numero = 1
+
+            return f"{prefixo}{novo_numero:08d}"
+
+    except Exception as e:
+        print(f"❌ Erro ao gerar número de recibo: {str(e)}")
         raise
 
 
@@ -1382,7 +1416,7 @@ def api_registrar_pagamento(request):
 
         ano_mes = datetime.now().strftime('%Y%m')
         contador = Pagamento.objects.filter(numero_recibo__startswith='REC').count() + 1
-        numero_recibo = f"REC{ano_mes}{contador:05d}"
+        numero_recibo = gerar_numero_recibo_unico()
 
         pagamento = Pagamento.objects.create(
             fatura=fatura,

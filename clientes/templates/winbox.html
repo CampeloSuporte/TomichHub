@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinBox 4 — {{ acesso.tipo }} {{ acesso.host }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:        #0a0a0a;
+            --bg2:       #111111;
+            --bg3:       #1a1a1a;
+            --border:    #222;
+            --cyan:      #00d9ff;
+            --green:     #00ff88;
+            --red:       #ff4444;
+            --orange:    #ffa500;
+            --text:      #e2e8f0;
+            --muted:     #475569;
+            --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-mono);
+            overflow: hidden;
+        }
+
+        /* ── LAYOUT ──────────────────────────────── */
+        .wb-wrapper {
+            display: flex; flex-direction: column;
+            height: 100vh; width: 100vw;
+        }
+
+        /* ── TOOLBAR ─────────────────────────────── */
+        .wb-toolbar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 14px;
+            background: var(--bg2);
+            border-bottom: 2px solid var(--cyan);
+            flex-shrink: 0; min-height: 48px;
+        }
+
+        .wb-logo {
+            display: flex; align-items: center; gap: 8px;
+            flex-shrink: 0;
+        }
+        .wb-logo svg { width: 22px; height: 22px; }
+        .wb-logo-text {
+            font-size: 13px; font-weight: 700;
+            color: var(--cyan); letter-spacing: 1px;
+            white-space: nowrap;
+        }
+        .wb-logo-version {
+            font-size: 10px; color: var(--muted);
+            background: var(--bg3); border: 1px solid var(--border);
+            padding: 1px 6px; border-radius: 2px; margin-left: 2px;
+        }
+
+        .wb-separator {
+            width: 1px; height: 20px; background: var(--border); flex-shrink: 0;
+        }
+
+        .wb-device-info {
+            display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+        }
+        .wb-device-host {
+            color: var(--green); font-size: 12px; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .wb-device-type {
+            color: var(--muted); font-size: 11px; white-space: nowrap;
+        }
+
+        /* Status badge */
+        .wb-status {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 11px; flex-shrink: 0;
+            padding: 4px 10px; border-radius: 3px;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            transition: all 0.3s;
+        }
+        .wb-status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--muted); flex-shrink: 0;
+            transition: background 0.3s;
+        }
+        .wb-status.connecting .wb-status-dot {
+            background: var(--orange);
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+        .wb-status.connected {
+            border-color: rgba(0,255,136,.35);
+            background: rgba(0,255,136,.06);
+            color: var(--green);
+        }
+        .wb-status.connected .wb-status-dot { background: var(--green); animation: none; }
+        .wb-status.error {
+            border-color: rgba(255,68,68,.35);
+            background: rgba(255,68,68,.06);
+            color: var(--red);
+        }
+        .wb-status.error .wb-status-dot { background: var(--red); animation: none; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .wb-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .wb-btn {
+            background: var(--bg3); border: 1px solid var(--border);
+            color: var(--muted); height: 30px; padding: 0 10px;
+            border-radius: 3px; cursor: pointer;
+            font-family: var(--font-mono); font-size: 11px;
+            display: flex; align-items: center; gap: 5px;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .wb-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+        .wb-btn:active { background: rgba(0,217,255,.08); }
+        .wb-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+        /* ── BODY ────────────────────────────────── */
+        .wb-body { flex: 1; overflow: hidden; position: relative; }
+
+        /* ── SPLASH (antes de conectar) ──────────── */
+        .wb-splash {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 24px;
+            background: var(--bg);
+            z-index: 10;
+            transition: opacity 0.4s;
+        }
+        .wb-splash.hidden { opacity: 0; pointer-events: none; }
+
+        .wb-splash-ring {
+            width: 72px; height: 72px;
+            border: 3px solid var(--bg3);
+            border-top-color: var(--cyan);
+            border-right-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .wb-splash-ring.error-ring { border-color: var(--bg3); border-top-color: var(--red); }
+        .wb-splash-ring.idle-ring { animation: none; border-color: var(--border); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .wb-splash-msg {
+            text-align: center; max-width: 420px;
+        }
+        .wb-splash-msg h2 {
+            font-size: 16px; font-weight: 700; color: var(--cyan);
+            margin-bottom: 8px; letter-spacing: 0.5px;
+        }
+        .wb-splash-msg p {
+            font-size: 12px; color: var(--muted); line-height: 1.7;
+        }
+        .wb-splash-msg code {
+            background: var(--bg3); border: 1px solid var(--border);
+            color: var(--green); padding: 2px 6px; border-radius: 2px; font-size: 11px;
+        }
+
+        .wb-connect-btn {
+            background: rgba(0,255,136,.1); border: 1px solid var(--green);
+            color: var(--green); padding: 10px 24px; border-radius: 4px;
+            cursor: pointer; font-family: var(--font-mono); font-size: 13px;
+            font-weight: 700; letter-spacing: 1px;
+            transition: all 0.2s; display: none;
+        }
+        .wb-connect-btn:hover {
+            background: rgba(0,255,136,.2);
+            box-shadow: 0 0 20px rgba(0,255,136,.2);
+        }
+        .wb-connect-btn.show { display: block; }
+
+        /* ── LOG DE CONEXÃO ──────────────────────── */
+        .wb-log {
+            font-size: 11px; color: var(--muted);
+            max-height: 80px; overflow-y: auto;
+            text-align: left; width: 100%; max-width: 500px;
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 4px; padding: 8px 12px;
+            scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+        }
+        .wb-log-line { line-height: 1.8; }
+        .wb-log-line.ok  { color: var(--green); }
+        .wb-log-line.err { color: var(--red); }
+        .wb-log-line.info { color: var(--cyan); }
+
+        /* ── IFRAME DO WINBOX 4 ──────────────────── */
+        .wb-frame {
+            width: 100%; height: 100%;
+            border: none;
+            display: none;
+            background: #fff;
+        }
+        .wb-frame.show { display: block; }
+
+        /* ── FALLBACK (sem arquivos WinBox 4) ────── */
+        .wb-fallback {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 18px;
+            background: var(--bg);
+        }
+        .wb-fallback-box {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 8px; padding: 36px 44px;
+            text-align: center; max-width: 520px;
+        }
+        .wb-fallback-icon { font-size: 48px; margin-bottom: 16px; }
+        .wb-fallback-box h2 {
+            font-size: 18px; font-weight: 700; color: var(--cyan);
+            margin-bottom: 12px;
+        }
+        .wb-fallback-box p {
+            font-size: 12px; color: var(--muted); line-height: 1.8; margin-bottom: 8px;
+        }
+        .wb-fallback-steps {
+            background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 4px; padding: 12px 16px; margin: 16px 0;
+            text-align: left;
+        }
+        .wb-fallback-steps li {
+            font-size: 12px; color: var(--muted); line-height: 2; list-style: none;
+        }
+        .wb-fallback-steps li::before { content: '▸ '; color: var(--cyan); }
+        .wb-fallback-steps code {
+            background: #0a0a0a; border: 1px solid #1e1e1e;
+            color: var(--green); padding: 1px 5px; border-radius: 2px;
+            font-size: 10px;
+        }
+        .wb-fallback-link {
+            display: inline-block; margin-top: 6px;
+            background: rgba(0,217,255,.1); border: 1px solid var(--cyan);
+            color: var(--cyan); padding: 8px 20px; border-radius: 3px;
+            font-size: 12px; text-decoration: none; font-family: var(--font-mono);
+            transition: all 0.2s;
+        }
+        .wb-fallback-link:hover { background: rgba(0,217,255,.2); }
+
+        /* ── BARRA DE LOADING ────────────────────── */
+        .wb-loadbar {
+            height: 2px; background: var(--bg3); flex-shrink: 0;
+            overflow: hidden;
+        }
+        .wb-loadbar-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, var(--cyan), var(--green));
+            transition: width 0.4s ease;
+        }
+
+        /* ── TOAST ───────────────────────────────── */
+        .wb-toast {
+            position: fixed; bottom: 16px; right: 16px;
+            background: var(--bg2); border: 1px solid var(--cyan);
+            color: var(--cyan); padding: 8px 16px; border-radius: 4px;
+            font-size: 11px; font-family: var(--font-mono);
+            z-index: 9999; opacity: 0; transform: translateY(8px);
+            transition: all 0.25s; pointer-events: none;
+        }
+        .wb-toast.show { opacity: 1; transform: translateY(0); }
+        .wb-toast.err { border-color: var(--red); color: var(--red); }
+    </style>
+</head>
+<body>
+
+<div class="wb-wrapper">
+
+    <!-- TOOLBAR -->
+    <div class="wb-toolbar">
+        <div class="wb-logo">
+            <!-- Logo MikroTik simplificado -->
+            <svg viewBox="0 0 22 22" fill="none">
+                <rect width="22" height="22" rx="4" fill="#00d9ff" opacity="0.15"/>
+                <path d="M4 6h4l3 10 3-10h4" stroke="#00d9ff" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="wb-logo-text">WinBox</span>
+            <span class="wb-logo-version">v4</span>
+        </div>
+
+        <div class="wb-separator"></div>
+
+        <div class="wb-device-info">
+            <span class="wb-device-host">{{ acesso.host }}</span>
+            <span class="wb-device-type">· {{ acesso.tipo }}</span>
+        </div>
+
+        <div id="wbStatus" class="wb-status connecting">
+            <div class="wb-status-dot"></div>
+            <span id="wbStatusText">Conectando…</span>
+        </div>
+
+        <div class="wb-actions">
+            <button class="wb-btn" onclick="reconectar()" title="Reconectar">↺ Reconectar</button>
+            <button class="wb-btn" onclick="abrirNovaAba()" title="Abrir em nova aba">⤢ Nova aba</button>
+        </div>
+    </div>
+
+    <!-- BARRA DE PROGRESSO -->
+    <div class="wb-loadbar">
+        <div class="wb-loadbar-fill" id="wbLoadbar"></div>
+    </div>
+
+    <!-- BODY -->
+    <div class="wb-body" id="wbBody">
+
+        {% if winbox4_disponivel %}
+        <!-- ── SPLASH DE CONEXÃO ──────────────────── -->
+        <div class="wb-splash" id="wbSplash">
+            <div class="wb-splash-ring" id="wbRing"></div>
+            <div class="wb-splash-msg">
+                <h2 id="wbSplashTitle">Estabelecendo conexão</h2>
+                <p id="wbSplashDesc">
+                    Conectando WinBox 4 ao equipamento<br>
+                    <strong style="color:#e2e8f0">{{ acesso.tipo }}</strong>
+                    em <strong style="color:#00d9ff">{{ acesso.host }}:8291</strong>
+                </p>
+            </div>
+            <div class="wb-log" id="wbLog"></div>
+            <button class="wb-connect-btn" id="wbRetryBtn" onclick="iniciarConexao()">
+                ↺ Tentar novamente
+            </button>
+        </div>
+
+        <!-- ── IFRAME WINBOX 4 ────────────────────── -->
+        <iframe
+            id="wbFrame"
+            class="wb-frame"
+            src="{% static 'winbox4/index.html' %}"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+            title="WinBox 4">
+        </iframe>
+
+        {% else %}
+        <!-- ── FALLBACK: arquivos não encontrados ─── -->
+        <div class="wb-fallback">
+            <div class="wb-fallback-box">
+                <div class="wb-fallback-icon">📦</div>
+                <h2>WinBox 4 Web não instalado</h2>
+                <p>
+                    Os arquivos do WinBox 4 (versão Web/WASM) não foram encontrados
+                    no servidor. Siga os passos abaixo:
+                </p>
+                <ul class="wb-fallback-steps">
+                    <li>Acesse <strong>mikrotik.com/download</strong></li>
+                    <li>Baixe <strong>WinBox 4 → Web (WASM)</strong></li>
+                    <li>Extraia o ZIP: <code>unzip winbox4-web.zip -d /opt/crm/static/winbox4/</code></li>
+                    <li>Execute: <code>python manage.py collectstatic</code></li>
+                    <li>Recarregue esta página</li>
+                </ul>
+                <a href="https://mikrotik.com/download"
+                   target="_blank" class="wb-fallback-link">
+                    ↗ Ir para mikrotik.com/download
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+    </div><!-- /wb-body -->
+</div><!-- /wb-wrapper -->
+
+<div class="wb-toast" id="wbToast"></div>
+
+{% if winbox4_disponivel %}
+<script>
+// ============================================================
+// CONFIGURAÇÃO — injetada pelo Django
+// ============================================================
+const WB_ACESSO_ID  = {{ acesso.id }};
+const WB_ROUTER_IP  = '{{ acesso.host }}';
+const WB_ROUTER_USER = '{{ acesso.usuario|escapejs }}';
+const WB_WS_SCHEME  = '{{ ws_scheme }}';
+const WB_WS_HOST    = '{{ ws_host }}';
+const WB_PROXY_URL  = `${WB_WS_SCHEME}://${WB_WS_HOST}/ws/winbox/`;
+
+// ============================================================
+// ESTADO
+// ============================================================
+let _ws        = null;
+let _connected = false;
+let _logLines  = 0;
+
+// ============================================================
+// INTERCEPTOR DE WEBSOCKET
+// Deve ser injetado ANTES que o iframe do WinBox 4 carregue.
+// Quando o WinBox 4 WASM tenta abrir ws://[router]:8291,
+// redirecionamos para nosso proxy Django Channels.
+// ============================================================
+const _OrigWebSocket = window.WebSocket;
+
+window.WebSocket = class ProxyWebSocket extends _OrigWebSocket {
+    constructor(url, protocols) {
+        let destUrl = url;
+
+        // Interceptar qualquer tentativa de conexão WinBox ao router
+        if (typeof url === 'string') {
+            const lower = url.toLowerCase();
+            const isWinboxPort = lower.includes(':8291');
+            const isRouterHost = lower.includes(WB_ROUTER_IP);
+            const isWinboxPath = lower.includes('/winbox');
+
+            if (isWinboxPort || isRouterHost || isWinboxPath) {
+                destUrl = WB_PROXY_URL;
+                console.log('[CONEXA WinBox] Interceptado:', url, '→', destUrl);
+                wbLog(`Interceptado: ${url}`, 'info');
+            }
+        }
+
+        super(destUrl, protocols);
+
+        // Se é conexão interceptada: enviar handshake de autenticação
+        if (destUrl === WB_PROXY_URL) {
+            this.addEventListener('open', () => {
+                this.send(JSON.stringify({
+                    action    : 'connect',
+                    acesso_id : WB_ACESSO_ID,
+                }));
+            });
+
+            this.addEventListener('message', (evt) => {
+                // Mensagens JSON de status (text) vs dados binários do protocolo
+                if (typeof evt.data === 'string') {
+                    try {
+                        const msg = JSON.parse(evt.data);
+                        handleProxyStatus(msg);
+                    } catch(e) {}
+                }
+                // Dados binários (protocolo WinBox) são repassados normalmente ao WASM
+            });
+        }
+    }
+};
+
+// Preservar propriedades estáticas
+window.WebSocket.CONNECTING = _OrigWebSocket.CONNECTING;
+window.WebSocket.OPEN       = _OrigWebSocket.OPEN;
+window.WebSocket.CLOSING    = _OrigWebSocket.CLOSING;
+window.WebSocket.CLOSED     = _OrigWebSocket.CLOSED;
+window.WebSocket.prototype  = _OrigWebSocket.prototype;
+
+// ============================================================
+// STATUS & LOG
+// ============================================================
+function handleProxyStatus(msg) {
+    const type = msg.type || '';
+    const text = msg.message || '';
+
+    if (type === 'connected') {
+        setStatus('connected', '✓ Conectado');
+        wbLog(text, 'ok');
+        setLoadbar(100);
+        showFrame();
+    } else if (type === 'connecting') {
+        setStatus('connecting', 'Conectando…');
+        wbLog(text, 'info');
+    } else if (type === 'error') {
+        setStatus('error', 'Erro');
+        wbLog('ERRO: ' + text, 'err');
+        setLoadbar(0);
+        showSplashError(text);
+    } else if (type === 'disconnected') {
+        setStatus('error', 'Desconectado');
+        wbLog(text, 'err');
+        showSplashDisconnected();
+    }
+}
+
+function setStatus(state, text) {
+    const el = document.getElementById('wbStatus');
+    el.className = 'wb-status ' + state;
+    document.getElementById('wbStatusText').textContent = text;
+}
+
+function setLoadbar(pct) {
+    document.getElementById('wbLoadbar').style.width = pct + '%';
+}
+
+function wbLog(msg, cls = '') {
+    const log = document.getElementById('wbLog');
+    if (!log) return;
+    const line = document.createElement('div');
+    line.className = 'wb-log-line ' + cls;
+    line.textContent = '▸ ' + msg;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+    _logLines++;
+}
+
+function showFrame() {
+    document.getElementById('wbSplash').classList.add('hidden');
+    document.getElementById('wbFrame').classList.add('show');
+    setLoadbar(100);
+}
+
+function showSplashError(msg) {
+    const ring  = document.getElementById('wbRing');
+    const title = document.getElementById('wbSplashTitle');
+    const desc  = document.getElementById('wbSplashDesc');
+    const btn   = document.getElementById('wbRetryBtn');
+
+    ring.className  = 'wb-splash-ring error-ring';
+    title.textContent = 'Falha na conexão';
+    title.style.color = 'var(--red)';
+    desc.innerHTML  = `<span style="color:var(--red)">${msg}</span>`;
+    btn.classList.add('show');
+    setLoadbar(0);
+}
+
+function showSplashDisconnected() {
+    const ring  = document.getElementById('wbRing');
+    const title = document.getElementById('wbSplashTitle');
+    const desc  = document.getElementById('wbSplashDesc');
+    const btn   = document.getElementById('wbRetryBtn');
+
+    // Esconder frame, mostrar splash
+    document.getElementById('wbFrame').classList.remove('show');
+    document.getElementById('wbSplash').classList.remove('hidden');
+
+    ring.className  = 'wb-splash-ring idle-ring';
+    title.textContent = 'Conexão encerrada';
+    title.style.color = 'var(--orange)';
+    desc.innerHTML  = 'O equipamento encerrou a sessão WinBox.';
+    btn.classList.add('show');
+    setLoadbar(0);
+    setStatus('error', 'Desconectado');
+}
+
+// ============================================================
+// AÇÕES DO TOOLBAR
+// ============================================================
+function reconectar() {
+    // Reiniciar splash
+    const ring  = document.getElementById('wbRing');
+    const title = document.getElementById('wbSplashTitle');
+    const desc  = document.getElementById('wbSplashDesc');
+    const btn   = document.getElementById('wbRetryBtn');
+    const log   = document.getElementById('wbLog');
+
+    ring.className  = 'wb-splash-ring';
+    title.textContent = 'Reconectando…';
+    title.style.color = 'var(--cyan)';
+    desc.innerHTML  = `Reconectando a <strong style="color:#00d9ff">${WB_ROUTER_IP}:8291</strong>`;
+    btn.classList.remove('show');
+    log.innerHTML   = '';
+    _logLines       = 0;
+
+    document.getElementById('wbFrame').classList.remove('show');
+    document.getElementById('wbSplash').classList.remove('hidden');
+
+    setStatus('connecting', 'Reconectando…');
+    setLoadbar(20);
+
+    // Recarregar o iframe do WinBox 4 — isso reiniciará o WASM
+    // e o interceptor WS será acionado novamente na nova sessão
+    const frame = document.getElementById('wbFrame');
+    const src   = frame.src;
+    frame.src   = 'about:blank';
+    setTimeout(() => { frame.src = src; }, 300);
+
+    toast('Reconectando WinBox 4…');
+}
+
+function abrirNovaAba() {
+    window.open(window.location.href, '_blank');
+}
+
+// ============================================================
+// PROGRESSO ANIMADO enquanto iframe carrega
+// ============================================================
+(function animarLoadbar() {
+    let pct = 0;
+    const iv = setInterval(() => {
+        if (_connected || pct >= 85) { clearInterval(iv); return; }
+        pct += Math.random() * 8;
+        setLoadbar(Math.min(pct, 85));
+    }, 400);
+})();
+
+// ============================================================
+// TOAST
+// ============================================================
+let _toastTimer = null;
+function toast(msg, isErr = false) {
+    const el = document.getElementById('wbToast');
+    el.textContent = msg;
+    el.className   = 'wb-toast show' + (isErr ? ' err' : '');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Comunicação com terminal page (quando aberto em iframe/pane)
+window.addEventListener('message', (e) => {
+    if (e.data?.type === 'WB_RECONECTAR') reconectar();
+});
+</script>
+{% endif %}
+
+</body>
+</html>
