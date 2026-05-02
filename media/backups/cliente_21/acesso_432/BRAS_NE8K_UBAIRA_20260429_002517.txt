@@ -1,0 +1,7092 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Savnet Servicos & Internet LTDA
+Equipamento: BRAS NE8K UBAIRA
+Host: 201.7.170.192:6001
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M8
+Template: Backup Huawei
+Data: 29/04/2026 00:25:17
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+Info: The configuration takes effect on the current user terminal interface only.
+<SAVNET-ADM>
+
+============================================================
+Comando: display current-configuration
+============================================================
+!Software Version V800R012C10SPC300
+!Last configuration was updated at 2026-03-19 14:02:06-03:00 by ixc-ixc
+!Last configuration was saved at 2026-04-01 15:40:13-03:00 by super-savnet
+#
+clock timezone Brasilia minus 03:00:00
+#
+sysname SAVNET-ADM
+#
+pppoe ppp-max-payload enable
+#
+pppoe-server send padt always
+#
+set neid af4ee
+#
+undo FTP server-source all-interface
+undo FTP ipv6 server-source all-interface
+#
+undo user-security-policy enable
+#
+service-template template-default0
+#
+service-template template-default1
+#
+service-template template-default2
+#
+service-template template-default3
+#
+service-template template-default4
+#
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+ntp-service unicast-peer 200.160.0.8
+ntp-service unicast-server 200.160.0.8 iburst
+ntp-service unicast-server 200.189.40.8
+ntp-service unicast-server 200.192.232.8
+#
+undo icmp name timestamp-reply send
+#
+undo telnet server enable
+undo telnet ipv6 server enable
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+radius-attribute delegated-ipv6-prefix encapsulation-method version2
+radius-attribute framed-ip-address encapsulation-method version2
+#
+diffserv domain default
+#
+diffserv domain 5p3d
+#
+soc
+#
+ip vpn-instance __LOCAL_OAM_VPN__
+ ipv4-family
+ ipv6-family
+#
+ip dcn vpn-instance __dcn_vpn__
+ ipv4-family
+#
+radius-server group mksolutions
+ radius-server shared-key-cipher %^%#Hi,2JjA("&Xx[g@zVFv>NpSqR^O\$Ru5*vN5F^1/#J>a'u';]A*%o:J&8ptA%^%#
+ radius-server authentication 187.73.63.50 source ip-address 201.7.170.192 1812 weight 0
+ radius-server accounting 187.73.63.50 source ip-address 201.7.170.192 1813 weight 0
+ radius-server nas-ip-address 201.7.170.192
+ radius-server attribute translate
+ undo radius-server user-name domain-included
+ radius-server user-name trust-server-request no-exist-policy attach-local coa
+ radius-attribute include HW-Auth-Type
+ radius-attribute include Reply-Message coa-nak
+ radius-attribute include edsg-service-name accounting-request
+ radius-attribute include Event-Timestamp accounting-on accounting-off 
+ radius-attribute disable CISCO-AVPair receive
+ radius-attribute translate extend HW-Auth-Type vendor-specific 2011 109 access-request account 
+ radius-attribute assign hw-mng-ipv6 pppoe motm 
+ radius-attribute qos-profile no-exist-policy online
+ radius-attribute apply user-name match user-type ipoe
+ radius-attribute apply framed-ipv6-pool match pool-type
+ radius-attribute service-type value outbound user-type ipoe 
+#
+radius-server group ixcprovedor
+ radius-server shared-key-cipher %^%#jozN.B}FN!Z#f@U:t-a~F5^86)L49W]EB^49SjGF%^%#
+ radius-server shared-key-cipher %^%#iUj*R"TkT";|zI2lnv<G]9!0CIm)oNIDuv/z[:yB%^%# authentication 201.7.170.248 source ip-address 10.255.255.100 1812 weight 0
+ radius-server shared-key-cipher %^%#.rdZ'd1vt/xt)VN8Dx+Y<Gt'KA"DA=%4+:(_2A<)%^%# accounting 201.7.170.248 source ip-address 10.255.255.100 1813 weight 0
+ radius-server source interface LoopBack0
+ radius-server nas-ip-address 10.255.255.100
+ radius-server attribute translate
+ radius-server user-name original
+ radius-server user-name trust-server-request 
+ radius-attribute include HW-Auth-Type
+ radius-attribute include Reply-Message coa-nak
+ radius-attribute include edsg-service-name accounting-request
+ radius-attribute include Event-Timestamp accounting-on accounting-off 
+ radius-attribute include NAS-Port-Id
+ radius-server nas-port-id include ce-vlan delimiter - pe-vlan delimiter - interface-description
+ radius-attribute disable CISCO-AVPair receive
+ radius-attribute translate extend HW-Auth-Type vendor-specific 2011 109 access-request account 
+ radius-attribute assign hw-mng-ipv6 pppoe motm 
+ radius-attribute case-sensitive qos-profile-name
+ radius-attribute apply user-name match user-type ipoe
+ radius-attribute apply framed-ipv6-pool match pool-type
+ radius-attribute service-type value outbound user-type ipoe 
+ radius-attribute hw-user-password simple coa-request
+#
+radius local-ip 10.255.255.100
+radius local-ip 201.7.170.192
+radius local-ip all
+radius-server authorization 187.73.63.50 destination-port 3799 shared-key-cipher %^%#dH82"yTL3HoQvRBm|NMM#26OB6ff:U|GT"M5}V+BX=Og-P}$ITr!#gXa;h')%^%# server-group mksolutions
+radius-server authorization 201.7.170.248 destination-port 3799 shared-key-cipher %^%#ftM_.a7OT<r;/)@g,HsMAX/1M|xL-WwOI:Z3~!xG%^%# server-group ixcprovedor
+#
+mpls lsr-id 10.255.255.100
+#
+mpls
+ mpls te
+ mpls rsvp-te
+ mpls te cspf
+#
+mpls l2vpn
+#
+mpls ldp
+ #
+ ipv4-family
+#
+time-range dh
+#
+dhcp server request-packet all-interface disable
+#
+ipv6 prefix ndra-wan local
+ prefix 2804:168C:1000::/40
+#
+ipv6 prefix dhcp-pd-lan delegation
+ prefix 2804:168C:1100::/40 delegating-prefix-length 56
+#
+ipv6 prefix pre-pool_aviso_bloqueio_ipv6 delegation
+ prefix 2001:DB8:3003::/56
+#
+ipv6 pool pool_aviso_bloqueio_ipv6 bas delegation
+ prefix pre-pool_aviso_bloqueio_ipv6
+#
+ipv6 pool pool_v6_lan bas delegation
+ dns-server 2804:168C:2000::2 2804:168C:2000:1::2
+ prefix dhcp-pd-lan
+#
+ipv6 pool pool_v6_wan bas local
+ dns-server 2804:168C:2000::2 2804:168C:2000:1::2
+ prefix ndra-wan
+#
+radius-server coa-request hw-policy-name daa same-policy reply-ack
+#
+dot1x-template 1
+#
+ipv6-pool statistic include shared-user
+#
+ip pool bloqueio bas local
+ gateway 169.254.0.1 255.255.0.0
+ section 0 169.254.0.2 169.254.255.254
+ dns-server 201.7.170.249 201.7.170.250
+ lease 0 12 0
+#
+ip pool pool_aguardando_assinatura bas local
+ gateway 172.21.4.1 255.255.255.0
+ section 0 172.21.4.2 172.21.4.254
+ lease 0 12 0
+#
+ip pool pool_bloqueado bas local
+ gateway 192.168.172.1 255.255.252.0
+ section 0 192.168.172.2 192.168.175.254
+ dns-server 201.7.170.249 201.7.170.250
+ lease 0 12 0
+#
+ip pool privado bas local
+ gateway 100.64.0.1 255.255.224.0
+ section 0 100.64.0.2 100.64.31.254
+ dns-server 172.31.201.22 172.31.201.26
+ lease 0 12 0
+#
+acl number 3100
+ rule 5 permit ip source 100.64.0.0 0.63.255.255
+#
+acl number 3200
+ rule 5 permit ip destination 100.64.0.0 0.63.255.255
+ rule 10 permit ip destination 201.7.168.0 0.0.7.255
+ rule 15 permit ip destination 10.0.0.0 0.255.255.255
+ rule 20 permit ip destination 172.16.0.0 0.15.255.255
+ rule 25 permit ip destination 192.168.0.0 0.0.255.255
+ rule 30 permit ip destination 172.0.0.0 0.255.255.255
+#
+dhcpv6 duid 0a01000ab2af5afeafc15ab51bb2
+#
+security password
+ #
+ rule admin
+  forbidden word changeme_123
+#
+aaa
+ ppp username check
+ pure-user-name no-exist-policy online
+ acct-session-id-version version3
+ user-name minimum-length 4
+ domain-name-delimiter <
+ local-user tomich password irreversible-cipher $1c$`Oy,Rt7<lJ$\}{z*1nTB8C9t;$%U^{6Oz}>#%u30!m1)O~fD^.4$
+ local-user tomich service-type ftp telnet ssh snmp http
+ local-user tomich level 3
+ local-user tomich state block fail-times 5 interval 5
+ local-user robenilson password irreversible-cipher $1c$oq}!RjQ%>,$s_02J}+h(QN}av~NBD!;D:o-,Uxt9Qub91N<),n:$
+ local-user robenilson service-type ftp telnet ssh snmp http
+ local-user robenilson level 1
+ local-user robenilson state block fail-times 3 interval 5
+ local-user super-savnet password irreversible-cipher $1c$|R-FV]r{]L$\Cq\Ac/gCOsFH7/{=i^PXTbv29:*9Cj,Lm)v|q(:$
+ local-user super-savnet service-type ftp telnet ssh snmp http
+ local-user super-savnet level 3
+ local-user super-savnet state block fail-times 3 interval 5
+ local-user ixc-ixc password irreversible-cipher $1c$:<s0I@JL0!$g>0n(aHL}Cd/Bq$rxA/%VVcF"~Y0A,Cb.n$\sW4+$
+ local-user ixc-ixc service-type ftp telnet ssh snmp http
+ local-user ixc-ixc level 3
+ local-user ixc-ixc state block fail-times 3 interval 5
+ local-user backup password irreversible-cipher $1c$kxc$>.\=q$$,JF)5$x<i<_$TTKkh*LH]m4hS_|KL0&lnyW$dA<W$
+ local-user backup service-type ssh
+ local-user backup level 3
+ local-user backup state block fail-times 3 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local radius
+ #
+ authentication-scheme savnet
+  authentication-mode radius local
+ #
+ authentication-scheme ixcprovedor
+  authentication-mode radius local
+ #
+ authentication-scheme open-radius-auth
+  authentication-mode none
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ accounting-scheme savnet
+  accounting interim interval 1200 traffic hash
+  accounting send-update
+  accounting start-fail online
+ #
+ accounting-scheme ixcprovedor
+  accounting interim interval 1200 second traffic hash
+  accounting send-update
+ #
+ accounting-scheme open-radius-acct
+  accounting-mode none
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+ #
+ domain savnet
+  authentication-scheme ixcprovedor
+  accounting-scheme ixcprovedor
+  radius-server group ixcprovedor
+  ip-pool privado
+  ipv6-pool pool_v6_lan
+  ipv6-pool pool_v6_wan
+  dns primary-ip 172.31.201.22
+  dns second-ip 172.31.201.26
+  dns primary-ipv6 2804:168C:2000::2
+  dns second-ipv6 2804:168C:2000:1::2
+  accounting-start-delay 10 online user-type ppp ipoe static
+  accounting dual-stack identical
+  user-basic-service-ip-type ipv4
+ #
+ user-group group1
+#
+license
+ active port-evpn slot 10 card 5 port 0-9
+ active port-l3vpn slot 10 card 5 port 0-9
+ active port-core-aggregation slot 10 card 5 port 0-9
+#
+ospfv3 1
+ router-id 10.255.255.100
+ import-route direct
+ import-route unr
+ area 0.0.0.0
+#
+interface Eth-Trunk0
+ description LACP DA PORTA 6 E 7, LIGADO NO SWITCH NA PORTA 1 E 2
+ ip address 172.31.100.1 255.255.255.252
+ mode lacp-static
+ lacp preempt enable
+ max active-linknumber 3
+ lacp preempt delay 20
+ statistic enable
+#
+interface Eth-Trunk0.10
+ description SAO JOSE - OLT - PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 10
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.11
+ description OLT UBAIRA - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 11
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.12
+ description OLT UBAIRA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 12
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.13
+ description OLT UBAIRA - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 13
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.14
+ description OLT UBAIRA - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 14
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.15
+ description OLT UBAIRA - PON5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 15
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.16
+ description OLT UBAIRA - PON6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 16
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.17
+ description OLT UBAIRA - PON7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 17
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.18
+ description OLT UBAIRA - PON8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 18
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.19
+ description OLT UBAIRA - PON9
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 19
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.20
+ description OLT UBAIRA - OLT LD2502
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 20
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.21
+ description OLT UBAIRA - PON11
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 21
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.22
+ description OLT UBAIRA - PON12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 22
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.23
+ description OLT UBAIRA - PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 23
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.24
+ description OLT UBAIRA - PON14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 24
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.25
+ description OLT UBAIRA - PON15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 25
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.26
+ description OLT UBAIRA - PON16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 26
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.30
+ description PIQUIA - FTTH 3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 30
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.40
+ description PIQUIA - FTTH 4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 40
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.50
+ description PIQUIA - FTTH 5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 50
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.60
+ description PIQUIA - FTTH 6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 60
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.70
+ description PIQUIA - FTTH 7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 70
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.80
+ description PIQUIA - FTTH 8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 80
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.97
+ vlan-type dot1q 97
+#
+interface Eth-Trunk0.99
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 99
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.100
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 100
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.101
+ description SAO JOSE - OLT - PACPON 101
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 101
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.102
+ description SAO JOSE - OLT - PACPON 102
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 102
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.103
+ description SAO JOSE - PPPoE GERAL
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 103
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.104
+ description SAO JOSE - FTTH - PON 1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 104
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.105
+ description SAO JOSE - FTTH - PON 2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 105
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.106
+ description SAO JOSE - FTTH - PON 3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 106
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.107
+ description SAO JOSE - FTTH - PON 4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 107
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.108
+ description PIQUIA - PACPON 8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 108
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.109
+ description PIQUIA - PACPON 9
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 109
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.110
+ description 3 BRACOS - CE 2 - PON OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 110
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.111
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 111
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.112
+ description 3 BRACOS - CE 2 - PON OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 112
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.113
+ description 3 BRACOS - CE 2 - PON OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 113
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.114
+ description 3 BRACOS - CE 2 - PON OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 114
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.115
+ description 3 BRACOS - CE 2 - PON OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 115
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.124
+ description JIQUIRICA - OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 124
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.130
+ vlan-type dot1q 130
+#
+interface Eth-Trunk0.132
+ description JIQUIRICA - OLT
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 132
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.140
+ vlan-type dot1q 140
+ description CGNAT
+ ip address 172.31.255.6 255.255.255.252
+ statistic enable
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk0.150
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 150
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.151
+ vlan-type dot1q 151
+#
+interface Eth-Trunk0.200
+ vlan-type dot1q 200
+#
+interface Eth-Trunk0.201
+ description OLT UBAIRA - PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 201
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.202
+ description OLT UBAIRA-PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 202
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.203
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 203
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.204
+ description OLT UBAIRA - PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 204
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.205
+ description OLT UBAIRA - PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 205
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.206
+ description OLT UBAIRA - PON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 206
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.207
+ description OLT UBAIRA - PON12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 207
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.208
+ description OLT UBAIRA - PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 208
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.209
+ description OLT UBAIRA - PON09
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 209
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.210
+ description OLT UBAIRA - PON29
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 210
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.212
+ description OLT UBAIRA - PON12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 212
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.213
+ description OLT UBAIRA - PON18
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 213
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.214
+ description OLT UBAIRA - PON14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 214
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.215
+ description OLT UBAIRA - PON15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 215
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.216
+ description OLT UBAIRA - PON16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 216
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.218
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 218
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.219
+ description OLT UBAIRA - PON19
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 219
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.220
+ description OLT UBAIRA - PON22
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 220
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.221
+ description OLT UBAIRA - PON21
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 221
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.222
+ description OLT UBAIRA - PON22
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 222
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.223
+ description OLT UBAIRA - PON23
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 223
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.224
+ description OLT UBAIRA - PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 224
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.225
+ description OLT UBAIRA - PON25
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 225
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.226
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 226
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.227
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 227
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.228
+ description OLT UBAIRA - PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 228
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.229
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 229
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.230
+ description OLT UBAIRA - PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 230
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.231
+ description OLT UBAIRA - PON21
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 231
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.232
+ description OLT UBAIRA - PON32
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 232
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.233
+ description OLT UBAIRA - PON33
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 233
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.234
+ description OLT UBAIRA - PON34
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 234
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.235
+ description OLT UBAIRA - PON35
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 235
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.236
+ description OLT UBAIRA - PON36
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 236
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.238
+ description OLT UBAIRA - PON38
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 238
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.241
+ description OLT UBAIRA - PON41
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 241
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.243
+ description OLT UBAIRA - PON43
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 243
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.244
+ description OLT UBAIRA - PON19
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 244
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.245
+ description OLT UBAIRA - PON34
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 245
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.249
+ description OLT UBAIRA - PON32
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 249
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.250
+ description OLT UBAIRA - PON14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 250
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.252
+ description OLT UBAIRA - PON26
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 252
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.255
+ description OLT UBAIRA - PON77
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 255
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.262
+ description OLT UBAIRA - PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 262
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.263
+ description OLT UBAIRA - PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 263
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.264
+ description OLT UBAIRA - PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 264
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.265
+ description OLT UBAIRA - PON6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 265
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.266
+ description OLT UBAIRA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 266
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.267
+ description OLT UBAIRA - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 267
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.268
+ description OLT UBAIRA - PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 268
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.272
+ description OLT UBAIRA - PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 272
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.273
+ description OLT UBAIRA - PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 273
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.274
+ description OLT UBAIRA - PON26
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 274
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.276
+ description OLT UBAIRA - PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 276
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.278
+ description OLT UBAIRA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 278
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.280
+ description OLT UBAIRA - PON16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 280
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.299
+ description JIQUIRICA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 299
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.300
+ vlan-type dot1q 300
+#
+interface Eth-Trunk0.301
+ description OLT UBAIRA - PON15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 301
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.302
+ description OLT UBAIRA - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 302
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.303
+ description OLT UBAIRA - PON8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 303
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.304
+ description OLT JENIPAPO - CACHOEIRINHA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 304
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.310
+ description OLT UBAIRA - PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 310
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.320
+ description OLT UBAIRA - PON24
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 320
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.330
+ description OLT UBAIRA - PON21
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 330
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.340
+ description OLT UBAIRA - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 340
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.341
+ description PPPoE TORRE SAPUCAIA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 341
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.347
+ description PPPoE TORRE SAPUCAIA ETHER2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 347
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.617
+ vlan-type dot1q 617
+#
+interface Eth-Trunk0.901
+ description -OLT JIQUIRICA PON 01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 901
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.902
+ description -OLT JIQUIRICA PON 02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 902
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.903
+ description -OLT JIQUIRICA PON 03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 903
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.904
+ description -OLT JIQUIRICA PON 04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 904
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.905
+ description -OLT JIQUIRICA PON 05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 905
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.906
+ description -OLT JIQUIRICA PON 06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 906
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.907
+ description -OLT JIQUIRICA PON 07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 907
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.908
+ description -OLT JIQUIRICA PON 08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 908
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.909
+ description -OLT JIQUIRICA PON 09
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 909
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.910
+ description -OLT JIQUIRICA PON 10
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 910
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.911
+ description -OLT JIQUIRICA PON 11
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 911
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.912
+ description -OLT JIQUIRICA PON 12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 912
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.913
+ description -OLT JIQUIRICA PON 13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 913
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.914
+ description -OLT JIQUIRICA PON 14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 914
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.915
+ description -OLT JIQUIRICA PON 15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 915
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.916
+ description -OLT JIQUIRICA PON 16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 916
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.951
+ description -OLT JIQUIRICA Ramal-01-C2Prox Casa de Farinha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 951
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.952
+ description -OLT JIQUIRICA Ramal-01 - C1 Loteamento Lorena
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 952
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.953
+ description -OLT JIQUIRICA Ramal-02 - Em frente Mercado Joao Batista
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 953
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.954
+ description -OLT JIQUIRICA Ramal-03 - C2 Rua das Malvinas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 954
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.955
+ description -OLT JIQUIRICA Ramal-04 - C1 Rua 13 de Maio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 955
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.956
+ description -OLT JIQUIRICA Ramal-04 - C2 Beira Rio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 956
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.957
+ description -OLT JIQUIRICA Ramal-05 - Proximo GT Gs
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 957
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.958
+ description -OLT JIQUIRICA Ramal-06 - C1 Ladeira do Cemiterio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 958
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.959
+ description -OLT JIQUIRICA Ramal-08-C1 Entrada Flamboyants
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 959
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.960
+ description -OLT JIQUIRICA Ramal-09 - C1 Rua Coronel Vicnete
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 960
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.961
+ description -OLT JIQUIRICA Ramal-09 - C2 Rua Engenheiro Dantas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 961
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.962
+ description -OLT JIQUIRICA Ramal-11 - C2 Carneiro da Rocha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 962
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.963
+ description -OLT JIQUIRICA Ramal-12-C1 Rua Francisco gil
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 963
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.964
+ description -OLT JIQUIRICA Ramal-12-C2 Rua Carneiro da Rocha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 964
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.965
+ description -OLT JIQUIRICA Ramal-14 -C1 Pindoba Rua A
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 965
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.966
+ description -OLT JIQUIRICA Ramal-16 - C1 Pindona Rua F, Bar Cativeiro
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 966
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.967
+ description -OLT JIQUIRICA PacPon-01 Lagoa Verde
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 967
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.968
+ description -OLT JIQUIRICA PacPon-02 Lagoa Verde Prox a Torre
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 968
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.969
+ description -OLT JIQUIRICA PacPon-03 BRANDAO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 969
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.970
+ description -OLT JIQUIRICA PacPon-04 Boqueirao Boa Ventura
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 970
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.971
+ description -OLT JIQUIRICA PacPon-05 Boa Ventura, Bar de Joel
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 971
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.972
+ description -OLT JIQUIRICA PacPon-11 Stio Arrependido, Prox. a Ricardo
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 972
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.973
+ description -OLT JIQUIRICA PacPon-16 Sitio do Meio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 973
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.974
+ description -OLT JIQUIRICA PacPon-17 Boqueiro Orob
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 974
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.975
+ description -OLT JIQUIRICA PacPon Prox. Torre TIM Atende 5 Clientes
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 975
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.976
+ description -OLT JIQUIRICA PacPon Tabua
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 976
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.977
+ description -OLT JIQUIRICA PacPon Lagoa Verde - Entrada da Gameleira Prx a Faz da Juza
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 977
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.978
+ description -OLT JIQUIRICA PacPon-19 Ara, Bar Gino
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 978
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.979
+ description -OLT JIQUIRICA Pacpon Libane
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 979
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1001
+ description OLT UBAIRA - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1001
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1002
+ description OLT UBAIRA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1002
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1003
+ description OLT UBAIRA - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1003
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1004
+ description OLT UBAIRA - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1004
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1005
+ description OLT UBAIRA - PON5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1005
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1006
+ description OLT UBAIRA - PON6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1006
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1007
+ description OLT UBAIRA - PON7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1007
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1008
+ description OLT UBAIRA - PON8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1008
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1009
+ description OLT UBAIRA - PON9
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1009
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1010
+ description OLT UBAIRA - PON10
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1010
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1011
+ description OLT UBAIRA - PON11
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1011
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1012
+ description OLT UBAIRA - PON12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1012
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1013
+ description OLT UBAIRA - PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1013
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1014
+ description OLT UBAIRA - PON14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1014
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1015
+ description OLT UBAIRA - PON15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1015
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1016
+ description OLT UBAIRA - PON16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1016
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1017
+ description OLT UBAIRA - PON17
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1017
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1018
+ description OLT UBAIRA - PON18
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1018
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1019
+ description OLT UBAIRA - PON19
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1019
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1020
+ description OLT UBAIRA - PON20
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1020
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1021
+ description OLT UBAIRA - PON21
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1021
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1022
+ description OLT UBAIRA - PON22
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1022
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1023
+ description OLT UBAIRA - PON23
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1023
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1024
+ description OLT UBAIRA - PON24
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1024
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1025
+ description OLT UBAIRA - PON25
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1025
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1026
+ description OLT UBAIRA - PON26
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1026
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1027
+ description OLT UBAIRA - PON27
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1027
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1028
+ description OLT UBAIRA - PON28
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1028
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1029
+ description OLT UBAIRA - PON29
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1029
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1030
+ description OLT UBAIRA - PON30
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1030
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1031
+ description OLT UBAIRA - PON31
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1031
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1032
+ description OLT UBAIRA - PON32
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1032
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1101
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1101
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1102
+ description Ramal-02 Rua do Cemiterio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1102
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1104
+ description Ramal-04 Rua Areiao
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1104
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1105
+ description Ramal-05 Rua Areia Cima
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1105
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1106
+ description Ramal-06 Rua Areia de Cima
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1106
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1107
+ description Ramal-07 Rua da Linha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1107
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1108
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1108
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1109
+ description Ramal-09 Rua Bela Vista
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1109
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1110
+ description Ramal-10 Rua Bela Vista
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1110
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1112
+ description Ramal-12 Rua Natur de Assis
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1112
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1113
+ description Ramal-13 Rua da Jaqueira
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1113
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1114
+ description Ramal-14 Rua Joaquim Tavora
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1114
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1115
+ description Ramal-15 Rua do Salabro
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1115
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1116
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1116
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1119
+ description Ramal-19 Rua do Alto
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1119
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1120
+ description Ramal-20 Rua Santa Luzia
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1120
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1121
+ description Ramal-21 Rua Duarte Guimaraes Prox. Salao de Cabelo
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1121
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1122
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1122
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1123
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1123
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1124
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1124
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1125
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1125
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1126
+ description Ramal-26 Pindoba Rua Baixo
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1126
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1128
+ description Ramal-28 Rua da Monta
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1128
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1130
+ description Ramal-30 Rua da Monta
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1130
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1131
+ description Ramal-31 Rua da Montinha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1131
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1132
+ description Ramal-32 Rua Emidio Ramos
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1132
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1133
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1133
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1134
+ description Ramal-34 Rua da Incobal
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1134
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1135
+ description Ramal-35 Rua da Incobal Prox. Rodoviaria
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1135
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1136
+ description Ramal-36 Rua do Corrego
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1136
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1138
+ description Ramal-38 Rua Alto Pombas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1138
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1141
+ description Ramal-41 Rua Alto Pombas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1141
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1143
+ description Ramal-43 Rua Alto Pombas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1143
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1144
+ description Ramal-44 Rua do Corrego
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1144
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1145
+ description Ramal-45 Rua do Corrego
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1145
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1149
+ description Ramal-49 Rua das Malvinas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1149
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1150
+ description Ramal-50 Rua Fernandes Barreto
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1150
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1151
+ description PacPon Entrada Caianas
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1151
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1152
+ description PacPon Riacho de Areia
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1152
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1153
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1153
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1154
+ description PacPon Aracy
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1154
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1155
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1155
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1156
+ description PacPon Dr. Edilton
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1156
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1157
+ description PacPon Palmeira
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1157
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1158
+ description PacPon Agua Sumida
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1158
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1159
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1159
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1160
+ description PacPon Palmeira Bevenuto
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1160
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1161
+ description PacPon Escola Palmeira
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1161
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1162
+ description PacPon Estopa Igreja
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1162
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1163
+ description PacPon Estopa Ponte
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1163
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1164
+ description VLAN E PROFILE LIVRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1164
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1165
+ description PacPon 3Lagoas, Prox. Jilo
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1165
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1166
+ description PACPON AP JOSEVALDO CAIANAS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1166
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1167
+ description PPPoE PACPON SITIO MAANAIN
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1167
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1170
+ vlan-type dot1q 1170
+#
+interface Eth-Trunk0.1171
+ vlan-type dot1q 1171
+#
+interface Eth-Trunk0.1201
+ description TEOLANDIA - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 1201
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1202
+ description TEOLANDIA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1202
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1203
+ description TEOLANDIA - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1203
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1204
+ description TEOLANDIA - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1204
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1205
+ description TEOLANDIA - PON5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1205
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1206
+ description TEOLANDIA - PON6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1206
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1207
+ description TEOLANDIA - PON7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1207
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1208
+ description TEOLANDIA - PON8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1208
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1209
+ description -TEOLANDIA FESTA DA BANANA DESATIVAR DEPOIS DO EVENTO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1209
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1251
+ description -OLT TRES BRACOS PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1251
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1252
+ description -OLT TRES BRACOS PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1252
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1253
+ description -OLT TRES BRACOS PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1253
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1254
+ description -OLT TRES BRACOS PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1254
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1255
+ description -OLT TRES BRACOS PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1255
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1256
+ description -OLT TRES BRACOS PON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1256
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1257
+ description -OLT TRES BRACOS PON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1257
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1258
+ description -OLT TRES BRACOS PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1258
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1259
+ description -OLT TRES BRACOS PON09
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1259
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1260
+ description -OLT TRES BRACOS PON10
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1260
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1261
+ description -OLT TRES BRACOS PON11
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1261
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1262
+ description -OLT TRES BRACOS PON12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1262
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1263
+ description -OLT TRES BRACOS PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1263
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1264
+ description -OLT TRES BRACOS PON14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1264
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1265
+ description -OLT TRES BRACOS PON15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1265
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1266
+ description -OLT TRES BRACOS PON16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1266
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1281
+ description - -OLT - CAMA DE VARA PON-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1281
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1282
+ description - -OLT - CAMA DE VARA PON-02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1282
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1283
+ description - -OLT - CAMA DE VARA PON-03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1283
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1284
+ description - -OLT - CAMA DE VARA PON-04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1284
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1285
+ description - -OLT - Pacpon-03-Congu olt cama de vara
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1285
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1286
+ description - -OLT - TRES BRACOS Pacpon-08-GAMELEIRA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1286
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1287
+ description -OLT - TRES BRACOS Pacpon-CAMA DE VARA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1287
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1288
+ description - -OLT - CAMA DE VARA-pacpon-01 riacho fundo prximo Jaldo/Mirnada
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1288
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1289
+ description - -OLT - CAMA DE VARA-pacpon-02 riacho fundo prximo D.Dora
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1289
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1290
+ description -OLT TRES BRACOS PACPON-09
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1290
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1291
+ description -OLT TRES BRACOS RAMAL-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1291
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1292
+ description -OLT TRES BRACOS RAMAL-02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1292
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1293
+ description -OLT TRES BRACOS RAMAL-03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1293
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1294
+ description -OLT TRES BRACOS RAMAL-04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1294
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1295
+ description -OLT TRES BRACOS RAMAL-05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1295
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1296
+ description -OLT - TRES BRACOS Pacpon-08-GAMELEIRA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1296
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1297
+ description -OLT TRES BRACOS PACPON-03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1297
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1298
+ description -OLT - TRES BRACOS Pacpon-08-SobradinhoCharlesFernandes
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1298
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1299
+ description -OLT TRES BRACOS PACPON-05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1299
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1301
+ description -OLT COCAO PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1301
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1302
+ description -OLT COCAO PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1302
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1303
+ description -OLT COCAO PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1303
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1304
+ description -OLT COCAO PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1304
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1349
+ description -OLT COCAO - Pacpon-01 - Rua do Comercio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1349
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1351
+ description -OLT CRAVOLANDIA PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1351
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1352
+ description -OLT CRAVOLANDIA PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1352
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1353
+ description -OLT CRAVOLANDIA PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1353
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1354
+ description -OLT CRAVOLANDIA PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1354
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1355
+ description -OLT CRAVOLANDIA PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1355
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1356
+ description -OLT CRAVOLANDIA PON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1356
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1357
+ description -OLT CRAVOLANDIA PON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1357
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1358
+ description -OLT CRAVOLANDIA PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1358
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1399
+ description OLT CRAVOLANDIA PACPON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1399
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1401
+ description -OLT SANTA INES PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1401
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1402
+ description -OLT SANTA INES PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1402
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1403
+ description -OLT SANTA INES PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1403
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1404
+ description -OLT SANTA INES PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1404
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1405
+ description -OLT SANTA INES PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1405
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1406
+ description -OLT SANTA INES PON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1406
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1407
+ description -OLT SANTA INES PON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1407
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1408
+ description -OLT SANTA INES PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1408
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1410
+ description SANTA INES - CLIENTES RADIO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1410
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1447
+ description -OLT SANTA INES PACPON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1447
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1448
+ description -OLT SANTA INES PACPON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1448
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1449
+ description -OLT SANTA INES PACPON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1449
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1451
+ description -OLT ITAQUARA PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1451
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1452
+ description -OLT ITAQUARA PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1452
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1453
+ description -OLT ITAQUARA PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1453
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1454
+ description -OLT ITAQUARA PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1454
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1455
+ description -OLT ITAQUARA PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1455
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1456
+ description -OLT ITAQUARA PON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1456
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1457
+ description -OLT ITAQUARA PON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1457
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1458
+ description -OLT ITAQUARA PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1458
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1491
+ description -OLT ITAQUARA RAMAL-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1491
+ user-vlan 1495
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1492
+ description -OLT ITAQUARA RAMAL-02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1492
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1493
+ description -OLT ITAQUARA RAMAL-03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1493
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1494
+ description -OLT ITAQUARA RAMAL-04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1494
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1495
+ description -OLT ITAQUARA RAMAL-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1496
+ description -OLT ITAQUARA RAMAL-06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1496
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1501
+ description -OLT BOQUEIRAO  PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1501
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1502
+ description -OLT BOQUEIAO PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1502
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1503
+ description -OLT BOQUEIRAO PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1503
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1504
+ description -OLT BOQUEIRAO PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1504
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1505
+ description -OLT BOQUEIRAO PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1505
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1506
+ description -OLT BOQUEIRAO PON06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1506
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1507
+ description -OLT BOQUEIRAO PON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1507
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1508
+ description -OLT BOQUEIRAO PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1508
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1509
+ description -OLT BOQUEIRAO PON09
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1509
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1510
+ description -OLT BOQUEIRAO PON10
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1510
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1511
+ description -OLT BOQUEIRAO PON11
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1511
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1512
+ description -OLT BOQUEIRAO PON12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1512
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1513
+ description -OLT BOQUEIRAO PON13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1513
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1514
+ description -OLT BOQUEIRAO PON14
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1514
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1515
+ description -OLT BOQUEIRAO PON15
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1515
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1516
+ description -OLT BOQUEIRAO PON16
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1516
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1536
+ description -OLT BOQUEIRAO PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1536
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1537
+ description -OLT BOQUEIRAO PACPON-04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1537
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1540
+ description -OLT BOQUEIRAO PON5 - PacPon-02 - Paulo ClementE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1540
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1541
+ description -OLT BOQUEIRAO PACPON-
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1541
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1542
+ description -OLT BOQUEIRAO PACPON-
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1542
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1543
+ description -OLT BOQUEIRAO PACPON-05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1543
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1544
+ description -OLT BOQUEIRAO PACPON-44
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1544
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1545
+ description -OLT BOQUEIRAO PACPON-SantoInacio
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1545
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1546
+ description -OLT BOQUEIRAO PACPON-06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1546
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1547
+ description -OLT BOQUEIRAO PACPON-12
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1547
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1548
+ description -OLT BOQUEIRAO PACPON-13
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1548
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1549
+ description -OLT BOQUEIRAO PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1549
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1601
+ description -OLT PIQUIA PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1601
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1602
+ description -OLT PIQUIA PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1602
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1603
+ description -OLT PIQUIA PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1603
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1604
+ description -OLT PIQUIA PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1604
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1605
+ description -OLT PIQUIA PON05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1605
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1606
+ description -OLT PIQUIA - PON6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1606
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1607
+ description -OLT PIQUIA PON07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1607
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1608
+ description -OLT PIQUIA PON08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1608
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1641
+ description -PIQUIA - PON1 - pacpon-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1641
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1642
+ description -PIQUIA - PON1 - pacpon-02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1642
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1643
+ description -PIQUIA - PON3 - PACPON MUKIBA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1643
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1644
+ description -PIQUIA - PON3 - PACPON-04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1644
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1645
+ description -PIQUIA - PON4 - PACPON-05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1645
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1646
+ description -PIQUIA - PON3 - PACPON-06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1646
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1647
+ description -PIQUIA - PON8 - PACPON RIACHO DA PRATA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1647
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1648
+ description -PIQUIA - PON4 - PACPON-08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1648
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1651
+ description -OLT ALTO DA LAGOINHA - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1651
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1652
+ description -OLT ALTO DA LAGOINHA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1652
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1653
+ description -OLT ALTO DA LAGOINHA - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1653
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1654
+ description -OLT ALTO DA LAGOINHA - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1654
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1655
+ description -OLT ALTO DA LAGOINHA - PON5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1655
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1656
+ description -OLT ALTO DA LAGOINHA PON-06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1656
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1657
+ description -OLT ALTO DA LAGOINHA - PON7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1657
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1658
+ description - --OLT ALTO DA LAGOINHA - PON8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1658
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1667
+ description -OLT ALTO DA LAGOINHA - PACPON-ARACA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1667
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1668
+ description -OLT ALTO DA LAGOINHA PACPON-02 APs
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1668
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1669
+ description -OLT ALTO DA LAGOINHA PACPON-BRANDAO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1669
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1681
+ description -OLT BOM JESUS - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1681
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1682
+ description -OLT BOM JESUS - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1682
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1683
+ description -OLT BOM JESUS - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1683
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1684
+ description -OLT BOM JESUS - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1684
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1689
+ description -OLT BOM JESUS - PON1 - PACPON-08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1689
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1690
+ description -OLT BOM JESUS - PON1 - PACPON-05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1690
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1691
+ description -OLT ALTO DA LAGOINHA - PACPON1 pon2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1691
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1692
+ description -OLT ALTO DA LAGOINHA - PACPON2 pon2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1692
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1693
+ description -OLT ALTO DA LAGOINHA - PACPON3 pon2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1693
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1694
+ description -OLT ALTO DA LAGOINHA PACPON 05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1694
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1695
+ description OLT BOM JESUS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1695
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1696
+ description OLT BOM JESUS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1696
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1697
+ description - -OLT - PacPon Tabuleiro do Alto Lagoinha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1697
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1699
+ description OLT BOM JESUS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1699
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1701
+ description -OLT SAO JOSE PON 01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1701
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1702
+ description -OLT SAO JOSE PON 02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1702
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1703
+ description -OLT SAO JOSE PON 03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1703
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1704
+ description -OLT SAO JOSE PON 04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1704
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1741
+ description -OLT SAO JOSE - PACPON01 PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1741
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1742
+ description -OLT SAO JOSE - PACPON02 PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1742
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1743
+ description -OLT SAO JOSE - PACPON03 PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1743
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1744
+ description -OLT SAO JOSE - PACPON04 PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1744
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1745
+ description -OLT SAO JOSE - PACPON05 PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1745
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1746
+ description -OLT SAO JOSE - PACPON JUSSARA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1746
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1751
+ description -OLT SAPUCAIA PON01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1751
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1752
+ description -OLT SAPUCAIA PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1752
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1753
+ description -OLT SAPUCAIA PON03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1753
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1754
+ description -OLT SAPUCAIA PON04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1754
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1796
+ description -OLT SAPUCAIA - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1796
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1797
+ description -OLT SAPUCAIA - 1797 - PacPon-Cachoeirinha
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1797
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1798
+ description -OLT SAPUCAIA - 1798 - PacPoncasajurandir
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1798
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1799
+ description -OLT SAPUCAIA - PACPON-01 AP COMUM DA CARLOTA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1799
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1801
+ description -OLT JENIPOPO PON 01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1801
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1802
+ description -OLT JENIPOPO PON 02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1802
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1803
+ description -OLT JENIPOPO PON 03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1803
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1804
+ description -OLT JENIPOPO PON 04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1804
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1845
+ description -OLT PacPon-RuadaPraca PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1845
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1846
+ description -OLT JENIPAPO PacPon-RuadaLinha PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1846
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1847
+ description -OLT JENIPAPO PacPoncasajurandir PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1847
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1848
+ description -OLT JENIPAPO PacPon-Cachoeirinha PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1848
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1849
+ description -OLT JENIPAPO PacPon-Prox.Lulinha PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1849
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1850
+ description -OLT VINHATICO REDE RADIO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1850
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1851
+ description -OLT VINHATICO PON-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1851
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1852
+ description -OLT VINHATICO PON-02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1852
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1853
+ description -OLT VINHATICO PON-03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1853
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1854
+ description -OLT VINHATICO PON-04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1854
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1855
+ description - OLT VINHATICO PON-05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1855
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1856
+ description - OLT VINHATICO PON-06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1856
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1857
+ description - OLT VINHATICO PON-07
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1857
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1858
+ description - OLT VINHATICO PON-08
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1858
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1897
+ description -OLT VINHATICO PACPON
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1897
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1898
+ description -OLT VINHATICO PACPON
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1898
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1899
+ description -OLT VINHATICO PACPON
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1899
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1951
+ description -OLT ANDARAI PON 01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1951
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1952
+ description -OLT ANDARAI PON 02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1952
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1953
+ description -OLT ANDARAI PON 03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1953
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1954
+ description -OLT ANDARAI PON 04
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1954
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1997
+ description -OLT ANDARAI PON02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1997
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1998
+ description -OLT ANDARAI PACPON-01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1958
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.1999
+ description -OLT ANDARAI PACPON-02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 1999
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2031
+ description SERRA PELADA - ETHER01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2031
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2032
+ description SERRA PELADA - ETHER02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2032
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2035
+ description SERRA PELADA - ETHER05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2035
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2036
+ description SERRA PELADA - ETHER06
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2036
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2050
+ description JIQUIRICA - CLIENTES RADIOS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2050
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2071
+ description BOQUEIRAO NILO - ETHER10
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2071
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2073
+ description BOQUEIRAO NILO - ETHER3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2073
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2074
+ description BOQUEIRAO NILO - ETHER4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2074
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2075
+ description -BOQUEIRAO NILO CLIENTES RADIO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2075
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2076
+ description BOQUEIRAO NILO - ETHER6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2076
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2100
+ description PIQUIA - PPPoE GERAL
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2100
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2102
+ description PIQUIA-ETHER 2 REDE 70
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2102
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2105
+ description PIQUIA - PPPoE REDE 72 ALAGOINHAS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2105
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2110
+ description - PPPoE BOM JESUS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2110
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2111
+ description - TORRE PIQUIA REDE 74
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2111
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2130
+ description BOQUEIRAO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2130
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2131
+ description BOQUEIRAO - ETHER1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2131
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2132
+ description BOQUEIRAO - ETHER2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2132
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2133
+ description BOQUEIRAO - ETHER3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2133
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2134
+ description BOQUEIRAO - ETHER4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2134
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2135
+ description BOQUEIRAO - ETHER5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2135
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2136
+ description BOQUEIRAO - ETHER6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2136
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2137
+ description BOQUEIRAO - ETHER7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2137
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2139
+ description BOQUEIRAO - ETHER9
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2139
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2150
+ description LIBANE - PPPoE GERAL
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2150
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2152
+ description -LIBANE REDE 132
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2152
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2153
+ description -LIBANE REDE 133
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2153
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2154
+ description -LIBANE REDE 136
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2154
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2155
+ description -LIBANE REDE 137
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2155
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2156
+ description -LIBANE REDE 134
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2156
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2159
+ description -LIBANE ether10
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2159
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2172
+ description 3 BRACOS - CE1 - ETHER2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2172
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2175
+ description -TRES BRACOS CE1-ETHER5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2175
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2176
+ description 3 BRACOS - CE1 - ETHER6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2176
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2177
+ description -TRES BRACOS CE1-ETHER6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2177
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2178
+ description 3 BRACOS - CE1 - ETHER8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2178
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2195
+ description 3 BRACOS - CE 2 - ETHER5
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2195
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2197
+ description 3 BRACOS - CE 1 - ETHER7
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2197
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2200
+ description ANDARAI - PPPoE GERAL
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2200
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2201
+ description ANDARAI - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2201
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2202
+ description ANDARAI - PON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2202
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2203
+ description ANDARAI - PON3
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2203
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2204
+ description ANDARAI - PON4
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2204
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2232
+ description COCAO - ETHER2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2232
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2262
+ description CRAVOLANDIA - ETHER2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2262
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2266
+ description CRAVOLANDIA - ETHER6
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2266
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2268
+ description CRAVOLANDIA - ETHER8
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2268
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2301
+ description ALTO DA ALAGOINHA - ETHER01
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2301
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2302
+ description ALTO DA ALAGOINHA - ETHER02
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2302
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2303
+ description ALTO DA ALAGOINHA - ETHER03
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2303
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2305
+ description ALTO DA ALAGOINHA - ETHER05
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2305
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2309
+ description ALTO DA ALAGOINHA - ETHER09
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 2309
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.2550
+ vlan-type dot1q 2550
+#
+interface Eth-Trunk0.2551
+ vlan-type dot1q 2551
+#
+interface Eth-Trunk0.2991
+ vlan-type dot1q 2991
+#
+interface Eth-Trunk0.3001
+ vlan-type dot1q 3001
+#
+interface Eth-Trunk0.3003
+ vlan-type dot1q 3003
+#
+interface Eth-Trunk0.3010
+ description ANDARAI - PON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 3010
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.3011
+ vlan-type dot1q 3011
+#
+interface Eth-Trunk0.3012
+ vlan-type dot1q 3012
+#
+interface Eth-Trunk0.3100
+ vlan-type dot1q 3100
+#
+interface Eth-Trunk0.3101
+ description ANDARAI - PACPON1
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 3101
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.3102
+ description ANDARAI - PACPON2
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ 8021p 0
+ user-vlan 3102
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication savnet
+ #
+#
+interface Eth-Trunk0.3888
+#
+interface Eth-Trunk0.3895
+ vlan-type dot1q 3895
+#
+interface Eth-Trunk0.4010
+ vlan-type dot1q 4010
+#
+interface Eth-Trunk0.4050
+ vlan-type dot1q 4050
+#
+interface Eth-Trunk1
+ description LACP DA PORTA 3,4,5, LIGADO NO SW RAISECOM NA PORTA 1,2,3
+ mode lacp-static
+ lacp preempt enable
+ max active-linknumber 3
+ lacp preempt delay 20
+ statistic enable
+#
+interface Eth-Trunk1.501
+ vlan-type dot1q 501
+ mtu 9198
+ ip address 10.192.201.5 255.255.255.252
+ ospf enable 1 area 0.0.0.0
+ mpls
+ mpls ldp
+#
+interface Eth-Trunk50
+#
+interface Ethernet0/0/0
+ speed auto
+ duplex auto
+ undo shutdown
+ ip binding vpn-instance __LOCAL_OAM_VPN__
+ ip address 192.168.0.1 255.255.255.0
+#
+interface Virtual-Template0
+ ppp authentication-mode auto
+#
+interface Virtual-Template1
+ mtu 1500
+ ip address unnumbered interface LoopBack0
+ ppp authentication-mode pap chap
+ ppp keepalive interval 20 retransmit 3 response-timeout 300 datacheck
+ pppoe-server service-name-parameter VILLAGIO
+ pppoe-server service-name-parameter SAVNET
+ pppoe-server ac-name SAVNET
+ tcp adjust-mss 1420
+ ip urpf strict enable check subnet
+ ipv6 urpf strict enable check subnet
+#
+interface GigabitEthernet0/5/0
+#
+interface GigabitEthernet0/5/1
+#
+interface GigabitEthernet0/5/2
+#
+interface GigabitEthernet0/5/3
+ description LACP - SW 01 - REISECOM - ETHER1
+ undo shutdown
+ eth-trunk 1
+ dcn
+#
+interface GigabitEthernet0/5/4
+ description LACP - SW 01 - REISECOM - ETHER2
+ undo shutdown
+ eth-trunk 1
+ dcn
+#
+interface GigabitEthernet0/5/5
+ port-mode 10GE
+ description LACP - SW 01 - REISECOM - ETHER3
+ undo shutdown
+ eth-trunk 1
+ dcn
+#
+interface GigabitEthernet0/5/6
+ description LACP - SWITCH - ETHER1
+ undo shutdown
+ eth-trunk 0
+ dcn
+#
+interface GigabitEthernet0/5/7
+ description LACP - SWITCH - ETHER2
+ undo shutdown
+ eth-trunk 0
+ dcn
+#
+interface GigabitEthernet0/5/8
+ description LACP - SWITCH ETHER3
+ undo shutdown
+ eth-trunk 0
+ dcn
+#
+interface GigabitEthernet0/5/9
+ undo shutdown
+ dcn
+#
+interface LoopBack0
+ ipv6 enable
+ ip address 10.255.255.100 255.255.255.255
+ ip address 201.7.170.192 255.255.255.255 sub
+ ipv6 address 2804:168C::10:255:255:0/128
+ ospf enable 1 area 0.0.0.0
+#
+interface LoopBack1
+ ip address 201.7.170.193 255.255.255.255
+#
+interface LoopBack1023
+ description DCN loopback interface
+ ip binding vpn-instance __dcn_vpn__
+ ip address 128.10.244.238 255.255.0.0
+#
+interface Virtual-Ethernet0/1/1
+ ve-group 2 l2-terminate
+#
+interface Virtual-Ethernet0/1/1.10
+ vlan-type dot1q 10
+#
+interface Virtual-Ethernet0/1/11
+ mac-address c4b8-cafe-ff11
+ ve-group 2 l3-access
+#
+interface Virtual-Ethernet0/1/11.10
+ vlan-type dot1q 10
+ description INTER-VS-VS-BGP
+ ipv6 enable
+ ip address 10.66.66.1 255.255.255.252
+ ipv6 address auto link-local
+ statistic enable
+ ospfv3 1 area 0.0.0.0
+ ospfv3 network-type p2p
+#
+interface Virtual-Ethernet0/2/2
+ ve-group 3 l2-terminate
+#
+interface Virtual-Ethernet0/2/2.10
+ vlan-type dot1q 10
+#
+interface Virtual-Ethernet0/2/22
+ mac-address c4b8-cafe-ff22
+ ve-group 3 l3-access
+#
+interface Virtual-Ethernet0/2/22.10
+ vlan-type dot1q 10
+#
+interface Tunnel1
+ ip address 10.255.255.5 255.255.255.252
+ tunnel-protocol mpls te
+ destination 10.255.255.6
+ mpls te tunnel-id 1
+#
+interface NULL0
+#
+ccc p2p-10 interface Virtual-Ethernet0/1/1.10 tagged out-interface Virtual-Ethernet0/2/2.10 tagged
+#
+ospf 1 router-id 10.255.255.100
+ import-route direct
+ import-route static
+ import-route unr
+ opaque-capability enable
+ area 0.0.0.0
+#
+ospf 65534 vpn-instance __dcn_vpn__
+ description DCN ospf create by default
+ opaque-capability enable
+ hostname
+ vpn-instance-capability simple
+ area 0.0.0.0
+  network 0.0.0.0 255.255.255.255
+#
+!The DCN function implements the capability of plug-and-play for this device.
+!A NE IP address based on the unique NE ID is automatically generated in VPN
+!of DCN. It is recommended that the NE IP address be changed to the planned
+!one by running the ne-ip X.X.X.X <MASK> command after the device being online.
+dcn
+#
+ip route-static 0.0.0.0 0.0.0.0 172.31.255.5 description ROTA DEFAULT CGNAT
+ip route-static 10.255.255.6 255.255.255.255 10.192.201.6 description ROTA DO MPLS PARA SW 01 - RAISECOM
+ip route-static 201.7.171.20 255.255.255.252 201.7.171.24 description ATENDE SCREEN SAVER INFORMATICA- BANCO DO BRASIL JIQUIRIA
+#
+snmp-agent
+snmp-agent local-engineid 800007DB0368E2098C62AB
+snmp-agent community read cipher %^%#6E0hFK+yt/$kzbR56e7Vqo}|*WLfU<i6"1%yboY2~Qm{Fs7.3;}rmKW%d%r#5W{{E/^o0&2y<C%X=t7I%^%# alias __CommunityAliasName_01_44268
+#
+snmp-agent sys-info version v2c v3
+snmp-agent community complexity-check disable
+#
+snmp-agent mib-view included mibview mib-2
+snmp-agent mib-view included mib2view mib-2
+#
+snmp-agent protocol source-status all-interface
+undo snmp-agent protocol source-status ipv6 all-interface
+#
+undo snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+lldp enable
+#
+undo web-auth-server source-ip all
+#
+undo web-auth-server source-ipv6 all
+#
+stelnet server enable
+snetconf server enable
+ssh server authentication-retries 5
+ssh ipv4 server port 6001
+ssh ipv6 server port 6001
+ssh user super-savnet
+ssh user super-savnet authentication-type all
+ssh user super-savnet service-type all
+ssh user tomich
+ssh user tomich authentication-type password
+ssh user tomich service-type all
+ssh user tomich sftp-directory cfcard:/
+ssh server-source -i LoopBack1023
+ssh server-source all-interface
+ssh ipv6 server-source all-interface
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 dh_group1_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521 sm2_kep
+#
+ssh server publickey dsa ecc rsa
+#
+ssh server dh-exchange min-len 2048
+#
+ssh client publickey ecc rsa
+#
+ssh client cipher aes256_ctr aes128_ctr
+ssh client hmac sha2_256
+ssh client key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+user-interface maximum-vty 21
+#
+user-interface con 0
+#
+user-interface vty 0 4
+ authentication-mode aaa
+ user privilege level 3
+ idle-timeout 35791 0
+ protocol inbound ssh
+#
+netconf
+ activate module huawei-ip
+#
+local-aaa-server
+#
+admin
+ virtual-system BGP pvmb slot 10 9
+  port-mode port
+  resource u4route upper-limit 1048576
+  resource m4route upper-limit 2000
+  resource u6route upper-limit 1048576
+  resource m6route upper-limit 100
+  resource vpn-instance upper-limit 12
+  resource cpu weight 5
+  assign interface Eth-Trunk0.130
+  assign interface Eth-Trunk0.151
+  assign interface Eth-Trunk0.300
+  assign interface Eth-Trunk0.617
+  assign interface Eth-Trunk0.1170
+  assign interface Eth-Trunk0.2550
+  assign interface Eth-Trunk0.2551
+  assign interface Eth-Trunk0.2991
+  assign interface Eth-Trunk0.3001
+  assign interface Eth-Trunk0.3100
+  assign interface Eth-Trunk0.3895
+  assign interface Eth-Trunk0.4050
+  assign interface GigabitEthernet0/5/0
+  assign interface GigabitEthernet0/5/1
+  assign interface GigabitEthernet0/5/2
+  assign interface Virtual-Ethernet0/2/22.10
+#
+l2tp-group default-lac
+ tunnel name HUAWEI
+#
+l2tp-group default-lns
+ tunnel name HUAWEI
+#
+return
+<SAVNET-ADM>

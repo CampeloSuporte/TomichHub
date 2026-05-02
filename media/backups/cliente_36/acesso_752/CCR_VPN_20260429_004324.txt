@@ -1,0 +1,653 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ALTA RADIO LTDA
+Equipamento: CCR VPN
+Host: 170.80.59.122:22002
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 29/04/2026 00:43:24
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/29/2026 00:43:22 by RouterOS 6.49.4
+# software id = J0G1-89MT
+#
+# model = CCR1016-12S-1S+
+# serial number = 912A0AFCBE65
+/interface bridge add name="BR_Casa wiler "
+/interface bridge add name="DELL R630"
+/interface bridge add name=bridge1
+/interface bridge add name=lo
+/interface ethernet set [ find default-name=sfp1 ] comment="CUIDADO SGP_U2000" name=0/1
+/interface ethernet set [ find default-name=sfp3 ] advertise=1000M-full auto-negotiation=no name=0/3
+/interface ethernet set [ find default-name=sfp5 ] advertise=1000M-full comment="datacom " name=0/5
+/interface ethernet set [ find default-name=sfp6 ] name=0/6
+/interface ethernet set [ find default-name=sfp7 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full auto-negotiation=no comment="Ipoe Voip Huawei Ne 8000 BNG-PBR" name=0/7
+/interface ethernet set [ find default-name=sfp8 ] advertise=1000M-full comment="danilo green " name=0/8
+/interface ethernet set [ find default-name=sfp9 ] advertise=1000M-full arp=proxy-arp auto-negotiation=no mac-address=74:4D:28:FF:CA:BA name=0/9
+/interface ethernet set [ find default-name=sfp10 ] advertise=1000M-full comment="Nvd Intelbras " full-duplex=no name=0/10
+/interface ethernet set [ find default-name=sfp11 ] advertise=1000M-full comment="Radio Huawei Casa Wiler " l2mtu=1692 mtu=1692 name=0/11
+/interface ethernet set [ find default-name=sfp12 ] advertise=10M-full,100M-full,1000M-full,2500M-full,10000M-full comment="Casa Wiler" name=0/12
+/interface ethernet set [ find default-name=sfp2 ] advertise=1000M-full,10000M-full
+/interface ethernet set [ find default-name=sfp4 ] comment="Servidor dell Idrack R630"
+/interface ethernet set [ find default-name=sfpplus1 ] advertise=1000M-full speed=1Gbps
+/interface pptp-client add connect-to=131.161.45.8 disabled=no name=VPN-QUINTINOS password=qazwsx11 user=pppoe-quintinos
+/interface vlan add comment="GERENCIA REDE GERAL - OLTS - SWTICH HUAWEI - SW MIKROTIK - LIGADO HUAWEI ALTA TELECOM - D:0/19" interface=sfpplus1 name=sfp-sfpplus1.VLAN_1931 vlan-id=1931
+/interface vlan add comment="Visitante Casa Wiler" interface="BR_Casa wiler " name=vlan200 vlan-id=200
+/interface vlan add comment="Automa\E7\E3o Casa Wiler" interface="BR_Casa wiler " name=vlan201 vlan-id=201
+/interface vlan add comment="LINK DEDICADO MIKROTIK - GERENCIA OLTS - GERENCIA SWTICH HUAWEI - SW MIKROTIK " interface=sfpplus1 name=vlan1064 vlan-id=1064
+/interface vlan add interface=sfpplus1 name=vlan2317 vlan-id=2317
+/ip dhcp-server option add code=121 name=classless value=0x18A000000A016501000A016501
+/ip dhcp-server option add code=121 name=classless1 value="0x18A00000\$(NETWORK_GATEWAY)0x00\$(NETWORK_GATEWAY)"
+/ip dhcp-server option add code=252 name=auto-proxy-config
+/ip ipsec policy group add name=RoadWarrior
+/ip ipsec policy group add name="VPN guests"
+/ip ipsec profile set [ find default=yes ] dh-group=ecp384,modp8192,modp4096,modp2048,modp1024 dpd-interval=disable-dpd enc-algorithm=aes-256 hash-algorithm=md5
+/ip ipsec profile add dh-group=modp1024 dpd-interval=30s enc-algorithm=aes-256 name=Wuerenlos
+/ip ipsec peer add address=170.80.1.80/32 exchange-mode=aggressive local-address=170.80.59.122 name=Wuerenlos passive=yes profile=Wuerenlos
+/ip ipsec proposal set [ find default=yes ] auth-algorithms=sha512,sha256,sha1,md5,null disabled=yes enc-algorithms=aes-256-cbc,aes-256-ctr,aes-256-gcm,camellia-256,aes-192-cbc,aes-192-ctr,aes-192-gcm,camellia-192,aes-128-cbc,aes-128-ctr,aes-128-gcm,camellia-128,3des,blowfish,twofish,des,null pfs-group=none
+/ip ipsec proposal add enc-algorithms=aes-256-cbc,aes-256-ctr,aes-192-cbc,aes-128-cbc lifetime=40m name=Wuerenlingen pfs-group=none
+/ip pool add name=pppoe ranges=192.168.66.1-192.168.66.254,192.168.67.1-192.168.67.254
+/ip pool add name=pgcorte ranges=10.3.0.2-10.3.3.254
+/ip pool add name=dhcp_pool282 ranges=10.20.20.2-10.20.20.6
+/ip pool add name=dhcp_pool420 ranges=192.168.50.1-192.168.50.253
+/ip pool add name=dhcp_pool421 ranges=192.166.22.2-192.166.22.254
+/ip pool add comment=SGP-BLOQUEADOS name=bloqueados ranges=10.24.0.0/22
+/ip pool add comment=VLAN.21.L2L_DAVINCI name=dhcp_pool427 ranges=10.10.10.50-10.10.10.254
+/ip pool add name=dhcp_pool428 ranges=30.30.30.2-30.30.30.254
+/ip pool add name=dhcp_pool429 ranges=192.168.99.2-192.168.99.254
+/ip pool add name=dhcp_pool430 ranges=192.168.99.2-192.168.99.254
+/ip pool add name=dhcp_pool431 ranges=192.168.99.2-192.168.99.254
+/ip pool add name=dhcp_pool432 ranges=192.168.99.2-192.168.99.254
+/ip pool add name=dhcp_pool433 ranges=192.168.7.2-192.168.7.254
+/ip pool add name=dhcp_pool434 ranges=192.168.7.2-192.168.7.254
+/ip pool add name=dhcp_pool435 ranges=100.64.2.2-100.64.2.254
+/ip pool add name=CGNAT_01 ranges=100.64.6.0/24,100.64.7.0/24
+/ip pool add name=dhcp_pool16 ranges=192.166.23.2-192.166.23.254
+/ip pool add name=dhcp_pool17 ranges=192.168.167.1-192.168.167.253
+/ip pool add name=dhcp_pool18 ranges=192.166.22.2-192.166.22.254
+/ip pool add name=dhcp_pool19 ranges=192.168.168.1-192.168.168.253
+/ip pool add name=ipsec-RW ranges=192.168.50.2-192.168.50.254
+/ip pool add name=l2tp ranges=192.168.50.2-192.168.50.254
+/ip pool add name=vpn-pool ranges=192.168.1.15-192.168.1.20
+/ip pool add name=vpn_pool ranges=192.168.1.15-192.168.1.20
+/ip pool add name=pool-vpn ranges=10.1.1.2-10.1.1.250
+/ip pool add name="VPN guests" ranges=192.168.168.1-192.168.169.254
+/ip pool add name=POOL_OpenVPN ranges=192.168.250.128/25
+/ip pool add name=dhcp_pool27 ranges=192.168.0.1-192.168.0.253
+/ip dhcp-server add address-pool=dhcp_pool17 disabled=no interface=vlan200 name=dhcp6
+/ip dhcp-server add address-pool=dhcp_pool18 disabled=no interface="BR_Casa wiler " name=dhcp1
+/ip dhcp-server add address-pool=dhcp_pool19 disabled=no interface=vlan201 name=dhcp2
+/ip dhcp-server add address-pool=dhcp_pool27 disabled=no interface=0/8 name=dhcp3
+/ip ipsec mode-config add address-pool=vpn_pool name="vpn Guests" split-include=0.0.0.0/0
+/port set 1 baud-rate=9600
+/ppp profile add dns-server=170.79.93.123,170.79.93.124 local-address=170.80.59.122 name=pppoe remote-address=CGNAT_01
+/ppp profile add change-tcp-mss=no dns-server=170.80.59.10,170.80.59.11 local-address=170.80.59.122 name="20 Megas" rate-limit=20480k/20480k remote-address=pppoe use-compression=no use-encryption=no use-ipv6=no use-mpls=no use-upnp=no
+/ppp profile add change-tcp-mss=no dns-server=170.80.59.10,170.80.59.11 local-address=170.80.59.122 name="50 Megas" rate-limit=51200k/51200k remote-address=pppoe use-compression=no use-encryption=no use-ipv6=no use-mpls=no use-upnp=no
+/ppp profile add change-tcp-mss=no dns-server=170.80.59.10,170.80.59.11 local-address=170.80.59.122 name="40 Megas" rate-limit=20480k/40960k remote-address=pppoe use-compression=no use-encryption=no use-ipv6=no use-mpls=no use-upnp=no
+/ppp profile add change-tcp-mss=no dns-server=170.80.59.10,170.80.59.11 local-address=170.80.59.122 name="100 Megas" rate-limit=102400k/102400k remote-address=pppoe use-compression=no use-encryption=no use-ipv6=no use-mpls=no use-upnp=no
+/ppp profile add change-tcp-mss=no dns-server=170.80.59.10,170.80.59.11 local-address=170.80.59.122 name="200 Megas" rate-limit=51200k/204800k remote-address=pppoe use-compression=no use-encryption=no use-ipv6=no use-mpls=no use-upnp=no
+/ppp profile add name=SGP-BLOQUEADOS remote-address=bloqueados
+/ppp profile add name=SGP-PLANO-ID1 rate-limit=60000k/60000k
+/ppp profile add name=SGP-PLANO-ID2 rate-limit=102400k/102400k
+/ppp profile add name=SGP-PLANO-ID3 rate-limit=122800k/122880k
+/ppp profile add name=SGP-PLANO-ID4 rate-limit=204800k/204800k
+/ppp profile add name=SGP-PLANO-ID6 rate-limit=25600k/25600k
+/ppp profile add name=SGP-PLANO-ID7 rate-limit=51200k/51200k
+/ppp profile add name=SGP-PLANO-ID8 rate-limit=2100k/21000k
+/ppp profile add name=SGP-PLANO-ID9 rate-limit=307200k/307200k
+/ppp profile add name=SGP-PLANO-ID11 rate-limit=120000k/120000k
+/ppp profile add name=SGP-PLANO-ID20 rate-limit=60000k/60000k
+/ppp profile add name=SGP-PLANO-ID21 rate-limit=120000k/120000k
+/ppp profile add name=SGP-PLANO-ID22 rate-limit=100000k/100000k
+/ppp profile add name=SGP-PLANO-ID24 rate-limit=102400k/102400k
+/ppp profile add name=SGP-PLANO-ID25 rate-limit=51200k/307200k
+/ppp profile add name=SGP-PLANO-ID26 rate-limit=205000k/512500k
+/ppp profile add name=SGP-PLANO-ID27 rate-limit=153600k/102400k
+/ppp profile add name=SGP-PLANO-ID28 rate-limit=40960k/20480k
+/ppp profile add name=SGP-PLANO-ID29 rate-limit=51200k/122880k
+/ppp profile add name=SGP-PLANO-ID30 rate-limit=20480k/40960k
+/ppp profile add name=SGP-PLANO-ID31 rate-limit=20480k/40960k
+/ppp profile add name=SGP-PLANO-ID32 rate-limit=30720k/102400k
+/ppp profile add name=SGP-PLANO-ID33 rate-limit=20480k/40960k
+/ppp profile add name=SGP-PLANO-ID34 rate-limit=30720k/71680k
+/ppp profile add name=SGP-PLANO-ID37 rate-limit=10240k/20420k
+/ppp profile add name=SGP-PLANO-ID39 rate-limit=20480k/51200k
+/ppp profile add name=SGP-PLANO-ID40 rate-limit=30720k/40960k
+/ppp profile add name=SGP-PLANO-ID41 rate-limit=10240k/20480k
+/ppp profile add name=SGP-PLANO-ID42 rate-limit=10240k/20480k
+/ppp profile add name=SGP-PLANO-ID43 rate-limit=20480k/40960k
+/ppp profile add name=SGP-PLANO-ID44 rate-limit=102400k/204800k
+/ppp profile add name=SGP-PLANO-ID45 rate-limit=10240k/20480k
+/ppp profile add name=SGP-PLANO-ID50 rate-limit=153600k/307200k
+/ppp profile add name=SGP-PLANO-ID52 rate-limit=10240k/20480k
+/ppp profile add name=SGP-PLANO-ID53 rate-limit=10240k/20480k
+/ppp profile add name=SGP-PLANO-ID54 rate-limit=10240k/10240k
+/ppp profile add name=SGP-PLANO-ID55 rate-limit=153600k/307200k
+/ppp profile add name=SGP-PLANO-ID56 rate-limit=10240k/10240k
+/ppp profile add name=SGP-PLANO-ID59 rate-limit=51200k/102400k
+/ppp profile add name=SGP-PLANO-ID60 rate-limit=102400k/204800k
+/ppp profile add name=SGP-PLANO-ID62 rate-limit=20480k/40960k
+/ppp profile add name=SGP-PLANO-ID63 rate-limit=204800k/409600k
+/ppp profile add name=SGP-PLANO-ID64 rate-limit=614400k/102400k
+/ppp profile add name=SGP-PLANO-ID65 rate-limit=51200k/153600k
+/ppp profile add name=SGP-PLANO-ID66 rate-limit=153600k/358400k
+/ppp profile add dns-server=170.80.59.10,170.80.59.11 local-address=170.80.59.122 name=CGNAT remote-address=CGNAT_01
+/ppp profile add bridge=bridge1 change-tcp-mss=yes dns-server=170.79.93.123,170.79.93.124 idle-timeout=10m local-address=10.0.0.1 name=VPN remote-address=l2tp session-timeout=2h use-ipv6=default
+/ppp profile add dns-server=1.1.1.1 local-address=192.168.102.1 name=ipsec_vpn
+/ppp profile add bridge=bridge1 local-address=pool-vpn name=profile-vpn remote-address=pool-vpn
+/ppp profile add change-tcp-mss=yes dns-server=8.8.8.8 local-address="VPN guests" name=l2tp-profile remote-address="VPN guests"
+/ppp profile add change-tcp-mss=yes local-address=192.168.250.1 name=OPEN_VPN rate-limit=50m/50m remote-address=POOL_OpenVPN use-encryption=yes
+/ppp profile add bridge-learning=no change-tcp-mss=yes dns-server=8.8.8.8 name=VPN1 use-encryption=yes
+/queue simple add max-limit=10M/10M name="Automacao casa wiler" target=192.168.168.0/24
+/queue simple add max-limit=50M/50M name=IPTV target=192.168.99.0/24
+/queue simple add disabled=yes max-limit=50M/50M name=VOIP target=192.168.50.0/24
+/routing bgp instance set default as=263456
+/snmp community set [ find default=yes ] addresses=192.168.66.18/32
+/snmp community add addresses=192.168.40.0/24,10.1.1.2/32,10.1.1.3/32 name=SGP-GRAPHICs
+/user group set read policy=local,telnet,ssh,read,test,winbox,password,web,sniff,sensitive,api,romon,tikapp,!ftp,!reboot,!write,!policy,!dude
+/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,dude,tikapp
+/interface bridge port add bridge="BR_Casa wiler " interface=0/10
+/interface bridge port add bridge="BR_Casa wiler " interface=0/12
+/interface bridge port add bridge="BR_Casa wiler " interface=0/11
+/interface bridge port add bridge="DELL R630" interface=sfp4
+/ip neighbor discovery-settings set discover-interface-list=none
+/interface l2tp-server server set default-profile=l2tp-profile enabled=yes ipsec-secret=3030 use-ipsec=yes
+/interface ovpn-server server set auth=sha1 certificate=Servidor-OPEN cipher=aes256 default-profile=VPN enabled=yes port=61194 require-client-certificate=yes
+/interface pppoe-server server add authentication=pap default-profile=pppoe disabled=no keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=core_sorriso_dt01
+/interface pppoe-server server add authentication=pap default-profile=pppoe interface=0/11 keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service7
+/interface pppoe-server server add authentication=pap default-profile=pppoe disabled=no keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service2
+/interface pppoe-server server add authentication=pap default-profile=pppoe disabled=no keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service1
+/interface pppoe-server server add authentication=pap default-profile=pppoe keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service3
+/interface pppoe-server server add authentication=pap default-profile=pppoe keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service5
+/interface pppoe-server server add default-profile=pppoe service-name=service8
+/interface pppoe-server server add authentication=pap default-profile=pppoe disabled=no keepalive-timeout=20 max-mru=1600 max-mtu=1492 one-session-per-host=yes service-name=service4
+/interface pppoe-server server add authentication=pap default-profile=pppoe disabled=no keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service6
+/interface pppoe-server server add authentication=pap default-profile=pppoe keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service9
+/interface pppoe-server server add authentication=pap default-profile=pppoe keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service10
+/interface pppoe-server server add authentication=pap default-profile=pppoe keepalive-timeout=20 max-mru=1600 max-mtu=1492 service-name=service11
+/interface pptp-server server set authentication=pap,chap,mschap1,mschap2 enabled=yes
+/ip accounting set enabled=yes
+/ip address add address=170.80.59.122/30 comment="Link Mirotik 1016" interface=vlan1064 network=170.80.59.120
+/ip address add address=10.40.40.2/30 comment="Gerencia Olt Huwei PMS01-Sorriso" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.0
+/ip address add address=170.80.59.103 comment="Ip Fixo SGp" interface=vlan1064 network=170.80.59.103
+/ip address add address=192.166.22.1/24 comment="Casa Wiler" interface="BR_Casa wiler " network=192.166.22.0
+/ip address add address=192.168.40.254/24 comment="Ip fixo Sgp Cuidado" interface=sfp4 network=192.168.40.0
+/ip address add address=10.1.1.2/24 comment="Gerencia sistema monitoramento - Sistema Ip" interface=0/1 network=10.1.1.0
+/ip address add address=10.201.201.1/30 comment="Ipoe Voip Huawei Ne 8000 BNG-PBR" interface=0/7 network=10.201.201.0
+/ip address add address=10.40.40.9/30 comment="Gerencia Olt ZTE PMS03-Pindaibas" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.8
+/ip address add address=10.204.204.9/30 comment="Gerencia Vmware" interface=0/1 network=10.204.204.8
+/ip address add address=10.40.40.33/30 comment="Gerencia Olt ZTE PMS05-Major Porto" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.32
+/ip address add address=10.40.40.37/30 comment="Gerencia Switch Huawei PMS05-Major Porto" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.36
+/ip address add address=10.40.40.45/30 comment="GERENCIA MAJOR PORTO WIFI-PMS05" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.44
+/ip address add address=10.40.40.49/30 comment="Gerencia Camera Intelbras Major Porto" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.48
+/ip address add address=10.40.40.53/30 comment="Gerencia OltHuawei X7 Sorriso" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.52
+/ip address add address=170.80.59.104 comment="Voip **CUIDADO " interface=vlan1064 network=170.80.59.104
+/ip address add address=10.204.204.1/30 comment="Cuidado Wanguard Ativa somente emergencia" disabled=yes interface=0/1 network=10.204.204.0
+/ip address add address=10.40.40.65/30 comment="Gerencia Olt Huawei Arrial Afonso" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.64
+/ip address add address=10.40.40.69/30 comment="Gerencia Switch Huawei S6730 Santa Luzia" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.68
+/ip address add address=10.40.40.73/30 comment="Gerencia Olt ZTE 650 Santa Luzia" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.72
+/ip address add address=10.40.40.77/30 comment="Gerencia Switch Huawei Pindaibas" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.76
+/ip address add address=10.40.40.81/30 comment="Gerencia Switch Huawei Pindaibas-novo" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.80
+/ip address add address=192.168.1.1/24 comment="NVD Intelbras " interface=0/10 network=192.168.1.0
+/ip address add address=192.168.167.254/24 interface=vlan200 network=192.168.167.0
+/ip address add address=192.168.168.254/24 comment="Automa\E7\E3o casa wiler" interface=vlan201 network=192.168.168.0
+/ip address add address=10.205.205.1/30 comment=PRTG interface=0/1 network=10.205.205.0
+/ip address add address=192.168.50.1/24 comment="Servidor Dell R630 Idrack" interface=sfp4 network=192.168.50.0
+/ip address add address=192.168.60.254/24 comment="Servidor Ibm" interface=0/1 network=192.168.60.0
+/ip address add address=192.168.41.254/24 comment=PRTG interface=0/1 network=192.168.41.0
+/ip address add address=10.40.40.85/30 comment="CAMERA PINDAIBAS 01" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.84
+/ip address add address=10.40.40.89/30 comment="CAMERA PINDAIBAS 02" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.88
+/ip address add address=10.40.40.93/30 comment=SW-PMS01-SORRISO-S6730 interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.92
+/ip address add address=10.40.40.97/30 comment="OLT-PMS06-LEAL MA5801" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.96
+/ip address add address=10.40.40.105/30 comment="MIKROTIK LEAL GERENCIA" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.104
+/ip address add address=192.168.42.254/24 comment="GERENCIA IPS LOJA" interface=sfp4 network=192.168.42.0
+/ip address add address=10.43.43.254/24 comment="Gerencia Switch Huawei PMS05-Major Porto tresssssssss" interface=sfp-sfpplus1.VLAN_1931 network=10.43.43.0
+/ip address add address=10.40.40.109/30 comment="MIKROTIK LEAL GERENCIA--teste 05092025" disabled=yes interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.108
+/ip address add address=10.40.40.113/30 comment="MIKROTIK LEAL GERENCIA - teste 05/09/2025" interface=sfp-sfpplus1.VLAN_1931 network=10.40.40.112
+/ip address add address=192.168.0.254/24 comment="idrack ibm" disabled=yes interface=0/8 network=192.168.0.0
+/ip address add address=172.31.100.1/24 comment="IPs VMs SERVIDOR IBM" interface=0/1 network=172.31.100.0
+/ip address add address=192.168.0.35/24 comment="datacom " interface=0/5 network=192.168.0.0
+/ip dhcp-server lease add address=192.166.22.13 client-id=1:84:25:19:13:f0:46 comment="IMPRESSORA CASA WILER " mac-address=84:25:19:13:F0:46
+/ip dhcp-server lease add address=192.166.22.11 mac-address=F4:F5:D8:25:90:E0
+/ip dhcp-server lease add address=192.166.22.50 client-id=1:d8:36:5f:86:15:1c mac-address=D8:36:5F:86:15:1C
+/ip dhcp-server lease add address=192.166.22.80 client-id=1:d8:36:5f:6c:c0:87 comment="Camera Garagem" mac-address=D8:36:5F:6C:C0:87 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.87 client-id=1:80:85:44:f9:b9:34 comment="Camera Area goumet " mac-address=80:85:44:F9:B9:34 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.53 client-id=1:30:e1:f1:73:51:22 mac-address=30:E1:F1:73:51:22 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.79 mac-address=D8:36:5F:0D:05:E5 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.40 client-id=1:f0:25:8e:cd:fd:d0 mac-address=F0:25:8E:CD:FD:D0 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.91 mac-address=C4:82:E1:85:58:96 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.48 mac-address=A0:92:08:AF:A0:45 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.24 mac-address=50:8B:B9:DB:C0:04 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.98 mac-address=C4:82:E1:15:0C:41 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.68 mac-address=1C:90:FF:CD:54:5E server=dhcp1
+/ip dhcp-server lease add address=192.166.22.65 mac-address=A8:80:55:71:87:C3 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.64 mac-address=1C:90:FF:C4:E9:BE server=dhcp1
+/ip dhcp-server lease add address=192.166.22.81 mac-address=50:8B:B9:2E:04:AB server=dhcp1
+/ip dhcp-server lease add address=192.166.22.82 mac-address=18:DE:50:78:F2:36 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.89 mac-address=D8:D6:68:1B:AA:A9 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.54 mac-address=50:8B:B9:2E:12:18 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.51 mac-address=A8:80:55:F6:95:C1 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.67 mac-address=50:8B:B9:DB:AE:99 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.114 mac-address=54:43:B2:46:FE:E0 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.115 mac-address=A0:B7:65:FF:D1:B4 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.112 client-id=1:f8:ff:c2:44:0:50 mac-address=F8:FF:C2:44:00:50 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.111 client-id=1:32:91:3a:4c:50:c1 mac-address=32:91:3A:4C:50:C1 server=dhcp1
+/ip dhcp-server lease add address=192.166.22.99 client-id=1:40:99:22:57:bf:a1 mac-address=40:99:22:57:BF:A1 server=dhcp1
+/ip dhcp-server network add address=10.10.10.0/24 comment=VLAN.21.L2L_DAVINCI dns-server=170.79.93.123 gateway=10.10.10.1
+/ip dhcp-server network add address=30.30.30.0/24 dns-server=170.79.93.123 gateway=30.30.30.1
+/ip dhcp-server network add address=100.64.2.0/24 comment=EOIP dns-server=170.79.93.123 gateway=100.64.2.1
+/ip dhcp-server network add address=192.166.22.0/24 comment="Casa Wiler" gateway=192.166.22.1
+/ip dhcp-server network add address=192.166.23.0/24 dns-server=170.79.93.123 gateway=192.166.23.1
+/ip dhcp-server network add address=192.168.0.0/24 gateway=192.168.0.254
+/ip dhcp-server network add address=192.168.50.0/24 comment=VOIP dns-server=170.79.93.123 gateway=192.168.50.254
+/ip dhcp-server network add address=192.168.99.0/24 comment=IPTV dns-server=170.79.93.123 gateway=192.168.99.1
+/ip dhcp-server network add address=192.168.167.0/24 comment="Casa Wiler - Visitante" dns-server=170.79.93.123 gateway=192.168.167.254
+/ip dhcp-server network add address=192.168.168.0/24 comment="Automa\E7\E3o casa wiler " dns-server=170.79.93.123 gateway=192.168.168.254
+/ip dns set servers=170.79.93.123,170.79.93.124
+/ip firewall address-list add address=192.168.66.0/24 list=CLIENTES_DNS
+/ip firewall address-list add address=192.166.22.0/24 comment="CASA WILER" list=Clientes_DNS
+/ip firewall address-list add address=10.10.10.0/24 list=L2L_DAVINCI
+/ip firewall address-list add address=10.10.20.0/24 list=L2L_DAVINCI
+/ip firewall address-list add address=45.129.136.46 list=ssh_blacklist
+/ip firewall address-list add address=78.128.113.0/24 list=ssh_blacklist
+/ip firewall address-list add address=91.191.209.0/24 list=ssh_blacklist
+/ip firewall address-list add address=192.168.40.1 comment=SGP list=AltaOLT
+/ip firewall address-list add address=170.80.59.122 list=AltaOLT
+/ip firewall address-list add address=170.80.59.0/24 disabled=yes list=AltaOLT
+/ip firewall address-list add address=192.168.98.0/24 comment=LOJA list=AltaOLT
+/ip firewall address-list add address=170.80.59.17 comment="CGNAT REDE LOJA" disabled=yes list=AltaOLT
+/ip firewall address-list add address=192.165.22.0/30 comment=U2000 list=AltaOLT
+/ip firewall address-list add address=192.168.98.0/24 comment=LOJA list=ACESSO_AUTORIZADO
+/ip firewall address-list add address=170.80.59.17 comment="IP FIXO " list=ACESSO_AUTORIZADO
+/ip firewall address-list add address=192.166.22.0/24 comment="CASA WILER " list=ACESSO_AUTORIZADO
+/ip firewall address-list add address=170.80.59.0/24 comment="IP FIXO " list=ACESSO_AUTORIZADO
+/ip firewall address-list add address=179.190.244.198 comment="ACESSO SGP" list=ACESSO_AUTORIZADO
+/ip firewall address-list add address=amz.smartolt.com list=SmartOLT
+/ip firewall address-list add list=instalacao_nova
+/ip firewall mangle add action=mark-connection chain=forward disabled=yes dst-port=5060 new-connection-mark=sipconnection passthrough=yes protocol=tcp
+/ip firewall mangle add action=mark-connection chain=postrouting disabled=yes dst-port=5060 new-connection-mark=voip passthrough=yes protocol=udp
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO GRAFANA" dst-address=170.80.59.103 dst-port=2803 protocol=tcp to-addresses=172.31.100.2 to-ports=2803
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO PHPIPAM" dst-address=170.80.59.103 dst-port=2804 protocol=tcp to-addresses=172.31.100.2 to-ports=2804
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO ZABBIX - WEB" dst-address=170.80.59.103 dst-port=2802 protocol=tcp to-addresses=172.31.100.2 to-ports=2802
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO OBSERVER TOMICH - SSH" dst-address=170.80.59.103 dst-port=2801 protocol=tcp to-addresses=172.31.100.2 to-ports=22002
+/ip firewall nat add action=src-nat chain=srcnat comment="VMs - SERVIDOR IBM" src-address=172.31.100.0/24 to-addresses=170.80.59.103
+/ip firewall nat add action=src-nat chain=srcnat comment="NAO FAZER NAT PARA O DO RADIUS, MANTER ESSA REGRA SEMPRE EM PRIMEIRO" dst-address=192.168.40.1 dst-port=1812-1813,3799 protocol=udp src-address=10.200.200.2 to-addresses=10.200.200.2
+/ip firewall nat add action=src-nat chain=srcnat comment="NAO FAZER NAT PARA O DO RADIUS, MANTER ESSA REGRA SEMPRE EM PRIMEIRO" dst-address=10.200.200.2 dst-port=1812-1813,3799 protocol=udp src-address=192.168.40.1 to-addresses=192.168.40.1
+/ip firewall nat add action=accept chain=srcnat comment="NAO FAZER NAT PARA O DO RADIUS, MANTER ESSA REGRA SEMPRE EM PRIMEIRO" dst-address=192.168.40.1 protocol=udp
+/ip firewall nat add action=src-nat chain=srcnat comment="CGNAT_100.65.0.0/28  **** EMERGENCIA INCIO ****" disabled=yes src-address=100.65.0.0/20 to-addresses=170.80.59.122
+/ip firewall nat add action=dst-nat chain=dstnat comment="====Force  DNS====" disabled=yes dst-address=170.80.59.10 dst-port=53 protocol=udp to-addresses=8.8.8.8 to-ports=53
+/ip firewall nat add action=dst-nat chain=dstnat comment="====Force  DNS====" disabled=yes dst-address=170.80.59.11 dst-port=53 protocol=udp to-addresses=8.8.8.8 to-ports=53
+/ip firewall nat add action=masquerade chain=srcnat comment="Wanguard - Emergencia" src-address=10.204.204.0/24 to-addresses=170.80.59.122
+/ip firewall nat add action=masquerade chain=srcnat comment="NAT PARA VMs DO SERVER IBM" disabled=yes src-address=172.31.100.0/24 to-addresses=170.80.59.122
+/ip firewall nat add action=masquerade chain=srcnat comment=PPPOE-QUINTINOS src-address=173.80.1.0/24 to-addresses=170.80.59.122
+/ip firewall nat add action=dst-nat chain=dstnat comment="SGP REGRAS" dst-address-list=!SITES-LIBERADOS dst-port=80,443 protocol=tcp src-address-list=BLOQUEADOS to-addresses=170.80.59.103 to-ports=6403
+/ip firewall nat add action=src-nat chain=srcnat comment=SGP_192.168.40.0/24 src-address=192.168.40.0/24 to-addresses=170.80.59.104
+/ip firewall nat add action=src-nat chain=srcnat comment=192.168.60.0/24 src-address=192.168.60.0/24 to-addresses=170.80.59.104
+/ip firewall nat add action=dst-nat chain=dstnat comment=SGP dst-address=170.80.59.103 dst-port=8000 protocol=tcp to-addresses=192.168.40.1 to-ports=8000
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO VMWARE 02 - IBM" disabled=yes dst-address=170.80.59.103 dst-port=2800 protocol=tcp to-addresses=192.168.60.1 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment=SGP dst-address=170.80.59.103 dst-port=443 protocol=tcp to-addresses=192.168.40.1 to-ports=443
+/ip firewall nat add action=dst-nat chain=dstnat comment=SGP dst-address=170.80.59.103 dst-port=80 protocol=tcp to-addresses=192.168.40.1 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment=SGP dst-address=170.80.59.103 dst-port=22 protocol=tcp to-addresses=192.168.40.1 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=PRTG-NOVO dst-address=170.80.59.103 dst-port=8282 protocol=tcp to-addresses=192.168.41.1 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="SERVIDOR NOVO IP" dst-address=170.80.59.103 dst-port=2626 protocol=tcp to-addresses=192.168.42.1 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment="SERVIDOR NOVO IP" dst-address=170.80.59.103 dst-port=18008 protocol=tcp to-addresses=192.168.42.1 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="danilo green" dst-address=170.80.59.103 dst-port=8006 protocol=tcp to-addresses=192.168.37.2 to-ports=8006
+/ip firewall nat add action=dst-nat chain=dstnat comment="OLT NOVA" disabled=yes dst-port=2425 protocol=tcp to-addresses=10.40.40.102 to-ports=22
+/ip firewall nat add action=masquerade chain=srcnat comment="OLT HUAWEI " disabled=yes src-address=10.40.40.0/24 to-addresses=170.80.59.122
+/ip firewall nat add action=dst-nat chain=dstnat comment=PRTG-NOVO disabled=yes dst-address=170.80.59.103 dst-port=8283 protocol=tcp to-addresses=192.168.41.1 to-ports=3389
+/ip firewall nat add action=src-nat chain=srcnat comment=PRTG_192.168.41.0/24 src-address=192.168.41.0/24 to-addresses=170.80.59.103
+/ip firewall nat add action=src-nat chain=srcnat comment="GERENCIA IPS" src-address=192.168.42.0/24 to-addresses=170.80.59.103
+/ip firewall nat add action=src-nat chain=srcnat comment=IPOE_VOIP_NE8000 src-address=192.168.56.0/24 to-addresses=170.80.59.104
+/ip firewall nat add action=src-nat chain=srcnat comment="CASA WILER " src-address=192.166.22.0/24 to-addresses=170.80.59.104
+/ip firewall nat add action=src-nat chain=srcnat comment="Casa Wiler Visitante" src-address=192.168.167.0/24 to-addresses=170.80.59.104
+/ip firewall nat add action=src-nat chain=srcnat comment="Casa Wiler Automa\E7\E3o " src-address=192.168.168.0/24 to-addresses=170.80.59.104
+/ip firewall nat add action=masquerade chain=srcnat comment=VMWARE_GERENCIA src-address=10.204.204.8/30 to-addresses=170.79.93.3
+/ip firewall nat add action=masquerade chain=srcnat comment="Servidor Dell R630" src-address=192.168.50.0/24 to-addresses=170.79.93.3
+/ip firewall nat add action=src-nat chain=srcnat comment=prtg src-address=10.205.205.0/30 to-addresses=170.80.59.104
+/ip firewall nat add action=src-nat chain=srcnat comment="CASA WILER " src-address=192.166.23.0/24 to-addresses=170.79.93.2
+/ip firewall nat add action=src-nat chain=srcnat comment="GERENCIA PMS03-WIFI MIKROTIK" src-address=10.40.40.24/30 to-addresses=170.80.59.16
+/ip firewall nat add action=masquerade chain=srcnat comment="GERENCIA PMS05-WIFI TP-LINK" src-address=10.40.40.44/30
+/ip firewall nat add action=dst-nat chain=dstnat comment=WANGUARD disabled=yes dst-address=170.80.59.122 dst-port=22 protocol=tcp to-addresses=10.1.1.5 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=MONITORAMENTO dst-address=170.80.59.122 dst-port=3000 protocol=tcp to-addresses=10.1.1.3 to-ports=3000
+/ip firewall nat add action=dst-nat chain=dstnat comment=MONITORAMENTO_SSH dst-address=170.80.59.122 dst-port=3011 protocol=tcp to-addresses=10.1.1.3 to-ports=22
+/ip firewall nat add action=dst-nat chain=dstnat comment=U2000 dst-address=170.80.59.122 dst-port=3010 protocol=tcp to-addresses=10.1.1.1 to-ports=3389
+/ip firewall nat add action=dst-nat chain=dstnat comment=MONITORAMENTO dst-address=170.80.59.122 dst-port=3001 protocol=tcp to-addresses=10.1.1.3 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat comment="DVR-WILER " dst-address=170.80.59.103 dst-port=3889 protocol=tcp to-addresses=192.166.22.108 to-ports=37777
+/ip firewall nat add action=masquerade chain=srcnat comment="SERVIDOR MONITORAMENTO_U2000" src-address=10.1.1.0/24
+/ip firewall nat add action=src-nat chain=srcnat comment="VPN LOJA " src-address=172.80.0.0/24 to-addresses=170.80.59.122
+/ip firewall nat add action=src-nat chain=srcnat comment="VPN LOJA " src-address=192.168.250.128/25 to-addresses=170.80.59.122
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.0.0/26 to-addresses=170.79.93.2
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.0.64/26 to-addresses=170.79.93.3
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.0.128/26 to-addresses=170.79.93.4
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.0.192/26 to-addresses=170.79.93.5
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.1.0/26 to-addresses=170.79.93.6
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.1.64/26 to-addresses=170.79.93.7
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.1.128/26 to-addresses=170.79.93.8
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.1.192/26 to-addresses=170.79.93.9
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.2.0/26 to-addresses=170.79.93.10
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.2.64/26 to-addresses=170.79.93.11
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.2.128/26 to-addresses=170.79.93.12
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.2.192/26 to-addresses=170.79.93.13
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.3.0/26 to-addresses=170.79.93.14
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.3.64/26 to-addresses=170.79.93.15
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.3.128/26 to-addresses=170.79.93.16
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes src-address=100.65.3.192/26 to-addresses=170.79.93.17
+/ip firewall nat add action=masquerade chain=srcnat comment=SmartOLT disabled=yes dst-address-list=SmartOLT
+/ip firewall nat add action=dst-nat chain=dstnat comment=SmartOLT disabled=yes dst-port=2336 protocol=tcp src-address-list=SmartOLT to-addresses=10.40.40.74 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment=SmartOLT disabled=yes dst-port=2165 protocol=udp src-address-list=SmartOLT to-addresses=10.40.40.74 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="SERVIDOR NOVO IP" dst-address=170.80.59.103 dst-port=18008 protocol=tcp to-addresses=192.168.42.1 to-ports=80
+/ip firewall nat add action=dst-nat chain=dstnat dst-port=2626 protocol=tcp to-addresses=10.43.43.1 to-ports=22
+/ip firewall nat add action=masquerade chain=srcnat comment=SmartOLT dst-address-list=SmartOLT
+/ip firewall nat add action=dst-nat chain=dstnat comment=SmartOLT dst-port=2333 protocol=tcp src-address-list=SmartOLT to-addresses=10.40.40.1 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment=SmartOLT dst-port=2161 protocol=udp src-address-list=SmartOLT to-addresses=10.40.40.1 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="SmartOLT - OLT 02" dst-port=2334 protocol=tcp src-address-list=SmartOLT to-addresses=10.40.40.54 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment="SmartOLT - OLT 02" dst-port=2162 protocol=udp src-address-list=SmartOLT to-addresses=10.40.40.54 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="SmartOLT - SANTA LUZIA" dst-port=2335 protocol=tcp src-address-list=SmartOLT to-addresses=10.40.40.74 to-ports=23
+/ip firewall nat add action=dst-nat chain=dstnat comment="SmartOLT - SANTA LUZIA" dst-port=2163 protocol=udp src-address-list=SmartOLT to-addresses=10.40.40.74 to-ports=161
+/ip firewall nat add action=dst-nat chain=dstnat comment="REMOTO - ZABBIX / GRAFANA - SSH" dst-address=170.80.59.122 dst-port=22220 protocol=tcp to-addresses=192.168.60.10 to-ports=22
+/ip firewall service-port set sip sip-direct-media=no
+/ip ipsec identity
+# Wrong mode-config
+add generate-policy=port-strict mode-config=request-only my-id=fqdn:zzzz.ddns.net peer=Wuerenlos remote-id=key-id:@MyID secret=mikrotikroutervpn
+/ip ipsec policy set 0 disabled=yes dst-address=0.0.0.0/0 src-address=0.0.0.0/0
+/ip ipsec policy add action=none
+/ip route add comment=REDE_1036 distance=1 gateway=170.80.59.121
+/ip route add distance=1 dst-address=10.0.1.28/32 gateway=170.80.59.23
+/ip route add comment="GERENCIA U2000 #### ARRRIAL AFONSO #####" disabled=yes distance=1 dst-address=10.40.40.4/30 gateway=172.80.1.3
+/ip route add comment=CGNAT_NE8000 disabled=yes distance=1 dst-address=170.80.59.32/28 type=blackhole
+/ip route add comment=SW_TOMAZ_AQUINO distance=1 dst-address=172.19.0.4/30 gateway=172.19.0.2
+/ip route add comment=SW_TOMAZ_AQUINO distance=1 dst-address=172.19.0.4/30 gateway=172.19.0.2
+/ip route add comment="IPOE_ALTA TELECOM" distance=1 dst-address=192.168.56.0/24 gateway=10.201.201.2
+/ip route add comment="LOJA_ALTA TELECOM" distance=1 dst-address=192.168.98.0/24 gateway=10.201.201.2
+/ip service set telnet disabled=yes
+/ip service set ftp address=170.80.59.0/24,170.79.93.0/24,10.201.201.0/24,10.40.40.0/24
+/ip service set www disabled=yes port=9090
+/ip service set ssh address=170.80.59.0/24,179.48.68.73/32 port=22002
+/ip service set api address=192.168.40.0/24 port=3540
+/ip service set winbox address=192.166.22.64/32,192.166.23.0/24,170.79.93.0/24,192.168.10.0/24,170.80.59.0/24,179.48.68.0/22,0.0.0.0/0 port=8787
+/ip service set api-ssl disabled=yes
+/ip smb set allow-guests=no
+/ip smb shares set [ find default=yes ] disabled=yes
+/ipv6 nd set [ find default=yes ] advertise-dns=no
+/lcd set default-screen=interfaces
+/lcd pin set pin-number=1919
+/lcd interface set sfpplus1 disabled=yes
+/lcd interface set sfp4 disabled=yes
+/lcd interface set "0/5" disabled=yes
+/lcd interface set "0/6" disabled=yes
+/lcd interface set "0/7" disabled=yes
+/lcd interface set "0/8" disabled=yes
+/lcd interface set "0/9" disabled=yes
+/lcd interface set "0/10" disabled=yes
+/lcd interface set "0/11" disabled=yes
+/lcd interface set "0/12" disabled=yes
+/ppp aaa set interim-update=5m use-circuit-id-in-nas-port-id=yes
+/ppp secret add local-address=172.80.0.1 name=1212 password=qazwsx11 profile=pppoe remote-address=172.80.0.100 service=pptp
+/ppp secret add caller-id=170.80.59.23 local-address=172.80.1.1 name=aquino password=qazwsx11 profile="50 Megas" remote-address=172.80.1.80 service=pptp
+/ppp secret add name=bruno password=qazwsx11 profile=VPN service=pptp
+/ppp secret add name=tomich password="eVkh6{14o8e@" profile=VPN
+/ppp secret add local-address=192.168.250.128 name=open-vpn-.tomich password=57u2S7-DR3zf profile=OPEN_VPN remote-address=192.168.250.129 service=ovpn
+/radius add address=192.168.40.1 comment="RADIUS SGP" disabled=yes secret=sgp@radius service=ppp,login,hotspot,dhcp timeout=3s
+/radius incoming set accept=yes
+/routing bgp network add network=170.80.59.0/24 synchronize=no
+/routing bgp peer add disabled=yes name=LINK remote-address=170.80.59.121 remote-as=263456 route-reflect=yes ttl=default
+/routing bgp peer add disabled=yes in-filter=AULTA_IN name=peer1 out-filter=AUTA_OUT remote-address=fd80:88e4:1000::2 remote-as=273567
+/routing filter add action=accept chain=AULTA_IN disabled=yes prefix=2804:88e4::/32
+/routing filter add action=discard chain=AULTA_IN disabled=yes
+/routing filter add action=accept chain=AUTA_OUT disabled=yes prefix=::/0
+/routing filter add action=discard chain=AUTA_OUT disabled=yes
+/snmp set enabled=yes trap-community=SGP-GRAPHICs trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system console set [ find ] disabled=yes
+/system identity set name="CGNAT_PATOS DE MINAS"
+/system logging set 0 topics=info,!account
+/system logging add topics=error
+/system ntp client set enabled=yes primary-ntp=200.160.0.8
+/system package update set channel=upgrade
+/system scheduler add interval=2w1d name=backup on-event=backup_src policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jan/01/1970 start-time=00:00:00
+/system scheduler add interval=1m name=qos_simples on-event=qos_simples policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jan/01/1970 start-time=00:00:00
+/system scheduler add disabled=yes interval=10s name=huge on-event="# Name : Average CPU Load\r\
+    \n# Set up the scheduler to run this at a 1 second intervals (Sample Rate)\r\
+    \n# Set info logs to echo to Terminal in System Logging\r\
+    \n\r\
+    \n:local cpuload 0\r\
+    \n:global cpuarray\r\
+    \n:local arraylen 0\r\
+    \n:local arraypos 0\r\
+    \n:local arraytot 0\r\
+    \n:global avgcpuload 0\r\
+    \n:global highavgcpuload\r\
+    \n\r\
+    \n# arraysize is the number of cpu-Load samples to keep\r\
+    \n# Experiment with this value to incease or decrease the number of samples\r\
+    \n# The greater the value the longer the time that the cpu-load average is calculated for.\r\
+    \n:local arraysize 20\r\
+    \n\r\
+    \n# Get cpu-load samples, limit cpuarray to array size\r\
+    \n:set cpuload [/system resource get cpu-load]\r\
+    \n:set cpuarray ( [:toarray \$cpuload] + \$cpuarray )\r\
+    \n:set cpuarray [:pick \$cpuarray 0 \$arraysize]\r\
+    \n\r\
+    \n# add up all values in array\r\
+    \n:set arraypos 0\r\
+    \n:set arraylen [:len \$cpuarray]\r\
+    \n:while (\$arraypos < \$arraylen) do={\r\
+    \n:set arraytot (\$arraytot + [:pick \$cpuarray \$arraypos] );\r\
+    \n:set arraypos (\$arraypos +1)}\r\
+    \n\r\
+    \n# divide sum of array values by the number of values in cpuarray\r\
+    \n:set avgcpuload (\$arraytot / [:len \$cpuarray])\r\
+    \n:if ([:len \$highavgcpuload] = 0) do={:set highavgcpuload \$avgcpuload}\r\
+    \n:if ([\$highavgcpuload] < [\$avgcpuload]) do={:set highavgcpuload \$avgcpuload}\r\
+    \n\r\
+    \n# Display results in Terminal window\r\
+    \n:log info (\"CPU Load Captures:\")\r\
+    \n:log info \$cpuarray\r\
+    \n:log info (\"Array Total: \$arraytot\")\r\
+    \n:log info (\"Array size: \$arraysize\")\r\
+    \n:log info (\"CPU Load - Avg: \$avgcpuload High: \$highavgcpuload\")\r\
+    \n\r\
+    \n:if (\$avgcpuload >= 11)  do={ /routing filter enable [find comment=teste1]; }" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jan/01/1970 start-time=00:00:00
+/system scheduler add disabled=yes interval=30s name=temperatura on-event=temperatura policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/1970 start-time=15:32:50
+/system scheduler add interval=30s name=temp on-event=temp policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/1970 start-time=15:32:50
+/system script add dont-require-permissions=no name=CGNAT-1 owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":global sqrt do={\r\
+    \n  :for i from=0 to=\$1 do={\r\
+    \n    :if (i * i > \$1) do={ :return (\$i - 1) }\r\
+    \n  }\r\
+    \n}\r\
+    \n\r\
+    \n:global addNatRules do={\r\
+    \n  /ip firewall nat add chain=srcnat action=jump jump-target=CGNAT-1 \\\r\
+    \n    src-address=\"\$(\$srcStart)-\$(\$srcStart + \$count - 1)\"\r\
+    \n\r\
+    \n  :local x [\$sqrt \$count]\r\
+    \n  :local y \$x\r\
+    \n  :if (\$x * \$x = \$count) do={ :set y (\$x + 1) }\r\
+    \n  :for i from=0 to=\$x do={\r\
+    \n    /ip firewall nat add chain=CGNAT-1 action=jump jump-target=\"CGNAT-1-\$(\$i)\" \\\r\
+    \n     src-address=\"\$(\$srcStart + (\$x * \$i))-\$(\$srcStart + (\$x * (\$i + 1) - 1))\"\r\
+    \n  }\r\
+    \n\r\
+    \n  :for i from=0 to=(\$count - 1) do={\r\
+    \n    :local prange \"\$(\$portStart + (\$i * \$portsPerAddr))-\$(\$portStart + ((\$i + 1) * \$portsPerAddr) - 1)\"\r\
+    \n    /ip firewall nat add chain=\"CGNAT-1-\$(\$i / \$x)\" action=src-nat protocol=tcp src-address=(\$srcStart + \$i) \\\r\
+    \n     to-address=\$toAddr to-ports=\$prange\r\
+    \n    /ip firewall nat add chain=\"CGNAT-1-\$(\$i / \$x)\" action=src-nat protocol=udp src-address=(\$srcStart + \$i) \\\r\
+    \n     to-address=\$toAddr to-ports=\$prange\r\
+    \n  }\r\
+    \n}\r\
+    \n\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.1 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.31 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.61 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.91 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.121 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.151 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.181 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=30 srcStart=192.168.66.211 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100\r\
+    \n\$addNatRules count=13 srcStart=192.168.66.241 toAddr=2.2.2.2 portStart=2000 portsPerAddr=100"
+/system script add dont-require-permissions=no name=sgp-aviso owner=suporte-ti policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive source=":log info \"sgp aviso\";\r\
+    \n/file remove [find where name=sgp_aviso.rsc]\r\
+    \n/tool fetch url=\"https://altatelecom.sgp.net.br/ws/mikrotik/aviso/pendencia/\?token=89bfd432-3378-4b70-b593-74771e8cbb2f&app=mikrotik\" dst-path=sgp_aviso.rsc;\r\
+    \n:delay 30s\r\
+    \nimport file-name=sgp_aviso.rsc;\r\
+    \n:delay 10s\r\
+    \n/ip firewall address-list set timeout=00:30:00 [/ip firewall address-list find list=BLOQUEIO-AVISAR]"
+/system script add dont-require-permissions=no name=sgp_login_local owner=wiler policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":global filename \"sgp_login_local.txt\";\r\
+    \n/file remove [/file find name=\$filename]\r\
+    \n/tool fetch url=\"http://192.168.40.1:8000/ws/mikrotik/login/local/\\\?token=366ac1a7-5226-4689-9108-92f530d1487e&app=mikrotik&nas=192.168.40.254&disabled=1\" duration=30 dst-path=\$filename;\r\
+    \n:delay 32s;\r\
+    \n/import file-name=\$filename;"
+/system script add dont-require-permissions=no name=backup_src owner=master policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":log info \"STARTING BACKUP\";\r\
+    \n\r\
+    \n:global filename;\r\
+    \n\r\
+    \n:global date [/system clock get date];\r\
+    \n:global time [/system clock get time];\r\
+    \n:global name [/system identity get name];\r\
+    \n\r\
+    \n:global months (\"jan\",\"feb\",\"mar\",\"apr\",\"may\",\"jun\",\"jul\",\"aug\",\"sep\",\"oct\",\"nov\",\"dec\");\r\
+    \n:global hour [:pick \$time 0 2];\r\
+    \n:global min [:pick \$time 3 5];\r\
+    \n:global sec [:pick \$time 6 8];\r\
+    \n:global month [:pick \$date 0 3];\r\
+    \n:set month ([ :find \$months \$month -1 ] + 1);\r\
+    \n\r\
+    \n:if (\$month < 10) do={ :set month (\"0\" . \$month); }\r\
+    \n\r\
+    \n:global day [:pick \$date 4 6];\r\
+    \n:global year [:pick \$date 7 11];\r\
+    \n:set filename (\$name. \"-\" .\$year.\"-\".\$month.\"-\".\$day.\"-\".\$hour.\$min.\$sec);\r\
+    \n\r\
+    \n:log info \"DELAY 3S\"\r\
+    \n:delay 3s;\r\
+    \n\r\
+    \n:log info \"GENERATING RSC\";\r\
+    \n:global rsc \$filename;\r\
+    \n\r\
+    \n/export file=\$rsc;\r\
+    \n\r\
+    \n:log info \"BACKUP FINISHED\""
+/system script add dont-require-permissions=no name=qos_simples owner=wiler policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="/queue simple remove [find where dynamic]"
+/system script add dont-require-permissions=no name=script2 owner=wiler policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="/queue simple {\r\
+    \n   :foreach pppoe in=[find] do={\r\
+    \n      remove \$pppoe\r\
+    \n   }\r\
+    \n}"
+/system script add dont-require-permissions=no name=huge owner=master policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="# Name : Average CPU Load\r\
+    \n# Set up the scheduler to run this at a 1 second intervals (Sample Rate)\r\
+    \n# Set info logs to echo to Terminal in System Logging\r\
+    \n\r\
+    \n:local cpuload 0\r\
+    \n:global cpuarray\r\
+    \n:local arraylen 0\r\
+    \n:local arraypos 0\r\
+    \n:local arraytot 0\r\
+    \n:global avgcpuload 0\r\
+    \n:global highavgcpuload\r\
+    \n\r\
+    \n# arraysize is the number of cpu-Load samples to keep\r\
+    \n# Experiment with this value to incease or decrease the number of samples\r\
+    \n# The greater the value the longer the time that the cpu-load average is calculated for.\r\
+    \n:local arraysize 20\r\
+    \n\r\
+    \n# Get cpu-load samples, limit cpuarray to array size\r\
+    \n:set cpuload [/system resource get cpu-load]\r\
+    \n:set cpuarray ( [:toarray \$cpuload] + \$cpuarray )\r\
+    \n:set cpuarray [:pick \$cpuarray 0 \$arraysize]\r\
+    \n\r\
+    \n# add up all values in array\r\
+    \n:set arraypos 0\r\
+    \n:set arraylen [:len \$cpuarray]\r\
+    \n:while (\$arraypos < \$arraylen) do={\r\
+    \n:set arraytot (\$arraytot + [:pick \$cpuarray \$arraypos] );\r\
+    \n:set arraypos (\$arraypos +1)}\r\
+    \n\r\
+    \n# divide sum of array values by the number of values in cpuarray\r\
+    \n:set avgcpuload (\$arraytot / [:len \$cpuarray])\r\
+    \n:if ([:len \$highavgcpuload] = 0) do={:set highavgcpuload \$avgcpuload}\r\
+    \n:if ([\$highavgcpuload] < [\$avgcpuload]) do={:set highavgcpuload \$avgcpuload}\r\
+    \n\r\
+    \n# Display results in Terminal window\r\
+    \n:log info (\"CPU Load Captures:\")\r\
+    \n:log info \$cpuarray\r\
+    \n:log info (\"Array Total: \$arraytot\")\r\
+    \n:log info (\"Array size: \$arraysize\")\r\
+    \n:log info (\"CPU Load - Avg: \$avgcpuload High: \$highavgcpuload\")\r\
+    \n\r\
+    \n:if (\$avgcpuload >= 11)  do={ /routing filter enable [find comment=teste1]; }"
+/system script add dont-require-permissions=no name=temperatura owner=wiler1 policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":global tcasinha [/system health get temperature]\r\
+    \n:local emessage (\"Temperature is \" . [:pick \$tcasinha 0 2] . \".\" . [:pick \$tcasinha 2 3])\r\
+    \n:if (\$tcasinha >=52) do={\r\
+    \n:log info \$tcasinha\r\
+    \n/tool sms send usb3 \"yourcellphonehere\" message=\$emessage\r\
+    \n} else={\r\
+    \n/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PMS01_TEMPERATURA_ALTA**\"\r\
+    \n}"
+/system script add dont-require-permissions=no name=script1 owner=wiler1 policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":global tcasinha [/system health get temperature]\r\
+    \n:local emessage (\"Temperature is \" . [:pick \$tcasinha 0 2] . \".\" . [:pick \$tcasinha 2 3])\r\
+    \n:if (\$tcasinha >=44) do={\r\
+    \n:log info \$tcasinha\r\
+    \n/tool sms send usb3 \"yourcellphonehere\" message=\$emessage\r\
+    \n} else={\r\
+    \n/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PMS01_TEMPERATURA_ALTA**\"\r\
+    \n}\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n:global \"tempstatus\"\r\
+    \n:global \"templaststatus\"\r\
+    \n:global \"systemtemp\" [/system health get temperature]\r\
+    \n:if (systemtemp > \"50\") do={:set \"tempstatus\" \"system temp is too high\"}\r\
+    \n:if (systemtemp > \"60\") do={:set \"tempstatus\" \"system temp is critical\"}\r\
+    \n:if (systemtemp < \"40\") do={:set \"tempstatus\" \"system temp is within spec\"}\r\
+    \n:if (\$\"tempstatus\" != \$\"templaststatus\") do {\r\
+    \n/tool e-mail send to=\"your-email-here@email.com\" subject=(\"This router \$[/system identity get name] has a temperature alert. \$[/system clock get date] \$tempstatus\") body=(\"This router \$[/system identity get name] has a temperature alert. \$[/system clock get date] \$tempstatus - \$systemtemp Celcius\")\r\
+    \n:log info \"Email sent about system \$tempstatus status\"\r\
+    \n:set \"templaststatus\" \$\"tempstatus\"\r\
+    \n}"
+/system script add dont-require-permissions=no name=temp owner=wiler1 policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":global \"tempstatus\"\r\
+    \n:global \"templaststatus\"\r\
+    \n:global \"cputempstatus\"\r\
+    \n:global \"cputemplaststatus\"\r\
+    \n:global \"systemtemp\" [/system health get temperature]\r\
+    \n:global \"cputemp\" [/system health get cpu-temperature]\r\
+    \n:if (systemtemp > \"45\") do={:set \"tempstatus\" \"system temp is too high\"}\r\
+    \n:if (systemtemp > \"60\") do={:set \"tempstatus\" \"system temp is critical\"}\r\
+    \n:if (systemtemp < \"45\") do={:set \"tempstatus\" \"system temp is within spec\"}\r\
+    \n:if (cputemp > \"65\") do={:set \"cputempstatus\" \"cpu temp is too high\"}\r\
+    \n:if (cputemp > \"75\") do={:set \"cputempstatus\" \"cpu temp is critical\"}\r\
+    \n:if (cputemp < \"64\") do={:set \"cputempstatus\" \"cpu temp is within spec\"}\r\
+    \n\r\
+    \n:if (\$\"tempstatus\" != \$\"templaststatus\") do {\r\
+    \n/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=Router \$[/system identity get name] has a temperature alert. \$[/system clock get date] \$[/system clock get time] -> \$tempstatus - \$systemtemp* Celsius)\"\r\
+    \n:log info \"Telegram notification sent about system \$tempstatus status\"\r\
+    \n:set \"templaststatus\" \$\"tempstatus\"\r\
+    \n}\r\
+    \n:if (\$\"cputempstatus\" != \$\"cputemplaststatus\") do {\r\
+    \n/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=Router \$[/system identity get name] has a temperature alert. \$[/system clock get date] \$[/system clock get time] -> \$cputempstatus - \$cputemp* Celsius)\"\r\
+    \n:log info \"Telegram notification sent about system \$cputempstatus status\"\r\
+    \n:set \"cputemplaststatus\" \$\"cputempstatus\"\r\
+    \n}\r\
+    \n/file remove number=[find where name~\"Celsius\"]"
+/tool graphing interface add allow-address=172.16.116.1/32
+/tool graphing queue add allow-address=172.16.116.1/32
+/tool graphing resource add allow-address=172.16.116.1/32
+/tool netwatch add comment="ATIVAR O SECRETS CASO O RADIUS PARE" disabled=yes down-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ enable \$i }; /ppp active; :foreach p in [find \\ radius=no] do={ remove \$p; :delay 1};" host=192.168.40.1 interval=3m timeout=10s up-script="/ppp secret ; :foreach i in [ find comment~\"SGP:\" ] do={ disable \$i }; /ppp active; :foreach p in [find \\ radius=no] do={ remove \$p; :delay 1};"
+/tool netwatch add comment="PATOS DE MINAS" disabled=yes down-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PATOS_DE_MINAS_FALHA_ENERGIA\"" host=192.166.22.254 interval=30s up-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PATOS_DE_MINAS_ENERGIA_ESTABELECIDA\""
+/tool netwatch add comment=ARRIAL disabled=yes down-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=CONCENTRADOR_ARRIAL_DESLIGADO\"" host=170.80.59.127 interval=2m up-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=CONCENTRADOR_ARRIAL_LIGADO\""
+/tool netwatch add comment=PINDAIBAS disabled=yes down-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=CONCENTRADOR_PINDAIBAS_DESLIGADO\"" host=170.80.59.81 interval=10m up-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=CONCENTRADOR_PINDAIBAS_LIGADO\""
+/tool netwatch add comment="PATOS DE MINAS" disabled=yes down-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PATOS_DE_MINAS_FALHA_ENERGIA\"" host=192.166.22.254 interval=3m up-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PATOS_DE_MINAS_ENERGIA_ESTABELECIDA\""
+/tool netwatch add comment="PATOS DE MINAS" disabled=yes down-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PATOS_DE_MINAS_FALHA_ENERGIA\"" host=192.166.22.254 interval=5m up-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PATOS_DE_MINAS_ENERGIA_ESTABELECIDA\""
+/tool netwatch add comment="PATOS DE MINAS" down-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PMS01_SORRISO_FALHA_ENERGIA\"" host=170.80.59.16 interval=5m up-script="/tool fetch url=\"https://api.telegram.org/bot1058352022:AAGkG58uUGl7q9GL2Q6xe4bpHNt1mlBPPLw/sendMessage\?chat_id=-398615061&text=PMS01_SORRISO_ENERGIA_ESTABELECIDA\""
+/tool netwatch add comment=PINDAIBAS-WHATSAPP disabled=yes down-script="/tool fetch url=\"https://api.callmebot.com/whatsapp.php\?phone=553484389470&text=PMS01+Sorriso+Falha+Energia&apikey=1413570\"" host=170.80.59.81 interval=5m up-script="/tool fetch url=\"https://api.callmebot.com/whatsapp.php\?phone=553484389470&text=PMS01+Sorriso+Enegia+Estabelecida&apikey=1413570\""
+/tool netwatch add comment="ARRIAL AFONSO-WHATSAPP" disabled=yes down-script="/tool fetch url=\"https://api.callmebot.com/whatsapp.php\?phone=553484389470&text=PMS01+Sorriso+Falha+Energia&apikey=1413570\"" host=170.80.59.127 interval=5m up-script="/tool fetch url=\"https://api.callmebot.com/whatsapp.php\?phone=553484389470&text=PMS01+Sorriso+Enegia+Estabelecida&apikey=1413570\""
+/tool romon set secrets=1212@Forte
+

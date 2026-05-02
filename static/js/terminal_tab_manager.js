@@ -154,7 +154,20 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         return;  // ⚠️ IMPORTANTE: Parar aqui e NÃO abrir o terminal
     }
     
-    // ✅ PARA SSH, TELNET, WINBOX, ETC - ABRIR TERMINAL
+    // ✅ PARA WINBOX - ABRIR TERMINAL WINBOX WEB
+    if (proto === 'WINBOX') {
+        console.log('🖥️ Protocolo WINBOX detectado');
+        const winboxUrl = `/clientes/winbox/${acessoId}/`;
+        const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
+        window.open(winboxUrl, `WINBOX_${acessoId}`, opcoes);
+        
+        if (typeof showSuccess === 'function') {
+            showSuccess('WINBOX ABERTO', `Abrindo terminal Winbox`, 3000);
+        }
+        return;
+    }
+    
+    // ✅ PARA SSH, TELNET, ETC - ABRIR TERMINAL
     console.log('🖥️ Protocolo de terminal detectado:', proto);
     
     // Limpar host apenas para SSH/Telnet (remover caminho e porta extra)
@@ -195,3 +208,27 @@ console.log('   ✓ Comparação numérica de portas padrão');
 console.log('🌐 HTTP/HTTPS abrirão no navegador');
 console.log('🖥️ SSH/Telnet abrirão no terminal');
 console.log('🔄 Usando localStorage para compartilhar dados entre abas');
+
+// ============================================
+// FUNÇÃO: Abrir Winbox Web Terminal
+// ============================================
+// Abre a página de Winbox Web para o acesso pelo ID.
+// Usada pelo botão "Winbox Web" na listagem de acessos.
+
+function abrirWinboxWeb(acessoId) {
+    console.log('🖥️ Abrindo Winbox Web para acesso ID:', acessoId);
+    const winboxUrl = `/clientes/winbox/${acessoId}/`;
+    const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
+    const janela = window.open(winboxUrl, `WINBOX_WEB_${acessoId}`, opcoes);
+    
+    if (!janela) {
+        alert('⚠️ Não foi possível abrir o Winbox Web. Verifique se bloqueadores de popup estão desabilitados.');
+        return;
+    }
+    
+    janela.focus();
+    
+    if (typeof showSuccess === 'function') {
+        showSuccess('WINBOX WEB', 'Abrindo terminal Winbox Web...', 3000);
+    }
+}

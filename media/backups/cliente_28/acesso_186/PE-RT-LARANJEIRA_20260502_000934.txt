@@ -1,0 +1,1339 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Conecta ISP
+Equipamento: PE-RT-LARANJEIRA
+Host: 10.255.255.245:22002
+Acesso: VIA PROXY SSH
+Modelo: RB3011
+Template: Backup Mikrotik
+Data: 02/05/2026 00:09:34
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/07/2026 13:03:03 by RouterOS 6.49.6
+# software id = 48ZE-JCCB
+#
+# model = RouterBOARD 3011UiAS
+# serial number = 8EED08B371D2
+/interface bridge add name=br-acesso
+/interface bridge add name=br-acesso-1
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=ether1 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:59 mtu=2000 name="ether1- LINK "
+/interface ethernet set [ find default-name=ether2 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:5A mtu=2000 name="ether2 - LITEBEAM AC PEDRA DGUA" speed=100Mbps
+/interface ethernet set [ find default-name=ether3 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:5B mtu=2000 name="ether3 -  "
+/interface ethernet set [ find default-name=ether4 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:5C mtu=2000 name="ether4 - NANO STATATON PO\C7O PRETO "
+/interface ethernet set [ find default-name=ether5 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:5D mtu=2000 name="ether5 - PAINEL ROCKET"
+/interface ethernet set [ find default-name=ether6 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:5F mtu=2000 name="ether6 - LITEBEAN_AC M\C3E CHICA"
+/interface ethernet set [ find default-name=ether7 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:60 mtu=2000 name="ether7 - AP_CURRALINHO" speed=100Mbps
+/interface ethernet set [ find default-name=ether8 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:61 mtu=2000 name="ether8 - NANOLOCO_AC" speed=100Mbps
+/interface ethernet set [ find default-name=ether9 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:62 mtu=2000 name="ether9 - SW-ACS-LARAN-P5" speed=100Mbps
+/interface ethernet set [ find default-name=ether10 ] comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:63 name="ether10 - PTP ZELIZ" poe-out=off speed=100Mbps
+/interface ethernet set [ find default-name=sfp1 ] auto-negotiation=no comment=********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=8156 mac-address=C4:AD:34:5B:90:5E mtu=2000 name="sfp1 "
+/interface vpls add advertised-l2mtu=1550 cisco-style=yes cisco-style-id=32 disabled=no l2mtu=1550 mac-address=02:75:6E:FF:3E:06 name=vpls-bras remote-peer=10.255.255.15
+/interface vlan add interface="ether9 - SW-ACS-LARAN-P5" name=vlan33-ospf-ne8k-bras-rota-fibra vlan-id=33
+/interface vlan add interface="sfp1 " name=vlan113-clientes-olt vlan-id=113
+/interface vlan add interface=vpls-bras name=vlan113-clientes-olt-out vlan-id=113
+/interface vlan add interface="ether9 - SW-ACS-LARAN-P5" name=vlan114-rioseco vlan-id=114
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/ip pool add name=Remoto-1 ranges=100.64.30.0/24
+/ip pool add comment="Bloqueio IXCSoft" name=pool_bloqueio ranges=10.0.40.0/24
+/ip pool add name=POOL-CGNAT ranges=100.64.129.0/24
+/ip pool add name=dhcp_pool7 ranges=10.10.22.2-10.10.22.254
+/ip pool add name=dhcp_pool8 ranges=10.10.12.2-10.10.12.254
+/ip pool add name=dhcp_pool9 ranges=10.10.23.2-10.10.23.254
+/ip pool add name=dhcp_pool10 ranges=192.168.1.2-192.168.1.254
+/ip pool add name=dhcp_pool11 ranges=10.7.7.2-10.7.7.254
+/ip dhcp-server add address-pool=dhcp_pool11 interface=br-acesso-1 name=dhcp1
+/ipv6 pool add name=PREFIX-PD prefix=2804:80e0:1030::/44 prefix-length=56
+/ipv6 pool add name=PREFIX-WAN prefix=2804:80e0:1020::/44 prefix-length=64
+/ipv6 pool add name=delegated-block-v6 prefix=2001:db8:1000::/48 prefix-length=64
+/ipv6 pool add name=pool-block-v6 prefix=2001:db8:2000::/48 prefix-length=64
+/ipv6 pool add name=pool_aviso_bloqueio_ipv6 prefix=2001:db8:3003::/56 prefix-length=64
+/ppp profile add dhcpv6-pd-pool=PREFIX-PD dns-server=172.18.234.105,208.67.220.220 local-address=10.255.255.245 name=INFORLIMA on-up="{:delay delay-time=11s;  :local name=\"ii\" value=\"0\";  :local name=\"tt\" value=\"60\";   :local name=\"InterfacePppoe\" value=\"0\";   :local name=\"Ipv6Wan\" value=\"0\";   :local name=\"Ipv6Lan\" value=\"0\";   while (\$ii < \$tt) do={  \t:if ((\$InterfacePppoe != \"0\") && (\$Ipv6Wan != \"0\") && (\$Ipv6Lan != \"0\")) do={    :set name=\$ii value=(\$ii +300);   :log warning message=\"Coleta de IPv6 IXCSoft Usuario PPPoE: \$InterfacePppoe IPv6 WAN: \$Ipv6Wan  IPv6 LAN: \$Ipv6Lan\";\t   /tool fetch url=\"https://172.18.234.35:443/api-module/router-nas/collect-ipv6-accounting\" http-data=\"hostname=BRAS_LARANEIRA&ipNas=10.255.255.245&key=2&usuario_pppoe=\$InterfacePppoe&ipv6_wan=\$Ipv6Wan&ipv6_lan=\$Ipv6Lan\" http-method=post;   \t} else={    :set name=\"InterfacePppoe\" value=[/interface get \$interface name];   :set name=\"Ipv6Wan\" value=[/ipv6 nd prefix get value-name=prefix [find interface=\$InterfacePppoe]];    :set name=\"Ipv6Lan\" value=[/ipv6 dhcp-server binding get value-name=address [find server=\$InterfacePppoe]];     :log info message=\"IXCProvedor: Coleta de dados IPV6 em andamento...\";  };  \t:set name=\$ii value=(\$ii +1);  :delay delay-time=1s;  }  }" remote-address=POOL-CGNAT remote-ipv6-prefix-pool=PREFIX-WAN
+/routing ospf instance set [ find default=yes ] redistribute-connected=as-type-1 redistribute-static=as-type-1 router-id=10.255.255.245
+/snmp community add addresses=::/0 name=conectaisp-ro
+/interface bridge port add bridge=br-acesso interface=vpls-bras
+/interface bridge port add bridge=br-acesso interface="ether5 - PAINEL ROCKET"
+/interface bridge port add bridge=br-acesso interface="ether3 -  "
+/interface bridge port add bridge=br-acesso interface="ether2 - LITEBEAM AC PEDRA DGUA"
+/interface bridge port add bridge=br-acesso interface="ether6 - LITEBEAN_AC M\C3E CHICA"
+/interface bridge port add bridge=br-acesso interface="ether7 - AP_CURRALINHO"
+/interface bridge port add bridge=br-acesso interface="ether8 - NANOLOCO_AC"
+/interface bridge port add bridge=br-acesso interface="ether4 - NANO STATATON PO\C7O PRETO "
+/interface bridge port add bridge=br-acesso-1 interface=vlan113-clientes-olt-out
+/interface bridge port add bridge=br-acesso-1 interface=vlan113-clientes-olt
+/interface bridge port add bridge=br-acesso disabled=yes interface="ether9 - SW-ACS-LARAN-P5"
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/ip settings set rp-filter=strict
+/interface pppoe-server server add default-profile=INFORLIMA disabled=no interface=vlan114-rioseco keepalive-timeout=30 one-session-per-host=yes service-name=service1
+/ip address add address=172.20.0.2/30 interface="ether10 - PTP ZELIZ" network=172.20.0.0
+/ip address add address=10.10.29.1/24 interface=br-acesso network=10.10.29.0
+/ip address add address=10.100.100.1/24 interface="sfp1 " network=10.100.100.0
+/ip address add address=10.255.255.245 interface=loopback network=10.255.255.245
+/ip address add address=10.10.32.1/24 interface=br-acesso network=10.10.32.0
+/ip address add address=10.10.33.1/24 interface=br-acesso network=10.10.33.0
+/ip address add address=10.11.16.1/24 interface=br-acesso network=10.11.16.0
+/ip address add address=10.9.7.1/24 interface=br-acesso network=10.9.7.0
+/ip address add address=10.9.6.1/24 interface=br-acesso network=10.9.6.0
+/ip address add address=10.10.22.1/24 interface=br-acesso network=10.10.22.0
+/ip address add address=10.10.31.1/24 interface=br-acesso network=10.10.31.0
+/ip address add address=172.20.0.10/30 interface=vlan33-ospf-ne8k-bras-rota-fibra network=172.20.0.8
+/ip address add address=10.7.7.1/24 disabled=yes interface=br-acesso-1 network=10.7.7.0
+/ip address add address=10.10.12.1/24 disabled=yes interface=vlan114-rioseco network=10.10.12.0
+/ip address add address=10.10.23.1/24 disabled=yes interface=vlan114-rioseco network=10.10.23.0
+/ip address add address=10.10.26.1/24 disabled=yes interface=br-acesso-1 network=10.10.26.0
+/ip address add address=10.10.28.1/24 disabled=yes interface=br-acesso-1 network=10.10.28.0
+/ip address add address=172.16.100.29/30 disabled=yes interface=br-acesso-1 network=172.16.100.28
+/ip address add address=10.8.8.1/24 interface=br-acesso network=10.8.8.0
+/ip address add address=192.168.1.1/24 disabled=yes interface="ether5 - PAINEL ROCKET" network=192.168.1.0
+/ip dhcp-server network add address=10.7.7.0/24 gateway=10.7.7.1
+/ip dhcp-server network add address=10.10.12.0/24 gateway=10.10.12.1
+/ip dhcp-server network add address=10.10.22.0/24 gateway=10.10.22.1
+/ip dhcp-server network add address=10.10.23.0/24 gateway=10.10.23.1
+/ip dhcp-server network add address=100.64.100.0/24 gateway=100.64.100.1
+/ip dhcp-server network add address=192.168.1.0/24 gateway=192.168.1.1
+/ip dns set servers=172.18.234.105,8.8.8.8,1.1.1.1,2804:80e0:1010::5,208.67.222.222,2001:4860:4860::8888
+/ip firewall address-list add address=172.18.234.35 comment="IXCProvedor endereco IP do sistema" list=rede_local
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-address=!172.18.234.35 protocol=tcp src-address=10.0.40.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-address=!172.18.234.35 protocol=tcp src-address-list=aviso_bloqueio
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-port=!53 protocol=udp src-address=10.0.40.0/24
+/ip firewall filter add action=drop chain=forward comment="IXCProvedor regra de aviso bloqueio" dst-port=!53 protocol=udp src-address-list=aviso_bloqueio
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de aviso bloqueio" dst-address=!172.18.234.35 dst-port=80 protocol=tcp src-address=10.0.40.0/24 to-addresses=172.18.234.35 to-ports=8082
+/ip firewall nat add action=dst-nat chain=dstnat comment="IXCProvedor regra de aviso bloqueio" dst-address=!172.18.234.35 dst-port=80 protocol=tcp src-address-list=aviso_bloqueio to-addresses=172.18.234.35 to-ports=8082
+/ip firewall nat add action=dst-nat chain=dstnat dst-address=10.255.255.245 dst-port=80,443 protocol=tcp to-addresses=192.168.1.20
+/ip firewall nat add action=src-nat chain=srcnat dst-address=10.100.100.6 to-addresses=10.100.100.1
+/ip firewall nat add action=src-nat chain=srcnat dst-address=192.168.1.20 to-addresses=192.168.1.1
+/ip route add distance=1 dst-address=100.64.30.0/24 type=blackhole
+/ip route add distance=1 dst-address=100.64.129.0/24 type=blackhole
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set winbox port=44828
+/ip service set api-ssl disabled=yes
+/ipv6 address add address=2804:80e0:1001::2/126 advertise=no
+/ipv6 route add distance=1 gateway=2804:80e0:1001::1
+/lcd set time-interval=daily
+/mpls interface set [ find default=yes ] mpls-mtu=1570
+/mpls ldp set enabled=yes lsr-id=10.255.255.245 transport-address=10.255.255.245 use-explicit-null=yes
+/mpls ldp interface add interface=vlan33-ospf-ne8k-bras-rota-fibra
+/mpls ldp interface add interface="ether10 - PTP ZELIZ"
+/ppp aaa set interim-update=20m use-radius=yes
+/ppp secret add name=Eduardomanutencao password=63675@ht profile=INFORLIMA remote-address=100.64.30.253 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimunda.silva password=90707320500 remote-address=100.64.19.56 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edinaide.l.comprida password=992704431 remote-address=100.64.6.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Thiago.ribeiroNDT password=05167748593 remote-address=100.64.2.79 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alcione.capoeiras password=05006118580 remote-address=100.64.17.163 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimunda.batista password=01652242589 remote-address=100.64.19.125 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carolina.ferreira password=991525408 remote-address=100.64.19.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carmilene.caixa password=03409941509 remote-address=100.64.17.84 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elisabeth.novohorizonteNDT password=98359711534 remote-address=100.64.14.207 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabricio.belau password=41810524865 remote-address=100.64.18.245 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marialucia.novaolindaNDT password=93426275520 remote-address=100.64.14.199 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sirleide.l.eugenio password=05636785500 remote-address=100.64.6.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fernando.fazioNDT password=05955527575 remote-address=100.64.25.186 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilberto.popular password=991014930 remote-address=100.64.17.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdeci.reisNDT password=02231946548 remote-address=100.64.25.222 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.vitoria password=08367423542 remote-address=100.64.18.77 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudio.ac password=991344446 remote-address=100.64.18.88 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jamile.trindadeNDT password=85867657590 remote-address=100.64.24.28 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Martinho.lagoadosboisNDT password=20308140591 remote-address=100.64.0.206 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valeria.almeida password=05417505501 remote-address=100.64.19.69 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elisangela.salinasNDT password=07317265535 remote-address=100.64.0.25 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sueli.quibaNDT password=01769216561 remote-address=100.64.0.177 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alesander password=992798255 remote-address=100.64.18.25 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vera.craibaNDT password=22508040525 remote-address=100.64.30.50 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sidnei.oliveira password=00909636524 remote-address=100.64.16.82 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcelino.acentamento password=08216083807 remote-address=100.64.7.19 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jueliz.l.cabrasNDT password=66507820504 remote-address=100.64.25.77 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luzia.silvaNDT password=03380477516 remote-address=100.64.25.185 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marivania.jesus password=991962945 remote-address=100.64.18.170 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Balbina.rioverdeSTL password=01461471540 remote-address=100.64.14.73 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cassio.pizzariasitio password=18409014890 remote-address=100.64.3.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jilvandro.st.felix password=991442635 remote-address=100.64.3.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geralda.sitio password=72931396591 remote-address=100.64.3.152 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Birrel.capoeiras password=03892756546 remote-address=100.64.20.196 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jovina.jacuNDT password=02444981561 remote-address=100.64.24.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Uenio.lima password=07955025598 remote-address=100.64.16.231 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ediana.cunha password=03356092529 remote-address=100.64.16.142 service=pppoe
+/ppp secret add caller-id=1C:3B:F3:98:BA:31 comment=mkauth disabled=yes name=Claudinei.barros password=992451881 remote-address=100.64.20.190 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clerison.gameleiraNDT password=01850871590 remote-address=100.64.0.32 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Angela.ferreira_ password=73116521549 remote-address=100.64.16.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcos.jesus password=09789831588 remote-address=100.64.18.43 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciene.novaolindaNDT password=87168286587 remote-address=100.64.14.100 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leandro.goesNDT password=07117765550 remote-address=100.64.25.151 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Laricia.pindoba password=09831046544 remote-address=100.64.2.19 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristiniana.popular password=991383251 remote-address=100.64.18.182 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Martin.salinaNDT password=01876248521 remote-address=100.64.0.72 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Graziane.souza password=03751838503 remote-address=100.64.18.134 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ravel.S.miguel.R password=998441895 remote-address=100.64.4.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marina.jacuNDT password=86790986553 remote-address=100.64.24.90 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mirele.silva password=09724422518 remote-address=100.64.19.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimunda.barbosa password=00507702506 remote-address=100.64.19.61 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geisa.diasNDT password=08406409517 remote-address=100.64.24.150 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romario.Oliveira password=991226564 remote-address=100.64.16.165 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Emili.tanque password=09564487552 remote-address=100.64.3.228 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ralf.s.felix password=07044815537 remote-address=100.64.3.199 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.acudeNDT password=05273175518 remote-address=100.64.24.114 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tatiana.ferreiraNDT password=03369932504 remote-address=100.64.24.117 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vagner.rochaNDT password=11541473558 remote-address=100.64.25.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanessa.jatoba password=01800580533 remote-address=100.64.7.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleofita.araujo password=17467998899 remote-address=100.64.19.166 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Avair.gameleira password=992880321 remote-address=100.64.3.141 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anapaula.fz.franciscoNDT password=94379920534 remote-address=100.64.14.70 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Genivaldo.fazendanova password=02708441558 remote-address=100.64.7.84 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcelo.pindoba password=99990237 remote-address=100.64.2.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joilton.tanque password=13988565504 remote-address=100.64.3.155 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilda.l.cabrasNDT password=07170334810 remote-address=100.64.0.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Laerton.santosNDT password=86144417540 remote-address=100.64.24.10 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mirailton.matosNDT password=00414640527 remote-address=100.64.24.233 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romualdo.capoeiras password=991433816 remote-address=100.64.19.201 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marlete.canoaNDT password=03020235502 remote-address=100.64.30.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ubaldo.craibaNDT password=0924840188 remote-address=100.64.30.214 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Agda.s.flores password=53533402568 remote-address=100.64.3.153 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anapaula.andrade password=09823432562 remote-address=100.64.19.212 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Olga.andradeNDT password=401.533.805-78 remote-address=100.64.24.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Camila.rodrigues password=11352551560 remote-address=100.64.20.172 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaiane.serra.meio password=09382145516 remote-address=100.64.3.234 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andressa.jesus password=991895374 remote-address=100.64.17.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ernestina.tanquebonitoNDT password=99939541520 remote-address=100.64.0.70 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Augusta.ferreira password=00718279514 remote-address=100.64.17.148 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudete.barbosa password=992420135 remote-address=100.64.19.13 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jailza.jatoba password=03597556582 remote-address=100.64.7.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ailda.n.horizonteNDT password=00426151518 remote-address=100.64.14.228 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.lagoinha password=03147006506 remote-address=100.64.7.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sivaldo.souzaNDT password=01473139538 remote-address=100.64.24.191 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geomar.capoeiras.GP password=992537904 remote-address=100.64.19.229 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anatalia.jesus password=02618432576 remote-address=100.64.20.9 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandra.neves password=86133291524 remote-address=100.64.16.126 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edcarlos.s.felix password=03202499564 remote-address=100.64.4.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Angela.feitosa password=05528183561 remote-address=100.64.20.188 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Helena.defranca password=03944300505 remote-address=100.64.16.225 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.wilson password=04208172550 remote-address=100.64.20.205 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciana.costaNDT password=04665445532 remote-address=100.64.24.173 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Samuel.hedene password=991531262 remote-address=100.64.17.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Reginaldo.quibaNDT password=05868937503 remote-address=100.64.25.231 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bibiane.santana password=85867681548 remote-address=100.64.25.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marijessia.s.felix password=987739888 remote-address=100.64.3.245 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilmar.capoeiras password=36041893811 remote-address=100.64.19.171 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.treslagoasNDT password=95169504500 remote-address=100.64.24.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geandra.quibaNDT password=44319140800 remote-address=100.64.25.106 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josileide.jacuNDT password=66641810534 remote-address=100.64.0.23 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luana.santana password=75992286929 remote-address=100.64.16.156 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elenilda.jacuNDT password=06392182535 remote-address=100.64.24.19 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Helder.boavista password=02257230507 remote-address=100.64.4.18 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Almir.capoeiras password=04246830593 remote-address=100.64.19.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adao.jacuNDT password=08060660594 remote-address=100.64.24.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseildo.reisNDT password=01843388596 remote-address=100.64.25.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniela.jesus password=07015000504 remote-address=100.64.16.2 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elaine.almeida password=05443522540 remote-address=100.64.19.174 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lauroandrade.tanque password=38732653549 remote-address=100.64.3.176 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.colonos password=89792068520 remote-address=100.64.7.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Serafina.sitio password=97361046568 remote-address=100.64.3.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alcides.FazendinhaNDT password=992385403 remote-address=100.64.25.160 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivanilza.gameleira password=01813649561 remote-address=100.64.3.218 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudiana.silva password=00285225596 remote-address=100.64.18.50 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.riosecoNDT password=86780662534 remote-address=100.64.30.76 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tassio.oliveira password=05489684542 remote-address=100.64.16.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Erica.almeida password=991714206 remote-address=100.64.20.130 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andreia.tanque password=41137482842 remote-address=100.64.3.88 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jose.luiz password=04556818567 remote-address=100.64.16.198 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucas.cigano password=06427673513 remote-address=100.64.6.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=loudes.salao password=26878491894 remote-address=100.64.19.222 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josemoacir.oliveiraNDT password=18435416534 remote-address=100.64.25.122 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mainara.silva password=08989371597 remote-address=100.64.20.181 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andrea.jacuNDT password=01038658535 remote-address=100.64.24.147 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciede.silva password=991031055 remote-address=100.64.19.136 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luana.silvaNDT password=08565869512 remote-address=100.64.25.249 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joana.mariNDT password=03725601569 remote-address=100.64.7.168 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roberta.tanque password=992368394 remote-address=100.64.3.108 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.jesus password=05163950509 remote-address=100.64.16.162 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.lourdes password=24786071587 remote-address=100.64.18.125 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luiz.riosecoNDT password=86144328521 remote-address=100.64.30.71 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudias.angico password=58209271504 remote-address=100.64.4.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdemir.aguaB password=991871182 remote-address=100.64.20.189 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vera.l.dapedraNDT password=00210350598 remote-address=100.64.14.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucilene.silva password=01999576578 remote-address=100.64.16.246 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joice.santos password=09585683598 remote-address=100.64.19.239 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanilma.monteiro password=08564455501 remote-address=100.64.7.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Thais.l.cantoNDT password=09741761503 remote-address=100.64.25.202 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Larissa.oliveira password=06609787506 remote-address=100.64.17.88 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Delzuita.tanque password=998290114 remote-address=100.64.3.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Girlene.batista password=05394770522 remote-address=100.64.20.109 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimundo.golfo password=89683617549 remote-address=100.64.6.83 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AlineNDT.salinas password=982707616 remote-address=100.64.0.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eliete.china password=02807754589 remote-address=100.64.17.37 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcelo.sitio password=00890651582 remote-address=100.64.3.233 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucineide.calumbiNDT password=34257413816 remote-address=100.64.24.44 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tiago.l.cantoNDT password=07747692544 remote-address=100.64.25.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciana.popular password=991192337 remote-address=100.64.16.192 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josefa.barragemNDT password=03145501518 remote-address=100.64.30.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=AndreALRO password=01403376522 remote-address=100.64.19.242 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Flozina.moreira password=04354758512 remote-address=100.64.19.211 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandra.araujoNDT password=05514654508 remote-address=100.64.25.34 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariajose.caldeiroesNDT password=01769875506 remote-address=100.64.25.13 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Janson.souza password=05069489518 remote-address=100.64.19.83 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdir.l.sertao password=07923211540 remote-address=100.64.18.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabricio.bastiaoNDT password=42379847886 remote-address=100.64.30.241 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gustavo.araujoNDT password=85806326500 remote-address=100.64.24.16 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Agostinha.oliveira password=04648171535 remote-address=100.64.8.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosangela.santana password=31071036831 remote-address=100.64.16.32 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleidinalva.tanquinhoNDT password=30191732800 remote-address=100.64.14.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gessica.alagadico password=03615916590 remote-address=100.64.7.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josiel.andradeNDT password=01880155583 remote-address=100.64.24.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Evilin.angico password=86525903548 remote-address=100.64.3.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.ferreira password=992175766 remote-address=100.64.18.149 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Darlan.capoeiras password=06326572517 remote-address=100.64.16.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.novaolindaNDT password=02313318516 remote-address=100.64.14.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adailton.sitio password=06816121503 remote-address=100.64.4.61 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geovanni.queimadinhaNDT password=07580925559 remote-address=100.64.25.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariluce.costaNDT password=05428037555 remote-address=100.64.24.245 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valter.aguabranca password=07075606590 remote-address=100.64.18.92 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lili.funcionaria password=08707853548 remote-address=100.64.19.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gabriel.mendes password=07256156561 remote-address=100.64.19.180 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Stephany.capoeiras password=09633899559 remote-address=100.64.20.114 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabio.silva password=991153680 remote-address=100.64.16.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariazinha.araujo password=32326374851 remote-address=100.64.19.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Salatiel.jesus password=03632174520 remote-address=100.64.16.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mateus.lopes password=07087498525 remote-address=100.64.18.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.barbosa password=06013107564 remote-address=100.64.20.63 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Natan.angico password=10705614522 remote-address=100.64.3.42 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roberio.santos password=992365146 remote-address=100.64.19.197 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucia.queimadinhaNDT password=15175275895 remote-address=100.64.24.108 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jucilene.alvescostaNDT password=01375793578 remote-address=100.64.25.127 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Damiana.mae password=09104681843 remote-address=100.64.19.29 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Izabel.sitio password=68800096549 remote-address=100.64.3.34 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josete.barragemNDT password=40540637807 remote-address=100.64.30.137 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edinaldo.sitionovoNDT password=56516037515 remote-address=100.64.14.181 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Olga.caldeiroesNDT password=40153380578 remote-address=100.64.25.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Robert.bernado password=997040082 remote-address=100.64.16.197 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jackson.jesus password=06141835538 remote-address=100.64.19.120 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lealco.felix password=05346660518 remote-address=100.64.3.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rafael.gois password=25728176836 remote-address=100.64.18.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eugeni.l.dentroNDT password=75865475568 remote-address=100.64.24.62 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcela.caldeiroesNDT password=08289221525 remote-address=100.64.25.68 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Camila.oliveira password=85772520512 remote-address=100.64.20.31 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Verivalda.matosNDT password=27474001829 remote-address=100.64.2.12 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marina.s.felix password=992857191 remote-address=100.64.3.246 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edevino.china password=71729160506 remote-address=100.64.19.235 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Telma.santosNDT password=02700475577 remote-address=100.64.24.146 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.veronica password=39678377500 remote-address=100.64.20.0 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Pedro.felipe password=09742402574 remote-address=100.64.19.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandoval.silva password=27939596500 remote-address=100.64.16.77 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Celestina.silva password=31535704500 remote-address=100.64.16.218 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariana.santana password=05775284593 remote-address=100.64.16.217 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andre.oliveira password=06221184550 remote-address=100.64.19.154 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciano.jesus password=991368244 remote-address=100.64.17.202 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rivalda.f.caixao password=08099786521 remote-address=100.64.6.10 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aristotenes.araujo password=44250657515 remote-address=100.64.17.119 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Funeraria.vilanova password=04584839000418 remote-address=100.64.18.166 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Railson.l.dentroNDT password=03870409517 remote-address=100.64.24.64 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Deijanira.ferreira password=54938953587 remote-address=100.64.20.152 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tarciso.f.barauna password=03447171510 remote-address=100.64.20.234 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudio.passosNDT password=37714090553 remote-address=100.64.24.119 service=pppoe
+/ppp secret add caller-id=C8:E7:D8:75:8F:F9 comment=mkauth disabled=yes name=Romario.sitio password=991741680 remote-address=100.64.3.56 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josepaulo.novaolindaNDT password=04281734546 remote-address=100.64.14.12 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romario.franca password=07748083576 remote-address=100.64.20.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leandro.costaNDT password=04845474530 remote-address=100.64.25.205 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcos.passos password=08182378567 remote-address=100.64.20.128 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nadja.alves password=991775692 remote-address=100.64.16.148 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fatima.oliveira password=00502379502 remote-address=100.64.19.152 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.costaNDT password=10056717881 remote-address=100.64.25.78 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Suely.silva password=00109012569 remote-address=100.64.16.207 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Escritorio.inforlima password=824Gue1@ht remote-address=100.64.19.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marilza.caldeiraesNDT password=04327953598 remote-address=100.64.24.133 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maira.xiquexique password=09815931512 remote-address=100.64.6.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edineide.ferreira password=02231944502 remote-address=100.64.19.116 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Santex.construcaoNDT password=22033577000132 remote-address=100.64.24.104 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Paulina.b.sucessoNdt password=01603166505 remote-address=100.64.0.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Paulo.castroNDT password=07405672507 remote-address=100.64.24.199 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valeria.c.padreNDT password=07901221542 remote-address=100.64.0.101 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rodrigo.sitio password=992182482 remote-address=100.64.3.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jeff.planejados password=32171087000156 remote-address=100.64.16.70 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cecilio.angico password=85810452868 remote-address=100.64.4.62 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Crispina.palhaNDT password=06920687593 remote-address=100.64.0.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andreia.l.compridaNDT password=03325804586 remote-address=100.64.25.120 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ronaldo.santos password=991259013 remote-address=100.64.17.214 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adriana.riosecoNDT password=07948163557 remote-address=100.64.30.142 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romario.f.cajaranaNDT password=03490716590 remote-address=100.64.24.138 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cintia.laranjeiraNDT password=85867917509 remote-address=100.64.30.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aricassio.santos password=991350277 remote-address=100.64.16.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gleidson.silva password=00977007545 remote-address=100.64.6.137 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Natalina.f.cigano password=85414743568 remote-address=100.64.3.68 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimunda.oliveira password=26546823829 remote-address=100.64.18.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniel.martins password=06660032541 remote-address=100.64.19.170 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivonete.s.miguel password=01365544583 remote-address=100.64.3.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luiz.caitanoNDT password=99582953500 remote-address=100.64.25.90 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rot.aquario01 password=63675 remote-address=172.16.130.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudilurde.sitio password=991172723 remote-address=100.64.3.159 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.limaNDT password=08884252520 remote-address=100.64.24.179 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cidael.caldeiraodosangueNDT password=01190038560 remote-address=100.64.0.57 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jarlanda.licurizeiroNDT password=05518108583 remote-address=100.64.25.187 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jonatas.cruzNDT password=08069770511 remote-address=100.64.0.162 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Guilherme.capoeiras password=992044978 remote-address=100.64.16.119 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivanei.queimadinhaNDT password=07961385592 remote-address=100.64.25.155 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andresa.serra password=09956507563 remote-address=100.64.3.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alan.passos password=96320478500 remote-address=100.64.16.14 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Beatriz.dias password=992298266 remote-address=100.64.6.12 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilson.pocasNDT password=85867777570 remote-address=100.64.0.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mironildo.pocasNDT password=85849386564 remote-address=100.64.0.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Brasilia.ribeiro password=63909782515 remote-address=100.64.18.201 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jessica.s.felix password=09592029512 remote-address=100.64.3.24 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tamile.l.cabraNDT password=08384641579 remote-address=100.64.25.111 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jeruzia.gadobravo password=05274201580 remote-address=100.64.7.63 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jonaslima password=824Gue1 remote-address=100.64.8.254 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Zenilda.silva password=991614903 remote-address=100.64.18.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gesiane.l.meio password=04855624560 remote-address=100.64.7.46 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Iraci.l.compridaNDT password=60198400500 remote-address=100.64.24.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roque.novaolindaNDT password=73082864520 remote-address=100.64.14.57 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jocelia.angico password=62242636553 remote-address=100.64.3.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nohainy.silva password=9925667001 remote-address=100.64.17.109 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Francisca.caldeiraosangueNDT password=01222742535 remote-address=100.64.14.150 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luana.pereira password=05019599557 remote-address=100.64.17.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Quesia.castro password=86145412526 remote-address=100.64.16.79 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelia.silva password=992318068 remote-address=100.64.16.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Keila.laranjeirasNDT password=07020680550 remote-address=100.64.30.20 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ramon.retiroNDT password=05788618525 remote-address=100.64.24.176 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Isael.mariapreta password=08456664529 remote-address=100.64.4.149 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Di.MACEDO password=21249928000184 remote-address=100.64.19.183 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nerisvan.semterraNDT password=32025552866 remote-address=100.64.14.45 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Margarete.jacuNDT password=07593692590 remote-address=100.64.25.196 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Zelia.GirleNDT password=75981259468 remote-address=100.64.24.18 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Donata.tiradentes password=991750978 remote-address=100.64.18.99 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andreza.costaNDT password=06637768561 remote-address=100.64.24.159 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelcilene.treslagoasNDT password=96003723572 remote-address=100.64.25.129 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleilson.pocasNDT password=07977257505 remote-address=100.64.0.75 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rafael.matos password=42494099889 remote-address=100.64.16.89 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clecia.araujo password=992688755 remote-address=100.64.20.16 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anatrindade.jacuNDT password=00573651566 remote-address=100.64.24.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Samara.gameleira password=86145546565 remote-address=100.64.3.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ceobs password=13937065000100 remote-address=100.64.18.14 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudete.simoes password=991476537 remote-address=100.64.16.45 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jilmar.mari password=01592968546 remote-address=100.64.7.169 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ozelia.altolindo password=96753722572 remote-address=100.64.7.100 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=orlando.riosecoNDT password=46494267823 remote-address=100.64.30.72 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdelice.BarragemNDT password=14652809875 remote-address=100.64.30.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jurandi.china password=03600828584 remote-address=100.64.17.0 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adelaide.fernandes password=88007863591 remote-address=100.64.20.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bruno.andrade password=991082894 remote-address=100.64.18.136 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandra.s.felix password=37570044851 remote-address=100.64.3.112 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jidelio.tanque password=04614592562 remote-address=100.64.4.64 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Railda.novohorizonte2NDT password=01787653501 remote-address=100.64.14.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rerivan.carvalho password=00340874511 remote-address=100.64.17.135 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ceres.f.caixao password=992346694 remote-address=100.64.6.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marly.caldeiroesNDT password=75694468520 remote-address=100.64.30.14 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.fabia password=32414348852 remote-address=100.64.17.78 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luzilene.l.sertao password=04077191564 remote-address=100.64.16.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniela.trindade password=991434457 remote-address=100.64.16.200 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Natalia.curralinhoNDT password=31272532810 remote-address=100.64.30.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ginalva.maexicaNDT password=94931739504 remote-address=100.64.30.195 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.l.matoNDT password=07944423589 remote-address=100.64.30.221 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Iana.salvadorNDT password=06103797551 remote-address=100.64.24.121 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josete.pedravermelhaNDT password=01786413590 remote-address=100.64.0.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elivania.pocasNDT password=07938883522 remote-address=100.64.0.254 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimundo.sitio password=992905702 remote-address=100.64.3.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ricardo.f.barbosa password=07216675541 remote-address=100.64.7.28 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.china password=56500971515 remote-address=100.64.20.213 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniela.retiroNDT password=06352617581 remote-address=100.64.25.253 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eliene.bispo password=63675@ht remote-address=100.64.16.153 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adeilton.n.horizonteNDT password=93225598534 remote-address=100.64.14.182 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raiane.lagoinha password=07713570527 remote-address=100.64.7.129 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josemilton.cruzNDT password=04843108529 remote-address=100.64.0.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adimeire.novaolindaNDT password=91300207515 remote-address=100.64.14.249 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Reirivan.pai password=00340874511 remote-address=100.64.18.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edmea.jacuNDT password=53899906500 remote-address=100.64.25.180 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aecio.ferreira password=991461717 remote-address=100.64.19.159 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gleidson.calumbi password=86332579552 remote-address=100.64.25.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilberto.caldeiroesNDT password=02765793565 remote-address=100.64.25.9 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ultra.imagem password=999383155 remote-address=100.64.20.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Iria.passos password=02708417509 remote-address=100.64.20.167 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.fazendanovaNDT password=16935333830 remote-address=100.64.30.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marlon.caldeiroesNDT password=06707721518 remote-address=100.64.25.121 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ediana.almeida password=991584853 remote-address=100.64.18.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Prisila.lopes password=06587745571 remote-address=100.64.18.178 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=junior.silva password=08954347509 remote-address=100.64.16.252 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Robevaldo.gentilNDT password=22330766807 remote-address=100.64.24.200 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Beatriz.acentamento password=17817190801 remote-address=100.64.7.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cloves.pimentel password=55035515591 remote-address=100.64.18.24 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilberto.arapuaNDT password=04182217586 remote-address=100.64.14.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.victor password=992601394 remote-address=100.64.16.189 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Manoelalves.lagoinhaNDT password=01469900564 remote-address=100.64.25.244 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Selma.jacuNDT password=05250785506 remote-address=100.64.25.99 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cassio.cavalcante password=38772654805 remote-address=100.64.17.165 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.l.cabrasNDT password=18822460553 remote-address=100.64.0.245 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanuza.jacuNDT password=03750953570 remote-address=100.64.24.2 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Layane.mariapreta password=07859186551 remote-address=100.64.3.80 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Milena.barragemNDT password=07930954501 remote-address=100.64.30.126 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elizabeth.Silva password=75683938520 remote-address=100.64.16.248 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gessika.gameleira password=06129231504 remote-address=100.64.3.174 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jorge.gameleira password=37703713805 remote-address=100.64.4.90 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Matilde.rodrigues password=12522600591 remote-address=100.64.19.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariza.china2 password=05210650545 remote-address=100.64.18.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jucineide.batista password=02349915506 remote-address=100.64.19.251 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edgar.s.miguel password=02821666535 remote-address=100.64.4.140 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Samara.brito password=991726797 remote-address=100.64.20.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adenilson.capoeiras password=87868440597 remote-address=100.64.17.181 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.sitio password=08971648570 remote-address=100.64.3.86 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristiane.f.cigano password=98136653 remote-address=100.64.6.148 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josehenrrique.semterraNDT password=991944404 remote-address=100.64.14.168 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseagnes.riosecoNDT password=49079549568 remote-address=100.64.30.236 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josivaldo.fazendinhaNDT password=0626915541 remote-address=100.64.24.228 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristiana.barros password=09685376506 remote-address=100.64.20.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Henrique.ferreira password=991763936 remote-address=100.64.19.199 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gloria.barragemNDT password=12575491894 remote-address=100.64.30.29 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.costaNDT password=05512403508 remote-address=100.64.25.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clevison.jesus password=07195114538 remote-address=100.64.17.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanderleia.piabasNDT password=05243148539 remote-address=100.64.24.110 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gildo.radioNDT password=00542724596 remote-address=100.64.25.85 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleide.treiler password=28960249807 remote-address=100.64.20.75 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carlos.sitio password=991136763 remote-address=100.64.3.12 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciano.bastiaoNDT password=01788893506 remote-address=100.64.30.115 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Timoteo.oliveira password=03609100508 remote-address=100.64.20.153 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lais.sitio password=992362419 remote-address=100.64.3.226 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cecilio.costa2NDT password=00697205843 remote-address=100.64.25.86 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elizete.baixinhaNDT password=03650858550 remote-address=100.64.14.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silvano.pousada password=72944323504 remote-address=100.64.19.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ronaldo.lima password=07831895590 remote-address=100.64.17.38 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivan.miscena password=991907713 remote-address=100.64.16.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=dinalva.cruzNDT password=02142087531 remote-address=100.64.0.155 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rozenilda.dias password=93941684515 remote-address=100.64.18.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geusiane.santanaNDT password=02465421522 remote-address=100.64.25.37 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Erika.jacuNDT password=07210237542 remote-address=100.64.24.221 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jhonatan.beirarioNDT password=01985729563 remote-address=100.64.30.75 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geovane.riosecoNDT password=03785878540 remote-address=100.64.30.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claide.jesus password=992294983 remote-address=100.64.16.201 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juciele.fumacaNDT password=07938604585 remote-address=100.64.24.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Damiana.curralinhoNDT password=98844580578 remote-address=100.64.30.10 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Irineu.china password=998645146 remote-address=100.64.19.252 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcos.l.espora password=09468825507 remote-address=100.64.6.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Emerson.sitio password=07082572590 remote-address=100.64.4.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.l.jose password=02435648561 remote-address=100.64.7.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lineide.tanque password=01438739540 remote-address=100.64.4.23 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rafael.gonsalves password=991310398 remote-address=100.64.19.184 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carmelita.tanque password=63915391549 remote-address=100.64.3.89 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariafernanda.salinasNDT password=07932967570 remote-address=100.64.0.182 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rivaldo.s.flores password=63666820549 remote-address=100.64.3.241 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Manoel.fernandoNDT password=35184191534 remote-address=100.64.24.25 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Simone.francaNDT password=85867924548 remote-address=100.64.25.82 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Simone.aquino password=83871233587 remote-address=100.64.20.186 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tania.serra.meio password=03654720501 remote-address=100.64.3.236 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilda.sitio password=998171639 remote-address=100.64.3.31 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jusciane.fazendinhaNDT password=07197122546 remote-address=100.64.25.223 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Hugo.mari.ndt password=00481964525 remote-address=100.64.7.32 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Pedro.pindoba password=991975937 remote-address=100.64.2.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vera.novohorizonteNDT password=90441877591 remote-address=100.64.14.173 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabricio.pocopretoNDT password=08068134581 remote-address=100.64.30.244 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cecilia.santos password=00646123505 remote-address=100.64.19.133 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adriana.jesus password=06575868541 remote-address=100.64.20.73 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leone.dias password=991535609 remote-address=100.64.16.99 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudio.oliveira password=73677795591 remote-address=100.64.16.163 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.serroteNDT password=44774621587 remote-address=100.64.24.134 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.santana password=09354158587 remote-address=100.64.19.20 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.f.aguidar password=07343166581 remote-address=100.64.2.16 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Martinho.c.sangueNDT password=92346650587 remote-address=100.64.0.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renato.silva password=02458593577 remote-address=100.64.16.187 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcia.queimadinhaNDT password=01859907547 remote-address=100.64.25.190 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivonildo.sitio password=991098079 remote-address=100.64.4.40 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fatima.salinaNDT password=02402139552 remote-address=100.64.0.83 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joziane.alcantara password=90685350568 remote-address=100.64.16.138 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anabela.andrade password=992535305 remote-address=100.64.17.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renigio.alcantra password=05925460553 remote-address=100.64.18.133 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.3lagoasNDT password=18549118800 remote-address=100.64.24.43 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bruno.santana password=04672497500 remote-address=100.64.19.89 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Francisca.c.sangueNDT password=01872871550 remote-address=100.64.0.248 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudineide.jesus password=991746792 remote-address=100.64.18.151 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adalcina.sitio password=42518512500 remote-address=100.64.3.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josean.fernandes password=07192423556 remote-address=100.64.16.179 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Agnaldo.costaNDT password=24659162893 remote-address=100.64.25.146 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anailde.quibaNDT password=71733760504 remote-address=100.64.25.239 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tereza.santos password=00474716546 remote-address=100.64.18.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariacelia.tanque password=75690918504 remote-address=100.64.3.139 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luana.curralinhoNDT password=02116951577 remote-address=100.64.30.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Junior.tanque password=991562950 remote-address=100.64.3.200 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gabriel.santos password=08198864598 remote-address=100.64.19.225 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andreza.costa2NDT password=07164774595 remote-address=100.64.0.198 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Robson.caixao password=991798786 remote-address=100.64.6.76 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.piabasNDT password=08045554517 remote-address=100.64.24.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Natalia.jatoba password=86602854500 remote-address=100.64.7.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Matheus.jesus password=08834519566 remote-address=100.64.19.230 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edinalva.jesus password=00471358592 remote-address=100.64.17.169 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Euza.maria password=991256567 remote-address=100.64.16.154 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.gomes password=01158046502 remote-address=100.64.19.37 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marialuzia.jacuNDT password=14895902854 remote-address=100.64.24.87 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.piabasNDT password=07972785597 remote-address=100.64.24.126 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roberio.jesus password=04117811541 remote-address=100.64.16.223 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Emerson.andrade password=11051849519 remote-address=100.64.20.218 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ademir.tanque password=29614605812 remote-address=100.64.4.22 service=pppoe
+/ppp secret add caller-id=E8:65:D4:D0:5B:28 comment=mkauth disabled=yes name=Edineide.cl.areia password=992878945 remote-address=100.64.3.232 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Macario.salinaNDT password=02380622523 remote-address=100.64.0.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleice.angicovelho password=08891549533 remote-address=100.64.10.140 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josevaldo.popular password=991336441 remote-address=100.64.20.144 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elixandro.jatoba password=01772421596 remote-address=100.64.7.57 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.perpetua password=33939926515 remote-address=100.64.18.72 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Kelvis.jacuNDT password=07922536550 remote-address=100.64.24.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raudinei.tocasNDT password=07467671539 remote-address=100.64.24.229 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renata.sena password=991857927 remote-address=100.64.20.247 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nilda.gameleira password=18296893800 remote-address=100.64.3.213 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Dejanira.capoeiras password=61996556568 remote-address=100.64.19.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Henrique.sorveteria password=07655517568 remote-address=100.64.20.207 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Firmina.caldeiraozinho password=15306913890 remote-address=100.64.7.65 service=pppoe
+/ppp secret add caller-id=C8:E7:D8:91:83:D1 comment=mkauth disabled=yes name=Daniela.s.domingos password=999689260 remote-address=100.64.2.42 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clayton.trindadeNDT password=08036457598 remote-address=100.64.24.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vagner.caibrinhaNDT password=86197521547 remote-address=100.64.0.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raul.santos password=07078209524 remote-address=100.64.19.192 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edna.pocasNDT password=07658356573 remote-address=100.64.0.114 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josenilda.lopes password=03092960564 remote-address=100.64.18.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Thaise.casa password=09366087574 remote-address=100.64.19.113 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romario.jacuNDT password=03490716590 remote-address=100.64.24.42 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Madson.santos password=992578618 remote-address=100.64.18.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.angico password=25850153861 remote-address=100.64.3.137 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marineide.goes password=00549710558 remote-address=100.64.19.243 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleide.belau password=29353121809 remote-address=100.64.16.250 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilvaneide.calumbiNDT password=03131884592 remote-address=100.64.25.198 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.riosecoNDT password=01294339508 remote-address=100.64.30.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Weuder.boa.vista password=01760709581 remote-address=100.64.3.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Conceicao.f.piabasNDT password=07091075528 remote-address=100.64.24.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bruna.jesusNDT password=07107407511 remote-address=100.64.24.77 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Helia.laranjeiraNDT password=07198548571 remote-address=100.64.30.18 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adenilson.silva password=34048486837 remote-address=100.64.17.104 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valtemir.silva password=95945563587 remote-address=100.64.20.90 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Hailton.silva password=05642657569 remote-address=100.64.18.184 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leandro.carvalho password=12244593509 remote-address=100.64.19.142 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.f.arraialNDT password=46821791520 remote-address=100.64.24.222 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Hilda.barbosa password=991127382 remote-address=100.64.18.211 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Wemerson.angicoCX05 password=08407609579 remote-address=100.64.3.115 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Reisivaldo.novaolindaNDT password=00587288566 remote-address=100.64.14.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Arivaldo.f.arraialNDT password=01372641513 remote-address=100.64.25.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Artur.jacuNDT password=54515056832 remote-address=100.64.25.234 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marluce.curralinhoNDT password=01834709580 remote-address=100.64.30.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jadson.cruzNDT password=86143952566 remote-address=100.64.0.160 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Veridiana.retiroNDT password=03318836516 remote-address=100.64.24.165 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adson.CaldeiraoSangueNDT password=04775680501 remote-address=100.64.0.173 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sergio.pereira password=991693288 remote-address=100.64.17.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gileuson.neto password=01708981560 remote-address=100.64.7.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adeildo.silva password=86032917568 remote-address=100.64.20.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Neli.silvaNDT password=00180176579 remote-address=100.64.24.152 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rubiana.bebedouroNDT password=85059960544 remote-address=100.64.30.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aneldite.silva password=73123757587 remote-address=100.64.20.77 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raiane.s.felix password=99042303 remote-address=100.64.3.240 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcelo.angico password=33371631818 remote-address=100.64.3.122 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.arapua.novaolindaNDT password=29664837504 remote-address=100.64.14.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cecilia.santos2 password=00646123505 remote-address=100.64.20.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.madalenaNDT password=03121722573 remote-address=100.64.25.243 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jucilene.almeida password=00482687550 remote-address=100.64.18.180 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Wellington.semterraNDT password=05733716525 remote-address=100.64.14.139 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carla.f.arraialNDT password=35430157880 remote-address=100.64.24.144 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luana.silva password=08424595554 remote-address=100.64.18.110 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jonnatas password=991046815 remote-address=100.64.20.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Uilma.pedradaguaNDT password=01038659507 remote-address=100.64.30.106 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jirliane.tanque password=05360306505 remote-address=100.64.3.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joelma.f.umidade password=00674627580 remote-address=100.64.4.78 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elizangela.loja password=29734903837 remote-address=100.64.19.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luana.gamas password=06355325573 remote-address=100.64.19.71 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.jailde password=86018116553 remote-address=100.64.20.40 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelci.umburanaNDT password=02072657555 remote-address=100.64.24.99 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ranufo.martins password=992262953 remote-address=100.64.16.9 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gildojesus.casa password=35301888838 remote-address=100.64.16.222 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniel.trindadeNDT password=05765600573 remote-address=100.64.25.116 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jamilson.santos password=03639849507 remote-address=100.64.20.227 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josete.lagoinhaNDT1 password=04119285545 remote-address=100.64.24.201 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Camila.l.boisNDT password=05470373509 remote-address=100.64.0.45 service=pppoe
+/ppp secret add caller-id=C0:C9:E3:55:CE:00 comment=mkauth disabled=yes name=Edivaldo.jacuNDT password=44775342568 remote-address=100.64.24.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jackeline.cruz password=03066325512 remote-address=100.64.20.169 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaiane password=992594266 remote-address=100.64.16.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jacilene.umburanaNDT password=08126533510 remote-address=100.64.24.122 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabricia.cardoso password=07569644581 remote-address=100.64.16.83 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tarleis.queimadinhaNDT password=05917902542 remote-address=100.64.25.25 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alex.l.dentroNDT password=07935799539 remote-address=100.64.24.69 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Genilson.alves password=03423420880 remote-address=100.64.18.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Helio.salinas2NDT password=05829184567 remote-address=100.64.0.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcos.pereiraNDT password=08299890560 remote-address=100.64.24.167 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Agnaldo.sitio.Flores password=992366231 remote-address=100.64.3.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilmara.f.barbosa password=05559291595 remote-address=100.64.6.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ildete.sitio password=00866856510 remote-address=100.64.4.85 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elane.simoes password=44215849837 remote-address=100.64.17.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Janete.sitio password=0368763994 remote-address=100.64.3.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vania.silva password=991669839 remote-address=100.64.19.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelson.costaNDT password=01471828590 remote-address=100.64.25.44 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aline.neves password=03883488526 remote-address=100.64.16.230 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luis.eduardo password=06621401507 remote-address=100.64.18.139 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juliana.correia password=991096393 remote-address=100.64.17.25 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Laurinda.jesus password=69814562572 remote-address=100.64.17.125 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosiane.xiquexique password=08649591507 remote-address=100.64.6.106 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maristela.caldeiraocoberto password=01425402500 remote-address=100.64.4.47 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jhon.f.gracasNDT password=94015945549 remote-address=100.64.14.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clesia.caibrinhaNDT password=05514677540 remote-address=100.64.25.73 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valmira.andrade password=03806256527 remote-address=100.64.20.61 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sinaide.add.lagadiso password=63675 remote-address=100.64.3.149 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaiane.sitio password=991712251 remote-address=100.64.3.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edilson.l.sertao password=44630206892 remote-address=100.64.16.193 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabio.peixinhoNDT password=01451149611 remote-address=100.64.25.149 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vilma.piabasNDT password=01829570552 remote-address=100.64.25.193 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.jesus password=01109767544 remote-address=100.64.20.255 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Otica.destak password=991772443 remote-address=100.64.16.121 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clarice.passos password=02685735577 remote-address=100.64.19.64 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juliana.mae password=01267071540 remote-address=100.64.17.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maike.oliveira password=49464594802 remote-address=100.64.20.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jislon.oliveira password=992642174 remote-address=100.64.16.146 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniela.jacuNDT password=07270654590 remote-address=100.64.25.246 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edson.almeida password=02978394544 remote-address=100.64.16.1 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.pocopretoNDT password=63922533515 remote-address=100.64.30.62 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Publio.souzaNDT password=20424744520 remote-address=100.64.24.96 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdenice.l.docurralNDT password=01903575508 remote-address=100.64.0.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleiton.tanque password=05271613577 remote-address=100.64.4.83 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=ROT-PEDRA.DAGUANDT password=63675@ht remote-address=100.64.30.254 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariasenhora.silva password=88098532534 remote-address=100.64.17.146 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Dalila.santos password=00904621570 remote-address=100.64.20.163 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alice.novaolindaNDT password=75429691534 remote-address=100.64.14.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Pedro.caldeiraozinho password=66506743549 remote-address=100.64.6.13 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucio.oliveira password=991343624 remote-address=100.64.17.255 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Veronica.treadoNDT password=59686880500 remote-address=100.64.14.149 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valmir.santos password=04950338552 remote-address=100.64.17.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clecia.china password=06460189579 remote-address=100.64.19.249 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elaine.araujo password=991408048 remote-address=100.64.16.47 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edleuza.popular password=03663023532 remote-address=100.64.18.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sebastiao.araujo password=04299475500 remote-address=100.64.16.18 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Hermes.fazendinhaNDT password=03162812550 remote-address=100.64.25.142 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edivanildo.fazendinhaNDT password=77996062587 remote-address=100.64.24.105 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Euclides.monteiro password=56452012568 remote-address=100.64.7.187 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jilmar.bar.mariNDT password=999113825 remote-address=100.64.7.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name="Crisnanda.constru\E7\E3oNDT" password=05920393580 remote-address=100.64.24.139 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleide.cruz password=991511023 remote-address=100.64.18.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joselio.s.joseNDT1 password=01880153530 remote-address=100.64.24.158 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdelice.cajazeiraNDT password=14652809875 remote-address=100.64.0.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anacaroline.cacimbasNDT password=07603718570 remote-address=100.64.0.44 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marizete.maexicaNDT password=01880133504 remote-address=100.64.30.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Camila.pinheiro password=991147579 remote-address=100.64.16.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivaniltom.aguabranca password=07332192500 remote-address=100.64.17.23 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jurania.almeida password=07115835527 remote-address=100.64.18.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Comercial.libra password=35425458000177 remote-address=100.64.18.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sineide.belau password=991158438 remote-address=100.64.19.253 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilberto.fazendinhaNDT password=55032150525 remote-address=100.64.25.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juciane.oficina password=04112542518 remote-address=100.64.16.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=sorveteria password=102030 remote-address=100.64.19.193 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aquila.fagundes password=06264863513 remote-address=100.64.19.233 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josair.umburanaNDT password=99270900800 remote-address=100.64.25.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Larissa.capoeiras password=09735365510 remote-address=100.64.20.87 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristina.salvador password=992433298 remote-address=100.64.17.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudimira.gameleira password=94689059500 remote-address=100.64.3.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Catia.matosNDT password=04620618500 remote-address=100.64.25.167 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andrequiosque.sitio password=05024190599 remote-address=100.64.3.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Herminio.lagoinhaNDT password=03360724577 remote-address=100.64.24.47 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelita.praxedes password=991409418 remote-address=100.64.20.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilvane.f.esperanca password=09238124582 remote-address=100.64.9.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mirella.tanque password=34385378851 remote-address=100.64.4.34 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Janiel.cajazeirasNDT password=07766586541 remote-address=100.64.30.130 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.dias password=991693918 remote-address=100.64.16.40 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edinalva.popular password=03721830504 remote-address=100.64.17.224 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jadson.l.cabrasNDT password=86144281541 remote-address=100.64.0.62 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ermilson.carvalhoNDT password=01932971599 remote-address=100.64.24.100 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Manoel.novaolindaNDT password=87986990597 remote-address=100.64.14.197 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.s.umburanaNDT password=59882980872 remote-address=100.64.25.76 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josevania.fazendaNDT password=00412246554 remote-address=100.64.24.195 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.brito password=992625075 remote-address=100.64.16.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jozuel.queimadinhaNDT password=05194689535 remote-address=100.64.24.187 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tayssa.ribeiro password=10535693516 remote-address=100.64.20.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleilson.c.sangueNDT password=86143984506 remote-address=100.64.0.46 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Taina.l.meio password=09760705532 remote-address=100.64.7.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.valmir password=992101013 remote-address=100.64.20.193 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gleziano.trindadeNDT password=07948199586 remote-address=100.64.25.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=josiane.quibaNDT password=05159960503 remote-address=100.64.25.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nilda.cruzNDT password=63667746504 remote-address=100.64.0.18 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Noelma.l.grande password=08923634570 remote-address=100.64.7.50 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Loja.judenice password=23770801000109 remote-address=100.64.17.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aline.tanque password=992042833 remote-address=100.64.3.87 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valmir.queimadinhaNDT password=02444979583 remote-address=100.64.24.168 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adarlene.santana password=32623016801 remote-address=100.64.17.179 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.fazendinhaNDT password=79846637500 remote-address=100.64.25.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudineia password=991237700 remote-address=100.64.17.85 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ronaldo.riosecoNDT password=99366371515 remote-address=100.64.30.64 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Veranilda.cruzNDT password=02930605502 remote-address=100.64.0.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mary.araujo password=03600834550 remote-address=100.64.18.233 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jocelia.caldeiraosangueNDT password=07120582577 remote-address=100.64.0.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Braz.panelasNDT password=04410065823 remote-address=100.64.0.80 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eloia.boavista password=88393933587 remote-address=100.64.8.10 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilberto.ferreira password=9911896260 remote-address=100.64.19.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joelma.fumacaNDT password=07595919541 remote-address=100.64.25.232 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Damiana.3lagoasNDT password=05913496558 remote-address=100.64.0.34 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.st.felix password=998468213 remote-address=100.64.3.244 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jamila.loja password=07107076574 remote-address=100.64.17.114 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.nascimento password=15821609534 remote-address=100.64.17.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ingrede.jesus password=05062902550 remote-address=100.64.19.46 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anderson.assuncao password=05865707566 remote-address=100.64.17.61 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silvia.leao password=05307395507 remote-address=100.64.16.239 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabiula.silva password=08326774502 remote-address=100.64.17.26 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Julio.barragemNDT password=28133070848 remote-address=100.64.30.25 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Neilla.belau password=04230723580 remote-address=100.64.16.113 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Regiane.baixinha password=85867753557 remote-address=100.64.14.20 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Felix.acentamento password=26632548865 remote-address=100.64.7.44 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Junior.almeida password=07496144550 remote-address=100.64.19.84 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cosme.s.miguel password=10357826507 remote-address=100.64.4.52 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andreina.gameleira password=992411457 remote-address=100.64.3.187 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Francisco.passarinhoNDT password=84961058572 remote-address=100.64.24.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aline.s.felix password=07831146563 remote-address=100.64.3.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mauri.goncalves password=991787197 remote-address=100.64.20.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jeferson.belau password=08445105566 remote-address=100.64.16.69 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marineide.dias password=02729037527 remote-address=100.64.20.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marielza.souzaNDT password=05304066596 remote-address=100.64.24.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nadson.costaNDT password=09154758556 remote-address=100.64.25.57 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Dernival.moura password=991127382 remote-address=100.64.16.210 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdineide.semterraNDT password=07162466516 remote-address=100.64.14.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudimira.l.maes password=13988840572 remote-address=100.64.4.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joziel.gameleiraNDT password=02397400170 remote-address=100.64.0.19 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eric.carvalho password=04285066580 remote-address=100.64.19.62 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseraimundo.semterraNDT password=12457240530 remote-address=100.64.14.28 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carlos.monteiro password=00342148877 remote-address=100.64.20.203 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jeruzia.gameleira password=992774962 remote-address=100.64.3.223 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Talline.costaNDT password=06629403509 remote-address=100.64.25.229 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Viviane.bastiaoNDT password=07360825571 remote-address=100.64.30.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Catiana.pindoba password=04545012507 remote-address=100.64.2.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Doralice.jacuNDT password=37530646885 remote-address=100.64.24.149 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Katiane.Junqueira password=778179075 remote-address=100.64.17.226 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eliano.treslagoasNDT password=08033923547 remote-address=100.64.24.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabiana.dantasNDT password=07975337536 remote-address=100.64.24.183 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.paula password=991016330 remote-address=100.64.20.102 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Iraci.jesus password=45719322515 remote-address=100.64.19.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josete.trindadeNDT password=00412231522 remote-address=100.64.24.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Erilaine.jesus password=08113169555 remote-address=100.64.17.80 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mauriza.l.eugenio password=39291499587 remote-address=100.64.7.111 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jussiene.boateesmeralda password=666.610.135-91 remote-address=100.64.17.2 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Moises.goesNDT password=08182674530 remote-address=100.64.25.181 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaciel.queimadinhaNDT password=05464326545 remote-address=100.64.24.107 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jucilene.l.sertao1 password=992021338 remote-address=100.64.18.132 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gabriela.araujoNDT password=08328345560 remote-address=100.64.25.150 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gerfferson.capoeiras password=04847071590 remote-address=100.64.18.225 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleiton.china password=998514504 remote-address=100.64.19.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Delfina.angico password=61998621553 remote-address=100.64.3.156 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleidiane.alves password=03512906567 remote-address=100.64.18.32 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vicente.morais password=36355432841 remote-address=100.64.19.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roniel.souza2NDT password=03330425571 remote-address=100.64.24.250 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edivania.ribeira password=991252681 remote-address=100.64.18.122 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Caline.l.comprida password=07063535528 remote-address=100.64.20.147 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silvani.gameleira password=03930403560 remote-address=100.64.3.182 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rudnei.trabalho password=28903973860 remote-address=100.64.19.16 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Yasmin.tocasNDT password=46596373878 remote-address=100.64.25.169 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jefferson.t.bonitoNDT password=08122336540 remote-address=100.64.0.104 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.jessica password=06843768571 remote-address=100.64.20.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariabrito.caldeiroesNDT password=01170826512 remote-address=100.64.25.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elisangela.sitio password=991503513 remote-address=100.64.3.26 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alessandro.fumacaNDT password=07938587559 remote-address=100.64.24.12 service=pppoe
+/ppp secret add caller-id=04:95:E6:BF:49:D8 comment=mkauth disabled=yes name=Lucio.f.cigano password=01999572580 remote-address=100.64.6.174 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Iomara.silva password=997056036 remote-address=100.64.19.144 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andrea.gama password=93882637587 remote-address=100.64.16.213 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=LucasTI.inforlima password=04743353564 remote-address=100.64.18.26 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jean.dantas password=06987375550 remote-address=100.64.19.78 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jardel.l.sertao password=01887305599 remote-address=100.64.17.174 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Verbena.popular password=991269657 remote-address=100.64.19.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Solange.pedradaguaNDT password=06748991560 remote-address=100.64.14.102 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lourdes.pocopretoNDT password=01033235547 remote-address=100.64.30.218 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Robson.gomes password=05169246560 remote-address=100.64.19.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.novaolindaNDT password=07397969500 remote-address=100.64.14.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.l.alegres password=01329134532 remote-address=100.64.10.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edilene.fazendinhaNDT password=03651721540 remote-address=100.64.25.195 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=JoseRonivon.tanque password=33075928908 remote-address=100.64.3.193 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Zuleide.sitio password=991445937 remote-address=100.64.4.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanilson.t.bonitoNDT password=08020533516 remote-address=100.64.0.210 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ronival.gomes password=28505111885 remote-address=100.64.18.193 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Florice.QueimadinhaNDT password=983395376 remote-address=100.64.24.253 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=alrtec password=102030 remote-address=100.64.18.52 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clecio.santana password=99991047549 remote-address=100.64.18.176 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristina.silva password=47436174568 remote-address=100.64.19.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mivaldo.semterraNDT password=10924043504 remote-address=100.64.14.160 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tais.jesus password=992135584 remote-address=100.64.16.23 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joab.almeida password=09816547546 remote-address=100.64.16.97 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciene.s.felix password=05423397570 remote-address=100.64.3.178 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Deivid.ferreira password=04590712547 remote-address=100.64.19.57 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rodrigo.jesusNDT password=08258142518 remote-address=100.64.24.115 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marianascimento.silva password=24751375504 remote-address=100.64.18.205 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosenita.souza password=53534085515 remote-address=100.64.16.110 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseilton.china password=86144777598 remote-address=100.64.16.211 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleonice.sitio password=00718277570 remote-address=100.64.3.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.tanque password=02862957500 remote-address=100.64.4.165 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.caibrinhaNDT password=00494546506 remote-address=100.64.24.238 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Delson.morais password=991388142 remote-address=100.64.18.191 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romulo.tanque password=00033077517 remote-address=100.64.3.151 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.fazendanovaNDT password=40339098856 remote-address=100.64.30.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marilene.silvaNDT password=00071619569 remote-address=100.64.24.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Debora.coelho password=39482370856 remote-address=100.64.18.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Regina.populares password=991460806 remote-address=100.64.18.221 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaildo.cruz password=01176400509 remote-address=100.64.20.243 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Reinalda.gameleira password=56501218500 remote-address=100.64.4.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lailson.cururuNDT password=07957263500 remote-address=100.64.25.72 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renilda.pereira password=35819367553 remote-address=100.64.19.221 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Crislete.alves password=96894474591 remote-address=100.64.18.34 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fran.casa password=05355144500 remote-address=100.64.20.224 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marli.jacuNDT password=102030 remote-address=100.64.24.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elizangela.salvador password=991469931 remote-address=100.64.18.115 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciana.cruzNDT password=01953816533 remote-address=100.64.0.86 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jeane.queimadinhaNDT password=02800718501 remote-address=100.64.24.97 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romilda.umburanaNDT password=00579031586 remote-address=100.64.24.160 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseval.tapera password=37793470591 remote-address=100.64.17.86 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gabriel.carneiro password=08853404507 remote-address=100.64.18.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Simone.silva password=36707894803 remote-address=100.64.19.97 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leandra.l.meio password=06958003535 remote-address=100.64.7.18 service=pppoe
+/ppp secret add caller-id=34:0A:33:77:05:41 comment=mkauth disabled=yes name=Micael.almeida password=08439569505 remote-address=100.64.20.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clenilda.retiroNDT password=07953732521 remote-address=100.64.24.164 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ernesto.ribeiro password=02632500591 remote-address=100.64.18.251 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Amanda.s.miguel password=11237443512 remote-address=100.64.4.171 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sara.janaina password=05985329518 remote-address=100.64.20.46 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carlito.capoeiras password=992222510 remote-address=100.64.18.153 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Catiane.sitio2 password=09641296558 remote-address=100.64.3.45 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elizabete.queimadinhaNDT password=24477524587 remote-address=100.64.24.241 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anderson.oliveira password=40570496810 remote-address=100.64.19.141 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sirlaine.l.frade password=00791623556 remote-address=100.64.2.0 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosilene.jesus password=85878305542 remote-address=100.64.18.76 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josenilda.vaqueiro password=02490604503 remote-address=100.64.4.43 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gerson.santosNDT password=26372315807 remote-address=100.64.25.230 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudirene.moreira password=991615423 remote-address=100.64.20.108 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cassio.angicoCX07 password=07552108592 remote-address=100.64.3.134 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristina.queimadinhaNDT password=06616900592 remote-address=100.64.24.128 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anaclaudecir.acudeNDT password=08496261530 remote-address=100.64.25.98 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Apolonio.sousaNDT password=01395876592 remote-address=100.64.25.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edivania.mariNDT password=07994472508 remote-address=100.64.7.101 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andrea.l.matoNDT password=02506713522 remote-address=100.64.25.1 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Domingos.s.felix password=12821902883 remote-address=100.64.3.185 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudiana.f.caixao password=08109066518 remote-address=100.64.6.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edenilda.gameleira password=99637375520 remote-address=100.64.3.252 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alexsandro.nascimento password=23519718847 remote-address=100.64.17.142 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josefa.pedrasNDT password=44775920510 remote-address=100.64.30.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edmilson.pinheiro password=92550789504 remote-address=100.64.20.78 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josineide.silvaNDT password=00693856530 remote-address=100.64.14.29 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jeosafa.mundonovo.NDT password=40370752000169 remote-address=100.64.30.96 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucivando.lagoa password=991250048 remote-address=100.64.17.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandra.angico password=63916410563 remote-address=100.64.3.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseirineu.boavista password=45315728587 remote-address=100.64.8.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=LUIZINA.SILVA password=63694697500 remote-address=100.64.17.252 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Averaldo.costaNDT password=08052125588 remote-address=100.64.25.184 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josivan.santos password=01047404508 remote-address=100.64.19.108 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.lagoaboisNDT password=02833230516 remote-address=100.64.0.47 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Evaldo.pinheiros password=02313335526 remote-address=100.64.16.235 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Thiago.capoeiras password=86282019559 remote-address=100.64.20.179 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilmar.andrade password=991026295 remote-address=100.64.19.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Dalva.l.cumprida password=00605692556 remote-address=100.64.18.198 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marivania.silva password=86145772573 remote-address=100.64.18.44 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Greice.quibaNDT password=07959887535 remote-address=100.64.25.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.nascimento2 password=992633463 remote-address=100.64.19.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Larisse.leaoNDT password=85867814521 remote-address=100.64.24.211 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jirlande.s.felix password=991478159 remote-address=100.64.4.28 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Graciete.oliveira password=02748488563 remote-address=100.64.18.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudio.cincobarrasNDT password=37714090553 remote-address=100.64.30.80 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosalia.santos password=01427439508 remote-address=100.64.20.2 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nayanne.oliveira password=12816822508 remote-address=100.64.20.225 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raphaela.santos password=05928021593 remote-address=100.64.17.64 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimundo.pocopretoNDT password=24642215549 remote-address=100.64.30.252 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Riviane.f.mancambiraNDT password=01880161559 remote-address=100.64.24.175 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silvia.fernandes password=13465785673 remote-address=100.64.19.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edineide.bernardo password=991670679 remote-address=100.64.19.101 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name="Cleuma.caldeiraozinho " password=01109867506 remote-address=100.64.7.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nailde.silva password=47950919515 remote-address=100.64.18.89 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdemir.tocasNDT password=06116244513 remote-address=100.64.24.63 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Judenice.loja2 password=03768021548 remote-address=100.64.17.220 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Flavio.f.nova password=08180388530 remote-address=100.64.6.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Laine.salinasNDT password=07990453576 remote-address=100.64.0.87 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudia.oliveira password=991253236 remote-address=100.64.16.120 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eleneide.cruzNDT password=06856154569 remote-address=100.64.0.9 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josecrispim.silvaNDT password=63886227553 remote-address=100.64.25.131 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Larissa.aguiarNDT password=04863706588 remote-address=100.64.25.141 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Zaine.queiroz password=10023233559 remote-address=100.64.18.87 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariasonia.cruzNDT password=01332000517 remote-address=100.64.0.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Paola.silva password=07737121510 remote-address=100.64.18.217 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sivanilda.tanque password=04652888554 remote-address=100.64.3.109 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daivon password=992635528 remote-address=100.64.19.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucilio.pedradaguaNDT password=85867670503 remote-address=100.64.30.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.silva password=03390747524 remote-address=100.64.18.224 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Erisvaldosantos.JacuNDT password=08044815554 remote-address=100.64.24.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelson.l.dentroNDT password=04452209530 remote-address=100.64.24.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clebson.oliveira password=01985204509 remote-address=100.64.18.238 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fernando.dossantos password=07596599583 remote-address=100.64.20.240 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Laeson.umburanaNDT password=08095628557 remote-address=100.64.25.220 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandra.capoeiras password=991861851 remote-address=100.64.16.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ermozita.souza password=94176507500 remote-address=100.64.16.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josecarlos.damascenoNDT password=04970475512 remote-address=100.64.25.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Antonio.f.nova password=63917688549 remote-address=100.64.7.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Thalia.l.dosboisNDT password=08209935577 remote-address=100.64.0.79 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Najara.souza password=992101031 remote-address=100.64.16.73 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Miro.santos password=09466962507 remote-address=100.64.16.172 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.pereira password=23722444500 remote-address=100.64.17.144 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcelo.maexicaNDT password=07932858526 remote-address=100.64.30.56 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosenilda.l.sertao password=992248776 remote-address=100.64.20.223 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fernando.santos password=06507168505 remote-address=100.64.19.128 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marlete.tanque password=32212851839 remote-address=100.64.3.165 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanderlei.santos password=05274203523 remote-address=100.64.18.175 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ruan.thales password=07070261560 remote-address=100.64.20.251 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Osvaldo.passarinhoNDT password=02606214552 remote-address=100.64.24.235 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Katiuscia.alves password=80871518520 remote-address=100.64.20.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivanildes password=91045803 remote-address=100.64.6.170 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosineide.alves password=991850131 remote-address=100.64.20.106 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosana.passarinhoNDt password=07963652539 remote-address=100.64.24.174 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vima.jesus password=01303982501 remote-address=100.64.20.185 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudio.licurizeiroNDT password=66503515553 remote-address=100.64.25.245 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alexandre.popular password=03118160535 remote-address=100.64.16.173 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.angelica password=991398223 remote-address=100.64.17.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silvana.pocopretoNDT password=06689966500 remote-address=100.64.30.145 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Neiva.mariNDT password=53160368831 remote-address=100.64.7.131 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosely.santos password=06340347584 remote-address=100.64.19.147 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luan.peixinho password=992108614 remote-address=100.64.16.136 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edimilson.sitio password=01729251501 remote-address=100.64.3.40 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rivelina.maria password=28791961831 remote-address=100.64.19.72 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vilma.lopes password=03481060505 remote-address=100.64.17.28 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josemanoel.l.eugenio password=57085471549 remote-address=100.64.6.50 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gildazio.l.frade password=04452101500 remote-address=100.64.8.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Manoel.colonos password=05491855502 remote-address=100.64.7.73 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rot.aquario03 password=63675 remote-address=172.16.130.57 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciana.campo password=123 remote-address=100.64.17.54 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Paulo.superbiju password=96566523553 remote-address=100.64.18.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nailson.l.comprida password=10789605503 remote-address=100.64.20.13 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcelo.arapuaNDT password=00907590527 remote-address=100.64.14.50 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudia.nascimento password=32204956805 remote-address=100.64.16.176 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adriana.sitio password=992717825 remote-address=100.64.3.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Genival.comercio password=03469424543 remote-address=100.64.3.76 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcos.goncalves password=06556472522 remote-address=100.64.17.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Angelica.semterraNDT password=36724181534 remote-address=100.64.14.69 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elvis.cruz password=992144642 remote-address=100.64.18.146 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosiane.caldeiroesNDT password=07099887530 remote-address=100.64.25.96 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Heron.l.cumprida password=04548991573 remote-address=100.64.19.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anicacio.mitonhoNDT password=96536411587 remote-address=100.64.25.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jhone.tanque password=05276369593 remote-address=100.64.3.206 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joselio.passarinhoNDT password=00430429533 remote-address=100.64.25.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renildo.novohorizonteNDT password=07296668598 remote-address=100.64.14.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rufino.addchina password=63675 remote-address=100.64.18.196 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Keila.ribeiro password=99469976 remote-address=100.64.17.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.l.roca password=13994670500 remote-address=100.64.7.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Robson.sitio password=32658790899 remote-address=100.64.4.108 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roquesouza.novaolinda password=79022790568 remote-address=100.64.14.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gabriel.silva password=07461789562 remote-address=100.64.19.38 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sonia.l.sertao password=992079923 remote-address=100.64.16.94 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josefa.curralvelhoNDT password=00623902524 remote-address=100.64.14.151 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.3lagoasNDT password=75778475500 remote-address=100.64.24.31 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ermita.pedravermelhaNDT password=01218330546 remote-address=100.64.0.221 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.oliveira password=992468864 remote-address=100.64.20.174 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Garrida.fazendinhaNDT password=02389872565 remote-address=100.64.0.51 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edmundo.barbosa password=06780155543 remote-address=100.64.16.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elizete.almeida password=45645329520 remote-address=100.64.18.214 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.caldeiroesNDT password=00510640575 remote-address=100.64.30.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carlos.costaNDT password=86155316503 remote-address=100.64.25.170 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivanilda.s.miguel password=84572183520 remote-address=100.64.3.71 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Silvano.casa password=75991850347 remote-address=100.64.20.204 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ramon.loja password=04632248509 remote-address=100.64.16.85 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josivan.lima password=05916269340 remote-address=100.64.20.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renildo.fumacaNDT password=08062103544 remote-address=100.64.25.247 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valquiria.araujo password=26694488874 remote-address=100.64.19.117 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joice.S.miguel.R password=999637551 remote-address=100.64.3.237 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edesia.moura password=94094411534 remote-address=100.64.17.29 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Michele.capoeira password=06952148531 remote-address=100.64.17.106 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcia.dias password=08446435560 remote-address=100.64.20.138 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jocivaldo.ferreira password=991375683 remote-address=100.64.6.46 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Judivan.fereira password=01768062536 remote-address=100.64.19.234 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jonathan.sitio password=07082618506 remote-address=100.64.3.173 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lais.trailer password=08918574517 remote-address=100.64.20.48 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andressa.sitio password=07082613539 remote-address=100.64.4.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivana.oliveiraNDT password=01530227526 remote-address=100.64.25.52 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariaoliveira.caldeiroesNDT password=63101831504 remote-address=100.64.25.164 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Susana.lagadiso password=01830745565 remote-address=100.64.3.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leonor.l.dentroNDT password=61246247534 remote-address=100.64.25.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alex.santana password=34557809898 remote-address=100.64.19.250 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renata.arraialNDT password=07992248554 remote-address=100.64.25.209 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mercado.carvalho password=23198857000163 remote-address=100.64.18.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cremilda.sitio password=992833388 remote-address=100.64.3.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.lg.boisNDT password=00540341592 remote-address=100.64.0.29 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jean.f.caicara password=07951776580 remote-address=100.64.25.200 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ana.aguabranca password=07335051550 remote-address=100.64.17.185 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sheila.aguaBranca password=992600765 remote-address=100.64.17.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ariquias.joaquim password=202340075911 remote-address=100.64.17.156 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Laiane.conceicao password=06709254542 remote-address=100.64.16.55 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.l.eugenio password=73116823553 remote-address=100.64.6.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Girlene.novaolindaNDT password=79318916515 remote-address=100.64.14.32 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=CSCRG0004I password=af3d7553 remote-address=187.111.141.75 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Altemar.novaolindaNDT password=94485666549 remote-address=100.64.14.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daiane.l.sertao password=991435066 remote-address=100.64.18.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Simone.gameleira password=992175635 remote-address=100.64.3.169 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaiane.f.caixao password=05040149514 remote-address=100.64.6.77 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdomiro.riosecoNDT password=08138180528 remote-address=100.64.30.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elenita.cruzNDT password=02225381550 remote-address=100.64.0.20 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdirene.rosa password=991145632 remote-address=100.64.16.88 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaciene.chica.NDT password=003520765 remote-address=100.64.30.47 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Wilton.novohorizonteNDT password=05958198505 remote-address=100.64.14.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Julia.gameleiraNDT password=87920980534 remote-address=100.64.0.100 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gervasia.novaolindaNDT password=75444003520 remote-address=100.64.14.184 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Amanda.lopesNDT password=07484523542 remote-address=100.64.24.155 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josete.caldeiraodepadreNDT password=22508562572 remote-address=100.64.14.53 service=pppoe
+/ppp secret add caller-id=C8:E7:D8:83:C7:59 comment=mkauth disabled=yes name=Valdomiro.sitio password=991890021 remote-address=100.64.3.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdemir.caldeiroesNDT password=07798102523 remote-address=100.64.25.242 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Micaele.f.esperanca password=86145160535 remote-address=100.64.9.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Catiane.gomes password=992906766 remote-address=100.64.19.100 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jineide.mendes password=01974230511 remote-address=100.64.7.39 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Taina.jesus password=09426899502 remote-address=100.64.17.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Crispina.quibaNDT password=00534945626 remote-address=100.64.14.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Reginaldo.sertao password=991435066 remote-address=100.64.20.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jean.craibaNDT password=06796139518 remote-address=100.64.30.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valmirane.pedradguaNDT password=16694833806 remote-address=100.64.30.157 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanessasilva.f.barbosa password=09702904544 remote-address=100.64.7.97 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raimundo.acentamento password=37789333534 remote-address=100.64.7.14 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariajose.semterraNDT password=27665988806 remote-address=100.64.14.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nelson.caldeiraodosangueNDT password=77162480810 remote-address=100.64.0.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Damiles.lima password=991757801 remote-address=100.64.18.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Patricia.f.cigano password=07063499548 remote-address=100.64.4.115 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Catiane.sitio password=09641296558 remote-address=100.64.3.16 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Weslei.silva password=992254382 remote-address=100.64.18.2 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.jacuNDT password=01980465533 remote-address=100.64.24.61 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ancelmo.capoeiras password=04208173521 remote-address=100.64.20.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Helena.laguinhaNDT password=61999393520 remote-address=100.64.25.254 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Manoel.costaNDT password=03196804526 remote-address=100.64.25.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Arleide.ribeiro password=00746695594 remote-address=100.64.2.66 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marineide.ferreira password=997093314 remote-address=100.64.18.23 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Acelino.gameleiraNDT password=01879145596 remote-address=100.64.0.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.l.cantoNDT password=04768245595 remote-address=100.64.25.23 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cicero2.semterraNDT password=00153997532 remote-address=100.64.14.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucineide.novaolindaNDT password=01004805519 remote-address=100.64.14.213 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cacio.beirarioNDT password=80594441587 remote-address=100.64.30.92 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bruno.s.miguel password=07061027541 remote-address=100.64.4.136 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elenice.jatoba password=991598130 remote-address=100.64.7.47 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Roberio.f.gentilNDT password=07988305573 remote-address=100.64.25.251 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marinalva.caldeiroesNDT password=08595070504 remote-address=100.64.25.91 service=pppoe
+/ppp secret add caller-id=C0:A5:DD:14:75:31 comment=mkauth disabled=yes name=Margarida.f.barbosa password=991423232 remote-address=100.64.7.132 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luan.jacuNDT1 password=05700982544 remote-address=100.64.24.14 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Thaina.jesus password=07109272583 remote-address=100.64.17.235 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Everton.guimaraesNDT password=07947872589 remote-address=100.64.24.8 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aubetania.ferreira password=89275888191 remote-address=100.64.17.49 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sidalia.reis password=991988771 remote-address=100.64.17.24 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Natal.semterraNDT password=05184319590 remote-address=100.64.14.253 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ilana.ribeiro password=47216569806 remote-address=100.64.18.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lauane.queimadinhaNDT password=08073984547 remote-address=100.64.24.106 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Solange.oliveira password=04230727577 remote-address=100.64.19.198 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carlos.cleiton password=07815733514 remote-address=100.64.16.37 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdenilton.l.sertao password=02374119548 remote-address=100.64.20.191 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joelma.batista password=992081690 remote-address=100.64.16.117 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Railson.salinasNDT password=07911462518 remote-address=100.64.0.68 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cicero.semterraNDT password=00153997532 remote-address=100.64.14.38 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivonilde.deusdete password=991218130 remote-address=100.64.19.196 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marilene.umburaninhaNDT password=99194767572 remote-address=100.64.25.63 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luci.gentilNDT password=01829461508 remote-address=100.64.24.248 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lorana.gameleira password=09485719507 remote-address=100.64.4.46 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Miriam.SilvaNDT password=07975731510 remote-address=100.64.24.205 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosimaria.capoeiras password=991317485 remote-address=100.64.16.7 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jacimaria.pocasNDT password=45132188869 remote-address=100.64.0.67 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=domingos.caldeiroesNDT password=06272771525 remote-address=100.64.25.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mauricio.l.pedra password=10809019574 remote-address=100.64.7.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sebastiao.lagoinhaNDT password=07833290599 remote-address=100.64.24.33 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Igreja.familiasgraca password=2304606000156 remote-address=100.64.17.45 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucimar.lagoadebaixoNDT password=15797636859 remote-address=100.64.0.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jenicleide.tanque password=07093562507 remote-address=100.64.3.124 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valmira.gameleira password=992231425 remote-address=100.64.4.190 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marlene.fazendinhaNDT password=01218331518 remote-address=100.64.25.75 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Kaiqy.almeida password=06922477502 remote-address=100.64.16.5 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renata.maria password=992409902 remote-address=100.64.16.53 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eunice.belau password=05276484503 remote-address=100.64.19.127 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.l.meio password=98443852534 remote-address=100.64.7.118 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geison.fazendinhaNDT password=86064629509 remote-address=100.64.24.17 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lenicio.monteiro password=04500871586 remote-address=100.64.7.20 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Shirley.borges password=992885068 remote-address=100.64.18.222 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ednilsa.tanque password=00285399586 remote-address=100.64.3.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nivanilda.andrade password=36840862828 remote-address=100.64.16.141 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilberto.andrade password=66661226587 remote-address=100.64.20.168 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Camila.monteiro password=05965040555 remote-address=100.64.19.218 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josecarlos.araujoNDT password=08118932516 remote-address=100.64.25.103 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Layssa.vitoria password=05187154508 remote-address=100.64.20.80 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosemeire.almeida password=31583997504 remote-address=100.64.20.37 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rafael.tanque password=992081364 remote-address=100.64.3.105 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marcio.treslagoasNDT password=04896138538 remote-address=100.64.25.225 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristina.bastiaoNDT password=03067000501 remote-address=100.64.30.59 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Neuza.gameleira password=991767877 remote-address=100.64.3.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josenilton.novohorizonteNDT password=26019848809 remote-address=100.64.14.175 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Katia.palhaNDT password=00682524557 remote-address=100.64.0.203 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tsh.locacao password=44867732000159 remote-address=100.64.19.90 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Catarina.caldeiroesNDT password=41644492504 remote-address=100.64.30.0 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tereza.popular password=123 remote-address=100.64.18.121 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josue.elohim password=53533275515 remote-address=100.64.17.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Genesio.f.bebedouroNDT password=40152057587 remote-address=100.64.30.135 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.aguabranca password=00408004312 remote-address=100.64.19.26 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mislene.barbosa password=97553280500 remote-address=100.64.19.217 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Raudinei.reisNDT password=08039181518 remote-address=100.64.25.110 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valber.piaui password=07289417593 remote-address=100.64.16.3 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joscivalda.jesus password=05443521578 remote-address=100.64.16.180 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jair.s.felix password=991179650 remote-address=100.64.3.253 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fagner.l.cruzNDT password=07915699504 remote-address=100.64.0.88 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mateus.souza password=09596686593 remote-address=100.64.19.206 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=jose.FazendinhaNDT password=992496127 remote-address=100.64.25.182 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ezio.araujo password=02095990579 remote-address=100.64.16.212 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=cristinamoraes.jacuNDT password=15763837843 remote-address=100.64.24.56 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luidson.silvaNDT password=08290073500 remote-address=100.64.24.91 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Denis.capoeiras password=46952326855 remote-address=100.64.18.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Regivaldo.dias password=992521190 remote-address=100.64.16.102 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valter.mariNDT password=30455513864 remote-address=100.64.7.133 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luis.ricardo password=03388291560 remote-address=100.64.16.167 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Junior.jesus.silva password=08954347509 remote-address=100.64.20.69 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marinilson.pinto password=09108203504 remote-address=100.64.19.231 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anderlan.l.frade password=07665756590 remote-address=100.64.2.4 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anedite.alves password=75894793572 remote-address=100.64.20.230 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Elineide.l.sertao password=05369183503 remote-address=100.64.20.239 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gisele.evangelho password=991564056 remote-address=100.64.19.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Martim.salinaNDT password=05635614590 remote-address=100.64.0.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Robenilson.tanque password=09216716525 remote-address=100.64.3.107 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.CostaNDT password=991270087 remote-address=100.64.0.71 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.trexaleNDT password=93931549534 remote-address=100.64.24.156 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Giselia.santos password=17692137838 remote-address=100.64.18.135 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luciano.gameleira password=37547151515 remote-address=100.64.3.101 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juliana.xavierNDT password=41032303808 remote-address=100.64.24.226 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Neyton.dias password=999458816 remote-address=100.64.20.231 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aderaldo.lagoadosboisNDT password=06172846523 remote-address=100.64.0.202 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Clisf.f.bebedouroNDT password=16290496000115 remote-address=100.64.30.187 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Warrant.bebedouroNDT password=33965210000254 remote-address=100.64.30.68 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josiane.s.domingos password=03010470576 remote-address=100.64.2.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Davi.carneiro password=05360252588 remote-address=100.64.20.195 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jocival.oliveira password=73122378515 remote-address=100.64.16.135 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Fabiana.tanque password=991888169 remote-address=100.64.3.95 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Diego.santosNDT password=09616288555 remote-address=100.64.0.92 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mirela.simoes password=03608810501 remote-address=100.64.18.137 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.acudeNDT password=41644514591 remote-address=100.64.25.217 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Marinalva.sitio password=58016295568 remote-address=100.64.3.158 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andreia.casa password=01775040563 remote-address=100.64.18.64 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Livia.retiro.NDT password=07581808530 remote-address=100.64.24.166 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edson.oliveira password=44401442504 remote-address=100.64.17.197 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jailda.perreira password=83375819 remote-address=100.64.16.58 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.costa2NDT password=05787848586 remote-address=100.64.25.87 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lucio.s.felix password=02845417535 remote-address=100.64.4.13 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariza.passos password=16104446809 remote-address=100.64.18.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joselito.3lagoasNDT password=01404770550 remote-address=100.64.24.70 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Isabel.pinheiro password=14154744437 remote-address=100.64.16.185 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Lindinalva.s.domingosCX01 password=99510645 remote-address=100.64.2.13 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edson.fazendinhaNDT password=07986306556 remote-address=100.64.24.80 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jacinta.ferreira password=14590567808 remote-address=100.64.18.105 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gilmaria.trindadeNDT password=31363043811 remote-address=100.64.24.161 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cineide.almeida password=32983663825 remote-address=100.64.18.109 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mesivania.araujo password=07015813521 remote-address=100.64.19.104 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Franciela.pocasNDT password=08060706500 remote-address=100.64.0.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jovan.quiosque password=991235918 remote-address=100.64.18.71 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Oswaldo.angico password=03956149882 remote-address=100.64.3.121 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=acainonga password=10203040 remote-address=100.64.25.21 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rejany.monteiro password=00032748531 remote-address=100.64.19.186 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Renilza.dias password=61458910504 remote-address=100.64.20.208 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adriana.lima password=91734681500 remote-address=100.64.16.255 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Luiz.academia password=7716850563 remote-address=100.64.16.170 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleiton.cardoso password=05449815530 remote-address=100.64.16.159 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Anapaula.tapera password=02700650590 remote-address=100.64.20.242 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Aldo.macedo password=07188577552 remote-address=100.64.18.18 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rosa.porcino password=00052881504 remote-address=100.64.16.155 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Eduardo.macario password=50887941888 remote-address=100.64.16.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joice.cardoso password=50821231812 remote-address=100.64.18.85 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudete.monteiro password=02708424548 remote-address=100.64.19.119 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Herley.santos password=07078193504 remote-address=100.64.20.139 service=pppoe
+/ppp secret add caller-id=C8:3A:35:4F:34:10 comment=mkauth disabled=yes name=Jonathan.s.Felix password=998016690 remote-address=100.64.3.83 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Igreja.evangelho password=992266314 remote-address=100.64.18.22 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Kennily.santos password=07863776589 remote-address=100.64.19.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivan.trindadeNDT password=07953773554 remote-address=100.64.25.113 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Faustina.maria password=01689627565 remote-address=100.64.19.255 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaqueline.riosecoNDT password=06551180558 remote-address=100.64.30.42 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Leonardo.gomes password=06985909531 remote-address=100.64.19.215 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Juvenildo.pocasNDT password=07247746530 remote-address=100.64.0.188 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Romana.passos password=62242458515 remote-address=100.64.16.194 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.monteiro password=991536764 remote-address=100.64.16.202 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Genivaldo.palhaNDT password=05984204525 remote-address=100.64.0.52 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdir.sertao password=07923211540 remote-address=100.64.20.107 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Grasiele.mota password=06306930566 remote-address=100.64.18.94 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Nailson.araujoNDT password=07186906567 remote-address=100.64.24.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Andre.sitio password=05024190599 remote-address=100.64.3.110 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Wilian.maiyk password=991468006 remote-address=100.64.18.209 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Herenita.angico password=01488291551 remote-address=100.64.3.126 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rivaldo.3lagoasNDT password=07942030512 remote-address=100.64.24.142 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseane.araujo2NDT password=05518079540 remote-address=100.64.25.147 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josue.neto password=2118101180 remote-address=100.64.16.19 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Patricia.silva password=01951346564 remote-address=100.64.18.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Posto.evangelho password=63675 remote-address=100.64.3.113 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ivani.mendes password=25439774572 remote-address=100.64.16.238 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Iris.bastiaoNDT password=07948306501 remote-address=100.64.30.52 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Crispim password=991730357 remote-address=100.64.17.75 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Natilio.vaqueiro password=08407527505 remote-address=100.64.4.37 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cirilo.l.cumprida password=06912440576 remote-address=100.64.16.6 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.cururuNDT password=00650713524 remote-address=100.64.25.130 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bernadete.l.dentroNDT password=00540334545 remote-address=100.64.24.65 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Tamara.sueli password=02313346560 remote-address=100.64.19.182 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joserios.caldeiraopedraNDT password=60842580506 remote-address=100.64.30.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vanusa.nascimento password=08062308510 remote-address=100.64.17.251 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Flavia.sitio password=991110130 remote-address=100.64.3.28 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mauri.lanchonete password=06556496545 remote-address=100.64.16.52 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Denilza.gentilNDT password=09602818514 remote-address=100.64.25.132 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Geisiane.souza password=10271895551 remote-address=100.64.20.216 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joseantonio.caldeiroesNDT password=93372655591 remote-address=100.64.30.60 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maraisa.cruzNDT password=02188631528 remote-address=100.64.0.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edelzuita.gameleira password=20233051520 remote-address=100.64.3.216 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rafael.costaNDT password=03527044540 remote-address=100.64.0.220 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Edenildo.costa password=991456793 remote-address=100.64.17.94 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ronivon.palhaNDT password=05512498541 remote-address=100.64.0.127 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Paulo.ribeiro password=08927042506 remote-address=100.64.2.120 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daianne.CaicaraNDT password=07055061504 remote-address=100.64.25.27 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Katiele.oliveira password=09474301565 remote-address=100.64.20.177 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.trindadeNDT password=08380630556 remote-address=100.64.25.201 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Camilo.aguabranca password=00037503537 remote-address=100.64.20.143 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Daniela.santana password=07790377582 remote-address=100.64.17.192 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Germina.sitio password=991991405 remote-address=100.64.3.30 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Mariasouza.jacuNDT password=03249145556 remote-address=100.64.24.216 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Claudina.maria password=04831007811 remote-address=100.64.20.35 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cintia.gomes password=38920936870 remote-address=100.64.3.41 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Diego.capoeira password=03982413508 remote-address=100.64.7.123 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristina.maria password=992304801 remote-address=100.64.17.136 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Alzira.angico password=03488732550 remote-address=100.64.3.136 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cleide.almeida password=00656532548 remote-address=100.64.16.251 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.povoadopedrasNDT password=06265067516 remote-address=100.64.30.63 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Celia.santos password=68800037534 remote-address=100.64.16.50 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Vilma.l.dentroNDT password=42741130515 remote-address=100.64.24.170 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Gessica.china password=05363694530 remote-address=100.64.7.24 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=MicaelacajueiroNDT password=63675 remote-address=100.64.24.218 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jose.f.novaNDT password=24953675851 remote-address=100.64.30.199 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Pamela.barros password=09489821527 remote-address=100.64.7.15 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Francisco.jatoba password=46821481504 remote-address=100.64.6.172 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Conveniencia password=63675 remote-address=172.16.130.36 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sandra.sitio password=991520199 remote-address=100.64.4.38 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Bruno.ferreiraNDT password=85924198596 remote-address=100.64.25.158 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Josuel.jesus password=09783963597 remote-address=100.64.20.11 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Sidinei.licurizeiroNDT password=80487980506 remote-address=100.64.25.61 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adalberto.filho password=39141683587 remote-address=100.64.17.73 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Selma.boa.vista password=992090935 remote-address=100.64.6.74 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ramone.nunes password=03892744530 remote-address=100.64.16.243 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Carmilene.tanque password=03409941509 remote-address=100.64.3.70 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Rogerio.santana password=00755272510 remote-address=100.64.19.85 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Adalto.andrade password=91170543 remote-address=100.64.20.165 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Maria.jacuNDT1 password=05160121501 remote-address=100.64.24.93 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Jaianecruz.caldeiraozinho password=86144503544 remote-address=100.64.7.68 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Valdeci.lima password=01861781580 remote-address=100.64.18.199 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Cristina.cardosoNDT password=15196050809 remote-address=100.64.25.56 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Joao.caldeiraodantasNDT password=25099272568 remote-address=100.64.0.31 service=pppoe
+/ppp secret add comment=mkauth disabled=yes name=Ezaquiel.vaqueiro password=09800180567 remote-address=100.64.4.79 service=pppoe
+/ppp secret add name=Juliana.laranjeiraNDT password=102030 profile=INFORLIMA service=pppoe
+/ppp secret add disabled=yes name="Magnolia.laranjeiraNDT " password=56511817504 remote-address=100.64.30.132 service=pppoe
+/radius add address=172.18.234.35 comment="IXCProvedor configuracao radius" secret=radiusixcsoft service=ppp,hotspot,wireless src-address=10.255.255.245 timeout=3s
+/radius add address=167.172.106.53 comment=RADIUS-EMERGENCIA disabled=yes secret=testing123 service=ppp timeout=3s
+/radius incoming set accept=yes
+/routing bfd interface set [ find default=yes ] disabled=yes
+/routing bfd interface add disabled=yes
+/routing filter add action=accept chain=ospf-in prefix=0.0.0.0/0
+/routing filter add action=discard chain=ospf-out prefix=100.64.129.0/24 prefix-length=32
+/routing ospf interface add passive=yes
+/routing ospf interface add interface=vlan33-ospf-ne8k-bras-rota-fibra network-type=point-to-point
+/routing ospf interface add cost=300 interface="ether10 - PTP ZELIZ" network-type=point-to-point
+/routing ospf network add area=backbone network=172.20.0.0/30
+/routing ospf network add area=backbone network=10.255.255.245/32
+/routing ospf network add area=backbone network=172.20.0.8/30
+/routing ospf network add area=backbone network=172.26.74.8/29
+/snmp set enabled=yes trap-community=conectaisp-ro trap-version=2
+/system clock set time-zone-name=America/Sao_Paulo
+/system identity set name=PE-RT-LARANJEIRA
+/system ntp client set enabled=yes primary-ntp=200.160.7.186 secondary-ntp=201.49.148.135
+/system scheduler add interval=4w2d name=backup on-event=backup policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=jun/07/2024 start-time=03:00:00
+/system scheduler add interval=1d name=schedule1 on-event="/system reboot\r\
+    \ny" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=aug/19/2025 start-time=00:03:00
+/system script add dont-require-permissions=no name=backup owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local backupFileName (\"backup-\" . [:pick [/system clock get date] 7 11] . [:pick [/system clock get date] 0 3] . [:pick [/system clock get date] 4 6] . \"-\" . [/system identity get name] . \".rsc\")\r\
+    \n\r\
+    \n# Cria o backup\r\
+    \n/export file=\$backupFileName\r\
+    \n\r\
+    \ntool fetch address=172.18.234.19 mode=ftp user=mks password=63675@ht src-path=\$\"backupFileName\" dst-path=\$\"backupFileName\" upload=yes\r\
+    \ndelay 10s\r\
+    \n/file remove \$backupFileName"
+/system watchdog set watchdog-timer=no
+/tool romon set enabled=yes secrets=Conecta@2023
+

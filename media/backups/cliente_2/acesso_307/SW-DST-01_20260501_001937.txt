@@ -1,0 +1,25 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: G5 TELECOM
+Equipamento: SW-DST-01
+Host: 10.0.1.2:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS326-24s+2Q+
+Template: Backup Huawei
+Data: 01/05/2026 00:19:37
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+bad command name screen-length (line 1 column 1)
+
+
+============================================================
+Comando: display current-configuration
+============================================================
+bad command name display (line 1 column 1)
+

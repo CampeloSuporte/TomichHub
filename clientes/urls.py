@@ -63,8 +63,11 @@ urlpatterns = [
     path('backups/deletar/<int:backup_id>/', views.deletar_backup, name='deletar_backup'),
     path('backups/templates/', views.buscar_templates_backup, name='buscar_templates_backup'),
 
-    # Terminal
+    # Terminal e Winbox
     path('terminal/', views.terminal_page, name='terminal_page'),
+    path('winbox/<int:acesso_id>/', views.winbox_page, name='winbox_page'),
+    path('webfig-vnc/<int:acesso_id>/', views.webfig_vnc_page, name='webfig_vnc_page'),
+
 
     # Ping
     path('acessos/ping/<int:acesso_id>/', views.ping_acesso, name='ping_acesso'),
@@ -88,5 +91,6 @@ urlpatterns = [
     path('doc/config/buscar/<int:cliente_id>/', buscar_doc_config, name='buscar_doc_config'),
     path('doc/proxy/<int:cliente_id>/<str:tipo>/', proxy_documentacao, {'path': ''}, name='proxy_doc_root'),
     path('doc/proxy/<int:cliente_id>/<str:tipo>/<path:path>', proxy_documentacao, name='proxy_doc'),
-    re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web(?:/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
+    re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
+    re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
 ]

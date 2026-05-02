@@ -1,0 +1,792 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: DIONES FERREIRA SILVA
+Equipamento: OLT PARKS
+Host: 186.0.148.216:2222
+Acesso: DIRETO
+Modelo: OLT PARKS 30024
+Template: Backup Completo
+Data: 01/05/2026 00:51:13
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config
+============================================================
+Building configuration...
+
+Current configuration:
+!
+version 1.0
+aaa username admin level priviledged password hash $1$7t3/XaiE$mJxqB7Fd8s32vaAseyRCQ.
+aaa username guest level viewer password hash $1$qF31yob$aDLZxvF9N850JTLK3LUcT1
+aaa accounting exec default none
+aaa authorization exec default none
+aaa authentication login default local
+rstp shutdown
+hostname OLT_NC
+vlan database
+ vlan 1,100,200-204,3602
+ vlan 100 in-band-mgmt 
+ vlan 200 in-band-mgmt 
+ vlan 201 isolated 
+ vlan 202 isolated 
+ vlan 203 isolated 
+ vlan 204 isolated 
+ vlan 3602 isolated 
+!
+gpon onu blacklist-action none
+gpon onu remove-action add-to-blacklist
+gpon profile bandwidth Gerencia
+ traffic-type management assured-bandwidth 1024 maximum-bandwidth 2048
+!
+gpon profile bandwidth Internet
+ traffic-type internet maximum-bandwidth 1024000
+!
+gpon profile flow bridge_vlan_201_pon1
+ add flow # bridge_vlan_201_pon1-1
+ add flow # bridge_vlan_201_pon1-2
+ bridge_vlan_201_pon1-1 encryption disable
+ bridge_vlan_201_pon1-1 flow-type pbmp 1
+ bridge_vlan_201_pon1-1 vlan 201 service Internet
+ bridge_vlan_201_pon1-2 encryption disable
+ bridge_vlan_201_pon1-2 flow-type pbmp 1
+ bridge_vlan_201_pon1-2 vlan 201 service Internet
+!
+gpon profile flow bridge_vlan_202_pon2
+ add flow # bridge_vlan_202_pon2-1
+ bridge_vlan_202_pon2-1 encryption disable
+ bridge_vlan_202_pon2-1 flow-type pbmp 1
+ bridge_vlan_202_pon2-1 vlan 202 service Internet
+!
+gpon profile flow bridge_vlan_203_pon3
+ add flow # bridge_vlan_203_pon3-1
+ bridge_vlan_203_pon3-1 encryption disable
+ bridge_vlan_203_pon3-1 flow-type pbmp 1
+ bridge_vlan_203_pon3-1 vlan 203 service Internet
+!
+gpon profile flow bridge_vlan_204_pon4
+ add flow # bridge_vlan_204_pon4-1
+ bridge_vlan_204_pon4-1 encryption disable
+ bridge_vlan_204_pon4-1 flow-type pbmp 1
+ bridge_vlan_204_pon4-1 vlan 204 service Internet
+!
+gpon profile flow router_vlan_3602
+ add flow # router_vlan_3602-1
+ router_vlan_3602-1 encryption disable
+ router_vlan_3602-1 flow-type veip
+ router_vlan_3602-1 vlan 3602 service Internet
+!
+gpon profile flow router_vlan_3602_Iphost
+ add flow # router_vlan_3602_Iphost-1
+ router_vlan_3602_Iphost-1 encryption disable
+ router_vlan_3602_Iphost-1 flow-type iphost 1
+ router_vlan_3602_Iphost-1 vlan 3602 service Internet
+!
+gpon profile vlan-translation _201
+ add translation access 201
+!
+gpon profile vlan-translation _202
+ add translation access 202
+!
+gpon profile vlan-translation _203
+ add translation access 203
+!
+gpon profile vlan-translation _204
+ add translation access 204
+!
+gpon profile vlan-translation _3602
+ add translation access 3602
+!
+interface 10giga-ethernet0/0
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200-204,3602
+ uplink isolated vlan 201-204,3602
+ no shutdown
+!
+interface 10giga-ethernet0/1
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200-204,3602
+ uplink isolated vlan 201-204,3602
+ no shutdown
+!
+interface giga-ethernet0/0
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport access vlan 100
+ no shutdown
+!
+interface giga-ethernet0/1
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200-204,3602
+ uplink isolated vlan 201-204,3602
+ no shutdown
+!
+interface giga-ethernet0/2
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/3
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/4
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/5
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/6
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface giga-ethernet0/7
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ no shutdown
+!
+interface gpon1/1
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ onu add serial-number itbs5b883408
+ onu add serial-number itbsd92b3245
+ onu add serial-number prks00d22d8d
+ onu add serial-number vsol00bbe5e1
+ onu add serial-number vsol009b461a
+ onu add serial-number vsol008d25e3
+ onu add serial-number vsol008d1ef7
+ onu add serial-number vsol008cb533
+ onu add serial-number vsol008caeaf
+ onu add serial-number vsol006bca05
+ onu add serial-number vsol00378dd3
+ onu add serial-number vsol00378c17
+ onu add serial-number vsol00369e5b
+ onu add serial-number vsol002d8696
+ onu add serial-number vsol0002b255
+ onu add serial-number tplg89ffe27d
+ onu add serial-number prks00d22e37
+ onu add serial-number prks00d22e29
+ onu add serial-number prks00d22e28
+ onu add serial-number prks00d22dfc
+ onu add serial-number prks00d22dc0
+ onu add serial-number prks00d22da8
+ onu add serial-number prks00d22d8c
+ onu add serial-number prks00d22d8a
+ onu add serial-number prks00d22d87
+ onu add serial-number prks00d22d84
+ onu add serial-number prks00d22d72
+ onu add serial-number prks00d22d60
+ onu add serial-number prks00d22d57
+ onu add serial-number prks00d22d4d
+ onu add serial-number prks00d22d13
+ onu add serial-number prks00d22d10
+ onu add serial-number prks00d22d0c
+ onu add serial-number prks00d22cfb
+ onu add serial-number prks00d22ccc
+ onu add serial-number prks00d22ccb
+ onu add serial-number prks00d22cc2
+ onu add serial-number prks00d22c98
+ onu add serial-number prks00d22c89
+ onu add serial-number prks00d22c62
+ onu add serial-number prks00d22c4b
+ onu add serial-number prks00d22c43
+ onu add serial-number prks00d22c34
+ onu add serial-number prks00d22c20
+ onu add serial-number prks00d22c05
+ onu add serial-number prks00d22bc7
+ onu add serial-number prks00d22ba1
+ onu add serial-number prks00d22a73
+ onu add serial-number prks00d22743
+ onu add serial-number prks00d2227d
+ onu add serial-number prks00d22020
+ onu add serial-number itbsf1e57b94
+ onu add serial-number itbsf1e57b84
+ onu add serial-number itbsf106e611
+ onu add serial-number itbscfc16e66
+ onu add serial-number itbscf993c8c
+ onu add serial-number itbscf661462
+ onu add serial-number itbsace0328d
+ onu add serial-number itbsace0323e
+ onu add serial-number itbsac7a90dc
+ onu add serial-number itbsac7a90d8
+ onu add serial-number itbsac7a90ca
+ onu add serial-number itbsac797a54
+ onu add serial-number itbsac4653bf
+ onu add serial-number itbsac03f87b
+ onu add serial-number itbsac03f67d
+ onu add serial-number itbs5f7c5eee
+ onu add serial-number itbs5f446969
+ onu add serial-number itbs5f43e8ed
+ onu add serial-number itbs5b855c8a
+ onu add serial-number itbs5b7f4d57
+ onu add serial-number itbs5b7f4ca3
+ onu add serial-number itbs5b7b62e8
+ onu add serial-number itbs5b373ebf
+ onu add serial-number itbs5b0e6023
+ onu add serial-number itbs44877511
+ onu add serial-number itbs443ddf3d
+ onu add serial-number itbs32fd2aaa
+ onu add serial-number itbs0d3383eb
+ onu add serial-number itbs0a944616
+ onu add serial-number itbs0a5e4abb
+ onu add serial-number itbs0a4c0892
+ onu add serial-number itbs0a489cd0
+ onu add serial-number fhttfe10c1ab
+ onu add serial-number fhtt9b315a90
+ onu add serial-number fhtt9b30ffe0
+ onu add serial-number fhtt239909a8
+ onu add serial-number fhtt000c0d0e
+ onu add serial-number dd72e690de93
+ onu add serial-number dd72e690b50d
+ onu add serial-number dd72e6907f27
+ onu add serial-number dd72e6907eef
+ onu add serial-number db194665b224
+ onu add serial-number 2f1909175894
+ onu add serial-number 2f1904068346
+ onu add serial-number 2f1904068302
+ onu itbs5b883408 ethernet-profile auto-on uni-port 1
+ onu itbs5b883408 vlan-translation-profile _201 uni-port 1 
+ onu itbs5b883408 upstream-fec disabled
+ onu itbs5b883408 flow-profile bridge_vlan_201_pon1
+ onu itbs5b883408 alias DULCIRENE
+ onu itbsd92b3245 ethernet-profile auto-on uni-port 1
+ onu itbsd92b3245 vlan-translation-profile _201 uni-port 1 
+ onu itbsd92b3245 upstream-fec disabled
+ onu itbsd92b3245 flow-profile bridge_vlan_201_pon1
+ onu itbsd92b3245 alias JULIANANC
+ onu prks00d22d8d ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d8d upstream-fec disabled
+ onu prks00d22d8d flow-profile router_vlan_3602_Iphost
+ onu prks00d22d8d alias DANIELLOPES
+ onu vsol00bbe5e1 ethernet-profile auto-on uni-port 1-4
+ onu vsol00bbe5e1 vlan-translation-profile _201 uni-port 1 
+ onu vsol00bbe5e1 upstream-fec disabled
+ onu vsol00bbe5e1 flow-profile bridge_vlan_201_pon1
+ onu vsol00bbe5e1 alias LIDIANESOCORRO
+ onu vsol009b461a ethernet-profile auto-on uni-port 1
+ onu vsol009b461a vlan-translation-profile _201 uni-port 1 
+ onu vsol009b461a upstream-fec disabled
+ onu vsol009b461a flow-profile bridge_vlan_201_pon1
+ onu vsol009b461a alias MARIADEFATIMADASILVA
+ onu vsol008d25e3 ethernet-profile auto-on uni-port 1
+ onu vsol008d25e3 vlan-translation-profile _201 uni-port 1 
+ onu vsol008d25e3 upstream-fec disabled
+ onu vsol008d25e3 flow-profile bridge_vlan_201_pon1
+ onu vsol008d25e3 alias LANDERSON-CASINHAS
+ onu vsol008d1ef7 ethernet-profile auto-on uni-port 1
+ onu vsol008d1ef7 vlan-translation-profile _201 uni-port 1 
+ onu vsol008d1ef7 upstream-fec disabled
+ onu vsol008d1ef7 flow-profile bridge_vlan_201_pon1
+ onu vsol008d1ef7 alias GESSIANESILVA
+ onu vsol008cb533 ethernet-profile auto-on uni-port 1
+ onu vsol008cb533 vlan-translation-profile _201 uni-port 1 
+ onu vsol008cb533 upstream-fec disabled
+ onu vsol008cb533 flow-profile bridge_vlan_201_pon1
+ onu vsol008cb533 alias GABRIELAPAIVA
+ onu vsol008caeaf ethernet-profile auto-on uni-port 1
+ onu vsol008caeaf vlan-translation-profile _201 uni-port 1 
+ onu vsol008caeaf upstream-fec disabled
+ onu vsol008caeaf flow-profile bridge_vlan_201_pon1
+ onu vsol008caeaf alias CARLITA
+ onu vsol006bca05 ethernet-profile auto-on uni-port 1-4
+ onu vsol006bca05 vlan-translation-profile _201 uni-port 1 
+ onu vsol006bca05 upstream-fec disabled
+ onu vsol006bca05 flow-profile bridge_vlan_201_pon1
+ onu vsol006bca05 alias MARCOSROCHA
+ onu vsol00378dd3 ethernet-profile auto-on uni-port 1-4
+ onu vsol00378dd3 vlan-translation-profile _201 uni-port 1 
+ onu vsol00378dd3 upstream-fec disabled
+ onu vsol00378dd3 flow-profile bridge_vlan_201_pon1
+ onu vsol00378dd3 alias ANTONIACLEUDE
+ onu vsol00378c17 ethernet-profile auto-on uni-port 1
+ onu vsol00378c17 vlan-translation-profile _201 uni-port 1 
+ onu vsol00378c17 upstream-fec disabled
+ onu vsol00378c17 flow-profile bridge_vlan_201_pon1
+ onu vsol00378c17 alias KASSIANE
+ onu vsol00369e5b ethernet-profile auto-on uni-port 1
+ onu vsol00369e5b vlan-translation-profile _201 uni-port 1 
+ onu vsol00369e5b upstream-fec disabled
+ onu vsol00369e5b flow-profile bridge_vlan_201_pon1
+ onu vsol00369e5b alias SANDRASANTIAGO
+ onu vsol002d8696 ethernet-profile auto-on uni-port 1-4
+ onu vsol002d8696 vlan-translation-profile _201 uni-port 1 
+ onu vsol002d8696 upstream-fec disabled
+ onu vsol002d8696 flow-profile bridge_vlan_201_pon1
+ onu vsol002d8696 alias ANTONIAKELIANE
+ onu vsol0002b255 ethernet-profile auto-on uni-port 1-4
+ onu vsol0002b255 vlan-translation-profile _201 uni-port 1 
+ onu vsol0002b255 upstream-fec disabled
+ onu vsol0002b255 flow-profile bridge_vlan_201_pon1
+ onu vsol0002b255 alias LUCIANAROSA
+ onu tplg89ffe27d ethernet-profile auto-on uni-port 1
+ onu tplg89ffe27d vlan-translation-profile _201 uni-port 1 
+ onu tplg89ffe27d upstream-fec disabled
+ onu tplg89ffe27d flow-profile bridge_vlan_201_pon1
+ onu tplg89ffe27d alias ANTONIAKELIANE2
+ onu prks00d22e37 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22e37 upstream-fec disabled
+ onu prks00d22e37 flow-profile router_vlan_3602_Iphost
+ onu prks00d22e37 alias WALMIK
+ onu prks00d22e29 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22e29 upstream-fec disabled
+ onu prks00d22e29 flow-profile router_vlan_3602
+ onu prks00d22e28 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22e28 upstream-fec disabled
+ onu prks00d22e28 flow-profile router_vlan_3602
+ onu prks00d22dfc ethernet-profile auto-on uni-port 1-2
+ onu prks00d22dfc upstream-fec disabled
+ onu prks00d22dfc flow-profile router_vlan_3602
+ onu prks00d22dc0 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22dc0 upstream-fec disabled
+ onu prks00d22dc0 flow-profile router_vlan_3602_Iphost
+ onu prks00d22dc0 alias LUIFERNANDO
+ onu prks00d22da8 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22da8 upstream-fec disabled
+ onu prks00d22da8 flow-profile router_vlan_3602
+ onu prks00d22d8c ethernet-profile auto-on uni-port 1-4
+ onu prks00d22d8c upstream-fec disabled
+ onu prks00d22d8c flow-profile router_vlan_3602
+ onu prks00d22d8a ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d8a upstream-fec disabled
+ onu prks00d22d8a flow-profile router_vlan_3602
+ onu prks00d22d87 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22d87 upstream-fec disabled
+ onu prks00d22d87 flow-profile router_vlan_3602
+ onu prks00d22d84 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22d84 upstream-fec disabled
+ onu prks00d22d84 flow-profile router_vlan_3602
+ onu prks00d22d84 alias MARCIOCONCEICAO
+ onu prks00d22d72 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d72 upstream-fec disabled
+ onu prks00d22d72 flow-profile router_vlan_3602
+ onu prks00d22d60 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d60 upstream-fec disabled
+ onu prks00d22d60 flow-profile router_vlan_3602_Iphost
+ onu prks00d22d60 alias ANACLEIA
+ onu prks00d22d57 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d57 upstream-fec disabled
+ onu prks00d22d57 flow-profile router_vlan_3602
+ onu prks00d22d4d ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d4d upstream-fec disabled
+ onu prks00d22d4d flow-profile router_vlan_3602
+ onu prks00d22d13 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d13 upstream-fec disabled
+ onu prks00d22d13 flow-profile router_vlan_3602
+ onu prks00d22d10 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22d10 upstream-fec disabled
+ onu prks00d22d10 flow-profile router_vlan_3602
+ onu prks00d22d10 alias KASSIAKELLE
+ onu prks00d22d0c ethernet-profile auto-on uni-port 1-2
+ onu prks00d22d0c upstream-fec disabled
+ onu prks00d22d0c flow-profile router_vlan_3602
+ onu prks00d22d0c alias BENEDITONC
+ onu prks00d22cfb ethernet-profile auto-on uni-port 1-2
+ onu prks00d22cfb upstream-fec disabled
+ onu prks00d22cfb flow-profile router_vlan_3602
+ onu prks00d22ccc ethernet-profile auto-on uni-port 1-2
+ onu prks00d22ccc vlan-translation-profile _3602 iphost 1
+ onu prks00d22ccc upstream-fec disabled
+ onu prks00d22ccc flow-profile router_vlan_3602_Iphost
+ onu prks00d22ccc alias PAULORICARDO
+ onu prks00d22ccb ethernet-profile auto-on uni-port 1-2
+ onu prks00d22ccb upstream-fec disabled
+ onu prks00d22ccb flow-profile router_vlan_3602
+ onu prks00d22ccb alias MARCIAMARIA
+ onu prks00d22cc2 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22cc2 upstream-fec disabled
+ onu prks00d22cc2 flow-profile router_vlan_3602_Iphost
+ onu prks00d22cc2 alias FRANCISCAMENDES
+ onu prks00d22c98 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22c98 upstream-fec disabled
+ onu prks00d22c98 flow-profile router_vlan_3602_Iphost
+ onu prks00d22c98 alias JUCILENEALVESNC
+ onu prks00d22c89 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22c89 upstream-fec disabled
+ onu prks00d22c89 flow-profile router_vlan_3602_Iphost
+ onu prks00d22c89 alias CAMILALOPES
+ onu prks00d22c62 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22c62 upstream-fec disabled
+ onu prks00d22c62 flow-profile router_vlan_3602_Iphost
+ onu prks00d22c62 alias Brunooliveira
+ onu prks00d22c4b ethernet-profile auto-on uni-port 1-4
+ onu prks00d22c4b upstream-fec disabled
+ onu prks00d22c4b flow-profile router_vlan_3602
+ onu prks00d22c43 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22c43 upstream-fec disabled
+ onu prks00d22c43 flow-profile router_vlan_3602
+ onu prks00d22c34 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22c34 upstream-fec disabled
+ onu prks00d22c34 flow-profile router_vlan_3602_Iphost
+ onu prks00d22c34 alias SURIANE
+ onu prks00d22c20 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22c20 upstream-fec disabled
+ onu prks00d22c20 flow-profile router_vlan_3602
+ onu prks00d22c05 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22c05 upstream-fec disabled
+ onu prks00d22c05 flow-profile router_vlan_3602
+ onu prks00d22bc7 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22bc7 upstream-fec disabled
+ onu prks00d22bc7 flow-profile router_vlan_3602
+ onu prks00d22ba1 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22ba1 upstream-fec disabled
+ onu prks00d22ba1 flow-profile router_vlan_3602
+ onu prks00d22a73 ethernet-profile auto-on uni-port 1-4
+ onu prks00d22a73 upstream-fec disabled
+ onu prks00d22a73 flow-profile router_vlan_3602
+ onu prks00d22743 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22743 upstream-fec disabled
+ onu prks00d22743 flow-profile router_vlan_3602
+ onu prks00d2227d ethernet-profile auto-on uni-port 1-2
+ onu prks00d2227d upstream-fec disabled
+ onu prks00d2227d flow-profile router_vlan_3602
+ onu prks00d22020 ethernet-profile auto-on uni-port 1-2
+ onu prks00d22020 upstream-fec disabled
+ onu prks00d22020 flow-profile router_vlan_3602_Iphost
+ onu prks00d22020 alias ERALDO
+ onu itbsf1e57b94 ethernet-profile auto-on uni-port 1
+ onu itbsf1e57b94 vlan-translation-profile _201 uni-port 1 
+ onu itbsf1e57b94 upstream-fec disabled
+ onu itbsf1e57b94 flow-profile bridge_vlan_201_pon1
+ onu itbsf1e57b94 alias MATEUSSILVA
+ onu itbsf1e57b84 ethernet-profile auto-on uni-port 1
+ onu itbsf1e57b84 vlan-translation-profile _201 uni-port 1 
+ onu itbsf1e57b84 upstream-fec disabled
+ onu itbsf1e57b84 flow-profile bridge_vlan_201_pon1
+ onu itbsf1e57b84 alias RAYK
+ onu itbsf106e611 ethernet-profile auto-on uni-port 1
+ onu itbsf106e611 vlan-translation-profile _201 uni-port 1 
+ onu itbsf106e611 upstream-fec disabled
+ onu itbsf106e611 flow-profile bridge_vlan_201_pon1
+ onu itbsf106e611 alias JOELMACRUZZ
+ onu itbscfc16e66 ethernet-profile auto-on uni-port 1-4
+ onu itbscfc16e66 upstream-fec disabled
+ onu itbscf993c8c ethernet-profile auto-on uni-port 1-4
+ onu itbscf993c8c vlan-translation-profile _201 uni-port 1 
+ onu itbscf993c8c upstream-fec disabled
+ onu itbscf993c8c flow-profile bridge_vlan_201_pon1
+ onu itbscf993c8c alias LUCIANABRITO
+ onu itbscf661462 ethernet-profile auto-on uni-port 1-4
+ onu itbscf661462 vlan-translation-profile _201 uni-port 1 
+ onu itbscf661462 upstream-fec disabled
+ onu itbscf661462 flow-profile bridge_vlan_201_pon1
+ onu itbscf661462 alias JHENYDOCARMONC
+ onu itbsace0328d ethernet-profile auto-on uni-port 1
+ onu itbsace0328d vlan-translation-profile _201 uni-port 1 
+ onu itbsace0328d upstream-fec disabled
+ onu itbsace0328d flow-profile bridge_vlan_201_pon1
+ onu itbsace0328d alias MARILENC
+ onu itbsace0323e ethernet-profile auto-on uni-port 1
+ onu itbsace0323e vlan-translation-profile _201 uni-port 1 
+ onu itbsace0323e upstream-fec disabled
+ onu itbsace0323e flow-profile bridge_vlan_201_pon1
+ onu itbsace0323e alias 222222
+ onu itbsac7a90dc ethernet-profile auto-on uni-port 1
+ onu itbsac7a90dc vlan-translation-profile _201 uni-port 1 
+ onu itbsac7a90dc upstream-fec disabled
+ onu itbsac7a90dc flow-profile bridge_vlan_201_pon1
+ onu itbsac7a90dc alias AFRALDISOFRANCISCO
+ onu itbsac7a90d8 ethernet-profile auto-on uni-port 1
+ onu itbsac7a90d8 vlan-translation-profile _201 uni-port 1 
+ onu itbsac7a90d8 upstream-fec disabled
+ onu itbsac7a90d8 flow-profile bridge_vlan_201_pon1
+ onu itbsac7a90d8 alias PAULO
+ onu itbsac7a90ca ethernet-profile auto-on uni-port 1-4
+ onu itbsac7a90ca vlan-translation-profile _201 uni-port 1 
+ onu itbsac7a90ca upstream-fec disabled
+ onu itbsac7a90ca flow-profile bridge_vlan_201_pon1
+ onu itbsac7a90ca alias JOELMACRUZ
+ onu itbsac797a54 ethernet-profile auto-on uni-port 1
+ onu itbsac797a54 vlan-translation-profile _201 uni-port 1 
+ onu itbsac797a54 upstream-fec disabled
+ onu itbsac797a54 flow-profile bridge_vlan_201_pon1
+ onu itbsac797a54 alias CHARLIONSILVA
+ onu itbsac4653bf ethernet-profile auto-on uni-port 1-4
+ onu itbsac4653bf vlan-translation-profile _201 uni-port 1 
+ onu itbsac4653bf upstream-fec disabled
+ onu itbsac4653bf flow-profile bridge_vlan_201_pon1
+ onu itbsac4653bf alias LEANDRORODRIGUES
+ onu itbsac03f87b ethernet-profile auto-on uni-port 1-4
+ onu itbsac03f87b vlan-translation-profile _201 uni-port 1 
+ onu itbsac03f87b upstream-fec disabled
+ onu itbsac03f87b flow-profile bridge_vlan_201_pon1
+ onu itbsac03f87b alias RAQUELDOSSANTOS
+ onu itbsac03f67d ethernet-profile auto-on uni-port 1-4
+ onu itbsac03f67d vlan-translation-profile _201 uni-port 1 
+ onu itbsac03f67d upstream-fec disabled
+ onu itbsac03f67d flow-profile bridge_vlan_201_pon1
+ onu itbsac03f67d alias EMILLYRENATA
+ onu itbs5f7c5eee ethernet-profile auto-on uni-port 1
+ onu itbs5f7c5eee vlan-translation-profile _201 uni-port 1 
+ onu itbs5f7c5eee upstream-fec disabled
+ onu itbs5f7c5eee flow-profile bridge_vlan_201_pon1
+ onu itbs5f7c5eee alias LUCIENENC
+ onu itbs5f446969 ethernet-profile auto-on uni-port 1
+ onu itbs5f446969 vlan-translation-profile _201 uni-port 1 
+ onu itbs5f446969 upstream-fec disabled
+ onu itbs5f446969 flow-profile bridge_vlan_201_pon1
+ onu itbs5f446969 alias RIZANENC
+ onu itbs5f43e8ed ethernet-profile auto-on uni-port 1
+ onu itbs5f43e8ed vlan-translation-profile _201 uni-port 1 
+ onu itbs5f43e8ed upstream-fec disabled
+ onu itbs5f43e8ed flow-profile bridge_vlan_201_pon1
+ onu itbs5f43e8ed alias KLEBESON
+ onu itbs5b855c8a ethernet-profile auto-on uni-port 1
+ onu itbs5b855c8a vlan-translation-profile _201 uni-port 1 
+ onu itbs5b855c8a upstream-fec disabled
+ onu itbs5b855c8a flow-profile bridge_vlan_201_pon1
+ onu itbs5b855c8a alias CHARLES
+ onu itbs5b7f4d57 ethernet-profile auto-on uni-port 1
+ onu itbs5b7f4d57 vlan-translation-profile _201 uni-port 1 
+ onu itbs5b7f4d57 upstream-fec disabled
+ onu itbs5b7f4d57 flow-profile bridge_vlan_201_pon1
+ onu itbs5b7f4d57 alias JESSICASILVA
+ onu itbs5b7f4ca3 ethernet-profile auto-on uni-port 1
+ onu itbs5b7f4ca3 vlan-translation-profile _201 uni-port 1 
+ onu itbs5b7f4ca3 upstream-fec disabled
+ onu itbs5b7f4ca3 flow-profile bridge_vlan_201_pon1
+ onu itbs5b7f4ca3 alias RENATOFERNANDES
+ onu itbs5b7b62e8 ethernet-profile auto-on uni-port 1
+ onu itbs5b7b62e8 vlan-translation-profile _201 uni-port 1 
+ onu itbs5b7b62e8 upstream-fec disabled
+ onu itbs5b7b62e8 flow-profile bridge_vlan_201_pon1
+ onu itbs5b7b62e8 alias LUANSANTOS
+ onu itbs5b373ebf ethernet-profile auto-on uni-port 1
+ onu itbs5b373ebf vlan-translation-profile _201 uni-port 1 
+ onu itbs5b373ebf upstream-fec disabled
+ onu itbs5b373ebf flow-profile bridge_vlan_201_pon1
+ onu itbs5b373ebf alias MYCAELLASALES
+ onu itbs5b0e6023 ethernet-profile auto-on uni-port 1
+ onu itbs5b0e6023 vlan-translation-profile _201 uni-port 1 
+ onu itbs5b0e6023 upstream-fec disabled
+ onu itbs5b0e6023 flow-profile bridge_vlan_201_pon1
+ onu itbs5b0e6023 alias JACKSONCHAVITO
+ onu itbs44877511 ethernet-profile auto-on uni-port 1
+ onu itbs44877511 vlan-translation-profile _201 uni-port 1 
+ onu itbs44877511 upstream-fec disabled
+ onu itbs44877511 flow-profile bridge_vlan_201_pon1
+ onu itbs44877511 alias JARDEILA
+ onu itbs443ddf3d ethernet-profile auto-on uni-port 1-4
+ onu itbs443ddf3d vlan-translation-profile _201 uni-port 1 
+ onu itbs443ddf3d upstream-fec disabled
+ onu itbs443ddf3d flow-profile bridge_vlan_201_pon1
+ onu itbs443ddf3d alias ACLECIO
+ onu itbs32fd2aaa ethernet-profile auto-on uni-port 1-4
+ onu itbs32fd2aaa vlan-translation-profile _201 uni-port 1 
+ onu itbs32fd2aaa upstream-fec disabled
+ onu itbs32fd2aaa flow-profile bridge_vlan_201_pon1
+ onu itbs32fd2aaa alias LEONARDORODRIGUES
+ onu itbs0d3383eb ethernet-profile auto-on uni-port 1-4
+ onu itbs0d3383eb vlan-translation-profile _201 uni-port 1 
+ onu itbs0d3383eb upstream-fec disabled
+ onu itbs0d3383eb flow-profile bridge_vlan_201_pon1
+ onu itbs0d3383eb alias MARIELESOUZA
+ onu itbs0a944616 ethernet-profile auto-on uni-port 1-4
+ onu itbs0a944616 upstream-fec disabled
+ onu itbs0a5e4abb ethernet-profile auto-on uni-port 1
+ onu itbs0a5e4abb vlan-translation-profile _201 uni-port 1 
+ onu itbs0a5e4abb upstream-fec disabled
+ onu itbs0a5e4abb flow-profile bridge_vlan_201_pon1
+ onu itbs0a5e4abb alias REGINALDOGUEDES
+ onu itbs0a4c0892 ethernet-profile auto-on uni-port 1-4
+ onu itbs0a4c0892 vlan-translation-profile _201 uni-port 1 
+ onu itbs0a4c0892 upstream-fec disabled
+ onu itbs0a4c0892 flow-profile bridge_vlan_201_pon1
+ onu itbs0a4c0892 alias JOSEFERRE
+ onu itbs0a489cd0 ethernet-profile auto-on uni-port 1-4
+ onu itbs0a489cd0 vlan-translation-profile _201 uni-port 1 
+ onu itbs0a489cd0 upstream-fec disabled
+ onu itbs0a489cd0 flow-profile bridge_vlan_201_pon1
+ onu itbs0a489cd0 alias ATAISEMOREIRA
+ onu fhttfe10c1ab ethernet-profile auto-on uni-port 1-4
+ onu fhttfe10c1ab upstream-fec disabled
+ onu fhttfe10c1ab flow-profile router_vlan_3602_Iphost
+ onu fhttfe10c1ab alias MARIAEDUARDA
+ onu fhtt9b315a90 ethernet-profile auto-on uni-port 1-4
+ onu fhtt9b315a90 vlan-translation-profile _201 uni-port 1 
+ onu fhtt9b315a90 upstream-fec disabled
+ onu fhtt9b315a90 flow-profile bridge_vlan_201_pon1
+ onu fhtt9b315a90 alias CHILEON
+ onu fhtt9b30ffe0 ethernet-profile auto-on uni-port 1
+ onu fhtt9b30ffe0 vlan-translation-profile _201 uni-port 1 
+ onu fhtt9b30ffe0 upstream-fec disabled
+ onu fhtt9b30ffe0 flow-profile bridge_vlan_201_pon1
+ onu fhtt9b30ffe0 alias FRANCISCOFERREIRANC
+ onu fhtt239909a8 ethernet-profile auto-on uni-port 1-4
+ onu fhtt239909a8 vlan-translation-profile _201 uni-port 1 
+ onu fhtt239909a8 upstream-fec disabled
+ onu fhtt239909a8 flow-profile bridge_vlan_201_pon1
+ onu fhtt239909a8 alias JOSEFERREIRA
+ onu fhtt000c0d0e ethernet-profile auto-on uni-port 1-4
+ onu fhtt000c0d0e upstream-fec disabled
+ onu dd72e690de93 ethernet-profile auto-on uni-port 1-4
+ onu dd72e690de93 vlan-translation-profile _201 uni-port 1 
+ onu dd72e690de93 upstream-fec disabled
+ onu dd72e690de93 flow-profile bridge_vlan_201_pon1
+ onu dd72e690de93 alias SILVIA
+ onu dd72e690b50d ethernet-profile auto-on uni-port 1
+ onu dd72e690b50d vlan-translation-profile _201 uni-port 1 
+ onu dd72e690b50d upstream-fec disabled
+ onu dd72e690b50d flow-profile bridge_vlan_201_pon1
+ onu dd72e690b50d alias LAINDERSON
+ onu dd72e6907f27 ethernet-profile auto-on uni-port 1
+ onu dd72e6907f27 vlan-translation-profile _201 uni-port 1 
+ onu dd72e6907f27 upstream-fec disabled
+ onu dd72e6907f27 flow-profile bridge_vlan_201_pon1
+ onu dd72e6907f27 alias NIVALDOSANTOS
+ onu dd72e6907eef ethernet-profile auto-on uni-port 1
+ onu dd72e6907eef vlan-translation-profile _201 uni-port 1 
+ onu dd72e6907eef upstream-fec disabled
+ onu dd72e6907eef flow-profile bridge_vlan_201_pon1
+ onu dd72e6907eef alias MARIALUCIAOLIVEIRA
+ onu db194665b224 ethernet-profile auto-on uni-port 1
+ onu db194665b224 vlan-translation-profile _201 uni-port 1 
+ onu db194665b224 upstream-fec disabled
+ onu db194665b224 flow-profile bridge_vlan_201_pon1
+ onu db194665b224 alias SILVIASANTA
+ onu 2f1909175894 ethernet-profile auto-on uni-port 1-4
+ onu 2f1909175894 vlan-translation-profile _201 uni-port 1 
+ onu 2f1909175894 upstream-fec disabled
+ onu 2f1909175894 flow-profile bridge_vlan_201_pon1
+ onu 2f1909175894 alias RAILENERODRIGUES
+ onu 2f1904068346 ethernet-profile auto-on uni-port 1-4
+ onu 2f1904068346 vlan-translation-profile _201 uni-port 1 
+ onu 2f1904068346 upstream-fec disabled
+ onu 2f1904068346 flow-profile bridge_vlan_201_pon1
+ onu 2f1904068346 alias JAILSONALVES
+ onu 2f1904068302 ethernet-profile auto-on uni-port 1-4
+ onu 2f1904068302 upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200-201,3602
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/2
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200,202,3602
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/3
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200,203,3602
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/4
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 200,204,3602
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/5
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 1
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/6
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 1
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/7
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 1
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface gpon1/8
+ downstream-fec enabled
+ onu default-upstream-fec disabled
+ range max-distance 40 min-distance 0
+ sfp type any-reset-preamble
+ storm-control broadcast packets 1000
+ storm-control multicast packets 1000
+ switchport mode trunk
+ switchport trunk allowed vlan 1
+ mac-address-table learning-mode move
+ no shutdown
+!
+interface loopback0
+!
+interface mgmt
+ ip address 192.168.1.1/24
+ no shutdown
+!
+interface mgmt1
+!
+interface mgmt1.100
+ ip address 192.168.2.1/24
+ no shutdown
+!
+interface mgmt1.200
+ ip address 172.100.10.2/24
+ no shutdown
+!
+ip dhcp l2relay option sp
+ip route 0.0.0.0/0 172.100.10.1
+ip ssh server
+ip telnet server
+ipv6 dhcpv6 l2relay option sp
+mac-address-table aging-time 300
+snmp-server community parks rw
+temperature threshold 70
+fan duty-cycle autocontrol
+!
+OLT_NC# 

@@ -1,0 +1,502 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: CGNAT-BORDA-BACKUP
+Host: 201.77.148.0:22025
+Acesso: DIRETO
+Modelo: MIKROTIK CCR1036-8G-2S+
+Template: Backup Mikrotik
+Data: 28/04/2026 00:04:40
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# apr/26/2026 23:09:18 by RouterOS 6.49.8
+# software id = WY2G-LR1Q
+#
+# model = CCR1036-8G-2S+
+# serial number = C6CC0C5E0287
+/interface bridge add name=loopback
+/interface vlan add interface=sfp-sfpplus1 name="VLAN1010 - LINK" vlan-id=1010
+/ip pool add name="wm-cgnat [64465-65535]" ranges=100.127.148.0/24
+/ip pool add name="wm-cgnat [63458-64464]" next-pool="wm-cgnat [64465-65535]" ranges=100.126.148.0/24
+/ip pool add name="wm-cgnat [62451-63457]" next-pool="wm-cgnat [63458-64464]" ranges=100.125.148.0/24
+/ip pool add name="wm-cgnat [61444-62450]" next-pool="wm-cgnat [62451-63457]" ranges=100.124.148.0/24
+/ip pool add name="wm-cgnat [60437-61443]" next-pool="wm-cgnat [61444-62450]" ranges=100.123.148.0/24
+/ip pool add name="wm-cgnat [59430-60436]" next-pool="wm-cgnat [60437-61443]" ranges=100.122.148.0/24
+/ip pool add name="wm-cgnat [58423-59429]" next-pool="wm-cgnat [59430-60436]" ranges=100.121.148.0/24
+/ip pool add name="wm-cgnat [57416-58422]" next-pool="wm-cgnat [58423-59429]" ranges=100.120.148.0/24
+/ip pool add name="wm-cgnat [56409-57415]" next-pool="wm-cgnat [57416-58422]" ranges=100.119.148.0/24
+/ip pool add name="wm-cgnat [55402-56408]" next-pool="wm-cgnat [56409-57415]" ranges=100.118.148.0/24
+/ip pool add name="wm-cgnat [54395-55401]" next-pool="wm-cgnat [55402-56408]" ranges=100.117.148.0/24
+/ip pool add name="wm-cgnat [53388-54394]" next-pool="wm-cgnat [54395-55401]" ranges=100.116.148.0/24
+/ip pool add name="wm-cgnat [52381-53387]" next-pool="wm-cgnat [53388-54394]" ranges=100.115.148.0/24
+/ip pool add name="wm-cgnat [51374-52380]" next-pool="wm-cgnat [52381-53387]" ranges=100.114.148.0/24
+/ip pool add name="wm-cgnat [50367-51373]" next-pool="wm-cgnat [51374-52380]" ranges=100.113.148.0/24
+/ip pool add name="wm-cgnat [49360-50366]" next-pool="wm-cgnat [50367-51373]" ranges=100.112.148.0/24
+/ip pool add name="wm-cgnat [48353-49359]" next-pool="wm-cgnat [49360-50366]" ranges=100.111.148.0/24
+/ip pool add name="wm-cgnat [47346-48352]" next-pool="wm-cgnat [48353-49359]" ranges=100.110.148.0/24
+/ip pool add name="wm-cgnat [46339-47345]" next-pool="wm-cgnat [47346-48352]" ranges=100.109.148.0/24
+/ip pool add name="wm-cgnat [45332-46338]" next-pool="wm-cgnat [46339-47345]" ranges=100.108.148.0/24
+/ip pool add name="wm-cgnat [44325-45331]" next-pool="wm-cgnat [45332-46338]" ranges=100.107.148.0/24
+/ip pool add name="wm-cgnat [43318-44324]" next-pool="wm-cgnat [44325-45331]" ranges=100.106.148.0/24
+/ip pool add name="wm-cgnat [42311-43317]" next-pool="wm-cgnat [43318-44324]" ranges=100.105.148.0/24
+/ip pool add name="wm-cgnat [41304-42310]" next-pool="wm-cgnat [42311-43317]" ranges=100.104.148.0/24
+/ip pool add name="wm-cgnat [40297-41303]" next-pool="wm-cgnat [41304-42310]" ranges=100.103.148.0/24
+/ip pool add name="wm-cgnat [39290-40296]" next-pool="wm-cgnat [40297-41303]" ranges=100.102.148.0/24
+/ip pool add name="wm-cgnat [38283-39289]" next-pool="wm-cgnat [39290-40296]" ranges=100.101.148.0/24
+/ip pool add name="wm-cgnat [37276-38282]" next-pool="wm-cgnat [38283-39289]" ranges=100.100.148.0/24
+/ip pool add name="wm-cgnat [36269-37275]" next-pool="wm-cgnat [37276-38282]" ranges=100.99.148.0/24
+/ip pool add name="wm-cgnat [35262-36268]" next-pool="wm-cgnat [36269-37275]" ranges=100.98.148.0/24
+/ip pool add name="wm-cgnat [34255-35261]" next-pool="wm-cgnat [35262-36268]" ranges=100.97.148.0/24
+/ip pool add name="wm-cgnat [33248-34254]" next-pool="wm-cgnat [34255-35261]" ranges=100.96.148.0/24
+/ip pool add name="wm-cgnat [32241-33247]" next-pool="wm-cgnat [33248-34254]" ranges=100.95.148.0/24
+/ip pool add name="wm-cgnat [31234-32240]" next-pool="wm-cgnat [32241-33247]" ranges=100.94.148.0/24
+/ip pool add name="wm-cgnat [30227-31233]" next-pool="wm-cgnat [31234-32240]" ranges=100.93.148.0/24
+/ip pool add name="wm-cgnat [29220-30226]" next-pool="wm-cgnat [30227-31233]" ranges=100.92.148.0/24
+/ip pool add name="wm-cgnat [28213-29219]" next-pool="wm-cgnat [29220-30226]" ranges=100.91.148.0/24
+/ip pool add name="wm-cgnat [27206-28212]" next-pool="wm-cgnat [28213-29219]" ranges=100.90.148.0/24
+/ip pool add name="wm-cgnat [26199-27205]" next-pool="wm-cgnat [27206-28212]" ranges=100.89.148.0/24
+/ip pool add name="wm-cgnat [25192-26198]" next-pool="wm-cgnat [26199-27205]" ranges=100.88.148.0/24
+/ip pool add name="wm-cgnat [24185-25191]" next-pool="wm-cgnat [25192-26198]" ranges=100.87.148.0/24
+/ip pool add name="wm-cgnat [23178-24184]" next-pool="wm-cgnat [24185-25191]" ranges=100.86.148.0/24
+/ip pool add name="wm-cgnat [22171-23177]" next-pool="wm-cgnat [23178-24184]" ranges=100.85.148.0/24
+/ip pool add name="wm-cgnat [21164-22170]" next-pool="wm-cgnat [22171-23177]" ranges=100.84.148.0/24
+/ip pool add name="wm-cgnat [20157-21163]" next-pool="wm-cgnat [21164-22170]" ranges=100.83.148.0/24
+/ip pool add name="wm-cgnat [19150-20156]" next-pool="wm-cgnat [20157-21163]" ranges=100.82.148.0/24
+/ip pool add name="wm-cgnat [18143-19149]" next-pool="wm-cgnat [19150-20156]" ranges=100.81.148.0/24
+/ip pool add name="wm-cgnat [17136-18142]" next-pool="wm-cgnat [18143-19149]" ranges=100.80.148.0/24
+/ip pool add name="wm-cgnat [16129-17135]" next-pool="wm-cgnat [17136-18142]" ranges=100.79.148.0/24
+/ip pool add name="wm-cgnat [15122-16128]" next-pool="wm-cgnat [16129-17135]" ranges=100.78.148.0/24
+/ip pool add name="wm-cgnat [14115-15121]" next-pool="wm-cgnat [15122-16128]" ranges=100.77.148.0/24
+/ip pool add name="wm-cgnat [13108-14114]" next-pool="wm-cgnat [14115-15121]" ranges=100.76.148.0/24
+/ip pool add name="wm-cgnat [12101-13107]" next-pool="wm-cgnat [13108-14114]" ranges=100.75.148.0/24
+/ip pool add name="wm-cgnat [11094-12100]" next-pool="wm-cgnat [12101-13107]" ranges=100.74.148.0/24
+/ip pool add name="wm-cgnat [10087-11093]" next-pool="wm-cgnat [11094-12100]" ranges=100.73.148.0/24
+/ip pool add name="wm-cgnat [9080-10086]" next-pool="wm-cgnat [10087-11093]" ranges=100.72.148.0/24
+/ip pool add name="wm-cgnat [8073-9079]" next-pool="wm-cgnat [9080-10086]" ranges=100.71.148.0/24
+/ip pool add name="wm-cgnat [7066-8072]" next-pool="wm-cgnat [8073-9079]" ranges=100.70.148.0/24
+/ip pool add name="wm-cgnat [6059-7065]" next-pool="wm-cgnat [7066-8072]" ranges=100.69.148.0/24
+/ip pool add name="wm-cgnat [5052-6058]" next-pool="wm-cgnat [6059-7065]" ranges=100.68.148.0/24
+/ip pool add name="wm-cgnat [4045-5051]" next-pool="wm-cgnat [5052-6058]" ranges=100.67.148.0/24
+/ip pool add name="wm-cgnat [3038-4044]" next-pool="wm-cgnat [4045-5051]" ranges=100.66.148.0/24
+/ip pool add name="wm-cgnat [2031-3037]" next-pool="wm-cgnat [3038-4044]" ranges=100.65.148.0/24
+/ip pool add name="wm-cgnat [1024-2030]" next-pool="wm-cgnat [2031-3037]" ranges=100.64.148.0/24
+/routing bgp instance set default as=61601 redistribute-connected=yes
+/snmp community set [ find default=yes ] addresses=201.77.151.11/32,0.0.0.0/0 name=friendstelecom-ro
+/ip neighbor discovery-settings set discover-interface-list=all protocol=mndp
+/ip settings set arp-timeout=4h rp-filter=loose tcp-syncookies=yes
+/ip address add address=170.81.180.198/26 comment=P2P-BGP-INFORNET interface="VLAN1010 - LINK" network=170.81.180.192
+/ip address add address=172.19.0.198/24 interface="VLAN1010 - LINK" network=172.19.0.0
+/ip address add address=201.77.148.0 interface=loopback network=201.77.148.0
+/ip firewall address-list add address=10.0.0.0/8 list=no-wm-cgnat
+/ip firewall address-list add address=172.16.0.0/12 list=no-wm-cgnat
+/ip firewall address-list add address=192.168.0.0/16 list=no-wm-cgnat
+/ip firewall address-list add address=54.194.0.0/16 comment=AMAZON list=DNS-server
+/ip firewall address-list add address=9.9.9.0/24 comment=QUAD9 list=DNS-server
+/ip firewall address-list add address=187.111.142.30 comment=INFORNET list=DNS-server
+/ip firewall address-list add address=187.111.143.70 comment=INFORNET list=DNS-server
+/ip firewall address-list add address=1.1.1.0/24 comment=CLOUDFLARE list=DNS-server
+/ip firewall address-list add address=201.77.148.0/22 list=REDE_INTERNA
+/ip firewall address-list add address=100.64.0.0/10 list=REDE_INTERNA
+/ip firewall address-list add address=192.168.0.0/16 list=REDE_INTERNA
+/ip firewall address-list add address=8.8.4.0/24 comment=GOOGLE list=DNS-server
+/ip firewall address-list add address=208.67.222.0/24 comment=OPENDNS list=DNS-server
+/ip firewall address-list add address=200.169.112.0/20 comment=CLARO list=DNS-server
+/ip firewall address-list add address=208.67.220.0/24 comment=OPENDNS list=DNS-server
+/ip firewall address-list add address=8.8.8.0/24 comment=GOOGLE list=DNS-server
+/ip firewall address-list add address=54.76.0.0/15 comment=AMAZON list=DNS-server
+/ip firewall address-list add address=52.208.0.0/13 comment=AMAZON list=DNS-server
+/ip firewall address-list add address=84.17.54.0/23 comment=CDN77 list=DNS-server
+/ip firewall address-list add address=4.0.0.0/9 comment=LEVEL3 list=DNS-server
+/ip firewall address-list add address=5.45.62.0/24 comment=AVAST list=DNS-server
+/ip firewall address-list add address=172.19.0.0/24 list=REDE_INTERNA
+/ip firewall address-list add address=100.64.148.0/24 list=CGNAT-WM
+/ip firewall address-list add address=100.66.148.0/24 list=CGNAT-WM
+/ip firewall address-list add address=100.67.148.0/24 list=CGNAT-WM
+/ip firewall address-list add address=100.68.148.0/24 list=CGNAT-WM
+/ip firewall address-list add address=100.69.148.0/24 list=CGNAT-WM
+/ip firewall address-list add address=100.70.148.0/24 list=CGNAT-WM
+/ip firewall address-list add address=100.71.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.72.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.78.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.79.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.81.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.82.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.83.148.0/24 list=CGNAT-WM1
+/ip firewall address-list add address=100.84.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.85.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.86.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.87.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.88.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.92.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.93.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add address=100.94.148.0/24 list=CGNAT-WM2
+/ip firewall address-list add list=ddos-attackers
+/ip firewall address-list add list=ddos-targets
+/ip firewall filter add action=fasttrack-connection chain=forward connection-state=established,related
+/ip firewall filter add action=drop chain=forward comment="defconf: drop invalid" connection-state=invalid disabled=yes
+/ip firewall filter add action=accept chain=input comment="defconf: accept ICMP after RAW" disabled=yes protocol=icmp
+/ip firewall filter add action=accept chain=input comment="defconf: accept established,related,untracked" connection-state=established,related,untracked disabled=yes
+/ip firewall filter add action=accept chain=input comment=BGP disabled=yes port=179 protocol=tcp
+/ip firewall filter add action=accept chain=input comment=OSPF disabled=yes protocol=ospf
+/ip firewall filter add action=accept chain=input comment=LAN disabled=yes src-address-list=REDE_INTERNA
+/ip firewall filter add action=accept chain=input comment=LAN-services disabled=yes src-address-list=REDE_INTERNA
+/ip firewall filter add action=accept chain=input comment=udp-services disabled=yes protocol=udp src-port=123,1701,500,4500,3784-3785,5678,15252
+/ip firewall filter add action=accept chain=input comment=tcp-services disabled=yes protocol=tcp src-port=8282
+/ip firewall filter add action=accept chain=input comment=IPsec disabled=yes protocol=ipsec-esp
+/ip firewall filter add action=accept chain=input comment=IPsec disabled=yes protocol=ipsec-ah
+/ip firewall filter add action=return chain=detect-ddos disabled=yes dst-limit=32,32,src-and-dst-addresses/10s
+/ip firewall filter add action=add-dst-to-address-list address-list=ddos-targets address-list-timeout=10m chain=detect-ddos disabled=yes
+/ip firewall filter add action=add-src-to-address-list address-list=ddos-attackers address-list-timeout=10m chain=detect-ddos disabled=yes
+/ip firewall nat add action=jump chain=srcnat comment="wm-cgnat (jump --> tcp)" dst-address-list=!no-wm-cgnat jump-target="wm-cgnat (jump --> tcp)" protocol=tcp
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [1024-2030]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.64.148.0/24 to-addresses=201.77.148.0/24 to-ports=1024-2030
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [2031-3037]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.65.148.0/24 to-addresses=201.77.148.0/24 to-ports=2031-3037
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [3038-4044]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.66.148.0/24 to-addresses=201.77.148.0/24 to-ports=3038-4044
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [4045-5051]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.67.148.0/24 to-addresses=201.77.148.0/24 to-ports=4045-5051
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [5052-6058]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.68.148.0/24 to-addresses=201.77.148.0/24 to-ports=5052-6058
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [6059-7065]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.69.148.0/24 to-addresses=201.77.148.0/24 to-ports=6059-7065
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [7066-8072]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.70.148.0/24 to-addresses=201.77.148.0/24 to-ports=7066-8072
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [8073-9079]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.71.148.0/24 to-addresses=201.77.148.0/24 to-ports=8073-9079
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [9080-10086]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.72.148.0/24 to-addresses=201.77.148.0/24 to-ports=9080-10086
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [10087-11093]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.73.148.0/24 to-addresses=201.77.148.0/24 to-ports=10087-11093
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [11094-12100]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.74.148.0/24 to-addresses=201.77.148.0/24 to-ports=11094-12100
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [12101-13107]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.75.148.0/24 to-addresses=201.77.148.0/24 to-ports=12101-13107
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [13108-14114]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.76.148.0/24 to-addresses=201.77.148.0/24 to-ports=13108-14114
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [14115-15121]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.77.148.0/24 to-addresses=201.77.148.0/24 to-ports=14115-15121
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [15122-16128]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.78.148.0/24 to-addresses=201.77.148.0/24 to-ports=15122-16128
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [16129-17135]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.79.148.0/24 to-addresses=201.77.148.0/24 to-ports=16129-17135
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [17136-18142]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.80.148.0/24 to-addresses=201.77.148.0/24 to-ports=17136-18142
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [18143-19149]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.81.148.0/24 to-addresses=201.77.148.0/24 to-ports=18143-19149
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [19150-20156]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.82.148.0/24 to-addresses=201.77.148.0/24 to-ports=19150-20156
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [20157-21163]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.83.148.0/24 to-addresses=201.77.148.0/24 to-ports=20157-21163
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [21164-22170]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.84.148.0/24 to-addresses=201.77.148.0/24 to-ports=21164-22170
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [22171-23177]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.85.148.0/24 to-addresses=201.77.148.0/24 to-ports=22171-23177
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [23178-24184]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.86.148.0/24 to-addresses=201.77.148.0/24 to-ports=23178-24184
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [24185-25191]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.87.148.0/24 to-addresses=201.77.148.0/24 to-ports=24185-25191
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [25192-26198]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.88.148.0/24 to-addresses=201.77.148.0/24 to-ports=25192-26198
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [26199-27205]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.89.148.0/24 to-addresses=201.77.148.0/24 to-ports=26199-27205
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [27206-28212]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.90.148.0/24 to-addresses=201.77.148.0/24 to-ports=27206-28212
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [28213-29219]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.91.148.0/24 to-addresses=201.77.148.0/24 to-ports=28213-29219
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [29220-30226]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.92.148.0/24 to-addresses=201.77.148.0/24 to-ports=29220-30226
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [30227-31233]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.93.148.0/24 to-addresses=201.77.148.0/24 to-ports=30227-31233
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [31234-32240]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.94.148.0/24 to-addresses=201.77.148.0/24 to-ports=31234-32240
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [32241-33247]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.95.148.0/24 to-addresses=201.77.148.0/24 to-ports=32241-33247
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [33248-34254]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.96.148.0/24 to-addresses=201.77.148.0/24 to-ports=33248-34254
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [34255-35261]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.97.148.0/24 to-addresses=201.77.148.0/24 to-ports=34255-35261
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [35262-36268]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.98.148.0/24 to-addresses=201.77.148.0/24 to-ports=35262-36268
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [36269-37275]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.99.148.0/24 to-addresses=201.77.148.0/24 to-ports=36269-37275
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [37276-38282]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.100.148.0/24 to-addresses=201.77.148.0/24 to-ports=37276-38282
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [38283-39289]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.101.148.0/24 to-addresses=201.77.148.0/24 to-ports=38283-39289
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [39290-40296]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.102.148.0/24 to-addresses=201.77.148.0/24 to-ports=39290-40296
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [40297-41303]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.103.148.0/24 to-addresses=201.77.148.0/24 to-ports=40297-41303
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [41304-42310]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.104.148.0/24 to-addresses=201.77.148.0/24 to-ports=41304-42310
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [42311-43317]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.105.148.0/24 to-addresses=201.77.148.0/24 to-ports=42311-43317
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [43318-44324]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.106.148.0/24 to-addresses=201.77.148.0/24 to-ports=43318-44324
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [44325-45331]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.107.148.0/24 to-addresses=201.77.148.0/24 to-ports=44325-45331
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [45332-46338]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.108.148.0/24 to-addresses=201.77.148.0/24 to-ports=45332-46338
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [46339-47345]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.109.148.0/24 to-addresses=201.77.148.0/24 to-ports=46339-47345
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [47346-48352]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.110.148.0/24 to-addresses=201.77.148.0/24 to-ports=47346-48352
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [48353-49359]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.111.148.0/24 to-addresses=201.77.148.0/24 to-ports=48353-49359
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [49360-50366]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.112.148.0/24 to-addresses=201.77.148.0/24 to-ports=49360-50366
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [50367-51373]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.113.148.0/24 to-addresses=201.77.148.0/24 to-ports=50367-51373
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [51374-52380]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.114.148.0/24 to-addresses=201.77.148.0/24 to-ports=51374-52380
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [52381-53387]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.115.148.0/24 to-addresses=201.77.148.0/24 to-ports=52381-53387
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [53388-54394]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.116.148.0/24 to-addresses=201.77.148.0/24 to-ports=53388-54394
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [54395-55401]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.117.148.0/24 to-addresses=201.77.148.0/24 to-ports=54395-55401
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [55402-56408]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.118.148.0/24 to-addresses=201.77.148.0/24 to-ports=55402-56408
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [56409-57415]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.119.148.0/24 to-addresses=201.77.148.0/24 to-ports=56409-57415
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [57416-58422]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.120.148.0/24 to-addresses=201.77.148.0/24 to-ports=57416-58422
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [58423-59429]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.121.148.0/24 to-addresses=201.77.148.0/24 to-ports=58423-59429
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [59430-60436]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.122.148.0/24 to-addresses=201.77.148.0/24 to-ports=59430-60436
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [60437-61443]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.123.148.0/24 to-addresses=201.77.148.0/24 to-ports=60437-61443
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [61444-62450]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.124.148.0/24 to-addresses=201.77.148.0/24 to-ports=61444-62450
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [62451-63457]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.125.148.0/24 to-addresses=201.77.148.0/24 to-ports=62451-63457
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [63458-64464]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.126.148.0/24 to-addresses=201.77.148.0/24 to-ports=63458-64464
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> tcp)" comment="wm-cgnat [64465-65535]" dst-address-list=!no-wm-cgnat protocol=tcp src-address=100.127.148.0/24 to-addresses=201.77.148.0/24 to-ports=64465-65535
+/ip firewall nat add action=jump chain=srcnat comment="wm-cgnat (jump --> udp)" dst-address-list=!no-wm-cgnat jump-target="wm-cgnat (jump --> udp)" protocol=udp
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [1024-2030]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.64.148.0/24 to-addresses=201.77.148.0/24 to-ports=1024-2030
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [2031-3037]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.65.148.0/24 to-addresses=201.77.148.0/24 to-ports=2031-3037
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [3038-4044]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.66.148.0/24 to-addresses=201.77.148.0/24 to-ports=3038-4044
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [4045-5051]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.67.148.0/24 to-addresses=201.77.148.0/24 to-ports=4045-5051
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [5052-6058]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.68.148.0/24 to-addresses=201.77.148.0/24 to-ports=5052-6058
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [6059-7065]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.69.148.0/24 to-addresses=201.77.148.0/24 to-ports=6059-7065
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [8073-9079]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.71.148.0/24 to-addresses=201.77.148.0/24 to-ports=8073-9079
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [9080-10086]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.72.148.0/24 to-addresses=201.77.148.0/24 to-ports=9080-10086
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [10087-11093]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.73.148.0/24 to-addresses=201.77.148.0/24 to-ports=10087-11093
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [11094-12100]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.74.148.0/24 to-addresses=201.77.148.0/24 to-ports=11094-12100
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [12101-13107]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.75.148.0/24 to-addresses=201.77.148.0/24 to-ports=12101-13107
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [13108-14114]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.76.148.0/24 to-addresses=201.77.148.0/24 to-ports=13108-14114
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [14115-15121]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.77.148.0/24 to-addresses=201.77.148.0/24 to-ports=14115-15121
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [15122-16128]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.78.148.0/24 to-addresses=201.77.148.0/24 to-ports=15122-16128
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [16129-17135]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.79.148.0/24 to-addresses=201.77.148.0/24 to-ports=16129-17135
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [17136-18142]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.80.148.0/24 to-addresses=201.77.148.0/24 to-ports=17136-18142
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [18143-19149]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.81.148.0/24 to-addresses=201.77.148.0/24 to-ports=18143-19149
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [19150-20156]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.82.148.0/24 to-addresses=201.77.148.0/24 to-ports=19150-20156
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [20157-21163]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.83.148.0/24 to-addresses=201.77.148.0/24 to-ports=20157-21163
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [21164-22170]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.84.148.0/24 to-addresses=201.77.148.0/24 to-ports=21164-22170
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [22171-23177]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.85.148.0/24 to-addresses=201.77.148.0/24 to-ports=22171-23177
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [23178-24184]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.86.148.0/24 to-addresses=201.77.148.0/24 to-ports=23178-24184
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [7066-8072]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.70.148.0/24 to-addresses=201.77.148.0/24 to-ports=7066-8072
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [24185-25191]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.87.148.0/24 to-addresses=201.77.148.0/24 to-ports=24185-25191
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [25192-26198]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.88.148.0/24 to-addresses=201.77.148.0/24 to-ports=25192-26198
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [26199-27205]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.89.148.0/24 to-addresses=201.77.148.0/24 to-ports=26199-27205
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [27206-28212]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.90.148.0/24 to-addresses=201.77.148.0/24 to-ports=27206-28212
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [28213-29219]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.91.148.0/24 to-addresses=201.77.148.0/24 to-ports=28213-29219
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [29220-30226]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.92.148.0/24 to-addresses=201.77.148.0/24 to-ports=29220-30226
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [30227-31233]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.93.148.0/24 to-addresses=201.77.148.0/24 to-ports=30227-31233
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [31234-32240]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.94.148.0/24 to-addresses=201.77.148.0/24 to-ports=31234-32240
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [32241-33247]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.95.148.0/24 to-addresses=201.77.148.0/24 to-ports=32241-33247
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [33248-34254]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.96.148.0/24 to-addresses=201.77.148.0/24 to-ports=33248-34254
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [34255-35261]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.97.148.0/24 to-addresses=201.77.148.0/24 to-ports=34255-35261
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [35262-36268]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.98.148.0/24 to-addresses=201.77.148.0/24 to-ports=35262-36268
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [36269-37275]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.99.148.0/24 to-addresses=201.77.148.0/24 to-ports=36269-37275
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [37276-38282]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.100.148.0/24 to-addresses=201.77.148.0/24 to-ports=37276-38282
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [38283-39289]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.101.148.0/24 to-addresses=201.77.148.0/24 to-ports=38283-39289
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [39290-40296]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.102.148.0/24 to-addresses=201.77.148.0/24 to-ports=39290-40296
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [40297-41303]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.103.148.0/24 to-addresses=201.77.148.0/24 to-ports=40297-41303
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [41304-42310]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.104.148.0/24 to-addresses=201.77.148.0/24 to-ports=41304-42310
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [42311-43317]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.105.148.0/24 to-addresses=201.77.148.0/24 to-ports=42311-43317
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [43318-44324]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.106.148.0/24 to-addresses=201.77.148.0/24 to-ports=43318-44324
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [44325-45331]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.107.148.0/24 to-addresses=201.77.148.0/24 to-ports=44325-45331
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [45332-46338]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.108.148.0/24 to-addresses=201.77.148.0/24 to-ports=45332-46338
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [46339-47345]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.109.148.0/24 to-addresses=201.77.148.0/24 to-ports=46339-47345
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [47346-48352]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.110.148.0/24 to-addresses=201.77.148.0/24 to-ports=47346-48352
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [48353-49359]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.111.148.0/24 to-addresses=201.77.148.0/24 to-ports=48353-49359
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [49360-50366]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.112.148.0/24 to-addresses=201.77.148.0/24 to-ports=49360-50366
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [50367-51373]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.113.148.0/24 to-addresses=201.77.148.0/24 to-ports=50367-51373
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [51374-52380]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.114.148.0/24 to-addresses=201.77.148.0/24 to-ports=51374-52380
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [52381-53387]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.115.148.0/24 to-addresses=201.77.148.0/24 to-ports=52381-53387
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [53388-54394]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.116.148.0/24 to-addresses=201.77.148.0/24 to-ports=53388-54394
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [54395-55401]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.117.148.0/24 to-addresses=201.77.148.0/24 to-ports=54395-55401
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [55402-56408]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.118.148.0/24 to-addresses=201.77.148.0/24 to-ports=55402-56408
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [56409-57415]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.119.148.0/24 to-addresses=201.77.148.0/24 to-ports=56409-57415
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [57416-58422]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.120.148.0/24 to-addresses=201.77.148.0/24 to-ports=57416-58422
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [58423-59429]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.121.148.0/24 to-addresses=201.77.148.0/24 to-ports=58423-59429
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [59430-60436]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.122.148.0/24 to-addresses=201.77.148.0/24 to-ports=59430-60436
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [60437-61443]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.123.148.0/24 to-addresses=201.77.148.0/24 to-ports=60437-61443
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [61444-62450]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.124.148.0/24 to-addresses=201.77.148.0/24 to-ports=61444-62450
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [62451-63457]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.125.148.0/24 to-addresses=201.77.148.0/24 to-ports=62451-63457
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [63458-64464]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.126.148.0/24 to-addresses=201.77.148.0/24 to-ports=63458-64464
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> udp)" comment="wm-cgnat [64465-65535]" dst-address-list=!no-wm-cgnat protocol=udp src-address=100.127.148.0/24 to-addresses=201.77.148.0/24 to-ports=64465-65535
+/ip firewall nat add action=jump chain=srcnat comment="wm-cgnat (jump --> all)" dst-address-list=!no-wm-cgnat jump-target="wm-cgnat (jump --> all)"
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [1024-2030]" dst-address-list=!no-wm-cgnat src-address=100.64.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [2031-3037]" dst-address-list=!no-wm-cgnat src-address=100.65.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [3038-4044]" dst-address-list=!no-wm-cgnat src-address=100.66.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [4045-5051]" dst-address-list=!no-wm-cgnat src-address=100.67.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [5052-6058]" dst-address-list=!no-wm-cgnat src-address=100.68.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [6059-7065]" dst-address-list=!no-wm-cgnat src-address=100.69.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [7066-8072]" dst-address-list=!no-wm-cgnat src-address=100.70.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [8073-9079]" dst-address-list=!no-wm-cgnat src-address=100.71.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [9080-10086]" dst-address-list=!no-wm-cgnat src-address=100.72.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [10087-11093]" dst-address-list=!no-wm-cgnat src-address=100.73.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [11094-12100]" dst-address-list=!no-wm-cgnat src-address=100.74.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [12101-13107]" dst-address-list=!no-wm-cgnat src-address=100.75.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [13108-14114]" dst-address-list=!no-wm-cgnat src-address=100.76.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [14115-15121]" dst-address-list=!no-wm-cgnat src-address=100.77.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [15122-16128]" dst-address-list=!no-wm-cgnat src-address=100.78.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [16129-17135]" dst-address-list=!no-wm-cgnat src-address=100.79.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [17136-18142]" dst-address-list=!no-wm-cgnat src-address=100.80.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [18143-19149]" dst-address-list=!no-wm-cgnat src-address=100.81.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [19150-20156]" dst-address-list=!no-wm-cgnat src-address=100.82.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [20157-21163]" dst-address-list=!no-wm-cgnat src-address=100.83.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [21164-22170]" dst-address-list=!no-wm-cgnat src-address=100.84.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [22171-23177]" dst-address-list=!no-wm-cgnat src-address=100.85.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [23178-24184]" dst-address-list=!no-wm-cgnat src-address=100.86.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [24185-25191]" dst-address-list=!no-wm-cgnat src-address=100.87.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [25192-26198]" dst-address-list=!no-wm-cgnat src-address=100.88.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [26199-27205]" dst-address-list=!no-wm-cgnat src-address=100.89.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [27206-28212]" dst-address-list=!no-wm-cgnat src-address=100.90.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [28213-29219]" dst-address-list=!no-wm-cgnat src-address=100.91.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [29220-30226]" dst-address-list=!no-wm-cgnat src-address=100.92.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [30227-31233]" dst-address-list=!no-wm-cgnat src-address=100.93.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [31234-32240]" dst-address-list=!no-wm-cgnat src-address=100.94.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [32241-33247]" dst-address-list=!no-wm-cgnat src-address=100.95.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [33248-34254]" dst-address-list=!no-wm-cgnat src-address=100.96.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [34255-35261]" dst-address-list=!no-wm-cgnat src-address=100.97.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [35262-36268]" dst-address-list=!no-wm-cgnat src-address=100.98.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [36269-37275]" dst-address-list=!no-wm-cgnat src-address=100.99.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [37276-38282]" dst-address-list=!no-wm-cgnat src-address=100.100.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [38283-39289]" dst-address-list=!no-wm-cgnat src-address=100.101.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [39290-40296]" dst-address-list=!no-wm-cgnat src-address=100.102.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [40297-41303]" dst-address-list=!no-wm-cgnat src-address=100.103.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [41304-42310]" dst-address-list=!no-wm-cgnat src-address=100.104.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [42311-43317]" dst-address-list=!no-wm-cgnat src-address=100.105.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [43318-44324]" dst-address-list=!no-wm-cgnat src-address=100.106.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [44325-45331]" dst-address-list=!no-wm-cgnat src-address=100.107.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [45332-46338]" dst-address-list=!no-wm-cgnat src-address=100.108.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [46339-47345]" dst-address-list=!no-wm-cgnat src-address=100.109.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [47346-48352]" dst-address-list=!no-wm-cgnat src-address=100.110.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [48353-49359]" dst-address-list=!no-wm-cgnat src-address=100.111.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [49360-50366]" dst-address-list=!no-wm-cgnat src-address=100.112.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [50367-51373]" dst-address-list=!no-wm-cgnat src-address=100.113.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [51374-52380]" dst-address-list=!no-wm-cgnat src-address=100.114.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [52381-53387]" dst-address-list=!no-wm-cgnat src-address=100.115.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [53388-54394]" dst-address-list=!no-wm-cgnat src-address=100.116.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [54395-55401]" dst-address-list=!no-wm-cgnat src-address=100.117.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [55402-56408]" dst-address-list=!no-wm-cgnat src-address=100.118.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [56409-57415]" dst-address-list=!no-wm-cgnat src-address=100.119.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [57416-58422]" dst-address-list=!no-wm-cgnat src-address=100.120.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [58423-59429]" dst-address-list=!no-wm-cgnat src-address=100.121.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [59430-60436]" dst-address-list=!no-wm-cgnat src-address=100.122.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [60437-61443]" dst-address-list=!no-wm-cgnat src-address=100.123.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [61444-62450]" dst-address-list=!no-wm-cgnat src-address=100.124.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [62451-63457]" dst-address-list=!no-wm-cgnat src-address=100.125.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [63458-64464]" dst-address-list=!no-wm-cgnat src-address=100.126.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall nat add action=netmap chain="wm-cgnat (jump --> all)" comment="wm-cgnat [64465-65535]" dst-address-list=!no-wm-cgnat src-address=100.127.148.0/24 to-addresses=201.77.148.0/24
+/ip firewall raw add action=accept chain=prerouting comment=FIREWALL_TRANSPARENTE disabled=yes
+/ip firewall raw add action=drop chain=prerouting comment="BLOQUEIO SMTP" disabled=yes dst-port=25 protocol=tcp
+/ip firewall raw add action=drop chain=prerouting comment="BLOQUEIO SMTP" disabled=yes dst-port=25 protocol=udp
+/ip firewall raw add action=notrack chain=output disabled=yes protocol=ospf
+/ip firewall raw add action=drop chain=prerouting comment="defconf: drop bad UDP" disabled=yes port=0 protocol=udp
+/ip firewall raw add action=jump chain=prerouting comment="defconf: jump to ICMP chain" disabled=yes jump-target=icmp4 protocol=icmp
+/ip firewall raw add action=jump chain=prerouting comment="defconf: jump to TCP chain" disabled=yes jump-target=bad_tcp protocol=tcp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: echo reply" disabled=yes icmp-options=0:0 limit=5,10:packet protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: net unreachable" disabled=yes icmp-options=3:0 protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: host unreachable" disabled=yes icmp-options=3:1 protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: protocol unreachable" disabled=yes icmp-options=3:2 protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: port unreachable" disabled=yes icmp-options=3:3 protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: fragmentation needed" disabled=yes icmp-options=3:4 protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: echo" disabled=yes icmp-options=8:0 limit=5,10:packet protocol=icmp
+/ip firewall raw add action=accept chain=icmp4 comment="defconf: time exceeded " disabled=yes icmp-options=11:0-255 protocol=icmp
+/ip firewall raw add action=drop chain=icmp4 comment="defconf: drop other icmp" disabled=yes dst-address-list=!REDE_INTERNA protocol=icmp src-address-list=!REDE_INTERNA
+/ip firewall raw add action=drop chain=bad_tcp comment="defconf: TCP flag filte" disabled=yes protocol=tcp tcp-flags=!fin,!syn,!rst,!ack
+/ip firewall raw add action=drop chain=bad_tcp comment=defconf disabled=yes protocol=tcp tcp-flags=fin,syn
+/ip firewall raw add action=drop chain=bad_tcp comment=defconf disabled=yes protocol=tcp tcp-flags=fin,rst
+/ip firewall raw add action=drop chain=bad_tcp comment=defconf disabled=yes protocol=tcp tcp-flags=fin,!ack
+/ip firewall raw add action=drop chain=bad_tcp comment=defconf disabled=yes protocol=tcp tcp-flags=fin,urg
+/ip firewall raw add action=drop chain=bad_tcp comment=defconf disabled=yes protocol=tcp tcp-flags=syn,rst
+/ip firewall raw add action=drop chain=bad_tcp comment=defconf disabled=yes protocol=tcp tcp-flags=rst,urg
+/ip firewall raw add action=drop chain=bad_tcp comment="defconf: TCP port 0 drop" disabled=yes port=0 protocol=tcp
+/ip firewall raw add action=drop chain=prerouting comment="bad TCP" disabled=yes port=0,135-139,445,25 protocol=tcp
+/ip firewall raw add action=drop chain=prerouting comment="bad UDP" disabled=yes port=0,135-139,445,5376,5353,10001 protocol=udp
+/ip firewall raw add action=accept chain=input comment=BGP disabled=yes port=179 protocol=tcp
+/ip firewall raw add action=notrack chain=output comment=OSPF disabled=yes protocol=ospf
+/ip firewall raw add action=notrack chain=input comment=OSPF disabled=yes protocol=ospf
+/ip firewall raw add action=accept chain=input comment=OSPF disabled=yes protocol=ospf
+/ip firewall raw add action=accept chain=input comment=udp-SERVIOS_ROUTER disabled=yes protocol=udp src-port=123,1701,500,4500,3784-3785,5678,15252
+/ip firewall raw add action=accept chain=input comment=tcp-SERVIOS_ROUTER disabled=yes protocol=tcp src-port=853,8282
+/ip firewall raw add action=accept chain=input comment=IPsec disabled=yes protocol=ipsec-esp
+/ip firewall raw add action=accept chain=input comment=IPsec disabled=yes protocol=ipsec-ah
+/ip firewall raw add action=add-src-to-address-list address-list=LAN-services address-list-timeout=10m chain=input comment=suporte-sessao disabled=yes dst-limit=1,0,addresses-and-dst-port/1m limit=1,0:packet protocol=tcp src-address-list=suporte-sessao tcp-flags=psh
+/ip firewall raw add action=accept chain=output comment=suporte-sessao disabled=yes dst-address-list=REDE_INTERNA protocol=tcp tcp-flags=psh
+/ip firewall raw add action=add-dst-to-address-list address-list=suporte-sessao address-list-timeout=10s chain=output comment=suporte-sessao disabled=yes dst-address-list=!REDE_INTERNA dst-limit=1,0,addresses-and-dst-port/1m limit=1,0:packet packet-size=200-65535 protocol=tcp tcp-flags=psh
+/ip firewall raw add action=accept chain=prerouting comment="ACEITA CONSULTA DNS AUTORIZADOS" disabled=yes port=53 protocol=udp src-address-list=DNS-server
+/ip firewall raw add action=accept chain=prerouting disabled=yes dst-address-list=DNS-server port=53 protocol=udp
+/ip firewall raw add action=accept chain=prerouting disabled=yes port=53 protocol=tcp src-address-list=DNS-server
+/ip firewall raw add action=accept chain=prerouting disabled=yes dst-address-list=DNS-server port=53 protocol=tcp
+/ip firewall raw add action=add-dst-to-address-list address-list=dns-bogus address-list-timeout=1d chain=prerouting comment=DNS-bogus disabled=yes dst-address-list=!dns-bogus dst-port=53 log=yes log-prefix="DNS-bogus #" protocol=udp src-address-list=REDE_INTERNA
+/ip firewall raw add action=add-dst-to-address-list address-list=dns-bogus address-list-timeout=1d chain=prerouting comment=DNS-bogus disabled=yes dst-address-list=!dns-bogus dst-port=53 log-prefix="DNS-bogus #" protocol=tcp src-address-list=REDE_INTERNA
+/ip firewall raw add action=add-src-to-address-list address-list=dns-bogus_cliente address-list-timeout=1h chain=prerouting comment=DNS-bogus_cliente disabled=yes dst-address-list=dns-bogus dst-port=53 log-prefix="DNS-bogus #" protocol=udp src-address-list=!dns-bogus_cliente
+/ip firewall raw add action=add-src-to-address-list address-list=dns-bogus_cliente address-list-timeout=1h chain=prerouting comment=DNS-bogus_cliente disabled=yes dst-address-list=dns-bogus dst-port=53 log-prefix="DNS-bogus #" protocol=tcp src-address-list=!dns-bogus_cliente
+/ip firewall raw add action=drop chain=prerouting comment="BLOQUEIA CONSULTA DNS DE FORA" disabled=yes dst-address-list=REDE_INTERNA dst-port=53 protocol=udp
+/ip firewall raw add action=drop chain=prerouting disabled=yes protocol=udp src-address-list=REDE_INTERNA src-port=53
+/ip firewall raw add action=drop chain=prerouting disabled=yes dst-address-list=REDE_INTERNA dst-port=53 protocol=tcp
+/ip firewall raw add action=drop chain=prerouting disabled=yes protocol=tcp src-address-list=REDE_INTERNA src-port=53
+/ip firewall raw add action=drop chain=prerouting comment=LAN-Ports disabled=yes limit=1,5:packet protocol=tcp src-address-list=REDE_INTERNA src-port=0-1023
+/ip firewall raw add action=drop chain=prerouting comment=LAN-Ports disabled=yes dst-port=!0-1023 limit=1,5:packet protocol=udp src-address-list=REDE_INTERNA src-port=0-1023
+/ip firewall raw add action=log chain=input comment=NEGA-TUDO disabled=yes limit=1/1h,1:packet log-prefix="drop-RAW #"
+/ip firewall raw add action=drop chain=input comment=NEGA-TUDO disabled=yes
+/ip firewall raw add action=drop chain=prerouting comment="SYN DDDOS" disabled=yes dst-address-list=ddos-targets src-address-list=ddos-attackers
+/ip route add distance=1 gateway=170.81.180.193
+/ip route add check-gateway=ping distance=150 dst-address=100.64.0.0/18 gateway=172.19.0.1
+/ip route add distance=1 dst-address=100.73.148.0/24 gateway=172.19.0.223
+/ip route add bgp-local-pref=100 bgp-origin=igp distance=1 dst-address=100.86.148.0/24 gateway=172.19.0.228 scope=40 target-scope=30
+/ip route add bgp-local-pref=100 bgp-origin=igp distance=1 dst-address=100.87.148.0/24 gateway=172.19.0.220 scope=40 target-scope=30
+/ip route add distance=1 dst-address=100.88.148.0/24 gateway=172.19.0.222
+/ip route add distance=1 dst-address=100.92.148.0/24 gateway=172.19.0.221
+/ip route add distance=1 dst-address=100.93.148.0/24 gateway=172.19.0.221
+/ip route add distance=1 dst-address=100.94.148.0/24 gateway=172.19.0.221
+/ip route add distance=1 dst-address=100.95.148.0/24 gateway=172.19.0.231
+/ip route add distance=1 dst-address=100.109.148.0/24 gateway=172.19.0.230
+/ip route add distance=1 dst-address=100.110.148.0/24 gateway=172.19.0.230
+/ip route add bgp-local-pref=100 bgp-origin=igp distance=1 dst-address=100.111.148.0/24 gateway=172.19.0.228 scope=40 target-scope=30
+/ip route add distance=1 dst-address=100.118.148.0/24 gateway=172.19.0.210
+/ip route add distance=1 dst-address=100.119.148.0/24 gateway=172.19.0.210
+/ip route add check-gateway=ping distance=1 dst-address=172.18.100.0/24 gateway=172.19.0.1
+/ip route add comment=PREFIX-CGNAT distance=1 dst-address=201.77.148.0/24 type=blackhole
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh address=201.77.148.0/22,187.111.128.0/20,179.48.68.73/32 port=22025
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/radius add accounting-port=1815 address=201.77.151.50 authentication-port=1814 comment="IXCProvedor configuracao radius" secret=radiusixcsoft service=login src-address=170.81.180.198 timeout=3s
+/radius incoming set accept=yes
+/routing bfd interface set [ find default=yes ] disabled=yes
+/routing bgp network add network=201.77.148.0/24 synchronize=no
+/routing bgp peer add in-filter=INFORNET_IN name=INFORNET out-filter=INFORNET_OUT remote-address=170.81.180.193 remote-as=53121
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=QUICE out-filter=CONCENTRADORES_OUT remote-address=172.19.0.205 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=REPRESA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.216 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=BARRACAS out-filter=CONCENTRADORES_OUT remote-address=172.19.0.202 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=KM30 out-filter=CONCENTRADORES_OUT remote-address=172.19.0.199 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=SAOTOME out-filter=CONCENTRADORES_OUT remote-address=172.19.0.201 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=PV_CENTRO out-filter=CONCENTRADORES_OUT remote-address=172.19.0.208 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=PINDOBACU out-filter=CONCENTRADORES_OUT remote-address=172.19.0.204 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=TERRERINHO out-filter=CONCENTRADORES_OUT passive=yes remote-address=172.19.0.211 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=RC out-filter=CONCENTRADORES_OUT remote-address=172.19.0.217 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=FDA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.203 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=PEDRAS out-filter=CONCENTRADORES_OUT remote-address=172.19.0.212 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=VARZINHA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.29 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name="FAZ SACO" out-filter=CONCENTRADORES_OUT remote-address=172.19.0.219 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=PILAR out-filter=CONCENTRADORES_OUT remote-address=172.19.0.194 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always hold-time=30s in-filter=CONCENTRADORES_IN name=COQUEIRAL out-filter=CONCENTRADORES_OUT remote-address=172.19.0.206 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always hold-time=30s in-filter=CONCENTRADORES_IN name=AGUA_DOS_PASSAROS out-filter=CONCENTRADORES_OUT passive=yes remote-address=172.19.0.213 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=GAMELEIRA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.210 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always hold-time=30s in-filter=CONCENTRADORES_IN name=BREJAO_CATINGA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.197 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=PEREIROS out-filter=CONCENTRADORES_OUT remote-address=172.19.0.186 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=VARZEA_GRANDE out-filter=CONCENTRADORES_OUT remote-address=172.19.0.231 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=CARIACA_FIBRA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.218 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=TAPUIA out-filter=CONCENTRADORES_OUT passive=yes remote-address=172.19.0.214 remote-as=61601 ttl=default
+/routing bgp peer add address-families=ipv6 disabled=yes hold-time=30s in-filter=BGP_IPV6_in name=BGP_IPV6_INFORNET out-filter=BGP_IPV6_out remote-address=2804:3784:9000::1 remote-as=53121
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=BARREIROS_CFS out-filter=CONCENTRADORES_OUT passive=yes remote-address=172.19.0.220 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=PONTA_SERRA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.222 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=IGARA_2 out-filter=CONCENTRADORES_OUT remote-address=172.19.0.228 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=FUMACA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.200 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=BANANEIRA out-filter=CONCENTRADORES_OUT passive=yes remote-address=172.19.0.223 remote-as=61601 ttl=default
+/routing bgp peer add in-filter=CGNAT_150_IN name=BORDA_150 out-filter=CGNAT_150_OUT remote-address=172.19.0.1 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=TIQUARA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.224 remote-as=61601
+/routing bgp peer add default-originate=always in-filter=CONCENTRADORES_IN name=BARRACAS_SERRA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.225 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=TEIU out-filter=CONCENTRADORES_OUT remote-address=172.19.0.226 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=SAOMIGUEL out-filter=CONCENTRADORES_OUT remote-address=172.19.0.227 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always hold-time=30s in-filter=CONCENTRADORES_IN name=LAGOINHA out-filter=CONCENTRADORES_OUT remote-address=172.19.0.209 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes hold-time=30s in-filter=CONCENTRADORES_IN name=HUAWEI_BRAS out-filter=CONCENTRADORES_OUT remote-address=172.19.0.250 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always hold-time=30s in-filter=CONCENTRADORES_IN name=SUSSUARANA out-filter=CONCENTRADORES_OUT passive=yes remote-address=172.19.0.229 remote-as=61601 ttl=default
+/routing bgp peer add default-originate=always disabled=yes in-filter=CONCENTRADORES_IN name=PEREIROS/TANQUINHO out-filter=CONCENTRADORES_OUT remote-address=172.19.0.230 remote-as=61601 ttl=default
+/routing filter add action=accept chain=INFORNET_IN prefix=0.0.0.0/0 prefix-length=0 set-bgp-local-pref=300
+/routing filter add action=discard chain=INFORNET_IN prefix=0.0.0.0/0 prefix-length=0-128
+/routing filter add action=accept chain=INFORNET_OUT prefix=201.77.148.0/24 prefix-length=24-32
+/routing filter add action=accept chain=INFORNET_OUT disabled=yes prefix=201.77.150.0/24 prefix-length=24-32
+/routing filter add action=accept chain=INFORNET_OUT disabled=yes prefix=201.77.148.0/22 prefix-length=22-24
+/routing filter add action=accept chain=INFORNET_OUT disabled=yes prefix=100.64.0.0/10 prefix-length=10-30
+/routing filter add action=accept chain=INFORNET_OUT prefix=10.150.150.0/24
+/routing filter add action=discard chain=INFORNET_OUT prefix=0.0.0.0/0 prefix-length=0-128
+/routing filter add action=accept chain=CONCENTRADORES_IN prefix=100.64.0.0/10 prefix-length=10-30
+/routing filter add action=accept chain=CONCENTRADORES_IN prefix=192.168.0.0/16 prefix-length=16-30
+/routing filter add action=accept chain=CONCENTRADORES_IN prefix=201.77.148.0/22 prefix-length=22-32
+/routing filter add action=accept chain=CONCENTRADORES_IN prefix=10.10.0.0/24 prefix-length=24-30
+/routing filter add action=discard chain=CONCENTRADORES_IN prefix=0.0.0.0/0 prefix-length=0-128
+/routing filter add action=accept chain=CONCENTRADORES_OUT prefix=0.0.0.0/0 prefix-length=0
+/routing filter add action=discard chain=CONCENTRADORES_OUT prefix=0.0.0.0/0 prefix-length=0-128
+/routing filter add action=accept chain=BGP_IPV6_in prefix=::/0
+/routing filter add action=discard chain=BGP_IPV6_in prefix=::/0 prefix-length=0-128
+/routing filter add action=accept chain=BGP_IPV6_out prefix=2804:6a14::/32 prefix-length=32-48
+/routing filter add action=discard chain=BGP_IPV6_out prefix=::/0 prefix-length=0-128
+/routing filter add action=accept chain=CGNAT_150_IN prefix=100.64.0.0/10 prefix-length=0-18 set-distance=50
+/routing filter add action=discard chain=CGNAT_150_IN prefix=0.0.0.0/0 prefix-length=0-32
+/routing filter add action=accept chain=CGNAT_150_OUT prefix=100.64.0.0/10 prefix-length=24-25
+/routing filter add action=discard chain=CGNAT_150_OUT prefix=0.0.0.0/0 prefix-length=0-32
+/snmp set contact=suporte@friends.tv.br enabled=yes location=SBM trap-version=2
+/system clock set time-zone-name=America/Bahia
+/system identity set name=BORDA_CGNAT_FRIENDS_148
+/system scheduler add disabled=yes interval=5s name=wm-cgnat on-event=":local g 0;:local ip;:local d;:if ([:tostr [/ip pool find name~\"^wm-cgnat/\"]] != \"\") do={:set ip [:pick [/ip pool get [find name~\"^wm-cgnat/\"] ranges] 0];:if ([:tostr [:find (ip) \"/\"]] != \"\") do={:set d [/ip pool get [find name~\"^wm-cgnat/\"] name];:if ([:tostr [:find (d) \"/\"]] != \"\") do={:set d [:tonum [:pick (d) ([:find (d) \"/\"]+1) [:len (d)]]];:if ((d) > 1 && (d) < 65) do={:if ([:tostr (d)] = \"\" || [:tonum (d)] > 64) do={:set d 64;\t};:if ([:tostr (g)] = \"\") do={:set g 0;\t};/ip firewall address-list remove [find list=no-wm-cgnat];/ip firewall nat remove [find comment~\"^wm-cgnat\"];/ip pool remove [find name~\"^wm-cgnat\"];:foreach i in=[:toarray \"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16\"] do={/ip firewall address-list add list=no-wm-cgnat address=(i);/};:local p1 0;:local p2 1023;:local ac netmap;:local ipa;:for i from=0 to=([:len (ip)]-1) do={:local c [:pick (ip) (i)];:if ((c) = \".\") do={:set ipa ((ipa).\",\");} else={:if ((c) = \"/\" || (c) = \"-\") do={:set ipa ((ipa).\",\");};:set ipa ((ipa).(c));:if ((c) = \"-\") do={:set ac src-nat;:set ipa ((ipa).\",\");};};};:set ipa [:toarray (ipa)];:local r;:local t;:local u;:local a;:local pl \"\";:local n none;:for i from=0 to=((d)-1) do={:set p1 (p2+1);:set p2 ((64511 /(d))+(p2));:if ((i) = ((d)-1)) do={:set p2 65535;};:local p (\"\\\"wm-cgnat [\".(p1).\"-\".(p2).\"]\\\"\");:local cg;:for ii from=0 to=([:len (ipa)]-1) do={:local c [:pick (ipa) (ii)];:if ((ii) = 0 || (ii) = 5 && [:pick (ipa) (4)] = \"-\") do={:set cg ((cg).\"100\");} else={:if ((ii) != 4) do={:set cg ((cg).\".\");};:if ((ii) = 1 || (ii) = 6) do={:set cg ((cg).((i)+64));} else={:set cg ((cg).(c));};};};:foreach ii in=[:toarray \"tcp,udp,all\"] do={:local h (\"\\\"wm-cgnat (jump --> \".(ii).\")\\\"\");:local j;:if ((i) = 0) do={:set j (\"/ip firewall nat add chain=srcnat action=jump jump-target=\".(h).\" dst-address-list=!no-wm-cgnat comment=\".(h));};:local f (\"/ip firewall nat add chain=\".(h).\" src-address=\".(cg).\" dst-address-list=!no-wm-cgnat action=\".(ac).\" to-address=\\\"\".(ip).\"\\\" comment=\".(p));:if ((ii) != \"all\") do={:if ((i) = 0) do={:set j ((j).\" protocol=\".(ii).\";\\n\\r\");};:set f ((f).\" to-ports=\".((p1).\"-\".(p2)).\" protocol=\".(ii));:if ((ii) = \"tcp\") do={:set t ((t).(j).(f).\";\\n\\r\");} else={:set u ((u).(j).(f).\";\\n\\r\");};} else={:if ((i) = 0) do={:set j ((j).\";\\n\\r\");};:set a ((a).(j).(f).\";\\n\\r\");};};:if ((g) = 0) do={:set r ((r).\"/ip pool add name=\".(p).\" range=\".(cg).\";\\n\\r\");:if ((i) != 0 && (i) != (d)) do={:set r ((r).\"/ip pool set [find name=\".(n).\"] next-pool=\".(p).\";\\n\\r\");};} else={:set pl ((pl).(cg).\",\");};:set n (p);};:if ((g) = 1) do={:set r ((r).\"/ip pool add name=wm-cgnat range=\\\"\".(pl).\"\\\";\\n\\r\");};:set r ((r).(t).(u).(a));:put (r);[:parse (r)];};};};};" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-time=startup
+/system watchdog set watchdog-timer=no
+/tool bandwidth-server set enabled=no
+/tool romon set enabled=yes secrets="FR13NDS\$k9#zL"
+/user aaa set use-radius=yes
+

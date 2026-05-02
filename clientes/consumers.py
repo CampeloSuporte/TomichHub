@@ -735,3 +735,256 @@ class SSHConsumer(WebsocketConsumer):
 
     def send_error(self, message):
         self.send_json({'type': 'error', 'message': message})
+
+
+class WinboxConsumer(SSHConsumer):
+    def connect(self):
+        self.accept()
+        self.limpar_recursos()
+        self.tcp_socket = None
+        self.is_connected = False
+
+    def limpar_recursos(self):
+        super().limpar_recursos()
+        if hasattr(self, 'tcp_socket') and self.tcp_socket:
+            try:
+                self.tcp_socket.close()
+            except:
+                pass
+            self.tcp_socket = None
+        self.is_connected = False
+
+    def receive(self, text_data=None, bytes_data=None):
+        if text_data:
+            try:
+                data = json.loads(text_data)
+                action = data.get('action')
+                if action == 'connect':
+                    acesso_id = data.get('acesso_id')
+                    logger.info(f"📋 Conectar Winbox acesso {acesso_id}")
+                    self.conectar_winbox(acesso_id)
+            except Exception as e:
+                logger.error(f"❌ Erro Winbox receive texto: {str(e)}")
+                self.send_error(f"Erro: {str(e)}")
+        elif bytes_data:
+            # Enviar dados binários para o roteador via socket TCP
+            if self.is_connected and self.tcp_socket:
+                try:
+                    self.tcp_socket.sendall(bytes_data)
+                except Exception as e:
+                    logger.error(f"❌ Erro ao enviar bytes para Winbox: {e}")
+                    self.limpar_recursos()
+                    self.close()
+
+    def conectar_winbox(self, acesso_id):
+        try:
+            self.acessoId = acesso_id
+            acesso = Acesso.objects.get(id=acesso_id)
+            host = acesso.host
+            porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
+
+            if self.is_private_ip(host):
+                proxy = self.get_active_proxy(acesso.cliente)
+                self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox via proxy {proxy.nome}...'})
+                local_port = self._criar_tunel_paramiko(proxy, host, porta)
+                target_host = '127.0.0.1'
+                target_port = local_port
+            else:
+                self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox diretamente a {host}:{porta}...'})
+                target_host = host
+                target_port = porta
+
+            self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.tcp_socket.settimeout(10)
+            self.tcp_socket.connect((target_host, target_port))
+            self.tcp_socket.settimeout(None)  # Blocking for thread
+            self.is_connected = True
+
+            self.send_json({'type': 'connected', 'message': f'✓ Conectado Winbox a {host}:{porta}'})
+
+            self.is_reading = True
+            self.read_thread = threading.Thread(target=self.read_tcp_output, daemon=True)
+            self.read_thread.start()
+
+        except Exception as e:
+            logger.error(f"❌ Winbox connect error: {str(e)}")
+            self.send_error(f'Erro ao conectar Winbox: {str(e)}')
+            self.limpar_recursos()
+
+    def read_tcp_output(self):
+        try:
+            while self.is_reading and self.tcp_socket:
+                data = self.tcp_socket.recv(65536)
+                if not data:
+                    break
+                # Enviar dados binários para o WebSocket
+                self.send(bytes_data=data)
+        except Exception as e:
+            err = str(e)
+            if not any(k in err for k in ('closed', 'bad file', 'EIO')):
+                logger.error(f"❌ Erro leitura TCP Winbox: {err}")
+        finally:
+            self.limpar_recursos()
+            self.close()
+
+# =========================================================
+# Winbox VNC Consumer (Acesso via Web Browser + noVNC)
+# =========================================================
+from .winbox_vnc import WinboxVNCManager
+from .browser_vnc import BrowserVNCManager
+
+
+class WinboxVNCConsumer(SSHConsumer):
+    def connect(self):
+        # Aceitar subprotocol 'binary' ou o primeiro que o cliente enviar
+        try:
+            subprotocols = self.scope.get('subprotocols', [])
+            if 'binary' in subprotocols:
+                self.accept(subprotocol='binary')
+            elif subprotocols:
+                self.accept(subprotocol=subprotocols[0])
+            else:
+                self.accept()
+        except Exception:
+            self.accept()
+            
+        # O noVNC passa o ID pela URL (ws://.../ws/vnc/<acesso_id>/)
+        # Pegar o acesso_id da URL (kwargs)
+        try:
+            acesso_id = self.scope['url_route']['kwargs']['acesso_id']
+            logger.info(f"📋 Conectar Winbox Web VNC acesso {acesso_id}")
+            self.conectar_vnc(acesso_id)
+        except Exception as e:
+            logger.error(f"Erro ao obter acesso_id na URL VNC: {e}")
+            self.close()
+
+    def limpar_recursos(self):
+        super().limpar_recursos()
+        if hasattr(self, 'tcp_socket') and self.tcp_socket:
+            try:
+                self.tcp_socket.close()
+            except:
+                pass
+            self.tcp_socket = None
+            
+        if hasattr(self, 'vnc_manager') and self.vnc_manager:
+            self.vnc_manager.stop()
+            self.vnc_manager = None
+
+    def receive(self, text_data=None, bytes_data=None):
+        if text_data:
+            # noVNC pode mandar alguns pacotes textuais mas primariamente binário
+            pass
+        if bytes_data:
+            # Repassar WebSockets -> VNC (RFB protocol)
+            if hasattr(self, 'tcp_socket') and self.tcp_socket:
+                try:
+                    self.tcp_socket.sendall(bytes_data)
+                except Exception as e:
+                    logger.error(f"❌ Erro ao enviar bytes para VNC: {e}")
+                    self.limpar_recursos()
+                    self.close()
+
+    def conectar_vnc(self, acesso_id):
+        try:
+            from urllib.parse import parse_qs
+            query_string = self.scope.get('query_string', b'').decode()
+            params = parse_qs(query_string)
+            mode = params.get('mode', ['winbox'])[0]
+            
+            acesso = Acesso.objects.get(id=acesso_id)
+            host = acesso.host
+            
+            if mode == 'browser':
+                # Se o protocolo for explicitamente HTTP/HTTPS, usar a porta configurada
+                if acesso.protocolo.upper() in ['HTTP', 'HTTPS']:
+                    porta = int(acesso.porta)
+                else:
+                    # Para Winbox/MikroTik, o WebFig costuma estar na 80 ou 443
+                    # Tentamos a 80 por padrão, mas o ideal seria o usuário configurar
+                    porta = 80 
+            else:
+                porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
+
+            
+            if self.is_private_ip(host):
+                proxy = self.get_active_proxy(acesso.cliente)
+                msg_tipo = "Navegador" if mode == 'browser' else "Winbox"
+                self.send_json({'type': 'info', 'message': f'🔌 Conectando {msg_tipo} via proxy {proxy.nome}...'})
+                local_port = self._criar_tunel_paramiko(proxy, host, porta)
+                self.send_json({'type': 'info', 'message': f'✅ Túnel estabelecido na porta {local_port}'})
+                target_host = '127.0.0.1'
+                target_port = local_port
+
+            else:
+                target_host = host
+                target_port = porta
+
+            if mode == 'browser':
+                # Inicia Xvfb + Navegador + x11vnc
+                protocolo_web = 'https' if porta == 443 else 'http'
+                url = f"{protocolo_web}://127.0.0.1:{target_port}/"
+                
+                # Teste de diagnóstico: Tentar acessar a URL via túnel antes de abrir o navegador
+                self.send_json({'type': 'info', 'message': f'🔍 Testando acesso a {host}:{porta} via túnel...'})
+                import requests
+                try:
+                    # Pequeno delay para o túnel estabilizar
+                    import time
+                    time.sleep(1)
+                    test_res = requests.get(url, timeout=5, verify=False, allow_redirects=True)
+                    self.send_json({'type': 'info', 'message': f'✅ Resposta recebida da OLT/Switch! (Status: {test_res.status_code})'})
+                except Exception as e:
+                    self.send_json({'type': 'info', 'message': f'❌ Falha no teste de túnel: {str(e)}'})
+                    self.send_json({'type': 'info', 'message': f'💡 Verifique se o IP {host} e a porta {porta} estão corretos e acessíveis pelo Proxy.'})
+
+                self.vnc_manager = BrowserVNCManager(url=url)
+
+
+
+
+            else:
+                # Inicia Xvfb + WinBox + x11vnc
+                self.vnc_manager = WinboxVNCManager(
+                    host=target_host,
+                    port=target_port,
+                    user=acesso.usuario,
+                    password=acesso.senha
+                )
+            
+            vnc_port = self.vnc_manager.start()
+            
+            # Conecta o socket TCP interno ao x11vnc local
+            self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.tcp_socket.settimeout(10)
+            self.tcp_socket.connect(('127.0.0.1', vnc_port))
+            self.tcp_socket.settimeout(None)
+            
+            self.is_reading = True
+            self.read_thread = threading.Thread(target=self.read_tcp_output, daemon=True)
+            self.read_thread.start()
+            
+            servico_nome = "WebFig (Navegador)" if mode == 'browser' else "Winbox"
+            self.send_json({'type': 'connected', 'message': f'Ambiente {servico_nome} criado no servidor. Recebendo tela...'})
+
+        except Exception as e:
+            logger.error(f"❌ VNC connect error (mode={mode}): {str(e)}")
+            self.send_error(str(e))
+            self.limpar_recursos()
+
+
+    def read_tcp_output(self):
+        try:
+            while self.is_reading and self.tcp_socket:
+                data = self.tcp_socket.recv(65536)
+                if not data:
+                    break
+                # Repassar VNC -> WebSockets
+                self.send(bytes_data=data)
+        except Exception as e:
+            err = str(e)
+            if not any(k in err for k in ('closed', 'bad file', 'EIO')):
+                logger.error(f"❌ Erro leitura TCP VNC: {err}")
+        finally:
+            self.limpar_recursos()
+            self.close()

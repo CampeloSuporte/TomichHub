@@ -1,0 +1,1152 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ALTA RADIO LTDA
+Equipamento: OLT CORE SORRISO 02
+Host: 10.40.40.54:22
+Acesso: VIA PROXY SSH
+Modelo: OLT HUAWEI MA5800
+Template: backup olt huawei
+Data: 02/05/2026 00:49:19
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: enable
+============================================================
+
+MA5800-X7#
+
+============================================================
+Comando: config
+============================================================
+
+MA5800-X7(config)#
+
+============================================================
+Comando: undo interactive
+============================================================
+  Interactive function is disabled
+
+MA5800-X7(config)#
+
+============================================================
+Comando: undo smart
+============================================================
+  Interactive function is disabled
+
+MA5800-X7(config)#
+
+============================================================
+Comando: scroll
+============================================================
+
+MA5800-X7(config)#
+
+============================================================
+Comando: display  current-configuration
+============================================================
+[Active: H901MPLA; Standby: H901MPLA]
+[Patch Info: SPH317]
+[MA5800V100R018: 7000]
+#
+timezone GMT- 03:00
+#
+[pre-config]
+  <pre-config>
+ board-template start H903GPSF 
+ board add 0/0 H901CIUA 
+ board add 0/1 H903GPSF 
+ board add 0/2 H901GPHF 
+ board add 0/3 H901GPHF 
+ board add 0/4 H901GPHF 
+ board add 0/5 H901GPHF 
+ board add 0/10 H901PILA 
+ board add 0/11 H901PILA 
+#
+[sysmode]
+  <sysmode>
+ switch vdsl mode to tr129
+ xpon mode switch-to profile-mode
+ sysmode end
+#
+[global-config]
+  <global-config>
+ terminal user name buildrun_new_password root *j$1b$KmB\ALy5BA$%~E-PUaLM+r2>rH1eh}OH@bAHUL~A31cZB3T%#J=$* 7 0000:00:00:00:00:00 2001:02:13:23:55:46 root 1 first-login-info 0 "-----"
+ terminal user name buildrun_new_password master *{$1b$|"8x(~_T=R$jX{RO2(\}.ZPHCTb:aK#$S"fIMp]KNM%bX/>h%>D$* 0 2000:01:02:03:13:53 2001:02:13:23:55:31 root 2 first-login-info 0 "ALTA TELECOM"
+ terminal user name buildrun_new_password sgp-autoriza *~uc$1b$bzos([cZ+4$Cl{|9%`g:/Rj[2TXzB6NQ66<1vzs;6Z;j26q!@QJ$* 0 2000:01:02:03:58:56 2000:01:02:03:58:56 root 3 first-login-info 0 "-----"
+ terminal user name buildrun_new_password smartoltusr *~uc$1b$|\VKQoezON$*3J|7bio]G!AC&)U6.bLR4iq9uh2uFyrMY>K,>8C$* 0 2002:01:28:23:13:18 2002:01:28:23:13:18 root 4 first-login-info 0 "-----"
+ terminal user name buildrun_new_password ixcprovedor *~uc$1b$!*_W3u8;/9$kD;*U9I\t/Dy4V@sTm7G290a#I^0B(T#qsNFMu2T$* 0 2026:02:05:07:50:42 2026:02:05:07:50:42 root 5 first-login-info 0 "-----"
+ terminal user name buildrun_new_password tomich *~uc$1b$.#(W*&G$A&$,Hik>*Dv%G_x4j,21N#$iYem'@j:*RJIR%;68oSU$* 0 2026:03:18:11:18:09 2026:03:18:11:18:09 root 6 first-login-info 0 "-----"
+ system lock interval 1
+ system lock condition 15
+ terminal user name history_password root *j$1b$EiWd5b1pn%$)3Nm(%<OdX<64N#|n.R@"L&4&&3c>MU/H~Ye@4qJ$* *j$1b$HdCN"]1t;-$YY|{5I&],RY\$N<W/H5@#DMP,P}llN`wyu@)),uB$* *j$1b$bk(J3<H.[%$Rz.b5Ko{CD:>:[Ps3^^-QF%[7k,cS$jm0t%MQe:3$*
+ terminal user name history_password master *{$1b$G_/@9(4FV'${UnA3Q|h;X(yMH7!~>NNvI-^~xa]dI$K7RSg|R|2$*
+ traffic table ip index 7 name "SMARTOLT-VOIPMNG-10M" cir 2048 cbs 67536 pir 10432 pbs 335824 color-mode color-blind priority 2 inner-priority 2 priority-policy local-setting
+ traffic table ip index 8 name "SMARTOLT-1G-UP" cir 1048064 cbs 2620160 pir 1048064 pbs 2620160 color-mode color-blind priority 0 inner-priority 0 priority-policy local-setting
+ traffic table ip index 9 name "SMARTOLT-1G-DOWN" cir 1048064 cbs 2620160 pir 1048064 pbs 2620160 color-mode color-blind priority 0 inner-priority 0 priority-policy local-setting
+ traffic table ip index 10 name "UP_ALTA_1GIGA" cir 1024000 cbs 10240000 pir 1024000 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 11 name "DOWN_ALTA_1GIGA" cir 1024000 cbs 10240000 pir 1024000 pbs 10240000 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 86 name "DOWN_ATP_VOIP_1Mbps" cir 1024 cbs 34768 pir 1024 pbs 34768 color-mode color-blind priority 0 priority-policy local-setting
+ traffic table ip index 87 name "UP_ATP_VOIP_1Mbps" cir 1024 cbs 34768 pir 1024 pbs 34768 color-mode color-blind priority 0 priority-policy local-setting
+ dba-profile add profile-id 10 profile-name "SMARTOLT_DEFAULT_TCONT_1G" type4 max 1048000
+ dba-profile add profile-id 11 profile-name "SMARTOLT_DEFAULT_TCONT_XGPON" type4 max 2488000
+ dba-profile add profile-id 12 profile-name "SMARTOLT_DEFAULT_TCONT_XGSPON" type4 max 9952000
+ dba-profile add profile-id 13 profile-name "SMARTOLT_DEFAULT_TCONT_1G_EPON" type4 max 1000000
+ dba-profile add profile-id 14 profile-name "SMARTOLT_DEFAULT_TCONT_10G_EPON" type4 max 9952000
+ dba-profile add profile-id 240 profile-name "DBA-GLOBAL" type4 max 1024000
+ dba-profile add profile-id 241 profile-name "DBA-IPTV" type2 assure 5120
+ dba-profile add profile-id 242 profile-name "DBA-VoIp" type1 fix 1024 bandwidth_compensate no
+ dba-profile add profile-id 260 profile-name "DBA-GLOBAL_GREEN" type4 max 102656
+ dba-profile add profile-id 261 profile-name "DBA-IPTV_GREEN" type2 assure 5120
+ dba-profile add profile-id 262 profile-name "DBA-VoIp_GREEN" type1 fix 1024 bandwidth_compensate no
+ dba-profile add profile-id 280 profile-name "DBA-GLOBAL_ALTA_VLAN124" type4 max 1024000
+ dba-profile add profile-id 281 profile-name "DBA-IPTV_ALTA_VLAN124" type2 assure 5120
+ dba-profile add profile-id 282 profile-name "DBA-VoIp_ALTA_VLAN124" type1 fix 1024 bandwidth_compensate no
+ dba-profile add profile-id 300 profile-name "DBA-GLOBAL_ENTREGA_OLHO_VIVO" type4 max 102656
+ dba-profile add profile-id 301 profile-name "DBA-IPTV_ENTREGA_OLHO_VIVO" type2 assure 5120
+ dba-profile add profile-id 302 profile-name "DBA-VoIp_ENTREGA_OLHO_VIVO" type1 fix 1024 bandwidth_compensate no
+ dba-profile add profile-id 303 profile-name "DBA-GLOBAL_SUPORTE-ONLINE" type4 max 102656
+ dba-profile add profile-id 304 profile-name "DBA-IPTV_SUPORTE-ONLINE" type2 assure 5120
+ dba-profile add profile-id 305 profile-name "DBA-VoIp_SUPORTE-ONLINE" type1 fix 1024 bandwidth_compensate no
+ ont wan-profile profile-id 10 profile-name "PPPoE"
+  nat enable
+  quit
+ ont-lineprofile epon profile-id 1 profile-name "SMARTOLT_FLEXIBLE_EPON"
+  llid dba-profile-id 13
+  commit
+ ont-lineprofile epon profile-id 5 profile-name "SMARTOLT_FLEXIBLE_10G_EPON"
+  llid dba-profile-id 14
+  commit
+ gpon ont home-gateway config-method omci
+ ont-srvprofile gpon profile-id 1 profile-name "EG8145X6-10"
+  ont-port pots 2 eth 4 catv adaptive 8 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 2 profile-name "HG8010H"
+  ont-port eth 1 catv adaptive 8 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 100 profile-name "HG8245H"
+  ont-port pots 2 eth 4 
+  ring check enable 
+  commit
+ ont-srvprofile gpon profile-id 240 profile-name "SRV-TRIPLE_PLAY_NE8000"
+  ont-port pots adaptive 32 eth adaptive 8 catv adaptive 8 
+  multicast-forward untag
+  port vlan eth 1 translation 126 user-vlan 126
+  port vlan eth 2 translation 126 user-vlan 126
+  port vlan eth 3 translation 126 user-vlan 126
+  port vlan eth 4 translation 126 user-vlan 126
+  port vlan iphost translation 55 user-vlan 55
+  commit
+ ont-srvprofile gpon profile-id 260 profile-name "SRV-TRIPLE_PLAY_GREEN"
+  ont-port pots adaptive 32 eth adaptive 8 catv adaptive 8 
+  multicast-forward untag
+  port vlan eth 1 translation 711 user-vlan 711
+  port vlan eth 2 translation 711 user-vlan 711
+  port vlan eth 3 translation 711 user-vlan 711
+  port vlan eth 4 translation 711 user-vlan 711
+  port vlan iphost translation 714 user-vlan 714
+  commit
+ ont-srvprofile gpon profile-id 280 profile-name "SRV-TRIPLE_PLAY_ALTA_VLAN124"
+  ont-port pots adaptive 32 eth adaptive 8 catv adaptive 8 
+  multicast-forward untag
+  port vlan eth 1 translation 124 user-vlan 124
+  port vlan eth 2 translation 124 user-vlan 124
+  port vlan eth 3 translation 124 user-vlan 124
+  port vlan eth 4 translation 124 user-vlan 124
+  port vlan iphost translation 55 user-vlan 55
+  commit
+ ont-srvprofile gpon profile-id 300 profile-name "SRV-TRIPLE_PLAY_OLHO"
+  ont-port pots adaptive 32 eth adaptive 8 catv adaptive 8 
+  multicast-forward untag
+  port vlan eth 1 translation 3041 user-vlan 3041
+  port vlan eth 2 translation 3041 user-vlan 3041
+  port vlan eth 3 translation 3041 user-vlan 3041
+  port vlan eth 4 translation 3041 user-vlan 3041
+  port vlan iphost translation 3041 user-vlan 3041
+  commit
+ ont-srvprofile gpon profile-id 303 profile-name "SRV-TRIPLE_PLAY_SUPORTE-ONLINE"
+  ont-port pots adaptive 32 eth adaptive 8 catv adaptive 8 
+  multicast-forward untag
+  port vlan eth 1 translation 811 user-vlan 811
+  port vlan eth 2 translation 811 user-vlan 811
+  port vlan eth 3 translation 811 user-vlan 811
+  port vlan eth 4 translation 811 user-vlan 811
+  port vlan iphost translation 811 user-vlan 811
+  commit
+ ont-lineprofile gpon profile-id 0 profile-name "line-profile_default_0"
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 0
+  commit
+  quit
+ ont-lineprofile gpon profile-id 2 profile-name "SMARTOLT_FLEXIBLE_GPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 10
+  tcont 2 dba-profile-id 10
+  tcont 3 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 3 profile-name "SMARTOLT_FLEXIBLE_XGPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 11
+  tcont 2 dba-profile-id 11
+  tcont 3 dba-profile-id 11
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 4 profile-name "SMARTOLT_FLEXIBLE_XGSPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 12
+  tcont 2 dba-profile-id 12
+  tcont 3 dba-profile-id 12
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 100 profile-name "REDE_NEUTRA_GPON"
+  fec-upstream enable
+  tr069-management enable
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 10
+  tcont 2 dba-profile-id 10
+  tcont 3 dba-profile-id 10
+  gem add 1 eth tcont 1
+  gem add 2 eth tcont 2
+  gem add 3 eth tcont 3
+  gem mapping 1 1 priority 0
+  gem mapping 2 1 priority 2
+  gem mapping 3 1 priority 5
+  commit
+  quit
+ ont-lineprofile gpon profile-id 240 profile-name "LINE-TRIPLE_PLAY_NE8000"
+  tcont 5 dba-profile-id 240
+  tcont 6 dba-profile-id 241
+  tcont 7 dba-profile-id 242
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 126
+  gem mapping 6 0 vlan 4000
+  gem mapping 7 0 vlan 55
+  commit
+  quit
+ ont-lineprofile gpon profile-id 260 profile-name "LINE-TRIPLE_PLAY_GREEN"
+  tr069-management enable
+  tcont 5 dba-profile-id 260
+  tcont 6 dba-profile-id 261
+  tcont 7 dba-profile-id 262
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 711
+  gem mapping 6 0 vlan 715
+  gem mapping 7 0 vlan 714
+  commit
+  quit
+ ont-lineprofile gpon profile-id 280 profile-name "LINE-TRIPLE_PLAY_ALTA_VLAN124"
+  tcont 5 dba-profile-id 280
+  tcont 6 dba-profile-id 281
+  tcont 7 dba-profile-id 282
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 124
+  gem mapping 6 0 vlan 4000
+  gem mapping 7 0 vlan 55
+  commit
+  quit
+ ont-lineprofile gpon profile-id 300 profile-name "LINE-TRIPLE_PLAY_ENTREGA_OLHO"
+  tr069-management enable
+  tcont 5 dba-profile-id 300
+  tcont 6 dba-profile-id 301
+  tcont 7 dba-profile-id 302
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 3041
+  gem mapping 6 0 vlan 3042
+  gem mapping 7 0 vlan 3043
+  commit
+  quit
+ ont-lineprofile gpon profile-id 303 profile-name "LINE-TRIPLE_PLAY_SUPORTE-ONLINE"
+  tr069-management enable
+  tcont 5 dba-profile-id 303
+  tcont 6 dba-profile-id 304
+  tcont 7 dba-profile-id 305
+  gem add 5 eth tcont 5
+  gem add 6 eth tcont 6
+  gem add 7 eth tcont 7
+  gem mapping 5 0 vlan 811
+  gem mapping 6 0 vlan 812
+  gem mapping 7 0 vlan 813
+  commit
+  quit
+#
+[cable-init-template]
+  <cable-init-template>
+ interface cable init-template
+ cable capability upstream channel-num 16 downstream channel-num 32 eqam-channel channel-num 64
+ cable capability ofdma-upstream channel-num 2 ofdm-downstream channel-num 6
+#
+[device-config]
+  <device-config>
+ board add standby sub0 CKUB
+#
+[public-config]
+  <public-config>
+ monitor uplink-port traffic port 0/8/0
+ monitor uplink-port traffic port 0/8/1
+ monitor uplink-port traffic port 0/8/2
+ monitor uplink-port traffic port 0/8/3
+ monitor uplink-port traffic port 0/9/0
+ monitor uplink-port traffic port 0/9/1
+ monitor uplink-port traffic port 0/9/2
+ monitor uplink-port traffic port 0/9/3
+ time time-stamp local
+ cable downstream peak-stat enable
+ snmp-agent trap enable standard
+#
+[vlan-config]
+  <vlan-config>
+ vlan 55 smart
+ vlan 124 smart
+ vlan 126 smart
+ vlan 711 smart
+ vlan 811 to 812 smart
+ vlan 1931 smart
+ vlan 3041 smart
+ vlan 4000 smart
+ port vlan 55 0/9 1
+ port vlan 124 0/9 1
+ port vlan 126 0/9 1
+ port vlan 711 0/9 1
+ port vlan 811 to 812 0/9 1
+ port vlan 1931 0/9 1
+#
+[mpu]
+  <mpu-0/8>
+interface mpu 0/8
+ auto-neg 0 disable
+ speed 0 10000
+ auto-neg 1 disable
+ speed 1 10000
+ auto-neg 2 disable
+ speed 2 10000
+ auto-neg 3 disable
+ speed 3 10000
+#
+  <mpu-0/9>
+interface mpu 0/9
+ auto-neg 0 disable
+ speed 0 10000
+ auto-neg 1 disable
+ speed 1 10000
+ auto-neg 2 disable
+ speed 2 10000
+ auto-neg 3 disable
+ speed 3 10000
+#
+[eth]
+  <eth-0/0>
+interface eth 0/0
+ mdi 2 normal
+#
+[gpon]
+  <gpon-0/1>
+ interface gpon 0/1
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ port 8 ont-auto-find enable
+ port 9 ont-auto-find enable
+ port 10 ont-auto-find enable
+ port 11 ont-auto-find enable
+ port 12 ont-auto-find enable
+ port 13 ont-auto-find enable
+ port 14 ont-auto-find enable
+ port 15 ont-auto-find enable
+ ont add 0 0 sn-auth "485754438B1309AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1828 - elaine12@altatelecom.com.br" 
+ ont add 0 1 sn-auth "485754432ADE4DAC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "carlos@altatelecom.com.br" 
+ ont add 0 2 sn-auth "485754434D0275A9" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "est na caixa 02 " 
+ ont add 0 3 sn-auth "48575443612EDFAC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "ivanir@altatelecom.com.br" 
+ ont add 0 4 sn-auth "485754439ACA06AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "PORTA 01" 
+ ont add 0 5 sn-auth "485754438A70D0AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "EST NA CAIXA 02 " 
+ ont add 0 6 sn-auth "485754432AE3B0AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "EST NA PORTA 02 " 
+ ont add 0 7 sn-auth "485754438A7332AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "altamirrod@altatelecom.com.br" 
+ ont add 0 8 sn-auth "4857544351F668AB" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1868 - taniasouz@altatelecom.com.br" 
+ ont add 0 9 sn-auth "4857544352EA05A9" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "neandro@altatelecom.com.br" 
+ ont add 0 10 sn-auth "4857544379B55CAA" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1886 - lazara@altatelecom.com.br" 
+ ont add 0 11 sn-auth "485754430DA6E7AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1855 - julio@altatelecom.com.br" 
+ ont add 0 12 sn-auth "485754437C63089D" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "hi@altatelecom.com.br" 
+ ont add 0 13 sn-auth "48575443C2CF1CA8" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "geraldo08@altatelecom.com.br" 
+ ont add 0 14 sn-auth "485754435272F9AB" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1919 - elainedefatima@altatelecom.com.br" 
+ ont add 0 15 sn-auth "485754439AC69FAC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1929 - osvando@altatelecom.com.br" 
+ ont add 0 16 sn-auth "48575443409FB3AC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1931 - francisco1102@altatelecom.com.br" 
+ ont add 0 17 sn-auth "485754439FD9F056" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "hol1@altatelecom.com.br" 
+ ont add 0 18 sn-auth "48575443C2B3CDA8" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "mariana@altatelecom.com.br" 
+ ont add 0 19 sn-auth "485754439971DCAC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "CLEUSA SOARES" 
+ ont add 0 20 sn-auth "4857544399739FAC" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "alcir1646@altatelecom.com.br" 
+ ont add 0 21 sn-auth "485754434C3328B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2717 - pmsjosemarcelo" 
+ ont add 0 22 sn-auth "48575443DD39E925" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "FUSO DIRETA NA CAIXA DE EMENDA" 
+ ont add 0 23 sn-auth "48575443CCF5CFB0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2606 - ardomaria" 
+ ont add 0 24 sn-auth "485754438F535761" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2635 - pmsflavio1" 
+ ont add 0 25 sn-auth "48575443BDD60C56" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2084 - ferraz@altatelecom.com.br" 
+ ont add 0 26 sn-auth "485754434C3744B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3106 - pmspablo" 
+ ont add 0 27 sn-auth "485754437E817EB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3339 - pmsantoniogiovani1" 
+ ont add 0 28 sn-auth "4857544330905893" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3440 - pmsgazim" 
+ ont add 0 29 sn-auth "48575443FC1224AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsartechurrasco" 
+ ont add 0 30 sn-auth "48575443F1FA9750" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsgazin1" 
+ ont add 0 31 sn-auth "48575443322FCA9D" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsgazin3" 
+ ont add 1 0 sn-auth "48575443FC22C8AE" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1996 - dilermando@altatelecom.com.br" 
+ ont add 1 1 sn-auth "48575443FC1756AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2311 - pmsgeraldotadeu" 
+ ont add 1 2 sn-auth "48575443A22D22AF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2565 - pmsmarialaura" 
+ ont add 1 3 sn-auth "48575443C862F74E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2634 - pmsmaria21" 
+ ont add 1 4 sn-auth "48575443E01AE24E" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - MARLON CASTRO PEGGION" 
+ ont add 1 5 sn-auth "48575443CC6F07B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2891 - pmsjeanderson" 
+ ont add 1 6 sn-auth "48575443C2E101A8" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3000 - pmsjohnegomes" 
+ ont add 1 7 sn-auth "485754434C3ADCB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3246 - pmssilesiafideles" 
+ ont add 1 8 sn-auth "485754432847BCA4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2932 - pmssamara1" 
+ ont add 1 9 sn-auth "48575443C2B955A8" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1774 - pmssebastianasouza" 
+ ont add 1 10 sn-auth "485754434C39A9B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3124 - pmsdebora" 
+ ont add 1 11 sn-auth "48575443CC74C3B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsmirtes12" 
+ ont add 1 12 sn-auth "48575443026110B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsedercastro" 
+ ont add 1 13 sn-auth "48575443026258B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsbrunochagas" 
+ ont add 2 0 sn-auth "48575443218149B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "502 - pmsalessandra1" 
+ ont add 2 1 sn-auth "48575443AEF6E3B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsfernanda1" 
+ ont add 2 2 sn-auth "48575443612990AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1418 - pmsvaldelina" 
+ ont add 2 3 sn-auth "485754434EF2FFAD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "339 - rodrigocassio@atp" 
+ ont add 2 4 sn-auth "48575443C066A2AA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "264 - magda@atp" 
+ ont add 2 6 sn-auth "4857544345B460AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3276 - pmsricardoribeiro" 
+ ont add 2 7 sn-auth "4857544345B7A0AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3290 - pmsjose2" 
+ ont add 2 8 sn-auth "485754439FAE02B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsandreefernandes" 
+ ont add 3 0 sn-auth "48575443D3D206B3" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3365 - pmsmanfredo" 
+ ont add 4 0 sn-auth "48575443996F19AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2822 - pmscilenepatos" 
+ ont add 4 1 sn-auth "485754434C6F08B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3253 - pmsaltamiromesquita" 
+ ont add 4 2 sn-auth "48575443AEEE37B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3380 - pmscleber" 
+ ont add 5 0 sn-auth "4857544366EE80AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2732 - pmsmariajosefina" 
+ ont add 5 1 sn-auth "485754434C34E1B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2143 - pmspaula14" 
+ ont add 5 2 sn-auth "48575443E50D9DA8" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "mariadasgracas1059@altatelecom.com.br" 
+ ont add 5 3 sn-auth "48575443996995AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "87 - pmsjosefidelis" 
+ ont add 5 4 sn-auth "48575443162F05B3" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM" 
+ ont add 5 5 sn-auth "48575443A77EDD94" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3026 - pmslucienedosreis" 
+ ont add 5 6 sn-auth "48575443A2256D9D" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2660 - pmsrepcleone" 
+ ont add 5 7 sn-auth "485754434C303BB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1610 - pmsrayslan" 
+ ont add 5 8 sn-auth "48575443C04B00AB" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsbruno1" 
+ ont add 5 9 sn-auth "485754436CFCB96C" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "MILENA VIEIRA DA SILVA" 
+ ont add 6 0 sn-auth "48575443217F1DB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsingrydrayane" 
+ ont add 6 1 sn-auth "48575443642345AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsdomingas" 
+ ont add 6 2 sn-auth "48575443025D95B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsmariaeduarda1" 
+ ont add 7 0 sn-auth "48575443532606AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsmarlene" 
+ ont add 7 1 sn-auth "485754431CE30AAF" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - LIZ MAISA SILVA MARTINS FERREIRA" 
+ ont add 8 0 sn-auth "485754435337C6AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2910 - pmsadriano" 
+ ont add 8 1 sn-auth "485754436DC377AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2909 - pmscardoso" 
+ ont add 8 2 sn-auth "48575443533E22AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2913 - pmsmariateresinha" 
+ ont add 8 3 sn-auth "485754433D80AFB2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2912 - pmsgeraldomagela" 
+ ont add 8 4 sn-auth "485754433D7ACCB2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2914 - pmssandrarodrigues" 
+ ont add 8 5 sn-auth "4857544366F27EAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2944 - pmsdeivisson" 
+ ont add 8 6 sn-auth "48575443FC07BEAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3154 - pmsdanilo" 
+ ont add 8 7 sn-auth "4857544345B184AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3300 - pmsjosecarlos" 
+ ont add 8 8 sn-auth "485754438D5414B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3416 - pmscaio2" 
+ ont add 9 0 sn-auth "485754433D83FCB2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2924 - pmsjuliana2" 
+ ont add 9 1 sn-auth "48575443AEF15DB4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3412 - pmsrafael123" 
+ ont add 10 0 sn-auth "485754434C2F46B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3220 - pmsjessicaflor" 
+ ont add 11 0 sn-auth "485754434EF3D4AD" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "2178 - arnaldocristiano0811@altatelecom.com.br" 
+ ont add 15 0 sn-auth "485754434EF318AD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2118 - pmslaissarocha" 
+ ont add 15 1 sn-auth "48575443A7828494" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2131 - pmsleticiamaria" 
+ ont add 15 2 sn-auth "4857544330451593" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "greentelecom Fernando Teixeira Bastos " 
+ ont add 15 3 sn-auth "48575443AF22DAB0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2624 - pmsmariaaldinete" 
+ ont add 15 4 sn-auth "48575443CCF67EB0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2619 - pmsbeatrizmoura" 
+ ont add 15 5 sn-auth "48575443760D82AA" omci ont-lineprofile-id 240 ont-srvprofile-id 240 desc "1287 - teresagomes@altatelecom.com.br" 
+ ont add 15 6 sn-auth "485754430260D8B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsanderson2" 
+ ont add 15 7 sn-auth "48575443A74DF194" omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "ixcn36ESTRUTECH" 
+ ont port native-vlan 0 7 eth 1 vlan 126 priority 0 
+ ont port native-vlan 0 17 eth 1 vlan 126 priority 0 
+ ont port native-vlan 0 21 eth 1 vlan 124 priority 0 
+ ont port native-vlan 0 24 eth 1 vlan 124 priority 0 
+ ont port native-vlan 0 25 eth 1 vlan 124 priority 0 
+ ont port native-vlan 0 28 eth 1 vlan 124 priority 0 
+ ont port native-vlan 0 30 eth 1 vlan 124 priority 0 
+ ont port native-vlan 0 31 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 3 eth 1 vlan 124 priority 0 
+ ont port native-vlan 1 4 eth 1 vlan 711 priority 0 
+ ont port native-vlan 5 4 eth 1 vlan 711 priority 0 
+ ont port native-vlan 5 5 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 6 eth 1 vlan 124 priority 0 
+ ont port native-vlan 5 9 eth 1 vlan 711 priority 0 
+ ont port native-vlan 15 1 eth 1 vlan 124 priority 0 
+ ont port native-vlan 15 2 eth 1 vlan 711 priority 0 
+ ont port native-vlan 15 7 eth 1 vlan 812 priority 0 
+#
+  <gpon-0/2>
+ interface gpon 0/2
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ port 8 ont-auto-find enable
+ port 9 ont-auto-find enable
+ port 10 ont-auto-find enable
+ port 11 ont-auto-find enable
+ port 12 ont-auto-find enable
+ port 13 ont-auto-find enable
+ port 14 ont-auto-find enable
+ port 15 ont-auto-find enable
+ ont add 0 0 sn-auth "485754433520EAA2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1094 - pms01@altatelecom.com.br" 
+ ont add 0 1 sn-auth "48575443ED0435DF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "Teste" 
+ ont add 1 0 sn-auth "48575443D47B879E" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - WESLEY" 
+ ont add 1 1 sn-auth "485754431E9EE092" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - ROMERO GONALVES SILVA" 
+ ont add 1 2 sn-auth "48575443A7A50994" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - MRCIO DOS REIS BARBOSA" 
+ ont add 1 3 sn-auth "485754435D6AA891" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - CRISTIANE APARECIDA DE PAULA BRAZ" 
+ ont add 1 4 sn-auth "48575443CA69B89D" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM" 
+ ont add 1 5 sn-auth "48575443CFBBD8A4" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - KEIDY DA SILVA SOARES" 
+ ont add 1 6 sn-auth "4857544316799AA6" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - JOAO JOSE DE FARIA" 
+ ont add 1 7 sn-auth "48575443443E79A7" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - DBORA CRISTINA SILVA" 
+ ont add 1 8 sn-auth "48575443A25E9C9D" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - LUIZ CARLOS GONALVES" 
+ ont add 1 9 sn-auth "485754431618B1A6" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - CLEBER DE OLIVEIRA" 
+ ont add 1 10 sn-auth "485754436149FBA8" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - JOSE BATISTA GOMES" 
+ ont add 1 12 sn-auth "48575443C4BB9A9F" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2897 - pmsmateus" 
+ ont add 1 13 sn-auth "485754439A3B8DAA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2961 - pmsleomar" 
+ ont add 1 14 sn-auth "48575443C06D79AA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2964 - pmswerdley" 
+ ont add 1 15 sn-auth "48575443210EB7AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3054 - pmsemerson2" 
+ ont add 1 16 sn-auth "485754437E80EFB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3369 - fabio1@altaradio.com.br" 
+ ont add 2 0 sn-auth "48575443FC22B0AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2276 - pmsclubedos10" 
+ ont add 2 1 sn-auth "4857544325A868AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2489 - pmsmelchior1" 
+ ont add 2 2 sn-auth "48575443A897BE9E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1564 - antonio16@altaradio.com.br" 
+ ont add 2 3 sn-auth "4857544366EF2DAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "345 - pmsaltair12" 
+ ont add 2 4 sn-auth "48575443A2F7E8AA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2270 - pmselisiario" 
+ ont add 2 5 sn-auth "48575443F7EA6FAF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "431 - confinamento@altaradio.com.br" 
+ ont add 2 6 sn-auth "485754434C3D8BB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2561 - pmsmarialourdes" 
+ ont add 2 7 sn-auth "48575443997024AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1603 - pmsluizferreira" 
+ ont add 2 8 sn-auth "48575443A7713194" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2591 - pmsceliamaria" 
+ ont add 2 9 sn-auth "48575443CCE369B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2632 - pmsterezinha" 
+ ont add 2 10 sn-auth "48575443E6C2F4B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1557 - jairo@altaradio.com.br" 
+ ont add 2 11 sn-auth "48575443CCE4F3B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2274 - samuel@altaradio.com.br" 
+ ont add 2 12 sn-auth "485754436427C5AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2679 - joao1@altaradio.com.br" 
+ ont add 2 13 sn-auth "485754434C31EDB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2685 - pmsalvaro" 
+ ont add 2 14 sn-auth "4857544353386DAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2688 - pmstony" 
+ ont add 2 15 sn-auth "4857544364284FAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2681 - pmscelio" 
+ ont add 2 16 sn-auth "485754433795269A" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - ARMANDO BORRACHEIRO" 
+ ont add 2 17 sn-auth "485754432638F39F" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - EDIR" 
+ ont add 2 18 sn-auth "48575443A22683AF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2697 - pmsdalliana" 
+ ont add 2 19 sn-auth "48575443A23027AF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2703 - pmsmurilodematos" 
+ ont add 2 20 sn-auth "48575443E768529E" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - WARLEN BRANQUINHO DE OLIVEIRA" 
+ ont add 2 21 sn-auth "48575443A21B089D" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - GASPAR FELIPE MELLO" 
+ ont add 2 22 sn-auth "48575443BE930488" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - BIANCA SOUSA LOPES DE OLIVEIRA" 
+ ont add 2 23 sn-auth "48575443BE2DAE88" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - SILVIMONE TELES TEIXEIRA" 
+ ont add 2 24 sn-auth "48575443376FCD9A" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - GETULIO DOS SANTOS SOUSA" 
+ ont add 2 25 sn-auth "48575443267E549F" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - SERGIO HENRIQUE DE ANDRADE" 
+ ont add 2 26 sn-auth "48575443BE3FD388" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - Cleuto Luis de Oliveira" 
+ ont add 2 27 sn-auth "48575443B411A99E" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - VICENTE DE CASTRO" 
+ ont add 2 28 sn-auth "48575443AB501A4E" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - ADRIANA RODRIGUES SILVA BRAGA" 
+ ont add 2 29 sn-auth "48575443162518A6" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - MARIA ROSA GONALVES" 
+ ont add 2 30 sn-auth "4857544364289FAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1728 - pmsgedeon" 
+ ont add 2 31 sn-auth "48575443B6E33AA0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2900 - pmsernando" 
+ ont add 2 32 sn-auth "485754433B36429E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2908 - pmsrenatapereira" 
+ ont add 2 33 sn-auth "48575443224B1DAC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3016 - pmssamira" 
+ ont add 2 34 sn-auth "4857544367E3CF9F" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3035 - pmshailton" 
+ ont add 2 35 sn-auth "4857544380605E9E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3034 - pmsvicentecastro" 
+ ont add 2 36 sn-auth "48575443C0441DAB" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3058 - pmsiremaralves" 
+ ont add 2 37 sn-auth "48575443C06D29AA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2275 - gilsom@altaradio.com.br" 
+ ont add 2 38 sn-auth "48575443F1D1D7A3" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3119 - fabianarosa@altaradio.com.br" 
+ ont add 2 39 sn-auth "48575443EF35B7A5" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "LUCIANA ALVES FERREIRA" 
+ ont add 2 40 sn-auth "485754439A3B8CAA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3234 - pmssilvabarbosa" 
+ ont add 2 41 sn-auth "4857544391ADB4B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3348 - pmszacarias@altaradio.com.br" 
+ ont add 2 42 sn-auth "485754437E817CB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3347 - pmsmarciaalves" 
+ ont add 2 43 sn-auth "485754438D6C7DB4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1579 - pmscleutocasa@altaradio.com.br" 
+ ont add 2 44 sn-auth "48575443217BB6B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3396 - pmswiltonjesus" 
+ ont add 2 45 sn-auth "485754438D5DB2B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3407 - pmselianaaraujo" 
+ ont add 2 46 sn-auth "48575443A429A89E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2269 - repclube10@altaradio.com.br" 
+ ont add 2 47 sn-auth "485754430260E4B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmselainearaujo" 
+ ont add 3 0 sn-auth "4857544300BD1FA4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2522 - pmspaulo" 
+ ont add 3 1 sn-auth "4857544300C97AA5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2474 - pmsrenato01" 
+ ont add 3 2 sn-auth "4857544399B199A1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2590 - pmsjohne" 
+ ont add 3 3 sn-auth "48575443AF2020B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2600 - pmsjean1" 
+ ont add 3 4 sn-auth "48575443DB6342B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2631 - pmsgiovani" 
+ ont add 3 5 sn-auth "48575443842284A7" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - JULIANA MARTINS CUNHA" 
+ ont add 3 6 sn-auth "48575443A225A0AF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2753 - pmskerlyteixeira" 
+ ont add 3 7 sn-auth "4857544366F369AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2809 - pmsvaldeson" 
+ ont add 3 8 sn-auth "485754436D1A059D" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2831 - pmsguilherme077" 
+ ont add 3 9 sn-auth "485754434C654BB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2884 - pmsvictorgensen" 
+ ont add 3 10 sn-auth "4857544380673B9E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2919 - pmsvaldemiro" 
+ ont add 3 11 sn-auth "4857544353255FAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2949 - pmsnataliapaulista" 
+ ont add 3 12 sn-auth "485754434EF2F4AD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3109 - marcio@altaradio.com.br" 
+ ont add 7 0 sn-auth "48575443DB6ACBB0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2616 - pmsalarme1" 
+ ont add 7 1 sn-auth "485754439FD9E756" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3400 - pmscoopatos" 
+ ont add 9 0 sn-auth "48575443026F4BAD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2625 - pmsericksantos" 
+ ont add 9 1 sn-auth "48575443A3214FAA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2921 - pmswendelhenrique" 
+ ont add 9 2 sn-auth "4857544327FC28AA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2828 - pmsstefaninovato" 
+ ont add 9 3 sn-auth "485754434C302BB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3238 - pmspatoshoje" 
+ ont add 9 4 sn-auth "485754437E8172B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3314 - pmshigor" 
+ ont add 9 5 sn-auth "48575443B55D0FB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsthielyson" 
+ ont add 9 6 sn-auth "485754439FAE59B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "485754439FAE59B4" 
+ ont add 11 0 sn-auth "485754432258A7AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsjosegomes" 
+ ont add 11 1 sn-auth "4857544336C5D26C" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - JACIARA ALVES GOMES" 
+ ont add 11 2 sn-auth "485754434C305AB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3085 - pmsadelcopatos" 
+ ont add 11 3 sn-auth "48575443B154D3B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3346 - pmsmarlucia1" 
+ ont add 13 0 sn-auth "485754433D7ED3B2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2932 - pmssamara" 
+ ont add 14 0 sn-auth "48575443527558AB" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2768 - pmsrosa" 
+ ont add 15 0 sn-auth "48575443642276AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2838 - pmsjhenifer" 
+ ont add 15 1 sn-auth "485754434C3B92B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsnorma" 
+ ont add 15 2 sn-auth "485754437203BFAF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2648 - pmsalessandra" 
+ ont port native-vlan 1 0 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 1 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 2 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 3 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 4 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 5 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 6 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 7 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 8 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 9 eth 1 vlan 711 priority 0 
+ ont port native-vlan 1 10 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 2 eth 1 vlan 124 priority 0 
+ ont port native-vlan 2 8 eth 1 vlan 124 priority 0 
+ ont port native-vlan 2 16 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 17 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 20 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 21 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 22 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 23 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 24 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 25 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 26 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 27 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 28 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 29 eth 1 vlan 711 priority 0 
+ ont port native-vlan 2 46 eth 1 vlan 124 priority 0 
+ ont port native-vlan 3 5 eth 1 vlan 711 priority 0 
+ ont port native-vlan 7 1 eth 1 vlan 124 priority 0 
+ ont port native-vlan 11 1 eth 1 vlan 711 priority 0 
+#
+  <gpon-0/3>
+ interface gpon 0/3
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ port 8 ont-auto-find enable
+ port 9 ont-auto-find enable
+ port 10 ont-auto-find enable
+ port 11 ont-auto-find enable
+ port 12 ont-auto-find enable
+ port 13 ont-auto-find enable
+ port 14 ont-auto-find enable
+ port 15 ont-auto-find enable
+ ont add 0 0 sn-auth "485754436429CEAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2844 - pmsantonioaraujo" 
+ ont add 0 1 sn-auth "485754439ED5FDA5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2508 - pmsedijane" 
+ ont add 0 2 sn-auth "48575443FC1C09AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsvitoria1" 
+ ont add 1 0 sn-auth "4857544381100FAC" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "2597 - pmnaynaavafn220" 
+ ont add 1 1 sn-auth "485754435D69DE91" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2610 - pmsmarlucia" 
+ ont add 1 2 sn-auth "48575443335780A8" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3029 - pmsrosadonascimento" 
+ ont add 1 3 sn-auth "4857544366F22EAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2691 - pmsmagda" 
+ ont add 1 4 sn-auth "485754439FAD1BB4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsmariahelenarodrigues" 
+ ont add 4 0 sn-auth "4857544366EF61AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2970 - pmsthiago" 
+ ont add 4 1 sn-auth "4857544316826EA6" omci ont-lineprofile-id 303 ont-srvprofile-id 303 desc "SUPORTE ONLINE - MAYCON" 
+ ont add 4 2 sn-auth "485754434C3C53B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsdalvamaria" 
+ ont add 4 3 sn-auth "485754439FAE79B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmslindalvasantos" 
+ ont add 5 0 sn-auth "485754432AD756AC" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - DANIELE BARBOSA SANTOS" 
+ ont add 6 0 sn-auth "48575443FC282EAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsisaiasbarbosa" 
+ ont add 9 0 sn-auth "4857544391A417B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "598 - pmsbeatriz" 
+ ont add 9 1 sn-auth "48575443026013B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsbruno2" 
+ ont add 11 0 sn-auth "48575443F7CCC8AF" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2702 - pmstaniacarvalho" 
+ ont add 11 1 sn-auth "48575443026201B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsqueiroz" 
+ ont add 11 2 sn-auth "485754439977E4AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2119 - ntvparque@altatelecom.com.br" 
+ ont add 11 3 sn-auth "485754436424DCAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2793 - pmsglauber" 
+ ont add 11 4 sn-auth "48575443025EE7B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsatual" 
+ ont add 11 5 sn-auth "485754439DBD56B4" omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "ixcn17SUPORTONLINE" 
+ ont add 11 6 sn-auth "48575443C2E361A8" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3241 - pmsmarcolino" 
+ ont add 11 9 sn-auth "485754434C3439B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "127 - pmsedith" 
+ ont add 11 10 sn-auth "485754431E1F9C92" omci ont-lineprofile-id 300 ont-srvprofile-id 300 desc "OLHO VIVO 03" 
+ ont add 11 11 sn-auth "48575443217F7FB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3283 - pms0101natalolhovivo01" 
+ ont add 11 12 sn-auth "485754434C2EA0A4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3284 - pmsnatalolhovivo03" 
+ ont add 11 13 sn-auth "4857544321755AB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3309 - pmscorrida102" 
+ ont add 12 0 sn-auth "48575443217992B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3327 - pmsolegario3" 
+ ont add 12 1 sn-auth "48575443C2D259A8" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmscondominio" 
+ ont port native-vlan 1 1 eth 1 vlan 124 priority 0 
+ ont port native-vlan 4 1 eth 1 vlan 811 priority 0 
+ ont port native-vlan 9 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 11 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 11 0 eth 2 vlan 124 priority 0 
+ ont port native-vlan 11 10 eth 1 vlan 3041 priority 0 
+#
+  <gpon-0/4>
+ interface gpon 0/4
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ port 8 ont-auto-find enable
+ port 9 ont-auto-find enable
+ port 10 ont-auto-find enable
+ port 11 ont-auto-find enable
+ port 12 ont-auto-find enable
+ port 13 ont-auto-find enable
+ port 14 ont-auto-find enable
+ port 15 ont-auto-find enable
+ ont add 1 0 sn-auth "48575443E6DD00B0" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3329 - pmsdienne" 
+ ont add 2 0 sn-auth "4857544361430EA8" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2000 - pmsfabiolamartins" 
+ ont add 2 1 sn-auth "4857544366F45AAE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2959 - pmsmarisacelia" 
+ ont add 3 0 sn-auth "485754439DBCAFB4" omci ont-lineprofile-id 303 ont-srvprofile-id 303 desc "ixcn9SUPORTONLINE" 
+ ont add 4 0 sn-auth "485754433D8104B2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "63 - pmsbelel" 
+ ont add 4 1 sn-auth "485754439DB07AB4" omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "ixcn15SUPORTONLINE" 
+ ont add 7 0 sn-auth "485754433D81DEB2" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2942 - pmscassia2" 
+ ont add 7 1 sn-auth "4857544366F269AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2972 - pmselizete" 
+ ont add 7 2 sn-auth "4857544366EC80AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2971 - pmsjoaodias" 
+ ont add 7 4 sn-auth "4857544345B301AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1750 - pmsmariaap" 
+ ont add 7 5 sn-auth "485754437E818AB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3318 - pmsnathaliamarques" 
+ ont add 8 0 sn-auth "48575443C13946AA" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2870 - pmsdanielaalmeida" 
+ ont add 8 1 sn-auth "485754432264D5AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1666 - carlos1@altatelecom.com.br" 
+ ont add 8 2 sn-auth "485754439DB4A1B4" omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "ixcn20SUPORTONLINE" 
+ ont add 8 3 sn-auth "485754434CFA77A9" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "840 - pmsraphael" 
+ ont add 8 4 sn-auth "485754439FAC73B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsranyelly" 
+ ont add 8 5 sn-auth "48575443B55CDCB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "48575443B55CDCB5" 
+ ont add 8 6 sn-auth "48575443B5533EB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsleonardo" 
+ ont add 10 0 sn-auth "485754434C2EB7B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3005 - pmshelencristina" 
+ ont add 10 1 sn-auth "48575443025E7DB5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsmmsaude" 
+ ont add 10 2 sn-auth "48575443025EA3B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsambulatorio" 
+ ont add 10 3 sn-auth "48575443025F98B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmstmmedicina" 
+ ont add 10 4 sn-auth "485754439FAED7B4" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmssaracaroline1" 
+ ont add 12 0 sn-auth "48575443217657B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2012 - pmsjayslene" 
+ ont add 12 1 sn-auth "48575443C05477AB" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "1826 - martim@altatelecom.com.br" 
+ ont add 13 0 sn-auth "48575443063AE4AC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "513 - pmsjhonlucas" 
+ ont add 13 1 sn-auth "485754432120EFAC" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3211 - pmsraysla" 
+ ont add 14 0 sn-auth "48575443025DC4B5" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsluciana1" 
+ ont port native-vlan 1 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 8 2 eth 1 vlan 811 priority 0 
+ ont port native-vlan 8 5 eth 1 vlan 124 priority 0 
+#
+  <gpon-0/5>
+ interface gpon 0/5
+ port 0 ont-auto-find enable
+ port 1 ont-auto-find enable
+ port 2 ont-auto-find enable
+ port 3 ont-auto-find enable
+ port 4 ont-auto-find enable
+ port 5 ont-auto-find enable
+ port 6 ont-auto-find enable
+ port 7 ont-auto-find enable
+ port 8 ont-auto-find enable
+ port 9 ont-auto-find enable
+ port 10 ont-auto-find enable
+ port 11 ont-auto-find enable
+ port 12 ont-auto-find enable
+ port 13 ont-auto-find enable
+ port 14 ont-auto-find enable
+ port 15 ont-auto-find enable
+ ont add 0 0 sn-auth "485754434C3E0DB1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3137 - pmsjosecomercio" 
+ ont add 1 0 sn-auth "485754434EF40BAD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3128 - pmsbaltazardosreis" 
+ ont add 1 1 sn-auth "485754434EF2F0AD" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsvinicius1602" 
+ ont add 5 0 sn-auth "4857544366EEE3AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3374 - pmsjayanydias" 
+ ont add 7 0 sn-auth "485754437E8175B1" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "2587 - pmselyatta" 
+ ont add 9 0 sn-auth "485754436DC8B8AE" omci ont-lineprofile-id 260 ont-srvprofile-id 260 desc "GREEN TELECOM - RONEY" 
+ ont add 9 1 sn-auth "485754439DB2B5B4" omci ont-lineprofile-id 2 ont-srvprofile-id 1 desc "02.AT.04.04.01_descr_01" 
+ ont add 12 0 sn-auth "4857544345AD68AE" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "3268 - pmswerlley" 
+ ont add 14 0 sn-auth "48575443F29A169E" omci ont-lineprofile-id 280 ont-srvprofile-id 280 desc "pmsluiscarlos" 
+ ont port native-vlan 0 0 eth 1 vlan 124 priority 0 
+ ont port native-vlan 14 0 eth 1 vlan 124 priority 0 
+#
+[platform-config]
+  <platform-config>
+ autosave interval on
+ autosave interval 1442
+ autosave interval configuration 60
+ autosave type all
+#
+[emu-config]
+  <emu-config>
+ emu add 0 fan 0 1  "H901FMMA"
+ emu add 1 h901vesc 0 10  "H901CIUA"
+#
+[bbs-config]
+  <bbs-config>
+ service-port 1 vlan 811 gpon 0/5/9 ont 1 gemport 1 multi-service user-vlan 811 tag-transform translate inbound traffic-table index 8 outbound traffic-table index 9
+ service-port 2 vlan 126 gpon 0/1/0 ont 0 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 3 vlan 126 gpon 0/1/0 ont 1 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 5 vlan 126 gpon 0/1/0 ont 2 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 6 vlan 126 gpon 0/1/0 ont 3 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 7 vlan 126 gpon 0/1/0 ont 4 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 11 vlan 126 gpon 0/1/0 ont 5 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 12 vlan 126 gpon 0/1/0 ont 6 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 13 vlan 126 gpon 0/1/0 ont 7 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 14 vlan 126 gpon 0/1/0 ont 8 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 16 vlan 126 gpon 0/1/0 ont 9 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 18 vlan 126 gpon 0/1/0 ont 10 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 19 vlan 126 gpon 0/1/0 ont 11 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 20 vlan 55 gpon 0/1/0 ont 8 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 21 vlan 126 gpon 0/1/0 ont 12 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 22 vlan 126 gpon 0/1/0 ont 13 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 23 vlan 126 gpon 0/1/0 ont 14 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 24 vlan 126 gpon 0/1/0 ont 15 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 26 vlan 126 gpon 0/1/0 ont 16 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 29 vlan 126 gpon 0/1/0 ont 17 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 30 vlan 126 gpon 0/1/0 ont 18 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 31 vlan 55 gpon 0/1/0 ont 18 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 33 vlan 126 gpon 0/1/0 ont 19 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 34 vlan 126 gpon 0/1/0 ont 20 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 43 vlan 126 gpon 0/1/11 ont 0 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 44 vlan 126 gpon 0/1/0 ont 22 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 47 vlan 126 gpon 0/1/5 ont 2 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 51 vlan 126 gpon 0/1/1 ont 0 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 59 vlan 124 gpon 0/2/2 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 60 vlan 124 gpon 0/2/2 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 61 vlan 124 gpon 0/2/2 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 64 vlan 124 gpon 0/2/2 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 65 vlan 124 gpon 0/2/2 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 67 vlan 124 gpon 0/1/1 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 72 vlan 124 gpon 0/2/3 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 73 vlan 124 gpon 0/2/3 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 74 vlan 124 gpon 0/2/3 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 78 vlan 124 gpon 0/2/3 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 87 vlan 711 gpon 0/3/1 ont 0 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 90 vlan 124 gpon 0/3/1 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 92 vlan 124 gpon 0/1/0 ont 23 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 94 vlan 711 gpon 0/1/15 ont 2 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 95 vlan 124 gpon 0/2/7 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 96 vlan 124 gpon 0/2/2 ont 8 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 98 vlan 124 gpon 0/1/15 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 99 vlan 124 gpon 0/1/15 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 100 vlan 124 gpon 0/2/9 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 101 vlan 124 gpon 0/2/2 ont 9 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 102 vlan 124 gpon 0/2/3 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 103 vlan 124 gpon 0/1/1 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 104 vlan 124 gpon 0/1/0 ont 24 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 107 vlan 124 gpon 0/2/2 ont 10 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 110 vlan 124 gpon 0/2/2 ont 11 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 114 vlan 124 gpon 0/2/2 ont 12 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 118 vlan 124 gpon 0/2/2 ont 15 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 122 vlan 124 gpon 0/2/0 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 123 vlan 711 gpon 0/2/2 ont 16 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 124 vlan 711 gpon 0/2/2 ont 17 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 125 vlan 124 gpon 0/1/2 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 126 vlan 124 gpon 0/3/11 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 127 vlan 124 gpon 0/2/2 ont 18 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 128 vlan 124 gpon 0/1/15 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 129 vlan 124 gpon 0/2/2 ont 19 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 130 vlan 711 gpon 0/2/2 ont 20 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 131 vlan 711 gpon 0/2/2 ont 21 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 132 vlan 711 gpon 0/2/1 ont 0 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 133 vlan 711 gpon 0/2/2 ont 22 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 134 vlan 711 gpon 0/2/1 ont 1 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 136 vlan 711 gpon 0/2/2 ont 23 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 137 vlan 711 gpon 0/2/1 ont 2 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 139 vlan 711 gpon 0/2/1 ont 3 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 140 vlan 711 gpon 0/2/1 ont 4 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 144 vlan 124 gpon 0/3/1 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 145 vlan 124 gpon 0/1/5 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 146 vlan 55 gpon 0/3/1 ont 3 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 147 vlan 711 gpon 0/2/2 ont 24 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 148 vlan 711 gpon 0/2/2 ont 25 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 149 vlan 711 gpon 0/2/1 ont 5 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 150 vlan 711 gpon 0/2/3 ont 5 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 151 vlan 711 gpon 0/2/1 ont 6 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 152 vlan 711 gpon 0/2/1 ont 7 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 154 vlan 711 gpon 0/2/2 ont 26 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 156 vlan 711 gpon 0/2/1 ont 8 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 157 vlan 711 gpon 0/2/1 ont 9 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 158 vlan 711 gpon 0/2/2 ont 27 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 159 vlan 124 gpon 0/2/2 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 160 vlan 711 gpon 0/2/2 ont 28 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 161 vlan 711 gpon 0/2/2 ont 29 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 166 vlan 711 gpon 0/2/1 ont 10 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 167 vlan 124 gpon 0/2/14 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 169 vlan 124 gpon 0/2/2 ont 30 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 170 vlan 124 gpon 0/1/15 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 173 vlan 124 gpon 0/3/11 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 175 vlan 124 gpon 0/2/3 ont 7 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 176 vlan 124 gpon 0/2/3 ont 8 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 177 vlan 711 gpon 0/1/1 ont 4 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 179 vlan 124 gpon 0/3/0 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 181 vlan 124 gpon 0/4/2 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 183 vlan 124 gpon 0/3/0 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 184 vlan 55 gpon 0/2/0 ont 0 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 187 vlan 124 gpon 0/1/1 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 190 vlan 124 gpon 0/2/1 ont 12 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 191 vlan 124 gpon 0/1/0 ont 25 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 192 vlan 124 gpon 0/2/2 ont 31 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 193 vlan 124 gpon 0/1/8 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 196 vlan 124 gpon 0/1/8 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 197 vlan 124 gpon 0/2/3 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 201 vlan 124 gpon 0/1/8 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 202 vlan 124 gpon 0/1/8 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 204 vlan 124 gpon 0/2/15 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 205 vlan 124 gpon 0/2/3 ont 10 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 206 vlan 124 gpon 0/1/9 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 207 vlan 124 gpon 0/2/9 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 208 vlan 124 gpon 0/2/2 ont 32 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 209 vlan 124 gpon 0/4/7 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 210 vlan 55 gpon 0/1/0 ont 2 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 213 vlan 124 gpon 0/4/4 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 214 vlan 711 gpon 0/2/11 ont 1 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 215 vlan 124 gpon 0/1/8 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 216 vlan 124 gpon 0/4/2 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 217 vlan 124 gpon 0/2/1 ont 13 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 218 vlan 124 gpon 0/4/7 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 219 vlan 124 gpon 0/4/7 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 220 vlan 124 gpon 0/3/4 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 221 vlan 124 gpon 0/4/13 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 222 vlan 55 gpon 0/3/4 ont 0 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 223 vlan 124 gpon 0/1/8 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 225 vlan 124 gpon 0/2/2 ont 14 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 228 vlan 124 gpon 0/3/11 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 229 vlan 124 gpon 0/1/5 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 230 vlan 124 gpon 0/2/3 ont 11 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 231 vlan 124 gpon 0/1/1 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 232 vlan 124 gpon 0/2/1 ont 14 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 239 vlan 124 gpon 0/2/2 ont 33 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 240 vlan 124 gpon 0/1/5 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 242 vlan 124 gpon 0/1/4 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 243 vlan 124 gpon 0/2/2 ont 34 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 244 vlan 124 gpon 0/1/5 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 245 vlan 124 gpon 0/4/8 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 246 vlan 124 gpon 0/2/2 ont 35 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 248 vlan 124 gpon 0/2/2 ont 36 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 249 vlan 124 gpon 0/2/2 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 250 vlan 124 gpon 0/4/10 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 251 vlan 124 gpon 0/1/2 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 252 vlan 124 gpon 0/2/1 ont 15 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 253 vlan 124 gpon 0/2/11 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 254 vlan 124 gpon 0/1/0 ont 21 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 256 vlan 124 gpon 0/2/2 ont 37 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 258 vlan 124 gpon 0/1/0 ont 26 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 259 vlan 124 gpon 0/2/2 ont 38 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 261 vlan 124 gpon 0/2/3 ont 12 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 262 vlan 124 gpon 0/1/5 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 263 vlan 124 gpon 0/2/2 ont 13 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 264 vlan 55 gpon 0/1/5 ont 1 gemport 7 multi-service user-vlan 55 tag-transform translate inbound traffic-table index 87 outbound traffic-table index 86
+ service-port 265 vlan 124 gpon 0/1/5 ont 7 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 266 vlan 124 gpon 0/5/1 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 269 vlan 711 gpon 0/2/2 ont 39 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 270 vlan 124 gpon 0/1/1 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 271 vlan 124 gpon 0/2/13 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 272 vlan 124 gpon 0/1/8 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 273 vlan 124 gpon 0/5/0 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 274 vlan 124 gpon 0/2/9 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 277 vlan 124 gpon 0/1/2 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 279 vlan 124 gpon 0/2/0 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 280 vlan 124 gpon 0/4/13 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 281 vlan 124 gpon 0/2/3 ont 9 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 286 vlan 124 gpon 0/3/11 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 287 vlan 124 gpon 0/1/10 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 288 vlan 124 gpon 0/2/9 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 292 vlan 124 gpon 0/1/1 ont 7 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 293 vlan 124 gpon 0/2/2 ont 40 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 294 vlan 124 gpon 0/3/11 ont 9 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 298 vlan 124 gpon 0/4/7 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 300 vlan 124 gpon 0/1/4 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 304 vlan 124 gpon 0/4/8 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 305 vlan 124 gpon 0/5/12 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 306 vlan 126 gpon 0/1/15 ont 5 gemport 5 multi-service user-vlan 126 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 307 vlan 3041 gpon 0/3/11 ont 10 gemport 5 multi-service user-vlan 3041 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 308 vlan 124 gpon 0/1/2 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 312 vlan 124 gpon 0/3/11 ont 12 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 313 vlan 124 gpon 0/1/2 ont 7 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 315 vlan 711 gpon 0/1/5 ont 9 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 319 vlan 124 gpon 0/4/12 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 325 vlan 124 gpon 0/4/12 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 326 vlan 124 gpon 0/1/8 ont 7 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 330 vlan 124 gpon 0/4/7 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 331 vlan 124 gpon 0/2/9 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 332 vlan 124 gpon 0/3/11 ont 13 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 334 vlan 124 gpon 0/4/1 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 335 vlan 124 gpon 0/3/12 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 343 vlan 124 gpon 0/1/0 ont 27 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 350 vlan 124 gpon 0/2/15 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 351 vlan 124 gpon 0/2/11 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 353 vlan 711 gpon 0/5/9 ont 0 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 354 vlan 124 gpon 0/1/2 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 355 vlan 124 gpon 0/3/9 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 356 vlan 124 gpon 0/3/11 ont 11 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 357 vlan 124 gpon 0/2/2 ont 41 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 358 vlan 124 gpon 0/2/2 ont 42 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 361 vlan 124 gpon 0/4/8 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 362 vlan 124 gpon 0/2/1 ont 16 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 367 vlan 124 gpon 0/5/5 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 368 vlan 124 gpon 0/1/4 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 369 vlan 124 gpon 0/1/3 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 370 vlan 124 gpon 0/3/1 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 371 vlan 124 gpon 0/2/2 ont 43 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 373 vlan 811 gpon 0/3/4 ont 1 gemport 5 multi-service user-vlan 811 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 374 vlan 124 gpon 0/1/1 ont 8 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 376 vlan 124 gpon 0/2/2 ont 44 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 377 vlan 124 gpon 0/1/1 ont 9 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 378 vlan 711 gpon 0/3/5 ont 0 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 379 vlan 124 gpon 0/2/2 ont 7 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 380 vlan 124 gpon 0/1/1 ont 10 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 381 vlan 124 gpon 0/2/2 ont 45 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 382 vlan 124 gpon 0/1/9 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 383 vlan 124 gpon 0/1/8 ont 8 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 384 vlan 124 gpon 0/2/7 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 385 vlan 124 gpon 0/2/2 ont 46 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 387 vlan 124 gpon 0/5/7 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 388 vlan 124 gpon 0/1/7 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 389 vlan 124 gpon 0/1/0 ont 28 gemport 5 multi-service user-vlan 124 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 390 vlan 124 gpon 0/3/4 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 391 vlan 124 gpon 0/1/6 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 392 vlan 124 gpon 0/2/15 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 395 vlan 124 gpon 0/5/14 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 396 vlan 124 gpon 0/1/6 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 397 vlan 124 gpon 0/3/11 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 398 vlan 124 gpon 0/1/0 ont 29 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 399 vlan 711 gpon 0/1/7 ont 1 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 400 vlan 124 gpon 0/1/15 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 401 vlan 124 gpon 0/1/1 ont 11 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 402 vlan 124 gpon 0/1/1 ont 12 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 403 vlan 124 gpon 0/2/11 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 404 vlan 124 gpon 0/1/0 ont 30 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 407 vlan 811 gpon 0/4/3 ont 0 gemport 5 multi-service user-vlan 811 tag-transform translate
+ service-port 408 vlan 124 gpon 0/1/1 ont 13 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 409 vlan 124 gpon 0/3/6 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 410 vlan 124 gpon 0/1/0 ont 31 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 412 vlan 711 gpon 0/1/5 ont 4 gemport 5 multi-service user-vlan 711 tag-transform translate inbound traffic-table index 10 outbound traffic-table index 11
+ service-port 414 vlan 124 gpon 0/4/10 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 415 vlan 124 gpon 0/4/10 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 416 vlan 124 gpon 0/4/10 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 417 vlan 124 gpon 0/2/2 ont 47 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 418 vlan 124 gpon 0/3/11 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 419 vlan 811 gpon 0/4/4 ont 1 gemport 1 multi-service user-vlan 811 tag-transform translate inbound traffic-table index 8 outbound traffic-table index 9
+ service-port 420 vlan 811 gpon 0/3/11 ont 5 gemport 1 multi-service user-vlan 811 tag-transform translate inbound traffic-table index 8 outbound traffic-table index 9
+ service-port 421 vlan 124 gpon 0/1/6 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 422 vlan 811 gpon 0/4/8 ont 2 gemport 1 multi-service user-vlan 811 tag-transform translate
+ service-port 424 vlan 124 gpon 0/4/14 ont 0 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 425 vlan 124 gpon 0/3/12 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 426 vlan 124 gpon 0/1/5 ont 8 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 427 vlan 124 gpon 0/4/8 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 428 vlan 124 gpon 0/1/2 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 429 vlan 124 gpon 0/3/1 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 430 vlan 124 gpon 0/4/10 ont 4 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 431 vlan 124 gpon 0/1/2 ont 8 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 434 vlan 812 gpon 0/1/15 ont 7 gemport 1 multi-service user-vlan 812 tag-transform translate
+ service-port 435 vlan 124 gpon 0/3/4 ont 3 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 436 vlan 124 gpon 0/2/9 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 437 vlan 124 gpon 0/3/9 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 438 vlan 124 gpon 0/3/0 ont 2 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 440 vlan 124 gpon 0/4/8 ont 6 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 441 vlan 124 gpon 0/4/8 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 442 vlan 124 gpon 0/5/1 ont 1 gemport 5 multi-service user-vlan 124 tag-transform translate
+ service-port 443 vlan 124 gpon 0/2/9 ont 5 gemport 5 multi-service user-vlan 124 tag-transform translate
+#
+[abs-config]
+  <abs-config>
+ monitor uplink-port pppoe port 0/8/0
+ monitor uplink-port pppoe port 0/8/1
+ monitor uplink-port pppoe port 0/8/2
+ monitor uplink-port pppoe port 0/8/3
+ monitor uplink-port pppoe port 0/9/0
+ monitor uplink-port pppoe port 0/9/1
+ monitor uplink-port pppoe port 0/9/2
+ monitor uplink-port pppoe port 0/9/3
+#
+[ip-tunnel-profile]
+  <ip-tunnel-profile>
+ip tunnel priority-profile gre index 0 name "default-profile-0" inbound dscp-outer dscp-inner
+#
+ip tunnel priority-profile vxlan index 0 name "default-profile-0" inbound dscp-outer cos-inner
+#
+[aaa]
+  <aaa>
+aaa
+ #
+ authentication-scheme "default"
+ #
+ authorization-scheme "default"
+ #
+ accounting-scheme "default"
+ #
+ domain "default"
+#
+[Interface]
+  <Vlanif711>
+interface Vlanif711
+ ip address 10.10.10.1 255.255.255.0
+#
+  <Vlanif1931>
+interface Vlanif1931
+ ip address 10.40.40.54 255.255.255.252
+#
+  <MEth0>
+interface MEth0
+ ip address 10.11.104.2 255.255.255.0
+#
+  <NULL0>
+interface NULL0
+#
+[route-static]
+  <route-static>
+ip route-static 0.0.0.0 0.0.0.0 10.40.40.53
+#
+[snmp]
+  <snmp>
+snmp-agent local-engineid 800007DB03F02FA7BB310101
+snmp-agent community read cipher "%^%#tIzDTNWBwX9g2:A2nA\FGt!Y1h=wbRWM-]NAXkCL%^%#"
+snmp-agent community write cipher "%^%#rn`iE.WuWTPTt0CDyqk%)%.K'V/#D+''^B*!bc1F%^%#"
+snmp-agent community read cipher "%^%#nhaW7=(O\)qOYV:@{-UJpqTm<):C0~eE`79K2!J&%^%#"
+snmp-agent community write cipher "%^%#wSCPGwk\k%fAqfEvxZ/Kg{pTO(fMvVL1@tW{N%;7%^%#"
+snmp-agent community read cipher "%^%#2bE-Z]2r8YbA(JN\BQwL!{Z|1CJWXJ0_`@G""_,;%^%#"
+snmp-agent community write cipher "%^%#p(|eFojTqN7eeN*yaf6#ywEpXjx'-M0-iM"[mP6*%^%#"
+snmp-agent community write cipher "%^%#\@;6SUaE"$_ncPRE-@e;9~j~6!=+&Y)-GvWkJ'a3%^%#"
+snmp-agent target-host trap-hostname "10.40.40.54" address 10.1.1.1 udp-port 162 trap-paramsname "public01"
+#
+[post-system]
+  <post-system>
+ ssh user "ixcprovedor" authentication-type password
+ ssh user "master" authentication-type password
+ ssh user "root" authentication-type password
+ ssh user "sgp-autoriza" authentication-type password
+ ssh user "smartoltusr" authentication-type password
+ ssh user "tomich" authentication-type password
+ ntp-service sync-interval 600
+ ntp-service unicast-server 20.101.57.9
+ ntp-service unicast-server 216.239.35.4
+#
+[eqam]
+  <eqam>
+ cable eqam input-redundancy trigger no-bitrate
+#
+return
+
+MA5800-X7(config)#

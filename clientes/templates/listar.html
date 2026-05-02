@@ -134,6 +134,13 @@
                                                 <i class="fas fa-globe"></i>
                                             </button>
                                             <button class="icon-btn btn-sm" title="Acessar Terminal" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-code"></i></button>
+                                            {% if acesso.winbox %}
+                                            <button class="icon-btn btn-sm" title="Winbox Web (porta {{ acesso.winbox }})"
+                                                    onclick="abrirWinboxWeb({{ acesso.id }})"
+                                                    style="color: var(--warning-orange);">
+                                                <i class="fas fa-network-wired"></i>
+                                            </button>
+                                            {% endif %}
                                             {% if acesso.backup_habilitado %}
                                             <button class="icon-btn btn-sm backup-btn" 
                                                     onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')" 
@@ -156,10 +163,12 @@
                                             </button>
                                             <button class="icon-btn btn-sm"
                                                     onclick="abrirWebAcesso({{ acesso.id }}, '{{ acesso.host }}', '{{ acesso.porta }}')"
-                                                    title="Abrir Interface Web"
+                                                    title="Abrir Interface Web (Proxy)"
                                                     style="color: #00d9ff;">
                                                 <i class="fas fa-display"></i>
                                             </button>
+
+
                                         
                                         </div>
                                     </div>
@@ -194,9 +203,11 @@
                                     <div class="info-row">
                                         <span class="info-label">winbox</span>
                                         <span class="info-value">
-                                            <a class="nav-link" href="winbox://{{ acesso.hostname }}:{{ acesso.winbox }}">
-                                                {{ acesso.winbox }}
-                                            </a>
+                                            {% if acesso.winbox %}
+                                                <span class="copyable" onclick="copiarTexto('{{ acesso.winbox }}')">{{ acesso.winbox }}</span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
                                         </span>
                                     </div>
                                     <div class="info-row">
@@ -216,6 +227,16 @@
                                         onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}')">
                                     <i class="fas fa-sign-in-alt me-2"></i> Acessar
                                 </button>
+                                {% if acesso.winbox %}
+                                <button class="btn btn-winbox mb-2"
+                                        onclick="abrirWinboxWeb({{ acesso.id }})"
+                                        title="Abrir Winbox Web Terminal (porta {{ acesso.winbox }})">
+                                    <i class="fas fa-network-wired me-2"></i> Winbox Web
+                                </button>
+                                {% endif %}
+
+
+
                                 <button class="btn btn-backup" 
                                         onclick="copiarDadosConexao('{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', '{{ acesso.protocolo }}')">
                                     <i class="fas fa-copy me-2"></i> Copiar Dados
@@ -1630,6 +1651,18 @@
         // Abre diretamente no navegador em nova aba
         window.open(proxyUrl, '_blank');
     }
+
+    function abrirWebfigVNC(acessoId) {
+        const url = `/clientes/webfig-vnc/${acessoId}/`;
+        const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
+        const janela = window.open(url, `WEBFIG_VNC_${acessoId}`, opcoes);
+        if (!janela) {
+            alert('⚠️ Não foi possível abrir o WebFig VNC. Verifique se bloqueadores de popup estão desabilitados.');
+        } else {
+            janela.focus();
+        }
+    }
+
 
 
     function _carregarWebAcesso() {

@@ -1,0 +1,69 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: RT-PE-FAZENDA-TORRES
+Host: 10.255.0.122:22002
+Acesso: VIA PROXY SSH
+Modelo: RB750GR3
+Template: Backup Mikrotik
+Data: 02/05/2026 00:18:27
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# jun/01/1970 07:51:21 by RouterOS 6.49.10
+# software id = A4WE-I4SM
+#
+# model = RB760iGS
+# serial number = HCJ08B3M10T
+/interface bridge add name=br-acesso
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=ether1 ] l2mtu=2000 mtu=2000
+/interface ethernet set [ find default-name=ether2 ] l2mtu=2000 mtu=2000
+/interface ethernet set [ find default-name=ether3 ] auto-negotiation=no l2mtu=2000 mtu=2000 name="ether3 - P2P-RT-SANTA-MARIA-P3" speed=100Mbps
+/interface ethernet set [ find default-name=ether4 ] l2mtu=2000 mtu=2000
+/interface ethernet set [ find default-name=ether5 ] l2mtu=2000 mtu=2000 name="ether5 - P2P-RT-CASARAO"
+/interface ethernet set [ find default-name=sfp1 ] l2mtu=2000 mtu=2000
+/interface vpls add advertised-l2mtu=1508 cisco-style=yes cisco-style-id=46 disabled=no l2mtu=1508 mac-address=02:B2:F4:7E:B9:AA name=vpls-bras remote-peer=10.255.255.2
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/routing ospf instance set [ find default=yes ] router-id=10.255.0.61
+/snmp community set [ find default=yes ] name=jmatelecom-ro
+/interface bridge port add bridge=br-acesso interface=ether1
+/interface bridge port add bridge=br-acesso interface=ether2
+/interface bridge port add bridge=br-acesso interface=ether4
+/interface bridge port add bridge=br-acesso interface=vpls-bras
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface pppoe-server server add interface=ether2 service-name=service1
+/ip address add address=172.18.100.125/30 comment="P2P-SANTA MARIA" interface="ether3 - P2P-RT-SANTA-MARIA-P3" network=172.18.100.124
+/ip address add address=10.255.0.122 interface=loopback network=10.255.0.122
+/ip address add address=172.18.100.233/30 comment="P2P CASARAO" interface="ether5 - P2P-RT-CASARAO" network=172.18.100.232
+/ip address add address=192.168.98.180/29 interface="ether3 - P2P-RT-SANTA-MARIA-P3" network=192.168.98.176
+/ip address add address=172.27.122.1/28 interface="ether3 - P2P-RT-SANTA-MARIA-P3" network=172.27.122.0
+/ip firewall nat add action=dst-nat chain=dstnat dst-address=10.255.0.122 dst-port=80,443 protocol=tcp to-addresses=192.168.98.181
+/ip firewall nat add action=src-nat chain=srcnat dst-address=192.168.98.181 to-addresses=192.168.98.180
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/mpls interface set [ find default=yes ] mpls-mtu=1570
+/mpls ldp set enabled=yes lsr-id=10.255.0.122 transport-address=10.255.0.122
+/mpls ldp interface add interface="ether3 - P2P-RT-SANTA-MARIA-P3"
+/mpls ldp interface add interface="ether5 - P2P-RT-CASARAO"
+/routing ospf interface add interface="ether3 - P2P-RT-SANTA-MARIA-P3" network-type=point-to-point
+/routing ospf interface add interface="ether5 - P2P-RT-CASARAO" network-type=point-to-point
+/routing ospf interface add passive=yes
+/routing ospf network add area=backbone network=172.18.100.124/30
+/routing ospf network add area=backbone network=10.255.0.122/32
+/routing ospf network add area=backbone network=172.18.100.232/30
+/routing ospf network add area=backbone network=172.27.122.0/28
+/snmp set enabled=yes trap-version=2
+/system identity set name="RT-PE-FAZENDA-TERRA NOVA"
+/tool romon set enabled=yes secrets=jma
+

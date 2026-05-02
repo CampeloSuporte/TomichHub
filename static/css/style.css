@@ -353,6 +353,28 @@ body::before {
     border-color: var(--accent-cyan);
 }
 
+/* Botão Winbox Web - cor laranja MikroTik */
+.btn-winbox {
+    background: rgba(255, 149, 0, 0.1);
+    border: 2px solid var(--warning-orange);
+    color: var(--warning-orange);
+    width: 100%;
+    padding: 14px;
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+}
+
+.btn-winbox:hover {
+    background: rgba(255, 149, 0, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(255, 149, 0, 0.35);
+    color: var(--warning-orange);
+    border-color: var(--warning-orange);
+}
+
 .icon-btn {
     background: rgba(22, 27, 34, 0.9);
     border: 1px solid var(--border);
