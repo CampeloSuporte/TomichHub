@@ -1,0 +1,83 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: Friends Telecom
+Equipamento: SW-DST-QUICE-FRIENDS
+Host: 10.13.0.10:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CRS309-1G-8S+IN
+Template: Backup Mikrotik
+Data: 03/05/2026 00:24:50
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# aug/01/2025 20:58:25 by RouterOS 6.47.9
+# software id = X562-M7YH
+#
+# model = CRS309-1G-8S+
+# serial number = D8480E5DAEAA
+/interface bridge add ingress-filtering=yes name=bridge1 protocol-mode=none vlan-filtering=yes
+/interface ethernet set [ find default-name=ether1 ] comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="ether1 - ROTEADOR_ENERGIA"
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus1 - P2P-SW-DST-CORE" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus2  - P2P-SW-DST-ITIUBA" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] auto-negotiation=no comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus3 - TEIU_FABRICA" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus4 - UPLINK_OLT-QUICE" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus5 - BRAS QUICE"
+/interface ethernet set [ find default-name=sfp-sfpplus6 ] comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** l2mtu=9000 mtu=9000 name="sfp-sfpplus6 - BOA VISTA" speed=10Gbps
+/interface ethernet set [ find default-name=sfp-sfpplus7 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus7 - INFORNET BKP"
+/interface ethernet set [ find default-name=sfp-sfpplus8 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,2500M-full,5000M-full,10000M-full comment=**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************** name="sfp-sfpplus8 - RAPOSA" speed=10Gbps
+/interface vlan add interface=bridge1 name=VLAN1651-GERENCIA vlan-id=1651
+/interface list add name=WAN
+/interface list add name=LAN
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/ip hotspot profile set [ find default=yes ] html-directory=flash/hotspot
+/port set 0 baud-rate=auto
+/snmp community set [ find default=yes ] addresses=201.77.148.0/22,187.111.142.0/24 name=friends*
+/interface bridge port add bridge=bridge1 frame-types=admit-only-untagged-and-priority-tagged ingress-filtering=yes interface="ether1 - ROTEADOR_ENERGIA" pvid=1660
+/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="sfp-sfpplus1 - P2P-SW-DST-CORE"
+/interface bridge port add bridge=bridge1 disabled=yes interface="sfp-sfpplus2  - P2P-SW-DST-ITIUBA"
+/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="sfp-sfpplus8 - RAPOSA"
+/interface bridge port add bridge=bridge1 ingress-filtering=yes interface="sfp-sfpplus5 - BRAS QUICE"
+/interface bridge port add bridge=bridge1 frame-types=admit-only-untagged-and-priority-tagged ingress-filtering=yes interface="sfp-sfpplus4 - UPLINK_OLT-QUICE" pvid=1660
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus3 - TEIU_FABRICA"
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus2  - P2P-SW-DST-ITIUBA"
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus6 - BOA VISTA" pvid=1660
+/interface bridge port add bridge=bridge1 disabled=yes frame-types=admit-only-untagged-and-priority-tagged interface="sfp-sfpplus7 - INFORNET BKP" pvid=1662
+/ip neighbor discovery-settings set discover-interface-list=!dynamic
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,sfp-sfpplus5 - BRAS QUICE,sfp-sfpplus3 - TEIU_FABRICA,sfp-sfpplus6 - BOA VISTA,sfp-sfpplus7 - INFORNET BKP,sfp-sfpplus4 - UPLINK_OLT-QUICE" vlan-ids=1010
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,sfp-sfpplus3 - TEIU_FABRICA,sfp-sfpplus5 - BRAS QUICE" vlan-ids=1652-1654,1657-1659,1661,1663-1750,1650
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,sfp-sfpplus3 - TEIU_FABRICA,sfp-sfpplus5 - BRAS QUICE,sfp-sfpplus8 - RAPOSA" vlan-ids=10
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,sfp-sfpplus5 - BRAS QUICE" untagged="ether1 - ROTEADOR_ENERGIA,sfp-sfpplus8 - RAPOSA,sfp-sfpplus4 - UPLINK_OLT-QUICE" vlan-ids=1655
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,sfp-sfpplus7 - INFORNET BKP,sfp-sfpplus8 - RAPOSA" vlan-ids=2041
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA" untagged="sfp-sfpplus4 - UPLINK_OLT-QUICE,sfp-sfpplus8 - RAPOSA,sfp-sfpplus6 - BOA VISTA,ether1 - ROTEADOR_ENERGIA" vlan-ids=1660
+/interface bridge vlan add bridge=bridge1 comment="VLAN RAPOSA" tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,sfp-sfpplus8 - RAPOSA,sfp-sfpplus5 - BRAS QUICE" vlan-ids=1662
+/interface bridge vlan add bridge=bridge1 comment="GERENCIA SWITCH" tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus2  - P2P-SW-DST-ITIUBA,bridge1" vlan-ids=1651
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DST-CORE,sfp-sfpplus5 - BRAS QUICE,sfp-sfpplus7 - INFORNET BKP,sfp-sfpplus2  - P2P-SW-DST-ITIUBA" vlan-ids=60
+/interface list member add interface="sfp-sfpplus1 - P2P-SW-DST-CORE" list=LAN
+/interface list member add interface="sfp-sfpplus2  - P2P-SW-DST-ITIUBA" list=LAN
+/interface list member add interface="sfp-sfpplus3 - TEIU_FABRICA" list=LAN
+/interface list member add interface="sfp-sfpplus4 - UPLINK_OLT-QUICE" list=LAN
+/ip address add address=10.100.0.45/24 interface="sfp-sfpplus1 - P2P-SW-DST-CORE" network=10.100.0.0
+/ip address add address=10.100.0.69/24 disabled=yes interface=bridge1 network=10.100.0.0
+/ip address add address=10.13.0.10/24 interface=VLAN1651-GERENCIA network=10.13.0.0
+/ip route add distance=1 gateway=10.13.0.1
+/ip route add distance=1 gateway=10.100.0.1
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/snmp set contact=suporte@friends.tv.br enabled=yes location=Quice trap-version=2
+/system clock set time-zone-name=America/Bahia
+/system console set [ find ] disabled=yes
+/system identity set name=SW-DST-QUICE-FRIENDS
+/system ntp client set enabled=yes primary-ntp=200.160.7.186 secondary-ntp=201.49.148.135
+/system routerboard settings set boot-os=router-os
+/tool romon set enabled=yes secrets="FR13NDS\$k9#zL"
+

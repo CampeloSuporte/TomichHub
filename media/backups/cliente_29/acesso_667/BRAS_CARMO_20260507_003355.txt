@@ -1,0 +1,1792 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: BRAS CARMO
+Host: 170.79.92.5:2225
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M4
+Template: Backup Huawei
+Data: 07/05/2026 00:33:55
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+Info: The configuration takes effect on the current user terminal interface only.
+<AS266296-GREEN-BGP-BRAS>
+
+============================================================
+Comando: display current-configuration
+============================================================
+!Software Version V800R021C00SPC100
+!Last configuration was updated at 2026-04-11 22:59:32-03:00 by tomich
+!Last configuration was saved at 2026-05-01 10:08:17-03:00
+#
+clock timezone GMT minus 03:00:00
+#
+sysname AS266296-GREEN-BGP-BRAS
+#
+set neid 8acd88
+#
+undo FTP server-source all-interface
+undo FTP ipv6 server-source all-interface
+#
+undo user-security-policy enable
+#
+service-template template-default0
+#
+service-template template-default1
+#
+service-template template-default2
+#
+service-template template-default3
+#
+service-template template-default4
+#
+ntp-service server disable
+ntp-service ipv6 server disable
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+ntp-service unicast-peer 200.160.0.8
+ntp-service unicast-peer 200.189.40.8
+ntp-service sync-interval 180
+#
+vlan batch 20 100 to 105 200 to 201 550 to 552 700 to 702 1000 1100 2223 2225 3000 to 3001
+#
+rsa peer-public-key 170.79.92.5
+ public-key-code begin
+ 3082010A
+  02820101
+    00B66935 9AA134BA 284B1E3D A404CF12 59FEDFE5 838FFA17 FD6369F1 E33E7DF5
+    BA30043C AE449025 53D3780B 8C6346EB 2B1E5273 C2CB79F6 D6D46F82 506D7DF9
+    B9D5E813 37FA0AC8 EEC06737 85A1107C C41007A7 A95E62D8 4AF6FC42 81A3A5FE
+    57D18CC8 061D7B2A AC6CEA37 76FF4C50 59DF0C2E C96D5BB4 9E9E0D3C E7EE0E73
+    656DADE3 6D916DE2 12861F46 DD7732A4 E18E20A7 C1ECF1C7 60709FC3 A2E0B867
+    C8D38E26 F54AE3D6 34EBABA6 B6667F4A F7F74E84 377CBEB9 658F2549 D22EC886
+    E4F515E1 57E61614 4C139145 D2818302 2241E812 FB2783ED 20097AE3 AF0E0524
+    B9C802EC F201829A ED399684 571B5676 A65DE79B 14D4B6A4 BCAA95A8 5FF513CC
+    F9
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 170.79.95.32
+ public-key-code begin
+ 3082018A
+  02820181
+    00AFE310 4B3B7AE8 4F65F98D 8B22CBCA 78E9BE4C 90B4F140 378FACA8 C5D103B5
+    131E04B2 2DF6506C 0EF79F46 140F8825 F47CC522 E105702C 37C81C9F ED5C0791
+    5133D3BF F99C739C EB0DF13C ADBB1427 5673363A C94A4A7D FCE34B63 F1DABEEE
+    7EF7778E 71F7B267 8BFBA57E EFBE5ABB 039DE7A6 F9A9F248 E1714094 C419BB00
+    D83236A8 FCDBCE70 37350817 D0FD714A 694BED6D C9933672 0561C139 3817288B
+    F069C672 9BC74F47 0C832D4B 8E740A32 4732E6BE 0355D9CE 41DB1BD7 20C6DD50
+    9C197059 BF1C872D 68864944 6FBFDD80 A7BDA414 28D9A412 1DCA2E68 0283D2CD
+    49F51F95 C42034EE 897CDB5D B14630E7 98F8204D 36220BA6 12975115 8DDE2DBB
+    449A7248 2DDCCF34 06E36961 B55121B0 C56CE481 9E91EA63 A85E6171 301D225D
+    4428FA46 1BAA6BB0 5B2F8751 59AA4C15 072DA78A 6F1EC7E4 7CFA1E3F 9B83C1B5
+    543D7F79 B8E17558 DD96BA88 DA25FC6E DC3171AB E110D2B4 DD1F5FE1 56840EBF
+    1B0902FA 07AC6993 8D06FDD4 EE3AEBD7 C43F1AE8 7E6F661C C9C6F02A B221D9AE
+    29
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.14
+ public-key-code begin
+ 3082010A
+  02820101
+    00D90BA3 4547B687 D3471104 4C0E927D 62CEDDC3 59BD4A63 22CF5D20 3E3DCD43
+    54BA56B5 8EAF22D1 C4D35B8A 3F0B3777 5E262C02 69EEF14E 45ED55CE CB072284
+    B963FF2D 6C5FF486 42521B10 878ACC7A 18D9A9BB F3D118B7 2679F655 1613333F
+    DFD2F3CF 8AE81D73 DC170A3C A8730304 B981158A A55C881E 526E25E5 27499199
+    0A3D9ED7 6929ACFB ECC020C9 F3FBE80D 8A40CBF6 DD7B0AE8 462E24FF 40F6FBF0
+    8CB9EADD E467B5D3 6F9E8454 CAD72DD0 6A711DC2 4F0E8C66 6EE83B2C 4506D74F
+    2A177E8E 8C571325 B9BA07FA C41951A9 E2145F55 5DEE3FE3 A36726B1 4C91C837
+    3C05A256 A54F00BE B8309019 7E104E95 1DD4448A 87B3EFF7 9382FCEE C5BEE2D4
+    BB
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.82
+ public-key-code begin
+ 3082010A
+  02820101
+    00D47ED3 3F975469 80699D00 FB2B4C51 443BA249 3119B8DD 2AB7F60E 9810EA95
+    B83AEFCD 9C54BB54 C7C27E57 894CBF5B E8FEDB50 FBFDFF42 25842EDD 3103F185
+    EC1603A7 B2D7BC05 A23832B0 C97E766D 6A46C052 A1965DD4 2E6771A0 5E1D0A27
+    90AC2F0E 0EF6C33A D873F3E4 0FB4CD5D 3CC1120E E6C69A53 6D8CF444 33A97B38
+    789076B7 E4613D1E B8580E87 DAB1BA87 9047DBF9 10A97275 0AD8CA11 B71CD0D5
+    BC17AD4C 9713342C E3B71CF6 14764B8C F1898C15 E047307C EA7C0D1A D650A25C
+    B7B17E11 1FE17941 5933999D CA76AF50 4E2E6BE1 C45E6F53 FEA2FC4E 67CB09CA
+    E96118E8 1CCCD1B3 F40C6D35 0A0E9574 C9CD2CFC 137A0387 A11FE083 E73A68C8
+    BB
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 170.79.92.195
+ public-key-code begin
+ 3082010A
+  02820101
+    00ABFDAC 9E3FB401 94416C33 2DA6BD35 5496C30D E68AD4F1 78A7ED78 379E1364
+    BB635D0A C3257347 ACC40A2A A974F940 600EB186 BA4F4EA8 4A66D5F9 8EE48EC8
+    D224C3A9 055E7531 A2741C7A AD43F2E7 29675ABC 40BAB97A 90CE73AA D965145B
+    A6CD3599 C01A4E38 AFA42B74 1C916744 1CB487A8 55705A55 5AE0ACDE FB4A61F7
+    B5A2CD2E D9ACD6F4 A3D98FC3 1BA1E1DA E1DB5025 940608E3 D5C6E5D0 42F24EE0
+    DA24BBE1 BCC12643 BC518C57 6A806BFA 851CF8DF 835E98B7 1C04BEF9 1D083F5A
+    0B1B2358 08BFF405 81F18CB3 6EB52BDB 0F44C7B0 10ED6025 8DEA21B1 A8C6A8B9
+    CF045E6B 760FFEE0 38828149 B2B070D5 18F02F90 D4AB404A 5DB67195 BB92E98D
+    C7
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 170.79.92.197
+ public-key-code begin
+ 3082010A
+  02820101
+    00F2AD44 1A303568 BE40C2AB 1AE426A2 35B0BB06 682F95FD A1D06EFD 2D606703
+    7693FC7C 842000FB C87EAEB8 1DBA7FCD 60478718 DBCA136B 2A88A1F0 53906C86
+    18549557 3F61B1B8 CF582E80 DAD0C3DA 9E63DC8A 4C135F85 C2BC6A83 54C649AA
+    79156342 F6C014AE 020B283A 1B2568DD C739820A 2056EAD0 D79FE8AD 0568330B
+    BDA07164 005D5317 00E0EB2A 5EBFF75F 1594D5E0 39FF37FD BD5FB981 2D284320
+    E62882BF ADBB998A 1C64739D 054F0D27 19A9403D 6BF86FC5 C87FE755 DD903328
+    16116E16 D7198A7F 6AA5C71F 09DA4E15 0809FDDD 7F6E8BCA E0267068 19092824
+    4390216C 327FA4CB F3FB2BFB 3E2F72CB EBA54B2A D5F56054 DD1BED07 AA9421C9
+    F7
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.110
+ public-key-code begin
+ 3082018A
+  02820181
+    00AFE310 4B3B7AE8 4F65F98D 8B22CBCA 78E9BE4C 90B4F140 378FACA8 C5D103B5
+    131E04B2 2DF6506C 0EF79F46 140F8825 F47CC522 E105702C 37C81C9F ED5C0791
+    5133D3BF F99C739C EB0DF13C ADBB1427 5673363A C94A4A7D FCE34B63 F1DABEEE
+    7EF7778E 71F7B267 8BFBA57E EFBE5ABB 039DE7A6 F9A9F248 E1714094 C419BB00
+    D83236A8 FCDBCE70 37350817 D0FD714A 694BED6D C9933672 0561C139 3817288B
+    F069C672 9BC74F47 0C832D4B 8E740A32 4732E6BE 0355D9CE 41DB1BD7 20C6DD50
+    9C197059 BF1C872D 68864944 6FBFDD80 A7BDA414 28D9A412 1DCA2E68 0283D2CD
+    49F51F95 C42034EE 897CDB5D B14630E7 98F8204D 36220BA6 12975115 8DDE2DBB
+    449A7248 2DDCCF34 06E36961 B55121B0 C56CE481 9E91EA63 A85E6171 301D225D
+    4428FA46 1BAA6BB0 5B2F8751 59AA4C15 072DA78A 6F1EC7E4 7CFA1E3F 9B83C1B5
+    543D7F79 B8E17558 DD96BA88 DA25FC6E DC3171AB E110D2B4 DD1F5FE1 56840EBF
+    1B0902FA 07AC6993 8D06FDD4 EE3AEBD7 C43F1AE8 7E6F661C C9C6F02A B221D9AE
+    29
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.113
+ public-key-code begin
+ 3082018A
+  02820181
+    00AFE310 4B3B7AE8 4F65F98D 8B22CBCA 78E9BE4C 90B4F140 378FACA8 C5D103B5
+    131E04B2 2DF6506C 0EF79F46 140F8825 F47CC522 E105702C 37C81C9F ED5C0791
+    5133D3BF F99C739C EB0DF13C ADBB1427 5673363A C94A4A7D FCE34B63 F1DABEEE
+    7EF7778E 71F7B267 8BFBA57E EFBE5ABB 039DE7A6 F9A9F248 E1714094 C419BB00
+    D83236A8 FCDBCE70 37350817 D0FD714A 694BED6D C9933672 0561C139 3817288B
+    F069C672 9BC74F47 0C832D4B 8E740A32 4732E6BE 0355D9CE 41DB1BD7 20C6DD50
+    9C197059 BF1C872D 68864944 6FBFDD80 A7BDA414 28D9A412 1DCA2E68 0283D2CD
+    49F51F95 C42034EE 897CDB5D B14630E7 98F8204D 36220BA6 12975115 8DDE2DBB
+    449A7248 2DDCCF34 06E36961 B55121B0 C56CE481 9E91EA63 A85E6171 301D225D
+    4428FA46 1BAA6BB0 5B2F8751 59AA4C15 072DA78A 6F1EC7E4 7CFA1E3F 9B83C1B5
+    543D7F79 B8E17558 DD96BA88 DA25FC6E DC3171AB E110D2B4 DD1F5FE1 56840EBF
+    1B0902FA 07AC6993 8D06FDD4 EE3AEBD7 C43F1AE8 7E6F661C C9C6F02A B221D9AE
+    29
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.120
+ public-key-code begin
+ 3082010A
+  02820101
+    00AE6A63 2BE39FE8 21C9AAC6 CA4CA743 98D383AC 638AFA0D C1C83CB0 AF4F868E
+    72691BB8 C9F93C6A 39C87F2E 48B129FC 689B96F4 6FF3F77D DDBE0239 3F38859F
+    A5907BC9 EE7A81F0 5003380A AD459848 BCCD95CC B7843FD0 80C0A396 B442CD82
+    2201649E 8D622DEF 5D5AEA29 7A45FE50 DE5780F6 D18646DA 398DCCC5 143552D9
+    7C664575 3D70C224 CEC20E39 0C1C1E1F CBC12892 1A8C0A9C 313EB9AF 487AFB78
+    FA503171 7CF37EA2 65220619 EA0375BB 0D64DAE8 5C5398A8 8484919F A0EE815F
+    0C524B5E DD4F4CA4 E8985B65 3BDD107D 1F27AB2E 53491DE5 4AB756CE A90C135A
+    34A31ADF FB152346 692C3600 06335EAD 71BA837A 2B7B71B2 2317DD67 D3AFF3E5
+    47
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.125
+ public-key-code begin
+ 3082010A
+  02820101
+    00AE6A63 2BE39FE8 21C9AAC6 CA4CA743 98D383AC 638AFA0D C1C83CB0 AF4F868E
+    72691BB8 C9F93C6A 39C87F2E 48B129FC 689B96F4 6FF3F77D DDBE0239 3F38859F
+    A5907BC9 EE7A81F0 5003380A AD459848 BCCD95CC B7843FD0 80C0A396 B442CD82
+    2201649E 8D622DEF 5D5AEA29 7A45FE50 DE5780F6 D18646DA 398DCCC5 143552D9
+    7C664575 3D70C224 CEC20E39 0C1C1E1F CBC12892 1A8C0A9C 313EB9AF 487AFB78
+    FA503171 7CF37EA2 65220619 EA0375BB 0D64DAE8 5C5398A8 8484919F A0EE815F
+    0C524B5E DD4F4CA4 E8985B65 3BDD107D 1F27AB2E 53491DE5 4AB756CE A90C135A
+    34A31ADF FB152346 692C3600 06335EAD 71BA837A 2B7B71B2 2317DD67 D3AFF3E5
+    47
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.126
+ public-key-code begin
+ 3082010A
+  02820101
+    00B66935 9AA134BA 284B1E3D A404CF12 59FEDFE5 838FFA17 FD6369F1 E33E7DF5
+    BA30043C AE449025 53D3780B 8C6346EB 2B1E5273 C2CB79F6 D6D46F82 506D7DF9
+    B9D5E813 37FA0AC8 EEC06737 85A1107C C41007A7 A95E62D8 4AF6FC42 81A3A5FE
+    57D18CC8 061D7B2A AC6CEA37 76FF4C50 59DF0C2E C96D5BB4 9E9E0D3C E7EE0E73
+    656DADE3 6D916DE2 12861F46 DD7732A4 E18E20A7 C1ECF1C7 60709FC3 A2E0B867
+    C8D38E26 F54AE3D6 34EBABA6 B6667F4A F7F74E84 377CBEB9 658F2549 D22EC886
+    E4F515E1 57E61614 4C139145 D2818302 2241E812 FB2783ED 20097AE3 AF0E0524
+    B9C802EC F201829A ED399684 571B5676 A65DE79B 14D4B6A4 BCAA95A8 5FF513CC
+    F9
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.140
+ public-key-code begin
+ 3082010A
+  02820101
+    00A27ECD ABF0B17E 14F772CF D9199571 530BE8B7 3F723509 4AA2EDC1 AA1CB7D4
+    041D5D9C B00FA324 953FAF63 C10C976A D5E149F3 B5D74446 7DB8BD4F 50BB4AD3
+    E0FA3A01 410A340B E7A13D49 C5733196 F217C8E3 B5F33FDC F0BCBD29 0DA2DEA9
+    992A4CF1 590C932F 3A33D595 E578615F 72B4B96D FD102B37 9486FD5D 8520099B
+    5EAAA285 BDD70EE6 CD8A7DC8 59B94DDE 85372F00 1D2AAF5E 07ECAAC4 169FFCC2
+    B352EFD8 26EA39F1 B6D7DB50 31E41840 A5B8450C CC68FF82 565D853A B52B1C58
+    3F8281B8 7AF770E5 33055195 91E12727 F6390DE4 345CE5B5 B27A545E 7C223F34
+    9EB84228 A9A68D71 75A7845D 6019A385 FFAAE27C E48E8741 2BF3BCA9 15698690
+    09
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.142
+ public-key-code begin
+ 3082010A
+  02820101
+    00A27ECD ABF0B17E 14F772CF D9199571 530BE8B7 3F723509 4AA2EDC1 AA1CB7D4
+    041D5D9C B00FA324 953FAF63 C10C976A D5E149F3 B5D74446 7DB8BD4F 50BB4AD3
+    E0FA3A01 410A340B E7A13D49 C5733196 F217C8E3 B5F33FDC F0BCBD29 0DA2DEA9
+    992A4CF1 590C932F 3A33D595 E578615F 72B4B96D FD102B37 9486FD5D 8520099B
+    5EAAA285 BDD70EE6 CD8A7DC8 59B94DDE 85372F00 1D2AAF5E 07ECAAC4 169FFCC2
+    B352EFD8 26EA39F1 B6D7DB50 31E41840 A5B8450C CC68FF82 565D853A B52B1C58
+    3F8281B8 7AF770E5 33055195 91E12727 F6390DE4 345CE5B5 B27A545E 7C223F34
+    9EB84228 A9A68D71 75A7845D 6019A385 FFAAE27C E48E8741 2BF3BCA9 15698690
+    09
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.150
+ public-key-code begin
+ 3082010A
+  02820101
+    00A27ECD ABF0B17E 14F772CF D9199571 530BE8B7 3F723509 4AA2EDC1 AA1CB7D4
+    041D5D9C B00FA324 953FAF63 C10C976A D5E149F3 B5D74446 7DB8BD4F 50BB4AD3
+    E0FA3A01 410A340B E7A13D49 C5733196 F217C8E3 B5F33FDC F0BCBD29 0DA2DEA9
+    992A4CF1 590C932F 3A33D595 E578615F 72B4B96D FD102B37 9486FD5D 8520099B
+    5EAAA285 BDD70EE6 CD8A7DC8 59B94DDE 85372F00 1D2AAF5E 07ECAAC4 169FFCC2
+    B352EFD8 26EA39F1 B6D7DB50 31E41840 A5B8450C CC68FF82 565D853A B52B1C58
+    3F8281B8 7AF770E5 33055195 91E12727 F6390DE4 345CE5B5 B27A545E 7C223F34
+    9EB84228 A9A68D71 75A7845D 6019A385 FFAAE27C E48E8741 2BF3BCA9 15698690
+    09
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.253
+ public-key-code begin
+ 3082018A
+  02820181
+    00A2DA57 0D8ACF93 449F512E 02BFBCE6 CD2D896B 0BD112F8 CD38EC18 015215B2
+    943922CC 08DE47C3 76ABFC99 590A7969 9ABCAAC9 9292D3BA 918A31BB 40C295FE
+    93F0829C D3BCF4FF CF37D0A0 5D7B63F2 FB8D6AC1 FA1751A8 758911BC 568BC9B7
+    9201FD9D 19D8111F 1F2CA76A 5967C8C7 D9D74849 A8A8BDDF 5B9264AB 7D4BE8B6
+    96483AE5 E184435C C1D6C49E 2D49443A 76731C0E 9A7598A2 23542A1B DDD6E559
+    B1FF5B6D B5730F99 736D6A32 AFCED41F 8AD3CE67 1BE24E7A E6D3D897 84299612
+    E39A8D91 A8CAC3EF C3149E1F E84FDB2C 593FDABA 1E1DF38B EBDFA801 7DC23BF0
+    854DDF62 78DDE9E5 1BE51BD1 58B7633E 19DCE294 CF7E537B C5B9472F 48B205A3
+    AE934F7A F320F639 2810D3E4 E78AD23F 125AA50D 9B098D98 F77EB6A9 1F9C8565
+    3E75E429 5A29968F D829FDC7 A201AC9F AE34D33D 92523648 F0ACA25A 9E0C231B
+    44AA9852 E5FA5FC7 F7129D9E 7EA14E6A ABCEDCA8 2284BB76 9CDE2753 CE28BCDC
+    A5F56672 0BF8F3AE 65595E0C 51A94653 AB2EE18C DF9C79D4 B03B4027 732E378C
+    81
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.18.18.255
+ public-key-code begin
+ 3082010A
+  02820101
+    00B66935 9AA134BA 284B1E3D A404CF12 59FEDFE5 838FFA17 FD6369F1 E33E7DF5
+    BA30043C AE449025 53D3780B 8C6346EB 2B1E5273 C2CB79F6 D6D46F82 506D7DF9
+    B9D5E813 37FA0AC8 EEC06737 85A1107C C41007A7 A95E62D8 4AF6FC42 81A3A5FE
+    57D18CC8 061D7B2A AC6CEA37 76FF4C50 59DF0C2E C96D5BB4 9E9E0D3C E7EE0E73
+    656DADE3 6D916DE2 12861F46 DD7732A4 E18E20A7 C1ECF1C7 60709FC3 A2E0B867
+    C8D38E26 F54AE3D6 34EBABA6 B6667F4A F7F74E84 377CBEB9 658F2549 D22EC886
+    E4F515E1 57E61614 4C139145 D2818302 2241E812 FB2783ED 20097AE3 AF0E0524
+    B9C802EC F201829A ED399684 571B5676 A65DE79B 14D4B6A4 BCAA95A8 5FF513CC
+    F9
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+ecc peer-public-key 172.18.18.86
+ public-key-code begin
+  0401B289 7AD30CCC 2C08DCCB C48ADD82 A6034030 46FFB03F F0392C45 8AD21B9C
+  1E74DA70 1977BAC9 4C9F1981 17C9D15C 7DC453DD 9DA463EF 67AC01D1 88E59F14
+  65540C01 269D8676 38B3A6EA 1E0C673A 89A34F5B 62DFB4EA A6F0545B 1A054C92
+  CD5EDB6C 27E1803D 37EB42BE D0CDB0E1 950288DC 1D84F2F3 FF8809C0 550175AD
+  9178F034 84
+ public-key-code end
+ peer-public-key end
+#
+undo icmp name timestamp-reply send
+#
+as-notation plain
+#
+set save-configuration interval 2880 delay 1 cpu-limit 60
+set save-configuration backup-to-server server 168.228.118.25 transport-type ftp user GreenNE8000 password %^%#m}`.2#k0,(<Bk6:E85[.OObb#bP_&4]K@z9AoHFC%^%# 
+#
+undo telnet server enable
+undo telnet ipv6 server enable
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+radius-attribute delegated-ipv6-prefix encapsulation-method version2
+#
+diffserv domain default
+#
+diffserv domain 5p3d
+#
+soc
+#
+ip vpn-instance __LOCAL_OAM_VPN__
+ ipv4-family
+ ipv6-family
+#
+radius-server group hubsoft
+ radius-server shared-key-cipher %^%#Wl&\#Sa^8G&fo)$e:X"3Y2,YGYB'.!eA=j//m9d+%^%#
+ radius-server authentication 170.79.92.41 source ip-address 170.79.92.5 1812 weight 0
+ radius-server accounting 170.79.92.41 source ip-address 170.79.92.5 1813 weight 0
+ radius-server retransmit 5 timeout 10
+ radius-server accounting-start-packet resend 3
+ radius-server accounting-stop-packet resend 3
+ radius-server accounting-interim-packet resend 5
+ radius-server source interface LoopBack0
+ radius-server attribute translate
+ radius-server user-name original
+ radius-server user-name trust-server-request 
+ radius-server accounting-stop-packet send force
+ radius-attribute assign hw-mng-ipv6 pppoe motm 
+ radius-attribute case-sensitive qos-profile-name
+ radius-attribute apply user-name match user-type ipoe
+ radius-attribute apply framed-ipv6-pool match pool-type
+#
+radius-server group radius.lv.network
+ radius-server shared-key-cipher %^%#f]iV4H%<@*V5\\Q=zHo;\2L+R"1B{<Rm&!;+D$wQRj4l>=|*Z34+RVHjWvOA%^%#
+ radius-server authentication 131.255.176.133 1812 weight 0
+ radius-server accounting 131.255.176.133 1813 weight 0
+ radius-server retransmit 5 timeout 10
+ radius-server source interface LoopBack0
+#
+radius local-ip 170.79.92.5
+undo radius local-ip all
+radius-server authorization 170.79.92.41 destination-port 3799 shared-key-cipher %^%#|{dKD^a9)Q,n7,)y"qLUMROSBOwie$|J`BO9O+M2%^%# server-group hubsoft
+#
+bfd
+#
+vlan 20
+#
+vlan 200
+#
+vlan 201
+#
+vlan 550
+#
+vlan 551
+#
+vlan 552
+ description POP-PATOS
+#
+vlan 1000
+ description CNX-PROVISORIA-CCR-BGP
+#
+vlan 1100
+#
+vlan 2223
+ description CGNAT-A10-INSIDE
+#
+vlan 2225
+ description CGNAT-A10-CLUSTER
+#
+vlan 3000
+ description CGNAT-A10-INSIDE
+#
+vlan 3001
+ description VLAN-SYNC-A10
+#
+mpls lsr-id 172.18.18.255
+#
+mpls
+ mpls bfd enable
+ mpls bfd min-tx-interval 200 min-rx-interval 200
+#
+mpls l2vpn
+#
+mpls ldp
+ #
+ ipv4-family
+#
+mpls ldp remote-peer sw5732-jose-antonio
+ remote-ip 172.18.18.254
+#
+mpls ldp remote-peer dm4380-manoel
+ remote-ip 172.18.18.253
+#
+mpls ldp remote-peer dm4380-brejo
+ remote-ip 172.18.18.252
+#
+mpls ldp remote-peer sw6730-carmo
+ remote-ip 172.18.18.120
+#
+ip pool cgnat-01 bas local
+ gateway 100.64.0.1 255.255.240.0
+ section 0 100.64.0.2 100.64.15.254
+ dns-server 170.79.92.35 8.8.8.8
+ lease 0 12 0
+#
+ip pool cgnat-02 bas local
+ gateway 100.64.16.1 255.255.252.0
+ section 0 100.64.16.2 100.64.16.255
+ section 1 100.64.17.0 100.64.17.255
+ section 2 100.64.18.0 100.64.18.255
+#
+ip pool pool_bloqueio bas local
+ gateway 172.21.2.1 255.255.255.0
+ section 0 172.21.2.2 172.21.2.254
+ dns-server 170.79.92.35 8.8.8.8
+ lease 0 12 0
+#
+ip pool teste-mpls bas local
+ gateway 10.255.255.1 255.255.255.0
+ section 0 10.255.255.2 10.255.255.255
+ dns-server 170.79.92.35 8.8.8.8
+ lease 0 12 0
+#
+dhcp server request-packet all-interface disable
+#
+ipv6 prefix poolv6-tunnel-local local
+ prefix 2804:359C:9100::/42
+#
+ipv6 prefix poolv6-delegation-pd delegation
+ prefix 2804:359C:9140::/42
+ pd-unshare-only
+#
+ipv6 prefix bloqueio_v6_prefix delegation
+ prefix FC00::/36
+#
+ipv6 prefix pre_nd delegation
+ prefix 2804:359C:9180::/42
+ slaac-unshare-only
+#
+ipv6 pool bloqueio_v6_prefix bas delegation
+ prefix bloqueio_v6_prefix
+#
+ipv6 pool poolv6-delegation-pd bas delegation
+ dns-server 2001:4860:4860::8888 2606:4700:4700::1111
+ prefix poolv6-delegation-pd
+#
+ipv6 pool poolv6-tunnel-local bas local
+ dhcpv6 rapid-commit
+ dns-server 2001:4860:4860::8888 2606:4700:4700::1111
+ prefix poolv6-tunnel-local
+#
+dot1x-template 1
+#
+user-group group-mpls
+#
+acl ip-pool LVSAFE_BOGONS
+ ip address 192.168.0.0 0.0.255.255
+ ip address 10.0.0.0 0.255.255.255
+ ip address 172.16.0.0 0.15.255.255
+ ip address 0.0.0.0 0.255.255.255
+ ip address 127.0.0.0 0.255.255.255
+ ip address 169.254.0.0 0.0.255.255
+ ip address 192.0.0.0 0.0.0.255
+ ip address 192.0.2.0 0.0.0.255
+ ip address 198.18.0.0 0.1.255.255
+ ip address 198.51.100.0 0.0.0.255
+ ip address 203.0.113.0 0.0.0.255
+ ip address 224.0.0.0 15.255.255.255
+ ip address 240.0.0.0 15.255.255.255
+#
+acl ip-pool LVSAFE_PREFIXOS_CLIENTES
+ ip address 170.79.92.0 0.0.0.255
+ ip address 100.64.0.0 0.63.255.255
+ ip address 170.79.93.0 0.0.0.255
+#
+acl ipv6-pool LVSAFE_PREFIXOS_CLIENTES
+ ipv6 address 2804:359C:9000:: 38
+#
+acl port-pool LVSAFE_V4_PORTAS_BLQ_WAN_IN
+ eq 0
+ eq 17
+ eq 19
+ eq 21
+ eq 22
+ eq 23
+ eq 25
+ eq 80
+ eq 111
+ eq 161
+ eq 179
+ eq 369
+ eq 443
+ eq 1900
+ eq 2125
+ eq 2210
+ eq 2211
+ eq 2225
+ eq 2325
+ eq 7080
+ eq 7081
+ eq 7082
+ eq 8070
+ eq 8085
+ eq 8091
+ eq 8291
+ eq 8295
+ eq 8728
+ eq 8729
+ range 135 139
+#
+acl number 2000
+ rule 1 permit source 172.16.0.0 0.15.255.255
+ rule 2 permit source 10.0.0.0 0.255.255.255
+ rule 3 permit source 192.168.0.0 0.0.255.255
+ rule 4 permit source 186.232.119.33 0
+ rule 5 permit source 168.228.118.25 0
+ rule 6 permit source 170.79.92.0 0.0.0.255
+ rule 7 permit source 18.230.1.182 0
+ rule 8 permit source 170.79.92.199 0
+ rule 9 permit source 170.79.92.46 0
+#
+acl number 2001
+ description ACL-V4-ACESSO-CAIXA
+ rule 5 permit source 186.232.119.33 0
+ rule 9 permit source 170.79.92.46 0
+ rule 10 permit source 168.228.118.25 0
+#
+acl number 3000
+ description PREFIXOS-CGNAT-A10
+ rule 10 permit ip source 100.64.0.0 0.63.255.255
+#
+acl number 3001
+ description PBR-CGNAT-A10-BYPASS
+ rule 5 permit ip destination 170.79.92.0 0.0.0.255
+#
+acl number 3002
+ description PREFIXOS-CGNAT-MIKROTIK
+#
+acl number 3003
+ description PBR-CGNAT-MIKROTIK-BYPASS
+ rule 5 permit ip source 100.64.0.0 0.63.255.255 destination 170.79.92.0 0.0.0.255
+#
+acl name LVSAFE-V4-WAN-IN advance
+ rule 5 permit tcp destination-port-pool LVSAFE_V4_PORTAS_BLQ_WAN_IN
+ rule 10 permit udp destination-port-pool LVSAFE_V4_PORTAS_BLQ_WAN_IN
+ rule 15 permit ip source-pool LVSAFE_BOGONS
+ rule 20 permit ip destination-pool LVSAFE_BOGONS
+ rule 25 permit ip source-pool LVSAFE_PREFIXOS_CLIENTES
+#
+acl name LVSAFE_V4_GERENCIA_LIBERADA_WAN_IN advance
+ rule 1 permit ip source 179.48.68.73 0
+ rule 5 permit ip source 186.232.119.33 0
+ rule 10 permit ip source 168.228.118.25 0
+ rule 15 permit ip destination 170.79.92.10 0.0.0.1
+ rule 20 permit ip destination 170.79.92.12 0.0.0.3
+ rule 25 permit ip destination 170.79.92.16 0.0.0.7
+ rule 30 permit ip destination 170.79.92.24 0.0.0.3
+ rule 35 permit ip destination 170.79.92.28 0.0.0.1
+ rule 40 permit ip destination 170.79.92.60 0.0.0.3
+ rule 45 permit ip destination 170.79.92.64 0.0.0.63
+ rule 50 permit ip destination 170.79.92.96 0.0.0.3
+ rule 55 permit ip destination 172.18.18.0 0.0.0.3
+ rule 60 permit ip source 172.18.18.0 0.0.0.3
+ rule 65 permit ip destination 172.18.18.8 0.0.0.3
+ rule 70 permit ip source 172.18.18.8 0.0.0.3
+ rule 75 permit ip destination 172.18.18.248 0.0.0.3
+ rule 80 permit ip source 172.18.18.248 0.0.0.3
+ rule 85 permit ip destination 172.18.18.252 0.0.0.3
+ rule 90 permit ip source 172.18.18.252 0.0.0.3
+ rule 95 permit ip destination 172.18.19.0 0.0.0.3
+ rule 100 permit ip source 172.18.19.0 0.0.0.3
+ rule 105 permit ip destination 170.79.92.100 0
+ rule 110 permit ip destination 170.79.92.36 0
+ rule 115 permit ip destination 170.79.92.35 0
+ rule 120 permit ip destination 170.79.92.30 0
+ rule 125 permit ip destination 170.79.92.40 0
+ rule 130 permit ip source 179.189.84.187 0
+ rule 135 permit ip destination 179.189.84.187 0
+ rule 140 permit ip source 131.255.176.135 0
+ rule 150 permit ip destination 170.79.92.37 0
+ rule 155 permit ip destination 170.79.92.71 0
+ rule 160 permit ip destination 170.79.95.21 0
+ rule 165 permit ip destination 170.79.92.14 0
+ rule 170 permit ip destination 170.79.95.3 0
+ rule 175 permit ip source 170.79.92.19 0
+ rule 180 permit ip destination 170.79.92.19 0
+ rule 185 permit ip destination 200.189.28.0 0.0.0.255
+ rule 190 permit ip source 200.189.28.0 0.0.0.255
+ rule 195 permit ip destination 170.79.95.10 0
+ rule 200 permit ip destination 170.79.95.11 0
+ rule 205 permit ip destination 170.79.95.12 0
+ rule 210 permit ip destination 170.79.95.13 0
+ rule 215 permit ip destination 170.79.95.14 0
+ rule 220 permit ip destination 170.79.95.15 0
+ rule 225 permit ip destination 170.79.95.16 0
+ rule 230 permit ip destination 170.79.95.17 0
+ rule 235 permit ip destination 170.79.95.18 0
+ rule 240 permit ip destination 170.79.95.19 0
+ rule 245 permit ip destination 170.79.95.20 0
+ rule 250 permit ip destination 170.79.95.22 0
+ rule 255 permit ip source 170.79.95.10 0
+ rule 260 permit ip source 170.79.95.11 0
+ rule 265 permit ip source 170.79.95.12 0
+ rule 270 permit ip source 170.79.95.13 0
+ rule 275 permit ip source 170.79.95.14 0
+ rule 280 permit ip source 170.79.95.15 0
+ rule 285 permit ip source 170.79.95.16 0
+ rule 290 permit ip source 170.79.95.17 0
+ rule 295 permit ip source 170.79.95.18 0
+ rule 300 permit ip source 170.79.95.19 0
+ rule 305 permit ip source 170.79.95.20 0
+ rule 310 permit ip source 170.79.95.21 0
+ rule 315 permit ip source 170.79.95.22 0
+ rule 320 permit ip destination 170.79.92.45 0
+ rule 325 permit ip source 170.79.93.0 0.0.0.255
+ rule 330 permit ip destination 170.79.93.0 0.0.0.255
+ rule 335 permit ip source 170.79.92.64 0.0.0.63 destination 170.79.92.74 0
+ rule 340 permit ip destination 45.177.136.66 0
+ rule 345 permit ip source 45.177.136.66 0
+ rule 350 permit ip source 179.48.70.178 0
+ rule 380 permit ip source 45.177.139.83 0
+ rule 390 permit ip source 45.6.167.227 0
+ rule 395 permit ip destination 170.79.92.46 0
+ rule 400 permit ip destination 170.79.92.43 0
+ rule 405 permit ip destination 170.79.95.25 0
+ rule 410 permit ip source 206.42.26.21 0
+ rule 415 permit ip source 170.79.95.25 0
+ rule 420 permit ip destination 170.79.92.44 0
+ rule 425 permit ip source 170.79.92.44 0
+#
+acl ipv6 name LVSAFE-V6-GERENCIA-LIBERADA-WAN-IN advance
+ rule 5 permit ipv6 destination 2804:4A24:118::A/127
+ rule 10 permit ipv6 source 2804:4A24:118::A/127
+ rule 15 permit ipv6 destination 2804:359C:9000:1::35/128
+#
+acl ipv6 name LVSAFE-V6-WAN-IN advance
+ rule 5 permit tcp destination-port eq 0
+ rule 10 permit tcp destination-port eq chargen
+ rule 15 permit tcp destination-port eq sunrpc
+ rule 20 permit tcp destination-port eq 369
+ rule 25 permit tcp destination-port eq 445
+ rule 30 permit tcp destination-port eq 1900
+ rule 35 permit tcp destination-port range 135 139
+ rule 40 permit udp destination-port eq 0
+ rule 45 permit udp destination-port eq 19
+ rule 50 permit udp destination-port eq sunrpc
+ rule 55 permit udp destination-port eq 369
+ rule 60 permit udp destination-port eq 445
+ rule 65 permit udp destination-port eq 1900
+ rule 70 permit udp destination-port range 135 netbios-ssn
+ rule 75 permit ipv6 destination ::FFFF:0.0.0.0/96
+ rule 80 permit ipv6 destination 100::/64
+ rule 85 permit ipv6 destination 2001:2::/48
+ rule 90 permit ipv6 destination 2001:10::/28
+ rule 95 permit ipv6 destination 2001:DB8::/32
+ rule 100 permit ipv6 destination FC00::/7
+ rule 105 permit ipv6 destination FEC0::/10
+ rule 110 permit ipv6 destination FF00::/8
+#
+acl name CGNAT-MPLS ucl
+ rule 10 permit ip source ip-address 100.64.0.0 0.63.255.255
+#
+acl name CGNAT-MPLS-BYPASS ucl
+ rule 5 permit ip source ip-address 170.79.92.17 0
+ rule 10 permit ip source ip-address 170.79.92.11 0
+#
+dhcpv6 duid 00010001254d1b2644004d3a026d
+#
+traffic classifier C-CGNAT-CAIXA1 operator or
+ if-match acl 3000 precedence 1
+#
+traffic classifier C-CGNAT-CAIXA1-BYPASS operator or
+ if-match acl 3001 precedence 1
+#
+traffic classifier C-CGNAT-CAIXA2 operator or
+ if-match acl 3002 precedence 1
+#
+traffic classifier C-CGNAT-CAIXA2-BYPASS operator or
+ if-match acl 3003 precedence 1
+#
+traffic classifier C-CGNAT-MPLS operator or
+ if-match acl name CGNAT-MPLS precedence 1
+#
+traffic classifier C-CLIENTES-PUBLICOS operator or
+ if-match acl name CGNAT-MPLS-BYPASS precedence 1
+#
+traffic classifier LVSAFE-V4-WAN-IN operator or
+ if-match acl name LVSAFE-V4-WAN-IN precedence 1
+#
+traffic classifier LVSAFE-V6-GERENCIA-LIBERADA-WAN-IN operator or
+ if-match ipv6 acl name LVSAFE-V6-GERENCIA-LIBERADA-WAN-IN precedence 1
+#
+traffic classifier LVSAFE-V6-WAN-IN operator or
+ if-match ipv6 acl name LVSAFE-V6-WAN-IN precedence 1
+#
+traffic classifier LVSAFE_V4_GERENCIA_LIBERADA_WAN_IN operator or
+ if-match acl name LVSAFE_V4_GERENCIA_LIBERADA_WAN_IN precedence 1
+#
+traffic classifier restante operator or
+ if-match any
+#
+traffic behavior B-CGNAT-CAIXA1
+ redirect ip-nexthop 172.18.18.142
+#
+traffic behavior B-CGNAT-CAIXA1-BYPASS
+#
+traffic behavior B-CGNAT-CAIXA2
+ redirect ip-nexthop 172.18.18.42
+#
+traffic behavior B-CGNAT-CAIXA2-BYPASS
+#
+traffic behavior B-CGNAT-MPLS
+ redirect ip-nexthop 172.18.18.94
+#
+traffic behavior B-CLIENTES-PUBLICOS
+#
+traffic behavior deny
+ deny
+#
+traffic behavior permit
+#
+traffic policy LVSAFE-FW-WAN-IN
+ share-mode
+ statistics enable
+ classifier LVSAFE_V4_GERENCIA_LIBERADA_WAN_IN behavior permit precedence 5
+ classifier LVSAFE-V6-GERENCIA-LIBERADA-WAN-IN behavior permit precedence 10
+ classifier LVSAFE-V4-WAN-IN behavior deny precedence 15
+ classifier LVSAFE-V6-WAN-IN behavior deny precedence 20
+ classifier restante behavior permit precedence 100
+#
+traffic policy P-CGNAT
+ share-mode
+ classifier C-CGNAT-CAIXA1-BYPASS behavior B-CGNAT-CAIXA1-BYPASS precedence 1
+ classifier C-CGNAT-CAIXA2-BYPASS behavior B-CGNAT-CAIXA2-BYPASS precedence 2
+ classifier C-CGNAT-CAIXA1 behavior B-CGNAT-CAIXA1 precedence 4
+ classifier C-CGNAT-CAIXA2 behavior B-CGNAT-CAIXA2 precedence 5
+#
+traffic policy P-CGNAT-MPLS
+ share-mode
+ statistics enable
+ classifier C-CLIENTES-PUBLICOS behavior B-CLIENTES-PUBLICOS precedence 5
+ classifier C-CGNAT-MPLS behavior B-CGNAT-MPLS precedence 10
+#
+security password
+ #
+ rule admin
+  forbidden word changeme_123
+#
+aaa
+ local-user root password irreversible-cipher $1c$p59\AXr*z=$S$g}"2`LO(O}wY4UwFgMB:Io4je2IXn~\N4">MOQ$
+ local-user root service-type ssh
+ local-user root level 3
+ local-user root state block fail-times 3 interval 5
+ local-user root expire 2000-01-01
+ local-user lvnetwork password irreversible-cipher $1c$$Y3p3nn@|J$`-,1KmDYO:[nzRW=4ki5/>%c&6wf$J@`-I6|\OB'$
+ local-user lvnetwork service-type ftp terminal telnet ssh snmp http
+ local-user lvnetwork level 3
+ local-user lvnetwork state block fail-times 3 interval 5
+ local-user danilo password irreversible-cipher $1c$F.z4RnmJ++$Kqq"Ox1T_CN.~0(HqXwB0s<y=qP{B6td4&=W)mS%$
+ local-user danilo service-type terminal telnet ssh http
+ local-user danilo level 3
+ local-user danilo state block fail-times 3 interval 5
+ local-user hubsoft password irreversible-cipher $1c$8g1rXkb&I:$@1EIRc^}K1*Z|eD!Pd`29$GSN^{6/MN9s\HBa2`"$
+ local-user hubsoft service-type terminal telnet ssh
+ local-user hubsoft level 3
+ local-user hubsoft state block fail-times 3 interval 5
+ local-user tomich password irreversible-cipher $1c$I]s@J|\o'H$!%s=8ixKU.eI^lDIZ(JM'/9eCIFMwYpn;IO"Dx(O$
+ local-user tomich service-type ssh
+ local-user tomich level 3
+ local-user tomich state block fail-times 3 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local radius
+ #
+ authentication-scheme hubsoft
+ #
+ authentication-scheme radius.lv.network
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ accounting-scheme hubsoft
+  accounting interim interval 20 traffic hash
+  accounting send-update
+  accounting start-fail online
+ #
+ accounting-scheme radius.lv.network
+  accounting start-fail online
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+ #
+ domain hubsoft
+  authentication-scheme hubsoft
+  accounting-scheme hubsoft
+  radius-server group hubsoft
+  ip-pool cgnat-01
+  ip-pool cgnat-02
+  ipv6-pool poolv6-delegation-pd
+  ipv6-pool poolv6-tunnel-local
+  user-max-session 1
+  dns primary-ip 170.79.92.35
+  dns second-ip 8.8.8.8
+  dns primary-ipv6 2804:359C:9000:1::35
+  dns second-ipv6 2001:4860:4860::8888
+  accounting-start-delay 10 online user-type ppp ipoe static
+  user-group group-mpls
+  ipv6 nd autoconfig managed-address-flag
+  ipv6 nd ra unicast
+  qos rate-limit-mode car inbound
+  qos rate-limit-mode car outbound
+ #
+ domain group-mpls
+  authentication-scheme hubsoft
+  accounting-scheme hubsoft
+  radius-server group hubsoft
+  ip-pool teste-mpls
+  ip-pool cgnat-02
+  user-max-session 1
+  dns primary-ip 170.79.92.35
+  dns second-ip 8.8.8.8
+  dns primary-ipv6 2804:359C:9000:1::35
+  dns second-ipv6 2001:4860:4860::8888
+  accounting-start-delay 10 online user-type ppp ipoe static
+  user-group group-mpls
+  ipv6 nd autoconfig managed-address-flag
+  ipv6 nd ra unicast
+  qos rate-limit-mode car inbound
+  qos rate-limit-mode car outbound
+ #
+ domain radius.lv.network
+  authentication-scheme radius.lv.network
+  accounting-scheme radius.lv.network
+  radius-server group radius.lv.network
+  ip-pool cgnat-01
+  accounting-start-delay 3 online user-type ppp
+  qos rate-limit-mode car inbound
+  qos rate-limit-mode car outbound
+#
+license
+#
+interface Vlanif3000
+ description CGNAT-A10-INSIDE
+ ip address 172.18.18.139 255.255.255.248
+ statistic enable
+#
+interface Eth-Trunk0
+ portswitch
+ description LACP-CGNAT-A10
+ port link-type trunk
+ port trunk allow-pass vlan 3000 to 3001
+ mode lacp-static
+#
+interface Eth-Trunk0.2221
+ vlan-type dot1q 2221
+ description CGNAT-A10-TRAFFIC-INSIDE
+ ip address 172.18.18.93 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2222
+ vlan-type dot1q 2222
+ description CGNAT-A10-TRAFFIC-OUTSIDE
+ ip address 172.18.18.97 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk0.2226
+ vlan-type dot1q 2226
+ description CGNAT-A10-OUTSIDE
+ ip address 172.18.18.149 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk10
+ portswitch
+ description LACP-SW_CARMO
+ port link-type trunk
+ port trunk allow-pass vlan 3000 to 3001
+ stp disable
+ mode lacp-static
+#
+interface Eth-Trunk10.200
+ description PPPOE-OLT-HUAWEI
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 200
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.700
+ description CLIENTES-REDE_NEUTRA-GOLD
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 700 701
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.806
+ description PPPOE-POP-CACHOEIRA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 806
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.814
+ description PPPOE-OLT-DATACOM-BRAVIN
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 814
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.816
+ description 816-PPPOE-SW-TORRE-BREJO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 816
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.1000
+ vlan-type dot1q 1000
+ description GERENCIA-ROTEADOR-CCR1036-CGNAT
+ ipv6 enable
+ ip address 172.18.18.41 255.255.255.252
+ ipv6 address 2804:359C:9000:2::1/126
+ statistic enable
+ ospf network-type p2p
+ ospf enable 1 area 0.0.0.0
+#
+interface Eth-Trunk10.1500
+ description PPPoE-VLAN1500-TORRES
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 1500
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.1502
+ description PPPOE-TORRE-JOSE_WILSON
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 1502
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.1503
+ description PPPOE-TORRE-SAO_BENTO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 1503
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.1700
+ description PPPOE-OLT-ZTE-CARMO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 1700 1701
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.1702
+ vlan-type dot1q 1702
+ description GERENCIA-OLT-ZTE-POP_CARMO
+ ip address 172.18.18.117 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk10.2100
+ vlan-type dot1q 2100
+ description CNX-CCR-NAT-BACKUP
+ ip address 172.18.18.229 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk10.2101
+ description PPPOE-OLT-DATACOM
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 2101
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.2102
+ description PPPoE-OLT-HUAWEI-BREJO
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 2102
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.2501
+ description PPPOE-SERRA-DO-SALITRE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 2501
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.3003
+ description PPPOE-REDE-NEUTRA-SERRA
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 3003
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Eth-Trunk10.3005
+ vlan-type dot1q 3005
+ description IBGP-NE8K-PATOS
+ ipv6 enable
+ ip address 172.18.18.109 255.255.255.252
+ ipv6 address 2804:359C:2400::11/126
+ statistic enable
+#
+interface Eth-Trunk10.40000
+ description BACKUP-PPPOE-PATOS
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 711
+ user-vlan 720
+ user-vlan 1002
+ user-vlan 1100
+ user-vlan 1110
+ user-vlan 1120
+ user-vlan 1125
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface Ethernet0/0/0
+ speed auto
+ duplex auto
+ undo shutdown
+ ip address 172.29.100.1 255.255.255.252
+#
+interface Virtual-Template0
+ ppp authentication-mode auto
+#
+interface Virtual-Template1
+ mtu 9600
+ ppp authentication-mode pap chap
+ ppp keepalive interval 30 retransmit 3 datacheck
+ pppoe-server service-name-parameter NAS-HUAWEI
+ pppoe-server ac-name NAS-HUAWEI
+ ip urpf strict enable check subnet
+ ipv6 urpf strict enable check subnet
+#
+interface GigabitEthernet0/7/0
+ description TRANSITO-GOLD_TELECOM-V4-V6
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/7/0.550
+ vlan-type dot1q 550
+ description TRANSITO-IP-GOLD_TELECOM-V4-V6
+ ipv6 enable
+ ip address 172.18.18.10 255.255.255.252
+ ipv6 address 2804:4A24:118::B/127
+ statistic enable
+ traffic-policy LVSAFE-FW-WAN-IN inbound
+#
+interface GigabitEthernet0/7/0.80001
+ vlan-type dot1q 554
+#
+interface GigabitEthernet0/7/1
+ description SW-6730-POP_CARMO-XGE0/0/1
+ undo shutdown
+ eth-trunk 10
+ undo dcn
+#
+interface GigabitEthernet0/7/2
+ description SW-6730-POP_CARMO-XGE0/0/2
+ undo shutdown
+ eth-trunk 10
+ undo dcn
+#
+interface GigabitEthernet0/7/3
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/7/3.1500
+ description PPPoE-TORRE-MORRO-GRANDE
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan 816
+ user-vlan 1500
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface GigabitEthernet0/7/4
+ description SERVIDOR-PROXMOX-GREEN_TELECOM-enp5s0f1
+ undo shutdown
+ ipv6 enable
+ ip address 172.18.18.153 255.255.255.252
+ ip address 10.24.24.1 255.255.255.252 sub
+ ip address 170.79.92.33 255.255.255.240 sub
+ ip address 172.16.254.1 255.255.255.252 sub
+ ipv6 address 2804:359C:9000:1::1/64
+ undo dcn
+ statistic enable
+#
+interface GigabitEthernet0/7/5
+ description TORRE-JW
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/7/5.1
+ description PPPoE-TORRE-JW
+ ipv6 enable
+ ipv6 address auto link-local
+ statistic enable
+ user-vlan any-other
+ pppoe-server bind Virtual-Template 1
+ bas
+ #
+  access-type layer2-subscriber default-domain authentication hubsoft
+ #
+#
+interface GigabitEthernet0/7/6
+ description TORRE-SAO_BENTO
+ undo shutdown
+ undo dcn
+#
+interface GigabitEthernet0/7/7
+ description A10-CGNAT-ETHERNET1/10
+ undo shutdown
+ eth-trunk 0
+ undo dcn
+#
+interface GigabitEthernet0/7/8
+ description A10-CGNAT-ETHERNET1/11
+ undo shutdown
+ eth-trunk 0
+ undo dcn
+#
+interface GigabitEthernet0/7/9
+ description A10-CGNAT-ETHERNET1/9
+ undo shutdown
+ eth-trunk 0
+ undo dcn
+#
+interface LoopBack0
+ description LOOPBACK
+ ipv6 enable
+ ip address 170.79.92.5 255.255.255.255
+ ipv6 address 2804:359C:9000::1/128
+ binding tunnel gre
+#
+interface LoopBack1
+ description LOOPBACK-MPLS
+ ip address 172.18.18.255 255.255.255.255
+#
+interface Virtual-Ethernet0/2/100
+ ve-group 100 l2-terminate
+#
+interface Virtual-Ethernet0/2/100.100
+#
+interface Virtual-Ethernet0/2/101
+ ve-group 100 l3-access
+#
+interface Virtual-Ethernet0/2/200
+ ve-group 200 l2-terminate
+#
+interface Virtual-Ethernet0/2/200.100
+#
+interface Virtual-Ethernet0/2/201
+ ve-group 200 l3-access
+#
+interface Virtual-Ethernet0/2/201.100
+ vlan-type dot1q 100
+#
+interface Tunnel10
+ description TUNEL-HUBSOFT
+ ip address 172.18.18.38 255.255.255.252
+ tunnel-protocol gre
+ source 170.79.92.5
+ destination 18.230.1.182
+#
+interface Tunnel20
+ description GRE-POP-PATOS
+ ip address 172.18.17.5 255.255.255.252
+ tunnel-protocol gre
+ source 170.79.92.5
+ destination 170.79.93.66
+#
+interface Tunnel21
+ description GRE-NE8000-PATOS
+ ip address 172.18.18.105 255.255.255.252
+ tunnel-protocol gre
+ source 170.79.92.5
+ destination 170.79.95.32
+#
+interface Tunnel120
+ description GRE-HUB-AWS-LVNETWORK
+ ip address 172.31.200.46 255.255.255.252
+ tunnel-protocol gre ipv6
+ source 2804:359C:9000::1
+ destination 2804:1740:F:900:177:104:176:86
+#
+interface Tunnel1000
+ description GRE-TUNNEL-LVNETWORK-DATACENTER
+ ip address 198.19.255.110 255.255.255.252
+ tunnel-protocol gre
+ source 170.79.92.5
+ destination 131.255.176.135
+#
+interface Tunnel1001
+ description GRE-TUNEL-LVNETWORK
+ ip address 172.16.7.90 255.255.255.252
+ tunnel-protocol gre
+ source 170.79.92.5
+ destination 186.232.119.33
+#
+interface NULL0
+#
+ccc GREEN-VS-BGP interface Virtual-Ethernet0/2/100.100 tagged out-interface Virtual-Ethernet0/2/200.100 tagged
+#
+bgp 266296
+ undo check-first-as
+ peer 172.18.18.9 as-number 267221
+ peer 172.18.18.9 description TRANSITO-IP-GOLD-V4
+ peer 172.18.18.9 bfd min-tx-interval 300 min-rx-interval 300 detect-multiplier 4
+ peer 172.18.18.9 bfd enable
+ peer 172.18.18.110 as-number 266296
+ peer 172.18.18.110 description IBGP-BDR-PATOS-UPLINK
+ peer 172.18.18.150 as-number 266296
+ peer 172.18.18.150 description IBGP-CGNAT-A10
+ peer 2804:359C:2400::12 as-number 266296
+ peer 2804:359C:2400::12 description IBGP-POP_PATOS-V6
+ peer 2804:359C:9000::6 as-number 266296
+ peer 2804:359C:9000::6 description IBGP-VS-BGP-V6
+ peer 2804:4A24:118::A as-number 267221
+ peer 2804:4A24:118::A description GOLD-V6
+ #
+ ipv4-family unicast
+  undo synchronization
+  network 100.64.0.0 255.192.0.0
+  network 100.64.0.0 255.255.240.0
+  network 170.79.92.0 255.255.255.0
+  network 170.79.92.0 255.255.255.128
+  network 170.79.92.0 255.255.255.192
+  network 170.79.92.32 255.255.255.240
+  network 170.79.92.64 255.255.255.192
+  network 170.79.92.128 255.255.255.128
+  network 170.79.92.128 255.255.255.192
+  network 170.79.92.192 255.255.255.192
+  network 172.18.18.148 255.255.255.252
+  import-route direct
+  import-route static
+  import-route ospf 1
+  import-route unr
+  peer 172.18.18.9 enable
+  peer 172.18.18.9 route-policy TRANSITO-GOLD-V4-IN import
+  peer 172.18.18.9 route-policy TRANSITO-GOLD-V4-OUT export
+  peer 172.18.18.110 enable
+  peer 172.18.18.110 route-policy IGBP-PATOS-V4-IN import
+  peer 172.18.18.110 route-policy IGBP-PATOS-V4-OUT export
+  peer 172.18.18.110 reflect-client
+  peer 172.18.18.110 next-hop-local
+  peer 172.18.18.110 allow-as-loop 3
+  peer 172.18.18.150 enable
+  peer 172.18.18.150 route-policy IBGP-CGNAT-A10-V4-IN import
+  peer 172.18.18.150 route-policy IBGP-CGNAT-A10-V4-OUT export
+  peer 172.18.18.150 next-hop-local
+  peer 172.18.18.150 default-route-advertise
+ #
+ ipv6-family unicast
+  undo synchronization
+  network 2804:359C:9000:: 38
+  peer 2804:359C:2400::12 enable
+  peer 2804:359C:2400::12 route-policy IGBP-PATOS-V6-IN import
+  peer 2804:359C:2400::12 route-policy IGBP-PATOS-V6-OUT export
+  peer 2804:359C:2400::12 next-hop-local
+  peer 2804:359C:9000::6 enable
+  peer 2804:359C:9000::6 route-policy IBGP-VS-BGP-V6-IN import
+  peer 2804:359C:9000::6 route-policy IBGP-VS-BGP-V6-OUT export
+  peer 2804:359C:9000::6 next-hop-local
+  peer 2804:4A24:118::A enable
+  peer 2804:4A24:118::A route-policy TRANSITO-GOLD-BACKUP-V6-IN import
+  peer 2804:4A24:118::A route-policy TRANSITO-GOLD-BACKUP-V6-OUT export
+#
+ospf 1 router-id 170.79.92.5
+ default-route-advertise
+ bfd all-interfaces enable
+ bfd all-interfaces min-tx-interval 100 min-rx-interval 100 detect-multiplier 4
+ import-route direct type 1
+ import-route static type 1
+ import-route unr
+ preference 110
+ opaque-capability enable
+ graceful-restart
+ enable traffic-adjustment advertise
+ frr
+  loop-free-alternate
+ area 0.0.0.0
+  network 172.18.18.40 0.0.0.3
+  network 172.18.18.44 0.0.0.3
+  network 172.18.18.72 0.0.0.3
+#
+undo dcn
+#
+route-policy IBGP-CGNAT-A10-V4-IN permit node 10
+ if-match ip-prefix PREFIXOS-CGNAT-A10-PUBLICOS
+ apply local-preference 2000
+#
+route-policy IBGP-CGNAT-A10-V4-IN permit node 99
+#
+route-policy IBGP-CGNAT-A10-V4-OUT deny node 99
+#
+route-policy IBGP-VS-BGP-V4-IN permit node 999
+ apply local-preference 150
+#
+route-policy IBGP-VS-BGP-V4-OUT permit node 10
+ if-match ip-prefix IBGP-VS-BGP-V4
+#
+route-policy IBGP-VS-BGP-V4-OUT permit node 20
+ if-match ip-prefix PREFIXOS-CGNAT
+#
+route-policy IBGP-VS-BGP-V4-OUT deny node 999
+#
+route-policy IBGP-VS-BGP-V6-IN permit node 999
+#
+route-policy IBGP-VS-BGP-V6-OUT permit node 10
+ if-match ipv6 address prefix-list IBGP-VS-BGP-V6
+#
+route-policy IBGP-VS-BGP-V6-OUT deny node 999
+#
+route-policy IGBP-PATOS-V4-IN deny node 2
+ if-match ip-prefix DESCARTE-MEUS-PREFIXOS-V4
+#
+route-policy IGBP-PATOS-V4-IN permit node 999
+ apply local-preference 150
+#
+route-policy IGBP-PATOS-V4-OUT permit node 10
+ if-match ip-prefix ANUNCIO_IBGP_PATOS
+ apply ip-address next-hop 172.18.18.109
+#
+route-policy IGBP-PATOS-V4-OUT permit node 20
+ if-match protocol direct
+ apply ip-address next-hop 172.18.18.109
+#
+route-policy IGBP-PATOS-V4-OUT deny node 999
+#
+route-policy IGBP-PATOS-V6-IN deny node 2
+ if-match ipv6 address prefix-list DESCARTE_IBGP_PATOS-V6
+#
+route-policy IGBP-PATOS-V6-IN permit node 999
+ apply local-preference 100
+#
+route-policy IGBP-PATOS-V6-OUT permit node 10
+ if-match ipv6 address prefix-list ANUNCIO_IBGP_PATOS-V6
+ apply as-path 266296 266296 additive
+#
+route-policy IGBP-PATOS-V6-OUT deny node 999
+#
+route-policy TRANSITO-GOLD-BACKUP-V6-IN permit node 10
+ apply local-preference 550
+#
+route-policy TRANSITO-GOLD-BACKUP-V6-OUT permit node 10
+ if-match ipv6 address prefix-list ANUNCIO-GOLD-V6
+#
+route-policy TRANSITO-GOLD-BACKUP-V6-OUT deny node 999
+#
+route-policy TRANSITO-GOLD-V4-IN deny node 1
+ if-match ip-prefix DESCARTE-BOGONS-V4
+#
+route-policy TRANSITO-GOLD-V4-IN deny node 2
+ if-match ip-prefix DESCARTE-MEUS-PREFIXOS-V4
+#
+route-policy TRANSITO-GOLD-V4-IN permit node 999
+ apply local-preference 500
+#
+route-policy TRANSITO-GOLD-V4-OUT permit node 10
+ if-match ip-prefix ANUNCIO-GOLD-V4
+#
+route-policy TRANSITO-GOLD-V4-OUT permit node 20
+ if-match ip-prefix ANUNCIO-GOLD-POP-PATOS-V4
+ apply as-path 266296 266296 266296 266296 additive
+#
+route-policy TRANSITO-GOLD-V4-OUT deny node 999
+#
+ip ip-prefix ANUNCIO-CDN-GOLD-V4 index 10 permit 170.79.92.0 24 greater-equal 24 less-equal 25
+ip ip-prefix ANUNCIO-GOLD-POP-PATOS-V4 index 10 permit 170.79.95.0 24
+ip ip-prefix ANUNCIO-GOLD-V4 index 10 permit 170.79.92.0 24
+ip ip-prefix ANUNCIO-GOLD-V4 index 11 permit 170.79.93.0 24 greater-equal 24 less-equal 26
+ip ip-prefix ANUNCIO_IBGP_PATOS index 10 permit 170.79.92.0 24 greater-equal 24 less-equal 32
+ip ip-prefix ANUNCIO_IBGP_PATOS index 11 permit 170.79.95.0 24 greater-equal 24 less-equal 32
+ip ip-prefix ANUNCIO_IBGP_PATOS index 12 permit 172.18.18.148 30
+ip ip-prefix ANUNCIO_IBGP_PATOS index 22 permit 0.0.0.0 0
+ip ip-prefix CGNAT-CARMO index 10 permit 100.64.0.0 20
+ip ip-prefix DESCARTE-BOGONS-V4 index 10 permit 10.0.0.0 8 greater-equal 8 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 20 permit 127.0.0.0 8 greater-equal 8 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 30 permit 169.0.0.0 8 greater-equal 8 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 40 permit 172.16.0.0 12 greater-equal 12 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 50 permit 192.0.0.0 24 greater-equal 24 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 60 permit 192.0.2.0 24 greater-equal 24 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 70 permit 192.168.0.0 16 greater-equal 16 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 80 permit 192.18.0.0 15 greater-equal 15 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 90 permit 192.51.100.0 24 greater-equal 24 less-equal 32
+ip ip-prefix DESCARTE-BOGONS-V4 index 100 permit 203.0.113.0 24 greater-equal 24 less-equal 32
+ip ip-prefix DESCARTE-MEUS-PREFIXOS-V4 index 10 permit 170.79.92.0 24
+ip ip-prefix IBGP-VS-BGP-V4 index 10 permit 170.79.92.0 24 greater-equal 24 less-equal 25
+ip ip-prefix PREFIXOS-CGNAT index 10 permit 100.64.0.0 10 greater-equal 10 less-equal 32
+ip ip-prefix PREFIXOS-CGNAT-A10-PUBLICOS index 10 permit 170.79.92.0 24 greater-equal 24 less-equal 32
+ip ip-prefix PREFIXOS-IBGP-CISCO index 10 permit 170.79.92.112 28
+ip ip-prefix PREFIXOS-IBGP-CISCO index 20 permit 170.79.92.128 26
+ip ip-prefix PREFIXOS-IBGP-CISCO index 40 permit 170.79.92.96 28
+ip ip-prefix PREFIXOS-IBGP-CISCO index 50 permit 170.79.92.128 25
+ip ip-prefix PREFIXOS-IBGP-CISCO-CGNAT index 30 permit 100.64.0.0 10 greater-equal 10 less-equal 32
+ip ip-prefix ROTA-DEFAULT-V4 index 10 permit 0.0.0.0 0
+#
+ip route-static 3.70.242.164 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 3.73.40.191 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 3.120.32.6 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL0
+ip route-static 3.120.178.66 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 5.39.13.46 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 10.50.0.0 255.255.255.252 172.18.18.37 preference 10
+ip route-static 18.184.60.152 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 18.192.57.30 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 18.236.219.6 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 18.237.48.86 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 23.227.193.24 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 23.227.193.252 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 23.236.145.170 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.212.134.140 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.214.235.24 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.216.233.168 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.216.238.82 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.219.89.149 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.221.33.149 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 34.221.192.253 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 34.222.93.80 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 35.88.134.253 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 35.88.193.246 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 35.89.59.59 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.89.186.242 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.90.158.104 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.90.199.40 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.92.20.225 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.92.22.254 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.162.125.152 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 35.163.62.136 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.167.82.125 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 35.167.160.60 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 38.153.119.86 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 38.180.5.157 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 38.180.16.45 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 38.180.16.87 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 38.180.16.114 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 38.180.16.153 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 38.180.16.182 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 38.180.16.185 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 38.180.16.191 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 38.180.78.2 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 38.180.78.5 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 45.11.59.8 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 45.11.59.9 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 45.11.59.10 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 45.11.59.45 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 45.11.59.203 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 45.11.59.251 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 46.21.159.156 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 46.21.159.162 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 51.222.162.147 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 52.13.80.120 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 52.40.173.95 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 52.89.221.126 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.187.62.58 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.187.249.170 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.189.121.217 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 54.202.101.16 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 54.202.114.199 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.212.164.46 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.212.213.111 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.213.138.213 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 54.214.216.253 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 54.244.41.251 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 54.244.168.158 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 91.92.137.254 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 91.134.12.32 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 91.134.12.34 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 91.222.173.117 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 95.110.224.20 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 100.64.0.0 255.192.0.0 NULL0 preference 255
+ip route-static 100.66.0.0 255.255.248.0 172.18.18.106 description ACESSO-ROTEADORES-POP-PATOS
+ip route-static 131.255.177.195 255.255.255.255 172.31.200.45
+ip route-static 144.217.209.204 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 144.217.209.205 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 144.217.209.207 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 151.80.11.39 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 158.69.167.92 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 167.114.10.164 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 167.114.10.166 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 167.114.14.76 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 170.79.92.0 255.255.255.0 NULL0
+ip route-static 170.79.92.4 255.255.255.255 172.18.18.250
+ip route-static 170.79.92.71 255.255.255.255 172.18.18.134 description LOO-PANTANO
+ip route-static 170.79.92.80 255.255.255.240 192.168.2.1 description IPS-POP-PATOS
+ip route-static 170.79.92.87 255.255.255.255 172.18.18.230
+ip route-static 172.18.18.250 255.255.255.255 172.18.18.106 description SWITCH_MATA_DO_BREJO
+ip route-static 172.96.172.197 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 175.110.112.54 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 178.237.20.131 255.255.255.255 NULL0
+ip route-static 186.232.119.33 255.255.255.255 172.18.18.9 description ROTA-LVNETWORK
+ip route-static 192.99.81.87 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 192.168.166.166 255.255.255.255 NULL0
+ip route-static 198.50.219.120 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 198.50.234.176 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 198.50.234.177 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 198.50.234.179 255.255.255.255 NULL0 description BLOQUEIO-ANATEL
+ip route-static 205.204.73.54 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+ip route-static 213.246.39.107 255.255.255.255 NULL0 description IP-BLOQUEADO-ANATEL
+#
+ipv6 route-static 2804:359C:9000:: 38 NULL0
+ipv6 route-static 2804:359C:9000:1:: 64 2804:359C:9000:2::2 description SERVIDOR-PROXMOX
+#
+ip ipv6-prefix ANUNCIO-GOLD-V6 index 10 permit 2804:359C:: 34
+ip ipv6-prefix ANUNCIO-GOLD-V6 index 20 permit 2804:359C:9000:: 38 greater-equal 38 less-equal 48
+ip ipv6-prefix ANUNCIO_IBGP_PATOS-V6 index 10 permit 2804:359C:9000:: 38
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 10 permit 2001:2:: 48 greater-equal 48 less-equal 128
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 20 permit 2001:10:: 28 greater-equal 28 less-equal 128
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 30 permit 2001:DB8:: 32 greater-equal 32 less-equal 128
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 40 permit 3FFE:: 16 greater-equal 16 less-equal 128
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 50 permit FC00:: 7 greater-equal 7 less-equal 128
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 60 permit FE80:: 10 greater-equal 10 less-equal 128
+ip ipv6-prefix DESCARTE-BOGONS-V6 index 70 permit FEC0:: 10 greater-equal 10 less-equal 128
+ip ipv6-prefix DESCARTE-MEUS-PREFIXOS-V6 index 10 permit 2804:359C:: 34
+ip ipv6-prefix DESCARTE_IBGP_PATOS-V6 index 10 permit 2804:359C:9000:: 38
+ip ipv6-prefix IBGP-VS-BGP-V6 index 10 permit 2804:359C:9000:: 38 greater-equal 38 less-equal 48
+#
+snmp-agent
+snmp-agent local-engineid 800007DB03CCD73C5C731F
+snmp-agent community read cipher %^%#c<\C8I{<0K/DryHrUPB:O%'H9<"!/T$wVxJvE87XgdUW22_Mw!/x|#DK*\7'VWg2K:L\7Y-4%OQNdIbT%^%# alias __CommunityAliasName_01_63261
+#
+snmp-agent sys-info contact noc@lvnetwork.com.br
+snmp-agent sys-info location DC-GREENTELECOM
+snmp-agent sys-info version v2c v3
+#
+snmp-agent protocol source-status all-interface
+undo snmp-agent protocol source-status ipv6 all-interface
+#
+undo snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+lldp enable
+#
+undo web-auth-server source-ip all
+#
+undo web-auth-server source-ipv6 all
+#
+stelnet server enable
+snetconf server enable
+ssh ipv4 server port 2225
+ssh ipv6 server port 2225
+ssh user danilo
+ssh user danilo authentication-type password
+ssh user danilo service-type all
+ssh user hubsoft
+ssh user hubsoft authentication-type password
+ssh user hubsoft service-type all
+ssh user LVNetwork
+ssh user LVNetwork authentication-type password
+ssh user LVNetwork service-type all
+ssh user root
+ssh user root authentication-type password
+ssh user root service-type snetconf stelnet
+ssh server-source all-interface
+ssh ipv6 server-source all-interface
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh server hmac sha2_512 sha2_256
+ssh server key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+ssh server publickey dsa ecc rsa sm2 x509v3-ssh-rsa rsa_sha2_256 rsa_sha2_512
+#
+ssh server dh-exchange min-len 3072
+#
+ssh client first-time enable
+ssh client peer 170.79.92.195 assign rsa-key 170.79.92.195
+ssh client peer 170.79.92.197 assign rsa-key 170.79.92.197
+ssh client peer 170.79.92.5 assign rsa-key 170.79.92.5
+ssh client peer 170.79.95.32 assign rsa-key 170.79.95.32
+ssh client peer 172.18.18.110 assign rsa-key 172.18.18.110
+ssh client peer 172.18.18.113 assign rsa-key 172.18.18.113
+ssh client peer 172.18.18.120 assign rsa-key 172.18.18.120
+ssh client peer 172.18.18.125 assign rsa-key 172.18.18.125
+ssh client peer 172.18.18.126 assign rsa-key 172.18.18.126
+ssh client peer 172.18.18.14 assign rsa-key 172.18.18.14
+ssh client peer 172.18.18.140 assign rsa-key 172.18.18.140
+ssh client peer 172.18.18.142 assign rsa-key 172.18.18.142
+ssh client peer 172.18.18.150 assign rsa-key 172.18.18.150
+ssh client peer 172.18.18.253 assign rsa-key 172.18.18.253
+ssh client peer 172.18.18.255 assign rsa-key 172.18.18.255
+ssh client peer 172.18.18.82 assign rsa-key 172.18.18.82
+ssh client peer 172.18.18.86 assign ecc-key 172.18.18.86
+#
+ssh client publickey ecc rsa rsa_sha2_256 rsa_sha2_512
+#
+ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh client hmac sha2_512 sha2_256
+ssh client key-exchange dh_group_exchange_sha256 dh_group_exchange_sha1 dh_group14_sha1 ecdh_sha2_nistp256 ecdh_sha2_nistp384 ecdh_sha2_nistp521
+#
+traffic-policy P-CGNAT inbound global-acl
+#
+user-interface maximum-vty 21
+#
+user-interface con 0
+ authentication-mode aaa
+#
+user-interface vty 0 4
+ authentication-mode aaa
+ idle-timeout 600 0
+ protocol inbound ssh
+#
+netconf
+ activate module huawei-ip
+#
+local-aaa-server
+#
+admin
+ virtual-system AS266296-GREEN-BGP-CARMO pvmb slot 10 9
+  port-mode port
+  resource u4route upper-limit 2048000
+  resource m4route upper-limit 4096
+  resource u6route upper-limit 1048576
+  resource m6route upper-limit 2048
+  resource vpn-instance upper-limit 512
+  resource cpu weight 5
+  assign interface GigabitEthernet0/7/0.80001
+  assign interface Virtual-Ethernet0/2/201.100
+#
+warranty
+#
+l2tp-group default-lac
+ tunnel name HUAWEI
+#
+l2tp-group default-lns
+ tunnel name HUAWEI
+#
+return
+<AS266296-GREEN-BGP-BRAS>

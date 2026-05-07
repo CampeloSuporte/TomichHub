@@ -1,0 +1,4875 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: 10714 OLT_PANTANO_DATACOM
+Host: 172.18.17.90:22
+Acesso: VIA PROXY SSH
+Modelo: OLT DATACOM DM4615
+Template: Backup Datacom
+Data: 07/05/2026 00:37:36
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: show running-config | nomore
+============================================================
+aaa authentication-order [ local ]
+aaa user admin
+ password $1$vULTMZLB$du9g2nKsU9nbqO7H6MGiG0
+ group admin
+!
+aaa user hubsoft
+ password $1$zuSEcxrv$5VNInNEdPcnbhuKqoQ647/
+ group admin
+!
+snmp system contact noc@tomich.com.br
+snmp system location VITORIA-ES
+snmp traps config-commit
+snmp traps cpu-core
+snmp traps cpu-load
+snmp traps link-status
+snmp traps login-success
+snmp agent enabled
+snmp agent ip 172.18.17.90
+snmp agent version v2c
+snmp agent version v3
+snmp agent engine-id from-mac-address 18:81:ed:54:17:5a
+snmp community TOMICH
+ sec-name TOMICH
+!
+snmp community datacom
+ sec-name datacom
+!
+snmp target TOMICH
+ ip 170.79.92.46
+ tag [ std_v2_trap ]
+ v2c sec-name TOMICH
+!
+snmp notify std_v1_trap
+ tag std_v1_trap
+!
+snmp notify std_v2_inform
+ tag std_v2_inform
+ type inform
+!
+snmp notify std_v2_trap
+ tag std_v2_trap
+!
+snmp notify std_v3_inform
+ tag std_v3_inform
+ type inform
+!
+snmp notify std_v3_trap
+ tag std_v3_trap
+!
+snmp vacm group TOMICH
+ member TOMICH
+  sec-model [ v2c ]
+ !
+ access "" v2c no-auth-no-priv
+  read-view root
+  write-view root
+ !
+!
+snmp vacm view root
+ subtree 1.3
+  included
+ !
+!
+interface gigabit-ethernet 1/1/1
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 100M
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix auto
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/1
+ no shutdown
+ no negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface ten-gigabit-ethernet 1/1/2
+ no shutdown
+ negotiation
+ duplex full
+ speed 10G
+ advertising-abilities 10Mfull 100Mfull 1Gfull
+ mdix normal
+ mtu 12266
+!
+interface l3 GERENCIA
+ lower-layer-if vlan 1121
+ ipv4 address 172.18.17.90/30
+!
+interface mgmt 1/1/1
+ ipv4 address 192.168.0.25/24
+!
+interface gpon 1/1/1
+ no shutdown
+ onu 0
+  name bcwfrankk
+  serial-number D01146AAC2BC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 1
+  name p3antoniosobrinho
+  serial-number HWTCA2F810AA
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 2
+  name bcwfrankk
+  serial-number D01146AB0562
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 3
+  name bcwfrankk
+  serial-number ITBS44917209
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 4
+  name p3edenilson
+  serial-number ITBS5B7160D2
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 5
+  name bcwfrankk
+  serial-number ITBS0AA03C61
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 6
+  name p3geraldofrei
+  serial-number ITBS5B724377
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 7
+  name bcwfrankk
+  serial-number ITBS5FEA1435
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 8
+  name bcwfrankk
+  serial-number ITBSAC401F4E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 9
+  name bcwfrankk
+  serial-number ITBS5F792F69
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 10
+  name bcwfrankk
+  serial-number ITBSAC4D0A2C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 11
+  name bcwfrankk
+  serial-number ITBS5F792F67
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 12
+  name p3ismaellima
+  serial-number ITBS0A15CBD0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 13
+  name bcwfrankk
+  serial-number ITBS2C9696BF
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 14
+  name p3mariafernanda
+  serial-number HWTC9F524EAE
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 15
+  name bcwfrankk
+  serial-number ITBS5B2C8FF5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 16
+  name bcwfrankk
+  serial-number ITBS44917D6D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 17
+  name bcwfrankk
+  serial-number ITBS8CA5FF90
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 18
+  name bcwfrankk
+  serial-number ITBS5F792F63
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 19
+  name p3mariafernanda
+  serial-number ITBS5B5E16D1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 20
+  name pmroneycaixeta
+  serial-number ITBS0A4FB634
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 21
+  name bcwfrankk
+  serial-number ITBSAC79786A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 22
+  name bcwfrankk
+  serial-number ITBS2C060EF0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 23
+  name bcwfrankk
+  serial-number ITBS445F25FC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 24
+  name bcwfrankk
+  serial-number ITBS44917273
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 26
+  name p3gabriela
+  serial-number ITBS0AD37169
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 27
+  name bcwfrankk
+  serial-number ITBS0AD37179
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 28
+  name p3hiury2
+  serial-number TPLGCE86A7E0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 29
+  name bcwfrankk
+  serial-number ITBS5B37A971
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 30
+  name bcwfrankk
+  serial-number ITBSF133876F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 31
+  name bcwfrankk
+  serial-number DD72468544CC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 32
+  name bcwfrankk
+  serial-number ITBSAC752042
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 33
+  name bcwfrankk
+  serial-number ITBSAC4D0A22
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 34
+  name p3abadianaimeg
+  serial-number TPLG00E72E50
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 35
+  name bcwfrankk
+  serial-number ITBS0A982384
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 36
+  name p3raimundab
+  serial-number ITBS5F792FA9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 37
+  name bcwfrankk
+  serial-number ITBS8C77FBA7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 38
+  name bcwfrankk
+  serial-number ITBS5FDFBBBD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 39
+  name bcwfrankk
+  serial-number ITBS44917CF3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 40
+  name bcwfrankk
+  serial-number ITBS2C060FAA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 41
+  name bcwfrankk
+  serial-number ITBS5F8347A3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 42
+  name bcwfrankk
+  serial-number ITBS449171D5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 43
+  name bcwfrankk
+  serial-number ITBS0A9823A4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 44
+  name bcwfrankk
+  serial-number ITBS8CA5FF94
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 45
+  name bcwfrankk
+  serial-number ITBS5FEA142D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 46
+  name bcwfrankk
+  serial-number ITBS0AC257AE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 47
+  name bcwfrankk
+  serial-number ITBS5FA7C358
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 48
+  name bcwfrankk
+  serial-number ITBS0A15CBC0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 49
+  name bcwfrankk
+  serial-number ITBS0AD3717D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 50
+  name bcwfrankk
+  serial-number ITBS0AA02C23
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 51
+  name p3fernandoro
+  serial-number TPLG1DEE9108
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 52
+  name bcwfrankk
+  serial-number ITBS3F8B9631
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 53
+  name bcwfrankk
+  serial-number ITBS5B2E4FBC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 54
+  name bcwfrankk
+  serial-number ITBS5F792FAD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 55
+  name bcwfrankk
+  serial-number ITBSF133884D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 56
+  name pmroney
+  serial-number TPLG51B73AE8
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 57
+  name p3fernandoro
+  serial-number ITBS5B2E5022
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 58
+  name p3stellam
+  serial-number HWTC05788393
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 59
+  name p3fabianamaria
+  serial-number HWTCE5A222B3
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 60
+  name p3joaopaul
+  serial-number HWTC79A81FAF
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/2
+ no shutdown
+ onu 0
+  name bcwfrankk
+  serial-number D01146AB0420
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 1
+  name pmroney
+  serial-number D01146AB00E8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 2
+  name bcwfrankk
+  serial-number ITBS0A813090
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 3
+  name bcwfrankk
+  serial-number ITBS44917C0F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 4
+  name bcwfrankk
+  serial-number ITBS2C060EFE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 5
+  name bcwfrankk
+  serial-number ITBS5B5E16CC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 6
+  name bcwfrankk
+  serial-number ITBS2C0612BE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 7
+  name bcwfrankk
+  serial-number ITBSAC752044
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 8
+  name bcwfrankk
+  serial-number ITBS449171FF
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 9
+  name bcwfrankk
+  serial-number ITBSF1338787
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 10
+  name bcwfrankk
+  serial-number ITBS0AC2564C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 11
+  name bcwfrankk
+  serial-number ITBS5B37A96B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 12
+  name p3rildo
+  serial-number ITBS5B5E16DD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 13
+  name bcwfrankk
+  serial-number ITBSF16E0DEC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 14
+  name bcwfrankk
+  serial-number ITBS8C7EBCAB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 15
+  name bcwfrankk
+  serial-number ITBS2C16639C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 16
+  name bcwfrankk
+  serial-number ITBSAC46BEE3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 17
+  name bcwfrankk
+  serial-number ITBS8C77F9DB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 18
+  name bcwfrankk
+  serial-number ITBS0AD2A60D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 19
+  name bcwfrankk
+  serial-number ITBS0AC256CC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 20
+  name p3tamiles
+  serial-number ITBSF19396F7
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 21
+  name bcwfrankk
+  serial-number ITBSF178500D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 22
+  name bcwfrankk
+  serial-number ITBS8C77F73F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 23
+  name bcwfrankk
+  serial-number ITBS8C7EDDDD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 24
+  name bcwfrankk
+  serial-number ITBSF1338783
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 25
+  name bcwfrankk
+  serial-number ITBS0AC99146
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 26
+  name bcwfrankk
+  serial-number ITBSF133877D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 27
+  name bcwfrankk
+  serial-number ITBS0AC256C8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 28
+  name bcwfrankk
+  serial-number ITBSAC46BE65
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 29
+  name bcwfrankk
+  serial-number ITBS2C10581C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 30
+  name bcwfrankk
+  serial-number ITBS0AC98C3C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 31
+  name bcwfrankk
+  serial-number ITBS0AC9916C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 32
+  name bcwfrankk
+  serial-number ITBS2C98D6D9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 33
+  name bcwfrankk
+  serial-number ITBS0AC98C42
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 34
+  name bcwfrankk
+  serial-number ITBS5FDFBA13
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 35
+  name bcwfrankk
+  serial-number ITBS4491248E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 36
+  name bcwfrankk
+  serial-number ITBS2CBE2638
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 37
+  name bcwfrankk
+  serial-number ITBS44917249
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 38
+  name bcwfrankk
+  serial-number ITBS44917057
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 39
+  name bcwfrankk
+  serial-number ITBS5F792FA3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 40
+  name bcwfrankk
+  serial-number ITBS0A9553FD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 41
+  name bcwfrankk
+  serial-number ITBS44917095
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 42
+  name bcwfrankk
+  serial-number ITBS448EF693
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 43
+  name bcwfrankk
+  serial-number ITBSAC9AC5D5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 44
+  name bcwfrankk
+  serial-number ITBS5F8347A1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 45
+  name bcwfrankk
+  serial-number ITBS44917BB1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 46
+  name bcwfrankk
+  serial-number ITBSAC75201A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 47
+  name bcwfrankk
+  serial-number ITBS5F834787
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 48
+  name bcwfrankk
+  serial-number ITBS5B27C20A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 49
+  name bcwfrankk
+  serial-number ITBS8C77F5F9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 50
+  name bcwfrankk
+  serial-number ITBS5F834791
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 51
+  name bcwfrankk
+  serial-number ITBSF175ACF9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 52
+  name bcwfrankk
+  serial-number ITBS5FDFBC69
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 53
+  name bcwfrankk
+  serial-number ITBS5B5E16CB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 54
+  name p3carlosmanu
+  serial-number TPLGE305E568
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 55
+  name p3chrystine
+  serial-number ITBS5B5E16C4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 56
+  name bcwfrankk
+  serial-number ITBS2C57398E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 57
+  name bcwfrankk
+  serial-number ITBS44917CE5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 58
+  name bcwfrankk
+  serial-number ITBS0AD2A5D7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 59
+  name bcwfrankk
+  serial-number ITBSACE36397
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 60
+  name bcwfrankk
+  serial-number ITBS8C7EBD0F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 61
+  name jessicasilva
+  serial-number ITBS4434ABD8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 62
+  name bcwfrankk
+  serial-number D01146AB03C0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 63
+  name bcwfrankk
+  serial-number ITBS44917BAD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 64
+  name p3maria
+  serial-number HWTC7E43D6AD
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 65
+  name pflavia
+  serial-number ITBS5B72437A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 66
+  name p3postodesaude
+  serial-number ITBS5B7243B8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 67
+  name p3edivaldooli
+  serial-number ITBS0A982788
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 68
+  name p3jozileide
+  serial-number ITBS0AC25778
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 69
+  name p3rodrigoborges
+  serial-number HWTC6FB00DA6
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 70
+  name p3eduardosa
+  serial-number TPLG8B98B8F8
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/3
+ no shutdown
+ onu 0
+  name bcwfrankk
+  serial-number ITBSCFC0AFE3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 1
+  name bcwfrankk
+  serial-number D01146AB0308
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 2
+  name bcwfrankk
+  serial-number ITBS445F25E0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 3
+  name p3anderson
+  serial-number D01146AB007A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 4
+  name bcwfrankk
+  serial-number ITBS0AD37177
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 5
+  name bcwfrankk
+  serial-number D01146AB0400
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 6
+  name bcwfrankk
+  serial-number ITBSF1DF540D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 7
+  name bcwfrankk
+  serial-number ITBSAC46C6BA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 8
+  name bcwfrankk
+  serial-number ITBSE8967D6C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 9
+  name bcwfrankk
+  serial-number ITBS0A954403
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 10
+  name bcwfrankk
+  serial-number ITBS44C5446C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 11
+  name p3jefersoncosta
+  serial-number ITBSAC4D0A08
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 12
+  name bcwfrankk
+  serial-number ITBS0AC99166
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 13
+  name bcwfrankk
+  serial-number ITBS44917263
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 14
+  name bcwfrankk
+  serial-number ITBS5B37A818
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 15
+  name bcwfrankk
+  serial-number ITBS5F9F9699
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 16
+  name bcwfrankk
+  serial-number ITBSAC46BEDA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 17
+  name bcwfrankk
+  serial-number ITBS0A98237E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 18
+  name p3atailma
+  serial-number ZTEGD64E1823
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 19
+  name bcwfrankk
+  serial-number ITBSAC79786E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 20
+  name bcwfrankk
+  serial-number ITBS44917CED
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 21
+  name bcwfrankk
+  serial-number ITBS0A4FB606
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 22
+  name bcwfrankk
+  serial-number ITBSF10ECEA6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 23
+  name bcwfrankk
+  serial-number ITBS5FDFBCF9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 24
+  name bcwfrankk
+  serial-number ITBS445F25EC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 25
+  name bcwfrankk
+  serial-number ITBS5B27C272
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 26
+  name bcwfrankk
+  serial-number D01146AB00E4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 27
+  name p3joaoalves
+  serial-number ITBSF1948C06
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 28
+  name bcwfrankk
+  serial-number ITBSAC46BEAD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 29
+  name bcwfrankk
+  serial-number ITBS5B27C27B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 30
+  name bcwfrankk
+  serial-number ITBS5B37B052
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 31
+  name bcwfrankk
+  serial-number ITBS0AC256A8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 32
+  name bcwfrankk
+  serial-number ITBS449171C7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 33
+  name bcwfrankk
+  serial-number ITBS5FDFBB55
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 34
+  name p3danielsilva
+  serial-number ITBSCFEC0FD3
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 35
+  name bcwfrankk
+  serial-number ITBS5B2E4FEE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 36
+  name p3pauloqueiroz
+  serial-number HWTC83568FAA
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 37
+  name p3odair
+  serial-number ITBS5FDFBA4B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 38
+  name bcwfrankk
+  serial-number ITBSF175ACF5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 39
+  name bcwfrankk
+  serial-number ITBS4434AC22
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 40
+  name bcwfrankk
+  serial-number ITBS0AA02BFF
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 41
+  name bcwfrankk
+  serial-number ITBSACE36788
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 42
+  name bcwfrankk
+  serial-number ITBSF178507B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 43
+  name bcwfrankk
+  serial-number ITBSAC4D0A3C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 44
+  name bcwfrankk
+  serial-number ITBSAC755F6C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 45
+  name p3lucianam
+  serial-number ITBS0AC98C32
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 46
+  name p3simone
+  serial-number HWTC65F3DFB3
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 47
+  name p3adilma
+  serial-number ITBS5B5E17A0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 48
+  name p3andreoli
+  serial-number ITBS5B5E1776
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 49
+  name p3cintia
+  serial-number ITBS5B49D073
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 50
+  name p3alexsandrapessoa
+  serial-number ITBSAC752048
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 51
+  name p3carlosjesus
+  serial-number ITBS5FEA1417
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 52
+  name p3tauana
+  serial-number ITBS0A807E1D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 53
+  name p3fabiana
+  serial-number ITBS5B49D0BF
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 54
+  name p3joseseb
+  serial-number HWTCF99264A5
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 55
+  name p3valentim
+  serial-number ITBS5B5E15F3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 56
+  name p3vinicio
+  serial-number ITBS5B5E16B5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 57
+  name p3riquelme
+  serial-number HWTCA2F7ECAA
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 58
+  name p3anderson
+  serial-number HWTC4BD241A4
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 59
+  name p3lucienelo
+  serial-number HWTC20435092
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 60
+  name p3alessandraalves
+  serial-number ITBS5B37A968
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 61
+  name p3neicianes
+  serial-number ITBS5B7243A5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 62
+  name p3josi
+  serial-number HWTC780A2BB1
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 63
+  name p3thiagocar
+  serial-number HWTCDF3EEAB0
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 64
+  name p3gabrielan
+  serial-number HWTC0A3B27AD
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 65
+  name p3renilsonpe
+  serial-number TPLGD0059A48
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 66
+  name p3vitorvi
+  serial-number HWTCBDD84B9F
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 67
+  name p3maristelape
+  serial-number ITBS0A5B97DE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+!
+interface gpon 1/1/4
+ no shutdown
+ onu 0
+  name bcwfrankk
+  serial-number ITBS2CBC30A9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 1
+  name bcwfrankk
+  serial-number ITBSF1DF542B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 2
+  name bcwfrankk
+  serial-number ITBS5FDFB91B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 3
+  name bcwfrankk
+  serial-number ITBS0AC256F6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 4
+  name p3marcio
+  serial-number ITBS5B7243A8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 5
+  name bcwfrankk
+  serial-number D01146AB008C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 6
+  name bcwfrankk
+  serial-number ITBS5F90AB0B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 7
+  name bcwfrankk
+  serial-number D01146AB0658
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 8
+  name bcwfrankk
+  serial-number ITBSF10ECEB4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 9
+  name bcwfrankk
+  serial-number ITBSF10ECEB6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 10
+  name bcwfrankk
+  serial-number ITBSF12B6A80
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 11
+  name bcwfrankk
+  serial-number ITBSF184D49A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 12
+  name p3juscelia
+  serial-number ITBS4408CC2B
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 13
+  name bcwfrankk
+  serial-number D01146AB0402
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 14
+  name bcwfrankk
+  serial-number ITBS445F2550
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 15
+  name bcwfrankk
+  serial-number ITBS2C06137C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 16
+  name bcwfrankk
+  serial-number ITBS4491726F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 17
+  name bcwfrankk
+  serial-number ITBS5FDFB7F9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 18
+  name bcwfrankk
+  serial-number ITBS0AD2A5ED
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 19
+  name bcwfrankk
+  serial-number ITBSF175ACFD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 20
+  name bcwfrankk
+  serial-number ITBS449171B7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 21
+  name bcwfrankk
+  serial-number XPON12345678
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 22
+  name bcwfrankk
+  serial-number ITBSAC46BEA4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 23
+  name bcwfrankk
+  serial-number D01146A175EE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 24
+  name bcwfrankk
+  serial-number ITBSF13241BD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 25
+  name bcwfrankk
+  serial-number ITBS445F25CE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 26
+  name bcwfrankk
+  serial-number ITBS0AD2A5FD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 27
+  name bcwfrankk
+  serial-number D01146AB0752
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 28
+  name bcwfrankk
+  serial-number ITBS44917CE9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 29
+  name bcwfrankk
+  serial-number ITBS5FEFDDDD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 30
+  name bcwfrankk
+  serial-number ITBS449171B1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 31
+  name bcwfrankk
+  serial-number ITBS0AC2571C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 32
+  name bcwfrankk
+  serial-number ITBS5FDFB929
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 33
+  name bcwfrankk
+  serial-number ITBSF16E0DFA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 34
+  name bcwfrankk
+  serial-number ITBSF10ECAEE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 35
+  name bcwfrankk
+  serial-number ITBS4491724B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 36
+  name bcwfrankk
+  serial-number ITBSF10ECAB4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 37
+  name bcwfrankk
+  serial-number ITBS0AC98C1A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 38
+  name bcwfrankk
+  serial-number ITBSAC797868
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 39
+  name bcwfrankk
+  serial-number ITBSF133878B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 40
+  name bcwfrankk
+  serial-number ITBS5F792F6D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 41
+  name bcwfrankk
+  serial-number ITBS5B2C8FA6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 42
+  name bcwfrankk
+  serial-number ITBS0AC98C28
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 43
+  name bcwfrankk
+  serial-number ITBSF133884B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 44
+  name bcwfrankk
+  serial-number ITBS0A9540DB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 45
+  name bcwfrankk
+  serial-number ITBS0AA02F31
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 46
+  name bcwfrankk
+  serial-number ITBS44917CDF
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 47
+  name p3tatiana
+  serial-number ITBSF1338857
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 48
+  name p3fernandorosa
+  serial-number ITBS0A7E6680
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 49
+  name p3renisson
+  serial-number ITBS44917BB9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 50
+  name p3eduardomartins
+  serial-number ITBS0AD37153
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 51
+  name p3raine
+  serial-number ITBS449171C1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 52
+  name p3paulovieira
+  serial-number ITBS449171E5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 53
+  name p3vinicio
+  serial-number ITBS0AC256BA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 54
+  name p3hudson
+  serial-number HWTC4C1E46A4
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 55
+  name p3ricardobraga
+  serial-number HWTC2302F8A0
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 56
+  name p3manoelina
+  serial-number HWTC4C24D0A4
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+!
+interface gpon 1/1/5
+ no shutdown
+ onu 0
+  name bcwfrankk
+  serial-number D01146AB08FC
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 1
+  name bcwfrankk
+  serial-number D01146AAC2BE
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 2
+  name bcwfrankk
+  serial-number ITBSF133878F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 3
+  name bcwfrankk
+  serial-number D01146AAC2E2
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 4
+  name bcwfrankk
+  serial-number ITBSAC4D0A1C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 5
+  name bcwfrankk
+  serial-number ITBS0AC99172
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 6
+  name bcwfrankk
+  serial-number ITBSF10ECE7E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 7
+  name bcwfrankk
+  serial-number ITBSF16E0E16
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 8
+  name bcwfrankk
+  serial-number ITBS44917CF1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 9
+  name bcwfrankk
+  serial-number ITBS43020000
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 10
+  name bcwfrankk
+  serial-number ITBSAC9AC71C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 11
+  name bcwfrankk
+  serial-number ITBS0AC257AA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 12
+  name bcwfrankk
+  serial-number ITBS44661A01
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 13
+  name bcwfrankk
+  serial-number ITBSAC9AC714
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 14
+  name bcwfrankk
+  serial-number ITBS8C7EB60B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 15
+  name p3eduardomartins
+  serial-number ITBS44661A0B
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 16
+  name bcwfrankk
+  serial-number ITBS2C055674
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 17
+  name bcwfrankk
+  serial-number ITBS0AFFB1E9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 18
+  name bcwfrankk
+  serial-number ITBSAC9AC71A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 19
+  name p3angelaamaral
+  serial-number ITBS0AFA7493
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 20
+  name bcwfrankk
+  serial-number ITBSAC797864
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 21
+  name bcwfrankk
+  serial-number ITBS5F792FA7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 22
+  name bcwfrankk
+  serial-number ITBS5B5E1799
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 23
+  name bcwfrankk
+  serial-number ITBS0A15CBE0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 24
+  name bcwfrankk
+  serial-number ITBS5FDFBC4D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 25
+  name bcwfrankk
+  serial-number ITBS5F792F61
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 26
+  name bcwfrankk
+  serial-number ITBSAC9AC71E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 27
+  name p3fantini
+  serial-number ITBS0AD3715F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 28
+  name p3marcionei
+  serial-number ITBS446619E7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 29
+  name bcwfrankk
+  serial-number ITBS0A807EC1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 30
+  name bcwfrankk
+  serial-number ITBS8C77FB95
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 31
+  name bcwfrankk
+  serial-number ITBS44917C07
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 32
+  name bcwfrankk
+  serial-number ITBS5FDFBA57
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 33
+  name bcwfrankk
+  serial-number ITBSAC752034
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 34
+  name bcwfrankk
+  serial-number ITBS44917D6B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 35
+  name p3mariaborges
+  serial-number ITBS5B49D0C0
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 36
+  name bcwfrankk
+  serial-number ITBSF12B69D5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 37
+  name bcwfrankk
+  serial-number ITBSF16E0E1A
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 38
+  name bcwfrankk
+  serial-number ITBS0A982782
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 39
+  name bcwfrankk
+  serial-number ITBS5F8347BB
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 40
+  name bcwfrankk
+  serial-number ITBS0A9B7E7B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 41
+  name bcwfrankk
+  serial-number ITBSF16E0DF4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 42
+  name bcwfrankk
+  serial-number ITBS0AC99164
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 43
+  name bcwfrankk
+  serial-number ITBS0AA02F43
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 44
+  name p3antoniofe
+  serial-number ITBS5B37B059
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 45
+  name p3taisa
+  serial-number ITBS0AF77B38
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 46
+  name p3bianca
+  serial-number ITBS445F25D2
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 47
+  name p3denisesilva
+  serial-number ITBS11111111
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 48
+  name p3andersonlu
+  serial-number ITBS0AC9914C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 49
+  name p3edileide
+  serial-number ITBSACE36730
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 50
+  name p3janete
+  serial-number ITBSACE36732
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 51
+  name p3pauloqueiro
+  serial-number ITBS0AD2A5E1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 52
+  name p3alexsil
+  serial-number ITBS0AD37173
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 53
+  name p3josepereira
+  serial-number ITBS5B49D0C4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 54
+  name p3wellingtonmarques
+  serial-number TPLGA1CCC6B0
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 55
+  name p3ailton
+  serial-number HWTCF318A8AF
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 56
+  name p3gil
+  serial-number ITBS5B49D0C5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 57
+  name p3tiagobarbosa
+  serial-number ITBS44917CE3
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+!
+interface gpon 1/1/6
+ no shutdown
+ onu 0
+  name bcwfrankk
+  serial-number D01146AB0258
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 1
+  name p3alexsantos
+  serial-number ITBS5B5E162E
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 2
+  name bcwfrankk
+  serial-number ITBS0AFFB1E5
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 3
+  name bcwfrankk
+  serial-number D01146A1A068
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 4
+  name bcwfrankk
+  serial-number ITBS5FA7C094
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 5
+  name bcwfrankk
+  serial-number ITBS44917CE7
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 6
+  name bcwfrankk
+  serial-number ITBSAC466790
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 7
+  name bcwfrankk
+  serial-number ITBS4491710B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 8
+  name bcwfrankk
+  serial-number ITBS2CB51964
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 9
+  name bcwfrankk
+  serial-number ITBS5B2E5033
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 10
+  name bcwfrankk
+  serial-number ITBSF10ECE96
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 11
+  name bcwfrankk
+  serial-number ITBS4434AC02
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 12
+  name bcwfrankk
+  serial-number ITBS44917CDD
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 13
+  name bcwfrankk
+  serial-number ITBSACE36781
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 14
+  name bcwfrankk
+  serial-number ITBS5FA7C360
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 15
+  name p3josefaborges
+  serial-number ITBS5FF209C8
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 16
+  name bcwfrankk
+  serial-number ITBSAC752043
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 17
+  name bcwfrankk
+  serial-number ITBS0A4FB624
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 18
+  name bcwfrankk
+  serial-number ITBS5B2C8FFA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 19
+  name bcwfrankk
+  serial-number ITBSF1785055
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 20
+  name bcwfrankk
+  serial-number ITBS44681EB9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 21
+  name bcwfrankk
+  serial-number ITBS0A4FB5F6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 22
+  name p3josela
+  serial-number ITBS5B7243A6
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 23
+  name bcwfrankk
+  serial-number ITBS5FDFBB7D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 24
+  name bcwfrankk
+  serial-number ITBS44917207
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 25
+  name p3gerlandes
+  serial-number ITBS446619F1
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 26
+  name bcwfrankk
+  serial-number ITBSF10ECEB8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 27
+  name bcwfrankk
+  serial-number ITBSF16E0DC6
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 28
+  name bcwfrankk
+  serial-number ITBSACE36B94
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 29
+  name bcwfrankk
+  serial-number ITBS449171D9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 30
+  name p3joseluccas
+  serial-number TPLG2D05D6F0
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 31
+  name p3jessicavieira
+  serial-number ITBS44862B16
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 32
+  name bcwfrankk
+  serial-number ITBS0A9B7E5D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 33
+  name bcwfrankk
+  serial-number ITBS4491727D
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 34
+  name bcwfrankk
+  serial-number ITBS0AC256C4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 35
+  name bcwfrankk
+  serial-number ITBS8C7EBC7B
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 36
+  name bcwfrankk
+  serial-number ITBS445F25DA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 37
+  name p3josiclei
+  serial-number ITBS447AC021
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 38
+  name bcwfrankk
+  serial-number ITBSAC752031
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 39
+  name bcwfrankk
+  serial-number ITBS0A3CCFE1
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 40
+  name bcwfrankk
+  serial-number ITBSF1948BC8
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 41
+  name p3luisponte
+  serial-number HWTCB3F9FFAE
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 42
+  name p3gilsosantos
+  serial-number ITBS5B5E17AA
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 43
+  name p3elenice
+  serial-number TPLG483B9C58
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 44
+  name p3antoniosou
+  serial-number ITBSACE3678F
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 45
+  name p3hernane
+  serial-number ITBS5B37A823
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 46
+  name p3josela
+  serial-number ITBS5B7243A9
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 47
+  name p3paulomorei
+  serial-number ITBS5B7243AF
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 48
+  name p3edvania
+  serial-number ITBS5B72431C
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 49
+  name p3mariaap
+  serial-number HWTCE182F1A4
+  line-profile LINE_ONU_ROUTER
+  veip 1
+  !
+ !
+ onu 50
+  name p3reinaldo
+  serial-number ITBS3F8AEA14
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+ onu 51
+  name p3josesouza
+  serial-number ITBS5B7160D4
+  line-profile ONU_BRIDGE
+  ethernet 1
+   negotiation
+   no shutdown
+   native vlan vlan-id 1120
+  !
+ !
+!
+interface gpon 1/1/7
+ shutdown
+!
+interface gpon 1/1/8
+ shutdown
+!
+clock timezone GMT -3
+hostname OLT_PANTANO
+telnet-server disabled
+profile gpon bandwidth-profile PPPoE
+ traffic type-4 max-bw 1106944
+!
+profile gpon bandwidth-profile VOIP
+ traffic type-1 fixed-bw 512
+!
+profile gpon line-profile LINE_ONU_ROUTER
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   veip 1 vlan 1120 cos any
+  !
+ !
+!
+profile gpon line-profile ONU_BRIDGE
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ gem 1
+  tcont 1 priority 0
+  map PPPoE
+   ethernet 1 vlan 1120 cos any
+  !
+ !
+!
+profile gpon line-profile ROUTER_VOIP
+ upstream-fec
+ tcont 1 bandwidth-profile PPPoE
+ tcont 2 bandwidth-profile VOIP
+ gem 1
+  tcont 1 priority 0
+  map Dados
+   veip 1 vlan 1120 cos any
+  !
+ !
+ gem 2
+  tcont 2 priority 0
+  map VOIP
+   veip 1 vlan 1122 cos any
+  !
+ !
+!
+profile gpon onu-profile ONU_BRIDGE
+ ethernet adaptive
+!
+profile gpon service-profile ONU_BRIDGE
+ onu-profile ONU_BRIDGE
+!
+service vlan 1120
+ type n:1
+!
+service vlan 1122
+ type tls
+!
+dhcp l2-relay circuit-id format <hostname> eth <oltSlot>/<panelPort>/<onuId>/<onuSlot>/<gemPort>:<svlan>
+gpon 1/1
+ onu-auth-method serial-number
+ aes-key-exchange 3600
+!
+loopback-detection
+ destination-address alternative
+!
+mac-address-table
+ aging-time 600
+!
+service-port 81729
+ gpon 1/1/2 onu 58 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 87812
+ gpon 1/1/6 onu 15 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 122120
+ gpon 1/1/1 onu 14 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 130321
+ gpon 1/1/6 onu 34 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 149717
+ gpon 1/1/6 onu 50 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 189752
+ gpon 1/1/1 onu 15 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 259213
+ gpon 1/1/3 onu 38 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 310261
+ gpon 1/1/6 onu 32 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 333227
+ gpon 1/1/6 onu 36 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 393209
+ gpon 1/1/2 onu 10 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 400346
+ gpon 1/1/6 onu 27 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 401236
+ gpon 1/1/1 onu 36 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 415147
+ gpon 1/1/4 onu 54 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 460347
+ gpon 1/1/2 onu 38 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 583865
+ gpon 1/1/5 onu 57 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 586465
+ gpon 1/1/6 onu 39 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 672039
+ gpon 1/1/1 onu 34 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 708046
+ gpon 1/1/4 onu 47 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 744626
+ gpon 1/1/3 onu 27 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 842998
+ gpon 1/1/5 onu 16 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 958862
+ gpon 1/1/4 onu 17 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 986170
+ gpon 1/1/5 onu 28 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 990414
+ gpon 1/1/6 onu 23 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 994782
+ gpon 1/1/4 onu 7 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1059703
+ gpon 1/1/1 onu 60 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1072306
+ gpon 1/1/3 onu 52 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1233059
+ gpon 1/1/1 onu 52 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1282449
+ gpon 1/1/3 onu 7 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1302521
+ gpon 1/1/1 onu 47 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1413274
+ gpon 1/1/1 onu 40 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1451941
+ gpon 1/1/1 onu 33 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1464854
+ gpon 1/1/6 onu 37 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1472307
+ gpon 1/1/3 onu 15 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1493529
+ gpon 1/1/4 onu 41 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1502847
+ gpon 1/1/2 onu 13 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1512656
+ gpon 1/1/4 onu 33 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1613135
+ gpon 1/1/1 onu 58 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1666332
+ gpon 1/1/6 onu 25 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1827794
+ gpon 1/1/1 onu 51 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1844983
+ gpon 1/1/4 onu 13 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1873551
+ gpon 1/1/6 onu 41 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1958771
+ gpon 1/1/1 onu 43 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 1962186
+ gpon 1/1/3 onu 19 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2007189
+ gpon 1/1/3 onu 10 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2156019
+ gpon 1/1/2 onu 44 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2244490
+ gpon 1/1/4 onu 28 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2272701
+ gpon 1/1/6 onu 4 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2378770
+ gpon 1/1/4 onu 31 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2412555
+ gpon 1/1/4 onu 40 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2426269
+ gpon 1/1/3 onu 8 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2567462
+ gpon 1/1/3 onu 34 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2652772
+ gpon 1/1/6 onu 9 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2655404
+ gpon 1/1/1 onu 24 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2658283
+ gpon 1/1/4 onu 25 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2763017
+ gpon 1/1/6 onu 12 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2857535
+ gpon 1/1/1 onu 7 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2886965
+ gpon 1/1/3 onu 33 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 2978928
+ gpon 1/1/4 onu 42 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3031189
+ gpon 1/1/2 onu 65 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3083774
+ gpon 1/1/6 onu 24 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3090592
+ gpon 1/1/5 onu 12 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3115696
+ gpon 1/1/5 onu 10 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3170873
+ gpon 1/1/5 onu 1 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3215523
+ gpon 1/1/2 onu 50 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3261832
+ gpon 1/1/3 onu 14 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3300835
+ gpon 1/1/3 onu 57 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3337399
+ gpon 1/1/3 onu 43 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3413624
+ gpon 1/1/5 onu 19 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3442707
+ gpon 1/1/3 onu 6 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3552923
+ gpon 1/1/4 onu 56 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3572398
+ gpon 1/1/3 onu 26 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3587585
+ gpon 1/1/6 onu 20 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3599285
+ gpon 1/1/4 onu 18 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3617604
+ gpon 1/1/5 onu 17 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3619227
+ gpon 1/1/5 onu 43 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3636117
+ gpon 1/1/2 onu 0 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3727275
+ gpon 1/1/5 onu 29 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3773597
+ gpon 1/1/2 onu 17 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3783892
+ gpon 1/1/2 onu 29 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 3902872
+ gpon 1/1/5 onu 53 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4029920
+ gpon 1/1/3 onu 35 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4072679
+ gpon 1/1/4 onu 53 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4121177
+ gpon 1/1/2 onu 23 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4158368
+ gpon 1/1/1 onu 39 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4164674
+ gpon 1/1/5 onu 8 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4270169
+ gpon 1/1/3 onu 30 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4295040
+ gpon 1/1/6 onu 48 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4295501
+ gpon 1/1/5 onu 22 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4344534
+ gpon 1/1/4 onu 38 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4347254
+ gpon 1/1/2 onu 67 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4409402
+ gpon 1/1/6 onu 1 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4448375
+ gpon 1/1/4 onu 0 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4584700
+ gpon 1/1/6 onu 43 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4610484
+ gpon 1/1/3 onu 48 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4633365
+ gpon 1/1/3 onu 64 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4695103
+ gpon 1/1/5 onu 46 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4721078
+ gpon 1/1/4 onu 24 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4734849
+ gpon 1/1/2 onu 22 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4794244
+ gpon 1/1/4 onu 21 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4794422
+ gpon 1/1/6 onu 40 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4798878
+ gpon 1/1/6 onu 29 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4812429
+ gpon 1/1/3 onu 54 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 4992398
+ gpon 1/1/2 onu 37 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5091576
+ gpon 1/1/2 onu 1 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5097727
+ gpon 1/1/1 onu 37 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5255290
+ gpon 1/1/2 onu 61 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5257796
+ gpon 1/1/1 onu 41 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5300083
+ gpon 1/1/2 onu 15 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5317296
+ gpon 1/1/2 onu 63 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5323015
+ gpon 1/1/6 onu 14 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5324776
+ gpon 1/1/2 onu 40 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5358949
+ gpon 1/1/4 onu 14 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5391051
+ gpon 1/1/1 onu 35 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5400571
+ gpon 1/1/1 onu 27 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5482370
+ gpon 1/1/3 onu 49 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5488020
+ gpon 1/1/1 onu 11 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5602995
+ gpon 1/1/2 onu 41 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5638222
+ gpon 1/1/4 onu 20 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5697773
+ gpon 1/1/4 onu 45 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5757013
+ gpon 1/1/4 onu 34 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5849462
+ gpon 1/1/4 onu 49 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5868075
+ gpon 1/1/1 onu 32 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 5964387
+ gpon 1/1/4 onu 30 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6097999
+ gpon 1/1/1 onu 57 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6104008
+ gpon 1/1/2 onu 48 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6145686
+ gpon 1/1/6 onu 11 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6177284
+ gpon 1/1/4 onu 35 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6270916
+ gpon 1/1/4 onu 55 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6304501
+ gpon 1/1/4 onu 23 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6313711
+ gpon 1/1/1 onu 54 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6385215
+ gpon 1/1/3 onu 0 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6467226
+ gpon 1/1/2 onu 28 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6471140
+ gpon 1/1/6 onu 19 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6492827
+ gpon 1/1/2 onu 64 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6520611
+ gpon 1/1/6 onu 2 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6532567
+ gpon 1/1/4 onu 4 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6590156
+ gpon 1/1/3 onu 20 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6625146
+ gpon 1/1/2 onu 14 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6625676
+ gpon 1/1/3 onu 51 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6638543
+ gpon 1/1/2 onu 33 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6642182
+ gpon 1/1/2 onu 39 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6730015
+ gpon 1/1/3 onu 18 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6773361
+ gpon 1/1/2 onu 66 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6873569
+ gpon 1/1/5 onu 42 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6903603
+ gpon 1/1/6 onu 8 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6944138
+ gpon 1/1/3 onu 4 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 6981036
+ gpon 1/1/1 onu 45 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7119550
+ gpon 1/1/2 onu 24 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7144224
+ gpon 1/1/3 onu 23 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7280401
+ gpon 1/1/3 onu 58 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7295241
+ gpon 1/1/3 onu 39 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7309970
+ gpon 1/1/5 onu 25 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7342644
+ gpon 1/1/2 onu 12 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7362699
+ gpon 1/1/1 onu 55 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7367713
+ gpon 1/1/3 onu 5 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7373379
+ gpon 1/1/2 onu 35 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7373410
+ gpon 1/1/2 onu 47 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7401318
+ gpon 1/1/3 onu 41 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7506541
+ gpon 1/1/1 onu 10 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7512364
+ gpon 1/1/5 onu 33 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7534245
+ gpon 1/1/1 onu 49 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7565795
+ gpon 1/1/2 onu 18 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7570155
+ gpon 1/1/6 onu 22 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7619093
+ gpon 1/1/1 onu 12 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7695339
+ gpon 1/1/2 onu 56 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7700810
+ gpon 1/1/4 onu 50 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7742817
+ gpon 1/1/1 onu 31 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7782182
+ gpon 1/1/5 onu 2 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7821733
+ gpon 1/1/2 onu 52 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7902125
+ gpon 1/1/2 onu 27 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7948048
+ gpon 1/1/2 onu 60 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7971554
+ gpon 1/1/2 onu 6 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7989693
+ gpon 1/1/1 onu 30 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7993570
+ gpon 1/1/6 onu 26 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 7993801
+ gpon 1/1/1 onu 9 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8030743
+ gpon 1/1/5 onu 47 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8083168
+ gpon 1/1/1 onu 1 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8141081
+ gpon 1/1/4 onu 11 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8161909
+ gpon 1/1/5 onu 37 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8179585
+ gpon 1/1/3 onu 40 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8270092
+ gpon 1/1/5 onu 51 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8284949
+ gpon 1/1/2 onu 53 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8286529
+ gpon 1/1/3 onu 29 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8336690
+ gpon 1/1/4 onu 52 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8396319
+ gpon 1/1/5 onu 27 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8468219
+ gpon 1/1/3 onu 59 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8672788
+ gpon 1/1/1 onu 56 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8742727
+ gpon 1/1/6 onu 3 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8815840
+ gpon 1/1/1 onu 23 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8954816
+ gpon 1/1/4 onu 37 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 8976470
+ gpon 1/1/6 onu 13 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9024545
+ gpon 1/1/5 onu 32 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9033432
+ gpon 1/1/6 onu 5 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9037296
+ gpon 1/1/4 onu 29 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9096106
+ gpon 1/1/2 onu 11 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9250351
+ gpon 1/1/1 onu 48 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9278004
+ gpon 1/1/1 onu 4 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9306920
+ gpon 1/1/3 onu 13 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9328060
+ gpon 1/1/2 onu 30 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9411350
+ gpon 1/1/5 onu 56 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9414365
+ gpon 1/1/5 onu 3 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9507644
+ gpon 1/1/4 onu 43 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9519793
+ gpon 1/1/3 onu 28 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9567445
+ gpon 1/1/6 onu 35 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9574226
+ gpon 1/1/3 onu 12 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9623516
+ gpon 1/1/2 onu 55 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9650215
+ gpon 1/1/2 onu 32 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9666151
+ gpon 1/1/1 onu 42 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9678230
+ gpon 1/1/5 onu 23 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9731276
+ gpon 1/1/4 onu 39 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9737251
+ gpon 1/1/4 onu 44 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9786013
+ gpon 1/1/6 onu 31 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9810255
+ gpon 1/1/1 onu 13 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9918796
+ gpon 1/1/4 onu 15 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 9964617
+ gpon 1/1/1 onu 38 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10016599
+ gpon 1/1/3 onu 63 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10061584
+ gpon 1/1/5 onu 49 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10146409
+ gpon 1/1/5 onu 14 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10244291
+ gpon 1/1/3 onu 65 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10297937
+ gpon 1/1/3 onu 50 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10314202
+ gpon 1/1/3 onu 60 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10373505
+ gpon 1/1/4 onu 10 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10398729
+ gpon 1/1/3 onu 17 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10449505
+ gpon 1/1/5 onu 40 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10461228
+ gpon 1/1/5 onu 36 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10523437
+ gpon 1/1/3 onu 24 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10526138
+ gpon 1/1/2 onu 51 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10543945
+ gpon 1/1/1 onu 18 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10577299
+ gpon 1/1/5 onu 30 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10615854
+ gpon 1/1/4 onu 22 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10639168
+ gpon 1/1/3 onu 25 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10640770
+ gpon 1/1/5 onu 50 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10657256
+ gpon 1/1/5 onu 31 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10692172
+ gpon 1/1/2 onu 62 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10712046
+ gpon 1/1/5 onu 41 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10749163
+ gpon 1/1/5 onu 34 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10759410
+ gpon 1/1/2 onu 69 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10768221
+ gpon 1/1/4 onu 6 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10872509
+ gpon 1/1/1 onu 20 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10889382
+ gpon 1/1/1 onu 50 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10893662
+ gpon 1/1/3 onu 67 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10894774
+ gpon 1/1/5 onu 18 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 10914658
+ gpon 1/1/2 onu 46 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11017039
+ gpon 1/1/6 onu 21 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11093078
+ gpon 1/1/6 onu 49 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11130099
+ gpon 1/1/4 onu 19 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11140142
+ gpon 1/1/2 onu 68 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11152653
+ gpon 1/1/1 onu 22 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11286564
+ gpon 1/1/2 onu 54 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11392199
+ gpon 1/1/2 onu 31 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11403796
+ gpon 1/1/6 onu 7 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11422429
+ gpon 1/1/4 onu 16 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11422542
+ gpon 1/1/2 onu 45 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11423252
+ gpon 1/1/6 onu 17 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11488144
+ gpon 1/1/3 onu 36 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11634782
+ gpon 1/1/5 onu 55 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11687901
+ gpon 1/1/4 onu 5 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11724813
+ gpon 1/1/1 onu 21 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11743440
+ gpon 1/1/5 onu 11 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11755894
+ gpon 1/1/4 onu 32 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11795957
+ gpon 1/1/6 onu 30 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11820234
+ gpon 1/1/5 onu 39 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11874289
+ gpon 1/1/4 onu 51 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11905315
+ gpon 1/1/6 onu 6 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 11973253
+ gpon 1/1/3 onu 2 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12181295
+ gpon 1/1/6 onu 44 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12303257
+ gpon 1/1/5 onu 5 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12309297
+ gpon 1/1/6 onu 38 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12314261
+ gpon 1/1/1 onu 59 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12330705
+ gpon 1/1/4 onu 1 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12394364
+ gpon 1/1/2 onu 49 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12409959
+ gpon 1/1/2 onu 20 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12433454
+ gpon 1/1/1 onu 5 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12440519
+ gpon 1/1/6 onu 42 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12442323
+ gpon 1/1/3 onu 22 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12470117
+ gpon 1/1/6 onu 16 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12662555
+ gpon 1/1/1 onu 8 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12706506
+ gpon 1/1/1 onu 0 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12721260
+ gpon 1/1/4 onu 26 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12745161
+ gpon 1/1/4 onu 8 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12757550
+ gpon 1/1/1 onu 44 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12761073
+ gpon 1/1/6 onu 28 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12763810
+ gpon 1/1/5 onu 48 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12791809
+ gpon 1/1/6 onu 51 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12812663
+ gpon 1/1/1 onu 29 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12855263
+ gpon 1/1/2 onu 5 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12890184
+ gpon 1/1/1 onu 53 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12898830
+ gpon 1/1/5 onu 54 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 12926720
+ gpon 1/1/5 onu 45 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13032754
+ gpon 1/1/3 onu 44 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13083379
+ gpon 1/1/3 onu 55 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13086825
+ gpon 1/1/5 onu 9 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13135827
+ gpon 1/1/3 onu 46 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13141029
+ gpon 1/1/5 onu 4 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13198112
+ gpon 1/1/3 onu 31 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13205425
+ gpon 1/1/6 onu 45 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13222157
+ gpon 1/1/3 onu 3 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13227972
+ gpon 1/1/2 onu 4 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13277116
+ gpon 1/1/2 onu 3 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13279479
+ gpon 1/1/2 onu 57 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13280972
+ gpon 1/1/2 onu 25 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13314284
+ gpon 1/1/1 onu 26 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13342549
+ gpon 1/1/2 onu 8 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13380584
+ gpon 1/1/3 onu 56 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13512913
+ gpon 1/1/1 onu 28 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13577690
+ gpon 1/1/1 onu 16 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13694291
+ gpon 1/1/2 onu 16 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13720731
+ gpon 1/1/3 onu 21 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13744489
+ gpon 1/1/2 onu 2 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13773007
+ gpon 1/1/5 onu 38 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13784964
+ gpon 1/1/2 onu 26 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13845269
+ gpon 1/1/3 onu 32 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13851121
+ gpon 1/1/2 onu 7 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13874066
+ gpon 1/1/4 onu 36 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 13989123
+ gpon 1/1/4 onu 27 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14003391
+ gpon 1/1/3 onu 11 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14113760
+ gpon 1/1/6 onu 47 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14194817
+ gpon 1/1/5 onu 6 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14337065
+ gpon 1/1/5 onu 21 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14353607
+ gpon 1/1/2 onu 19 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14355158
+ gpon 1/1/1 onu 17 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14372007
+ gpon 1/1/3 onu 47 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14412119
+ gpon 1/1/2 onu 70 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14424040
+ gpon 1/1/5 onu 24 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14429905
+ gpon 1/1/5 onu 44 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14479256
+ gpon 1/1/3 onu 42 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14523371
+ gpon 1/1/6 onu 0 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14561297
+ gpon 1/1/6 onu 46 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14618719
+ gpon 1/1/2 onu 34 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14636614
+ gpon 1/1/5 onu 35 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14681518
+ gpon 1/1/5 onu 13 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14705766
+ gpon 1/1/3 onu 37 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14787197
+ gpon 1/1/4 onu 9 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 14832663
+ gpon 1/1/6 onu 18 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15007922
+ gpon 1/1/2 onu 36 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15095387
+ gpon 1/1/1 onu 6 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15143510
+ gpon 1/1/3 onu 66 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15192506
+ gpon 1/1/1 onu 46 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15234840
+ gpon 1/1/2 onu 43 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15379619
+ gpon 1/1/5 onu 26 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15463611
+ gpon 1/1/5 onu 7 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15485388
+ gpon 1/1/6 onu 33 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15508943
+ gpon 1/1/2 onu 42 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15511360
+ gpon 1/1/1 onu 19 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15518711
+ gpon 1/1/4 onu 3 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15533412
+ gpon 1/1/5 onu 0 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15605035
+ gpon 1/1/3 onu 53 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15624897
+ gpon 1/1/5 onu 15 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15658063
+ gpon 1/1/3 onu 9 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15684638
+ gpon 1/1/1 onu 3 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15724060
+ gpon 1/1/1 onu 2 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15824984
+ gpon 1/1/2 onu 21 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 15950513
+ gpon 1/1/3 onu 62 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16139539
+ gpon 1/1/5 onu 52 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16151172
+ gpon 1/1/3 onu 45 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16180121
+ gpon 1/1/5 onu 20 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16205148
+ gpon 1/1/2 onu 9 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16238681
+ gpon 1/1/2 onu 59 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16261560
+ gpon 1/1/4 onu 12 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16262485
+ gpon 1/1/4 onu 2 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16364815
+ gpon 1/1/6 onu 10 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16456570
+ gpon 1/1/4 onu 46 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16492121
+ gpon 1/1/4 onu 48 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16593881
+ gpon 1/1/3 onu 16 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16705315
+ gpon 1/1/3 onu 1 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+service-port 16764954
+ gpon 1/1/3 onu 61 gem 1 match vlan vlan-id 1120 action vlan replace vlan-id 1120
+!
+vrf global
+!
+vrf mgmt
+!
+router static
+ address-family ipv4
+  0.0.0.0/0 next-hop 172.18.17.89
+  !
+ !
+!
+dot1q
+ vlan 1120
+  name PPPoE
+  interface gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 1121
+  name GERENCIA-OLT
+  interface gigabit-ethernet-1/1/1
+  !
+  interface gigabit-ethernet-1/1/2
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+ vlan 1122
+  name Voip
+  interface gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/1
+  !
+  interface ten-gigabit-ethernet-1/1/2
+  !
+ !
+!
+

@@ -1,0 +1,43 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: INFOLINE BANDA LARGA
+Equipamento: OLT.HU.CCIT
+Host: 172.16.0.82:22
+Acesso: VIA PROXY SSH
+Modelo: SW DATACOM DM4370
+Template: backup olt huawei
+Data: 07/05/2026 00:36:51
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: enable
+============================================================
+ERRO: 
+
+============================================================
+Comando: config
+============================================================
+ERRO: ChannelException(1, 'Administratively prohibited')
+
+============================================================
+Comando: undo interactive
+============================================================
+ERRO: ChannelException(1, 'Administratively prohibited')
+
+============================================================
+Comando: undo smart
+============================================================
+ERRO: ChannelException(1, 'Administratively prohibited')
+
+============================================================
+Comando: scroll
+============================================================
+ERRO: ChannelException(1, 'Administratively prohibited')
+
+============================================================
+Comando: display  current-configuration
+============================================================
+ERRO: ChannelException(1, 'Administratively prohibited')

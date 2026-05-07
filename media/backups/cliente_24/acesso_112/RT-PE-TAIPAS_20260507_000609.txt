@@ -1,0 +1,84 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: JMA PROVEDOR DE INTERNET LTDA
+Equipamento: RT-PE-TAIPAS
+Host: 10.255.0.50:22002
+Acesso: VIA PROXY SSH
+Modelo: MIKROTIK CCR1009-7G-1C-1S+
+Template: Backup Mikrotik
+Data: 07/05/2026 00:06:09
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# 2026-03-17 16:12:07 by RouterOS 7.18.2
+# software id = 6SMN-Z2FW
+#
+# model = RB4011iGS+
+# serial number = HEC08NWGV2V
+/interface bridge add name=br-acesso
+/interface bridge add name=br-acesso2
+/interface bridge add name=loopback
+/interface ethernet set [ find default-name=ether1 ] l2mtu=9578
+/interface ethernet set [ find default-name=ether2 ] l2mtu=9578 name="ether2 "
+/interface ethernet set [ find default-name=ether3 ] l2mtu=9578 mtu=2000 name="ether3 P2P-FZ.TORRES"
+/interface ethernet set [ find default-name=ether4 ] l2mtu=9578 name="ether4 - OLT-INTEL-4840"
+/interface ethernet set [ find default-name=ether5 ] l2mtu=9578 name="ether5 - OLT-INTEL-4840"
+/interface ethernet set [ find default-name=ether6 ] l2mtu=9578 name="ether6 -monitoramento energia"
+/interface ethernet set [ find default-name=ether7 ] l2mtu=9578
+/interface ethernet set [ find default-name=ether8 ] l2mtu=9578
+/interface ethernet set [ find default-name=ether9 ] l2mtu=9578
+/interface ethernet set [ find default-name=ether10 ] l2mtu=9578 poe-out=off
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] l2mtu=9578
+/interface vpls add arp=enabled cisco-static-id=17 disabled=no mac-address=02:4A:AC:96:FA:F1 mtu=1500 name=vpls-ne8k peer=10.255.255.2 pw-l2mtu=1508 pw-type=raw-ethernet
+/interface vlan add interface="ether3 P2P-FZ.TORRES" name=vlan17-pppoe vlan-id=17
+/interface vlan add interface="ether3 P2P-FZ.TORRES" mtu=2000 name=vlan18-ospf vlan-id=18
+/interface vlan add interface="ether3 P2P-FZ.TORRES" name=vlan19-pppoe vlan-id=19
+/interface vlan add interface="ether4 - OLT-INTEL-4840" name=vlan77 vlan-id=19
+/port set 0 name=serial0
+/port set 1 name=serial1
+/routing ospf instance add disabled=no name=ospf-instance-v2 redistribute="" router-id=10.255.0.50
+/routing ospf area add disabled=no instance=ospf-instance-v2 name=backbone
+/snmp community set [ find default=yes ] name=jmatelecom-ro
+/interface bridge port add bridge=br-acesso2 interface="ether4 - OLT-INTEL-4840"
+/interface bridge port add bridge=br-acesso interface="ether5 - OLT-INTEL-4840"
+/interface bridge port add bridge=br-acesso interface="ether6 -monitoramento energia"
+/interface bridge port add bridge=br-acesso2 interface=vlan19-pppoe
+/interface bridge port add bridge=br-acesso disabled=yes interface=*14
+/interface bridge port add bridge=br-acesso interface=vlan17-pppoe
+/ip firewall connection tracking set enabled=yes
+/interface ovpn-server server add mac-address=FE:39:64:C7:38:A8 name=ovpn-server1
+/interface pppoe-server server add interface="ether4 - OLT-INTEL-4840" service-name=service1
+/ip address add address=172.18.100.50/30 interface=vlan18-ospf network=172.18.100.48
+/ip address add address=10.255.0.50 interface=lo network=10.255.0.50
+/ip address add address=172.27.50.1/28 interface="ether4 - OLT-INTEL-4840" network=172.27.50.0
+/ip address add address=192.168.10.10/24 interface=br-acesso network=192.168.10.0
+/ip address add address=192.168.163.81/29 interface="ether2 " network=192.168.163.80
+/ip address add address=192.168.97.153/29 interface=vlan77 network=192.168.97.152
+/ip firewall nat add action=dst-nat chain=dstnat disabled=yes dst-address=10.255.0.50 dst-port=80,443 protocol=tcp to-addresses=192.168.98.83
+/ip firewall nat add action=src-nat chain=srcnat disabled=yes dst-address=192.168.98.83 to-addresses=192.168.98.81
+/ip ipsec profile set [ find default=yes ] dpd-interval=2m dpd-maximum-failures=5
+/ip service set telnet disabled=yes
+/ip service set ftp disabled=yes
+/ip service set www disabled=yes
+/ip service set ssh port=22002
+/ip service set api disabled=yes
+/ip service set winbox port=9291
+/ip service set api-ssl disabled=yes
+/mpls interface add disabled=no interface=all mpls-mtu=1570
+/mpls ldp add afi=ip disabled=no loop-detect=no lsr-id=10.255.0.50 preferred-afi=ip transport-addresses=10.255.0.50 use-explicit-null=no vrf=main
+/mpls ldp interface add accept-dynamic-neighbors=yes afi=ip disabled=no interface=vlan18-ospf transport-addresses=10.255.0.50
+/routing ospf interface-template add area=backbone disabled=no interfaces=vlan18-ospf type=ptp
+/routing ospf interface-template add area=backbone disabled=no networks=10.255.0.50/32
+/routing ospf interface-template add area=backbone disabled=no interfaces=br-acesso passive
+/snmp set enabled=yes trap-version=2
+/system identity set name=RT-TAIPAS-PE
+/system note set show-at-login=no
+/system routerboard settings set enter-setup-on=delete-key
+/system watchdog set automatic-supout=no watchdog-timer=no
+/tool romon set enabled=yes
+

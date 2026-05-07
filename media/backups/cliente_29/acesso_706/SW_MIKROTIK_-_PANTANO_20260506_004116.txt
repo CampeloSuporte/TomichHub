@@ -1,0 +1,50 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: GREEN TELECOM
+Equipamento: SW MIKROTIK - PANTANO
+Host: 172.16.22.252:2225
+Acesso: VIA PROXY SSH
+Modelo: SW MIKROTIK CSS326-24G-2S+
+Template: Backup Mikrotik
+Data: 06/05/2026 00:41:16
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: /export terse
+============================================================
+# dec/01/1970 13:03:55 by RouterOS 6.49.18
+# software id = YH5E-ZT0F
+#
+# model = CRS309-1G-8S+
+# serial number = D8480C569D50
+/interface bridge add name=bridge1 protocol-mode=none vlan-filtering=yes
+/interface ethernet set [ find default-name=sfp-sfpplus1 ] name="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA"
+/interface ethernet set [ find default-name=sfp-sfpplus2 ] name="sfp-sfpplus2 - P2P-BACKUP-RADIO-DIGITAL"
+/interface ethernet set [ find default-name=sfp-sfpplus3 ] name="sfp-sfpplus3 - CNX.OLT PANTANO"
+/interface ethernet set [ find default-name=sfp-sfpplus4 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full name="sfp-sfpplus4 "
+/interface ethernet set [ find default-name=sfp-sfpplus5 ] advertise=10M-half,10M-full,100M-half,100M-full,1000M-half,1000M-full,10000M-full name="sfp-sfpplus5 "
+/interface vlan add interface=bridge1 name=VLAN-22-GERENCIA vlan-id=22
+/interface wireless security-profiles set [ find default=yes ] supplicant-identity=MikroTik
+/snmp community add addresses=::/0 name=TOMICH
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA"
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus2 - P2P-BACKUP-RADIO-DIGITAL"
+/interface bridge port add bridge=bridge1 interface="sfp-sfpplus3 - CNX.OLT PANTANO"
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA,sfp-sfpplus2 - P2P-BACKUP-RADIO-DIGITAL,bridge1" vlan-ids=1110
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA,sfp-sfpplus2 - P2P-BACKUP-RADIO-DIGITAL,bridge1" vlan-ids=1100
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA,sfp-sfpplus3 - CNX.OLT PANTANO,sfp-sfpplus2 - P2P-BACKUP-RADIO-DIGITAL" vlan-ids=1120
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA,sfp-sfpplus3 - CNX.OLT PANTANO" vlan-ids=1121
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA,sfp-sfpplus3 - CNX.OLT PANTANO" vlan-ids=1122
+/interface bridge vlan add bridge=bridge1 tagged="sfp-sfpplus1 - P2P-SW-DT-CASCAEIRA,sfp-sfpplus2 - P2P-BACKUP-RADIO-DIGITAL,bridge1" vlan-ids=22
+/ip address add address=172.16.22.252/24 interface=VLAN-22-GERENCIA network=172.16.22.0
+/ip dhcp-client add comment=defconf disabled=no
+/ip route add distance=1 gateway=172.16.22.1
+/ip service set ssh port=2225
+/ip service set winbox port=8295
+/snmp set enabled=yes trap-community=TOMICH trap-version=2
+/system identity set name=SW_PANTANO
+/system routerboard settings set boot-os=router-os
+/tool romon set enabled=yes
+

@@ -1,0 +1,1439 @@
+================================================================================
+BACKUP DE CONFIGURAÇÃO
+================================================================================
+Cliente: ALTA RADIO LTDA
+Equipamento: BGP
+Host: 170.79.93.1:22
+Acesso: DIRETO
+Modelo: HUAWEI NE8000 M8
+Template: Backup Huawei
+Data: 03/05/2026 00:42:56
+Executado por: Sistema
+================================================================================
+
+
+============================================================
+Comando: screen-length 0 temporary
+============================================================
+Info: The configuration takes effect on the current user terminal interface only.
+<BGP_PATOS>
+
+============================================================
+Comando: display current-configuration
+============================================================
+!Software Version V800R021C00SPC100
+!Last configuration was updated at 2026-04-25 20:53:59-03:00 by tomich
+!Last configuration was saved at 2026-04-25 23:59:46-03:00
+#
+sysname BGP_PATOS
+#
+undo FTP server-source all-interface
+undo FTP ipv6 server-source all-interface
+#
+undo user-security-policy enable
+#
+service-template template-default0
+#
+service-template template-default1
+#
+service-template template-default2
+#
+service-template template-default3
+#
+service-template template-default4
+#
+ntp-service server source-interface all disable
+ntp-service ipv6 server source-interface all disable
+#
+vlan batch 190 to 191 300 814 1064 to 1065 1137 to 1138 1231 1411 1500 1504 to 1505 1508
+vlan batch 1550 1599 1651 1654 1870 to 1872 2045 2170 2316 to 2317 2319 to 2320 4021
+#
+rsa peer-public-key 10.204.204.2
+ public-key-code begin
+ 3082018A
+  02820181
+    00AB8E2E 934D10A9 19F84E37 87D0585E 51C3A966 18ACBE00 387C7FFF 3D8869F7
+    19263810 A3EB3343 26B9F8B9 E487847C 87C7372C 531AEAE7 DCC30547 E940E1D6
+    47A12F50 1252C828 449FB2A1 F54642B4 A278C265 EAD4F37F 2EABF3CD 4E4493F4
+    9BD1ADA1 8A3BBAEF F2FED20F B961CB76 9BFE7F61 75BE259A 3BFC8716 CAD79866
+    7D141C5E 0D5C1B00 D634B922 8F9D5AA3 29F85A7F 4FC37CA9 E59F8826 6B021D8C
+    5C4D29EF 0AA30E83 62EF04DF 6AD03426 0BFB9002 6ADBB1C9 DEE11F02 23CC49AF
+    89A59825 CAF98035 291F4E0D 2C4FC045 01B7FE7D 2E123C9B 77EDFF9A 371E0E4E
+    FB730A61 A720C47A 7B3BAF45 9930FFF9 50277E32 056C8EFB 55A8FE00 BCE946EA
+    5E41D60E 140DF02E C8B0B4C2 453E6953 BFF056B5 C0940892 CDCC0DB7 D33F14C3
+    F31DB4B4 B9C0A8AF A37CB1E2 64DDCFFD CF987C63 55CA4A7B 90131677 8C2FE7FE
+    918674DF 56CC530A 2A7BC8B7 D44B0A51 BCBD908A 7873ED94 4DB7FA33 691A8198
+    18C470F9 1FC7D544 F53D8200 CFFE2B3F 714FAFE9 A821C7AD D9629EED C4A0212A
+    47
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+rsa peer-public-key 172.16.108.2
+ public-key-code begin
+ 3082018A
+  02820181
+    00C7EFB6 6427C358 EF5C1249 A41BF503 2A1AA5C4 9DC1F9AE B3E5E73D C799907B
+    357F3D31 001A62B4 94EE9FE6 4E720C24 55752D46 A62B6DF7 14D473B3 3C82E4C7
+    DCBEE2B0 98FEF67F EDAF872B 74D4AE69 37D4BB76 91BD4D0A 127BFC8E B19F5CB5
+    77620F49 2D559DA1 3C284152 895FE7CF 83794E05 41966991 0425A210 74536D75
+    2692D8A4 AD1CE430 4D9E2404 253CD2CE 2B0B407D 1E40B5E8 69DC94EB 22B7FC8D
+    92418168 031934D9 DA171C36 F5EE76A5 D2BF7C06 AD33C6A2 8C90EB53 973E4ECE
+    19956207 6E66D729 94C58F92 6BBE6027 EC09E48F 21033F7A FC4B2E98 BBF86E22
+    7968CC2F 8BB218A0 DF31528D 20E3B79A BCBC1FA1 2D811268 F76B2680 8ED1532E
+    6179B54E 123E1699 CD9315AB D4DA337A 3D03064C DE2A7DE3 F716DF8F 82772F09
+    D882EC82 28F88965 CFCBB935 FC1397E5 CB64D2DF 939CCAC5 19EE9ECB 8F6D4C41
+    17011111 7CE4B51B 24AA6F6E 776E7314 32BE02A5 651A41C1 9BFA6166 6AC65A87
+    89DD64C7 94CD9D2C 52D3C769 1851A59C 63EE53BB 133577F4 F594B401 B6BD5ECB
+    B9
+  0203
+    010001
+ public-key-code end
+ peer-public-key end
+#
+undo icmp name timestamp-reply send
+#
+router id 172.16.71.2
+#
+as-notation plain
+#
+ip netstream as-mode 32
+ip netstream timeout active 1
+ip netstream timeout inactive 15
+ip netstream tcp-flag enable
+ip netstream export version 9 origin-as
+ip netstream export index-switch 32
+ip netstream export template timeout-rate 2
+ip netstream sampler fix-packets 400 inbound
+ip netstream sampler fix-packets 400 outbound
+ip netstream export source 170.79.93.77
+ip netstream export host 177.190.145.151 2055
+ip netstream export host 170.79.93.78 2055
+ip netstream export template option sampler
+ip netstream export template option timeout-rate 5
+ip netstream export template option application-label
+#
+ipv6 netstream as-mode 32
+ipv6 netstream timeout active 1
+ipv6 netstream timeout inactive 15
+ipv6 netstream tcp-flag enable
+ipv6 netstream export version 9
+ipv6 netstream export index-switch 32
+ipv6 netstream export template timeout-rate 1
+ipv6 netstream sampler fix-packets 400 inbound
+ipv6 netstream sampler fix-packets 400 outbound
+ipv6 netstream export source 170.79.93.77
+ipv6 netstream export host 170.79.93.78 2055
+ipv6 netstream export template option sampler
+ipv6 netstream export template option timeout-rate 1
+#
+set save-configuration interval 90 delay 1
+set save-configuration backup-to-server server 170.80.59.122 transport-type ftp user bgp1 password %^%#W,<)42uDoAsbQR>vME:L-S<{OY]HDXN$~W3mL($*~((QU4NHyKAXl.VDvYXR%^%# 
+#
+undo telnet server-source all-interface
+undo telnet ipv6 server-source all-interface
+#
+qos-profile ne-2gb
+ car cir 2000000 pir 2000000 cbs 128000 pbs 256000 green pass yellow pass red discard inbound
+#
+vlan 190
+#
+vlan 191
+#
+vlan 300
+#
+vlan 814
+ description Link_Suporte_Online_500MB
+#
+vlan 1064
+#
+vlan 1065
+ description CGNAT_MIKROTIK 1036
+#
+vlan 1137
+ description Peer-EBGP Torre Abelha D
+#
+vlan 1138
+ description Peer-EBGP Fundacao Educativa Ntv
+#
+vlan 1231
+ description SWAP ALGAR - ALTA TELECOM
+#
+vlan 1411
+ description PEER_LINK_ALGAR TELECOM
+#
+vlan 1500
+#
+vlan 1504
+ description Peer-EBGP Backup Lagoa Grande Downsteam-Backup Link Gnet Patos de Minas
+#
+vlan 1505
+#
+vlan 1508
+#
+vlan 1550
+#
+vlan 1599
+#
+vlan 1651
+#
+vlan 1654
+#
+vlan 1870
+#
+vlan 1871
+#
+vlan 1872
+#
+vlan 2045
+ description Link Belo Horizonte
+#
+vlan 2170
+#
+vlan 2316
+#
+vlan 2317
+ description CDN
+#
+vlan 2319
+ description SERVIDOR_SPEED NOVO_DELL SLOT 0/2
+#
+vlan 2320
+ description WANGUARD
+#
+vlan 4021
+#
+dhcp server request-packet all-interface disable
+#
+acl name IPV4_MANAGEMENT basic
+ description Management Control - Gerencia SSH+Wanguard
+ rule 1 permit source 179.48.68.73 0
+ rule 10 permit source 192.168.98.0 0.0.0.255
+ rule 15 permit source 170.80.59.17 0
+ rule 25 permit source 170.80.59.16 0
+ rule 35 permit source 10.204.204.0 0.0.0.3
+ rule 40 permit source 10.1.1.0 0.0.0.255
+ rule 45 permit source 170.80.59.122 0
+ rule 50 permit source 170.80.59.121 0
+ rule 55 permit source 192.168.40.0 0.0.0.255
+ rule 60 permit source 170.79.93.252 0.0.0.3
+ rule 65 permit source 170.79.93.76 0.0.0.3
+ rule 70 permit source 170.79.93.14 0
+ rule 75 permit source 170.79.93.15 0
+ rule 80 permit source 170.80.59.104 0
+ rule 85 permit source 170.80.59.103 0
+ rule 666 deny
+#
+acl number 3000
+ rule 5 permit ip
+#
+acl number 3001
+ rule 5 permit ip
+#
+acl number 3002
+ rule 5 permit ip
+#
+acl number 3003
+ rule 5 permit ip
+#
+acl number 3004
+ rule 5 permit ip
+#
+acl number 3005
+ rule 5 permit ip
+#
+acl number 3006
+ rule 5 permit ip
+#
+acl number 3007
+ rule 5 permit ip
+#
+acl number 3008
+ rule 5 permit ip
+#
+dhcpv6 duid 000100012bae1d2bbc76c57251a5
+#
+traffic classifier CLASS-ALL operator and
+ if-match any
+#
+traffic classifier CLASS-IN-10G operator or
+ if-match acl 3008 precedence 1
+#
+traffic classifier CLASS-IN-2G operator or
+ if-match acl 3000 precedence 1
+#
+traffic classifier CLASS-IN-3G operator or
+ if-match acl 3001 precedence 1
+#
+traffic classifier CLASS-IN-4G operator or
+ if-match acl 3002 precedence 1
+#
+traffic classifier CLASS-IN-5G operator or
+ if-match acl 3003 precedence 1
+#
+traffic classifier CLASS-IN-6G operator or
+ if-match acl 3004 precedence 1
+#
+traffic classifier CLASS-IN-7G operator or
+ if-match acl 3005 precedence 1
+#
+traffic classifier CLASS-IN-8G operator or
+ if-match acl 3006 precedence 1
+#
+traffic classifier CLASS-IN-9G operator or
+ if-match acl 3007 precedence 1
+#
+traffic behavior BEHAVIOR-IN-10G
+ car cir 10000000 pir 10000000 cbs 640000 pbs 1280000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-2G
+ car cir 2000000 pir 2000000 cbs 128000 pbs 256000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-3G
+ car cir 3000000 pir 3000000 cbs 192000 pbs 384000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-4G
+ car cir 4000000 pir 4000000 cbs 256000 pbs 512000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-5G
+ car cir 5000000 pir 5000000 cbs 320000 pbs 640000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-6G
+ car cir 6000000 pir 6000000 cbs 384000 pbs 768000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-7G
+ car cir 7000000 pir 7000000 cbs 448000 pbs 896000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-8G
+ car cir 8000000 pir 8000000 cbs 512000 pbs 1024000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-IN-9G
+ car cir 9000000 pir 9000000 cbs 576000 pbs 1152000 green pass yellow pass red discard
+#
+traffic behavior BEHAVIOR-INBOUND
+ remark dscp ef
+ car cir 100000 pir 120000 cbs 10000 pbs 20000 green pass yellow pass red discard
+#
+traffic behavior LIMIT-5G
+ car cir 5000000 pir 5000000 cbs 62500000 pbs 62500000 green pass yellow pass red discard
+#
+traffic policy POLICY-5G
+ share-mode
+ classifier CLASS-ALL behavior LIMIT-5G precedence 1
+#
+traffic policy POLICY-IN-10G
+ share-mode
+ classifier CLASS-IN-10G behavior BEHAVIOR-IN-10G precedence 1
+#
+traffic policy POLICY-IN-2G
+ share-mode
+ classifier CLASS-IN-2G behavior BEHAVIOR-IN-2G precedence 1
+#
+traffic policy POLICY-IN-3G
+ share-mode
+ classifier CLASS-IN-3G behavior BEHAVIOR-IN-3G precedence 1
+#
+traffic policy POLICY-IN-4G
+ share-mode
+ classifier CLASS-IN-4G behavior BEHAVIOR-IN-4G precedence 1
+#
+traffic policy POLICY-IN-5G
+ share-mode
+ classifier CLASS-IN-5G behavior BEHAVIOR-IN-5G precedence 1
+#
+traffic policy POLICY-IN-6G
+ share-mode
+ classifier CLASS-IN-6G behavior BEHAVIOR-IN-6G precedence 1
+#
+traffic policy POLICY-IN-7G
+ share-mode
+ classifier CLASS-IN-7G behavior BEHAVIOR-IN-7G precedence 1
+#
+traffic policy POLICY-IN-8G
+ share-mode
+ classifier CLASS-IN-8G behavior BEHAVIOR-IN-8G precedence 1
+#
+traffic policy POLICY-IN-9G
+ share-mode
+ classifier CLASS-IN-9G behavior BEHAVIOR-IN-9G precedence 1
+#
+aaa
+ user-password password-force-change disable
+ local-user wiler1 password irreversible-cipher $1c$LUb'R+=^&T$6xOK5yB><&4'dW+Hzke&v{t+&C*V\ABX{oIhk4`U$
+ local-user wiler1 service-type ssh
+ local-user wiler1 level 3
+ local-user wiler1 state block fail-times 3 interval 5
+ local-user tomich password irreversible-cipher $1c$lgvx>!#/4A$NG*'~gj6v$:bou5-!$]I(sx998rX/#&r+]OP0NX6$
+ local-user tomich service-type ssh
+ local-user tomich level 3
+ local-user tomich state block fail-times 3 interval 5
+ #
+ authentication-scheme default0
+ #
+ authentication-scheme default1
+ #
+ authentication-scheme default
+  authentication-mode local
+ #
+ authorization-scheme default
+ #
+ accounting-scheme default0
+ #
+ accounting-scheme default1
+ #
+ domain default0
+ #
+ domain default1
+ #
+ domain default_admin
+#
+ospfv3 1
+ router-id 10.255.255.2
+ default-route-advertise
+ area 0.0.0.0
+#
+interface Vlanif190
+ description IPv6 ASN:273567
+ ipv6 enable
+ ipv6 address FD80:88E4:1000::2/64
+#
+interface Vlanif300
+ description CISCO_ASR_CGNAT
+ ip address 10.203.203.1 255.255.255.252
+#
+interface Vlanif1064
+ description 1016_PPPOE_PATOS
+ ip address 170.80.59.121 255.255.255.252
+ statistic enable
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface Vlanif1065
+ description CGNAT_MIKROTIK 1036
+ shutdown
+ ip address 10.204.204.5 255.255.255.252
+ statistic enable
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface Vlanif1138
+#
+interface Vlanif1500
+ shutdown
+ ip address 172.15.0.2 255.255.255.252
+ ip address 172.16.54.1 255.255.255.252 sub
+ statistic enable
+#
+interface Vlanif1504
+ description Peer-EBGP Backup Lagoa Grande Downsteam-Backup Link Gnet Patos de Minas
+ shutdown
+ ipv6 enable
+ ip address 172.16.108.1 255.255.255.252
+ ipv6 address 2804:36C0::A/126
+ statistic enable
+ bandwidth 2000
+ traffic-policy POLICY-IN-2G inbound
+ traffic-policy POLICY-IN-2G outbound
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface Vlanif1870
+ description REDE_CAIXA_PATOS
+ ip address 170.80.59.252 255.255.255.254
+ statistic enable
+#
+interface Vlanif1871
+ description REDE_CAIXA_PATOS_VLAN_1871
+ ip address 170.80.59.254 255.255.255.254
+ statistic enable
+#
+interface Vlanif1872
+ description CAIXA_LAGOA_FORMOSA_INFRA_ONNET
+ ip address 170.80.59.226 255.255.255.254
+ ip address 172.16.67.1 255.255.255.252 sub
+#
+interface Vlanif2170
+ ip address 172.21.70.1 255.255.255.252
+#
+interface Vlanif2316
+ description DIR_PEER_BNG_PBR_HUAWEI NE 8000
+ ipv6 enable
+ ip address 170.80.59.1 255.255.255.240
+ ip address 10.204.204.1 255.255.255.252 sub
+ ip address 170.79.93.66 255.255.255.254 sub
+ ip address 170.79.93.77 255.255.255.252 sub
+ ip address 170.79.93.253 255.255.255.252 sub
+#
+interface Vlanif4021
+ description BORDA BNG ALTA TELECOM
+ ip address 10.200.200.1 255.255.255.252
+ statistic enable
+#
+interface Eth-Trunk1
+ portswitch
+ description LACP_BGP
+ port trunk allow-pass vlan 10 50 190 to 191 201 300 1064 to 1065 1500 1504 to 1505 1508 1550
+ port trunk allow-pass vlan 1599 1651 1870 to 1872 2170 2316 to 2317 2319 to 2320 4021
+ mode lacp-static
+#
+interface Eth-Trunk1.814
+ vlan-type dot1q 814
+ description Link_Suporte_Online
+ ip address 172.18.17.17 255.255.255.252
+ statistic enable
+ traffic-policy POLICY-5G inbound
+ traffic-policy POLICY-5G outbound
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface Eth-Trunk1.1052
+#
+interface Eth-Trunk1.1137
+ vlan-type dot1q 1137
+ description Peer-Link-Green-Vlan:1137
+ ip address 172.18.17.9 255.255.255.252
+ statistic enable
+ traffic-policy POLICY-5G inbound
+ traffic-policy POLICY-5G outbound
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface Eth-Trunk1.1138
+ vlan-type dot1q 1138
+ description disthi
+ ip address 172.18.17.13 255.255.255.252
+ ip address 170.79.93.64 255.255.255.254 sub
+ statistic enable
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface Eth-Trunk1.1152
+#
+interface Eth-Trunk1.1231
+ vlan-type dot1q 1231
+ description ALTA TELECOM - SWAP Algar Telecom_Vlan:1231 * Chamado 0800 940 2999 * Circuito:010167326
+ ipv6 enable
+ ip address 100.101.153.105 255.255.255.252
+ ipv6 address 2001:1291:DB:5A::B/64
+ statistic enable
+ ip netstream inbound
+#
+interface Ethernet0/0/0
+ undo shutdown
+#
+interface GigabitEthernet0/8/1
+ description Link Algar Protecao 3 Gigas
+ undo shutdown
+#
+interface GigabitEthernet0/8/1.2043
+#
+interface GigabitEthernet0/8/1.2180
+ vlan-type dot1q 2180
+ description PEER_LINK WIX_PROTECAO_GOLDNET TELECOM 10 GIGAS
+ ipv6 enable
+ ip address 198.18.92.18 255.255.255.252
+ ipv6 address FD00:1:8002::12/126
+ statistic enable
+ ip netstream inbound
+ ipv6 netstream inbound
+#
+interface GigabitEthernet0/8/3
+ description Peer_Link Algar Telecom_Vlan:1411 * Chamado 0800 940 2999 * Circuito:08851828
+ undo shutdown
+#
+interface GigabitEthernet0/8/3.1411
+ vlan-type dot1q 1411
+ description PEER_LINK ALGAR TELECOM_VLAN:1411 CHAMADO 0800 940 2999 / CIRCUITO: 08851828
+ ipv6 enable
+ ip address 100.110.88.193 255.255.255.252
+ ip address 187.72.2.141 255.255.255.252 sub
+ ipv6 address 2001:1291:1002:B37A::B/64
+ statistic enable
+ ip netstream inbound
+ ipv6 netstream inbound
+ binding tunnel gre
+#
+interface GigabitEthernet0/8/4.190
+ vlan-type dot1q 190
+ description DIR_BGP IPv6 ASN:273567
+ ipv6 enable
+ statistic enable
+#
+interface GigabitEthernet0/8/5
+ undo shutdown
+ eth-trunk 1
+#
+interface GigabitEthernet0/8/6
+ undo shutdown
+ eth-trunk 1
+#
+interface GigabitEthernet0/8/7
+ description Servidor Dell R630 - IP Idrac 192.168.50.2
+ undo shutdown
+ ip address 170.79.93.121 255.255.255.248
+ ip address 170.79.93.81 255.255.255.252 sub
+#
+interface LoopBack0
+ ip address 177.152.104.54 255.255.255.255
+ ip address 170.79.93.1 255.255.255.255 sub
+ ip address 170.79.94.255 255.255.255.255 sub
+ ip address 170.79.95.3 255.255.255.255 sub
+ binding tunnel gre
+#
+interface LoopBack1
+#
+interface LoopBack2
+#
+interface Virtual-Ethernet0/2/201.100
+ vlan-type dot1q 100
+ ipv6 enable
+ ip address 10.1.1.2 255.255.255.252
+ ipv6 address FD80:88E4:1002::2/64
+ ipv6 address auto link-local
+ ospf network-type p2p
+#
+interface Tunnel2
+ description HUGES_DDOS
+ shutdown
+ ip address 10.45.61.2 255.255.255.252
+ tunnel-protocol gre
+ keepalive 
+ source 187.72.2.141
+ destination 131.221.45.61
+#
+interface NULL0
+#
+bgp 263456
+ peer 100.101.153.106 as-number 16735
+ peer 100.101.153.106 fake-as 273567
+ peer 100.101.153.106 description PEER-EBGP-UPSTREAM-ALGAR-V4
+ peer 170.79.93.78 as-number 263456
+ peer 170.79.93.78 description PEER-IBGP-WANGUARD-V4
+ peer 172.16.108.2 as-number 266369
+ peer 172.16.108.2 description PEER-EBGP-DOWSTREAM-GNET-V4
+ peer 172.18.17.10 as-number 266296
+ peer 172.18.17.10 description PEER-EBGP-DOWNSTREAM-GREEN-TELECOM-V4
+ peer 172.18.17.18 as-number 268466
+ peer 172.18.17.18 description PEER-EBGP-DOWNSTREAM-SUPORTE-ONLINE-V4
+ peer 198.18.92.17 as-number 267221
+ peer 198.18.92.17 fake-as 266296
+ peer 198.18.92.17 description PEER-EBGP-UPSTREAM-GOLD-NET-V4
+ peer 2001:1291:DB:5A::A as-number 16735
+ peer 2001:1291:DB:5A::A fake-as 273567
+ peer 2001:1291:DB:5A::A description PEER-EBGP-UPSTREAM-ALGAR-V6
+ peer 2804:36C0::9 as-number 266369
+ peer 2804:36C0::9 description PEER-EBGP-DOWSTREAM-GNET-V6
+ peer FD00:1:8002::11 as-number 267221
+ peer FD00:1:8002::11 fake-as 273567
+ peer FD00:1:8002::11 description PEER-EBGP-UPSTREAM-GOLD-NET-V6
+ peer FD00:1:8002::11 tracking
+ peer FD80:88E4:1002::1 as-number 273567
+ peer FD80:88E4:1002::1 description PEER-EBGP-ALTA-TELECOM
+ peer FD80:88E4:1002::2 as-number 273567
+ #
+ ipv4-family unicast
+  undo synchronization
+  network 170.79.93.0 255.255.255.0 route-policy RT-BGP-LOCAL-93-24
+  network 170.79.94.0 255.255.255.0 route-policy RT-BGP-LOCAL-94-24
+  network 170.79.95.0 255.255.255.0 route-policy RT-BGP-LOCAL-95-24
+  network 170.80.59.0 255.255.255.0 route-policy RT-BGP-LOCAL-59-24
+  ext-community-change enable
+  peer 100.101.153.106 enable
+  peer 100.101.153.106 route-policy RP-ALGAR-V4-IN import
+  peer 100.101.153.106 route-policy TRANSITO-ALGAR export
+  peer 100.101.153.106 advertise-community
+  peer 100.101.153.106 advertise-ext-community
+  peer 170.79.93.78 enable
+  peer 170.79.93.78 route-policy PL-WANGUARD-IN import
+  peer 170.79.93.78 route-policy PL-WANGUARD-OUT export
+  peer 170.79.93.78 next-hop-local
+  peer 170.79.93.78 advertise-community
+  peer 170.79.93.78 advertise-ext-community
+  peer 172.16.108.2 enable
+  peer 172.16.108.2 route-policy RP-GNET-TELECOM-V4-IN import
+  peer 172.16.108.2 route-policy RP-GNET-TELECOM-V4-OUT export
+  peer 172.18.17.10 enable
+  peer 172.18.17.10 route-policy TRANSITO export
+  peer 172.18.17.10 default-route-advertise
+  peer 172.18.17.18 enable
+  peer 172.18.17.18 route-policy RP-AS268466-SUPORTE-ONLINE-V4-IN import
+  peer 172.18.17.18 route-policy RP-AS268466-SUPORTE-ONLINE-V4-OUT export
+  peer 172.18.17.18 default-route-advertise
+  peer 198.18.92.17 enable
+  peer 198.18.92.17 route-policy RP-GD-V4-IN import
+  peer 198.18.92.17 route-policy RP-GD-V4-EXPORT export
+ #
+ ipv4-family flow
+  peer 170.79.93.78 enable
+  peer 170.79.93.78 advertise-community
+  peer 170.79.93.78 validation-disable
+ #
+ ipv6-family unicast
+  undo synchronization
+  ext-community-change enable
+  peer 2001:1291:DB:5A::A enable
+  peer 2001:1291:DB:5A::A route-policy RP-EBGP-ALGAR-V6-IMPORT import
+  peer 2001:1291:DB:5A::A route-policy ALTATELECOM-ALGAR-V6-EXPORT export
+  peer 2001:1291:DB:5A::A advertise-community
+  peer 2001:1291:DB:5A::A advertise-ext-community
+  peer 2804:36C0::9 enable
+  peer 2804:36C0::9 route-policy RP-DOWNSTREAM-GNET-IPV6-IN import
+  peer 2804:36C0::9 route-policy RP-DOWNSTREAM-GNET-IPV6-OUT export
+  peer FD00:1:8002::11 enable
+  peer FD00:1:8002::11 route-policy RP-EBGP-GOLDNET-V6-IMPORT import
+  peer FD00:1:8002::11 route-policy RP-EBGP-GOLDNET-V6-EXPORT export
+  peer FD80:88E4:1002::1 enable
+#
+ospf 1 router-id 177.152.104.5
+ import-route direct
+ opaque-capability enable
+ area 0.0.0.0
+  network 10.1.1.0 0.0.0.3
+  network 177.152.104.5 0.0.0.0
+#
+route-policy ALTATELECOM-ALGAR-V6-EXPORT permit node 10
+ if-match ipv6 address prefix-list PREFIX-ALTA-TELECOM-32-48
+ apply as-path 273567 additive
+#
+route-policy ALTATELECOM-ALGAR-V6-EXPORT permit node 11
+ if-match ipv6 address prefix-list PREFIX-GNET-TELECOM-V6
+#
+route-policy ALTATELECOM-ALGAR-V6-EXPORT permit node 20
+ if-match ipv6 address prefix-list PREFIX-GREEN-TELECOM-V6
+ apply as-path 266296 266296 additive
+#
+route-policy ALTATELECOM-ALGAR-V6-EXPORT deny node 1000
+#
+route-policy AS16735-ALGAR-V4-IN permit node 10
+ if-match ip-prefix FULL-ROUTING
+ apply community 65100:50100
+#
+route-policy AS16735-ALGAR-V4-IN permit node 11
+ if-match ip-prefix ROUTE-DEFAULT
+ apply community 65100:50100
+#
+route-policy AS16735-ALGAR-V4-IN deny node 999
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 1
+ if-match ip-prefix SUPORTE_45.161.160.0/22-24
+ apply as-path 263456 263456 263456 additive
+#
+route-policy AS16735-ALGAR-V4-OUT deny node 9
+ if-match community-filter c-01-export-bl
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 10
+ if-match community-filter c-01-export-bh
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 11
+ if-match community-filter c-01-export
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 12
+ if-match community-filter c-01-export-1p
+ apply as-path 266296 additive
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 13
+ if-match community-filter c-01-export-2p
+ apply as-path 266296 266296 additive
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 14
+ if-match community-filter c-01-export-3p
+ apply as-path 266296 266296 266296 additive
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 15
+ if-match community-filter c-01-export-4p
+ apply as-path 266296 266296 266296 266296 additive
+#
+route-policy AS16735-ALGAR-V4-OUT deny node 16
+ if-match community-filter c-01-export-ne
+ apply community no-export
+#
+route-policy AS16735-ALGAR-V4-OUT permit node 17
+ if-match community-filter c-01-export-df
+#
+route-policy AS16735-ALGAR-V4-OUT deny node 999
+#
+route-policy AS16735-ALGAR-V6-IN permit node 10
+ if-match ipv6 address prefix-list ROUTE-DEFAULT-V6
+ apply local-preference 1000
+ apply community 65100:50100
+#
+route-policy AS16735-ALGAR-V6-IN permit node 11
+ if-match ipv6 address prefix-list FULL-ROUTING-V6
+ apply local-preference 1000
+ apply community 65100:50100
+#
+route-policy AS16735-ALGAR-V6-IN deny node 999
+#
+route-policy AS16735-ALGAR-V6-OUT deny node 9
+ if-match community-filter c-01-export-bl
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 10
+ if-match community-filter c-01-export
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 11
+ if-match community-filter c-01-export-1p
+ apply as-path 266296 additive
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 12
+ if-match community-filter c-01-export-2p
+ apply as-path 266296 266296 additive
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 13
+ if-match community-filter c-01-export-3p
+ apply as-path 266296 266296 266296 additive
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 14
+ if-match community-filter c-01-export-4p
+ apply as-path 266296 266296 266296 266296 additive
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 15
+ if-match community-filter c-01-export-ne
+ apply community no-export
+#
+route-policy AS16735-ALGAR-V6-OUT permit node 16
+ if-match community-filter c-01-export-bh
+#
+route-policy AS16735-ALGAR-V6-OUT deny node 999
+#
+route-policy AS267221-GOLD-V4-IN permit node 10
+ if-match ip-prefix FULL-ROUTING
+ apply community 65100:50100
+#
+route-policy AS267221-GOLD-V4-IN permit node 11
+ if-match ip-prefix ROUTE-DEFAULT
+ apply community 65100:50100
+#
+route-policy AS267221-GOLD-V4-IN deny node 999
+#
+route-policy AS267221-GOLD-V4-OUT deny node 9
+ if-match community-filter c-02-export-bl
+#
+route-policy AS267221-GOLD-V4-OUT permit node 10
+ if-match community-filter c-02-export-bh
+#
+route-policy AS267221-GOLD-V4-OUT permit node 11
+ if-match community-filter c-02-export
+#
+route-policy AS267221-GOLD-V4-OUT permit node 12
+ if-match community-filter c-02-export-1p
+ apply as-path 266296 additive
+#
+route-policy AS267221-GOLD-V4-OUT permit node 13
+ if-match community-filter c-02-export-2p
+ apply as-path 266296 266296 additive
+#
+route-policy AS267221-GOLD-V4-OUT permit node 14
+ if-match community-filter c-02-export-3p
+ apply as-path 266296 266296 266296 additive
+#
+route-policy AS267221-GOLD-V4-OUT permit node 15
+ if-match community-filter c-02-export-4p
+ apply as-path 266296 266296 266296 266296 additive
+#
+route-policy AS267221-GOLD-V4-OUT deny node 16
+ if-match community-filter c-02-export-ne
+ apply community no-export
+#
+route-policy AS267221-GOLD-V4-OUT permit node 17
+ if-match community-filter c-02-export-df
+#
+route-policy AS267221-GOLD-V4-OUT deny node 999
+#
+route-policy AS267221-GOLD-V6-IN permit node 10
+ if-match ipv6 address prefix-list ROUTE-DEFAULT-V6
+ apply local-preference 1000
+ apply community 65100:50100
+#
+route-policy AS267221-GOLD-V6-IN permit node 11
+ if-match ipv6 address prefix-list FULL-ROUTING-V6
+ apply local-preference 1000
+ apply community 65100:50100
+#
+route-policy AS267221-GOLD-V6-IN deny node 999
+#
+route-policy AS267221-GOLD-V6-OUT deny node 9
+ if-match community-filter c-02-export-bl
+#
+route-policy AS267221-GOLD-V6-OUT permit node 10
+ if-match community-filter c-02-export
+#
+route-policy AS267221-GOLD-V6-OUT permit node 11
+ if-match community-filter c-02-export-1p
+ apply as-path 266296 additive
+#
+route-policy AS267221-GOLD-V6-OUT permit node 12
+ if-match community-filter c-02-export-2p
+ apply as-path 266296 266296 additive
+#
+route-policy AS267221-GOLD-V6-OUT permit node 13
+ if-match community-filter c-02-export-3p
+ apply as-path 266296 266296 266296 additive
+#
+route-policy AS267221-GOLD-V6-OUT permit node 14
+ if-match community-filter c-02-export-4p
+ apply as-path 266296 266296 266296 266296 additive
+#
+route-policy AS267221-GOLD-V6-OUT permit node 15
+ if-match community-filter c-02-export-ne
+ apply community no-export
+#
+route-policy AS267221-GOLD-V6-OUT permit node 16
+ if-match community-filter c-02-export-bh
+#
+route-policy AS267221-GOLD-V6-OUT deny node 999
+#
+route-policy BH-WANGUARD-OUT deny node 10
+#
+route-policy DESCARTA-TUDO deny node 10
+#
+route-policy GATEWAY permit node 10
+ if-match ip-prefix DEFAULT
+ apply local-preference 130
+#
+route-policy HUGES_OUT permit node 12
+ if-match community-filter HUGE
+#
+route-policy PL-WANGUARD-IN permit node 3
+ if-match extcommunity-filter Mitigacao_Wix_266296
+ apply ip-address next-hop 192.0.2.1
+ apply local-preference 1500
+ apply preference 1
+#
+route-policy PL-WANGUARD-IN permit node 4
+ if-match extcommunity-filter Mitigacao_Wix
+ apply ip-address next-hop 192.0.2.1
+ apply local-preference 1500
+ apply preference 1
+#
+route-policy PL-WANGUARD-IN permit node 5
+ if-match community-filter Blackhole-algar
+ apply ip-address next-hop 192.0.2.1
+ apply cost 0
+ apply preference 1
+#
+route-policy PL-WANGUARD-IN permit node 15
+ if-match ip-prefix GNETTELECOM
+ apply as-path 266369 overwrite
+ apply ip-address next-hop 192.0.2.1
+ apply local-preference 1500
+ apply preference 1
+#
+route-policy PL-WANGUARD-IN permit node 17
+ if-match ip-prefix GreenTelecom
+ apply as-path 266296 overwrite
+ apply ip-address next-hop 192.0.2.1
+ apply local-preference 1500
+ apply preference 1
+#
+route-policy PL-WANGUARD-OUT deny node 10
+#
+route-policy PROTECAO-ALGAR permit node 21
+ if-match ip-prefix PREFIX_170.80.59.0/24
+ apply cost 200
+#
+route-policy RP-ALGAR-V4-IN permit node 1
+ if-match ip-prefix FULL-ROUTING
+#
+route-policy RP-ALGAR-V4-IN permit node 10
+ if-match ip-prefix PL-DEFAULT-ROUTE
+ apply local-preference 500
+#
+route-policy RP-ALGAR-V4-IN deny node 1000
+#
+route-policy RP-AS268466-SUPORTE-ONLINE-V4-IN permit node 1
+ if-match ip-prefix SUPORTE_45.161.160.0/22-24
+ apply local-preference 2000
+ apply community 65100:50209
+#
+route-policy RP-AS268466-SUPORTE-ONLINE-V4-IN deny node 1000
+#
+route-policy RP-AS268466-SUPORTE-ONLINE-V4-OUT permit node 1
+ if-match ip-prefix FULL-ROUTING
+#
+route-policy RP-AS268466-SUPORTE-ONLINE-V4-OUT deny node 1000
+#
+route-policy RP-CDN-V6-EXPORT permit node 10
+ if-match ipv6 address prefix-list PREFIX-ALTA-TELECOM-32-48
+#
+route-policy RP-CDN-V6-EXPORT deny node 1000
+#
+route-policy RP-CDN-V6-IMPORT permit node 10
+#
+route-policy RP-DOWNSTREAM-GNET-IPV6-IN permit node 1
+ if-match ipv6 address prefix-list PREFIX-GNET-TELECOM-V6
+#
+route-policy RP-DOWNSTREAM-GNET-IPV6-IN deny node 1000
+#
+route-policy RP-DOWNSTREAM-GNET-IPV6-OUT permit node 1
+#
+route-policy RP-DOWNSTREAM-GNET-IPV6-OUT deny node 1000
+#
+route-policy RP-EBGP-ALGAR-V6-EXPORT permit node 10
+ if-match ipv6 address prefix-list PREFIX-ALTA-TELECOM-32-48
+ apply as-path 273567 273567 273567 273567 273567 273567 additive
+#
+route-policy RP-EBGP-ALGAR-V6-EXPORT permit node 11
+ if-match ipv6 address prefix-list PREFIX-GNET-TELECOM-V6
+#
+route-policy RP-EBGP-ALGAR-V6-EXPORT permit node 20
+ if-match ipv6 address prefix-list PREFIX-GREEN-TELECOM-V6
+ apply as-path 266296 266296 266296 266296 266296 266296 additive
+#
+route-policy RP-EBGP-ALGAR-V6-EXPORT deny node 1000
+#
+route-policy RP-EBGP-ALGAR-V6-IMPORT permit node 10
+#
+route-policy RP-EBGP-GOLDNET-V6-EXPORT permit node 10
+ if-match ipv6 address prefix-list PREFIX-ALTA-TELECOM-32-48
+ apply as-path 273567 273567 273567 273567 273567 additive
+#
+route-policy RP-EBGP-GOLDNET-V6-EXPORT permit node 15
+ if-match ipv6 address prefix-list PREFIX-GREEN-TELECOM-V6
+#
+route-policy RP-EBGP-GOLDNET-V6-EXPORT deny node 1000
+#
+route-policy RP-EBGP-GOLDNET-V6-IMPORT permit node 10
+#
+route-policy RP-GD-V4-EXPORT permit node 1
+ if-match ip-prefix SUPORTE_45.161.160.0/22-24
+#
+route-policy RP-GD-V4-EXPORT permit node 5
+ if-match extcommunity-filter Mitigacao_Wix
+ apply as-path 266369 overwrite
+#
+route-policy RP-GD-V4-EXPORT permit node 6
+ if-match extcommunity-filter Mitigacao_Wix_266296
+ apply as-path 266296 overwrite
+#
+route-policy RP-GD-V4-EXPORT permit node 10
+ if-match ip-prefix AUTA_170.80.59.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy RP-GD-V4-EXPORT permit node 11
+ if-match ip-prefix AUTA_170.79.93.0/24
+ apply as-path 266296 additive
+#
+route-policy RP-GD-V4-EXPORT permit node 12
+ if-match ip-prefix AUTA_170.79.94.0/24
+ apply as-path 266296 266296 266296 266296 266296 266296 additive
+#
+route-policy RP-GD-V4-EXPORT permit node 13
+ if-match ip-prefix AUTA_170.79.95.0/24
+ apply as-path 266296 266296 266296 266296 266296 266296 additive
+#
+route-policy RP-GD-V4-EXPORT permit node 14
+ if-match ip-prefix SUPORTE_45.161.160.0/22
+ apply as-path 268466 additive
+#
+route-policy RP-GD-V4-IMPORT permit node 14
+ if-match ip-prefix SUPORTE_45.161.160.0/22
+ apply as-path 268466 additive
+ apply local-preference 1500
+#
+route-policy RP-GD-V4-IMPORT deny node 1000
+#
+route-policy RP-GD-V4-IN permit node 1
+ if-match ip-prefix FULL-ROUTING
+#
+route-policy RP-GD-V4-IN permit node 10
+ if-match ip-prefix GD-DEFAULT-ROUTE
+ apply cost 100
+#
+route-policy RP-GD-V4-IN deny node 1000
+#
+route-policy RP-GD-V4-OUT permit node 10
+ if-match ip-prefix FULL-ROUTING
+#
+route-policy RP-GD-V4-OUT permit node 20
+ if-match ip-prefix DEFAULT
+#
+route-policy RP-GNET-TELECOM-V4-IN permit node 10
+ if-match ip-prefix PL-GNET-TELECOM
+#
+route-policy RP-GNET-TELECOM-V4-OUT permit node 10
+ if-match ip-prefix FULL-ROUTING
+#
+route-policy RP-GREEN-TELECOM-V6-IN permit node 10
+ if-match ipv6 address prefix-list PL-PREFIX-GREEN-TELECOM
+#
+route-policy RP-GREEN-TELECOM-V6-OUT permit node 10
+#
+route-policy RT-BGP-LOCAL-59-24 permit node 10
+ apply community 65100:50105 65100:50201
+#
+route-policy RT-BGP-LOCAL-93-24 permit node 10
+ apply community 65100:50101 65100:50202
+#
+route-policy RT-BGP-LOCAL-94-24 permit node 10
+ apply community 65100:50101 65100:50205
+#
+route-policy RT-BGP-LOCAL-95-24 permit node 10
+ apply community 65100:50101 65100:50205
+#
+route-policy TRANSITO permit node 11
+ if-match ip-prefix AUTA_170.80.59.0/24
+ apply as-path 266369 266369 266369 additive
+#
+route-policy TRANSITO permit node 12
+ if-match ip-prefix AUTA_170.79.93.0/24
+ apply as-path 266296 266296 266296 266296 additive
+#
+route-policy TRANSITO permit node 13
+ if-match ip-prefix GNET_170.80.56.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy TRANSITO permit node 14
+ if-match ip-prefix GNET_170.80.57.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy TRANSITO permit node 15
+ if-match ip-prefix GNET_170.80.58.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy TRANSITO permit node 16
+ if-match ip-prefix AUTA_170.79.92.0/24
+ apply as-path 266296 additive
+#
+route-policy TRANSITO permit node 20
+ if-match community-filter Blackhole-algar
+#
+route-policy TRANSITO permit node 21
+ if-match ip-prefix AUTA_170.79.94.0/24
+ apply as-path 266296 additive
+#
+route-policy TRANSITO permit node 22
+ if-match ip-prefix AUTA_170.79.95.0/24
+ apply as-path 266296 additive
+#
+route-policy TRANSITO deny node 1000
+#
+route-policy TRANSITO-ALGAR permit node 1
+ if-match ip-prefix SUPORTE_45.161.160.0/22-24
+ apply as-path 263456 263456 263456 additive
+#
+route-policy TRANSITO-ALGAR permit node 11
+ if-match ip-prefix AUTA_170.80.59.0/24
+ apply as-path 266369 additive
+#
+route-policy TRANSITO-ALGAR permit node 12
+ if-match ip-prefix AUTA_170.79.93.0/24
+ apply as-path 266296 additive
+#
+route-policy TRANSITO-ALGAR permit node 13
+ if-match ip-prefix GNET_170.80.56.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy TRANSITO-ALGAR permit node 14
+ if-match ip-prefix GNET_170.80.57.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy TRANSITO-ALGAR permit node 15
+ if-match ip-prefix GNET_170.80.58.0/24
+ apply as-path 266369 266369 266369 266369 266369 266369 266369 additive
+#
+route-policy TRANSITO-ALGAR permit node 20
+ if-match community-filter Blackhole-algar
+#
+route-policy TRANSITO-ALGAR permit node 21
+ if-match ip-prefix AUTA_170.79.94.0/24
+ apply as-path 266296 additive
+#
+route-policy TRANSITO-ALGAR permit node 22
+ if-match ip-prefix AUTA_170.79.95.0/24
+ apply as-path 266296 additive
+#
+route-policy TRANSITO-ALGAR deny node 1000
+#
+route-policy TRANSITO-MK-NETWORK-V6-EXPORT permit node 10
+ if-match ipv6 address prefix-list PREFIX-MK-NETWORK-V6
+#
+route-policy TRANSITO-MK-NETWORK-V6-EXPORT permit node 20
+ if-match ipv6 address prefix-list PL-PREFIX-GREEN-TELECOM
+#
+route-policy TRANSITO-MK-NETWORK-V6-IMPORT permit node 10
+#
+ip ip-prefix ALTA_170.80.59.0/24 index 10 permit 170.80.59.0 24
+ip ip-prefix AUTA_170.79.92.0/24 index 10 permit 170.79.92.0 24
+ip ip-prefix AUTA_170.79.93.0/24 index 10 permit 170.79.93.0 24
+ip ip-prefix AUTA_170.79.94.0/24 index 10 permit 170.79.94.0 24
+ip ip-prefix AUTA_170.79.95.0/24 index 10 permit 170.79.95.0 24
+ip ip-prefix AUTA_170.80.59.0/24 index 10 permit 170.80.59.0 24
+ip ip-prefix DEFAULT index 100 permit 0.0.0.0 0
+ip ip-prefix FULL-ROUTING index 10 permit 0.0.0.0 0 less-equal 24
+ip ip-prefix GD-DEFAULT-ROUTE index 10 permit 0.0.0.0 0
+ip ip-prefix GNETTELECOM index 10 permit 170.80.56.0 24
+ip ip-prefix GNETTELECOM index 11 permit 170.80.59.0 24
+ip ip-prefix GNET_170.80.56.0/23 index 10 permit 170.80.56.0 23
+ip ip-prefix GNET_170.80.56.0/24 index 10 permit 170.80.56.0 24
+ip ip-prefix GNET_170.80.57.0/24 index 10 permit 170.80.57.0 24
+ip ip-prefix GNET_170.80.58.0/24 index 10 permit 170.80.58.0 24
+ip ip-prefix GreenTelecom index 10 permit 170.79.93.0 24
+ip ip-prefix GreenTelecom index 11 permit 170.79.94.0 24
+ip ip-prefix GreenTelecom index 12 permit 170.79.95.0 24
+ip ip-prefix MK_177.152.104.0/24 index 5 permit 177.152.104.0 24 greater-equal 24 less-equal 25
+ip ip-prefix MK_177.152.107.0/24 index 5 permit 177.152.107.0 24 greater-equal 24 less-equal 25
+ip ip-prefix MK_177.190.144.0/24 index 5 permit 177.190.144.0 24 greater-equal 24 less-equal 25
+ip ip-prefix MK_177.190.146.0/24 index 5 permit 177.190.146.0 24 greater-equal 24 less-equal 25
+ip ip-prefix PL-DEFAULT-ROUTE index 10 permit 0.0.0.0 0
+ip ip-prefix PL-GNET-TELECOM index 10 permit 170.80.57.0 24 greater-equal 24 less-equal 24
+ip ip-prefix PL-GNET-TELECOM index 20 permit 170.80.56.0 24 greater-equal 24 less-equal 24
+ip ip-prefix PL-GNET-TELECOM index 40 permit 170.80.58.0 24 greater-equal 24 less-equal 24
+ip ip-prefix PREFIX_170.80.59.0/24 index 10 permit 170.80.59.0 24
+ip ip-prefix ROUTE-DEFAULT index 10 permit 0.0.0.0 0
+ip ip-prefix SUPORTE_45.161.160.0/22 index 10 permit 45.161.160.0 22
+ip ip-prefix SUPORTE_45.161.160.0/22-24 index 10 permit 45.161.160.0 22 greater-equal 22 less-equal 24
+ip ip-prefix SUPORTE_45.161.160.0/23 index 10 permit 45.161.160.0 23
+ip ip-prefix SUPORTE_45.161.161.0/24 index 10 permit 45.161.161.0 24
+ip ip-prefix SUPORTE_45.161.162.0/24 index 10 permit 45.161.162.0 24
+ip ip-prefix SUPORTE_45.161.163.0/24 index 10 permit 45.161.163.0 24
+ip community-filter 10 index 20 permit 0:6666
+ip community-filter basic Blackhole-algar index 10 permit 16735:666
+ip community-filter basic HUGE index 10 permit 54510:999
+ip community-filter basic WANGUARD index 10 permit 0:6666
+ip community-filter basic c-01-export index 10 permit 65100:50101
+ip community-filter basic c-01-export-1p index 10 permit 65100:50102
+ip community-filter basic c-01-export-2p index 10 permit 65100:50103
+ip community-filter basic c-01-export-3p index 10 permit 65100:50104
+ip community-filter basic c-01-export-4p index 10 permit 65100:50105
+ip community-filter basic c-01-export-bh index 10 permit 65100:50166
+ip community-filter basic c-01-export-bl index 10 permit 65100:50167
+ip community-filter basic c-01-export-df index 10 permit 65100:50109
+ip community-filter basic c-01-export-ne index 10 permit 65100:50108
+ip community-filter basic c-01-import-rr index 10 permit 65100:50100
+ip community-filter basic c-02-export index 10 permit 65100:50201
+ip community-filter basic c-02-export-1p index 10 permit 65100:50202
+ip community-filter basic c-02-export-2p index 10 permit 65100:50203
+ip community-filter basic c-02-export-3p index 10 permit 65100:50204
+ip community-filter basic c-02-export-4p index 10 permit 65100:50205
+ip community-filter basic c-02-export-bh index 10 permit 65100:50266
+ip community-filter basic c-02-export-bl index 10 permit 65100:50267
+ip community-filter basic c-02-export-df index 10 permit 65100:50209
+ip community-filter basic c-02-export-ne index 10 permit 65100:50208
+ip community-filter basic c-02-import-rr index 10 permit 65100:50200
+ip community-filter basic c-03-export index 10 permit 65100:50301
+ip community-filter basic c-03-export-1p index 10 permit 65100:50302
+ip community-filter basic c-03-export-2p index 10 permit 65100:50303
+ip community-filter basic c-03-export-3p index 10 permit 65100:50304
+ip community-filter basic c-03-export-4p index 10 permit 65100:50305
+ip community-filter basic c-03-export-bh index 10 permit 65100:50366
+ip community-filter basic c-03-export-bl index 10 permit 65100:50367
+ip community-filter basic c-03-export-df index 10 permit 65100:50309
+ip community-filter basic c-03-export-ne index 10 permit 65100:50308
+ip community-filter basic c-03-import-rr index 10 permit 65100:50300
+ip community-filter basic c-04-export index 10 permit 65100:50401
+ip community-filter basic c-04-export-1p index 10 permit 65100:50402
+ip community-filter basic c-04-export-2p index 10 permit 65100:50403
+ip community-filter basic c-04-export-3p index 10 permit 65100:50404
+ip community-filter basic c-04-export-4p index 10 permit 65100:50405
+ip community-filter basic c-04-export-bh index 10 permit 65100:50366
+ip community-filter basic c-04-export-bl index 10 permit 65100:50367
+ip community-filter basic c-04-export-df index 10 permit 65100:50409
+ip community-filter basic c-04-export-ne index 10 permit 65100:50408
+ip community-filter basic c-04-import-rr index 10 permit 65100:50400
+ip community-filter basic c-05-export index 10 permit 65100:50501
+ip community-filter basic c-05-export-1p index 10 permit 65100:50502
+ip community-filter basic c-05-export-2p index 10 permit 65100:50503
+ip community-filter basic c-05-export-3p index 10 permit 65100:50504
+ip community-filter basic c-05-export-4p index 10 permit 65100:50505
+ip community-filter basic c-05-export-bh index 10 permit 65100:50366
+ip community-filter basic c-05-export-bl index 10 permit 65100:50367
+ip community-filter basic c-05-export-df index 10 permit 65100:50509
+ip community-filter basic c-05-export-ne index 10 permit 65100:50508
+ip community-filter basic c-05-import-rr index 10 permit 65100:50500
+ip community-filter basic c-06-export index 10 permit 65100:50601
+ip community-filter basic c-06-export-1p index 10 permit 65100:50602
+ip community-filter basic c-06-export-2p index 10 permit 65100:50603
+ip community-filter basic c-06-export-3p index 10 permit 65100:50604
+ip community-filter basic c-06-export-4p index 10 permit 65100:50605
+ip community-filter basic c-06-export-bh index 10 permit 65100:50366
+ip community-filter basic c-06-export-bl index 10 permit 65100:50367
+ip community-filter basic c-06-export-df index 10 permit 65100:50609
+ip community-filter basic c-06-export-ne index 10 permit 65100:50608
+ip community-filter basic c-06-import-rr index 10 permit 65100:50600
+ip community-filter basic c-81-export index 10 permit 65100:58101
+ip community-filter basic c-81-export-1p index 10 permit 65100:58102
+ip community-filter basic c-81-export-2p index 10 permit 65100:58103
+ip community-filter basic c-81-export-3p index 10 permit 65100:58104
+ip community-filter basic c-81-export-4p index 10 permit 65100:58105
+ip community-filter basic c-81-export-bl index 10 permit 65100:58167
+ip community-filter basic c-81-export-df index 10 permit 65100:58109
+ip community-filter basic c-82-export index 10 permit 65100:58201
+ip community-filter basic c-82-export-1p index 10 permit 65100:58202
+ip community-filter basic c-82-export-2p index 10 permit 65100:58203
+ip community-filter basic c-82-export-3p index 10 permit 65100:58204
+ip community-filter basic c-82-export-4p index 10 permit 65100:58205
+ip community-filter basic c-82-export-bl index 10 permit 65100:58267
+ip community-filter basic c-82-export-df index 10 permit 65100:58209
+ip community-filter basic c-83-export index 10 permit 65100:58301
+ip community-filter basic c-83-export-1p index 10 permit 65100:58302
+ip community-filter basic c-83-export-2p index 10 permit 65100:58303
+ip community-filter basic c-83-export-3p index 10 permit 65100:58304
+ip community-filter basic c-83-export-4p index 10 permit 65100:58305
+ip community-filter basic c-83-export-bl index 10 permit 65100:58367
+ip community-filter basic c-83-export-df index 10 permit 65100:58309
+ip community-filter basic cdn-tecklink index 10 permit 52900:110
+ip community-filter basic ext-rt-recvd-fr index 10 permit 65100:20000
+ip community-filter basic ext-rt-recvd-pni index 10 permit 65100:20070
+ip community-filter basic ext-rt-recvd-ptt-pb index 10 permit 65100:20050
+ip community-filter basic ext-rt-recvd-ptt-pr index 10 permit 65100:20060
+ip community-filter basic ext-rt-recvd-reg index 10 permit 65100:20040
+ip community-filter basic ext-rt-recvd-t1 index 10 permit 65100:20010
+ip community-filter basic ext-rt-recvd-t2 index 10 permit 65100:20020
+ip community-filter basic ext-rt-recvd-t3 index 10 permit 65100:20030
+ip community-filter basic glob-all-bh-deny index 10 permit 65100:666
+ip community-filter basic glob-all-cdns index 10 permit 65100:60021
+ip community-filter basic glob-all-cdns-1p index 10 permit 65100:60022
+ip community-filter basic glob-all-cdns-2p index 10 permit 65100:60023
+ip community-filter basic glob-all-cdns-3p index 10 permit 65100:60024
+ip community-filter basic glob-all-cdns-4p index 10 permit 65100:60025
+ip community-filter basic glob-all-peerings index 10 permit 65100:60071
+ip community-filter basic glob-all-peerings-1p index 10 permit 65100:60072
+ip community-filter basic glob-all-peerings-2p index 10 permit 65100:60073
+ip community-filter basic glob-all-peerings-3p index 10 permit 65100:60074
+ip community-filter basic glob-all-peerings-4p index 10 permit 65100:60075
+ip community-filter basic glob-all-pni index 10 permit 65100:60041
+ip community-filter basic glob-all-pni-1p index 10 permit 65100:60042
+ip community-filter basic glob-all-pni-2p index 10 permit 65100:60043
+ip community-filter basic glob-all-pni-3p index 10 permit 65100:60044
+ip community-filter basic glob-all-pni-4p index 10 permit 65100:60045
+ip community-filter basic glob-all-ptts-ixbr index 10 permit 65100:60011
+ip community-filter basic glob-all-ptts-ixbr-1p index 10 permit 65100:60012
+ip community-filter basic glob-all-ptts-ixbr-2p index 10 permit 65100:60013
+ip community-filter basic glob-all-ptts-ixbr-3p index 10 permit 65100:60014
+ip community-filter basic glob-all-ptts-ixbr-4p index 10 permit 65100:60015
+ip community-filter basic glob-all-ptts-priv index 10 permit 65100:60031
+ip community-filter basic glob-all-ptts-priv-1p index 10 permit 65100:60032
+ip community-filter basic glob-all-ptts-priv-2p index 10 permit 65100:60033
+ip community-filter basic glob-all-ptts-priv-3p index 10 permit 65100:60034
+ip community-filter basic glob-all-ptts-priv-4p index 10 permit 65100:60035
+ip community-filter basic glob-all-upstream index 10 permit 65100:60001
+ip community-filter basic glob-all-upstream-1p index 10 permit 65100:60002
+ip community-filter basic glob-all-upstream-2p index 10 permit 65100:60003
+ip community-filter basic glob-all-upstream-3p index 10 permit 65100:60004
+ip community-filter basic glob-all-upstream-4p index 10 permit 65100:60005
+ip community-filter basic int-bl-ibgp-upstream index 10 permit 65100:10061
+ip community-filter basic int-cdn-26-30 index 10 permit 65100:10094
+ip community-filter basic int-local-rt-only index 10 permit 65100:10060
+ip community-filter basic int-orig-24 index 10 permit 65100:10091
+ip community-filter basic int-orig-25-32 index 10 permit 65100:10092
+ip community-filter basic int-orig-bb index 10 permit 65100:10090
+ip community-filter basic int-tran-25 index 10 permit 65100:10093
+ip community-filter basic transp-bordas index 10 permit 65100:39999
+ip extcommunity-filter advanced Mitigacao_Wix index 10 permit 263456:100
+ip extcommunity-filter advanced Mitigacao_Wix_266296 index 10 permit 266296:100
+#
+ip route-static 10.1.1.0 255.255.255.0 170.80.59.122
+ip route-static 10.40.40.0 255.255.255.0 170.80.59.122
+ip route-static 10.91.91.0 255.255.255.252 172.16.61.2
+ip route-static 10.204.204.0 255.255.255.252 170.79.93.76
+ip route-static 100.65.0.0 255.255.252.0 10.200.200.2
+ip route-static 100.127.224.0 255.255.255.0 100.110.88.194
+ip route-static 170.79.93.0 255.255.255.0 NULL0
+ip route-static 170.79.93.0 255.255.255.224 10.200.200.2 description IP fixo cliente Alta Telecom
+ip route-static 170.79.93.32 255.255.255.224 10.200.200.2
+ip route-static 170.79.93.60 255.255.255.252 172.18.17.14
+ip route-static 170.79.93.72 255.255.255.252 10.200.200.2
+ip route-static 170.79.93.76 255.255.255.252 10.200.200.2 description Wanguard-novo
+ip route-static 170.79.93.88 255.255.255.248 10.200.200.2
+ip route-static 170.79.93.112 255.255.255.240 10.200.200.2 description Alta Radio
+ip route-static 170.79.93.128 255.255.255.128 10.200.200.2 description IP Fixo cliente Link Protecao
+ip route-static 170.79.94.0 255.255.255.0 NULL0
+ip route-static 170.79.94.0 255.255.255.0 10.203.203.2
+ip route-static 170.79.95.0 255.255.255.128 172.18.17.10
+ip route-static 170.79.95.128 255.255.255.128 172.18.17.10
+ip route-static 170.80.59.0 255.255.255.0 NULL0
+ip route-static 170.80.59.16 255.255.255.240 10.200.200.2
+ip route-static 170.80.59.32 255.255.255.240 170.80.59.122
+ip route-static 170.80.59.64 255.255.255.192 10.200.200.2 description Bloco Clientes
+ip route-static 170.80.59.82 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.83 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.93 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.94 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.97 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.99 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.100 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.101 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.102 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.103 255.255.255.255 170.80.59.122
+ip route-static 170.80.59.104 255.255.255.255 170.80.59.122
+ip route-static 170.80.59.105 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.106 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.116 255.255.255.255 170.80.59.122
+ip route-static 170.80.59.127 255.255.255.255 10.200.200.2
+ip route-static 170.80.59.128 255.255.255.192 170.80.59.125
+ip route-static 170.80.59.192 255.255.255.252 10.203.203.2
+ip route-static 170.80.59.225 255.255.255.255 172.21.70.2
+ip route-static 172.64.0.0 255.255.0.0 198.18.92.17
+ip route-static 172.64.144.0 255.255.254.0 198.18.92.17
+ip route-static 172.64.145.0 255.255.255.0 198.18.92.17
+ip route-static 186.249.228.0 255.255.255.0 100.110.88.194
+ip route-static 192.0.2.1 255.255.255.255 NULL0
+ip route-static 192.168.40.0 255.255.255.0 170.80.59.122
+ip route-static 192.168.56.0 255.255.255.0 10.200.200.2
+#
+ipv6 route-static :: 0 2001:1291:1002:B37A::A
+#
+ip ipv6-prefix FULL-ROUTING-V6 index 10 permit :: 0 less-equal 34
+ip ipv6-prefix PL-PREFIX-GREEN-TELECOM index 10 permit 2804:359C:2400:: 38 greater-equal 38 less-equal 48
+ip ipv6-prefix PREFIX-ALTA-TELECOM-32-48 index 10 permit 2804:88E4:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PREFIX-GNET-TELECOM-V6 index 10 permit 2804:36C0:: 32 greater-equal 32 less-equal 48
+ip ipv6-prefix PREFIX-GREEN-TELECOM-V6 index 10 permit 2804:359C:: 32 greater-equal 32 less-equal 40
+ip ipv6-prefix PREFIX-GREEN-TELECOM-V6 index 20 permit 2804:359C:9000:: 38 greater-equal 38 less-equal 38
+ip ipv6-prefix PREFIX-GREEN-TELECOM-V6 index 30 permit 2804:359C:2400:: 38 greater-equal 38 less-equal 38
+ip ipv6-prefix PREFIX-MK-NETWORK-V6 index 10 permit 2804:88E4:: 32
+ip ipv6-prefix ROUTE-DEFAULT-V6 index 10 permit :: 0
+#
+snmp-agent
+snmp-agent acl IPV4_MANAGEMENT
+snmp-agent local-engineid 800007DB052102353A3A101B00043302
+snmp-agent community read cipher %^%#84]n-*4"s$'=S,DI]H"'VkS'&ulE^.Cwpz5)fs#=J:=Q.-Q62)3}:<~[>xl-YW-'Cr@~QEjD=B1-c8b0%^%# alias __CommunityAliasName_01_14340
+snmp-agent community read cipher %^%#tnCUX4HI!SglVgF1&hSD}dKJ+Jhlq/X|!8>/8*!.#J3%3tDX'-w+4-0NUGKD"{RdRPfJe0dU]\9xS*y+%^%# alias __CommunityAliasName_02_59182
+snmp-agent community read cipher %^%#x=EF<&*jJRw;y5%{kU(Q%`1b=*IqP:v1xU*Y9~*$2dmwO*zj[=x<OM1@>g`3|$(()76A\X37s@<WF{NX%^%# alias wanguard
+snmp-agent community read cipher %^%#h^FUCMuHF~H"+})g#\>15@6,IKLh4QwUV_Vps0m)#OF<,;B6\Sqd(0:+:HcT+DtZ:/sk83:T)4CRvBR!%^%# alias __CommunityAliasName_04_23412
+snmp-agent community read cipher %^%#*urWP9MSQIr$P;R=s_,~OWY6*\tm^R8UBb=tv`,A"/|bNN3h1-Q_rtE%bK-%c]:R8C9XF!kCewLofrg2%^%# alias __CommunityAliasName_05_58102
+#
+snmp-agent sys-info version v2c v3
+snmp-agent community complexity-check disable
+#
+snmp-agent protocol source-status all-interface
+undo snmp-agent protocol source-status ipv6 all-interface
+#
+snmp-agent proxy protocol source-status all-interface
+undo snmp-agent proxy protocol source-status ipv6 all-interface
+#
+stelnet server enable
+ssh server-source all-interface
+undo ssh ipv6 server-source all-interface
+ssh authorization-type default aaa
+#
+ssh server cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh server hmac sha2_256
+ssh server key-exchange dh_group_exchange_sha256
+#
+ssh server publickey rsa_sha2_256 rsa_sha2_512
+#
+ssh server dh-exchange min-len 3072
+#
+ssh client first-time enable
+ssh client peer 10.204.204.2 assign rsa-key 10.204.204.2
+ssh client peer 172.16.108.2 assign rsa-key 172.16.108.2
+#
+ssh client publickey rsa_sha2_256 rsa_sha2_512
+#
+ssh client cipher aes256_gcm aes128_gcm aes256_ctr aes192_ctr aes128_ctr
+ssh client hmac sha2_512 sha2_256
+ssh client key-exchange dh_group_exchange_sha256
+#
+user-interface maximum-vty 21
+#
+user-interface vty 0 4
+ acl IPV4_MANAGEMENT inbound
+ authentication-mode aaa
+ idle-timeout 120 0
+ protocol inbound ssh
+#
+local-aaa-server
+#
+return
+<BGP_PATOS>

@@ -71,6 +71,8 @@ urlpatterns = [
 
     # Ping
     path('acessos/ping/<int:acesso_id>/', views.ping_acesso, name='ping_acesso'),
+    path('<int:cliente_id>/testes/rede/', views.teste_rede_cliente, name='teste_rede_cliente'),
+    path('<int:cliente_id>/testes/dns/', views.teste_dns_cliente, name='teste_dns_cliente'),
 
     # RPKI/IRR
     path('blocos/cadastrar/', views.cadastrar_bloco_ip, name='cadastrar_bloco_ip'),

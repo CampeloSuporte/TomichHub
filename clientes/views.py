@@ -13,6 +13,7 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso
 from .models import ProxyServer
+from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
 from .decorators import (
     cliente_login_required, 
@@ -25,6 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 from django.http import HttpResponse
 import json
+import re
 import pexpect
 import telnetlib
 import threading
@@ -112,7 +114,8 @@ def listar_clientes(request):
         'arquivos_vpn': arquivos_vpn,
         'imagens_topologia': imagens_topologia,
         'proxies': proxies,
-        'is_cliente': is_cliente,  # ✅ NOVO: Flag para identificar cliente
+        'is_cliente': is_cliente,
+        'destinos_padrao': DESTINOS_PADRAO,
     })
 
 @login_required(login_url='login')
@@ -4055,279 +4058,493 @@ def editar_comentario_acesso(request, comentario_id):
     })
 
 
-@login_required(login_url='login')
-def proxy_ativo_cliente(request):
-    cliente_id = request.GET.get('cliente_id')
-    if not cliente_id:
-        return JsonResponse({'tem_proxy_ativo': False})
+# ─────────────────────────────────────────────────────────────────────────────
+# TESTES DE REDE — ping + MTR via SSH no proxy do cliente
+# ─────────────────────────────────────────────────────────────────────────────
 
-    proxy = ProxyServer.objects.filter(cliente_id=cliente_id, ativo=True).first()
+DESTINOS_PADRAO = [
+    '8.8.8.8',
+    '1.1.1.1',
+    'whatsapp.com',
+    'instagram.com',
+    'uol.com.br',
+    'nytimes.com',
+]
+
+DNS_PUBLICOS = [
+    {'nome': 'Google',      'ip': '8.8.8.8'},
+    {'nome': 'Cloudflare',  'ip': '1.1.1.1'},
+    {'nome': 'OpenDNS',     'ip': '208.67.222.222'},
+    {'nome': 'Quad9',       'ip': '9.9.9.9'},
+    {'nome': 'AdGuard',     'ip': '94.140.14.14'},
+]
+
+
+def _ssh_exec(proxy, cmd, timeout=45):
+    """Executa um comando via SSH no proxy. Retorna (stdout, stderr, return_code)."""
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(
+        hostname=proxy.host,
+        port=int(proxy.porta),
+        username=proxy.usuario,
+        password=proxy.senha,
+        timeout=15,
+        look_for_keys=False,
+        allow_agent=False,
+        banner_timeout=15,
+    )
+    try:
+        stdin, stdout, stderr = client.exec_command(cmd, timeout=timeout)
+        out = stdout.read().decode('utf-8', errors='replace')
+        err = stderr.read().decode('utf-8', errors='replace')
+        rc  = stdout.channel.recv_exit_status()
+        return out, err, rc
+    finally:
+        client.close()
+
+
+def _parse_ping_output(output, host):
+    """Extrai estatísticas do output de ping (Linux)."""
+    result = {'host': host, 'alcancavel': False, 'enviados': 0,
+              'recebidos': 0, 'perdidos': 0, 'perda_pct': 100,
+              'rtt_min': None, 'rtt_avg': None, 'rtt_max': None,
+              'output': output.strip()[:2000]}
+    m = re.search(r'(\d+)\s+packets? transmitted,\s*(\d+)\s+received', output)
+    if m:
+        result['enviados']  = int(m.group(1))
+        result['recebidos'] = int(m.group(2))
+        result['perdidos']  = result['enviados'] - result['recebidos']
+        result['perda_pct'] = round(result['perdidos'] / max(result['enviados'], 1) * 100)
+        result['alcancavel'] = result['recebidos'] > 0
+    m2 = re.search(r'min/avg/max[^=]*=\s*([\d.]+)/([\d.]+)/([\d.]+)', output)
+    if m2:
+        result['rtt_min'] = m2.group(1)
+        result['rtt_avg'] = m2.group(2)
+        result['rtt_max'] = m2.group(3)
+    return result
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def teste_rede_cliente(request, cliente_id):
+    """
+    Executa ping + mtr/traceroute para os destinos através do proxy SSH.
+    Aceita JSON body:
+      ipv            : 'v4' | 'v6' | 'ambos'  (padrão: 'v4')
+      packets        : int 1-100               (padrão: 5)
+      wait           : int 1-10 segundos       (padrão: 3)
+      destinos_extras: list[str]               (destinos adicionais)
+      destino_unico  : str | null              (se informado, testa APENAS este destino)
+    """
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    if not proxy:
+        return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
+
+    # ── Parâmetros ────────────────────────────────────────────────────────
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        body = {}
+
+    ipv             = body.get('ipv', 'v4')
+    packets         = max(1, min(100, int(body.get('packets', 5))))
+    wait            = max(1, min(10,  int(body.get('wait', 3))))
+    destino_unico   = (body.get('destino_unico') or '').strip()
+    destinos_extras = [d.strip() for d in body.get('destinos_extras', []) if d.strip()]
+
+    # Montar lista final de destinos
+    if destino_unico:
+        # Modo destino único — ignora padrão e extras
+        todos_destinos = [destino_unico]
+    else:
+        todos_destinos = list(DESTINOS_PADRAO)
+        for d in destinos_extras:
+            if d not in todos_destinos:
+                todos_destinos.append(d)
+
+    # ── Opções de versão IP ───────────────────────────────────────────────
+    # ping: -4/-6  |  mtr: -4/-6  |  traceroute: -4/-6
+    mtr_flag_v4 = '-4'
+    mtr_flag_v6 = '-6'
+
+    # SSH timeout total = (packets * wait) + margem
+    ssh_ping_timeout = packets * wait + 15
+
+    def ping_cmd(destino, flag):
+        """Monta comando ping com flag de versão IP."""
+        return f'ping {flag} -c {packets} -W {wait} {destino} 2>&1'
+
+    def mtr_cmd(destino, ip_flag):
+        """mtr -4/-6 com fallback para traceroute -4/-6."""
+        return (
+            f'which mtr > /dev/null 2>&1 && '
+            f'mtr --report --report-cycles {packets} --no-dns {ip_flag} {destino} 2>&1 || '
+            f'traceroute -n -w 2 -m 20 {ip_flag} {destino} 2>&1'
+        )
+
+    def testar_destino(destino):
+        resultado = {
+            'destino':  destino,
+            'extra':    destino not in DESTINOS_PADRAO,
+            'ping_v4':  None,
+            'ping_v6':  None,
+            'mtr_v4':   None,
+            'mtr_v6':   None,
+            'erro':     None,
+        }
+        try:
+            if ipv in ('v4', 'ambos'):
+                out, _, _ = _ssh_exec(proxy, ping_cmd(destino, '-4'), timeout=ssh_ping_timeout)
+                resultado['ping_v4'] = _parse_ping_output(out, destino)
+
+            if ipv in ('v6', 'ambos'):
+                out6, _, _ = _ssh_exec(proxy, ping_cmd(destino, '-6'), timeout=ssh_ping_timeout)
+                resultado['ping_v6'] = _parse_ping_output(out6, destino)
+
+            # MTR — só o protocolo primário para não duplicar
+            mtr_flag = mtr_flag_v4 if ipv in ('v4', 'ambos') else mtr_flag_v6
+            out_mtr, err_mtr, _ = _ssh_exec(proxy, mtr_cmd(destino, mtr_flag), timeout=90)
+            mtr_raw = (out_mtr + err_mtr).strip()[:4000]
+            ferr    = 'mtr' if ('Loss%' in mtr_raw or 'HOST' in mtr_raw) else 'traceroute'
+
+            if ipv in ('v4', 'ambos'):
+                resultado['mtr_v4'] = {'output': mtr_raw, 'ferramenta': ferr}
+            if ipv == 'v6':
+                out_mtr6, err_mtr6, _ = _ssh_exec(proxy, mtr_cmd(destino, mtr_flag_v6), timeout=90)
+                mtr_raw6 = (out_mtr6 + err_mtr6).strip()[:4000]
+                resultado['mtr_v6'] = {'output': mtr_raw6, 'ferramenta': ferr}
+            elif ipv == 'ambos':
+                out_mtr6, err_mtr6, _ = _ssh_exec(proxy, mtr_cmd(destino, mtr_flag_v6), timeout=90)
+                mtr_raw6 = (out_mtr6 + err_mtr6).strip()[:4000]
+                resultado['mtr_v6'] = {'output': mtr_raw6, 'ferramenta': ferr}
+
+        except Exception as e:
+            resultado['erro'] = str(e)
+        return resultado
+
+    # Executar em paralelo
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        futuros = {pool.submit(testar_destino, d): d for d in todos_destinos}
+        resultados = []
+        for futuro in concurrent.futures.as_completed(futuros):
+            resultados.append(futuro.result())
+
+    # Ordenar: padrão primeiro, extras depois (na ordem em que foram inseridos)
+    ordem = {d: i for i, d in enumerate(todos_destinos)}
+    resultados.sort(key=lambda r: ordem.get(r['destino'], 99))
+
     return JsonResponse({
-        'tem_proxy_ativo': bool(proxy),
-        'nome': proxy.nome if proxy else None,
-        'host': proxy.host if proxy else None,
+        'ok':        True,
+        'proxy':     {'nome': proxy.nome, 'host': proxy.host},
+        'ipv':       ipv,
+        'packets':   packets,
+        'wait':      wait,
+        'resultados': resultados,
     })
 
 
-# ---- Helper página de erro ----
+# ─────────────────────────────────────────────────────────────────────────────
+# TESTE DE DNS — nslookup comparativo com DNS do cliente e DNS públicos
+# ─────────────────────────────────────────────────────────────────────────────
 
-def _error_page(msg: str) -> str:
-    return f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<style>
-body{{background:#0d1117;color:#ccc;font-family:'Courier New',monospace;
-    display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
-.box{{background:#161b22;border:1px solid #30363d;border-radius:8px;
-        padding:40px;max-width:520px;text-align:center}}
-p{{color:#8b949e;line-height:1.6}}
-</style></head><body>
-<div class="box">
-<div style="font-size:48px;margin-bottom:16px">⚠️</div>
-<h2 style="color:#f85149">Erro de Conexão</h2>
-<p>{msg}</p>
-</div></body></html>"""
-
-
-
-# ──────────────────────────────────────────────────────────────
-# PROXY WEB — acesso HTTP/HTTPS via túnel SSH para IPs privados
-# ──────────────────────────────────────────────────────────────
+# Domínios que naturalmente retornam IPs diferentes por geo-DNS / CDN
+KNOWN_CDN_DOMAINS = [
+    'whatsapp.com', 'instagram.com', 'facebook.com', 'fb.com', 'fbcdn.net',
+    'twitter.com', 'x.com', 't.co',
+    'google.com', 'google.com.br', 'youtube.com', 'googleapis.com', 'gstatic.com',
+    'netflix.com', 'nflxso.net', 'nflxvideo.net',
+    'tiktok.com', 'byteoversea.com', 'musical.ly',
+    'amazon.com', 'amazonaws.com', 'cloudfront.net', 'awsstatic.com',
+    'akamai.net', 'akamaiedge.net', 'akamaitechnologies.com',
+    'fastly.net', 'fastlylb.net',
+    'cloudflare.com', 'cloudflare.net',
+    'microsoft.com', 'office.com', 'live.com', 'msftncsi.com',
+    'apple.com', 'icloud.com',
+    'telegram.org', 'snapchat.com',
+]
 
 
-# ──────────────────────────────────────────────────────────────
-# PROXY WEB — acesso HTTP/HTTPS via túnel SSH para IPs privados
-# ──────────────────────────────────────────────────────────────
+def _is_cdn_domain(dominio):
+    """Verifica se o domínio é conhecido por usar geo-DNS / CDN."""
+    d = dominio.lower()
+    return any(cdn in d for cdn in KNOWN_CDN_DOMAINS)
 
 
-import re as _re
-import ssl as _ssl
-from http.client import HTTPResponse as _HTTPResponse
-from io import BytesIO as _BytesIO
-from urllib.parse import urlparse as _urlparse
+def _same_slash16(ips):
+    """/16 prefix heuristic: se todos os IPs compartilham /16, provavelmente é CDN."""
+    if len(ips) <= 1:
+        return True
+    prefixes = {'.'.join(ip.split('.')[:2]) for ip in ips if ip.count('.') >= 1}
+    return len(prefixes) == 1
 
 
-def _web_parse_response(raw: bytes):
-    class FakeSocket:
-        def __init__(self, data):
-            self._file = _BytesIO(data)
-        def makefile(self, *args, **kwargs):
-            return self._file
-
-    r = _HTTPResponse(FakeSocket(raw))
-    r.begin()
-
-    headers = {}
-    cookies_raw = []
-    for k, v in r.getheaders():
-        if k.lower() == 'set-cookie':
-            cookies_raw.append(v)
-        else:
-            headers[k] = v
-
-    content = r.read()
-    enc = headers.get('Content-Encoding', '')
-    if enc == 'gzip':
-        import gzip
-        content = gzip.decompress(content)
-    elif enc == 'deflate':
-        import zlib
-        content = zlib.decompress(content)
-
-    class _R:
-        pass
-
-    resp = _R()
-    resp.status_code  = r.status
-    resp.headers      = headers
-    resp.content      = content
-    resp.cookies_raw  = cookies_raw
-    resp.content_type = headers.get('Content-Type', 'text/html; charset=utf-8')
-    return resp
-
-
-_web_ssh_registry: dict = {}
-_web_ssh_lock = threading.Lock()
-
-def _web_get_ssh_client(proxy) -> paramiko.SSHClient:
+def _get_asn_for_ip(ip):
     """
-    Retorna cliente SSH cacheado. Detecta transport degradado de forma mais
-    agressiva: verifica is_active() E tenta um keepalive real antes de reutilizar.
+    Resolve o ASN de um IP via Team Cymru DNS (gratuito, sem API key).
+    Exemplo: dig +short 8.8.8.8.origin.asn.cymru.com TXT
+      → '15169 | 8.8.8.0/24 | US | arin | 1992-12-01'
+    Retorna dict com 'asn', 'prefix', 'country' ou None em caso de falha.
     """
-    key = f"web_ssh:{proxy.id}"
-    with _web_ssh_lock:
-        entry = _web_ssh_registry.get(key)
-        if entry:
-            client = entry['client']
-            transport = client.get_transport()
-            ativo = False
-            if transport and transport.is_active():
-                try:
-                    # Keepalive real — detecta canal morto que is_active() não detecta
-                    transport.send_ignore()
-                    ativo = True
-                except Exception:
-                    ativo = False
-
-            if not ativo:
-                try:
-                    client.close()
-                except Exception:
-                    pass
-                del _web_ssh_registry[key]
-            else:
-                return client
-
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(
-            hostname=proxy.host,
-            port=int(proxy.porta),
-            username=proxy.usuario,
-            password=proxy.senha,
-            timeout=15,
-            look_for_keys=False,
-            allow_agent=False,
-            banner_timeout=15,
-        )
-        client.get_transport().set_keepalive(30)
-        _web_ssh_registry[key] = {'client': client}
-        logger.info("WEB_PROXY: nova conexão SSH para proxy %s", proxy.nome)
-        return client
-
-
-def _web_rewrite_html(content: bytes, proxy_base: str,
-                       target_host: str = '', porta_web: int = 0,
-                       scheme: str = 'http') -> bytes:
     try:
-        html = content.decode('utf-8', errors='replace')
+        import subprocess as _sp
+        rev = '.'.join(reversed(ip.split('.')))
+        r = _sp.run(
+            ['dig', '+short', '+time=4', '+tries=1', f'{rev}.origin.asn.cymru.com', 'TXT'],
+            capture_output=True, text=True, timeout=6,
+        )
+        txt = r.stdout.strip().strip('"').strip("'")
+        if not txt or 'NXDOMAIN' in txt:
+            return None
+        parts = [p.strip() for p in txt.split('|')]
+        return {
+            'asn':     parts[0] if parts else None,
+            'prefix':  parts[1] if len(parts) > 1 else None,
+            'country': parts[2] if len(parts) > 2 else None,
+        }
     except Exception:
-        return content
+        return None
 
-    # ── Reescrever URLs absolutas com o host do equipamento ──────────────
-    if target_host:
-        for proto in ('https', 'http'):
-            for porta_variante in (f':{porta_web}', ''):
-                prefixo = f'{proto}://{target_host}{porta_variante}'
-                html = html.replace(prefixo, proxy_base + '/')
-
-        # Tentar pegar o IP puro em contextos de string (comum em JS)
-        html = html.replace(f'"{target_host}"', f'"{proxy_base}"')
-        html = html.replace(f"'{target_host}'", f"'{proxy_base}'")
-
-
-    # ── Reescrever caminhos relativos em atributos HTML ───────────────────
-    # Usar negative lookahead para não reescrever o que já tem 'clientes/acessos'
-    for attr in ('href', 'src', 'action', 'data-src', 'data-url'):
-        html = _re.sub(rf'({attr}\s*=\s*["\'])/(?!clientes/acessos)', rf'\1{proxy_base}/', html)
-
-    html = _re.sub(r'(url\s*\(\s*["\']?)/(?!clientes/acessos)', rf'\1{proxy_base}/', html)
-    html = _re.sub(r"(location(?:\.href)?\s*=\s*['\"])/(?!clientes/acessos)", rf"\1{proxy_base}/", html)
-
-    # ── Remover meta refresh ──────────────────────────────────────────────
-    html = _re.sub(
-        r'<meta[^>]+http-equiv=["\']refresh["\'][^>]*>',
-        '<!-- meta refresh removido pelo proxy -->',
-        html, flags=_re.IGNORECASE
+def _nslookup_ssh(proxy, dominio, dns_ip, timeout=20):
+    """
+    Resolve dominio@dns_ip via SSH no proxy.
+    Tenta dig primeiro; se não disponível, usa nslookup.
+    """
+    # Comando único: tenta dig, senão usa nslookup como fallback
+    cmd = (
+        f'if command -v dig > /dev/null 2>&1; then '
+        f'  dig +short +time=5 +tries=2 A {dominio} @{dns_ip} 2>&1; '
+        f'  echo "---IPV6---"; '
+        f'  dig +short +time=5 +tries=2 AAAA {dominio} @{dns_ip} 2>&1; '
+        f'else '
+        f'  echo "---NSLOOKUP---"; '
+        f'  nslookup {dominio} {dns_ip} 2>&1; '
+        f'fi'
     )
+    try:
+        out, err_out, _ = _ssh_exec(proxy, cmd, timeout=timeout)
+        raw = (out + err_out).strip()
 
-    inject = f"""
-<script>
-(function() {{
-  var PB = '{proxy_base}';
-  var BASE = PB.split('?')[0];
+        ipv4_list = []
+        ipv6_list = []
+        ferramenta = 'dig'
 
-  // ── Reescrever paths relativos em fetch() ───────────────────────────
-  var _f = window.fetch;
-  window.fetch = function(url, opts) {{
-    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
-      url = PB + url;
-    return _f.call(this, url, opts);
-  }};
+        if '---NSLOOKUP---' in raw:
+            # Parsing de nslookup
+            ferramenta = 'nslookup'
+            body = raw.split('---NSLOOKUP---', 1)[-1]
+            for line in body.splitlines():
+                # nslookup retorna: "Address: 1.2.3.4" ou "Address: ::1"
+                m = re.match(r'\s*Address(?:\s*\d+)?:\s*(\S+)', line)
+                if m:
+                    addr = m.group(1)
+                    if ':' in addr:
+                        ipv6_list.append(addr)
+                    elif re.match(r'^\d+\.\d+\.\d+\.\d+$', addr):
+                        # Ignorar o próprio IP do servidor DNS (primeira linha do nslookup)
+                        if addr != dns_ip:
+                            ipv4_list.append(addr)
+        elif '---IPV6---' in raw:
+            # Parsing de dig
+            ferramenta = 'dig'
+            partes = raw.split('---IPV6---')
+            a_part    = partes[0]
+            aaaa_part = partes[1] if len(partes) > 1 else ''
 
-  // ── Reescrever paths relativos em XMLHttpRequest ────────────────────
-  var _xhrOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(m, url) {{
-    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
-      url = PB + url;
-    return _xhrOpen.apply(this, arguments);
-  }};
+            # dig +short pode retornar CNAMEs antes do IP — filtrar apenas IPs
+            for line in a_part.splitlines():
+                line = line.strip()
+                if re.match(r'^\d+\.\d+\.\d+\.\d+$', line):
+                    ipv4_list.append(line)
+            for line in aaaa_part.splitlines():
+                line = line.strip()
+                if ':' in line and not line.startswith(';'):
+                    ipv6_list.append(line)
+        else:
+            # Resposta inesperada — tentar extrair IPs diretamente
+            for line in raw.splitlines():
+                line = line.strip()
+                if re.match(r'^\d+\.\d+\.\d+\.\d+$', line) and line != dns_ip:
+                    ipv4_list.append(line)
 
-  // ── Interceptar location.href e location.assign para reescrever ─────
-  try {{
-    var _href_desc = Object.getOwnPropertyDescriptor(Location.prototype, 'href');
-    if (_href_desc && _href_desc.set) {{
-      var _orig_href_set = _href_desc.set;
-      Object.defineProperty(Location.prototype, 'href', {{
-        get: _href_desc.get,
-        set: function(url) {{
-          if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
-            url = PB + url;
-          return _orig_href_set.call(this, url);
-        }},
-        configurable: true
-      }});
-    }}
-  }} catch(e) {{}}
+        # Remover duplicatas preservando ordem
+        seen = set()
+        ipv4_unique = [ip for ip in ipv4_list if ip not in seen and not seen.add(ip)]
+        seen6 = set()
+        ipv6_unique = [ip for ip in ipv6_list if ip not in seen6 and not seen6.add(ip)]
 
-  var _replace = window.location.replace.bind(window.location);
-  window.location.replace = function(url) {{
-    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
-      url = PB + url;
-    return _replace(url);
-  }};
-
-  var _assign = window.location.assign.bind(window.location);
-  window.location.assign = function(url) {{
-    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith(BASE))
-      url = PB + url;
-    return _assign(url);
-  }};
-
-  // ── Reescrever forms ──────────────────────────────────────────────────
-  document.addEventListener('DOMContentLoaded', function() {{
-    document.querySelectorAll('form').forEach(function(form) {{
-      var action = form.getAttribute('action') || '';
-      if (action && action.startsWith('/') && !action.startsWith(BASE)) {{
-        form.setAttribute('action', PB + action);
-      }}
-    }});
-  }});
-
-}})();
-</script>"""
+        return {
+            'dns':        dns_ip,
+            'ipv4':       ipv4_unique,
+            'ipv6':       ipv6_unique,
+            'ferramenta': ferramenta,
+            'raw':        raw[:500],  # debug
+            'erro':       None,
+        }
+    except Exception as e:
+        return {'dns': dns_ip, 'ipv4': [], 'ipv6': [], 'ferramenta': '?', 'raw': '', 'erro': str(e)}
 
 
-    base_tag = f'<base href="{proxy_base}/">\n'
-    html = _re.sub(
-        r'(<head[^>]*>)',
-        r'\1\n' + base_tag + inject,
-        html, count=1, flags=_re.IGNORECASE
-    )
-    return html.encode('utf-8')
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def teste_dns_cliente(request, cliente_id):
+    """
+    Realiza nslookup de um domínio usando:
+    1. DNS recursivo do cliente (configurado no campo dns_cliente)
+    2. DNS públicos (Google, Cloudflare, OpenDNS, Quad9, AdGuard)
+    Retorna comparativo das respostas.
+    """
+    cliente = get_object_or_404(Cliente, id=cliente_id)
 
-# ── Cookie jar por acesso ─────────────────────────────────────────────────
-_web_cookie_jar  = {}
-_web_cookie_lock = threading.Lock()
+    if not request.user.is_staff and not request.user.is_superuser:
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
-def _get_acesso_cookies(acesso_id: str) -> dict:
-    with _web_cookie_lock:
-        return dict(_web_cookie_jar.get(str(acesso_id), {}))
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Body inválido'}, status=400)
 
-def _update_acesso_cookies(acesso_id: str, cookies_raw: list):
-    with _web_cookie_lock:
-        jar = _web_cookie_jar.setdefault(str(acesso_id), {})
-        for sc in cookies_raw:
-            parts = [p.strip() for p in sc.split(';')]
-            if parts and '=' in parts[0]:
-                n, v = parts[0].split('=', 1)
-                jar[n.strip()] = v.strip()
+    dominio      = body.get('dominio', '').strip().lower()
+    dns_cliente  = body.get('dns_cliente', '').strip()
+
+    if not dominio:
+        return JsonResponse({'error': 'Domínio não informado.'}, status=400)
+
+    # Remover protocolo se vier
+    dominio = re.sub(r'^https?://', '', dominio).split('/')[0]
+
+    proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    if not proxy:
+        return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
+
+    todos_dns = []
+    if dns_cliente:
+        todos_dns.append({'nome': 'DNS do Cliente', 'ip': dns_cliente, 'is_cliente': True})
+    for pub in DNS_PUBLICOS:
+        todos_dns.append({**pub, 'is_cliente': False})
+
+    resultados = []
+
+    with __import__('concurrent.futures', fromlist=['ThreadPoolExecutor']).ThreadPoolExecutor(max_workers=8) as pool:
+        futuros = {
+            pool.submit(_nslookup_ssh, proxy, dominio, d['ip']): d
+            for d in todos_dns
+        }
+        for futuro in __import__('concurrent.futures', fromlist=['as_completed']).as_completed(futuros):
+            info = futuros[futuro]
+            res  = futuro.result()
+            res['nome']       = info['nome']
+            res['is_cliente'] = info['is_cliente']
+            resultados.append(res)
+
+    # Ordenar: cliente primeiro, depois públicos na ordem original
+    resultados.sort(key=lambda r: (0 if r['is_cliente'] else 1, todos_dns.index(next(d for d in todos_dns if d['ip'] == r['dns']))))
+
+    # ── Coletar todos os IPs únicos ────────────────────────────────────────
+    todos_ipv4 = set()
+    for r in resultados:
+        todos_ipv4.update(r['ipv4'])
+
+    responderam      = [r for r in resultados if r['ipv4']]
+    qtd_responderam  = len(responderam)
+    is_cdn_domain    = _is_cdn_domain(dominio)
+
+    # ── Lookup ASN para cada IP único (em paralelo, servidor Django) ────────
+    asn_map = {}  # {ip: {'asn': '15169', 'prefix': '8.8.8.0/24', ...}}
+    if todos_ipv4:
+        import concurrent.futures as _cf
+        with _cf.ThreadPoolExecutor(max_workers=min(8, len(todos_ipv4))) as pool:
+            futures = {pool.submit(_get_asn_for_ip, ip): ip for ip in todos_ipv4}
+            for fut in _cf.as_completed(futures):
+                ip = futures[fut]
+                asn_map[ip] = fut.result()
+
+    # Enriquecer cada resultado com ASN por IP
+    for r in resultados:
+        r['asn_info'] = {
+            ip: asn_map.get(ip)
+            for ip in r['ipv4']
+        }
+
+    # ── Análise de consistência inteligente ────────────────────────────────
+    unique_asns   = {v['asn'] for v in asn_map.values() if v and v.get('asn')}
+    same_asn      = len(unique_asns) <= 1
+    same_prefix16 = _same_slash16(list(todos_ipv4))
+
+    if qtd_responderam == 0:
+        status_geral     = 'sem_resposta'
+        consistente_geral = None
+        for r in resultados:
+            r['consistente'] = None
+
+    elif len(todos_ipv4) <= 1:
+        # Todos os servidores retornaram o mesmo IP único
+        status_geral      = 'ok'
+        consistente_geral = True
+        for r in resultados:
+            r['consistente'] = True if r['ipv4'] else None
+
+    elif same_asn:
+        # IPs diferentes mas mesmo ASN → geo-DNS / anycast / CDN
+        status_geral      = 'cdn'
+        consistente_geral = True
+        for r in resultados:
+            r['consistente'] = True if r['ipv4'] else None
+
+    elif same_prefix16 or is_cdn_domain:
+        # Mesmo /16 ou domínio conhecido de CDN → provavelmente normal
+        status_geral      = 'cdn'
+        consistente_geral = True
+        for r in resultados:
+            r['consistente'] = True if r['ipv4'] else None
+
+    elif qtd_responderam == 1:
+        status_geral      = 'parcial'
+        consistente_geral = None
+        for r in resultados:
+            r['consistente'] = True if r['ipv4'] else None
+
+    else:
+        # IPs e ASNs diferentes → inconsistência real
+        ref_ipv4          = responderam[0]['ipv4']
+        conjuntos         = set()
+        for r in resultados:
+            if r['ipv4']:
+                r['consistente'] = set(r['ipv4']) == set(ref_ipv4)
+                conjuntos.add(frozenset(r['ipv4']))
+            else:
+                r['consistente'] = None
+        consistente_geral = len(conjuntos) == 1
+        status_geral      = 'ok' if consistente_geral else 'inconsistente'
+
+    return JsonResponse({
+        'ok':               True,
+        'dominio':          dominio,
+        'proxy':            {'nome': proxy.nome, 'host': proxy.host},
+        'resultados':       resultados,
+        'todos_ips_distintos': sorted(todos_ipv4),
+        'consistente_geral':   consistente_geral,
+        'status_geral':        status_geral,   # 'ok'|'cdn'|'inconsistente'|'parcial'|'sem_resposta'
+        'qtd_responderam':     qtd_responderam,
+        'is_cdn_domain':       is_cdn_domain,
+        'same_asn':            same_asn,
+        'same_prefix16':       same_prefix16,
+        'unique_asns':         sorted(unique_asns),
+        'asn_map':             {ip: asn_map[ip] for ip in asn_map if asn_map[ip]},
+    })
+
 
 
 @csrf_exempt
 @login_required(login_url='login')
 def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
-    import requests as req_lib
-
+    from urllib.parse import urlparse as _up
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ── Permissão ─────────────────────────────────────────────────────
@@ -4339,483 +4556,217 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         except Cliente.DoesNotExist:
             return HttpResponse('Sem permissao', status=403)
 
-    # ── Fallback para URLs antigas (sem porta/scheme/path na URL) ──────
+    # ── Normalização de URL ───────────────────────────────────────────
     if porta is None or scheme is None:
         porta_web = int(request.GET.get('porta', 80))
         scheme    = request.GET.get('scheme', 'http')
         path_qs   = request.GET.get('path', '/')
-        if path_qs.startswith('/'):
-            path_qs = path_qs[1:]
-        
-        # Corrigir scheme pela porta
-        if porta_web in (443, 8443, 4443):
-            scheme = 'https'
-        elif porta_web in (80, 8080, 8888, 3000, 8000, 8081, 8082):
-            scheme = 'http'
-            
+        if path_qs.startswith('/'): path_qs = path_qs[1:]
+
+        if porta_web in (443, 8443, 4443): scheme = 'https'
+        elif porta_web in (80, 8080, 8888, 3000, 8000): scheme = 'http'
+
         redirect_url = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}/{path_qs}'
-        qs_params = request.GET.copy()
-        for p in ('porta', 'scheme', 'path'):
-            qs_params.pop(p, None)
-        qs = qs_params.urlencode()
-        if qs:
-            redirect_url += '?' + qs
-            
         return HttpResponseRedirect(redirect_url)
 
     porta_web = int(porta)
+    if not path: path = '/'
+    if not path.startswith('/'): path = '/' + path
 
-    _redirect_count = int(request.GET.get('_rc', 0))
-
-    # path pode vir None quando a URL não tem path (ex: /web/80/http/)
-    if not path:
-        path = '/'
-    if not path.startswith('/'):
-        path = '/' + path
-        
-    # Corrigir URLs duplicadas vindas do navegador
-    prefixo_esperado = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}'
-    if path.startswith(prefixo_esperado):
-        path_limpo = path[len(prefixo_esperado):]
-        if not path_limpo.startswith('/'):
-            path_limpo = '/' + path_limpo
-        # Redireciona o navegador para a URL limpa
-        from django.shortcuts import redirect
-        return redirect(f"{prefixo_esperado}{path_limpo}")
-    # Query string extra (sem os parâmetros internos do proxy)
-    qs_params = request.GET.copy()
-    qs_params.pop('_rc', None)
-    qs        = qs_params.urlencode()
+    qs = request.GET.urlencode()
     full_path = path + ('?' + qs if qs else '')
 
     target_host = acesso.host.strip()
-    if target_host.startswith('http://'):
-        target_host = target_host[7:]
-    elif target_host.startswith('https://'):
-        target_host = target_host[8:]
-    proxy_base  = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}'
+    try:
+        if '://' in target_host:
+            target_host = _up(target_host).hostname
+    except Exception:
+        pass
 
-    STRIP = {
-        'x-frame-options', 'content-security-policy',
-        'x-content-security-policy', 'x-webkit-csp',
-        'content-security-policy-report-only',
-        'content-encoding', 'transfer-encoding',
-    }
+    proxy_base = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}'
+    target_url = f"{scheme}://{target_host}:{porta_web}{full_path}"
 
-    body = request.body if request.method in ('POST', 'PUT', 'PATCH') else b''
+    # ── Proxy SSH se IP privado ───────────────────────────────────────
+    proxy_srv = None
+    if ProxyEngine.is_private_ip(target_host):
+        proxy_srv = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        if not proxy_srv:
+            return HttpResponse(
+                ProxyEngine.get_error_page(
+                    f'IP privado (<code>{target_host}</code>) sem proxy SSH ativo.<br>'
+                    f'Configure um túnel SSH para este cliente.'
+                ),
+                content_type='text/html', status=400
+            )
 
-    # ── Cookies ───────────────────────────────────────────────────────
-    browser_cookies = request.META.get('HTTP_COOKIE', '')
-    
-    # Filtrar cookies do Django (sessionid, csrftoken, messages)
-    filtered_browser_cookies = []
-    for c in browser_cookies.split(';'):
+    # ── Executar Requisição via ProxyEngine ───────────────────────────
+    engine = ProxyEngine(proxy_srv,
+                         device_username=acesso.usuario,
+                         device_password=acesso.senha)
+
+    _django_cookies = {'sessionid', 'csrftoken', 'messages'}
+    raw_cookie = request.META.get('HTTP_COOKIE', '')
+    # Isolate cookies per-acesso: browser stores device cookies as "a{id}_NAME=value".
+    # Only forward cookies belonging to THIS acesso (stripped of prefix).
+    # This prevents AIROS_SESSIONID (or any session cookie) from device A
+    # bleeding into requests to device B.
+    cookie_prefix = f'a{acesso_id}_'
+    filtered_cookie_parts = []
+    for c in raw_cookie.split(';'):
         c = c.strip()
-        if not c: continue
-        name = c.split('=', 1)[0].strip()
-        if name not in ('sessionid', 'csrftoken', 'messages'):
-            filtered_browser_cookies.append(c)
-            
-    session_cookies = _get_acesso_cookies(str(acesso_id))
-    
-    final_cookies = {}
-    for c in filtered_browser_cookies:
-        if '=' in c:
-            n, v = c.split('=', 1)
-            final_cookies[n.strip()] = v.strip()
-            
-    for k, v in session_cookies.items():
-        final_cookies[k] = v
-        
-    cookie_header = '; '.join(f"{k}={v}" for k, v in final_cookies.items())
-    
+        if not c or '=' not in c:
+            continue
+        name, val = c.split('=', 1)
+        name = name.strip()
+        if name in _django_cookies:
+            continue
+        if name.startswith(cookie_prefix):
+            filtered_cookie_parts.append(f'{name[len(cookie_prefix):]}={val.strip()}')
+    filtered_cookies = '; '.join(filtered_cookie_parts)
+
     req_headers = {}
-    if cookie_header:
-        req_headers['Cookie'] = cookie_header
-    
-    # Repassar headers vitais para o roteador (Content-Type, Authorization)
+    if filtered_cookies:
+        req_headers['Cookie'] = filtered_cookies
     if request.META.get('CONTENT_TYPE'):
         req_headers['Content-Type'] = request.META['CONTENT_TYPE']
     if request.META.get('HTTP_AUTHORIZATION'):
         req_headers['Authorization'] = request.META['HTTP_AUTHORIZATION']
-        
-    # Headers de Proxy para o equipamento saber quem ele está atendendo
-    req_headers['X-Forwarded-Host'] = target_host
-    req_headers['X-Forwarded-For'] = request.META.get('REMOTE_ADDR', '127.0.0.1')
-    req_headers['X-Forwarded-Proto'] = scheme
-    req_headers['X-Real-IP'] = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    if request.META.get('HTTP_ACCEPT'):
+        req_headers['Accept'] = request.META['HTTP_ACCEPT']
+    # Repassar headers customizados que SPAs enviam (X-Auth-Token, X-CSRF-Token, etc.)
+    for meta_key, meta_val in request.META.items():
+        if meta_key.startswith('HTTP_X_'):
+            header_name = meta_key[5:].replace('_', '-').title()
+            req_headers[header_name] = meta_val
 
+    body = request.body if request.method in ('POST', 'PUT', 'PATCH') else None
 
-    # ── Proxy SSH se IP privado ───────────────────────────────────────
-    proxy_srv = None
-    if is_private_ip(target_host):
-        proxy_srv = ProxyServer.objects.filter(
-            cliente=acesso.cliente, ativo=True
-        ).first()
-        if not proxy_srv:
-            return HttpResponse(
-                _error_page(f'IP privado ({target_host}) sem proxy SSH ativo.'),
-                content_type='text/html', status=400
-            )
-
-    # ── Fazer requisição ──────────────────────────────────────────────
-    def fazer_request(req_path):
-        if proxy_srv:
-            logger.info("WEB_PROXY SSH: %s://%s:%s%s", scheme, target_host, porta_web, req_path)
-            return _web_do_request(
-                proxy_srv, target_host, porta_web, scheme,
-                req_path, request.method, req_headers, body
-            )
-        else:
-            url = f"{scheme}://{target_host}:{porta_web}{req_path}"
-            logger.info("WEB_PROXY DIRETO: %s", url)
-            r = req_lib.request(
-                request.method, url,
-                headers={
-                    'User-Agent':      'Mozilla/5.0 (CONEXA-CRM/proxy)',
-                    'Accept':          'text/html,application/xhtml+xml,*/*',
-                    'Accept-Encoding': 'identity',
-                    'Cookie':          cookie_header,
-                },
-                data=body or None,
-                allow_redirects=False,
-                timeout=(10, 15),
-                verify=False,
-                stream=False,
-            )
-            class _R: pass
-            resp              = _R()
-            resp.status_code  = r.status_code
-            resp.headers      = dict(r.headers)
-            resp.content      = r.content
-            resp.cookies_raw  = []
-            resp.content_type = r.headers.get('Content-Type', 'text/html')
-            logger.info("WEB_PROXY DIRETO RESP: status=%s size=%d", r.status_code, len(r.content))
-            return resp
+    _dbg = str(acesso_id) == '891'
+    if _dbg:
+        import datetime
+        ts = datetime.datetime.now().strftime('%H:%M:%S')
+        raw_all = request.META.get('HTTP_COOKIE', '')
+        print(f"[DBG891 {ts}] {request.method} {path}", flush=True)
+        print(f"[DBG891 {ts}] browser_cookies_raw={raw_all[:300]}", flush=True)
+        print(f"[DBG891 {ts}] forwarded_to_device={filtered_cookies}", flush=True)
+        if body: print(f"[DBG891 {ts}] body={body[:200]}", flush=True)
 
     try:
-        resp = fazer_request(full_path)
+        resp = engine.do_request(
+            method=request.method,
+            url=target_url,
+            headers=req_headers,
+            body=body,
+        )
 
         if resp is None:
-            proxy_info = f' via proxy <b>{proxy_srv.nome}</b> ({proxy_srv.host})' if proxy_srv else ''
+            proxy_info = (f' via proxy <code>{proxy_srv.nome}</code> ({proxy_srv.host})'
+                          if proxy_srv else '')
             return HttpResponse(
-                _error_page(
-                    f'Sem resposta de <b>{scheme}://{target_host}:{porta_web}</b>{proxy_info}.<br><br>'
-                    f'Possíveis causas:<br>'
-                    f'• O equipamento não responde na porta {porta_web} ({scheme})<br>'
-                    f'• O proxy SSH não consegue alcançar {target_host}<br>'
-                    f'• Timeout na conexão (equipamento lento ou fora do ar)<br><br>'
-                    f'<small style="color:#475569">Verifique os logs do servidor para detalhes (WEB_PROXY_V4)</small>'
+                ProxyEngine.get_error_page(
+                    f'Sem resposta de <code>{scheme}://{target_host}:{porta_web}</code>{proxy_info}.<br><br>'
+                    f'Verifique:<br>'
+                    f'&bull; Se o equipamento est&aacute; acess&iacute;vel pela rede do proxy<br>'
+                    f'&bull; Se a porta {porta_web} e o protocolo {scheme.upper()} est&atilde;o corretos<br>'
+                    f'&bull; Os logs do servidor para mais detalhes'
                 ),
                 content_type='text/html', status=502
             )
 
+        if _dbg:
+            import datetime
+            ts = datetime.datetime.now().strftime('%H:%M:%S')
+            ct = resp.headers.get('Content-Type','?')
+            print(f"[DBG891 {ts}] status={resp.status_code} ct={ct} size={len(resp.content)}", flush=True)
+            print(f"[DBG891 {ts}] resp_headers={dict(resp.headers)}", flush=True)
+            if getattr(resp,'cookies_raw',[]):
+                print(f"[DBG891 {ts}] SET-COOKIE={resp.cookies_raw}", flush=True)
+            if 'login' in path.lower() or path in ('/', ''):
+                print(f"[DBG891 {ts}] BODY[:800]={resp.content[:800]}", flush=True)
 
+        # ── Tratar Redirects cross-port (ex: http→https) ─────────────
+        if resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get('Location', '/')
+            p = _up(location)
 
-        logger.info("WEB_PROXY RESP: status=%s type=%s size=%s",
-                    resp.status_code,
-                    getattr(resp, 'content_type', '?'),
-                    len(resp.content))
+            redir_host   = p.hostname or target_host
+            redir_scheme = p.scheme or scheme
+            if p.port:
+                redir_port = p.port
+            elif redir_scheme == 'https':
+                redir_port = 443
+            else:
+                redir_port = 80
 
-        headers      = dict(resp.headers)
-        status_code  = resp.status_code
-        content      = resp.content
-        content_type = headers.get('Content-Type', 'text/html; charset=utf-8')
-        cookies_raw  = getattr(resp, 'cookies_raw', [])
-
-        if cookies_raw:
-            _update_acesso_cookies(str(acesso_id), cookies_raw)
-
-        # ── Redirects são seguidos no servidor por _web_do_request ────────
-        # (allow_redirects=True na biblioteca requests)
-        # Se ainda receber redirect (acesso direto sem proxy), seguir normalmente
-        if status_code in (301, 302, 303, 307, 308) and not proxy_srv:
-            location = headers.get('Location', '/')
-            p = _urlparse(location)
-            redirect_host = (p.netloc.split(':')[0] if p.netloc else target_host)
-            host_privado = redirect_host and is_private_ip(redirect_host)
-            mesmo_host = (redirect_host == target_host or not p.netloc)
-
-            if mesmo_host or host_privado:
-                redirect_scheme = p.scheme if p.scheme else scheme
-                redirect_path = p.path or '/'
-                redirect_qs_str = ('?' + p.query) if p.query else ''
-                if ':' in (p.netloc or ''):
-                    try: redirect_porta = int(p.netloc.split(':')[1])
-                    except ValueError: redirect_porta = 443 if redirect_scheme == 'https' else 80
-                elif redirect_scheme == 'https':
-                    redirect_porta = 443
-                else:
-                    redirect_porta = 80
-
-                if redirect_path.startswith('/'):
-                    redirect_path = redirect_path[1:]
-                new_loc = f'/clientes/acessos/{acesso_id}/web/{redirect_porta}/{redirect_scheme}/{redirect_path}{redirect_qs_str}'
-                response = HttpResponse(status=302)
+            if not p.netloc or redir_host == target_host:
+                redir_path = p.path or '/'
+                redir_qs   = ('?' + p.query) if p.query else ''
+                new_loc = (f'/clientes/acessos/{acesso_id}/web/{redir_port}/{redir_scheme}'
+                           f'{redir_path}{redir_qs}')
+                response = HttpResponse(status=resp.status_code)
                 response['Location'] = new_loc
             else:
-                response = HttpResponse(status=302)
+                response = HttpResponse(status=resp.status_code)
                 response['Location'] = location
 
-            for sc in cookies_raw:
-                parts = [pt.strip() for pt in sc.split(';')]
-                if parts and '=' in parts[0]:
-                    n, v = parts[0].split('=', 1)
-                    response.set_cookie(n.strip(), v.strip(), path='/', samesite='Lax')
+            for cookie_str in getattr(resp, 'cookies_raw', []):
+                parts = cookie_str.split(';')
+                if parts:
+                    nv = parts[0].split('=', 1)
+                    if len(nv) == 2:
+                        response.set_cookie(
+                            cookie_prefix + nv[0].strip(), nv[1].strip(),
+                            path='/', samesite='Lax'
+                        )
             return response
 
+        # ── Processar Conteúdo ────────────────────────────────────────
+        content_type = resp.headers.get('Content-Type', '')
+        content      = resp.content
 
-        # ── Reescrever HTML ───────────────────────────────────────────
-        if 'text/html' in content_type:
-            content      = _web_rewrite_html(content, proxy_base, target_host, porta_web, scheme)
-            content_type = 'text/html; charset=utf-8'
+        # Se o dispositivo não enviou Content-Type, inferir pelo conteúdo:
+        # bytes que começam com '<' provavelmente são HTML; caso contrário, não reescrever.
+        if not content_type:
+            stripped = content.lstrip()
+            content_type = 'text/html' if stripped.startswith(b'<') else 'application/octet-stream'
 
-        response = HttpResponse(content, content_type=content_type, status=status_code)
+        if 'text/html' in content_type or 'text/css' in content_type:
+            content = engine.rewrite_content(content, content_type, proxy_base, target_host,
+                                             cookie_prefix=cookie_prefix)
+            if 'text/html' in content_type:
+                content_type = 'text/html; charset=utf-8'
 
-        for k, v in headers.items():
-            if k.lower() not in STRIP:
+        django_resp = HttpResponse(content, content_type=content_type, status=resp.status_code)
+
+        for k, v in resp.headers.items():
+            if k.lower() not in ProxyEngine.STRIP_HEADERS:
                 try:
-                    response[k] = v
+                    django_resp[k] = v
                 except Exception:
                     pass
 
-        if 'X-Frame-Options' in response:
-            del response['X-Frame-Options']
-        if 'Content-Security-Policy' in response:
-            del response['Content-Security-Policy']
+        for h in ('X-Frame-Options', 'Content-Security-Policy'):
+            if h in django_resp:
+                del django_resp[h]
 
-        for sc in cookies_raw:
-            parts = [pt.strip() for pt in sc.split(';')]
-            if parts and '=' in parts[0]:
-                n, v = parts[0].split('=', 1)
-                response.set_cookie(n.strip(), v.strip(), path='/', samesite='Lax')
 
-        return response
+        for cookie_str in getattr(resp, 'cookies_raw', []):
+            parts = cookie_str.split(';')
+            if parts:
+                nv = parts[0].split('=', 1)
+                if len(nv) == 2:
+                    django_resp.set_cookie(
+                        cookie_prefix + nv[0].strip(), nv[1].strip(),
+                        path='/', samesite='Lax',
+                        secure=request.is_secure()
+                    )
+
+        return django_resp
 
     except Exception as e:
-        logger.exception("WEB_PROXY erro acesso_id=%s target=%s:%s path=%s",
-                         acesso_id, target_host, porta_web, full_path)
+        logger.exception("Erro no ProxyEngine acesso_id=%s: %s", acesso_id, e)
         return HttpResponse(
-            _error_page(
-                f'Erro ao conectar em <b>{target_host}:{porta_web}</b><br><br>'
-                f'<small>{str(e)}</small>'
-            ),
+            ProxyEngine.get_error_page(f"Erro interno no proxy: <code>{str(e)}</code>"),
             content_type='text/html', status=500
         )
-
-
-def _web_do_request(proxy_srv, target_host, target_port, scheme,
-                    full_path, method, req_headers, body=b''):
-    '''
-    Abordagem V4: usa o binário ssh real (sshpass + ssh -L) para
-    criar port-forward, em vez de paramiko.
-    - Mesma infraestrutura que funciona no terminal SSH
-    - Port-forward real do SO (não depende do paramiko)
-    - requests + redirect manual via túnel
-    '''
-    import requests as req_lib
-    import urllib3
-    from urllib.parse import urlparse as _up
-    import socket
-    import subprocess
-    import time
-
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-    # ── 1. Encontrar porta local livre ────────────────────────────────
-    tmp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tmp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    tmp_sock.bind(('127.0.0.1', 0))
-    local_port = tmp_sock.getsockname()[1]
-    tmp_sock.close()
-
-    logger.info("WEB_PROXY_V4: ssh -L %d:%s:%s via %s@%s:%s (%s)",
-                local_port, target_host, target_port,
-                proxy_srv.usuario, proxy_srv.host, proxy_srv.porta, scheme)
-
-    # ── 2. Criar port-forward via sshpass + ssh (mesmo que terminal) ──
-    ssh_cmd = [
-        'sshpass', '-p', proxy_srv.senha,
-        'ssh',
-        '-o', 'StrictHostKeyChecking=no',
-        '-o', 'UserKnownHostsFile=/dev/null',
-        '-o', 'ServerAliveInterval=30',
-        '-o', 'ConnectTimeout=10',
-        '-o', 'LogLevel=ERROR',
-        '-o', 'ExitOnForwardFailure=yes',
-        '-o', 'KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1',
-        '-o', 'HostKeyAlgorithms=+ssh-rsa,ssh-dss',
-        '-o', 'PubkeyAcceptedAlgorithms=+ssh-rsa',
-        '-o', 'Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc',
-        '-N',
-        '-L', f'127.0.0.1:{local_port}:{target_host}:{target_port}',
-        '-p', str(proxy_srv.porta),
-        f'{proxy_srv.usuario}@{proxy_srv.host}',
-    ]
-
-    ssh_proc = None
-    try:
-        ssh_proc = subprocess.Popen(
-            ssh_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.DEVNULL,
-        )
-
-        # Aguardar o túnel ficar pronto (testar a porta local)
-        tunnel_ready = False
-        for attempt in range(20):  # até 4 segundos
-            time.sleep(0.2)
-            if ssh_proc.poll() is not None:
-                # Processo morreu
-                stderr = ssh_proc.stderr.read().decode('utf-8', errors='replace')
-                logger.error("WEB_PROXY_V4: ssh morreu: %s", stderr.strip())
-                return None
-            try:
-                test_sock = socket.create_connection(('127.0.0.1', local_port), timeout=1)
-                test_sock.close()
-                tunnel_ready = True
-                break
-            except (ConnectionRefusedError, socket.timeout, OSError):
-                continue
-
-        if not tunnel_ready:
-            logger.error("WEB_PROXY_V4: túnel não ficou pronto após 4s")
-            return None
-
-        logger.info("WEB_PROXY_V4: túnel ativo em 127.0.0.1:%d → %s:%s",
-                     local_port, target_host, target_port)
-
-        # ── 3. Requisição HTTP com redirect manual ────────────────────
-        session = req_lib.Session()
-
-        host_header = target_host
-        if str(target_port) not in ('80', '443'):
-            host_header = f"{target_host}:{target_port}"
-
-        headers = {
-            'Host':            host_header,
-            'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Encoding': 'identity',
-        }
-        for h in ('Cookie', 'Authorization', 'Content-Type'):
-            if h in req_headers:
-                headers[h] = req_headers[h]
-
-        current_path   = full_path
-        current_method = method
-        current_body   = body
-        all_cookies    = []
-        final_r        = None
-
-        for redir_i in range(10):
-            url = f"{scheme}://127.0.0.1:{local_port}{current_path}"
-            logger.info("WEB_PROXY_V4 REQ[%d]: %s %s", redir_i, current_method, url)
-
-            r = session.request(
-                method=current_method,
-                url=url,
-                headers=headers,
-                data=current_body if current_body else None,
-                allow_redirects=False,
-                verify=False,
-                timeout=(10, 30),
-                stream=False,
-            )
-
-            logger.info("WEB_PROXY_V4 RESP[%d]: status=%s size=%d type=%s",
-                        redir_i, r.status_code, len(r.content),
-                        r.headers.get('Content-Type', '?'))
-
-            # Coletar cookies
-            for cv in r.raw.headers.getlist('Set-Cookie'):
-                all_cookies.append(cv)
-                parts = cv.split(';')[0]
-                if '=' in parts:
-                    cn, cv2 = parts.split('=', 1)
-                    session.cookies.set(cn.strip(), cv2.strip())
-
-            if r.status_code not in (301, 302, 303, 307, 308):
-                final_r = r
-                break
-
-            location = r.headers.get('Location', '')
-            if not location:
-                final_r = r
-                break
-
-            parsed = _up(location)
-
-            if not parsed.scheme and not parsed.netloc:
-                new_path = parsed.path or '/'
-                if parsed.query:
-                    new_path += '?' + parsed.query
-            else:
-                redir_host = parsed.hostname or ''
-                if redir_host == target_host or not redir_host or \
-                   redir_host in ('127.0.0.1', 'localhost') or \
-                   _is_private_str(redir_host):
-                    new_path = parsed.path or '/'
-                    if parsed.query:
-                        new_path += '?' + parsed.query
-                else:
-                    logger.info("WEB_PROXY_V4: redirect externo → %s", location)
-                    final_r = r
-                    break
-
-            if not new_path.startswith('/'):
-                new_path = '/' + new_path
-
-            logger.info("WEB_PROXY_V4 REDIR[%d]: %s → %s", redir_i, location, new_path)
-            current_path = new_path
-            if r.status_code in (302, 303):
-                current_method = 'GET'
-                current_body = None
-
-            final_r = r
-
-        if final_r is None:
-            logger.error("WEB_PROXY_V4: nenhuma resposta")
-            return None
-
-        # ── 4. Montar resposta ────────────────────────────────────────
-        class _R: pass
-        resp = _R()
-        resp.status_code  = final_r.status_code
-        resp.content      = final_r.content
-        resp.content_type = final_r.headers.get('Content-Type', 'text/html')
-        skip_h = {'transfer-encoding', 'content-encoding', 'content-length',
-                   'connection', 'keep-alive'}
-        resp.headers = {k: v for k, v in final_r.headers.items()
-                        if k.lower() not in skip_h}
-        resp.cookies_raw = all_cookies
-        return resp
-
-    except req_lib.exceptions.ConnectionError as e:
-        logger.error("WEB_PROXY_V4 ConnectionError: %s", e)
-        return None
-    except req_lib.exceptions.Timeout as e:
-        logger.error("WEB_PROXY_V4 Timeout: %s", e)
-        return None
-    except Exception as e:
-        logger.exception("WEB_PROXY_V4 erro: %s", e)
-        return None
-    finally:
-        if ssh_proc and ssh_proc.poll() is None:
-            try:
-                ssh_proc.terminate()
-                ssh_proc.wait(timeout=3)
-            except Exception:
-                try: ssh_proc.kill()
-                except: pass
-            logger.info("WEB_PROXY_V4: ssh process encerrado")
-
-
-def _is_private_str(host_str):
-    """Verifica se uma string de host é IP privado."""
-    try:
-        return ipaddress.ip_address(host_str).is_private
-    except (ValueError, TypeError):
-        return False
 

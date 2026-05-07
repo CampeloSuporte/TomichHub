@@ -73,6 +73,11 @@
                         📚 Documentação de Rede
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="trocarAba(event, 'testes-rede')">
+                        🔬 Testes de Rede
+                    </a>
+                </li>
             </ul>
 
         <!-- ABA ACESSOS -->
@@ -1448,6 +1453,274 @@
             </div>
         </div>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ABA TESTES DE REDE                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="tab-testes-rede" class="tab-content-main" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+
+                <!-- Cabeçalho -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h5 class="mb-1" style="color: var(--primary-green);">🔬 Testes de Rede</h5>
+                        <small style="color: var(--text-muted);">Diagnósticos executados via proxy SSH do cliente</small>
+                    </div>
+                </div>
+
+                <!-- Sub-Tabs internas -->
+                <ul class="nav server-tabs mb-4" id="testeRedeSubTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="testeRedeSubAba(event, 'conectividade')">
+                            📡 Testes de Conectividade
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'dns')">
+                            🌐 Teste de DNS
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- ─── Sub-aba: Conectividade ───────────────────────────────── -->
+                <div id="tr-sub-conectividade">
+                    <div class="alert mb-3" style="background:rgba(0,217,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
+                        <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
+                        Executa <strong>ping</strong> e <strong>MTR / traceroute</strong> via proxy SSH para os destinos selecionados.
+                    </div>
+
+                    
+                        <!-- Modo de teste -->
+                        <div class="col-12 mb-1">
+                            <div class="d-flex align-items-center gap-3">
+                                <label style="color:var(--text-muted);font-size:.82rem;white-space:nowrap;">
+                                    <i class="fas fa-bullseye me-1"></i> Modo de Teste
+                                </label>
+                                <div class="d-flex gap-2">
+                                    <button id="btnModoTodos" class="btn btn-sm modo-btn active-modo"
+                                        onclick="setModoTeste('todos')" style="font-size:.8rem;padding:4px 14px;">
+                                        <i class="fas fa-layer-group me-1"></i> Todos os Destinos
+                                    </button>
+                                    <button id="btnModoUnico" class="btn btn-sm modo-btn"
+                                        onclick="setModoTeste('unico')" style="font-size:.8rem;padding:4px 14px;">
+                                        <i class="fas fa-crosshairs me-1"></i> Destino Único
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seletor de destino único (oculto por padrão) -->
+                        <div id="destinoUnicoContainer" class="col-12" style="display:none;">
+                            <label class="form-label" style="color:var(--text-muted);font-size:.82rem;">
+                                <i class="fas fa-crosshairs me-1" style="color:#e3b341;"></i> Destino para Teste
+                            </label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <select id="selectDestinoUnico" class="form-control"
+                                    style="background:#0d1117;border:1px solid #e3b341;color:var(--text-light);font-family:'Courier New',monospace;font-size:.85rem;max-width:280px;">
+                                    <!-- Populado via JS com DESTINOS_PADRAO + extras -->
+                                </select>
+                                <span style="color:#6e7681;font-size:.78rem;">ou</span>
+                                <input id="inputDestinoUnicoCustom" type="text"
+                                    class="form-control"
+                                    placeholder="Digite IP ou domínio..."
+                                    style="background:#0d1117;border:1px solid #e3b341;color:var(--text-light);font-family:'Courier New',monospace;font-size:.85rem;max-width:240px;"
+                                    oninput="if(this.value.trim()) document.getElementById('selectDestinoUnico').value = '';">
+                                <span style="color:#e3b341;font-size:.75rem;white-space:nowrap;">
+                                    <i class="fas fa-info-circle me-1"></i>Até 100 pkt
+                                </span>
+                            </div>
+                        </div>
+
+                        <style>
+                        .modo-btn {
+                            background: rgba(48,54,61,.6);
+                            border: 1px solid #30363d;
+                            color: #8b949e;
+                            transition: all .2s;
+                        }
+                        .modo-btn.active-modo {
+                            background: rgba(0,255,136,.12);
+                            border-color: var(--primary-green);
+                            color: var(--primary-green);
+                            font-weight: 700;
+                        }
+                        .modo-btn:hover:not(.active-modo) {
+                            border-color: #6e7681;
+                            color: var(--text-light);
+                        }
+                        </style>
+
+                    <!-- ── Painel de controle ──────────────────────── -->
+                    <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:20px;">
+                        <div class="row g-3 align-items-end">
+
+                            <!-- Versão IP -->
+                            <div class="col-md-3">
+                                <label class="form-label" style="color:var(--text-muted);font-size:.82rem;">
+                                    <i class="fas fa-network-wired me-1"></i> Versão IP
+                                </label>
+                                <div class="d-flex gap-2">
+                                    <button id="btnIPv4" class="btn btn-sm flex-fill ip-ver-btn active-ip"
+                                        onclick="setIPVer('v4')" style="font-family:'Courier New',monospace;font-size:.8rem;">
+                                        IPv4
+                                    </button>
+                                    <button id="btnIPv6" class="btn btn-sm flex-fill ip-ver-btn"
+                                        onclick="setIPVer('v6')" style="font-family:'Courier New',monospace;font-size:.8rem;">
+                                        IPv6
+                                    </button>
+                                    <button id="btnIPambos" class="btn btn-sm flex-fill ip-ver-btn"
+                                        onclick="setIPVer('ambos')" style="font-family:'Courier New',monospace;font-size:.8rem;">
+                                        Ambos
+                                    </button>
+                                </div>
+                                <input type="hidden" id="ipVerSelecionado" value="v4">
+                            </div>
+
+                            <!-- Pacotes -->
+                            <div class="col-md-2">
+                                <label class="form-label" style="color:var(--text-muted);font-size:.82rem;">
+                                    <i class="fas fa-paper-plane me-1"></i> Pacotes
+                                </label>
+                                <input id="inputPackets" type="number" value="5" min="1" max="50"
+                                    class="form-control"
+                                    style="background:#0d1117;border:1px solid #30363d;color:var(--text-light);text-align:center;font-family:'Courier New',monospace;">
+                            </div>
+
+                            <!-- Timeout por pacote -->
+                            <div class="col-md-2">
+                                <label class="form-label" style="color:var(--text-muted);font-size:.82rem;">
+                                    <i class="fas fa-clock me-1"></i> Wait (seg)
+                                </label>
+                                <input id="inputWait" type="number" value="3" min="1" max="10"
+                                    class="form-control"
+                                    style="background:#0d1117;border:1px solid #30363d;color:var(--text-light);text-align:center;font-family:'Courier New',monospace;">
+                            </div>
+
+                            <!-- Destino extra -->
+                            <div class="col-md-4">
+                                <label class="form-label" style="color:var(--text-muted);font-size:.82rem;">
+                                    <i class="fas fa-plus me-1"></i> Adicionar Destino (IP ou domínio)
+                                </label>
+                                <div class="d-flex gap-2">
+                                    <input id="inputDestinoExtra" type="text"
+                                        class="form-control"
+                                        placeholder="Ex: 8.8.4.4 ou meusite.com"
+                                        style="background:#0d1117;border:1px solid #30363d;color:var(--text-light);font-family:'Courier New',monospace;font-size:.85rem;"
+                                        onkeydown="if(event.key==='Enter'){adicionarDestinoExtra();event.preventDefault();}">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="adicionarDestinoExtra()" style="white-space:nowrap;">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Botão executar -->
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" id="btnTesteRede" onclick="executarTesteRede()" title="Executar teste">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- Destinos adicionados -->
+                        <div id="destinosExtrasContainer" class="mt-3" style="display:none;">
+                            <small style="color:var(--text-muted);">Destinos extras:</small>
+                            <div id="destinosExtrasBadges" class="d-flex flex-wrap gap-2 mt-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Destinos padrão -->
+                    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                        <small style="color:var(--text-muted);">Destinos padrão:</small>
+                        {% for destino in destinos_padrao %}
+                        <span class="badge" style="background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.25);color:var(--accent-cyan);font-family:'Courier New',monospace;padding:5px 11px;border-radius:20px;font-size:.82rem;">
+                            {{ destino }}
+                        </span>
+                        {% endfor %}
+                    </div>
+
+                    <span id="testeRedeStatus" style="color:var(--text-muted);font-size:.9rem;display:none;margin-bottom:12px;display:block;">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Executando testes via SSH no proxy…
+                    </span>
+
+                    <div id="testeRedeResultados" style="display:none;"></div>
+
+                    <style>
+                        .ip-ver-btn {
+                            background: rgba(48,54,61,.6);
+                            border: 1px solid #30363d;
+                            color: #8b949e;
+                            transition: all .2s;
+                        }
+                        .ip-ver-btn.active-ip {
+                            background: rgba(0,217,255,.15);
+                            border-color: var(--accent-cyan);
+                            color: var(--accent-cyan);
+                            font-weight: 700;
+                        }
+                        .ip-ver-btn:hover:not(.active-ip) {
+                            border-color: #6e7681;
+                            color: var(--text-light);
+                        }
+                    </style>
+                </div>
+
+                <!-- ─── Sub-aba: DNS ────────────────────────────────────────── -->
+                <div id="tr-sub-dns" style="display:none;">
+                    <div class="alert mb-4" style="background:rgba(0,217,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
+                        <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
+                        Compara a resolução DNS do domínio usando o DNS do cliente e os principais DNS públicos.
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label" style="color:var(--text-muted);font-size:.85rem;">
+                                <i class="fas fa-server me-1"></i> DNS Recursivo do Cliente
+                            </label>
+                            <input id="dnsClienteInput" type="text"
+                                class="form-control"
+                                placeholder="Ex: 192.168.1.1 ou 10.0.0.1"
+                                style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label" style="color:var(--text-muted);font-size:.85rem;">
+                                <i class="fas fa-globe me-1"></i> Domínio a Testar
+                            </label>
+                            <input id="dominioInput" type="text"
+                                class="form-control"
+                                placeholder="Ex: meusite.com.br"
+                                style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);"
+                                onkeydown="if(event.key==='Enter') executarTesteDNS()">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" id="btnTesteDNS" onclick="executarTesteDNS()">
+                                <i class="fas fa-search me-2"></i> Validar Domínio
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        <small style="color:var(--text-muted);align-self:center;">DNS públicos:</small>
+                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Google 8.8.8.8</span>
+                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Cloudflare 1.1.1.1</span>
+                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">OpenDNS 208.67.222.222</span>
+                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Quad9 9.9.9.9</span>
+                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">AdGuard 94.140.14.14</span>
+                    </div>
+
+                    <div id="testeDNSStatus" style="display:none;color:var(--text-muted);font-size:.9rem;margin-bottom:16px;">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Consultando DNS em paralelo via SSH…
+                    </div>
+
+                    <div id="testeDNSResultados" style="display:none;"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- FIM ABA TESTES DE REDE -->
+
 
 
     {% if not is_cliente %}
@@ -3987,5 +4260,444 @@
 
 
     </script>
+
+    <script>
+    /* ═══════════════════════════════════════════════════════════
+       TESTES DE REDE — Conectividade + DNS
+       ═══════════════════════════════════════════════════════════ */
+
+    const CLIENTE_ID_TESTES = {{ cliente.id }};
+
+    function testeRedeSubAba(event, aba) {
+        event.preventDefault();
+        document.querySelectorAll('#testeRedeSubTabs .nav-link').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('tr-sub-conectividade').style.display = aba === 'conectividade' ? '' : 'none';
+        document.getElementById('tr-sub-dns').style.display = aba === 'dns' ? '' : 'none';
+    }
+
+    /* ─── Conectividade ──────────────────────────────────────── */
+
+
+    let _modoTeste = 'todos';
+    const _DESTINOS_PADRAO_LISTA = ['8.8.8.8','1.1.1.1','whatsapp.com','instagram.com','uol.com.br','nytimes.com'];
+
+    function setModoTeste(modo) {
+        _modoTeste = modo;
+        document.querySelectorAll('.modo-btn').forEach(b => b.classList.remove('active-modo'));
+        document.getElementById(modo === 'todos' ? 'btnModoTodos' : 'btnModoUnico').classList.add('active-modo');
+        const container = document.getElementById('destinoUnicoContainer');
+        container.style.display = modo === 'unico' ? '' : 'none';
+        if (modo === 'unico') {
+            atualizarSelectDestinoUnico();
+            // Sugerir mais pacotes
+            const pktInput = document.getElementById('inputPackets');
+            if (parseInt(pktInput.value) < 10) pktInput.value = 20;
+        }
+    }
+
+    function atualizarSelectDestinoUnico() {
+        const sel = document.getElementById('selectDestinoUnico');
+        const todos = [..._DESTINOS_PADRAO_LISTA, ..._destinosExtras];
+        const atual = sel.value;
+        sel.innerHTML = todos.map(d =>
+            `<option value="${d}" ${d === atual ? 'selected' : ''}>${d}</option>`
+        ).join('');
+    }
+
+    function getDestinoUnico() {
+        const custom = document.getElementById('inputDestinoUnicoCustom').value.trim();
+        if (custom) return custom;
+        return document.getElementById('selectDestinoUnico').value;
+    }
+
+    let _ipVerAtual = 'v4';
+    let _destinosExtras = [];
+
+    function setIPVer(ver) {
+        _ipVerAtual = ver;
+        document.getElementById('ipVerSelecionado').value = ver;
+        document.querySelectorAll('.ip-ver-btn').forEach(b => b.classList.remove('active-ip'));
+        const map = {v4: 'btnIPv4', v6: 'btnIPv6', ambos: 'btnIPambos'};
+        document.getElementById(map[ver]).classList.add('active-ip');
+    }
+
+    function adicionarDestinoExtra() {
+        const inp = document.getElementById('inputDestinoExtra');
+        const val = inp.value.trim();
+        if (!val) return;
+        if (_destinosExtras.includes(val)) { inp.value = ''; return; }
+        _destinosExtras.push(val);
+        inp.value = '';
+        renderizarDestinoBadges();
+        atualizarSelectDestinoUnico();
+    }
+
+    function removerDestinoExtra(d) {
+        _destinosExtras = _destinosExtras.filter(x => x !== d);
+        renderizarDestinoBadges();
+    }
+
+    function renderizarDestinoBadges() {
+        const container = document.getElementById('destinosExtrasContainer');
+        const badgesEl  = document.getElementById('destinosExtrasBadges');
+        if (!_destinosExtras.length) { container.style.display = 'none'; return; }
+        container.style.display = '';
+        badgesEl.innerHTML = _destinosExtras.map(d =>
+            `<span style="background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.35);color:#e3b341;font-family:'Courier New',monospace;padding:4px 10px;border-radius:20px;font-size:.8rem;display:flex;align-items:center;gap:6px;">
+                ${d}
+                <span style="cursor:pointer;color:#f85149;font-size:.9rem;" onclick="removerDestinoExtra('${d}')" title="Remover">&times;</span>
+            </span>`
+        ).join('');
+    }
+
+    async function executarTesteRede() {
+        const btn     = document.getElementById('btnTesteRede');
+        const statusEl = document.getElementById('testeRedeStatus');
+        const resultEl = document.getElementById('testeRedeResultados');
+        const packets = parseInt(document.getElementById('inputPackets').value) || 5;
+        const wait    = parseInt(document.getElementById('inputWait').value)    || 3;
+
+        btn.disabled = true;
+        statusEl.style.display = 'block';
+        resultEl.style.display = 'none';
+        resultEl.innerHTML = '';
+
+        const estSeg = Math.ceil((packets * wait + 30) * Math.max(1, _destinosExtras.length + 6) / 8);
+        statusEl.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i> Executando testes via SSH no proxy (estimativa ~${estSeg}s)…`;
+
+        try {
+            const resp = await fetch(`/clientes/${CLIENTE_ID_TESTES}/testes/rede/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ipv:              _ipVerAtual,
+                    packets:          packets,
+                    wait:             wait,
+                    destinos_extras:  _destinosExtras,
+                    destino_unico:    _modoTeste === 'unico' ? getDestinoUnico() : null,
+                }),
+            });
+            const data = await resp.json();
+            if (!resp.ok || data.error) {
+                resultEl.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>${data.error || 'Erro ao executar teste.'}</div>`;
+                resultEl.style.display = '';
+                return;
+            }
+            renderizarTesteRede(data);
+        } catch(e) {
+            resultEl.innerHTML = `<div class="alert alert-danger">Erro de rede: ${e}</div>`;
+            resultEl.style.display = '';
+        } finally {
+            btn.disabled = false;
+            statusEl.style.display = 'none';
+        }
+    }
+
+    function renderizarTesteRede(data) {
+        const el  = document.getElementById('testeRedeResultados');
+        const ipv = data.ipv;
+
+        // Cabeçalho geral
+        let html = `
+        <div class="mb-3 d-flex flex-wrap gap-3 align-items-center" style="font-size:.82rem;color:var(--text-muted);">
+            <span><i class="fas fa-server me-1"></i> Proxy: <strong style="color:var(--accent-cyan)">${data.proxy.nome}</strong></span>
+            <span><i class="fas fa-paper-plane me-1"></i> ${data.packets} pacotes</span>
+            <span><i class="fas fa-clock me-1"></i> wait ${data.wait}s</span>
+            <span><i class="fas fa-network-wired me-1"></i> IP: <strong>${data.ipv === 'ambos' ? 'IPv4 + IPv6' : data.ipv.toUpperCase()}</strong></span>
+            <span><i class="fas fa-clock me-1"></i> ${new Date().toLocaleTimeString('pt-BR')}</span>
+        </div>
+        <div class="row g-3">`;
+
+        for (const r of data.resultados) {
+            const pingV4 = r.ping_v4;
+            const pingV6 = r.ping_v6;
+            const mtrV4  = r.mtr_v4;
+            const mtrV6  = r.mtr_v6;
+            const isExtra = r.extra;
+
+            // Determinar status geral do destino
+            let alcancavel = false;
+            let statusCor = '#f85149', statusIcon = '✗', statusTexto = 'Inacessível';
+
+            const pings = [pingV4, pingV6].filter(Boolean);
+            if (pings.some(p => p.alcancavel)) {
+                const melhorPerda = Math.min(...pings.filter(p => p.alcancavel).map(p => p.perda_pct));
+                alcancavel = true;
+                if (melhorPerda === 0)       { statusCor = '#3fb950'; statusIcon = '✓'; statusTexto = 'OK'; }
+                else if (melhorPerda < 50)   { statusCor = '#e3b341'; statusIcon = '⚠'; statusTexto = `${melhorPerda}% perda`; }
+                else                         { statusCor = '#f85149'; statusIcon = '⚠'; statusTexto = `${melhorPerda}% perda`; }
+            } else if (r.erro) {
+                statusTexto = 'Erro SSH';
+            }
+
+            const extraBadge = isExtra
+                ? `<span style="background:rgba(255,152,0,.15);border:1px solid rgba(255,152,0,.35);color:#e3b341;border-radius:10px;padding:1px 7px;font-size:.7rem;margin-left:6px;">extra</span>`
+                : '';
+
+            // Bloco de ping por versão
+            function pingBloco(p, ver) {
+                if (!p) return `<span style="color:#8b949e;font-size:.78rem;">— não testado</span>`;
+                const cor = p.alcancavel ? (p.perda_pct === 0 ? '#3fb950' : '#e3b341') : '#f85149';
+                const rttStr = p.rtt_avg ? `${p.rtt_avg} ms` : '—';
+                return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-family:'Courier New',monospace;font-size:.72rem;color:${cor};background:rgba(${cor==='#3fb950'?'63,185,80':cor==='#e3b341'?'227,179,65':'248,81,73'},.1);padding:2px 7px;border-radius:10px;">${ver}</span>
+                    <span style="font-size:.78rem;color:var(--text-muted);">env:${p.enviados} rec:${p.recebidos} perd:${p.perdidos} (${p.perda_pct}%)</span>
+                    <span style="color:var(--accent-cyan);font-family:'Courier New',monospace;font-size:.82rem;">${rttStr}</span>
+                </div>`;
+            }
+
+            const pingHtml = [
+                ipv !== 'v6' ? pingBloco(pingV4, 'IPv4') : '',
+                ipv !== 'v4' ? pingBloco(pingV6, 'IPv6') : '',
+            ].filter(Boolean).join('<div style="height:4px;"></div>');
+
+            // MTR colapsável
+            function mtrBloco(m, ver) {
+                if (!m || !m.output) return '';
+                const btnId = `mtr_${r.destino.replace(/[^a-z0-9]/gi,'_')}_${ver}`;
+                return `<button class="btn btn-sm" style="font-size:.72rem;padding:3px 10px;background:rgba(0,217,255,.06);border:1px solid rgba(0,217,255,.18);color:var(--accent-cyan);"
+                    onclick="const pre=document.getElementById('${btnId}');pre.style.display=pre.style.display==='none'?'block':'none';this.textContent=pre.style.display==='none'?'▼ Rota ${ver}':'▲ Ocultar ${ver}'">
+                    ▼ Rota ${ver} (${m.ferramenta})
+                </button>
+                <pre id="${btnId}" style="display:none;font-size:.7rem;color:#8b949e;background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin-top:6px;">${m.output.replace(/</g,'&lt;')}</pre>`;
+            }
+
+            const mtrHtml = [
+                ipv !== 'v6' ? mtrBloco(mtrV4, 'IPv4') : '',
+                ipv !== 'v4' ? mtrBloco(mtrV6, 'IPv6') : '',
+            ].filter(Boolean).join('<div style="height:4px;"></div>');
+
+            const erroHtml = r.erro
+                ? `<div style="color:#f85149;font-size:.78rem;padding:8px 18px;border-top:1px solid #21262d;"><i class="fas fa-exclamation-triangle me-1"></i>${r.erro}</div>`
+                : '';
+
+            html += `
+            <div class="col-12 col-lg-6">
+                <div style="background:#161b22;border:1px solid ${isExtra ? 'rgba(255,152,0,.35)' : '#30363d'};border-radius:10px;overflow:hidden;height:100%;">
+                    <!-- Header -->
+                    <div style="padding:12px 18px;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:1.3rem;color:${statusCor};">${statusIcon}</span>
+                            <div>
+                                <div style="color:var(--text-light);font-family:'Courier New',monospace;font-size:.93rem;font-weight:700;">${r.destino}${extraBadge}</div>
+                                <div style="color:${statusCor};font-size:.75rem;margin-top:1px;">${statusTexto}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ping stats -->
+                    <div style="padding:12px 18px;border-bottom:1px solid #21262d;">
+                        ${pingHtml}
+                    </div>
+
+                    <!-- MTR -->
+                    ${mtrHtml ? `<div style="padding:10px 18px;">${mtrHtml}</div>` : ''}
+
+                    ${erroHtml}
+                </div>
+            </div>`;
+        }
+
+        html += `</div>`;
+        el.innerHTML = html;
+        el.style.display = '';
+    }
+
+    /* ─── Teste de DNS ───────────────────────────────────────── */
+
+    async function executarTesteDNS() {
+        const dns    = document.getElementById('dnsClienteInput').value.trim();
+        const dom    = document.getElementById('dominioInput').value.trim();
+        const btn    = document.getElementById('btnTesteDNS');
+        const status = document.getElementById('testeDNSStatus');
+        const result = document.getElementById('testeDNSResultados');
+
+        if (!dom) {
+            alert('Informe o domínio a ser testado.');
+            return;
+        }
+
+        btn.disabled = true;
+        status.style.display = 'block';
+        result.style.display = 'none';
+        result.innerHTML = '';
+
+        try {
+            const resp = await fetch(`/clientes/${CLIENTE_ID_TESTES}/testes/dns/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({dominio: dom, dns_cliente: dns}),
+            });
+            const data = await resp.json();
+
+            if (!resp.ok || data.error) {
+                result.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>${data.error}</div>`;
+                result.style.display = '';
+                return;
+            }
+
+            renderizarTesteDNS(data);
+        } catch(e) {
+            result.innerHTML = `<div class="alert alert-danger">Erro: ${e}</div>`;
+            result.style.display = '';
+        } finally {
+            btn.disabled = false;
+            status.style.display = 'none';
+        }
+    }
+
+    function renderizarTesteDNS(data) {
+        const el = document.getElementById('testeDNSResultados');
+        const status = data.status_geral;
+
+        // ── Banner de resumo ──────────────────────────────────────────────
+        let resumoCor, resumoEmoji, resumoTitulo, resumoMsg, resumoRgb;
+
+        if (status === 'ok') {
+            resumoCor   = '#3fb950'; resumoRgb = '63,185,80';
+            resumoEmoji = '\u2713'; resumoTitulo = 'Consistente';
+            resumoMsg   = `Todos os ${data.qtd_responderam} servidores resolveram para o mesmo endere\u00e7o: <strong>${data.todos_ips_distintos.join(', ')}</strong>`;
+        } else if (status === 'cdn') {
+            resumoCor   = '#00d9ff'; resumoRgb = '0,217,255';
+            resumoEmoji = '\u26a1'; resumoTitulo = 'Geo-DNS / CDN Detectado';
+            const asnStr = data.unique_asns && data.unique_asns.length
+                ? ` (ASN ${data.unique_asns.join(', ')})`
+                : '';
+            const motivo = data.same_asn
+                ? `Diferentes IPs mas mesmo ASN${asnStr} \u2014 distribui\u00e7\u00e3o geogr\u00e1fica normal.`
+                : data.same_prefix16
+                    ? `IPs no mesmo bloco /16 \u2014 prov\u00e1vel anycast/CDN.`
+                    : `Dom\u00ednio conhecido por usar CDN/geo-DNS.`;
+            resumoMsg = `<strong>Isto \u00e9 normal.</strong> ${motivo}<br>
+                <small style="color:#6e7681;">IPs distintos: ${data.todos_ips_distintos.join(' \u2502 ')}</small>`;
+        } else if (status === 'inconsistente') {
+            resumoCor   = '#f85149'; resumoRgb = '248,81,73';
+            resumoEmoji = '\u2717'; resumoTitulo = 'Inconsist\u00eancia Detectada';
+            const asnStr = data.unique_asns && data.unique_asns.length > 1
+                ? ` ASNs diferentes: ${data.unique_asns.join(', ')}.` : '';
+            resumoMsg = `IPs distintos com origens diferentes encontrados: <strong>${data.todos_ips_distintos.join(' | ')}</strong>${asnStr} \u2014 poss\u00edvel problema de DNS!`;
+        } else if (status === 'parcial') {
+            resumoCor   = '#e3b341'; resumoRgb = '227,179,65';
+            resumoEmoji = '\u26a0'; resumoTitulo = 'Resposta Parcial';
+            resumoMsg   = `Apenas ${data.qtd_responderam} servidor(es) respondeu. Verifique a conectividade do proxy.`;
+        } else {
+            resumoCor   = '#8b949e'; resumoRgb = '139,148,158';
+            resumoEmoji = '\u2717'; resumoTitulo = 'Sem Resolu\u00e7\u00e3o';
+            resumoMsg   = 'Nenhum servidor DNS resolveu o dom\u00ednio via proxy. Verifique o nome e a conectividade.';
+        }
+
+        let html = `
+        <div style="background:rgba(${resumoRgb},.1);border:1px solid ${resumoCor};border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:14px;">
+            <span style="font-size:2rem;color:${resumoCor};line-height:1;">${resumoEmoji}</span>
+            <div>
+                <div style="color:${resumoCor};font-weight:700;font-size:1rem;">${resumoTitulo}</div>
+                <div style="color:var(--text-muted);font-size:.85rem;margin-top:5px;line-height:1.5;">${resumoMsg}</div>
+            </div>
+        </div>`;
+
+        // Banner informativo de CDN
+        if (status === 'cdn') {
+            html += `
+            <div style="background:rgba(0,217,255,.05);border:1px solid rgba(0,217,255,.15);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:#8b949e;line-height:1.6;">
+                <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
+                <strong style="color:var(--text-light);">O que \u00e9 Geo-DNS / CDN?</strong><br>
+                Servi\u00e7os como WhatsApp, Instagram, Google e Netflix usam redes de distribui\u00e7\u00e3o globais (CDN) e geo-DNS
+                para responder com o IP do servidor mais pr\u00f3ximo ao solicitante. Por isso, servidores DNS em localiza\u00e7\u00f5es
+                diferentes podem retornar IPs diferentes do <em>mesmo provedor</em> \u2014 isso \u00e9 comportamento esperado e correto.
+                Um problema real de DNS ocorreria se o ASN (operador de rede) dos IPs fosse diferente.
+            </div>`;
+        }
+
+        html += `
+        <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:12px;">
+            Dom\u00ednio: <code style="color:var(--accent-cyan)">${data.dominio}</code>
+            &nbsp;\u2502&nbsp; Proxy: <code>${data.proxy.nome}</code>
+            &nbsp;\u2502&nbsp; ${new Date().toLocaleTimeString('pt-BR')}
+            ${data.unique_asns && data.unique_asns.length ? `&nbsp;\u2502&nbsp; ASN: <code style="color:var(--primary-green)">${data.unique_asns.join(', ')}</code>` : ''}
+        </div>
+
+        <div class="table-responsive">
+        <table class="table" style="background:#161b22;border-radius:10px;overflow:hidden;color:var(--text-light);font-size:.87rem;">
+            <thead><tr style="background:#21262d;color:var(--text-muted);border-bottom:1px solid #30363d;">
+                <th style="padding:12px 16px;">Servidor DNS</th>
+                <th style="padding:12px 16px;">IP</th>
+                <th style="padding:12px 16px;">IPv4 Resolvido</th>
+                <th style="padding:12px 16px;">IPv6</th>
+                <th style="padding:12px 16px;text-align:center;">Status</th>
+            </tr></thead>
+            <tbody>`;
+
+        for (const r of data.resultados) {
+            const badge = r.is_cliente
+                ? `<span style="background:rgba(0,217,255,.15);color:var(--accent-cyan);border:1px solid rgba(0,217,255,.3);border-radius:12px;padding:2px 8px;font-size:.72rem;">Cliente</span>`
+                : `<span style="background:rgba(63,185,80,.1);color:#3fb950;border:1px solid rgba(63,185,80,.3);border-radius:12px;padding:2px 8px;font-size:.72rem;">P\u00fablico</span>`;
+
+            const ferrBadge = r.ferramenta && r.ferramenta !== '?'
+                ? `<span style="color:#6e7681;font-size:.7rem;margin-left:5px;">(${r.ferramenta})</span>` : '';
+
+            // IPv4 com ASN badge abaixo
+            let ipv4Html = `<span style="color:#8b949e">\u2014</span>`;
+            if (r.ipv4 && r.ipv4.length) {
+                ipv4Html = r.ipv4.map(ip => {
+                    const asnInfo = (r.asn_info && r.asn_info[ip]) || (data.asn_map && data.asn_map[ip]);
+                    const asnBadge = asnInfo
+                        ? `<br><span style="font-family:'Courier New',monospace;font-size:.68rem;color:#6e7681;background:rgba(110,118,129,.1);border-radius:4px;padding:1px 5px;">
+                            AS${asnInfo.asn}${asnInfo.country ? ' \u00b7 ' + asnInfo.country : ''}
+                           </span>`
+                        : '';
+                    return `<code style="color:var(--primary-green)">${ip}</code>${asnBadge}`;
+                }).join('<br>');
+            }
+
+            const ipv6Str = r.ipv6 && r.ipv6.length
+                ? `<small style="font-family:'Courier New',monospace;color:#6e7681;word-break:break-all;">${r.ipv6[0]}</small>`
+                : `<span style="color:#8b949e">\u2014</span>`;
+
+            const erroStr = r.erro
+                ? `<div style="color:#f85149;font-size:.74rem;margin-top:3px;"><i class="fas fa-exclamation-triangle me-1"></i>${r.erro}</div>` : '';
+
+            const rawBtn = r.raw
+                ? `<button class="btn btn-sm" style="font-size:.67rem;padding:1px 7px;margin-top:4px;background:rgba(110,118,129,.1);border:1px solid #30363d;color:#8b949e;"
+                    onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">raw</button>
+                   <pre style="display:none;font-size:.67rem;color:#8b949e;background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:8px;max-height:140px;overflow:auto;margin-top:4px;white-space:pre-wrap;">${r.raw ? r.raw.replace(/</g,'&lt;') : ''}</pre>` : '';
+
+            // Status por linha
+            let statusHtml;
+            if (r.erro) {
+                statusHtml = `<span style="color:#f85149;">\u26a0 Erro SSH</span>`;
+            } else if (!r.ipv4 || !r.ipv4.length) {
+                statusHtml = `<span style="color:#8b949e;">\u2014 Sem resposta</span>`;
+            } else if (status === 'cdn') {
+                statusHtml = `<span style="color:#00d9ff;font-weight:600;">\u26a1 CDN</span>`;
+            } else if (r.consistente === true) {
+                statusHtml = `<span style="color:#3fb950;font-weight:700;">\u2713 OK</span>`;
+            } else if (r.consistente === false) {
+                statusHtml = `<span style="color:#f85149;font-weight:700;">\u2717 Diferente</span>`;
+            } else {
+                statusHtml = `<span style="color:#e3b341;">~ \u00danico</span>`;
+            }
+
+            html += `<tr style="border-bottom:1px solid #21262d;">
+                <td style="padding:12px 16px;"><div style="font-weight:600;">${r.nome} ${badge}${ferrBadge}</div>${erroStr}${rawBtn}</td>
+                <td style="padding:12px 16px;font-family:'Courier New',monospace;color:var(--accent-cyan);">${r.dns}</td>
+                <td style="padding:12px 16px;">${ipv4Html}</td>
+                <td style="padding:12px 16px;">${ipv6Str}</td>
+                <td style="padding:12px 16px;text-align:center;">${statusHtml}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table></div>`;
+        el.innerHTML = html;
+        el.style.display = '';
+    }
+    </script>
+
 
     {% endblock content %}
