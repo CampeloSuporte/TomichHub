@@ -1,0 +1,1693 @@
+{% load static %}
+{# INLINE SSH TERMINAL PANEL — v3 (wiki completa + winbox popup + sem botão cores) #}
+
+{# ─── JSON: SSH + Winbox acessos ─── #}
+<script>
+window.INLINE_SSH_ACESSOS = [
+  {% for acesso in acessos %}{% with p=acesso.protocolo|upper %}{% if p == 'SSH' or p == 'TELNET' or p == 'RLOGIN' %}
+  {"id":{{ acesso.id }},"tipo":"{{ acesso.tipo|escapejs }}","host":"{{ acesso.host|escapejs }}","porta":{{ acesso.porta|default:22 }},"usuario":"{{ acesso.usuario|escapejs }}","protocolo":"{{ acesso.protocolo|escapejs }}","winbox":{% if acesso.winbox %}{{ acesso.winbox }}{% else %}0{% endif %}},
+  {% endif %}{% endwith %}{% endfor %}
+];
+</script>
+
+{# ─── VT323 + Share Tech Mono — cyberpunk terminal fonts via Google Fonts ─── #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap">
+
+{# ─── xterm.js ─── #}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+
+<style>
+/* ════════════════════════════════════════════════
+   INLINE TERMINAL PANEL — BASE
+   ════════════════════════════════════════════════ */
+:root {
+    --itp-bg: #0a0a0a; --itp-border: #1e2a1e;
+    --itp-green: #00ff88; --itp-cyan: #00d9ff;
+    --itp-orange: #ffa500; --itp-red: #ff5555;
+    --itp-text: #c8d3c8; --itp-muted: #4a5568;
+    --itp-sidebar-w: 220px; --itp-wiki-w: 480px;
+    --itp-height: 65vh; --itp-min-h: 180px; --itp-max-h: 95vh;
+    --itp-z: 8000;
+}
+
+/* FAB */
+#itpFab {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: calc(var(--itp-z) + 1);
+    width: 48px; height: 48px; border-radius: 50%;
+    background: #0d1a0d; border: 1.5px solid var(--itp-green);
+    color: var(--itp-green); font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 16px rgba(0,255,136,.25), 0 4px 12px rgba(0,0,0,.5);
+    transition: transform .2s, box-shadow .2s, opacity .2s;
+    opacity: 0; pointer-events: none;
+}
+#itpFab.visivel { opacity: 1; pointer-events: auto; }
+#itpFab:hover { transform: scale(1.1); box-shadow: 0 0 24px rgba(0,255,136,.45), 0 6px 16px rgba(0,0,0,.5); }
+.itp-fab-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: var(--itp-green); color: #000; font-size: 9px; font-weight: 800;
+    width: 16px; height: 16px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono','Courier New',monospace;
+}
+.itp-fab-badge.show { display: flex; }
+
+/* Panel */
+#itpPanel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: var(--itp-height); min-height: var(--itp-min-h); max-height: var(--itp-max-h);
+    background: var(--itp-bg); border-top: 2px solid var(--itp-green);
+    z-index: var(--itp-z); display: flex; flex-direction: column;
+    font-family: 'Share Tech Mono','Courier New',monospace; font-size: 12px;
+    transform: translateY(100%);
+    transition: transform .32s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -4px 32px rgba(0,0,0,.6), 0 -1px 0 rgba(0,255,136,.12);
+}
+#itpPanel.aberto { transform: translateY(0); }
+
+/* Drag handle */
+.itp-drag-handle {
+    height: 6px; cursor: ns-resize; flex-shrink: 0; position: relative;
+    background: linear-gradient(90deg, transparent, rgba(0,255,136,.3) 20%, rgba(0,255,136,.5) 50%, rgba(0,255,136,.3) 80%, transparent);
+    transition: background .2s;
+}
+.itp-drag-handle::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%,-50%);
+    width: 48px; height: 3px; border-radius: 2px;
+    background: rgba(0,255,136,.5); box-shadow: 0 0 6px rgba(0,255,136,.3);
+}
+.itp-drag-handle:hover { background: linear-gradient(90deg, transparent, rgba(0,255,136,.6) 20%, rgba(0,255,136,1) 50%, rgba(0,255,136,.6) 80%, transparent); }
+body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
+
+/* Body row */
+.itp-body { display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative; }
+
+/* ── Left sidebar (hosts) ── */
+.itp-sidebar {
+    width: var(--itp-sidebar-w); min-width: var(--itp-sidebar-w); max-width: var(--itp-sidebar-w);
+    background: #080e08; border-right: 1px solid #1a261a;
+    display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.itp-sidebar-header {
+    padding: 10px 12px 8px; border-bottom: 1px solid #1a261a;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.itp-sidebar-title {
+    color: var(--itp-green); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    display: flex; align-items: center; gap: 6px;
+}
+.itp-sidebar-close {
+    background: transparent; border: none; color: var(--itp-muted);
+    cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 2px;
+    line-height: 1; transition: color .15s;
+}
+.itp-sidebar-close:hover { color: var(--itp-red); }
+.itp-search {
+    margin: 8px 10px; background: #111; border: 1px solid #222; border-radius: 3px;
+    display: flex; align-items: center; gap: 6px; padding: 5px 8px; flex-shrink: 0;
+}
+.itp-search-icon { color: #3a4a3a; font-size: 11px; flex-shrink: 0; }
+.itp-search-inp {
+    background: transparent; border: none; outline: none;
+    color: var(--itp-text); font-family: inherit; font-size: 11px; width: 100%;
+    caret-color: var(--itp-green);
+}
+.itp-search-inp::placeholder { color: #3a4a3a; }
+.itp-host-list {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+    scrollbar-width: thin; scrollbar-color: #1e2e1e transparent;
+}
+.itp-host-list::-webkit-scrollbar { width: 4px; }
+.itp-host-list::-webkit-scrollbar-thumb { background: #1e2e1e; border-radius: 2px; }
+.itp-host-group {
+    padding: 8px 10px 2px; font-size: 9px; color: #2e3e2e;
+    text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700;
+    border-top: 1px solid #111;
+}
+.itp-host-group:first-child { border-top: none; }
+.itp-host-item {
+    padding: 7px 8px 7px 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px;
+    border-left: 2px solid transparent;
+    transition: background .12s, border-color .12s;
+}
+.itp-host-item:hover { background: rgba(0,255,136,.04); border-left-color: rgba(0,255,136,.2); }
+.itp-host-item.ativo { background: rgba(0,255,136,.07); border-left-color: var(--itp-green); }
+@keyframes itpPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.itp-host-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; transition: background .3s;
+}
+.itp-host-item.conectado .itp-host-dot { background: var(--itp-green); box-shadow: 0 0 6px rgba(0,255,136,.5); }
+.itp-host-item.conectando .itp-host-dot { background: var(--itp-orange); animation: itpPulse 1s infinite; }
+.itp-host-info { flex: 1; min-width: 0; }
+.itp-host-name { font-size: 11px; color: var(--itp-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; line-height: 1.3; }
+.itp-host-addr { font-size: 9px; color: #3a4a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.itp-host-badges { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.itp-host-badge {
+    font-size: 8px; padding: 1px 4px; border-radius: 2px;
+    text-transform: uppercase; white-space: nowrap;
+    background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.12); color: #006640;
+}
+.itp-host-badge.telnet { background: rgba(255,165,0,.06); border-color: rgba(255,165,0,.12); color: #806600; }
+.itp-host-badge.wbx { background: rgba(0,217,255,.06); border-color: rgba(0,217,255,.12); color: #006680; }
+.itp-host-empty { padding: 24px 12px; text-align: center; color: #2e3e2e; font-size: 11px; line-height: 1.6; }
+
+/* ── Terminal section ── */
+.itp-terminal-section { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Header */
+.itp-term-header {
+    background: #0c0c0c; border-bottom: 1px solid #181c18;
+    padding: 0 10px; display: flex; align-items: center; gap: 6px;
+    min-height: 36px; flex-shrink: 0;
+}
+.itp-term-title { font-size: 11px; color: var(--itp-green); font-weight: 600; letter-spacing: .5px; flex-shrink: 0; }
+.itp-term-title::before { content: '▶ '; font-size: 9px; opacity: .7; }
+.itp-status-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; transition: background .3s, box-shadow .3s;
+}
+.itp-status-dot.ok { background: var(--itp-green); box-shadow: 0 0 6px rgba(0,255,136,.5); }
+.itp-status-dot.err { background: var(--itp-red); }
+.itp-term-spacer { flex: 1; }
+.itp-term-actions { display: flex; align-items: center; gap: 3px; }
+.itp-btn-hdr {
+    background: transparent; border: 1px solid #1e2e1e; color: #6a7a6a;
+    padding: 5px 11px; border-radius: 3px; cursor: pointer;
+    font-size: 11px; font-family: inherit; transition: color .15s, border-color .15s, background .15s;
+    white-space: nowrap; letter-spacing: .2px;
+}
+.itp-btn-hdr:hover { color: var(--itp-text); border-color: #2e4e2e; }
+.itp-btn-hdr.wiki-btn { color: #00d9ff; border-color: rgba(0,217,255,.2); }
+.itp-btn-hdr.wiki-btn:hover { background: rgba(0,217,255,.06); border-color: var(--itp-cyan); }
+.itp-btn-hdr.wiki-btn.ativo { background: rgba(0,217,255,.1); border-color: var(--itp-cyan); }
+.itp-btn-hdr.minimize { color: var(--itp-orange); border-color: rgba(255,165,0,.2); }
+.itp-btn-hdr.minimize:hover { background: rgba(255,165,0,.06); border-color: var(--itp-orange); }
+.itp-btn-hdr.fechar-tudo { color: var(--itp-red); border-color: rgba(255,85,85,.2); }
+.itp-btn-hdr.fechar-tudo:hover { background: rgba(255,85,85,.08); border-color: var(--itp-red); }
+
+/* Tabs */
+.itp-tabs {
+    background: #080808; border-bottom: 1px solid #111;
+    display: flex; align-items: flex-end; padding: 4px 8px 0; gap: 2px;
+    min-height: 32px; overflow-x: auto; overflow-y: hidden; flex-shrink: 0; scrollbar-width: none;
+}
+.itp-tabs::-webkit-scrollbar { display: none; }
+.itp-tab {
+    padding: 5px 11px; border-radius: 3px 3px 0 0; border: 1px solid #1a1a1a; border-bottom: none;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    font-size: 10px; color: #4a5a4a; background: #0c0c0c;
+    white-space: nowrap; transition: color .12s, background .12s, border-color .12s;
+    user-select: none; max-width: 180px; flex-shrink: 0;
+}
+.itp-tab:hover { color: var(--itp-text); background: #111; }
+.itp-tab.ativo { color: var(--itp-green); background: #0a0a0a; border-color: #1e2e1e; border-bottom-color: #0a0a0a; }
+.itp-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; transition: background .3s; }
+.itp-tab-dot.ok { background: var(--itp-green); }
+.itp-tab-dot.err { background: var(--itp-red); }
+.itp-tab-dot.busy { background: var(--itp-orange); animation: itpPulse 1s infinite; }
+.itp-tab-label { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.itp-tab-close { color: #2a3a2a; font-size: 11px; flex-shrink: 0; padding: 0 1px; transition: color .12s; }
+.itp-tab:hover .itp-tab-close { color: #5a3a3a; }
+.itp-tab.ativo .itp-tab-close:hover { color: var(--itp-red); }
+
+/* Content + panes */
+.itp-content { flex: 1; min-height: 0; background: #000; position: relative; overflow: hidden; }
+.itp-pane { position: absolute; inset: 0; display: none; overflow: hidden; }
+.itp-pane.ativo { display: flex; flex-direction: column; }
+#itpPanel .itp-pane .xterm { flex: 1; min-height: 0; padding: 2px; }
+#itpPanel .itp-pane .xterm-screen { height: 100%; }
+#itpPanel .xterm-viewport { background: #000 !important; }
+
+.itp-empty {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #1e2e1e; gap: 12px; font-size: 11px; text-align: center; line-height: 1.7;
+}
+.itp-empty-icon { font-size: 28px; opacity: .4; }
+.itp-empty p { margin: 0; }
+.itp-empty .hint { font-size: 10px; color: #1a2a1a; max-width: 280px; }
+
+/* Footer */
+.itp-footer {
+    background: #080808; border-top: 1px solid #111; padding: 5px 10px;
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0; flex-wrap: wrap;
+}
+.itp-btn-foot {
+    background: transparent; border: 1px solid #1a2a1a; color: #4a5a4a;
+    padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
+    font-family: inherit; transition: color .15s, border-color .15s, background .15s; white-space: nowrap;
+}
+.itp-btn-foot:hover { color: var(--itp-text); border-color: #2a4a2a; }
+.itp-btn-foot.active-toggle { color: var(--itp-green); border-color: rgba(0,255,136,.25); }
+
+/* ════════════════════════════════════════════════
+   WIKI SIDEBAR (full — identical to terminal.html)
+   ════════════════════════════════════════════════ */
+.itp-wiki-sidebar {
+    position: absolute; top: 0; bottom: 0; right: 0;
+    width: var(--itp-wiki-w);
+    background: #111; border-left: 2px solid var(--itp-green);
+    display: flex; flex-direction: column; z-index: 10;
+    transform: translateX(100%); transition: transform .3s ease, width .2s ease;
+    overflow: hidden; min-width: 300px; max-width: 98%;
+    font-family: 'Share Tech Mono','Courier New',monospace;
+}
+.itp-wiki-sidebar.aberta { transform: translateX(0); }
+.itp-wiki-sidebar.maximizado { width: 100% !important; border-left: none; transition: width .2s ease; }
+
+/* Resize handle */
+.itp-wiki-resize-handle {
+    position: absolute; top: 0; left: -4px; width: 8px; height: 100%;
+    cursor: ew-resize; z-index: 11; background: transparent; transition: background .2s;
+}
+.itp-wiki-resize-handle:hover,
+.itp-wiki-resize-handle.arrastando { background: rgba(0,255,136,.25); }
+.itp-wiki-resize-handle::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%); width: 2px; height: 40px;
+    background: rgba(0,255,136,.4); border-radius: 2px; opacity: 0; transition: opacity .2s;
+}
+.itp-wiki-resize-handle:hover::after,
+.itp-wiki-resize-handle.arrastando::after { opacity: 1; }
+body.itp-wiki-resizing { cursor: ew-resize !important; user-select: none !important; }
+body.itp-wiki-resizing * { cursor: ew-resize !important; }
+
+/* Wiki header */
+.itp-wiki-sidebar-header {
+    background: #0a0a0a; padding: 10px 14px; border-bottom: 2px solid var(--itp-green);
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 8px;
+}
+.itp-wiki-sidebar-header h3 { margin: 0; color: var(--itp-green); font-size: 14px; font-weight: 700; letter-spacing: 1px; flex: 1; }
+.itp-wiki-header-actions { display: flex; align-items: center; gap: 4px; }
+.itp-wiki-width-indicator {
+    font-size: 9px; color: #333; padding: 2px 6px; background: #0d0d0d;
+    border: 1px solid #1a1a1a; border-radius: 2px;
+    white-space: nowrap; transition: color .2s;
+}
+body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); border-color: var(--itp-green); }
+.itp-wiki-size-presets { display: flex; gap: 3px; align-items: center; }
+.itp-btn-preset {
+    background: transparent; border: 1px solid #1e1e1e; color: #444;
+    padding: 3px 7px; border-radius: 2px; cursor: pointer; font-size: 9px;
+    font-family: inherit; transition: .15s; white-space: nowrap;
+}
+.itp-btn-preset:hover { border-color: var(--itp-green); color: var(--itp-green); }
+.itp-btn-wiki-action {
+    background: transparent; border: 1px solid #2a2a2a; color: #555;
+    width: 30px; height: 30px; border-radius: 3px; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; transition: .2s; flex-shrink: 0;
+}
+.itp-btn-wiki-action:hover { border-color: var(--itp-green); color: var(--itp-green); }
+.itp-btn-wiki-action.maximizar:hover { border-color: var(--itp-cyan); color: var(--itp-cyan); }
+.itp-btn-wiki-action.fechar:hover { border-color: var(--itp-red); color: var(--itp-red); }
+
+/* Wiki search */
+.itp-wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
+.itp-wiki-search-input {
+    width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
+    padding: 10px 13px; border-radius: 3px; font-family: inherit;
+    font-size: 13px; outline: none; transition: border-color .2s; box-sizing: border-box;
+}
+.itp-wiki-search-input:focus { border-color: var(--itp-green); }
+.itp-wiki-search-input::placeholder { color: #444; }
+
+/* Wiki results */
+.itp-wiki-results {
+    flex: 1; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: #333 transparent;
+}
+.itp-wiki-results::-webkit-scrollbar { width: 4px; }
+.itp-wiki-results::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+/* Result items */
+.wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: #555; font-size: 12px; }
+.wiki-error { color: #5a2a2a; }
+.wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background .15s; }
+.wiki-result-item:hover { background: rgba(0,217,255,.04); }
+.wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #555; }
+.wiki-result-categoria { color: var(--itp-cyan); font-size: 10px; }
+.wiki-favorito { color: #ffd700; margin-left: auto; font-size: 10px; }
+.wiki-result-titulo { color: var(--itp-green); font-size: 13px; margin: 0 0 6px; font-weight: 600; }
+.wiki-result-descricao { color: #888; font-size: 11px; margin: 0 0 8px; line-height: 1.5; }
+.wiki-result-footer { display: flex; gap: 6px; }
+.wiki-fabricante { background: rgba(0,217,255,.12); color: var(--itp-cyan); padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+
+/* Article */
+.wiki-artigo-view { color: #ccc; font-size: 12px; line-height: 1.6; }
+.btn-voltar-wiki {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: #0a0a0a; border: none; border-bottom: 1px solid #1e1e1e;
+    color: var(--itp-cyan); padding: 12px 16px; cursor: pointer;
+    font-family: inherit; font-size: 12px; text-align: left; transition: background .15s;
+}
+.btn-voltar-wiki:hover { background: #141414; }
+.wiki-artigo-header { padding: 16px; border-bottom: 1px solid #1e1e1e; background: #0e0e0e; }
+.wiki-artigo-header h2 { color: #fff; font-size: 15px; margin: 0 0 10px; font-weight: 700; line-height: 1.4; }
+.wiki-artigo-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge-cat { background: rgba(0,217,255,.12); color: var(--itp-cyan); padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+.badge-fab { background: rgba(0,255,136,.12); color: var(--itp-green); padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+.wiki-artigo-conteudo { padding: 16px; }
+.wiki-artigo-conteudo h2 {
+    display: flex; align-items: stretch; margin: 20px 0 12px;
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+}
+.wiki-artigo-conteudo h2::before {
+    content: '\201C'; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 30px; width: 30px; background: rgba(0,120,180,.35); color: var(--itp-cyan);
+    font-size: 18px; font-weight: 900; border-radius: 2px 0 0 2px; flex-shrink: 0;
+}
+.wiki-titulo-texto {
+    flex: 1; display: flex; align-items: center; padding: 0 12px;
+    background: rgba(0,80,120,.2); color: var(--itp-cyan); border-bottom: 2px solid var(--itp-cyan);
+    text-transform: uppercase; min-height: 30px;
+}
+.wiki-artigo-conteudo p { margin: 8px 0; color: #bbb; font-size: 12px; }
+.wiki-artigo-conteudo ul, .wiki-artigo-conteudo ol { padding-left: 18px; margin: 8px 0; }
+.wiki-artigo-conteudo li { margin: 4px 0; color: #bbb; font-size: 12px; }
+.wiki-artigo-conteudo code {
+    background: rgba(0,255,136,.1); color: var(--itp-green); padding: 1px 5px;
+    border-radius: 2px; font-family: inherit; font-size: 11px;
+}
+
+/* Code blocks */
+.wiki-code-wrapper { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; margin: 12px 0; }
+.wiki-code-toolbar { background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 5px; }
+.wiki-code-toolbar-title { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.wiki-code-lang-badge {
+    background: rgba(255,170,0,.15); color: #ffa500; font-size: 9px; font-weight: 800;
+    padding: 2px 7px; border-radius: 2px; border: 1px solid rgba(255,170,0,.25);
+    white-space: nowrap; flex-shrink: 0; text-transform: uppercase; letter-spacing: .5px;
+}
+.wiki-code-title-text { color: #888; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wiki-bloco-extra { margin: 0 16px 14px; background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; }
+.wiki-bloco-extra-header { background: #111; padding: 8px 12px; border-bottom: 1px solid #1e1e1e; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wiki-bloco-extra-header strong { color: var(--itp-cyan); font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
+.wiki-bloco-acoes { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+.wiki-bloco-lang { font-size: 9px; color: #444; background: #0a0a0a; padding: 2px 7px; border-radius: 10px; border: 1px solid #222; }
+.wiki-bloco-descricao { padding: 8px 12px; color: #666; font-size: 11px; border-bottom: 1px solid #1e1e1e; margin: 0; }
+.wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1a1a1a; }
+
+/* Buttons */
+.btn-bloco {
+    background: transparent; border: 1px solid #2a2a2a; color: #555;
+    padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
+    font-family: inherit; transition: .2s; white-space: nowrap; line-height: 1.5;
+}
+.btn-bloco:hover { color: #aaa; border-color: #444; }
+.btn-bloco.btn-editar:hover { color: #ffa500; border-color: #ffa500; }
+.btn-bloco.btn-editar.ativo { color: #ffa500; border-color: #ffa500; background: rgba(255,165,0,.08); }
+.btn-bloco.btn-copiar:hover { color: var(--itp-cyan); border-color: var(--itp-cyan); }
+.btn-bloco.btn-copiar.copiado { color: var(--itp-green); border-color: var(--itp-green); }
+.btn-bloco.btn-enviar { color: var(--itp-green); border-color: var(--itp-green); background: rgba(0,255,136,.07); font-weight: 600; }
+.btn-bloco.btn-enviar:hover { background: rgba(0,255,136,.16); box-shadow: 0 0 8px rgba(0,255,136,.2); }
+
+/* Edit aviso */
+.wiki-bloco-edit-aviso {
+    display: none; padding: 6px 12px; background: rgba(255,165,0,.05);
+    border-bottom: 1px solid rgba(255,165,0,.15); color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
+}
+.wiki-bloco-edit-aviso.visivel { display: flex; }
+
+/* Code display */
+.wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0a0a0a; border-left: 3px solid var(--itp-green); }
+.wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: inherit; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
+.wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
+.wiki-codigo-pre code .ln::before {
+    content: counter(linhas); display: table-cell; width: 34px; min-width: 34px;
+    text-align: right; padding: 0 10px 0 6px; color: #3a3a3a;
+    border-right: 1px solid #1e1e1e; user-select: none; font-size: 10px; vertical-align: top; padding-top: 1px;
+}
+.wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
+.wiki-codigo-pre code .ln .lc .wiki-var-highlight { background: rgba(255,170,0,.18); color: #ffaa00; border-radius: 2px; padding: 0 2px; border-bottom: 1px dashed #ffa500; }
+
+/* Editor */
+.wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0a0a0a; }
+.wiki-codigo-editor-wrap.visivel { display: block; }
+.wiki-codigo-editor {
+    width: 100%; min-height: 80px; max-height: 420px; background: #0d0d0d; color: #e8e8e8;
+    border: none; outline: none; resize: vertical; font-family: inherit;
+    font-size: 12px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
+    scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
+}
+.wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
+.wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+.wiki-codigo-editor:focus { background: #0f0f0f; }
+
+/* Bloco footer (editor mode) */
+.wiki-bloco-footer {
+    display: none; padding: 8px 12px; background: #0e0e0e; border-top: 1px solid #1e1e1e;
+    align-items: center; justify-content: space-between; gap: 8px;
+}
+.wiki-bloco-footer.visivel { display: flex; }
+.wiki-bloco-footer-info { color: #3a3a3a; font-size: 10px; }
+.wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
+.btn-resetar {
+    background: transparent; border: 1px solid #2a2a2a; color: #555;
+    padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
+    font-family: inherit; transition: .2s;
+}
+.btn-resetar:hover { color: var(--itp-red); border-color: var(--itp-red); }
+.btn-enviar-grande {
+    background: rgba(0,255,136,.1); border: 1px solid var(--itp-green); color: var(--itp-green);
+    padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
+    font-family: inherit; font-weight: 600; transition: .2s;
+    display: flex; align-items: center; gap: 6px;
+}
+.btn-enviar-grande:hover { background: rgba(0,255,136,.2); box-shadow: 0 0 12px rgba(0,255,136,.28); }
+.btn-enviar-grande.enviado { animation: itpFlashGreen .5s ease; }
+@keyframes itpFlashGreen {
+    0%   { box-shadow: 0 0 0   rgba(0,255,136,0); }
+    40%  { box-shadow: 0 0 20px rgba(0,255,136,.55); }
+    100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
+}
+
+/* Variables panel */
+.wiki-vars-panel { background: rgba(255,170,0,.03); border-top: 1px solid rgba(255,170,0,.12); overflow: hidden; transition: max-height .3s ease; }
+.wiki-vars-toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; background: rgba(255,170,0,.05); border-bottom: 1px solid rgba(255,170,0,.08); transition: background .15s; }
+.wiki-vars-toggle:hover { background: rgba(255,170,0,.09); }
+.wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #ffa500; text-transform: uppercase; letter-spacing: .8px; }
+.wiki-vars-badge { background: rgba(255,170,0,.2); color: #ffa500; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
+.wiki-vars-toggle-arrow { color: #555; font-size: 11px; transition: transform .25s; user-select: none; }
+.wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
+.wiki-vars-body { padding: 10px 12px; display: none; flex-direction: column; gap: 8px; }
+.wiki-vars-body.visivel { display: flex; }
+.wiki-vars-hint { font-size: 10px; color: #555; padding: 4px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 2px; line-height: 1.5; }
+.wiki-vars-hint code { background: rgba(255,170,0,.12); color: #ffa500; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
+.wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
+.wiki-var-row { display: flex; align-items: center; gap: 8px; }
+.wiki-var-label { background: rgba(255,170,0,.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,.2); font-family: inherit; }
+.wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
+.wiki-var-inp { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 10px; border-radius: 2px; font-family: inherit; font-size: 12px; outline: none; transition: border-color .15s, background .15s; min-width: 0; }
+.wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
+.wiki-var-inp::placeholder { color: #3a3a3a; }
+.wiki-var-inp.preenchido { border-color: rgba(0,255,136,.35); color: var(--itp-green); }
+.wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #1a1a1a; flex-wrap: wrap; }
+.btn-vars-limpar { background: transparent; border: 1px solid #2a2a2a; color: #555; padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: inherit; transition: .2s; }
+.btn-vars-limpar:hover { color: var(--itp-red); border-color: var(--itp-red); }
+.wiki-vars-preview-wrap { display: none; }
+.wiki-vars-preview-wrap.visivel { display: block; }
+.wiki-vars-preview-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+.wiki-vars-preview-pre { background: rgba(0,255,136,.04); border: 1px solid rgba(0,255,136,.1); border-left: 3px solid rgba(0,255,136,.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: inherit; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
+
+/* Toast */
+.itp-wiki-toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(12px);
+    background: #111; border: 1px solid var(--itp-green); color: var(--itp-green);
+    padding: 7px 16px; border-radius: 3px; font-size: 11px;
+    font-family: 'JetBrains Mono',monospace; z-index: calc(var(--itp-z)+100);
+    opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap;
+}
+.itp-wiki-toast.visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
+.itp-wiki-toast.erro { border-color: var(--itp-red); color: var(--itp-red); }
+.itp-wiki-toast.vars { border-color: var(--itp-orange); color: var(--itp-orange); }
+
+/* ════════════════════════════════════════════════
+   CONTEXT MENU
+   ════════════════════════════════════════════════ */
+#itpCtxMenu {
+    position: fixed; display: none;
+    background: #0e0e0e; border: 1px solid #1e2e1e; border-radius: 3px;
+    z-index: calc(var(--itp-z)+50); min-width: 172px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.6); overflow: hidden;
+    font-family: 'JetBrains Mono',monospace; font-size: 11px;
+}
+.itp-ctx-item {
+    padding: 9px 14px; cursor: pointer; color: #5a7a5a;
+    display: flex; align-items: center; gap: 9px; transition: background .1s, color .1s;
+    border-bottom: 1px solid #111;
+}
+.itp-ctx-item:last-child { border-bottom: none; }
+.itp-ctx-item:hover { background: rgba(0,255,136,.06); color: var(--itp-green); }
+.itp-ctx-item.winbox:hover { background: rgba(0,217,255,.06); color: var(--itp-cyan); }
+.itp-ctx-sep { height: 1px; background: #1a1a1a; }
+
+/* Winbox inline expand (inside host list) */
+.itp-wbx-expand {
+    display: none; padding: 5px 8px 5px 26px; gap: 5px;
+    background: rgba(0,217,255,.04); border-left: 2px solid rgba(0,217,255,.18);
+    border-bottom: 1px solid #111;
+}
+.itp-wbx-expand.aberto { display: flex; }
+.itp-wbx-btn {
+    flex: 1; background: transparent; border: 1px solid #1e2e2e; color: #4a6a7a;
+    padding: 5px 6px; border-radius: 2px; cursor: pointer; font-size: 10px;
+    font-family: inherit; transition: .15s; text-align: center; white-space: nowrap;
+}
+.itp-wbx-btn.ssh:hover  { border-color: var(--itp-green); color: var(--itp-green); }
+.itp-wbx-btn.wbx:hover  { border-color: var(--itp-cyan); color: var(--itp-cyan); }
+
+/* Sidebar show-tab (visible when sidebar is hidden) */
+.itp-sidebar-tab {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    z-index: 5; display: none;
+    writing-mode: vertical-rl; text-orientation: mixed;
+    background: #0d1a0d; border: 1px solid #1e3e1e; border-left: none;
+    border-radius: 0 4px 4px 0;
+    color: var(--itp-green); font-size: 10px; font-family: inherit;
+    padding: 10px 5px; cursor: pointer; letter-spacing: .8px;
+    transition: background .15s, box-shadow .15s;
+    box-shadow: 2px 0 8px rgba(0,0,0,.4);
+}
+.itp-sidebar-tab:hover { background: rgba(0,255,136,.08); box-shadow: 2px 0 12px rgba(0,255,136,.15); }
+.itp-sidebar-tab.visivel { display: block; }
+
+@media (max-width: 640px) {
+    :root { --itp-sidebar-w: 0px; --itp-height: 60vh; --itp-wiki-w: 100%; }
+    .itp-sidebar { display: none; }
+    .itp-wiki-resize-handle, .itp-wiki-size-presets, .itp-wiki-width-indicator { display: none; }
+    .itp-btn-wiki-action.maximizar { display: none; }
+}
+</style>
+
+<!-- ═════════════════════════ HTML ═════════════════════════ -->
+
+<!-- FAB -->
+<button id="itpFab" onclick="itpToggle()" title="Terminal SSH">
+    <span>⌨</span>
+    <span class="itp-fab-badge" id="itpFabBadge">0</span>
+</button>
+
+<!-- Main panel -->
+<div id="itpPanel">
+    <div class="itp-drag-handle" id="itpDragHandle"></div>
+    <div class="itp-body">
+
+        <!-- Host sidebar -->
+        <div class="itp-sidebar" id="itpSidebar">
+            <div class="itp-sidebar-header">
+                <span class="itp-sidebar-title">&#9776; Hosts SSH</span>
+                <button class="itp-sidebar-close" onclick="itpToggleSidebar()" title="Ocultar">&#9664;</button>
+            </div>
+            <div class="itp-search">
+                <span class="itp-search-icon">&#8981;</span>
+                <input class="itp-search-inp" id="itpSearchInp" type="text" placeholder="filtrar hosts..."
+                       oninput="itpFiltrarHosts(this.value)" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="itp-host-list" id="itpHostList"></div>
+        </div>
+
+        <!-- Sidebar show-tab -->
+        <button class="itp-sidebar-tab" id="itpSidebarTab" onclick="itpToggleSidebar()" title="Mostrar painel de hosts">&#9654; Hosts</button>
+
+        <!-- Terminal section -->
+        <div class="itp-terminal-section" style="position:relative;">
+            <div class="itp-term-header">
+                <span class="itp-term-title">Terminal SSH</span>
+                <div class="itp-status-dot" id="itpStatusDot"></div>
+                <span id="itpStatusText" style="font-size:10px;color:#3a4a3a;"></span>
+                <div class="itp-term-spacer"></div>
+                <div class="itp-term-actions">
+                    {% if request.user.is_staff %}
+                    <button class="itp-btn-hdr wiki-btn" id="itpBtnWiki" onclick="itpToggleWiki()">&#128218; Wiki</button>
+                    {% endif %}
+                    <button class="itp-btn-hdr" onclick="itpLimpar()">&#10005; Limpar</button>
+                    <button class="itp-btn-hdr" onclick="itpReconectar()" title="Reconectar">&#8635;</button>
+                    <button class="itp-btn-hdr minimize" onclick="itpToggle()">&#9660; Min</button>
+                    <button class="itp-btn-hdr fechar-tudo" onclick="itpFecharTodos()" title="Fechar tudo e minimizar">&#9211;</button>
+                </div>
+            </div>
+
+            <div class="itp-tabs" id="itpTabs"></div>
+
+            <div class="itp-content" id="itpContent">
+                <div class="itp-empty" id="itpEmpty">
+                    <div class="itp-empty-icon">&#9000;</div>
+                    <p>Nenhuma sess&#227;o ativa</p>
+                    <p class="hint">Selecione um host na lista lateral ou clique em "Acessar" em qualquer equipamento SSH.</p>
+                </div>
+            </div>
+
+            <div class="itp-footer">
+                <span style="font-size:9px;color:#2a3a2a;letter-spacing:.5px;flex:1;">CONEXA Terminal</span>
+                <button class="itp-btn-foot active-toggle" id="itpBtnSidebar" onclick="itpToggleSidebar()">&#9664; Hosts</button>
+            </div>
+
+            <!-- Wiki sidebar -->
+            <div class="itp-wiki-sidebar" id="itpWikiSidebar">
+                <div class="itp-wiki-resize-handle" id="itpWikiResizeHandle" title="Arraste para redimensionar"></div>
+                <div class="itp-wiki-sidebar-header">
+                    <h3>&#128218; Wiki</h3>
+                    <div class="itp-wiki-header-actions">
+                        <span class="itp-wiki-width-indicator" id="itpWikiWidthIndicator">480px</span>
+                        <div class="itp-wiki-size-presets">
+                            <button class="itp-btn-preset" onclick="itpSetWikiWidth(360)">S</button>
+                            <button class="itp-btn-preset" onclick="itpSetWikiWidth(520)">M</button>
+                            <button class="itp-btn-preset" onclick="itpSetWikiWidth(720)">L</button>
+                        </div>
+                        <button class="itp-btn-wiki-action maximizar" id="itpBtnMaxWiki" onclick="itpToggleMaxWiki()" title="Maximizar / Restaurar">&#10562;</button>
+                        <button class="itp-btn-wiki-action fechar" onclick="itpToggleWiki()" title="Fechar">&#10005;</button>
+                    </div>
+                </div>
+                <div class="itp-wiki-sidebar-search">
+                    <input type="text" id="itpWikiSearch" class="itp-wiki-search-input"
+                           placeholder="Buscar artigos..." oninput="itpWikiDebounce(this.value)"
+                           autocomplete="off" spellcheck="false">
+                </div>
+                <div class="itp-wiki-results" id="itpWikiResults">
+                    <div class="wiki-loading">Aguardando busca...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Context menu (right-click) -->
+<div id="itpCtxMenu">
+    <div class="itp-ctx-item" onclick="itpCtxSSH()">&#9000; Conectar SSH</div>
+    <div class="itp-ctx-item winbox" id="itpCtxWbxItem" onclick="itpCtxWinbox()">&#128187; Abrir Winbox</div>
+</div>
+
+<!-- Toast -->
+<div class="itp-wiki-toast" id="itpToast"></div>
+
+<!-- ═════════════════════════ JS ═════════════════════════ -->
+<script>
+(function() {
+'use strict';
+
+// ─── State ───────────────────────────────────────────
+let _panelOpen   = false;
+let _sidebarOpen = true;
+let _wikiOpen    = false;
+let _coresOn     = true;
+let _tabCounter  = 0;
+let _activeTerm  = null;
+const _terms = new Map();
+const MAX_RETRY = 3, RETRY_DELAY = 2500;
+
+// ─── DOM ─────────────────────────────────────────────
+const $panel      = document.getElementById('itpPanel');
+const $fab        = document.getElementById('itpFab');
+const $fabBadge   = document.getElementById('itpFabBadge');
+const $tabs       = document.getElementById('itpTabs');
+const $content    = document.getElementById('itpContent');
+const $empty      = document.getElementById('itpEmpty');
+const $hostList   = document.getElementById('itpHostList');
+const $sidebar    = document.getElementById('itpSidebar');
+const $statusDot  = document.getElementById('itpStatusDot');
+const $statusTxt  = document.getElementById('itpStatusText');
+const $btnSidebar = document.getElementById('itpBtnSidebar');
+const $wikiSidebar= document.getElementById('itpWikiSidebar');
+const $btnWiki    = document.getElementById('itpBtnWiki');
+const $ctxMenu    = document.getElementById('itpCtxMenu');
+const $ctxWbx     = document.getElementById('itpCtxWbxItem');
+
+// ─── Colorization ────────────────────────────────────
+function _colorize(t) {
+    if (!_coresOn || t.length < 20) return t;
+    const R = '\x1b[0m';
+    return t
+        .replace(/\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?:\/\d{1,2})?\b/g,
+            m => '\x1b[1;94m' + m + R)
+        .replace(/\b(Established|ESTABLISHED)\b/g, m => '\x1b[92m' + m + R)
+        .replace(/\b(Idle|IDLE)(?!\()/g, m => '\x1b[93m' + m + R)
+        .replace(/\b(Active|ACTIVE)\b/g, m => '\x1b[91m' + m + R)
+        .replace(/\b(down|Down|DOWN)\b/g, m => '\x1b[31m' + m + R)
+        .replace(/\b(up|Up|UP)\b/g, m => '\x1b[92m' + m + R)
+        .replace(/\b(BGP|OSPF|OSPFv3|EIGRP|RIP|ISIS)\b/gi, m => '\x1b[36m' + m + R)
+        .replace(/\b(BFD|bfd)\b/g, m => '\x1b[95m' + m + R);
+}
+
+// ─── Toast ───────────────────────────────────────────
+let _toastTimer = null;
+function _toast(msg, tipo) {
+    const el = document.getElementById('itpToast');
+    el.textContent = msg;
+    el.className = 'itp-wiki-toast' + (tipo ? ' ' + tipo : '');
+    void el.offsetWidth;
+    el.classList.add('visivel');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('visivel'), 2800);
+}
+
+// ─── Panel open/close ────────────────────────────────
+window.itpToggle = function() {
+    _panelOpen = !_panelOpen;
+    $panel.classList.toggle('aberto', _panelOpen);
+    $fab.classList.toggle('visivel', !_panelOpen);
+    if (_panelOpen) setTimeout(_refitAll, 350);
+};
+function _abrirPanel() { if (!_panelOpen) itpToggle(); }
+
+// ─── Sidebar toggle ──────────────────────────────────
+const $sidebarTab = document.getElementById('itpSidebarTab');
+window.itpToggleSidebar = function() {
+    _sidebarOpen = !_sidebarOpen;
+    $sidebar.style.display = _sidebarOpen ? '' : 'none';
+    if ($btnSidebar) {
+        $btnSidebar.textContent = _sidebarOpen ? '\u25c4 Hosts' : '\u25ba Hosts';
+        $btnSidebar.classList.toggle('active-toggle', _sidebarOpen);
+    }
+    if ($sidebarTab) $sidebarTab.classList.toggle('visivel', !_sidebarOpen);
+    setTimeout(_refitAll, 50);
+};
+
+// ─── Wiki toggle ─────────────────────────────────────
+window.itpToggleWiki = function() {
+    _wikiOpen = !_wikiOpen;
+    $wikiSidebar && $wikiSidebar.classList.toggle('aberta', _wikiOpen);
+    if ($btnWiki) $btnWiki.classList.toggle('ativo', _wikiOpen);
+    if (_wikiOpen) {
+        const inp = document.getElementById('itpWikiSearch');
+        if (inp) { inp.focus(); _itpWikiBuscar(''); }
+    }
+    setTimeout(_refitAll, 310);
+};
+
+// ─── Host list ───────────────────────────────────────
+const _acessos = window.INLINE_SSH_ACESSOS || [];
+
+function _renderHosts(lista) {
+    if (!lista.length) {
+        $hostList.innerHTML = '<div class="itp-host-empty">Nenhum host SSH/Telnet<br>cadastrado para este cliente.</div>';
+        return;
+    }
+    const groups = {};
+    lista.forEach(a => {
+        const g = (a.protocolo || 'SSH').toUpperCase();
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(a);
+    });
+    let html = '';
+    Object.entries(groups).forEach(([proto, items]) => {
+        html += `<div class="itp-host-group">${_esc(proto)}</div>`;
+        items.forEach(a => {
+            const badgeCls = proto === 'TELNET' ? 'telnet' : '';
+            const wbxBadge = a.winbox ? `<span class="itp-host-badge wbx">WBX</span>` : '';
+            // Winbox hosts toggle an inline expand row; others connect SSH directly
+            const clickFn = a.winbox
+                ? `itpToggleWbxExpand(${a.id})`
+                : `itpConectarAcesso(${a.id})`;
+            html += `
+            <div class="itp-host-item" id="itpHost-${a.id}"
+                 onclick="${clickFn}"
+                 oncontextmenu="itpCtxOpen(event,${a.id})"
+                 title="${_esc(a.tipo)} \u2014 ${_esc(a.host)}:${a.porta}${a.winbox ? ' | Winbox:'+a.winbox : ''}">
+                <div class="itp-host-dot" id="itpDot-${a.id}"></div>
+                <div class="itp-host-info">
+                    <div class="itp-host-name">${_esc(a.tipo)}</div>
+                    <div class="itp-host-addr">${_esc(a.host)}:${a.porta}</div>
+                </div>
+                <div class="itp-host-badges">
+                    <span class="itp-host-badge ${badgeCls}">${_esc(a.protocolo)}</span>
+                    ${wbxBadge}
+                </div>
+            </div>
+            ${a.winbox ? `
+            <div class="itp-wbx-expand" id="itpWbxExp-${a.id}">
+                <button class="itp-wbx-btn ssh" onclick="event.stopPropagation();itpConectarAcesso(${a.id})">&#9000; SSH</button>
+                <button class="itp-wbx-btn wbx" onclick="event.stopPropagation();itpAbrirWinbox(${a.id})">&#128187; Winbox</button>
+            </div>` : ''}`;
+        });
+    });
+    $hostList.innerHTML = html;
+}
+
+window.itpFiltrarHosts = function(q) {
+    const f = q.toLowerCase();
+    _renderHosts(_acessos.filter(a =>
+        a.tipo.toLowerCase().includes(f) ||
+        a.host.toLowerCase().includes(f) ||
+        String(a.porta).includes(f)
+    ));
+};
+
+// ─── Connect from sidebar ────────────────────────────
+window.itpConectarAcesso = function(acessoId) {
+    const a = _acessos.find(x => x.id === acessoId);
+    if (!a) return;
+    for (const [tid, tObj] of _terms) {
+        if (tObj.acesso.id === acessoId) { _ativarTerminal(tid); _abrirPanel(); return; }
+    }
+    itpAbrirTerminal(a);
+};
+
+// ─── Winbox inline expand ────────────────────────────
+window.itpToggleWbxExpand = function(id) {
+    const exp = document.getElementById(`itpWbxExp-${id}`);
+    if (!exp) { itpConectarAcesso(id); return; }
+    const isOpen = exp.classList.contains('aberto');
+    // Close any other open expand
+    document.querySelectorAll('.itp-wbx-expand.aberto').forEach(el => el.classList.remove('aberto'));
+    document.querySelectorAll('.itp-host-item.wbx-open').forEach(el => el.classList.remove('wbx-open'));
+    if (!isOpen) {
+        exp.classList.add('aberto');
+        document.getElementById(`itpHost-${id}`)?.classList.add('wbx-open');
+    }
+};
+// ─── Override abrirWinboxWeb globally so ALL buttons use inline panel ───────
+window.abrirWinboxWeb = function(acessoId) {
+    window.itpAbrirWinbox(parseInt(acessoId, 10));
+};
+
+window.itpAbrirWinbox = function(id) {
+    id = parseInt(id, 10);
+    // If tab already open for this winbox, just activate it
+    for (const [tid, tObj] of _terms) {
+        if (tObj.tipo === 'winbox' && tObj.acesso && tObj.acesso.id === id) {
+            _ativarTerminal(tid); _abrirPanel(); return;
+        }
+    }
+    _abrirPanel();
+    const tid = `itp-wbx-${id}`;
+    const a = _acessos.find(x => x.id === id);
+    // Deactivate current tab
+    $content.querySelectorAll('.itp-pane.ativo').forEach(p => p.classList.remove('ativo'));
+    if (_activeTerm) document.getElementById(`itpTab-${_activeTerm}`)?.classList.remove('ativo');
+    // Create pane with iframe
+    const pane = document.createElement('div');
+    pane.className = 'itp-pane ativo'; pane.id = `itpPane-${tid}`;
+    const iframe = document.createElement('iframe');
+    iframe.src = `/clientes/winbox/${id}/`;
+    iframe.style.cssText = 'width:100%;height:100%;border:none;background:#0a0a0a;';
+    pane.appendChild(iframe);
+    $content.appendChild(pane);
+    $empty.style.display = 'none';
+    const tObj = { id: tid, tipo: 'winbox', terminal: null, fitAddon: null,
+                   pane, acesso: a || { id, tipo: 'Winbox', host: '' }, socket: null, connected: true };
+    _terms.set(tid, tObj);
+    _activeTerm = tid;
+    // Create tab
+    const tab = document.createElement('div');
+    tab.className = 'itp-tab ativo'; tab.id = `itpTab-${tid}`;
+    tab.innerHTML = `
+        <div class="itp-tab-dot ok" id="itpTabDot-${tid}"></div>
+        <span class="itp-tab-label">\uD83D\uDDA5 ${_esc(a?.tipo || 'Winbox')}</span>
+        <span class="itp-tab-close" onclick="event.stopPropagation();itpFecharTerminal('${tid}')">&#10005;</span>`;
+    tab.onclick = () => _ativarTerminal(tid);
+    $tabs.appendChild(tab);
+    _updateFab(); _updateStatusBar();
+};
+
+// ─── Context menu ────────────────────────────────────
+let _ctxId = null;
+window.itpCtxOpen = function(e, id) {
+    e.preventDefault(); e.stopPropagation();
+    _ctxId = id;
+    const a = _acessos.find(x => x.id === id);
+    if ($ctxWbx) $ctxWbx.style.display = (a && a.winbox) ? '' : 'none';
+    $ctxMenu.style.display = 'block';
+    const x = Math.min(e.clientX, window.innerWidth - 185);
+    const y = Math.min(e.clientY, window.innerHeight - 80);
+    $ctxMenu.style.left = x + 'px';
+    $ctxMenu.style.top  = y + 'px';
+};
+document.addEventListener('click', e => {
+    if ($ctxMenu && !e.target.closest('#itpCtxMenu')) $ctxMenu.style.display = 'none';
+});
+document.addEventListener('contextmenu', e => {
+    if (!e.target.closest('#itpCtxMenu') && !e.target.closest('.itp-host-item'))
+        if ($ctxMenu) $ctxMenu.style.display = 'none';
+});
+window.itpCtxSSH = function() {
+    if (_ctxId) itpConectarAcesso(_ctxId);
+    if ($ctxMenu) $ctxMenu.style.display = 'none';
+};
+window.itpCtxWinbox = function() {
+    if (_ctxId) itpAbrirWinbox(_ctxId);
+    if ($ctxMenu) $ctxMenu.style.display = 'none';
+};
+
+// ─── Open terminal ───────────────────────────────────
+const ITP_FONT   = 'VT323';
+const ITP_FONT_SIZE = 18;
+
+window.itpAbrirTerminal = function(acessoData) {
+    _abrirPanel();
+
+    const tid = `itp-${++_tabCounter}`;
+
+    $content.querySelectorAll('.itp-pane.ativo').forEach(p => p.classList.remove('ativo'));
+    if (_activeTerm) document.getElementById(`itpTab-${_activeTerm}`)?.classList.remove('ativo');
+
+    const pane = document.createElement('div');
+    pane.className = 'itp-pane ativo';
+    pane.id = `itpPane-${tid}`;
+    $content.appendChild(pane);
+    $empty.style.display = 'none';
+
+    // Cria o tObj antes da fonte carregar para que o WebSocket possa iniciar
+    const tObj = { id: tid, terminal: null, fitAddon: null, pane, acesso: acessoData,
+                   socket: null, connected: false, wsRetries: 0 };
+    _terms.set(tid, tObj);
+    _activeTerm = tid;
+
+    _criarAba(tid, acessoData);
+    _updateFab();
+    _highlightHost(acessoData.id, 'conectando');
+    _updateStatusBar();
+
+    // Aguarda fonte estar 100% pronta antes de criar o canvas do xterm
+    document.fonts.load(`${ITP_FONT_SIZE}px "${ITP_FONT}"`).finally(() => {
+        if (!_terms.has(tid)) return; // tab fechada antes de carregar
+        const term = new Terminal({
+            cursorBlink: true,
+            fontSize: ITP_FONT_SIZE,
+            fontFamily: `'${ITP_FONT}','Courier New',monospace`,
+            fontWeight: 400, fontWeightBold: 400, lineHeight: 1.1, letterSpacing: 0.5,
+            theme: { background: '#000000', foreground: '#e0e0e0', cursor: '#00ff88',
+                     cursorAccent: '#000000', selectionBackground: 'rgba(0,255,136,0.2)' },
+            scrollback: 8000, allowTransparency: true, convertEol: true,
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(pane);
+
+        tObj.terminal = term;
+        tObj.fitAddon = fitAddon;
+
+        const _fit = () => { try { fitAddon.fit(); } catch(e){} };
+        requestAnimationFrame(() => { _fit(); setTimeout(_fit,150); setTimeout(_fit,380); setTimeout(_fit,700); });
+
+        term.onData(input => {
+            if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN)
+                tObj.socket.send(JSON.stringify({ action: 'command', command: input.replace(/\x7f/g, '\x08') }));
+        });
+
+        term.writeln('\x1b[1;32m\u25ba CONEXA Terminal\x1b[0m');
+        term.writeln('\x1b[38;5;240m\u25ba Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
+        setTimeout(() => _conectarWS(tid), 200);
+    });
+};
+
+// ─── WebSocket ───────────────────────────────────────
+function _conectarWS(tid) {
+    const tObj = _terms.get(tid); if (!tObj) return;
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${proto}//${location.host}/ws/ssh/`);
+    tObj.socket = ws;
+    ws.onopen = () => ws.send(JSON.stringify({ action: 'connect', acesso_id: tObj.acesso.id }));
+    ws.onmessage = e => {
+        if (!_terms.has(tid)) return;
+        const d = JSON.parse(e.data);
+        const t = tObj.terminal;
+        if (d.type === 'connected') {
+            tObj.connected = true;
+            _setTabStatus(tid, 'ok'); _highlightHost(tObj.acesso.id, 'conectado'); _updateStatusBar();
+            if (t) t.writeln('\x1b[1;32m\u2713 ' + d.message + '\x1b[0m\n');
+        } else if (d.type === 'output' && d.data) {
+            if (t) t.write(_colorize(d.data));
+        } else if (d.type === 'error') {
+            tObj.connected = false;
+            _setTabStatus(tid, 'err'); _highlightHost(tObj.acesso.id, ''); _updateStatusBar();
+            if (t) t.writeln('\x1b[1;31m\u2715 ERRO: ' + d.message + '\x1b[0m\n');
+        }
+    };
+    ws.onerror = () => { if (tObj.terminal) tObj.terminal.writeln('\x1b[1;31m\u2715 Erro WebSocket\x1b[0m\n'); _setTabStatus(tid, 'err'); };
+    ws.onclose = () => {
+        tObj.connected = false; _setTabStatus(tid, ''); _highlightHost(tObj.acesso.id, ''); _updateStatusBar();
+        if (tObj.wsRetries < MAX_RETRY) {
+            tObj.wsRetries++;
+            if (tObj.terminal) tObj.terminal.writeln(`\x1b[38;5;240m\u21bb Tentativa ${tObj.wsRetries}/${MAX_RETRY}...\x1b[0m`);
+            setTimeout(() => _conectarWS(tid), RETRY_DELAY);
+        }
+    };
+}
+
+// ─── Tabs ────────────────────────────────────────────
+function _criarAba(tid, acessoData) {
+    const tab = document.createElement('div');
+    tab.className = 'itp-tab ativo'; tab.id = `itpTab-${tid}`;
+    const label = acessoData.tipo || acessoData.host;
+    tab.innerHTML = `
+        <div class="itp-tab-dot busy" id="itpTabDot-${tid}"></div>
+        <span class="itp-tab-label" title="${_esc(acessoData.host)}:${acessoData.porta}">${_esc(label)}</span>
+        <span class="itp-tab-close" onclick="event.stopPropagation();itpFecharTerminal('${tid}')">&#10005;</span>`;
+    tab.onclick = () => _ativarTerminal(tid);
+    $tabs.appendChild(tab);
+}
+
+function _ativarTerminal(tid) {
+    if (_activeTerm === tid) { _refitAll(); return; }
+    if (_activeTerm) {
+        _terms.get(_activeTerm)?.pane.classList.remove('ativo');
+        document.getElementById(`itpTab-${_activeTerm}`)?.classList.remove('ativo');
+    }
+    _activeTerm = tid;
+    const tObj = _terms.get(tid);
+    if (tObj) {
+        tObj.pane.classList.add('ativo');
+        document.getElementById(`itpTab-${tid}`)?.classList.add('ativo');
+        document.querySelectorAll('.itp-host-item').forEach(el => el.classList.remove('ativo'));
+        document.getElementById(`itpHost-${tObj.acesso.id}`)?.classList.add('ativo');
+        if (tObj.fitAddon) {
+            requestAnimationFrame(() => {
+                try { tObj.fitAddon.fit(); tObj.terminal.focus(); } catch(e){}
+                setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e){} }, 120);
+            });
+        }
+    }
+    _updateStatusBar();
+}
+
+function _setTabStatus(tid, st) {
+    const d = document.getElementById(`itpTabDot-${tid}`); if (!d) return;
+    d.className = 'itp-tab-dot' + (st ? ' ' + st : '');
+}
+
+// ─── Close ───────────────────────────────────────────
+window.itpFecharTerminal = function(tid) {
+    const tObj = _terms.get(tid); if (!tObj) return;
+    try { tObj.socket?.close(); } catch(e){}
+    if (tObj.terminal) { try { tObj.terminal.dispose(); } catch(e){} }
+    tObj.pane.remove();
+    document.getElementById(`itpTab-${tid}`)?.remove();
+    _highlightHost(tObj.acesso.id, '');
+    _terms.delete(tid);
+    if (_activeTerm === tid) {
+        _activeTerm = null;
+        const next = Array.from(_terms.keys())[0];
+        if (next) _ativarTerminal(next);
+        else { $empty.style.display = ''; _updateStatusBar(); }
+    }
+    _updateFab();
+};
+
+window.itpFecharTodos = function() {
+    Array.from(_terms.keys()).forEach(id => itpFecharTerminal(id));
+    $empty.style.display = '';
+    if (_panelOpen) itpToggle();
+};
+
+// ─── Actions ─────────────────────────────────────────
+window.itpLimpar = function() {
+    if (_activeTerm) _terms.get(_activeTerm)?.terminal?.clear();
+};
+
+window.itpReconectar = function() {
+    if (!_activeTerm) return;
+    const tObj = _terms.get(_activeTerm); if (!tObj) return;
+    try { tObj.socket?.close(); } catch(e){}
+    tObj.socket = null; tObj.connected = false; tObj.wsRetries = 0;
+    _setTabStatus(_activeTerm, 'busy');
+    tObj.terminal?.clear();
+    tObj.terminal?.writeln('\x1b[1;33m\u21bb Reconectando...\x1b[0m\n');
+    setTimeout(() => _conectarWS(_activeTerm), 400);
+};
+
+// ─── Status bar ──────────────────────────────────────
+function _updateStatusBar() {
+    if (!_activeTerm) { $statusDot.className = 'itp-status-dot'; $statusTxt.textContent = ''; return; }
+    const t = _terms.get(_activeTerm); if (!t) return;
+    $statusDot.className = 'itp-status-dot' + (t.connected ? ' ok' : ' err');
+    $statusTxt.textContent = t.connected
+        ? `${t.acesso.host}:${t.acesso.porta}`
+        : `${t.acesso.host} \u2014 desconectado`;
+}
+
+// ─── Sidebar host status ─────────────────────────────
+function _highlightHost(id, cls) {
+    const dot  = document.getElementById(`itpDot-${id}`);
+    const item = document.getElementById(`itpHost-${id}`);
+    if (dot)  dot.className  = 'itp-host-dot' + (cls ? ' ' + cls : '');
+    if (item) { item.classList.remove('conectado','conectando'); if (cls) item.classList.add(cls); }
+}
+
+// ─── FAB badge ───────────────────────────────────────
+function _updateFab() {
+    const n = _terms.size;
+    $fabBadge.textContent = n;
+    $fabBadge.classList.toggle('show', n > 0);
+}
+
+// ─── Refit ───────────────────────────────────────────
+function _refitAll() {
+    if (!_activeTerm) return;
+    const t = _terms.get(_activeTerm);
+    if (t && t.fitAddon) { try { t.fitAddon.fit(); } catch(e){} }
+}
+window.addEventListener('resize', _refitAll);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(_refitAll));
+
+// ─── Drag to resize (panel height) ───────────────────
+(function() {
+    const handle = document.getElementById('itpDragHandle');
+    let drag = false, startY = 0, startH = 0;
+    handle.addEventListener('mousedown', e => {
+        drag = true; startY = e.clientY; startH = $panel.offsetHeight;
+        document.body.classList.add('itp-resizing'); e.preventDefault();
+    });
+    document.addEventListener('mousemove', e => {
+        if (!drag) return;
+        const h = Math.max(180, Math.min(startH + (startY - e.clientY), window.innerHeight * .95));
+        $panel.style.height = h + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+        if (!drag) return; drag = false;
+        document.body.classList.remove('itp-resizing');
+        localStorage.setItem('itpHeight', $panel.offsetHeight); _refitAll();
+    });
+    handle.addEventListener('touchstart', e => {
+        drag = true; startY = e.touches[0].clientY; startH = $panel.offsetHeight; e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchmove', e => {
+        if (!drag) return;
+        const h = Math.max(180, Math.min(startH + (startY - e.touches[0].clientY), window.innerHeight * .95));
+        $panel.style.height = h + 'px';
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+        if (!drag) return; drag = false; localStorage.setItem('itpHeight', $panel.offsetHeight); _refitAll();
+    });
+    const saved = localStorage.getItem('itpHeight');
+    if (saved && !isNaN(saved))
+        $panel.style.height = Math.max(180, Math.min(parseInt(saved), window.innerHeight * .95)) + 'px';
+})();
+
+// ─── Wiki resize (sidebar width) ─────────────────────
+(function() {
+    const WIKI_WIDTH_KEY = 'itpWikiSidebarWidth';
+    const MIN_W = 280;
+    const MAX_W = () => $panel.offsetWidth - 100;
+    const handle    = document.getElementById('itpWikiResizeHandle');
+    const indicator = document.getElementById('itpWikiWidthIndicator');
+    const btnMax    = document.getElementById('itpBtnMaxWiki');
+    let isResizing = false, startX = 0, startW = 0, isMaximized = false;
+
+    const savedW = localStorage.getItem(WIKI_WIDTH_KEY);
+    if (savedW && !isNaN(savedW)) {
+        const w = Math.max(MIN_W, Math.min(parseInt(savedW), MAX_W()));
+        $wikiSidebar.style.width = w + 'px';
+        if (indicator) indicator.textContent = w + 'px';
+    }
+
+    handle.addEventListener('mousedown', e => {
+        if (isMaximized) return; e.preventDefault();
+        isResizing = true; startX = e.clientX; startW = $wikiSidebar.offsetWidth;
+        handle.classList.add('arrastando'); document.body.classList.add('itp-wiki-resizing');
+    });
+    document.addEventListener('mousemove', e => {
+        if (!isResizing) return;
+        const newW = Math.max(MIN_W, Math.min(startW + (startX - e.clientX), MAX_W()));
+        $wikiSidebar.style.width = newW + 'px';
+        if (indicator) indicator.textContent = newW + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+        if (!isResizing) return; isResizing = false;
+        handle.classList.remove('arrastando'); document.body.classList.remove('itp-wiki-resizing');
+        localStorage.setItem(WIKI_WIDTH_KEY, $wikiSidebar.offsetWidth); _refitAll();
+    });
+    handle.addEventListener('touchstart', e => {
+        if (isMaximized) return; e.preventDefault();
+        isResizing = true; startX = e.touches[0].clientX; startW = $wikiSidebar.offsetWidth;
+        handle.classList.add('arrastando');
+    }, { passive: false });
+    document.addEventListener('touchmove', e => {
+        if (!isResizing) return;
+        const newW = Math.max(MIN_W, Math.min(startW + (startX - e.touches[0].clientX), MAX_W()));
+        $wikiSidebar.style.width = newW + 'px';
+        if (indicator) indicator.textContent = newW + 'px';
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+        if (!isResizing) return; isResizing = false;
+        handle.classList.remove('arrastando'); localStorage.setItem(WIKI_WIDTH_KEY, $wikiSidebar.offsetWidth);
+    });
+
+    window.itpToggleMaxWiki = function() {
+        isMaximized = !isMaximized;
+        $wikiSidebar.classList.toggle('maximizado', isMaximized);
+        if (btnMax) { btnMax.textContent = isMaximized ? '\u29c1' : '\u2962'; btnMax.title = isMaximized ? 'Restaurar tamanho' : 'Maximizar'; }
+        if (indicator) indicator.textContent = isMaximized ? '100%' : (parseInt(localStorage.getItem(WIKI_WIDTH_KEY) || 480) + 'px');
+        setTimeout(_refitAll, 260);
+    };
+
+    window.itpSetWikiWidth = function(w) {
+        if (isMaximized) itpToggleMaxWiki();
+        const clamped = Math.max(MIN_W, Math.min(w, MAX_W()));
+        $wikiSidebar.style.width = clamped + 'px';
+        if (indicator) indicator.textContent = clamped + 'px';
+        localStorage.setItem(WIKI_WIDTH_KEY, clamped);
+        setTimeout(_refitAll, 260);
+    };
+})();
+
+// ─── Keyboard ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && _panelOpen && !_wikiOpen) { e.stopPropagation(); itpToggle(); }
+    if (e.key === 'Escape' && _wikiOpen) { e.stopPropagation(); itpToggleWiki(); }
+    if ((e.ctrlKey && e.key === '`') || (e.ctrlKey && e.shiftKey && e.key === 'T')) { e.preventDefault(); itpToggle(); }
+    if (e.ctrlKey && e.key === 'r' && _panelOpen) { e.preventDefault(); itpReconectar(); }
+});
+
+// ─── Escape helpers ──────────────────────────────────
+function _esc(s)     { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _escStr(s)  { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function _escJs(s)   { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+// ════════════════════════════════════════════════════
+//  WIKI — VARIÁVEIS
+// ════════════════════════════════════════════════════
+const VAR_REGEX = /#([A-Za-z0-9_\-\.]+)#/g;
+window._wikiVarsValues = {};
+
+function detectarVariaveis(codigo) {
+    const matches = []; const seen = new Set(); let m;
+    const rx = new RegExp(VAR_REGEX.source, 'g');
+    while ((m = rx.exec(codigo)) !== null) { if (!seen.has(m[1])) { seen.add(m[1]); matches.push(m[1]); } }
+    return matches;
+}
+
+function aplicarVariaveis(idx, codigo) {
+    let resultado = codigo;
+    detectarVariaveis(codigo).forEach(v => {
+        const valor = window._wikiVarsValues[`${idx}-${v}`];
+        if (valor !== undefined && valor !== '')
+            resultado = resultado.replace(new RegExp(`#${v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}#`,'g'), valor);
+    });
+    return resultado;
+}
+
+function destacarVariaveisHtml(html) {
+    return html.replace(/#([A-Za-z0-9_\-\.]+)#/g, '<span class="wiki-var-highlight">#$1#</span>');
+}
+
+function renderVariaveisPainel(idx) {
+    const codigo = window._wikiBlocosMap[idx] || '';
+    const variaveis = detectarVariaveis(codigo);
+    const bw = document.getElementById(`bw-${idx}`);
+    if (!bw) return;
+    const antigo = document.getElementById(`varspanel-${idx}`);
+    if (antigo) antigo.remove();
+    if (variaveis.length === 0) return;
+    const panel = document.createElement('div');
+    panel.className = 'wiki-vars-panel'; panel.id = `varspanel-${idx}`;
+    panel.innerHTML = `
+        <div class="wiki-vars-toggle" onclick="itpToggleVarsPanel(${idx})">
+            <div class="wiki-vars-toggle-left"><span>&#9889;</span><span>Vari\u00e1veis</span><span class="wiki-vars-badge">${variaveis.length}</span></div>
+            <span class="wiki-vars-toggle-arrow" id="vars-arrow-${idx}">&#9660;</span>
+        </div>
+        <div class="wiki-vars-body" id="vars-body-${idx}">
+            <div class="wiki-vars-hint">Preencha os valores para substituir <code>#variavel#</code> no c\u00f3digo ao enviar ou copiar.</div>
+            <div class="wiki-vars-grid" id="vars-grid-${idx}">
+                ${variaveis.map(v => `
+                    <div class="wiki-var-row">
+                        <span class="wiki-var-label">#${_esc(v)}#</span>
+                        <span class="wiki-var-arrow">\u2192</span>
+                        <input class="wiki-var-inp" id="varinp-${idx}-${_escAttr(v)}"
+                            placeholder="valor..." data-var="${_escAttr(v)}" data-idx="${idx}"
+                            value="${_esc(window._wikiVarsValues[idx+'-'+v] || '')}"
+                            oninput="itpOnVarInput(${idx}, '${_escJs(v)}', this)"
+                            onkeydown="if(event.key==='Enter'){itpEnviarAoTerminal(${idx});}">
+                    </div>`).join('')}
+            </div>
+            <div class="wiki-vars-actions">
+                <button class="btn-vars-limpar" onclick="itpLimparVariaveis(${idx})">\u21ba Limpar valores</button>
+                <button class="btn-enviar-grande" onclick="itpEnviarAoTerminal(${idx})" style="font-size:10px;padding:5px 12px;"><span>\u25ba</span> Enviar ao Terminal</button>
+            </div>
+            <div class="wiki-vars-preview-wrap" id="vars-preview-wrap-${idx}">
+                <div class="wiki-vars-preview-label">Pr\u00e9-visualiza\u00e7\u00e3o</div>
+                <pre class="wiki-vars-preview-pre" id="vars-preview-${idx}"></pre>
+            </div>
+        </div>`;
+    const footer = document.getElementById(`footer-${idx}`);
+    if (footer) bw.insertBefore(panel, footer);
+    else { const fg = bw.querySelector('.wiki-bloco-footer'); if (fg) bw.insertBefore(panel, fg); else bw.appendChild(panel); }
+    variaveis.forEach(v => { const inp = document.getElementById(`varinp-${idx}-${v}`); if (inp && inp.value) inp.classList.add('preenchido'); });
+}
+
+window.itpToggleVarsPanel = function(idx) {
+    const body = document.getElementById(`vars-body-${idx}`);
+    const arrow = document.getElementById(`vars-arrow-${idx}`);
+    if (!body) return;
+    const aberto = body.classList.toggle('visivel');
+    if (arrow) arrow.classList.toggle('aberto', aberto);
+};
+
+window.itpOnVarInput = function(idx, varName, inputEl) {
+    window._wikiVarsValues[`${idx}-${varName}`] = inputEl.value;
+    inputEl.classList.toggle('preenchido', !!inputEl.value);
+    _atualizarPreviewVariaveis(idx);
+};
+
+function _atualizarPreviewVariaveis(idx) {
+    const codigoOriginal = window._wikiBlocosMap[idx] || '';
+    const variaveis = detectarVariaveis(codigoOriginal);
+    const algum = variaveis.some(v => { const val = window._wikiVarsValues[`${idx}-${v}`]; return val && val.trim(); });
+    const wrapPrev = document.getElementById(`vars-preview-wrap-${idx}`);
+    const pre = document.getElementById(`vars-preview-${idx}`);
+    if (!wrapPrev || !pre) return;
+    if (algum) { pre.textContent = aplicarVariaveis(idx, codigoOriginal); wrapPrev.classList.add('visivel'); }
+    else wrapPrev.classList.remove('visivel');
+}
+
+window.itpLimparVariaveis = function(idx) {
+    detectarVariaveis(window._wikiBlocosMap[idx] || '').forEach(v => {
+        delete window._wikiVarsValues[`${idx}-${v}`];
+        const inp = document.getElementById(`varinp-${idx}-${v}`);
+        if (inp) { inp.value = ''; inp.classList.remove('preenchido'); }
+    });
+    const wp = document.getElementById(`vars-preview-wrap-${idx}`);
+    if (wp) wp.classList.remove('visivel');
+    _toast('\u21ba Vari\u00e1veis limpas', 'vars');
+};
+
+// ════════════════════════════════════════════════════
+//  WIKI — BUSCA E RESULTADOS
+// ════════════════════════════════════════════════════
+let _wikiDebTimer = null;
+let _wikiLastResults = [];
+let _blocoCounter = 0;
+window._wikiBlocosMap = {};
+
+window.itpWikiDebounce = function(q) {
+    clearTimeout(_wikiDebTimer);
+    _wikiDebTimer = setTimeout(() => _itpWikiBuscar(q), 300);
+};
+
+function _itpWikiBuscar(q) {
+    const c = document.getElementById('itpWikiResults'); if (!c) return;
+    c.innerHTML = '<div class="wiki-loading">Buscando...</div>';
+    fetch('/wiki/api/buscar/?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(d => { _wikiLastResults = d.artigos || []; _renderWikiResultados(_wikiLastResults); })
+        .catch(() => { c.innerHTML = '<div class="wiki-error">Erro ao carregar artigos</div>'; });
+}
+
+function _renderWikiResultados(artigos) {
+    const c = document.getElementById('itpWikiResults'); if (!c) return;
+    if (!artigos.length) { c.innerHTML = '<div class="wiki-no-results">Nenhum artigo encontrado</div>'; return; }
+    c.innerHTML = artigos.map(a => `
+        <div class="wiki-result-item" onclick="_itpVerArtigo('${_escJs(a.slug)}')">
+            <div class="wiki-result-header">
+                <span class="wiki-result-categoria">${_esc(a.categoria)}</span>
+                ${a.favorito ? '<span class="wiki-favorito">\u2605</span>' : ''}
+            </div>
+            <div class="wiki-result-titulo">${_esc(a.titulo)}</div>
+            <div class="wiki-result-descricao">${_esc(a.descricao || '')}</div>
+            <div class="wiki-result-footer"><span class="wiki-fabricante">${_esc(a.fabricante)}</span></div>
+        </div>`).join('');
+}
+
+function _itpVerArtigo(slug) {
+    const c = document.getElementById('itpWikiResults'); if (!c) return;
+    c.innerHTML = '<div class="wiki-loading">Carregando...</div>';
+    fetch('/wiki/api/artigo/' + slug + '/')
+        .then(r => r.json())
+        .then(a => _renderWikiArtigo(a))
+        .catch(() => { c.innerHTML = '<div class="wiki-error">Erro ao carregar artigo</div>'; });
+}
+
+// ════════════════════════════════════════════════════
+//  WIKI — ARTIGO (idêntico ao terminal.html)
+// ════════════════════════════════════════════════════
+function _renderWikiArtigo(artigo) {
+    const c = document.getElementById('itpWikiResults'); if (!c) return;
+    _blocoCounter = 0; window._wikiBlocosMap = {};
+    const bodyHtml = _processarConteudo(artigo.conteudo_html || '');
+    let blocosHtml = '';
+    if (artigo.blocos_codigo && artigo.blocos_codigo.length > 0) {
+        blocosHtml = `<div class="wiki-blocos-section-title">Blocos de C\u00f3digo</div>`;
+        blocosHtml += artigo.blocos_codigo.map(b => {
+            const idx = _blocoCounter++;
+            window._wikiBlocosMap[idx] = b.codigo;
+            const temVars = detectarVariaveis(b.codigo).length > 0;
+            return `
+            <div class="wiki-bloco-extra" id="bw-${idx}">
+                <div class="wiki-bloco-extra-header">
+                    <strong>${_esc(b.titulo)}</strong>
+                    <div class="wiki-bloco-acoes">
+                        <span class="wiki-bloco-lang">${_esc(b.linguagem)}</span>
+                        ${temVars ? `<span class="wiki-bloco-lang" style="color:#ffa500;border-color:rgba(255,170,0,.3);">&#9889;vars</span>` : ''}
+                        ${_tbBtns(idx)}
+                    </div>
+                </div>
+                ${b.descricao ? `<p class="wiki-bloco-descricao">${_esc(b.descricao)}</p>` : ''}
+                ${_avisoEditar(idx)}
+                <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${_renderLinhasComVars(_esc(b.codigo))}</code></pre>
+                ${_editorWrap(idx)}
+                ${_footerEditar(idx)}
+            </div>`;
+        }).join('');
+    }
+    const tagsHtml = artigo.tags && artigo.tags.length
+        ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${artigo.tags.map(t=>`<span class="badge-cat">\uD83C\uDFF7 ${_esc(t)}</span>`).join('')}</div>` : '';
+    c.innerHTML = `
+        <div class="wiki-artigo-view">
+            <button class="btn-voltar-wiki" onclick="_itpWikiVoltar()">\u2190 Voltar</button>
+            <div class="wiki-artigo-header">
+                <h2>${_esc(artigo.titulo)}</h2>
+                <div class="wiki-artigo-meta">
+                    <span class="badge-cat">${_esc(artigo.categoria)}</span>
+                    <span class="badge-fab">${_esc(artigo.fabricante)}</span>
+                    ${artigo.modelo ? `<span class="badge-cat">${_esc(artigo.modelo)}</span>` : ''}
+                </div>
+                ${tagsHtml}
+                <div style="color:#444;font-size:10px;margin-top:8px;">\uD83D\uDD50 ${_esc(artigo.data_atualizacao)}</div>
+            </div>
+            <div class="wiki-artigo-conteudo">${bodyHtml}</div>
+            ${blocosHtml}
+        </div>`;
+    // Initialize editors and variable panels
+    Object.entries(window._wikiBlocosMap).forEach(([idx, codigo]) => {
+        const ed = document.getElementById(`ed-${idx}`);
+        if (ed) { ed.value = codigo; itpAutoResizeEditor(ed); }
+        renderVariaveisPainel(parseInt(idx));
+    });
+    c.scrollTop = 0;
+}
+
+function _tbBtns(idx) {
+    return `
+        <button class="btn-bloco btn-editar" id="btn-edit-${idx}" onclick="itpToggleEditorBloco(${idx})" title="Editar localmente">&#9998; Editar</button>
+        <button class="btn-bloco btn-copiar" id="btn-copiar-${idx}" onclick="itpCopiarBloco(this,${idx})" title="Copiar">&#9112; Copiar</button>
+        <button class="btn-bloco btn-enviar" onclick="itpEnviarAoTerminal(${idx})" title="Enviar ao terminal">&#9654; Terminal</button>`;
+}
+
+function _avisoEditar(idx) {
+    return `<div class="wiki-bloco-edit-aviso" id="aviso-${idx}"><span>&#9998;</span><span>Modo edi\u00e7\u00e3o \u2014 altera\u00e7\u00f5es s\u00e3o <strong>apenas locais</strong></span></div>`;
+}
+
+function _editorWrap(idx) {
+    return `<div class="wiki-codigo-editor-wrap" id="ew-${idx}"><textarea class="wiki-codigo-editor" id="ed-${idx}" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="itpAutoResizeEditor(this);itpOnEditorInput(${idx})" onkeydown="itpEditorKeydown(event)"></textarea></div>`;
+}
+
+function _footerEditar(idx) {
+    return `<div class="wiki-bloco-footer" id="footer-${idx}"><span class="wiki-bloco-footer-info">&#128161; Edite o c\u00f3digo acima e envie ao terminal</span><div class="wiki-bloco-footer-acoes"><button class="btn-resetar" onclick="itpResetarBloco(${idx})">\u21ba Resetar</button><button class="btn-enviar-grande" id="beg-${idx}" onclick="itpEnviarAoTerminal(${idx})"><span>&#9654;</span> Enviar ao Terminal</button></div></div>`;
+}
+
+function _processarConteudo(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    tmp.querySelectorAll('h1,h2,h3,h4').forEach(h => {
+        const texto = h.textContent;
+        const novo = document.createElement('h2');
+        novo.innerHTML = `<span class="wiki-titulo-texto">${texto}</span>`;
+        h.replaceWith(novo);
+    });
+    tmp.querySelectorAll('pre').forEach(pre => {
+        const idx = _blocoCounter++;
+        const codeEl = pre.querySelector('code');
+        let codigoRaw = codeEl ? codeEl.textContent : pre.textContent;
+        let blocoLang = '', blocoTitulo = '';
+        const fenceMatch = codigoRaw.match(/^```([^\n]*)\n([\s\S]*?)(?:\n```\s*)?$/);
+        if (fenceMatch) {
+            const primeiraLinha = fenceMatch[1].trim();
+            if (primeiraLinha) {
+                const langMatch = primeiraLinha.match(/^(\S+)(?:\s+(.+))?$/);
+                blocoLang   = langMatch ? langMatch[1] : primeiraLinha;
+                blocoTitulo = (langMatch && langMatch[2]) ? langMatch[2].trim() : '';
+            }
+            codigoRaw = fenceMatch[2];
+        }
+        const codigoOriginal = codigoRaw;
+        window._wikiBlocosMap[idx] = codigoOriginal;
+        const linhas = codigoOriginal.split('\n');
+        if (linhas[linhas.length-1] === '') linhas.pop();
+        const linhasHtml = linhas.map(l => `<span class="ln"><span class="lc">${destacarVariaveisHtml(_escStr(l))}</span></span>`).join('');
+        const temVars = detectarVariaveis(codigoOriginal).length > 0;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'wiki-code-wrapper'; wrapper.id = `bw-${idx}`;
+        wrapper.innerHTML = `
+            <div class="wiki-code-toolbar">
+                <div class="wiki-code-toolbar-title">
+                    ${blocoLang ? `<span class="wiki-code-lang-badge">${_esc(blocoLang)}</span>` : ''}
+                    ${blocoTitulo ? `<span class="wiki-code-title-text">${_esc(blocoTitulo)}</span>` : ''}
+                    ${temVars ? `<span style="color:#ffa500;font-size:10px;white-space:nowrap;margin-left:4px;">&#9889; ${detectarVariaveis(codigoOriginal).length} var(s)</span>` : ''}
+                </div>
+                ${_tbBtns(idx)}
+            </div>
+            ${_avisoEditar(idx)}
+            <pre class="wiki-codigo-pre" id="pre-${idx}"><code id="cv-${idx}">${linhasHtml}</code></pre>
+            ${_editorWrap(idx)}
+            ${_footerEditar(idx)}`;
+        pre.replaceWith(wrapper);
+    });
+    return tmp.innerHTML;
+}
+
+function _renderLinhasComVars(codigoEsc) {
+    const linhas = codigoEsc.split('\n');
+    if (linhas[linhas.length-1] === '') linhas.pop();
+    return linhas.map(l => `<span class="ln"><span class="lc">${destacarVariaveisHtml(l)}</span></span>`).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  WIKI — EDITOR
+// ════════════════════════════════════════════════════
+window.itpToggleEditorBloco = function(idx) {
+    const pre = document.getElementById(`pre-${idx}`), ew = document.getElementById(`ew-${idx}`),
+          ft  = document.getElementById(`footer-${idx}`), av = document.getElementById(`aviso-${idx}`),
+          btn = document.getElementById(`btn-edit-${idx}`), ed = document.getElementById(`ed-${idx}`);
+    if (!ew) return;
+    const aberto = ew.classList.contains('visivel');
+    if (aberto) {
+        ew.classList.remove('visivel'); if (ft) ft.classList.remove('visivel');
+        if (av) av.classList.remove('visivel'); if (pre) pre.style.display = '';
+        if (btn) { btn.classList.remove('ativo'); btn.textContent = '\u270e Editar'; }
+    } else {
+        if (pre) pre.style.display = 'none';
+        ew.classList.add('visivel'); if (ft) ft.classList.add('visivel'); if (av) av.classList.add('visivel');
+        if (btn) { btn.classList.add('ativo'); btn.textContent = '\u2715 Fechar Ed.'; }
+        if (ed) { itpAutoResizeEditor(ed); ed.focus(); }
+    }
+};
+
+window.itpResetarBloco = function(idx) {
+    const original = window._wikiBlocosMap[idx]; if (original === undefined) return;
+    const ed = document.getElementById(`ed-${idx}`);
+    if (ed) { ed.value = original; itpAutoResizeEditor(ed); _toast('\u21ba C\u00f3digo restaurado ao original'); }
+};
+
+window.itpOnEditorInput = function(idx) {
+    const ed = document.getElementById(`ed-${idx}`); if (!ed) return;
+    const novosCodigo = ed.value;
+    const varsAntes  = detectarVariaveis(window._wikiBlocosMap[idx] || '');
+    const varsDepois = detectarVariaveis(novosCodigo);
+    if (JSON.stringify(varsAntes.sort()) !== JSON.stringify(varsDepois.sort())) {
+        const codigoSalvo = window._wikiBlocosMap[idx];
+        window._wikiBlocosMap[idx] = novosCodigo;
+        renderVariaveisPainel(idx);
+        window._wikiBlocosMap[idx] = codigoSalvo;
+    }
+};
+
+window.itpAutoResizeEditor = function(el) {
+    if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight + 2, 420) + 'px';
+};
+
+window.itpEditorKeydown = function(e) {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const el = e.target, s = el.selectionStart, end = el.selectionEnd;
+        el.value = el.value.substring(0, s) + '    ' + el.value.substring(end);
+        el.selectionStart = el.selectionEnd = s + 4;
+        itpAutoResizeEditor(el);
+    }
+};
+
+function _getCodigoBloco(idx) {
+    let codigo;
+    const ew = document.getElementById(`ew-${idx}`);
+    if (ew && ew.classList.contains('visivel')) {
+        // Editor mode: use textarea value (user may have edited)
+        const ed = document.getElementById(`ed-${idx}`);
+        codigo = ed ? ed.value : (window._wikiBlocosMap[idx] || '');
+    } else {
+        // Normal mode: use original stored code (reliable, avoids DOM HTML parsing)
+        codigo = window._wikiBlocosMap[idx] || '';
+    }
+    return aplicarVariaveis(idx, codigo);
+}
+
+// ════════════════════════════════════════════════════
+//  WIKI — COPIAR / ENVIAR
+// ════════════════════════════════════════════════════
+window.itpCopiarBloco = function(btn, idx) {
+    const codigo = _getCodigoBloco(idx); if (!codigo) return;
+    const varsRestantes = detectarVariaveis(codigo);
+    if (varsRestantes.length > 0) _toast(`\u26a1 ${varsRestantes.length} vari\u00e1vel(is) sem valor: ${varsRestantes.map(v=>'#'+v+'#').join(', ')}`, 'vars');
+    navigator.clipboard.writeText(codigo).then(() => {
+        const orig = btn.textContent; btn.textContent = '\u2713 Copiado!'; btn.classList.add('copiado');
+        if (varsRestantes.length === 0) _toast('\u2398 Copiado para \u00e1rea de transfer\u00eancia');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copiado'); }, 2000);
+    });
+};
+
+window.itpEnviarAoTerminal = function(idx) {
+    console.log('[ITP] itpEnviarAoTerminal chamado, idx=', idx, 'activeTerm=', _activeTerm, 'terms=', _terms.size);
+    // Find a usable SSH terminal (active first, then any open one)
+    let tObj = _activeTerm ? _terms.get(_activeTerm) : null;
+    if (!tObj || !tObj.socket || tObj.socket.readyState !== WebSocket.OPEN || tObj.tipo === 'winbox') {
+        tObj = null;
+        for (const [, t] of _terms) {
+            if (t.socket && t.socket.readyState === WebSocket.OPEN && t.tipo !== 'winbox') {
+                tObj = t; break;
+            }
+        }
+    }
+    console.log('[ITP] tObj encontrado:', tObj ? tObj.id : 'null', 'socket:', tObj?.socket?.readyState);
+    if (!tObj) {
+        _toast('\u26a0 Nenhum terminal SSH ativo \u2014 conecte um host primeiro', 'erro');
+        _abrirPanel(); return;
+    }
+    if (!tObj.socket || tObj.socket.readyState !== WebSocket.OPEN) {
+        _toast('\u26a0 Terminal sem conex\u00e3o WebSocket \u2014 reconecte', 'erro'); return;
+    }
+    const codigo = _getCodigoBloco(idx);
+    console.log('[ITP] codigo length:', codigo.length, 'preview:', codigo.substring(0, 50));
+    if (!codigo || !codigo.trim()) { _toast('\u26a0 C\u00f3digo vazio', 'erro'); return; }
+    // Warn about unfilled vars but don't block — send anyway with whatever is filled
+    const varsRestantes = detectarVariaveis(codigo);
+    if (varsRestantes.length > 0) {
+        _toast(`\u26a1 Enviando com ${varsRestantes.length} vari\u00e1vel(is) pendente(s)`, 'vars');
+    }
+    // Split, clean \r, filter blank trailing lines
+    const linhas = codigo.split('\n').map(l => l.replace(/\r/g, ''));
+    // Remove only trailing empty lines
+    while (linhas.length && linhas[linhas.length - 1].trim() === '') linhas.pop();
+    if (!linhas.length) { _toast('\u26a0 C\u00f3digo vazio', 'erro'); return; }
+
+    console.log('[ITP] Enviando', linhas.length, 'linhas para terminal', tObj.id);
+
+    // Write visual separator to terminal so user sees action
+    if (tObj.terminal) {
+        tObj.terminal.write('\r\n\x1b[36m\u2500\u2500 Wiki \u2192 Terminal (' + linhas.length + ' cmd) \u2500\u2500\x1b[0m\r\n');
+    }
+
+    // Send each line with 80ms delay between them
+    linhas.forEach((linha, i) => {
+        setTimeout(() => {
+            if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
+                tObj.socket.send(JSON.stringify({ action: 'command', command: linha + '\r' }));
+                console.log('[ITP] Sent line', i, ':', JSON.stringify(linha));
+            }
+        }, i * 80);
+    });
+
+    _toast('\u25ba ' + linhas.length + ' linha(s) enviada(s) ao terminal!');
+    const btn = document.getElementById(`beg-${idx}`);
+    if (btn) {
+        const orig = btn.innerHTML; btn.innerHTML = '<span>\u2713</span> Enviado!'; btn.classList.add('enviado');
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('enviado'); }, 2000);
+    }
+};
+
+// ─── Expose to window for dynamic onclick ───────────
+window._itpVerArtigo         = _itpVerArtigo;
+window._renderWikiResultados = _renderWikiResultados;
+window._itpWikiVoltar        = function() { _renderWikiResultados(_wikiLastResults); };
+
+// ─── Init ────────────────────────────────────────────
+// Pré-carrega a fonte Terminus para que o xterm.js use as métricas corretas
+// na primeira vez que o terminal for aberto (canvas depende da fonte estar ready)
+document.fonts.load('18px VT323').catch(() => {});
+document.fonts.load('18px "Share Tech Mono"').catch(() => {});
+
+_renderHosts(_acessos);
+setTimeout(() => { if (!_panelOpen) $fab.classList.add('visivel'); }, 800);
+
+window.inlineTerminalPanel = {
+    abrirTerminal: itpAbrirTerminal,
+    fecharTodos:   itpFecharTodos,
+    toggle:        itpToggle,
+};
+
+})();
+</script>

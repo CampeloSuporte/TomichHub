@@ -22,9 +22,8 @@ class TerminalTabManager {
     }
     
     abrirTerminal(acessoId, host, porta, usuario, senha, protocolo, tipo) {
-        console.log(`🔌 Abrindo terminal para: ${tipo} - ${host}:${porta}`);
-        
-        // Dados do acesso
+        console.log(`🔌 Abrindo terminal inline para: ${tipo} - ${host}:${porta}`);
+
         const acessoData = {
             id: acessoId,
             host: host,
@@ -34,59 +33,41 @@ class TerminalTabManager {
             protocolo: protocolo,
             tipo: tipo
         };
-        
-        // Se a janela está aberta, enviar dados
+
+        // Usar painel inline se disponível
+        if (window.inlineTerminalPanel) {
+            window.inlineTerminalPanel.abrirTerminal(acessoData);
+            return;
+        }
+
+        // Fallback: popup (caso o painel inline não esteja na página)
         if (this.terminalWindow && !this.terminalWindow.closed) {
-            console.log('✅ Enviando dados para janela existente');
             this.enviarParaTerminal(acessoData);
         } else {
-            // Abrir nova janela
-            console.log('📂 Abrindo nova janela do terminal');
             this.abrirNovaJanela(acessoData);
         }
     }
-    
+
     abrirNovaJanela(acessoData) {
-        // ✅ MUDANÇA 1: Usar localStorage em vez de sessionStorage
-        // localStorage é compartilhado globalmente no browser
         localStorage.setItem('acessoPendente', JSON.stringify(acessoData));
-        
-        // Abrir janela com a página de terminal
-        const url = '/clientes/terminal/';  // URL da página de terminal
+        const url = '/clientes/terminal/';
         const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
-        
         this.terminalWindow = window.open(url, this.terminalWindowName, opcoes);
-        
         if (!this.terminalWindow) {
-            console.error('❌ Não foi possível abrir a janela do terminal');
             alert('⚠️ Não foi possível abrir a janela do terminal. Verifique se bloqueadores de popup estão desabilitados.');
             return;
         }
-        
-        console.log('✅ Janela do terminal aberta com sucesso');
         this.terminalWindow.focus();
     }
-    
+
     enviarParaTerminal(acessoData) {
         try {
-            // ✅ Enviar via postMessage (mais seguro)
             if (this.terminalWindow && !this.terminalWindow.closed) {
-                this.terminalWindow.postMessage({
-                    type: 'NOVA_CONEXAO',
-                    acesso: acessoData
-                }, window.location.origin);
-                
-                console.log('✅ Dados enviados via postMessage');
+                this.terminalWindow.postMessage({ type: 'NOVA_CONEXAO', acesso: acessoData }, window.location.origin);
+                this.terminalWindow.focus();
             }
-            
-            // ✅ Também armazenar em localStorage como backup
-            localStorage.setItem('ultimoAcesso', JSON.stringify(acessoData));
-            
-            this.terminalWindow.focus();
-            console.log('✅ Dados enviados para o terminal');
         } catch (e) {
             console.error('❌ Erro ao enviar dados:', e);
-            // Se falhar, abrir nova janela
             this.abrirNovaJanela(acessoData);
         }
     }

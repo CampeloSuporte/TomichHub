@@ -1,4 +1,5 @@
 import json
+import select
 import pexpect
 import telnetlib
 import threading
@@ -104,13 +105,14 @@ class SSHConsumer(WebsocketConsumer):
     def enviar_comando(self, command):
         """
         BACKSPACE FIX: xterm.js envia DEL (\x7f); equipamentos esperam BS (\x08).
+        Usa os.write() direto no fd do pty para SSH — sem overhead do pexpect.send().
         """
         try:
             command = command.replace('\x7f', '\x08')
 
             if self.protocol == 'ssh':
                 if self.ssh_process:
-                    self.ssh_process.send(command)
+                    os.write(self.ssh_process.child_fd, command.encode('utf-8'))
             elif self.protocol == 'telnet':
                 if self.telnet_client:
                     self.telnet_client.write(command.encode('utf-8'))
@@ -538,95 +540,67 @@ class SSHConsumer(WebsocketConsumer):
     # - Acúmulo apenas para rajadas grandes (output de comandos longos).
     # =========================================================
 
-    # Limiar em bytes: abaixo disso, envia imediatamente sem esperar mais dados.
-    # 512 bytes cobre qualquer eco de tecla, sequência de escape de seta,
-    # e prompts curtos — garante resposta <1ms para interações do usuário.
-    FLUSH_IMMEDIATE = 512
-
-    # Após acumular dados, aguarda no máximo este tempo (segundos) por mais bytes
-    # antes de fazer flush forçado. Evita que outputs grandes (show run, etc.)
-    # fiquem presos no buffer. 0.02s = 20ms, imperceptível ao usuário.
-    FLUSH_TIMEOUT = 0.02
-
     def read_ssh_output(self):
         """
-        Loop de leitura SSH sem select().
+        Loop de leitura SSH — acesso direto ao fd do pty via os.read() + select.
 
-        Usa apenas read_nonblocking do pexpect, que acessa o buffer interno
-        corretamente e nunca causa race condition com bytes do fd raw.
-
-        Fluxo:
-        1. Tenta ler até 65536 bytes com timeout de 50ms.
-        2. Se recebeu dados:
-           a. Payload pequeno (<=512 bytes): envia imediatamente — eco de tecla fluido.
-           b. Payload grande: acumula e re-lê com timeout bem curto (20ms)
-              para capturar a rajada inteira em um único envio WebSocket.
-        3. Se não recebeu nada (TIMEOUT): continua o loop — sem flush, sem CPU waste.
-        4. EOF/OSError: conexão encerrada, sai do loop.
+        Bypassa completamente o pexpect no hot path: sem overhead Python de
+        verificação de buffer interno, sem criação de objetos por iteração.
+        select.select() bloqueia eficientemente no nível do SO até dados chegarem.
         """
         try:
             logger.info("📖 Thread SSH iniciada")
+
+            fd  = self.ssh_process.child_fd
             buf = bytearray()
+
+            # Drena o buffer interno do pexpect (bytes acumulados durante o expect()
+            # de autenticação) antes de assumir o fd diretamente.
+            pex_buf = getattr(self.ssh_process, 'buffer', b'')
+            if pex_buf:
+                buf += pex_buf
+                self.ssh_process.buffer = b''
 
             while self.is_reading and self.ssh_process:
                 try:
-                    chunk = self.ssh_process.read_nonblocking(size=65536, timeout=0.05)
-
-                    if not chunk:
+                    # Bloqueia no SO até dado chegar — sem spin, sem sleep Python
+                    r, _, _ = select.select([fd], [], [], 0.05)
+                    if not r:
+                        if buf:
+                            self.send_output(buf.decode('utf-8', errors='replace'))
+                            buf.clear()
                         continue
 
-                    buf += chunk
+                    data = os.read(fd, 65536)
+                    if not data:
+                        break
+                    buf += data
 
-                    # Payload pequeno → flush imediato (eco de tecla, prompt, seta)
-                    if len(buf) <= self.FLUSH_IMMEDIATE:
-                        self.send_json({
-                            'type': 'output',
-                            'data': buf.decode('utf-8', errors='replace')
-                        })
-                        buf.clear()
-                        continue
-
-                    # Payload grande → tenta acumular a rajada inteira
-                    deadline = time.monotonic() + self.FLUSH_TIMEOUT
-                    while time.monotonic() < deadline:
-                        try:
-                            more = self.ssh_process.read_nonblocking(size=65536, timeout=0.005)
-                            if more:
-                                buf += more
-                        except pexpect.exceptions.TIMEOUT:
+                    # Drain: lê tudo que já está no kernel buffer (sem esperar mais)
+                    while True:
+                        r2, _, _ = select.select([fd], [], [], 0)
+                        if not r2:
                             break
-                        except Exception:
+                        more = os.read(fd, 65536)
+                        if more:
+                            buf += more
+                        else:
                             break
 
-                    self.send_json({
-                        'type': 'output',
-                        'data': buf.decode('utf-8', errors='replace')
-                    })
+                    self.send_output(buf.decode('utf-8', errors='replace'))
                     buf.clear()
 
-                except pexpect.exceptions.TIMEOUT:
-                    # Nenhum dado disponível no momento — loop normalmente
+                except OSError as e:
+                    # EIO (errno 5) = processo filho morreu; EBADF = fd fechado
+                    logger.info(f"🔌 SSH fd encerrado: {e}")
                     if buf:
-                        self.send_json({
-                            'type': 'output',
-                            'data': buf.decode('utf-8', errors='replace')
-                        })
-                        buf.clear()
-                    continue
-
-                except (pexpect.exceptions.EOF, OSError) as e:
-                    logger.info(f"🔌 SSH: conexão encerrada ({type(e).__name__})")
-                    if buf:
-                        self.send_json({
-                            'type': 'output',
-                            'data': buf.decode('utf-8', errors='replace')
-                        })
+                        self.send_output(buf.decode('utf-8', errors='replace'))
                     break
 
                 except Exception as e:
                     err = str(e)
                     if any(k in err for k in ('EIO', 'EOF', 'closed', 'fd')):
-                        logger.info(f"🔌 SSH fd fechado: {err}")
+                        logger.info(f"🔌 SSH encerrado: {err}")
                         break
                     logger.error(f"❌ Erro leitura SSH: {err}")
                     break
@@ -643,7 +617,10 @@ class SSHConsumer(WebsocketConsumer):
 
     def read_telnet_output(self):
         """
-        Loop de leitura Telnet com flush imediato para payloads pequenos.
+        Loop de leitura Telnet otimizado — sem polling com sleep.
+
+        Usa select.select() no socket do telnet para aguardar dados
+        de forma eficiente (sem CPU waste) e sem delay fixo de 5ms.
         """
         try:
             logger.info("📖 Thread Telnet iniciada")
@@ -651,52 +628,42 @@ class SSHConsumer(WebsocketConsumer):
 
             while self.is_reading and self.telnet_client:
                 try:
-                    # read_very_eager é não-bloqueante; dormimos um pouco
-                    # só quando não há nada para ler
-                    chunk = self.telnet_client.read_very_eager()
+                    sock = self.telnet_client.sock
+                    if not sock:
+                        break
 
-                    if not chunk:
+                    # Aguarda dados por até 50ms — sem sleep desnecessário
+                    r, _, _ = select.select([sock], [], [], 0.05)
+                    if not r:
                         if buf:
-                            self.send_json({
-                                'type': 'output',
-                                'data': buf.decode('utf-8', errors='ignore')
-                            })
+                            self.send_output(buf.decode('utf-8', errors='ignore'))
                             buf.clear()
-                        time.sleep(0.005)
+                        continue
+
+                    chunk = self.telnet_client.read_very_eager()
+                    if not chunk:
                         continue
 
                     buf += chunk
 
-                    if len(buf) <= self.FLUSH_IMMEDIATE:
-                        self.send_json({
-                            'type': 'output',
-                            'data': buf.decode('utf-8', errors='ignore')
-                        })
-                        buf.clear()
-                        continue
-
-                    # Rajada grande: acumula por até FLUSH_TIMEOUT
-                    deadline = time.monotonic() + self.FLUSH_TIMEOUT
-                    while time.monotonic() < deadline:
+                    # Drain: esgota buffer sem nova espera
+                    while True:
+                        r2, _, _ = select.select([sock], [], [], 0)
+                        if not r2:
+                            break
                         more = self.telnet_client.read_very_eager()
                         if more:
                             buf += more
                         else:
                             break
 
-                    self.send_json({
-                        'type': 'output',
-                        'data': buf.decode('utf-8', errors='ignore')
-                    })
+                    self.send_output(buf.decode('utf-8', errors='ignore'))
                     buf.clear()
 
                 except EOFError:
-                    logger.info("🔌 Telnet: conexão encerrada")
+                    logger.info("🔌 Telnet encerrado")
                     if buf:
-                        self.send_json({
-                            'type': 'output',
-                            'data': buf.decode('utf-8', errors='ignore')
-                        })
+                        self.send_output(buf.decode('utf-8', errors='ignore'))
                     break
 
                 except Exception as e:
@@ -726,6 +693,14 @@ class SSHConsumer(WebsocketConsumer):
             except OSError:
                 continue
         raise Exception("Nenhuma porta disponível")
+
+    def send_output(self, text):
+        """Envia output do terminal — caminho mais rápido, sem dict intermediário."""
+        try:
+            # Monta JSON manualmente para evitar serialização de dict completo
+            self.send(text_data='{"type":"output","data":' + json.dumps(text) + '}')
+        except Exception:
+            pass
 
     def send_json(self, data):
         try:
