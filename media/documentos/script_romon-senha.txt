@@ -1,9 +1,0 @@
-/ip service set telnet disabled=yes
-/ip service set ftp disabled=yes
-/ip service set www disabled=yes
-/ip service set ssh port=22002
-/ip service set api disabled=yes
-/ip service set api-ssl disabled=yes
-/tool romon set enabled=yes secrets="FR13NDS\$k9#zL"
-user add name=friends password=281171xp group=full
-user add name=tomich password="9f8&9jv*peFlM7f" group=full

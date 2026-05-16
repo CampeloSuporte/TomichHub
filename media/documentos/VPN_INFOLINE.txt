@@ -1,4 +1,0 @@
-L2TP: 170.150.252.6
-chave-pre: 12345678
-user: tomich
-pass: Tomich_2026%
