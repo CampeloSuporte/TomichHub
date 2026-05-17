@@ -1577,8 +1577,9 @@ function toggleBackupFields(checkbox, prefix) {
 }
 
 // Executar backup manual
-function executarBackup(acessoId, tipoEquipamento) {
-    if (!confirm(`Deseja executar o backup de "${tipoEquipamento}"?`)) {
+async function executarBackup(acessoId, tipoEquipamento) {
+    const ok = await uiConfirm({ titulo: 'Executar Backup', msg: `Deseja executar o backup de "${tipoEquipamento}"?`, icone: 'fas fa-database', iconeCor: '#e06060', btnLabel: 'Executar' });
+    if (!ok) {
         return;
     }
     
@@ -1683,9 +1684,9 @@ function renderizarBackups(backups) {
         }
         
         {% if not is_cliente %}
-        html += `<form method="POST" action="/clientes/backups/deletar/${backup.id}/" style="display: inline;" onsubmit="return confirm('Excluir este backup?')">`;
+        html += `<form method="POST" action="/clientes/backups/deletar/${backup.id}/" style="display: inline;" onsubmit="event.preventDefault()">`;
         html += '<input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
-        html += '<button type="submit" class="btn-action btn-delete" title="Excluir"><i class="fas fa-trash"></i></button>';
+        html += '<button type="submit" class="btn-action btn-delete" title="Excluir" onclick="uiConfirm({ titulo: \'Excluir Backup\', msg: \'Tem certeza que deseja excluir este backup?\', icone: \'fas fa-trash\', iconeCor: \'#e06060\', btnLabel: \'Excluir\' }).then(ok => { if (ok) this.closest(\'form\').submit() })"><i class="fas fa-trash"></i></button>';
         html += '</form>';
         {% endif %}
         
@@ -1922,8 +1923,9 @@ function adicionarComentarioAcesso() {
 /**
  * Deleta um comentário
  */
-function deletarComentarioAcesso(comentarioId) {
-    if (!confirm('Tem certeza que deseja deletar este comentário?')) {
+async function deletarComentarioAcesso(comentarioId) {
+    const ok = await uiConfirm({ titulo: 'Deletar Comentário', msg: 'Tem certeza que deseja deletar este comentário?', icone: 'fas fa-comment-slash', iconeCor: '#e06060', btnLabel: 'Deletar' });
+    if (!ok) {
         return;
     }
     
@@ -2005,12 +2007,12 @@ function _acessoAjaxSubmit(formId, fecharFn) {
                 sessionStorage.setItem('abaAtiva', 'acessos');
                 location.reload();
             } else {
-                alert(json.error || 'Erro ao salvar acesso.');
+                uiAlert(json.error || 'Erro ao salvar acesso.');
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-2"></i> Salvar'; }
             }
         })
         .catch(() => {
-            alert('Erro de comunicação ao salvar acesso.');
+            uiAlert('Erro de comunicação ao salvar acesso.');
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-2"></i> Salvar'; }
         });
     });

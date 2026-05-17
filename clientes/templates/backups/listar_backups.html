@@ -89,7 +89,7 @@
                                     </a>
                                 {% endif %}
                                 {% if backup.mensagem_erro %}
-                                    <button class="btn-action" onclick="alert('{{ backup.mensagem_erro|escapejs }}')">
+                                    <button class="btn-action" data-msg="{{ backup.mensagem_erro|escapejs }}" onclick="uiAlert(this.dataset.msg)">
                                         <i class="fas fa-exclamation"></i>
                                     </button>
                                 {% endif %}

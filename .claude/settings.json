@@ -9,7 +9,37 @@
       "Bash(git commit -m ':*)",
       "Bash(git config:*)",
       "Bash(git remote:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl -s --max-time 5 https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS64496)",
+      "Bash(curl -s --max-time 10 \"https://stat.ripe.net/data/ris-prefixes/data.json?resource=179.0.110.0/24&list_prefixes=true\")",
+      "Bash(curl -s --max-time 10 \"https://stat.ripe.net/data/routing-status/data.json?resource=179.0.110.0/24\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -v --max-time 10 \"https://stat.ripe.net/data/routing-status/data.json?resource=179.0.110.0/24\")",
+      "Bash(curl -s --max-time 10 \"https://stat.ripe.net/data/prefix-overview/data.json?resource=179.0.110.0/24\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d,indent=2\\)\\)\")",
+      "Bash(curl -s --max-time 15 \"https://stat.ripe.net/data/bgp-state/data.json?resource=179.0.110.0/24&rrcs=0,1,3,4,5,6,7,10,11,12,13,14,15,16,18,19,20,21,24,25\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('status:', d.get\\('status'\\)\\); rrs=d.get\\('data',{}\\).get\\('routes',[]\\); print\\('routes count:', len\\(rrs\\)\\); print\\(json.dumps\\(rrs[:3],indent=2\\)\\)\")",
+      "Bash(curl -s --max-time 15 \"https://stat.ripe.net/data/ris-peers/data.json?resource=179.0.110.0/24\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['data'],indent=2\\)\\)\")",
+      "Bash(curl -s --max-time 15 \"https://stat.ripe.net/data/looking-glass/data.json?resource=179.0.110.0/24\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('status:', d.get\\('status'\\)\\); rrs=d.get\\('data',{}\\).get\\('rrcs',[]\\); print\\('rrcs count:', len\\(rrs\\)\\); [print\\(r.get\\('rrc'\\),r.get\\('location'\\), len\\(r.get\\('peers',[]\\)\\), 'peers'\\) for r in rrs[:5]]\")",
+      "Bash(python3 -c ':*)",
+      "Bash(nc -z -w5 riswhois.ripe.net 43)",
+      "Bash(nc -z -w5 route-server.ip.br 43)",
+      "Bash(nc -w10 riswhois.ripe.net 43)",
+      "Read(//opt/crm/**)",
+      "Read(//etc/nginx/**)",
+      "Bash(cat /etc/nginx/sites-enabled/*.conf)",
+      "Read(//var/log/nginx/**)",
+      "Bash(journalctl -u gunicorn --since \"2026-05-16 22:23:00\" --until \"2026-05-16 22:24:30\" --no-pager)",
+      "Bash(chown -R www-data:www-data /opt/crm/media/firmware/)",
+      "Bash(chmod -R 755 /opt/crm/media/firmware/)",
+      "Bash(nginx -t)",
+      "Bash(find . -type f -name \"*.html\" -not -path \"*/venv/*\" -exec grep -l \"alert\\\\|confirm\" {} \\\\;)",
+      "Bash(git add:*)"
+    ],
+    "additionalDirectories": [
+      "/etc/nginx/sites-enabled"
     ]
   }
 }

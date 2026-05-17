@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="main-content">
+  <div class="container-fluid" style="max-width:1100px">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="{% url 'quadro_geral' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Dashboard
+      </a>
+      <div>
+        <h4 class="mb-0"><i class="fas fa-route me-2" style="color:#00d9ff"></i>Pesquisa Looking Glass</h4>
+        <small style="color:#8b949e">Consulta um prefixo em múltiplos route servers e LGs públicos simultaneamente</small>
+      </div>
+    </div>
+
+    <!-- ── Formulário de busca ─────────────────────────────────────── -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Prefixo IPv4 ou IPv6</label>
+            <input id="lg-prefixo" type="text" class="form-control"
+              placeholder="Ex: 179.0.110.0/24  ou  2804:80e0::/32"
+              value="{{ prefixo_inicial }}"
+              style="font-family:monospace;font-size:.92rem">
+          </div>
+          <div class="col-auto">
+            <button id="lg-btn" class="btn" onclick="lgBuscar()"
+              style="background:rgba(0,217,255,.15);border:1px solid #00d9ff;color:#00d9ff;min-width:130px">
+              <i class="fas fa-search me-1"></i> Pesquisar
+            </button>
+          </div>
+          <div class="col-auto">
+            <span id="lg-loading" style="display:none;color:#8b949e;font-size:.85rem">
+              <i class="fas fa-circle-notch fa-spin me-1" style="color:#00d9ff"></i>
+              Consultando LGs… pode levar até 25 segundos
+            </span>
+          </div>
+        </div>
+
+        <!-- Fontes consultadas -->
+        <div class="mt-3 d-flex flex-wrap gap-2" id="lg-fontes-badges">
+          <span style="font-size:.75rem;color:#555">Fontes:</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);color:#8b949e">RIPE RIS Looking Glass (26 coletores)</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);color:#8b949e">RIPE Prefix Overview</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);color:#8b949e">RIPE RIS Whois</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Resultado ───────────────────────────────────────────────── -->
+    <div id="lg-resultado" style="display:none">
+
+      <!-- Resumo geral -->
+      <div id="lg-resumo" class="card mb-4"></div>
+
+      <!-- AS paths agrupados -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="mb-3"><i class="fas fa-project-diagram me-2" style="color:#00ff88"></i>AS Paths encontrados</h5>
+          <div id="lg-aspath-lista"></div>
+        </div>
+      </div>
+
+      <!-- Detalhes por fonte -->
+      <div class="card">
+        <div class="card-body">
+          <h5 class="mb-3"><i class="fas fa-server me-2" style="color:#ffaa00"></i>Detalhes por fonte</h5>
+          <div id="lg-fontes-detalhes"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mensagem de erro -->
+    <div id="lg-erro" style="display:none"></div>
+
+  </div>
+</div>
+
+<style>
+.lg-path-card {
+    border-radius:8px;
+    padding:12px 16px;
+    margin-bottom:10px;
+    border:1px solid var(--border);
+    background:var(--bg-secondary);
+}
+.lg-path-code {
+    font-family:monospace;
+    font-size:.88rem;
+    color:#e6edf3;
+    word-break:break-all;
+    padding:8px 12px;
+    background:#0d1117;
+    border-radius:6px;
+    margin:8px 0;
+}
+.lg-asn {
+    display:inline-block;
+    padding:1px 6px;
+    border-radius:4px;
+    background:rgba(0,217,255,.12);
+    border:1px solid rgba(0,217,255,.25);
+    color:#00d9ff;
+    font-size:.82rem;
+    margin:1px;
+    font-family:monospace;
+}
+.lg-asn.origin {
+    background:rgba(0,255,136,.12);
+    border-color:rgba(0,255,136,.3);
+    color:#00ff88;
+    font-weight:600;
+}
+.lg-fonte-card {
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 16px;
+    margin-bottom:8px;
+    background:var(--bg-secondary);
+}
+.lg-vp-row {
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:6px 0;
+    border-bottom:1px solid rgba(255,255,255,.04);
+    font-size:.82rem;
+}
+.lg-vp-row:last-child { border-bottom:none; }
+.lg-tag-match {
+    font-size:.68rem;
+    padding:1px 7px;
+    border-radius:10px;
+    background:rgba(0,255,136,.12);
+    border:1px solid rgba(0,255,136,.3);
+    color:#00ff88;
+    white-space:nowrap;
+}
+.lg-tag-unico {
+    font-size:.68rem;
+    padding:1px 7px;
+    border-radius:10px;
+    background:rgba(255,170,0,.1);
+    border:1px solid rgba(255,170,0,.3);
+    color:#ffaa00;
+    white-space:nowrap;
+}
+</style>
+
+<script>
+const CSRF = (function(){
+    const c = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    return c ? c.trim().split('=')[1] : '';
+})();
+
+// Paleta de cores para diferenciar AS paths distintos
+const PATH_CORES = [
+    {brd:'#00d9ff', bg:'rgba(0,217,255,.08)', txt:'#00d9ff'},
+    {brd:'#00ff88', bg:'rgba(0,255,136,.08)', txt:'#00ff88'},
+    {brd:'#ffaa00', bg:'rgba(255,170,0,.08)', txt:'#ffaa00'},
+    {brd:'#b464ff', bg:'rgba(180,100,255,.08)', txt:'#b464ff'},
+    {brd:'#e06060', bg:'rgba(224,96,96,.08)', txt:'#e06060'},
+    {brd:'#4fc3f7', bg:'rgba(79,195,247,.08)', txt:'#4fc3f7'},
+    {brd:'#81c784', bg:'rgba(129,199,132,.08)', txt:'#81c784'},
+];
+
+function lgAsPathHtml(path) {
+    const asns = path.trim().split(/\s+/);
+    return asns.map((asn, i) => {
+        const cls = i === asns.length - 1 ? 'lg-asn origin' : 'lg-asn';
+        return `<span class="${cls}">${asn}</span>`;
+    }).join(' <span style="color:#555;font-size:.7rem">›</span> ');
+}
+
+async function lgBuscar() {
+    const prefixo = document.getElementById('lg-prefixo').value.trim();
+    if (!prefixo) {
+        document.getElementById('lg-prefixo').focus();
+        return;
+    }
+
+    // Estado: buscando
+    document.getElementById('lg-btn').disabled = true;
+    document.getElementById('lg-loading').style.display = '';
+    document.getElementById('lg-resultado').style.display = 'none';
+    document.getElementById('lg-erro').style.display = 'none';
+
+    try {
+        const r = await fetch(`{% url 'lg_pesquisa_buscar' %}?prefixo=${encodeURIComponent(prefixo)}`);
+        const d = await r.json();
+
+        if (!d.ok) throw new Error(d.erro);
+        renderLGResultado(d);
+    } catch(e) {
+        document.getElementById('lg-erro').style.display = '';
+        document.getElementById('lg-erro').innerHTML = `
+            <div style="padding:12px 16px;border-radius:8px;background:rgba(224,96,96,.1);border:1px solid #e06060;color:#e06060">
+                <i class="fas fa-times-circle me-2"></i>${e.message}
+            </div>`;
+    } finally {
+        document.getElementById('lg-btn').disabled = false;
+        document.getElementById('lg-loading').style.display = 'none';
+    }
+}
+
+function renderLGResultado(d) {
+    // ── Resumo geral ──────────────────────────────────────────────
+    const cor   = d.encontrado ? '#00ff88' : '#e06060';
+    const bg    = d.encontrado ? 'rgba(0,255,136,.08)' : 'rgba(224,96,96,.08)';
+    const icone = d.encontrado ? 'check-circle' : 'times-circle';
+    const msg   = d.encontrado
+        ? `Prefixo <strong style="color:#e6edf3;font-family:monospace">${d.prefixo}</strong> encontrado em <strong style="color:#00ff88">${d.fontes_com_prefixo}</strong> de <strong>${d.total_fontes}</strong> fontes consultadas.`
+        : `Prefixo <strong style="color:#e6edf3;font-family:monospace">${d.prefixo}</strong> <strong style="color:#e06060">não encontrado</strong> em nenhuma fonte consultada.`;
+
+    const nPaths = Object.keys(d.por_aspath).length;
+    const pathConsensual = nPaths > 0 ? Object.keys(d.por_aspath)[0] : null;
+    // Contar total de peers/vantage points do RIPE RIS
+    const ripeRes = d.resultados.find(r => r.fonte === 'RIPE RIS');
+    const totalPeers = ripeRes ? ripeRes.vantage_points.reduce((s, vp) => s + (vp.n_peers || 0), 0) : 0;
+    const totalRrcs  = ripeRes ? ripeRes.vantage_points.length : 0;
+    const originInfo = d.origin_info;
+
+    document.getElementById('lg-resumo').innerHTML = `
+        <div class="card-body">
+            <div style="padding:12px 16px;border-radius:8px;background:${bg};border:1px solid ${cor};color:${cor};font-size:.9rem;margin-bottom:${d.encontrado?'14px':'0'}">
+                <i class="fas fa-${icone} me-2"></i>${msg}
+                ${originInfo ? `<span style="margin-left:12px;font-size:.82rem;color:#8b949e">ASN de origem: <strong style="color:#00d9ff">AS${originInfo.asn}</strong>${originInfo.nome ? ` – ${originInfo.nome}` : ''}</span>` : ''}
+            </div>
+            ${d.encontrado && nPaths > 0 ? `
+            <div class="row g-3 mt-1">
+                <div class="col-6 col-md-3">
+                    <div style="font-size:.75rem;color:#8b949e">AS Paths distintos</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#e6edf3">${nPaths}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div style="font-size:.75rem;color:#8b949e">Coletores RIPE RIS</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#00d9ff">${totalRrcs}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div style="font-size:.75rem;color:#8b949e">Total de peers</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#00d9ff">${totalPeers}</div>
+                </div>
+                ${pathConsensual ? `
+                <div class="col-12 col-md-3">
+                    <div style="font-size:.75rem;color:#8b949e;margin-bottom:4px">Path mais visto (${d.por_aspath[pathConsensual].length} RRCs)</div>
+                    <div style="font-size:.78rem">${lgAsPathHtml(pathConsensual)}</div>
+                </div>` : ''}
+            </div>` : ''}
+        </div>`;
+
+    // ── AS Paths agrupados ────────────────────────────────────────
+    const pathsEl = document.getElementById('lg-aspath-lista');
+    if (!d.encontrado || nPaths === 0) {
+        pathsEl.innerHTML = '<p style="color:#555;font-size:.85rem">Nenhum AS path encontrado.</p>';
+    } else {
+        let html = '';
+        let idx  = 0;
+        const vpRipeAll = (d.resultados.find(r=>r.fonte==='RIPE RIS')?.vantage_points||[]);
+        for (const [path, lgs] of Object.entries(d.por_aspath)) {
+            const c      = PATH_CORES[idx % PATH_CORES.length];
+            const nLgs   = lgs.length;
+            const isMain = idx === 0;
+            // Verifica se RRC brasileiro confirmou este path
+            const brConfirmou = vpRipeAll.some(v => v.as_path === path && v.nacional);
+            const brBadge = brConfirmou
+                ? `<span style="font-size:.68rem;padding:1px 7px;border-radius:10px;background:rgba(0,200,100,.12);border:1px solid rgba(0,200,100,.35);color:#00c864">🇧🇷 confirmado no BR</span>`
+                : `<span style="font-size:.68rem;padding:1px 7px;border-radius:10px;background:rgba(100,150,255,.1);border:1px solid rgba(100,150,255,.25);color:#7aa4ff">🌐 apenas internacional</span>`;
+            html += `
+            <div class="lg-path-card" style="border-color:${c.brd};background:${c.bg}">
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    <span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:${c.bg};border:1px solid ${c.brd};color:${c.txt}">
+                        ${isMain ? '★ Path principal' : `Path #${idx+1}`}
+                    </span>
+                    <span style="font-size:.75rem;color:#8b949e">${nLgs} RRC${nLgs>1?'s':''} confirmaram</span>
+                    ${brBadge}
+                </div>
+                <div class="lg-path-code">${lgAsPathHtml(path)}</div>
+                <div style="font-size:.78rem;color:#8b949e;margin-top:6px">
+                    <i class="fas fa-eye me-1" style="color:${c.txt}"></i>
+                    ${lgs.map(l => `<span style="margin-right:8px">${l.ponto}</span>`).join('')}
+                </div>
+            </div>`;
+            idx++;
+        }
+        pathsEl.innerHTML = html;
+    }
+
+    // ── Detalhes por fonte ────────────────────────────────────────
+    const fontesEl = document.getElementById('lg-fontes-detalhes');
+    // Mapeia path → cor para consistência visual
+    const pathCores = {};
+    Object.keys(d.por_aspath).forEach((path, i) => {
+        pathCores[path] = PATH_CORES[i % PATH_CORES.length];
+    });
+
+    let fontesHtml = '';
+    // Ordena: RIPE RIS primeiro
+    const sortedRes = [...d.resultados].sort((a,b) => a.fonte === 'RIPE RIS' ? -1 : b.fonte === 'RIPE RIS' ? 1 : 0);
+    for (const res of sortedRes) {
+        const ok  = res.encontrado;
+        const cor = ok ? '#00ff88' : '#555';
+        const vps = res.vantage_points || [];
+        const isRipe = res.fonte === 'RIPE RIS';
+        const collapseId = `lg-vps-${res.fonte.replace(/\s/g,'_')}`;
+
+        fontesHtml += `
+        <div class="lg-fonte-card">
+            <div class="d-flex align-items-center gap-2 flex-wrap" style="cursor:${isRipe && ok?'pointer':'default'}"
+                 ${isRipe && ok ? `onclick="document.getElementById('${collapseId}').classList.toggle('d-none')"` : ''}>
+                <i class="fas fa-${ok ? 'check-circle' : 'times-circle'}" style="color:${cor}"></i>
+                <span style="font-weight:600;color:#e6edf3;font-size:.88rem">${res.fonte}</span>
+                <span style="font-size:.75rem;color:#555">${res.descricao || ''}</span>
+                ${ok && vps.length ? `<span style="font-size:.73rem;color:#8b949e;margin-left:4px">${vps.length} coletores, ${vps.reduce((s,v)=>s+(v.n_peers||0),0)} peers</span>` : ''}
+                ${isRipe && ok ? `<span style="font-size:.68rem;color:#00d9ff;margin-left:auto"><i class="fas fa-chevron-down me-1"></i>expandir RRCs</span>` : ''}
+                ${res.erro ? `<span style="font-size:.73rem;color:#e06060;margin-left:auto">Erro: ${res.erro}</span>` : ''}
+            </div>`;
+
+        if (ok && vps.length) {
+            fontesHtml += `<div id="${collapseId}" class="${isRipe ? 'd-none' : ''}" style="margin-top:8px">`;
+            for (const vp of vps) {
+                const c   = pathCores[vp.as_path] || {txt:'#8b949e'};
+                const cnt = d.por_aspath[vp.as_path]?.length || 0;
+                const tag = cnt > 1
+                    ? `<span class="lg-tag-match"><i class="fas fa-link me-1"></i>${cnt} RRCs mesmo path</span>`
+                    : `<span class="lg-tag-unico">path único neste RRC</span>`;
+                const locTag = vp.nacional
+                    ? `<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:rgba(0,200,100,.12);border:1px solid rgba(0,200,100,.35);color:#00c864;white-space:nowrap">🇧🇷 BR</span>`
+                    : `<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:rgba(100,150,255,.1);border:1px solid rgba(100,150,255,.25);color:#7aa4ff;white-space:nowrap">🌐 ${vp.pais || 'INT'}</span>`;
+                fontesHtml += `
+                <div class="lg-vp-row">
+                    <div style="min-width:240px;color:#8b949e;font-size:.8rem;display:flex;align-items:center;gap:6px">${locTag}<span>${vp.nome}</span></div>
+                    <div style="flex:1">
+                        <span style="font-family:monospace;font-size:.8rem;color:${c.txt}">${vp.as_path}</span>
+                        ${vp.n_peers > 1 ? `<span style="font-size:.68rem;color:#555;margin-left:8px">(${vp.n_peers} peers neste RRC)</span>` : ''}
+                    </div>
+                    <div>${tag}</div>
+                </div>`;
+            }
+            fontesHtml += `</div>`;
+        } else if (!ok) {
+            fontesHtml += `<span style="font-size:.8rem;color:#555;display:block;margin-top:4px">Prefixo não encontrado nesta fonte.</span>`;
+        }
+        fontesHtml += `</div>`;
+    }
+    fontesEl.innerHTML = fontesHtml;
+
+    document.getElementById('lg-resultado').style.display = '';
+}
+
+// Enter no campo de prefixo
+document.getElementById('lg-prefixo').addEventListener('keydown', e => {
+    if (e.key === 'Enter') lgBuscar();
+});
+
+// Auto-busca se veio com prefixo preenchido via URL
+(function(){
+    const v = document.getElementById('lg-prefixo').value.trim();
+    if (v) lgBuscar();
+})();
+</script>
+
+{% endblock %}

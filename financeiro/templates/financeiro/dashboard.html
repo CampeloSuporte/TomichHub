@@ -1163,15 +1163,22 @@ function enviarEdicaoConsultoria(event) {
     .catch(e => mostrarErro('msgErroEditConsultoria', e.message));
 }
 
-function confirmarDeletarConsultoria(id, descricao) {
-    if (!confirm(`Deletar consultoria "${descricao}"?\n\nAs faturas associadas NÃO serão deletadas.`)) return;
+async function confirmarDeletarConsultoria(id, descricao) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir',
+        msg: `Deletar consultoria "${descricao}"?\n\nAs faturas associadas NÃO serão deletadas.`,
+        icone: 'fas fa-trash-alt',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir'
+    });
+    if (!ok) return;
     fetch(`/financeiro/api/consultoria/${id}/deletar/`, {
         method: 'DELETE', headers: { 'X-CSRFToken': csrf() }
     })
     .then(r => r.json())
     .then(data => {
         if (data.sucesso) { carregarConsultorias(); mostrarToast('Consultoria deletada.', 'warning'); }
-        else alert('Erro: ' + data.erro);
+        else uiAlert('Erro: ' + data.erro);
     });
 }
 
@@ -1247,15 +1254,22 @@ function enviarEdicaoAluguel(event) {
     .catch(e => mostrarErro('msgErroEditAluguel', e.message));
 }
 
-function confirmarDeletarAluguel(id, descricao) {
-    if (!confirm(`Deletar aluguel "${descricao}"?`)) return;
+async function confirmarDeletarAluguel(id, descricao) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir',
+        msg: `Deletar aluguel "${descricao}"?`,
+        icone: 'fas fa-trash-alt',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir'
+    });
+    if (!ok) return;
     fetch(`/financeiro/api/aluguel/${id}/deletar/`, {
         method: 'DELETE', headers: { 'X-CSRFToken': csrf() }
     })
     .then(r => r.json())
     .then(data => {
         if (data.sucesso) { carregarAlugueis(); mostrarToast('Aluguel deletado.', 'warning'); }
-        else alert('Erro: ' + data.erro);
+        else uiAlert('Erro: ' + data.erro);
     });
 }
 
@@ -1306,19 +1320,26 @@ function abrirEditarVenda(id, descricao) {
     .then(r => r.json())
     .then(data => {
         if (data.sucesso) { carregarVendas(); mostrarToast('Venda atualizada!', 'success'); }
-        else alert('Erro: ' + data.erro);
+        else uiAlert('Erro: ' + data.erro);
     });
 }
 
-function confirmarDeletarVenda(id, descricao) {
-    if (!confirm(`Deletar venda "${descricao}"?`)) return;
+async function confirmarDeletarVenda(id, descricao) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir',
+        msg: `Deletar venda "${descricao}"?`,
+        icone: 'fas fa-trash-alt',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir'
+    });
+    if (!ok) return;
     fetch(`/financeiro/api/venda/${id}/deletar/`, {
         method: 'DELETE', headers: { 'X-CSRFToken': csrf() }
     })
     .then(r => r.json())
     .then(data => {
         if (data.sucesso) { carregarVendas(); mostrarToast('Venda deletada.', 'warning'); }
-        else alert('Erro: ' + data.erro);
+        else uiAlert('Erro: ' + data.erro);
     });
 }
 
@@ -1367,8 +1388,15 @@ function carregarFaturas() {
     });
 }
 
-function confirmarDeletarFatura(faturaId, numero, valor) {
-    if (!confirm(`⚠️ Deletar fatura ${numero}?\n\nValor: ${valor}\n\nEsta ação também deletará todos os pagamentos vinculados e não pode ser desfeita.`)) return;
+async function confirmarDeletarFatura(faturaId, numero, valor) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir fatura',
+        msg: `Deletar fatura ${numero}?\n\nValor: ${valor}\n\nEsta ação também deletará todos os pagamentos vinculados e não pode ser desfeita.`,
+        icone: 'fas fa-trash-alt',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir'
+    });
+    if (!ok) return;
     fetch(`/financeiro/api/fatura/${faturaId}/deletar/`, {
         method: 'DELETE', headers: { 'X-CSRFToken': csrf() }
     })
@@ -1498,15 +1526,22 @@ function abrirModalPagamento() {
     new bootstrap.Modal(document.getElementById('modalRegistrarPagamento')).show();
 }
 
-function deletarPagamento(id) {
-    if (!confirm('Deletar este pagamento? O status da fatura pode ser revertido.')) return;
+async function deletarPagamento(id) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir pagamento',
+        msg: 'Deletar este pagamento? O status da fatura pode ser revertido.',
+        icone: 'fas fa-trash-alt',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir'
+    });
+    if (!ok) return;
     fetch(`/financeiro/api/pagamento/${id}/deletar/`, {
         method: 'DELETE', headers: { 'X-CSRFToken': csrf() }
     })
     .then(r => r.json())
     .then(data => {
         if (data.sucesso) { carregarPagamentos(faturaAtualId); mostrarToast('Pagamento deletado.', 'warning'); }
-        else alert('Erro: ' + data.erro);
+        else uiAlert('Erro: ' + data.erro);
     });
 }
 

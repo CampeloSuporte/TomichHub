@@ -227,7 +227,7 @@
 function copiarCodigo(id) {
     const codigo = document.getElementById(id).textContent;
     navigator.clipboard.writeText(codigo).then(() => {
-        alert('Código copiado!');
+        uiToast('Código copiado!', 'ok');
     });
 }
 </script>

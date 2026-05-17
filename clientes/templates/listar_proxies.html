@@ -41,11 +41,11 @@
                                     <button class="icon-btn btn-sm" onclick="abrirModalEditarProxy({{ proxy.id }})" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <form method="POST" action="{% url 'deletar_proxy' proxy.id %}" 
-                                          style="display: inline;" 
-                                          onsubmit="return confirm('Tem certeza que deseja excluir o proxy: {{ proxy.nome }}?')">
+                                    <form method="POST" action="{% url 'deletar_proxy' proxy.id %}"
+                                          style="display: inline;"
+                                          onsubmit="event.preventDefault()">
                                         {% csrf_token %}
-                                        <button type="submit" class="icon-btn btn-sm" title="Excluir">
+                                        <button type="submit" class="icon-btn btn-sm" title="Excluir" onclick="uiConfirm({ titulo: 'Excluir Proxy', msg: 'Tem certeza que deseja excluir o proxy: {{ proxy.nome }}?', icone: 'fas fa-trash', iconeCor: '#e06060', btnLabel: 'Excluir' }).then(ok => { if (ok) this.closest('form').submit() })">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>

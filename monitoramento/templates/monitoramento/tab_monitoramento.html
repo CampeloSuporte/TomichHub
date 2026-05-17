@@ -1294,15 +1294,15 @@ const GRAPH = (() => {
   // ─────────────────────────────────────────────────────────
   // SALVAR / REMOVER
   // ─────────────────────────────────────────────────────────
-  function salvarChart() {
+  async function salvarChart() {
     const hostid   = document.getElementById('grph-m-hostid').value;
     const hostname = document.getElementById('grph-m-hostname').value;
     const inId     = document.getElementById('grph-m-item-in-id').value  || null;
     const outId    = document.getElementById('grph-m-item-out-id').value || null;
     const titulo   = (document.getElementById('grph-m-titulo') || {}).value?.trim() || '';
 
-    if (!hostid)         { alert('Selecione um host.');                             return; }
-    if (!inId && !outId) { alert('Selecione pelo menos um item (Download ou Upload).'); return; }
+    if (!hostid)         { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Selecione um host.', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
+    if (!inId && !outId) { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Selecione pelo menos um item (Download ou Upload).', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
 
     // Montar ifaceName a partir dos itens selecionados
     const itens     = itensCache[hostid] || [];

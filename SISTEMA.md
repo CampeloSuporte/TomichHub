@@ -92,7 +92,7 @@ Gerencia tudo relacionado a clientes e suas redes: acessos, equipamentos, VPN, I
 
 ### `home` — Dashboard e administração
 
-Painel geral com estatísticas de chamados, blocos RPKI/IRR inválidos e configurações de sistema (SMTP global).
+Painel geral com estatísticas de chamados, blocos RPKI/IRR inválidos, configurações de sistema (SMTP global) e ferramentas de rede (Looking Glass).
 
 **URLs principais:** `/home/`
 
@@ -190,6 +190,14 @@ Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipame
 | `TopologiaDiagrama` | Estado do editor de topologia (SVG/JSON) |
 | `ImagemTopologia` | Imagens de topologia com link DrawIO |
 
+### Firmware
+
+| Modelo | Descrição |
+|---|---|
+| `FirmwarePasta` | Pasta do sistema de arquivos (hierarquia via FK para pasta pai) |
+| `FirmwareArquivo` | Arquivo armazenado com metadados (nome, tamanho, tipo, caminho) |
+| `FirmwareCompartilhamento` | Link temporário com token, validade, contador de acessos e credenciais opcionais |
+
 ---
 
 ## Funcionalidades Principais
@@ -272,6 +280,25 @@ Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipame
 - Snippets de código categorizados por fabricante
 - Busca por conteúdo, tag e fabricante
 
+### Ferramentas de Rede
+
+**Looking Glass (Pesquisa LG):**
+
+- URL: `/home/ferramentas/lg/`
+- Consulta um prefixo IPv4 ou IPv6 em múltiplos coletores BGP públicos simultaneamente
+- Fontes: RIPE NCC RIS (API stat.ripe.net), RIPE RIS Whois (riswhois.ripe.net:43)
+- Exibe AS paths agrupados por frequência com identificação do país de cada coletor RRC
+- Integrado com a aba IRR/RPKI dos clientes via botão "Consultar LG" e query string `?prefixo=`
+
+**Gerenciador de Arquivos / Firmware:**
+
+- URL: `/clientes/firmware/`
+- Armazenamento hierárquico de firmware e arquivos de configuração de equipamentos
+- Upload múltiplo com progresso em tempo real, drag & drop, ícones por tipo de arquivo
+- Sistema de compartilhamento com links temporários em 10 formatos (HTTP, HTTPS, FTP, SFTP, TFTP, Cisco, MikroTik, Huawei, wget, curl)
+- Download público via token sem autenticação
+- Limite de upload: 2 GB
+
 ### Chamados
 
 - Ciclo completo: Aberto → Em Andamento → Aguardando → Resolvido → Fechado
@@ -292,6 +319,8 @@ Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipame
 | NetBox | REST API via token | Documentação de rede (opcional) |
 | DrawIO | Embed iframe | Editor de topologia de rede |
 | MikroTik | API RouterOS / Winbox | Configuração de VPN, acesso remoto |
+| RIPE NCC RIS | REST API (stat.ripe.net) | Pesquisa Looking Glass — AS paths por prefixo |
+| RIPE RIS Whois | TCP porta 43 (riswhois.ripe.net) | Consulta de AS paths via protocolo WHOIS |
 
 ---
 
@@ -317,7 +346,8 @@ Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipame
   │   └── cliente_{id}/acesso_{id}/
   ├── vpn/                 — Configs VPN
   ├── topologias/          — Imagens de topologia
-  └── faturas/             — PDFs de faturas
+  ├── faturas/             — PDFs de faturas
+  └── firmware/            — Firmware e arquivos de equipamentos (proprietário www-data)
 ```
 
 ### Variáveis de ambiente relevantes
@@ -595,3 +625,160 @@ dados['email_contato'] = parse_field(autnum_raw, 'e-mail') or (changed_parts[0] 
 | 0046 | `IRRConfig` — configuração IRR por cliente |
 | 0047 | `ConfiguracaoSistema` — SMTP global singleton |
 | 0048 | `ix_members` em `IRRConfig` — participação em IX |
+| 0049 | `imap_*` em `ConfiguracaoSistema` |
+| 0050 | `FirmwarePasta`, `FirmwareArquivo`, `FirmwareCompartilhamento` — gerenciador de firmware |
+
+---
+
+## Histórico de Alterações (continuação)
+
+### Sessão 6 — Pesquisa Looking Glass, Gerenciador de Firmware e UI global
+
+#### Nova feature: Ferramenta de Pesquisa Looking Glass
+
+**Acesso:** Menu Sistema → Ferramentas → Pesquisa LG
+
+**URL:** `/home/ferramentas/lg/`
+
+Ferramenta que busca um prefixo IPv4 ou IPv6 em múltiplos coletores BGP públicos simultaneamente e exibe os AS paths encontrados agrupados por frequência.
+
+**Fontes consultadas:**
+
+| Fonte | Protocolo |
+|---|---|
+| RIPE NCC RIS Looking Glass | REST API `stat.ripe.net/data/looking-glass` |
+| RIPE Prefix Overview | REST API `stat.ripe.net` |
+| RIPE RIS Whois | Conexão raw TCP porta 43 (`riswhois.ripe.net`) |
+
+**Funcionamento:**
+
+- AS paths são agrupados por frequência; o path mais visto é destacado.
+- Cada coletor RRC é identificado com bandeira de país: `BR` para o RRC15 (São Paulo) e `INTERNACIONAL` com código do país para os demais.
+- Os AS paths agrupados exibem badge `confirmado no BR` (quando presente no RRC15) ou `apenas internacional`.
+
+**Auto-busca por query string:**
+
+Quando acessada com `?prefixo=x.x.x.x/xx` na URL, a ferramenta executa a busca automaticamente. Esse mecanismo é usado pelo botão **"Consultar LG"** presente na aba IRR/RPKI de cada cliente, que abre a ferramenta com o prefixo pré-preenchido.
+
+**Arquivos:**
+
+- Views: `home/views.py` → funções `lg_pesquisa` e `lg_pesquisa_buscar`
+- Template: `home/templates/lg_pesquisa.html`
+- URLs: `home/urls.py`
+
+---
+
+#### Nova feature: Gerenciador de Arquivos / Firmware
+
+**Acesso:** Menu Sistema → Ferramentas → Arquivos / Firmware
+
+**URL:** `/clientes/firmware/`
+
+Sistema de gerenciamento de arquivos voltado ao armazenamento de firmware de roteadores, switches, OLTs e equipamentos similares.
+
+**Funcionalidades de navegação e upload:**
+
+- Criação de pastas com hierarquia ilimitada e breadcrumb de navegação
+- Upload múltiplo com barra de progresso em tempo real (via XHR com `onprogress`)
+- Drag & drop de arquivos na área da tabela
+- Ícones diferenciados por tipo de arquivo:
+  - `.npk`, `.bin`, `.fw` — firmware (ciano)
+  - `.zip`, `.gz`, `.tar`, `.rar` — compactados (laranja)
+  - `.iso` — ISO (roxo)
+  - Configs/texto — cinza
+- Exclusão de arquivos e pastas com modal de confirmação temático
+- Toast de feedback em todas as operações (criação de pasta, upload, exclusão, revogação de link)
+- Modal de criação de pasta usa evento `hidden.bs.modal` para atualizar a lista após a animação, evitando duplo clique
+
+**Sistema de compartilhamento com link temporário:**
+
+- Validade configurável em horas com botões rápidos: 1h, 24h, 3d, 7d
+- Opção de gerar usuário/senha aleatórios (para uso com FTP/SFTP)
+- Gera links prontos em 10 formatos simultâneos:
+
+| Formato | Exemplo de uso |
+|---|---|
+| HTTP | Download direto via browser |
+| HTTPS | Download direto seguro |
+| FTP | Clientes FTP |
+| SFTP | Clientes SFTP |
+| TFTP | Equipamentos com TFTP client |
+| Cisco | `copy ftp://...` |
+| MikroTik | `/tool fetch` |
+| Huawei | `tftp get` |
+| wget | Shell Linux |
+| curl | Shell Linux |
+
+- Download público via token sem necessidade de login: `/home/ferramentas/firmware/dl/TOKEN/arquivo`
+- Botão "Encerrar este link" exibido diretamente no resultado gerado
+- Painel de links ativos com contador de acessos e botão Revogar
+- Badge verde na tabela mostrando quantos links ativos cada arquivo possui
+
+**Modelos Django** (migration 0050):
+
+| Modelo | Descrição |
+|---|---|
+| `FirmwarePasta` | Pasta do sistema de arquivos (hierarquia via FK para pasta pai) |
+| `FirmwareArquivo` | Arquivo armazenado com metadados (nome, tamanho, tipo, caminho) |
+| `FirmwareCompartilhamento` | Link temporário com token, validade, contador de acessos e credenciais opcionais |
+
+**Arquivos:**
+
+- Views: `clientes/firmware_views.py`
+- Template: `clientes/templates/firmware.html`
+- Armazenamento físico: `/opt/crm/media/firmware/` (proprietário `www-data:www-data`)
+- Limite de upload: **2 GB** (configurado no Nginx)
+- Nginx: `location /clientes/firmware/upload/` com `proxy_request_buffering off` e timeout de 600s
+
+---
+
+#### Nova feature: Sistema global de UI — uiConfirm / uiAlert / uiToast
+
+Todos os `confirm()` e `alert()` nativos do browser foram substituídos por modais e notificações temáticos, integrados ao tema dark do sistema.
+
+**Implementação:** `templates/base.html` — disponível automaticamente em todas as páginas sem imports adicionais.
+
+**Funções disponíveis globalmente:**
+
+```javascript
+// Diálogo de confirmação — retorna Promise<boolean>
+uiConfirm({
+    titulo: 'Texto do título',
+    msg:    'Mensagem de corpo',
+    icone:  'bi-trash',          // ícone Bootstrap Icons
+    iconeCor: '#ff4444',
+    btnLabel: 'Excluir',
+    btnCor:   'danger'
+})
+
+// Alerta informativo — retorna Promise<void>
+uiAlert({ titulo, msg, icone, iconeCor })
+uiAlert('mensagem simples')     // forma abreviada
+
+// Toast de notificação — sem retorno
+uiToast(msg, tipo)              // tipo: 'ok' | 'erro' | 'info'
+```
+
+**Templates atualizados** (zero chamadas nativas restantes):
+
+| Template | Substituições |
+|---|---|
+| `clientes/templates/listar.html` | 43 |
+| `financeiro/templates/financeiro/dashboard.html` | 10 |
+| `templates/modal_acessos.html` | 5 |
+| `wiki/templates/wiki/cadastrar_artigo.html` | 7 |
+| `monitoramento/templates/monitoramento/tab_monitoramento.html` | 2 |
+| `clientes/templates/backups/listar_backups.html` | 1 |
+| `clientes/templates/listar_proxies.html` | 1 |
+| `financeiro/templates/faturas/visualizar.html` | 1 |
+| `financeiro/templates/consultorias/listar.html` | 1 |
+| `wiki/templates/wiki/visualizar_artigo.html` | 1 |
+| `clientes/templates/firmware.html` | 12 |
+
+---
+
+#### Correções e melhorias diversas
+
+- **Permissões de mídia:** Diretório `/opt/crm/media/firmware/` criado e configurado com proprietário `www-data:www-data`.
+- **Limite de upload Nginx:** Aumentado de 100 MB para **2 GB** (`client_max_body_size 2G`).
+- **Botão "Consultar LG"** adicionado na aba IRR/RPKI de cada cliente — abre a ferramenta Looking Glass com o prefixo do bloco pré-carregado via query string.

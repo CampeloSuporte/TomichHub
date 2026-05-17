@@ -195,7 +195,7 @@ source venv/bin/activate
 python manage.py migrate
 ```
 
-> Isso cria todas as tabelas necessárias (48+ migrations).
+> Isso cria todas as tabelas necessárias (50+ migrations).
 
 ---
 
@@ -213,6 +213,10 @@ mkdir -p /opt/crm/media
 sudo chown -R www-data:www-data /opt/crm/media
 sudo chown -R www-data:www-data /opt/crm/static
 sudo chown -R www-data:www-data /opt/crm/tmp
+
+# Criar diretório de firmware (Gerenciador de Arquivos / Firmware)
+sudo mkdir -p /opt/crm/media/firmware
+sudo chown www-data:www-data /opt/crm/media/firmware
 ```
 
 ---
@@ -344,7 +348,7 @@ Crie `/etc/nginx/sites-available/crm`:
 server {
     listen 80;
     server_name seu.dominio.com.br;
-    client_max_body_size 100M;
+    client_max_body_size 2G;
 
     location / {
         return 301 https://$host$request_uri;
@@ -363,7 +367,7 @@ server {
 server {
     listen 443 ssl;
     server_name seu.dominio.com.br;
-    client_max_body_size 100M;
+    client_max_body_size 2G;
 
     ssl_certificate     /etc/letsencrypt/live/seu.dominio.com.br/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/seu.dominio.com.br/privkey.pem;
@@ -403,6 +407,15 @@ server {
         proxy_send_timeout 86400;
         proxy_redirect off;
         proxy_buffering off;
+    }
+
+    # Upload de firmware — sem buffering, timeout estendido para arquivos grandes (até 2 GB)
+    location /clientes/firmware/upload/ {
+        include proxy_params;
+        proxy_pass http://unix:/opt/crm/gunicorn.sock;
+        proxy_request_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
     }
 
     # Requisições HTTP normais (Gunicorn via socket Unix)
@@ -566,7 +579,9 @@ pip install \
     asgiref==3.10.0 \
     Twisted==25.5.0 \
     autobahn==25.10.1 \
-    ansible==6.7.0
+    ansible==6.7.0 \
+    pyftpdlib \
+    tftpy
 ```
 
 ---
@@ -586,7 +601,7 @@ pip install \
 ├── modelo_equipamento/   # Modelos de equipamentos
 ├── templates/            # Templates globais (base.html, login.html)
 ├── static/               # Arquivos estáticos (coletados pelo collectstatic)
-├── media/                # Uploads (backups, documentos, VPNs, faturas)
+├── media/                # Uploads (backups, documentos, VPNs, faturas, firmware)
 ├── venv/                 # Ambiente virtual Python
 ├── tmp/                  # Temporários (Ansible, etc.)
 ├── gunicorn.sock         # Socket Unix do Gunicorn (criado em runtime)
@@ -607,6 +622,8 @@ Após a instalação, acesse o sistema e configure:
 3. **Sistema → Clientes** — Cadastre os primeiros clientes
 4. **Sistema → Função de equipamento** — Cadastre tipos (Roteador, Switch, OLT, Firewall...)
 5. **Sistema → Modelos de equipamento** — Cadastre modelos específicos
+6. **Sistema → Ferramentas → Arquivos / Firmware** — Crie a estrutura de pastas para firmware e arquivos de configuração
+7. **Sistema → Ferramentas → Pesquisa LG** — Disponível imediatamente; acessível também pelo botão "Consultar LG" na aba IRR/RPKI de cada cliente
 
 ---
 

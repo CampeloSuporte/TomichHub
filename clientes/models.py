@@ -794,3 +794,95 @@ def criar_prefixos_padrao(sender, instance, created, **kwargs):
                 descricao=descricao,
             )
     
+
+
+# ── Gerenciador de Firmware / Arquivos ──────────────────────────────────────
+import os, secrets, string
+from django.utils import timezone
+
+class FirmwarePasta(models.Model):
+    nome     = models.CharField(max_length=255)
+    pai      = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subpastas')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.caminho_completo
+
+    @property
+    def caminho_completo(self):
+        partes = [self.nome]
+        p = self.pai
+        while p:
+            partes.insert(0, p.nome)
+            p = p.pai
+        return '/'.join(partes)
+
+    @property
+    def caminho_fs(self):
+        from django.conf import settings
+        return os.path.join(settings.MEDIA_ROOT, 'firmware', self.caminho_completo)
+
+
+def firmware_upload_path(instance, filename):
+    pasta_path = instance.pasta.caminho_completo if instance.pasta else ''
+    return os.path.join('firmware', pasta_path, filename)
+
+
+class FirmwareArquivo(models.Model):
+    nome       = models.CharField(max_length=500)
+    arquivo    = models.FileField(upload_to=firmware_upload_path)
+    tamanho    = models.BigIntegerField(default=0)
+    mime_type  = models.CharField(max_length=200, blank=True)
+    pasta      = models.ForeignKey(FirmwarePasta, null=True, blank=True, on_delete=models.SET_NULL, related_name='arquivos')
+    criado_em  = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+    def tamanho_legivel(self):
+        b = self.tamanho
+        for u in ('B', 'KB', 'MB', 'GB'):
+            if b < 1024:
+                return f'{b:.1f} {u}'
+            b /= 1024
+        return f'{b:.1f} TB'
+
+    @property
+    def caminho_relativo(self):
+        pasta = self.pasta.caminho_completo + '/' if self.pasta else ''
+        return pasta + self.nome
+
+
+class FirmwareCompartilhamento(models.Model):
+    arquivo    = models.ForeignKey(FirmwareArquivo, on_delete=models.CASCADE, related_name='compartilhamentos')
+    token      = models.CharField(max_length=64, unique=True)
+    expira_em  = models.DateTimeField()
+    ftp_user   = models.CharField(max_length=50, blank=True)
+    ftp_senha  = models.CharField(max_length=50, blank=True)
+    criado_em  = models.DateTimeField(auto_now_add=True)
+    acessos    = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    @property
+    def valido(self):
+        return timezone.now() < self.expira_em
+
+    @staticmethod
+    def gerar_token():
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def gerar_credenciais():
+        chars = string.ascii_letters + string.digits
+        user  = 'fw_' + ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
+        senha = ''.join(secrets.choice(chars) for _ in range(12))
+        return user, senha

@@ -47,9 +47,9 @@
                         <a href="{% url 'editar_consultoria' consultoria.id %}" class="btn btn-sm btn-warning">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <form method="POST" action="{% url 'deletar_consultoria' consultoria.id %}" style="display: inline;">
+                        <form method="POST" action="{% url 'deletar_consultoria' consultoria.id %}" style="display: inline;" onsubmit="event.preventDefault()">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza?')">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="uiConfirm({ titulo: 'Excluir Consultoria', msg: 'Tem certeza que deseja excluir esta consultoria?', icone: 'fas fa-trash', iconeCor: '#e06060', btnLabel: 'Excluir' }).then(ok => { if (ok) this.closest('form').submit() })">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>

@@ -59,6 +59,14 @@
                         </a></li>
                         {% endif %}
                         <li><hr class="dropdown-divider"></li>
+                        <li><span style="font-size:.7rem;color:#555;text-transform:uppercase;letter-spacing:.06em;padding:4px 16px;display:block">Ferramentas</span></li>
+                        <li><a class="dropdown-item" href="{% url 'lg_pesquisa' %}">
+                            <i class="fas fa-route me-2"></i>Pesquisa LG
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'firmware_index' %}">
+                            <i class="fas fa-hdd me-2"></i>Arquivos / Firmware
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
                     </ul>
                 </div>
             </div>
@@ -435,5 +443,148 @@
     .client-search-results::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
     </style>
 </body>
+
+<!-- ══ UI Globals: confirm / alert / toast ═══════════════════════════════════
+     Disponível em todas as páginas via uiConfirm(), uiAlert(), uiToast()
+═══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Modal de confirmação -->
+<div class="modal fade" id="uiModalConfirm" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d;box-shadow:0 8px 40px rgba(0,0,0,.7)">
+      <div class="modal-body" style="padding:28px 24px 16px;text-align:center">
+        <div id="ui-confirm-icon" style="font-size:2.2rem;margin-bottom:14px"></div>
+        <div id="ui-confirm-title" style="font-size:.95rem;font-weight:600;color:#e6edf3;margin-bottom:8px"></div>
+        <div id="ui-confirm-msg" style="font-size:.82rem;color:#8b949e;line-height:1.55"></div>
+      </div>
+      <div class="modal-footer" style="border-color:#30363d;padding:12px 20px;gap:8px">
+        <button id="ui-confirm-cancel" class="btn btn-sm flex-fill"
+          style="background:transparent;border:1px solid #30363d;color:#8b949e">
+          Cancelar
+        </button>
+        <button id="ui-confirm-ok" class="btn btn-sm flex-fill" style="font-weight:500">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de alerta -->
+<div class="modal fade" id="uiModalAlert" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d;box-shadow:0 8px 40px rgba(0,0,0,.7)">
+      <div class="modal-body" style="padding:28px 24px 16px;text-align:center">
+        <div id="ui-alert-icon" style="font-size:2.2rem;margin-bottom:14px"></div>
+        <div id="ui-alert-title" style="font-size:.95rem;font-weight:600;color:#e6edf3;margin-bottom:8px"></div>
+        <div id="ui-alert-msg" style="font-size:.82rem;color:#8b949e;line-height:1.55"></div>
+      </div>
+      <div class="modal-footer" style="border-color:#30363d;padding:12px 20px">
+        <button id="ui-alert-ok" class="btn btn-sm w-100"
+          style="background:rgba(0,217,255,.12);border:1px solid rgba(0,217,255,.4);color:#00d9ff;font-weight:500">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast global -->
+<div id="ui-toast" style="
+    position:fixed;bottom:28px;right:28px;z-index:99999;
+    padding:10px 20px;border-radius:8px;border:1px solid;
+    font-size:.85rem;font-weight:500;min-width:200px;text-align:center;
+    opacity:0;transform:translateY(12px);
+    transition:opacity .25s,transform .25s;pointer-events:none;
+"></div>
+
+<script>
+(function(){
+
+// ── uiConfirm ─────────────────────────────────────────────────────────────
+window.uiConfirm = function({ titulo='Confirmar', msg='', icone='fas fa-exclamation-triangle',
+    iconeCor='#e06060', btnLabel='Confirmar', btnCor='#e06060' } = {}) {
+    return new Promise(resolve => {
+        document.getElementById('ui-confirm-icon').innerHTML =
+            `<i class="${icone}" style="color:${iconeCor}"></i>`;
+        document.getElementById('ui-confirm-title').textContent = titulo;
+        document.getElementById('ui-confirm-msg').textContent   = msg;
+        const btnOk = document.getElementById('ui-confirm-ok');
+        const rgb   = _uiHexRgb(btnCor);
+        btnOk.textContent          = btnLabel;
+        btnOk.style.background     = `rgba(${rgb},.15)`;
+        btnOk.style.borderColor    = `rgba(${rgb},.5)`;
+        btnOk.style.color          = btnCor;
+
+        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('uiModalConfirm'));
+        m.show();
+
+        const ok  = () => { _uiCleanup(m, ok, cancel); resolve(true);  };
+        const cancel = () => { _uiCleanup(m, ok, cancel); resolve(false); };
+        btnOk.addEventListener('click', ok);
+        document.getElementById('ui-confirm-cancel').addEventListener('click', cancel);
+    });
+};
+
+// ── uiAlert ──────────────────────────────────────────────────────────────
+window.uiAlert = function({ titulo='Aviso', msg='', icone='fas fa-info-circle',
+    iconeCor='#00d9ff', tipo='info' } = {}) {
+    // Atalho: uiAlert('mensagem simples')
+    if (typeof arguments[0] === 'string') {
+        const txt = arguments[0];
+        const isErr = /erro|error|falha|fail/i.test(txt);
+        return window.uiAlert({ titulo: isErr ? 'Erro' : 'Aviso', msg: txt,
+            icone: isErr ? 'fas fa-times-circle' : 'fas fa-exclamation-circle',
+            iconeCor: isErr ? '#e06060' : '#ffaa00' });
+    }
+    return new Promise(resolve => {
+        document.getElementById('ui-alert-icon').innerHTML =
+            `<i class="${icone}" style="color:${iconeCor}"></i>`;
+        document.getElementById('ui-alert-title').textContent = titulo;
+        document.getElementById('ui-alert-msg').textContent   = msg;
+
+        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('uiModalAlert'));
+        m.show();
+
+        const ok = () => {
+            m.hide();
+            document.getElementById('ui-alert-ok').removeEventListener('click', ok);
+            resolve();
+        };
+        document.getElementById('ui-alert-ok').addEventListener('click', ok);
+    });
+};
+
+// ── uiToast ───────────────────────────────────────────────────────────────
+window.uiToast = function(msg, tipo='ok') {
+    const el  = document.getElementById('ui-toast');
+    const cor = tipo === 'ok' ? '#00ff88' : tipo === 'info' ? '#00d9ff' : '#e06060';
+    const rgb = _uiHexRgb(cor);
+    el.textContent      = msg;
+    el.style.background = `rgba(${rgb},.12)`;
+    el.style.borderColor= `rgba(${rgb},.4)`;
+    el.style.color      = cor;
+    el.style.opacity    = '1';
+    el.style.transform  = 'translateY(0)';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => {
+        el.style.opacity   = '0';
+        el.style.transform = 'translateY(12px)';
+    }, 3200);
+};
+
+function _uiCleanup(m, ok, cancel) {
+    m.hide();
+    document.getElementById('ui-confirm-ok').removeEventListener('click', ok);
+    document.getElementById('ui-confirm-cancel').removeEventListener('click', cancel);
+}
+
+function _uiHexRgb(hex) {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : '224,96,96';
+}
+
+})();
+</script>
 
 </html>

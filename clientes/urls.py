@@ -7,6 +7,7 @@ from .documentacao_views import (
     proxy_ativo_cliente,
 )
 from . import ipam_views as ipam
+from . import firmware_views as fw
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -151,6 +152,17 @@ urlpatterns = [
     path('<int:cliente_id>/irr/enviar/',       views.irr_enviar,           name='irr_enviar'),
     path('<int:cliente_id>/irr/consultar/',    views.irr_consultar_whois,   name='irr_consultar_whois'),
     path('<int:cliente_id>/irr/verificar/',    views.irr_verificar_resposta, name='irr_verificar_resposta'),
+
+    # ── Firmware / Gerenciador de Arquivos ───────────────────────────────
+    path('firmware/',                                       fw.firmware_index,            name='firmware_index'),
+    path('firmware/listar/',                                fw.firmware_listar,           name='firmware_listar'),
+    path('firmware/pasta/criar/',                           fw.firmware_criar_pasta,      name='firmware_criar_pasta'),
+    path('firmware/upload/',                                fw.firmware_upload,           name='firmware_upload'),
+    path('firmware/arquivo/<int:arquivo_id>/deletar/',      fw.firmware_deletar_arquivo,  name='firmware_deletar_arquivo'),
+    path('firmware/pasta/<int:pasta_id>/deletar/',          fw.firmware_deletar_pasta,    name='firmware_deletar_pasta'),
+    path('firmware/arquivo/<int:arquivo_id>/compartilhar/', fw.firmware_compartilhar,     name='firmware_compartilhar'),
+    path('firmware/arquivo/<int:arquivo_id>/links/',        fw.firmware_links_ativos,     name='firmware_links_ativos'),
+    path('firmware/link/<int:comp_id>/revogar/',            fw.firmware_revogar_link,     name='firmware_revogar_link'),
 
     # ── Editor de Topologia de Rede ──────────────────────────────────────
     path('<int:cliente_id>/topologia/editor/', views.topologia_editor, name='topologia_editor'),

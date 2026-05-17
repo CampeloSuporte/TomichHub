@@ -7,7 +7,7 @@
         <h2 class="text-white fw-bold">📄 Fatura {{ fatura.numero_fatura }}</h2>
         <div class="btn-group">
             {% if request.user.is_staff and not fatura.boleto %}
-            <a href="{% url 'gerar_boleto_fatura' fatura.id %}" class="btn btn-success" onclick="return confirm('Gerar boleto?')">
+            <a href="{% url 'gerar_boleto_fatura' fatura.id %}" class="btn btn-success" onclick="event.preventDefault(); uiConfirm({ titulo: 'Gerar Boleto', msg: 'Deseja gerar o boleto para esta fatura?', icone: 'fas fa-file-pdf', iconeCor: '#e06060', btnLabel: 'Gerar' }).then(ok => { if (ok) window.location.href = this.href })">
                 <i class="fas fa-file-pdf me-1"></i> Gerar Boleto
             </a>
             {% endif %}

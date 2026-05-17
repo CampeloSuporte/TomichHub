@@ -1,0 +1,694 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="main-content">
+<div class="container-fluid" style="max-width:1200px">
+
+  <!-- Cabeçalho -->
+  <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <a href="{% url 'quadro_geral' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i> Dashboard
+    </a>
+    <div>
+      <h4 class="mb-0"><i class="fas fa-hdd me-2" style="color:#00d9ff"></i>Gerenciador de Arquivos</h4>
+      <small style="color:#8b949e">Firmware, imagens de sistema, arquivos de configuração</small>
+    </div>
+    <div class="ms-auto d-flex gap-2 flex-wrap">
+      <button class="btn btn-sm" onclick="fwNovasPasta()"
+        style="background:rgba(255,170,0,.12);border:1px solid rgba(255,170,0,.4);color:#ffaa00">
+        <i class="fas fa-folder-plus me-1"></i> Nova Pasta
+      </button>
+      <label class="btn btn-sm mb-0" style="background:rgba(0,217,255,.12);border:1px solid rgba(0,217,255,.4);color:#00d9ff;cursor:pointer">
+        <i class="fas fa-cloud-upload-alt me-1"></i> Upload
+        <input type="file" id="fw-upload-input" multiple style="display:none" onchange="fwUpload(this.files)">
+      </label>
+    </div>
+  </div>
+
+  <!-- Barra de caminho (breadcrumb) -->
+  <div class="card mb-3">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-2 flex-wrap" id="fw-breadcrumb">
+      <span style="color:#555;font-size:.82rem"><i class="fas fa-hdd me-1"></i></span>
+      <a href="#" onclick="fwNavegar(null)" style="font-size:.85rem;color:#8b949e;text-decoration:none">
+        <i class="fas fa-home me-1"></i>Raiz
+      </a>
+    </div>
+  </div>
+
+  <!-- Área de drop + listagem -->
+  <div class="card" id="fw-dropzone" ondragover="fwDragOver(event)" ondragleave="fwDragLeave(event)" ondrop="fwDrop(event)">
+    <div class="card-body p-0">
+
+      <!-- Barra de status upload -->
+      <div id="fw-upload-bar" style="display:none;padding:10px 16px;background:rgba(0,217,255,.05);border-bottom:1px solid rgba(0,217,255,.15)">
+        <div class="d-flex align-items-center gap-3">
+          <div style="flex:1">
+            <div style="font-size:.82rem;color:#8b949e" id="fw-upload-nome">Enviando...</div>
+            <div class="progress mt-1" style="height:6px;background:rgba(255,255,255,.08)">
+              <div id="fw-upload-prog" class="progress-bar" style="background:#00d9ff;width:0%;transition:width .2s"></div>
+            </div>
+          </div>
+          <span id="fw-upload-pct" style="font-size:.82rem;color:#00d9ff;min-width:40px;text-align:right">0%</span>
+        </div>
+      </div>
+
+      <!-- Tabela de arquivos -->
+      <div style="overflow-x:auto">
+        <table class="table table-hover mb-0" style="min-width:600px">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,.06)">
+              <th style="font-size:.75rem;color:#555;font-weight:500;padding:10px 16px;width:40px"></th>
+              <th style="font-size:.75rem;color:#555;font-weight:500;padding:10px 8px">Nome</th>
+              <th style="font-size:.75rem;color:#555;font-weight:500;padding:10px 8px;width:120px">Tamanho</th>
+              <th style="font-size:.75rem;color:#555;font-weight:500;padding:10px 8px;width:140px">Data</th>
+              <th style="font-size:.75rem;color:#555;font-weight:500;padding:10px 8px;width:130px">Links ativos</th>
+              <th style="font-size:.75rem;color:#555;font-weight:500;padding:10px 16px;width:130px;text-align:right">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="fw-tbody">
+            <tr><td colspan="6" class="text-center py-5" style="color:#555">
+              <i class="fas fa-circle-notch fa-spin me-2" style="color:#00d9ff"></i>Carregando…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Estado vazio -->
+      <div id="fw-vazio" style="display:none;padding:60px;text-align:center">
+        <i class="fas fa-folder-open" style="font-size:3rem;color:#2a3040;margin-bottom:16px;display:block"></i>
+        <div style="color:#555;font-size:.9rem">Pasta vazia — arraste arquivos aqui ou use o botão Upload</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══ Modal: Nova Pasta ══════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalNovaPasta" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d">
+      <div class="modal-header" style="border-color:#30363d">
+        <h5 class="modal-title" style="font-size:.95rem"><i class="fas fa-folder-plus me-2" style="color:#ffaa00"></i>Nova Pasta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input id="nova-pasta-nome" type="text" class="form-control" placeholder="Nome da pasta"
+          onkeydown="if(event.key==='Enter')fwCriarPasta()">
+        <div id="nova-pasta-erro" style="display:none;margin-top:8px;padding:6px 12px;border-radius:6px;background:rgba(224,96,96,.1);border:1px solid rgba(224,96,96,.3);color:#e06060;font-size:.82rem"></div>
+      </div>
+      <div class="modal-footer" style="border-color:#30363d">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-sm" onclick="fwCriarPasta()"
+          style="background:rgba(255,170,0,.15);border:1px solid #ffaa00;color:#ffaa00">
+          <i class="fas fa-check me-1"></i>Criar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Compartilhar ════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalCompartilhar" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="background:#0d1117;border:1px solid #30363d">
+      <div class="modal-header" style="border-color:#30363d">
+        <div>
+          <h5 class="modal-title mb-0" style="font-size:.95rem"><i class="fas fa-share-alt me-2" style="color:#00d9ff"></i>Compartilhar arquivo</h5>
+          <div id="comp-nome-arq" style="font-size:.78rem;color:#8b949e;margin-top:2px"></div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Configuração do link -->
+        <div id="comp-config" class="row g-3 mb-4">
+          <div class="col-sm-5">
+            <label style="font-size:.78rem;color:#8b949e;display:block;margin-bottom:6px">VALIDADE (HORAS):</label>
+            <div class="d-flex gap-2 align-items-center">
+              <input id="comp-horas" type="number" min="1" max="8760" value="24" class="form-control form-control-sm" style="width:90px">
+              <div class="d-flex flex-wrap gap-1">
+                <button class="btn btn-xs" onclick="document.getElementById('comp-horas').value=1" style="font-size:.7rem;padding:2px 6px;border:1px solid #30363d;color:#8b949e;background:transparent">1h</button>
+                <button class="btn btn-xs" onclick="document.getElementById('comp-horas').value=24" style="font-size:.7rem;padding:2px 6px;border:1px solid #30363d;color:#8b949e;background:transparent">24h</button>
+                <button class="btn btn-xs" onclick="document.getElementById('comp-horas').value=72" style="font-size:.7rem;padding:2px 6px;border:1px solid #30363d;color:#8b949e;background:transparent">3d</button>
+                <button class="btn btn-xs" onclick="document.getElementById('comp-horas').value=168" style="font-size:.7rem;padding:2px 6px;border:1px solid #30363d;color:#8b949e;background:transparent">7d</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="comp-com-senha">
+              <label class="form-check-label" for="comp-com-senha" style="font-size:.82rem;color:#8b949e">
+                Gerar usuário/senha (FTP/SFTP)
+              </label>
+            </div>
+          </div>
+          <div class="col-sm-3 d-flex align-items-end">
+            <button class="btn btn-sm w-100" onclick="fwGerarLink()"
+              style="background:rgba(0,217,255,.15);border:1px solid #00d9ff;color:#00d9ff">
+              <i class="fas fa-link me-1"></i>Gerar Link
+            </button>
+          </div>
+        </div>
+
+        <!-- Resultado do link gerado -->
+        <div id="comp-resultado" style="display:none">
+          <div id="comp-info-bar" class="mb-3" style="padding:10px 14px;border-radius:8px;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.25)">
+            <div class="d-flex align-items-center flex-wrap gap-3">
+              <div class="d-flex flex-wrap gap-3 flex-grow-1">
+                <span style="font-size:.8rem;color:#8b949e">Expira em: <strong style="color:#00ff88" id="comp-expira"></strong></span>
+                <span style="font-size:.8rem;color:#8b949e">Tamanho: <strong style="color:#e6edf3" id="comp-tamanho"></strong></span>
+              </div>
+              <button id="comp-btn-revogar" onclick="fwRevogarLinkAtual()"
+                style="font-size:.75rem;padding:4px 12px;border-radius:6px;border:1px solid rgba(224,96,96,.4);background:rgba(224,96,96,.1);color:#e06060;cursor:pointer;white-space:nowrap">
+                <i class="fas fa-ban me-1"></i>Encerrar este link
+              </button>
+            </div>
+          </div>
+
+          <!-- Credenciais (se gerado com senha) -->
+          <div id="comp-creds" style="display:none;margin-bottom:16px;padding:10px 14px;border-radius:8px;background:rgba(180,100,255,.06);border:1px solid rgba(180,100,255,.25)">
+            <div style="font-size:.75rem;color:#b464ff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Credenciais geradas</div>
+            <div class="d-flex gap-4 flex-wrap">
+              <div>
+                <span style="font-size:.72rem;color:#8b949e">Usuário</span>
+                <div style="font-family:monospace;font-size:.88rem;color:#e6edf3" id="comp-ftp-user"></div>
+              </div>
+              <div>
+                <span style="font-size:.72rem;color:#8b949e">Senha</span>
+                <div style="font-family:monospace;font-size:.88rem;color:#e6edf3" id="comp-ftp-senha"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Links por protocolo -->
+          <div id="comp-links-lista"></div>
+        </div>
+
+        <!-- Links ativos existentes -->
+        <div id="comp-links-ativos" style="margin-top:16px"></div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Detalhes de Link Existente ══════════════════════════════════ -->
+<div class="modal fade" id="modalLinkDetalhe" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="background:#0d1117;border:1px solid #30363d">
+      <div class="modal-header" style="border-color:#30363d">
+        <h5 class="modal-title" style="font-size:.95rem"><i class="fas fa-link me-2" style="color:#00d9ff"></i>Links ativos</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modal-link-detalhe-body"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+:root { --fw-border: rgba(255,255,255,.06); }
+#fw-tbody tr { border-color: var(--fw-border) !important; }
+#fw-tbody td { padding: 10px 8px; vertical-align: middle; border-color: var(--fw-border) !important; }
+#fw-tbody td:first-child { padding-left:16px; }
+#fw-tbody td:last-child  { padding-right:16px; }
+.fw-row-pasta:hover { background:rgba(255,170,0,.04) !important; cursor:pointer; }
+.fw-row-arquivo:hover { background:rgba(0,217,255,.03) !important; }
+.fw-icon-pasta  { color:#ffaa00; font-size:1.1rem; }
+.fw-icon-file   { color:#8b949e; font-size:1rem; }
+.fw-btn { border:none;background:transparent;padding:4px 7px;border-radius:5px;cursor:pointer;font-size:.8rem; }
+.fw-btn:hover { background:rgba(255,255,255,.07); }
+.fw-btn-share { color:#00d9ff; }
+.fw-btn-delete { color:#e06060; }
+.fw-btn-links  { color:#00ff88; }
+#fw-dropzone.drag-over { border-color:#00d9ff !important; background:rgba(0,217,255,.04); }
+.proto-row { margin-bottom:10px; }
+.proto-label { font-size:.68rem;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px; }
+.proto-box {
+    display:flex;align-items:center;gap:8px;
+    background:#0d1117;border:1px solid #30363d;border-radius:6px;
+    padding:8px 12px;
+}
+.proto-box code {
+    flex:1;font-family:monospace;font-size:.8rem;color:#e6edf3;
+    word-break:break-all;background:transparent;border:none;padding:0;
+}
+.proto-copy {
+    cursor:pointer;font-size:.75rem;padding:3px 10px;border-radius:4px;
+    background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);color:#00d9ff;
+    white-space:nowrap;transition:background .15s;
+}
+.proto-copy:hover { background:rgba(0,217,255,.2); }
+.proto-copy.copied { background:rgba(0,255,136,.15);border-color:rgba(0,255,136,.4);color:#00ff88; }
+.link-ativo-card {
+    border:1px solid #30363d;border-radius:8px;padding:12px 14px;margin-bottom:10px;
+    background:#0d1117;
+}
+</style>
+
+<script>
+const CSRF = (()=>{
+    const c=document.cookie.split(';').find(c=>c.trim().startsWith('csrftoken='));
+    return c?c.trim().split('=')[1]:'';
+})();
+
+let FW_PASTA_ATUAL = null;
+let FW_ARQUIVO_ATUAL = null; // id do arquivo no modal
+
+// ── Navegação ─────────────────────────────────────────────────────────────
+async function fwNavegar(pasta_id) {
+    FW_PASTA_ATUAL = pasta_id;
+    document.getElementById('fw-tbody').innerHTML = `
+        <tr><td colspan="6" class="text-center py-4" style="color:#555">
+            <i class="fas fa-circle-notch fa-spin me-2" style="color:#00d9ff"></i>Carregando…
+        </td></tr>`;
+    const r = await fetch(`/clientes/firmware/listar/?pasta_id=${pasta_id||''}`);
+    const d = await r.json();
+    fwRenderizar(d);
+}
+
+function fwRenderizar(d) {
+    // Breadcrumb
+    let bc = `<a href="#" onclick="fwNavegar(null)" style="font-size:.85rem;color:#8b949e;text-decoration:none"><i class="fas fa-home me-1"></i>Raiz</a>`;
+    for (const p of d.breadcrumb) {
+        bc += ` <span style="color:#30363d">/</span> <a href="#" onclick="fwNavegar(${p.id})" style="font-size:.85rem;color:#8b949e;text-decoration:none">${p.nome}</a>`;
+    }
+    if (d.breadcrumb.length) {
+        const ult = d.breadcrumb[d.breadcrumb.length-1];
+        bc = bc.replace(`onclick="fwNavegar(${ult.id})"`, '').replace('style="', 'style="color:#e6edf3;');
+    }
+    document.getElementById('fw-breadcrumb').innerHTML =
+        `<span style="color:#555;font-size:.82rem"><i class="fas fa-hdd me-1"></i></span>` + bc;
+
+    // Tabela
+    const isEmpty = d.pastas.length === 0 && d.arquivos.length === 0;
+    document.getElementById('fw-vazio').style.display = isEmpty ? '' : 'none';
+
+    let html = '';
+    for (const p of d.pastas) {
+        const nArq = ''; // contagem futura
+        html += `<tr class="fw-row-pasta" onclick="fwNavegar(${p.id})">
+            <td><i class="fas fa-folder fw-icon-pasta"></i></td>
+            <td style="color:#e6edf3;font-weight:500">${p.nome}</td>
+            <td style="color:#555">—</td>
+            <td style="color:#555">—</td>
+            <td style="color:#555">—</td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+                <button class="fw-btn fw-btn-delete" onclick="fwDeletarPasta(${p.id},'${p.nome}')" title="Excluir pasta">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+    }
+    for (const a of d.arquivos) {
+        const icone = fwIcone(a.nome, a.mime_type);
+        const nLinks = a.links_ativos.length;
+        const linkBadge = nLinks > 0
+            ? `<span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);color:#00ff88;cursor:pointer"
+                onclick="fwVerLinks(${a.id})" title="Ver links ativos">
+                <i class="fas fa-link me-1"></i>${nLinks} link${nLinks>1?'s':''}
+               </span>`
+            : `<span style="font-size:.72rem;color:#555">—</span>`;
+        html += `<tr class="fw-row-arquivo">
+            <td><i class="${icone.cls}" style="color:${icone.cor};font-size:1rem"></i></td>
+            <td>
+                <div style="color:#e6edf3;font-size:.88rem;word-break:break-all">${a.nome}</div>
+                <div style="color:#555;font-size:.72rem">${a.mime_type||''}</div>
+            </td>
+            <td style="color:#8b949e;font-size:.82rem">${a.tamanho_str}</td>
+            <td style="color:#8b949e;font-size:.78rem">${a.criado_em}</td>
+            <td>${linkBadge}</td>
+            <td style="text-align:right">
+                <button class="fw-btn fw-btn-share" data-id="${a.id}" data-nome="${a.nome}" data-tam="${a.tamanho_str}" onclick="fwAbrirCompartilhar(this.dataset.id, this.dataset.nome, this.dataset.tam)" title="Compartilhar">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <button class="fw-btn fw-btn-delete" data-id="${a.id}" data-nome="${a.nome}" onclick="fwDeletarArquivo(this.dataset.id, this.dataset.nome)" title="Excluir">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+    }
+    document.getElementById('fw-tbody').innerHTML = html || '';
+}
+
+function fwIcone(nome, mime) {
+    const ext = (nome.split('.').pop()||'').toLowerCase();
+    if (['npk','img','bin','fw','firmware','rom'].includes(ext))
+        return {cls:'fas fa-microchip', cor:'#00d9ff'};
+    if (['zip','gz','tar','xz','7z','rar'].includes(ext))
+        return {cls:'fas fa-file-archive', cor:'#ffaa00'};
+    if (['iso','img'].includes(ext))
+        return {cls:'fas fa-compact-disc', cor:'#b464ff'};
+    if (['cfg','conf','txt','ini'].includes(ext))
+        return {cls:'fas fa-file-alt', cor:'#8b949e'};
+    if (['pdf'].includes(ext))
+        return {cls:'fas fa-file-pdf', cor:'#e06060'};
+    return {cls:'fas fa-file', cor:'#8b949e'};
+}
+
+// ── Nova Pasta ────────────────────────────────────────────────────────────
+let _modalNovaPasta = null;
+let _novaPastaCriadaNome = null;
+
+function fwNovasPasta() {
+    document.getElementById('nova-pasta-nome').value = '';
+    document.getElementById('nova-pasta-erro').style.display = 'none';
+    _novaPastaCriadaNome = null;
+    if (!_modalNovaPasta) {
+        const el = document.getElementById('modalNovaPasta');
+        _modalNovaPasta = bootstrap.Modal.getOrCreateInstance(el);
+        el.addEventListener('hidden.bs.modal', () => {
+            if (_novaPastaCriadaNome) {
+                fwNavegar(FW_PASTA_ATUAL);
+                uiToast(`Pasta "${_novaPastaCriadaNome}" criada com sucesso`);
+                _novaPastaCriadaNome = null;
+            }
+        });
+    }
+    _modalNovaPasta.show();
+    setTimeout(() => document.getElementById('nova-pasta-nome').focus(), 300);
+}
+
+async function fwCriarPasta() {
+    const nome = document.getElementById('nova-pasta-nome').value.trim();
+    if (!nome) return;
+    const erroEl = document.getElementById('nova-pasta-erro');
+    erroEl.style.display = 'none';
+    const btn = document.querySelector('#modalNovaPasta .modal-footer .btn:last-child');
+    btn.disabled = true;
+    const r = await fetch('/clientes/firmware/pasta/criar/', {
+        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        body: JSON.stringify({nome, pai_id: FW_PASTA_ATUAL})
+    });
+    btn.disabled = false;
+    const d = await r.json();
+    if (d.ok) {
+        _novaPastaCriadaNome = nome;
+        _modalNovaPasta.hide();
+    } else {
+        erroEl.textContent = d.erro || 'Erro ao criar pasta';
+        erroEl.style.display = '';
+    }
+}
+
+// ── Upload ────────────────────────────────────────────────────────────────
+function fwUpload(files) {
+    if (!files || !files.length) return;
+    fwUploadFila([...files], 0);
+}
+
+async function fwUploadFila(files, idx) {
+    if (idx >= files.length) {
+        document.getElementById('fw-upload-bar').style.display = 'none';
+        document.getElementById('fw-upload-input').value = '';
+        fwNavegar(FW_PASTA_ATUAL);
+        return;
+    }
+    const f = files[idx];
+    const bar = document.getElementById('fw-upload-bar');
+    const prog = document.getElementById('fw-upload-prog');
+    const pct  = document.getElementById('fw-upload-pct');
+    const nome = document.getElementById('fw-upload-nome');
+
+    bar.style.display = '';
+    nome.textContent = `Enviando ${idx+1}/${files.length}: ${f.name}`;
+    prog.style.width = '0%';
+    pct.textContent = '0%';
+
+    const fd = new FormData();
+    fd.append('arquivo', f);
+    if (FW_PASTA_ATUAL) fd.append('pasta_id', FW_PASTA_ATUAL);
+
+    let uploadOk = false;
+    await new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/clientes/firmware/upload/');
+        xhr.setRequestHeader('X-CSRFToken', CSRF);
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const p = Math.round(e.loaded / e.total * 100);
+                prog.style.width = p + '%';
+                pct.textContent = p + '%';
+            }
+        };
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                uploadOk = true;
+            } else {
+                let msg = `Erro ${xhr.status} ao enviar "${f.name}"`;
+                if (xhr.status === 413) msg = `Arquivo "${f.name}" é muito grande para o servidor`;
+                uiToast(msg, 'erro');
+            }
+            resolve();
+        };
+        xhr.onerror = () => {
+            uiToast(`Falha de conexão ao enviar "${f.name}"`, 'erro');
+            resolve();
+        };
+        xhr.send(fd);
+    });
+
+    if (uploadOk) {
+        uiToast(`"${f.name}" enviado com sucesso`);
+    }
+    fwUploadFila(files, idx+1);
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────
+function fwDragOver(e) {
+    e.preventDefault();
+    document.getElementById('fw-dropzone').classList.add('drag-over');
+}
+function fwDragLeave(e) {
+    document.getElementById('fw-dropzone').classList.remove('drag-over');
+}
+function fwDrop(e) {
+    e.preventDefault();
+    document.getElementById('fw-dropzone').classList.remove('drag-over');
+    fwUpload(e.dataTransfer.files);
+}
+
+// ── Deletar ────────────────────────────────────────────────────────────────
+async function fwDeletarArquivo(id, nome) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir arquivo',
+        msg: `"${nome}" será excluído permanentemente.`,
+        icone: 'fas fa-trash-alt',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir',
+    });
+    if (!ok) return;
+    const r = await fetch(`/clientes/firmware/arquivo/${id}/deletar/`, {
+        method:'POST', headers:{'X-CSRFToken':CSRF}
+    });
+    const d = await r.json();
+    if (d.ok) { uiToast(`"${nome}" excluído`); fwNavegar(FW_PASTA_ATUAL); }
+}
+
+async function fwDeletarPasta(id, nome) {
+    const ok = await uiConfirm({
+        titulo: 'Excluir pasta',
+        msg: `A pasta "${nome}" e todo o seu conteúdo serão excluídos permanentemente.`,
+        icone: 'fas fa-folder-minus',
+        iconeCor: '#e06060',
+        btnLabel: 'Excluir tudo',
+    });
+    if (!ok) return;
+    const r = await fetch(`/clientes/firmware/pasta/${id}/deletar/`, {
+        method:'POST', headers:{'X-CSRFToken':CSRF}
+    });
+    const d = await r.json();
+    if (d.ok) { uiToast(`Pasta "${nome}" excluída`); fwNavegar(FW_PASTA_ATUAL); }
+}
+
+// ── Compartilhar ──────────────────────────────────────────────────────────
+let _modalCompartilhar = null;
+let _modalLinkDetalhe  = null;
+
+function fwAbrirCompartilhar(id, nome, tamanho) {
+    FW_ARQUIVO_ATUAL = id;
+    document.getElementById('comp-nome-arq').textContent = nome + ' · ' + tamanho;
+    document.getElementById('comp-resultado').style.display = 'none';
+    document.getElementById('comp-links-ativos').innerHTML = '';
+    fwCarregarLinksAtivos(id);
+    _modalCompartilhar = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompartilhar'));
+    _modalCompartilhar.show();
+}
+
+let FW_COMP_ATUAL = null; // ID do compartilhamento recém-gerado
+
+async function fwGerarLink() {
+    const horas    = parseInt(document.getElementById('comp-horas').value) || 24;
+    const comSenha = document.getElementById('comp-com-senha').checked;
+    const btnGerar = document.querySelector('#comp-config .btn');
+    btnGerar.disabled = true;
+    const r = await fetch(`/clientes/firmware/arquivo/${FW_ARQUIVO_ATUAL}/compartilhar/`, {
+        method:'POST', headers:{'X-CSRFToken':CSRF,'Content-Type':'application/json'},
+        body:JSON.stringify({horas, com_senha: comSenha})
+    });
+    btnGerar.disabled = false;
+    const d = await r.json();
+    if (!d.ok) { await uiAlert({ titulo:'Erro', msg: d.erro||'Erro ao compartilhar', icone:'fas fa-times-circle', iconeCor:'#e06060' }); return; }
+
+    FW_COMP_ATUAL = d.comp_id;
+    document.getElementById('comp-expira').textContent = d.expira_em;
+    document.getElementById('comp-tamanho').textContent = d.tamanho;
+    document.getElementById('comp-resultado').style.display = '';
+
+    if (d.ftp_user) {
+        document.getElementById('comp-creds').style.display = '';
+        document.getElementById('comp-ftp-user').textContent = d.ftp_user;
+        document.getElementById('comp-ftp-senha').textContent = d.ftp_senha;
+    } else {
+        document.getElementById('comp-creds').style.display = 'none';
+    }
+
+    fwRenderLinks(d.links, d.nome_arquivo, document.getElementById('comp-links-lista'));
+    fwCarregarLinksAtivos(FW_ARQUIVO_ATUAL);
+}
+
+async function fwRevogarLinkAtual() {
+    if (!FW_COMP_ATUAL) return;
+    const ok = await uiConfirm({
+        titulo: 'Encerrar link',
+        msg: 'O link ficará inacessível imediatamente para quem tiver o endereço.',
+        icone: 'fas fa-ban',
+        iconeCor: '#ffaa00',
+        btnLabel: 'Encerrar agora',
+        btnCor: '#ffaa00',
+    });
+    if (!ok) return;
+    const r = await fetch(`/clientes/firmware/link/${FW_COMP_ATUAL}/revogar/`, {
+        method:'POST', headers:{'X-CSRFToken':CSRF}
+    });
+    const d = await r.json();
+    if (d.ok) {
+        FW_COMP_ATUAL = null;
+        document.getElementById('comp-resultado').style.display = 'none';
+        fwCarregarLinksAtivos(FW_ARQUIVO_ATUAL);
+        fwNavegar(FW_PASTA_ATUAL);
+        uiToast('Link encerrado com sucesso');
+    }
+}
+
+const PROTO_DEFS = [
+    {key:'http',     label:'HTTP',           icon:'fas fa-globe',          cor:'#00d9ff'},
+    {key:'https',    label:'HTTPS',          icon:'fas fa-lock',           cor:'#00ff88'},
+    {key:'ftp',      label:'FTP',            icon:'fas fa-server',         cor:'#ffaa00'},
+    {key:'sftp',     label:'SFTP',           icon:'fas fa-shield-alt',     cor:'#b464ff'},
+    {key:'tftp',     label:'TFTP',           icon:'fas fa-exchange-alt',   cor:'#4fc3f7'},
+    {key:'cisco',    label:'CISCO',          icon:'fas fa-network-wired',  cor:'#e06060'},
+    {key:'mikrotik', label:'MIKROTIK',       icon:'fas fa-router',         cor:'#81c784'},
+    {key:'huawei',   label:'HUAWEI',         icon:'fas fa-server',         cor:'#ffcc80'},
+    {key:'linux',    label:'WGET / LINUX',   icon:'fab fa-linux',          cor:'#8b949e'},
+    {key:'curl',     label:'CURL',           icon:'fas fa-terminal',       cor:'#8b949e'},
+];
+
+function fwRenderLinks(links, nomeArq, container) {
+    let html = '';
+    for (const pd of PROTO_DEFS) {
+        const val = links[pd.key];
+        if (!val) continue;
+        html += `
+        <div class="proto-row">
+            <div class="proto-label"><i class="${pd.icon} me-1" style="color:${pd.cor}"></i>${pd.label}</div>
+            <div class="proto-box">
+                <code>${val}</code>
+                <span class="proto-copy" onclick="fwCopiar(this,'${val.replace(/'/g,"\\'")}')">Copiar</span>
+            </div>
+        </div>`;
+    }
+    container.innerHTML = html;
+}
+
+async function fwCarregarLinksAtivos(id) {
+    const r = await fetch(`/clientes/firmware/arquivo/${id}/links/`);
+    const d = await r.json();
+    const el = document.getElementById('comp-links-ativos');
+    if (!d.compartilhamentos.length) { el.innerHTML=''; return; }
+    let html = `<div style="font-size:.8rem;color:#8b949e;margin-bottom:8px;padding-top:8px;border-top:1px solid #30363d">
+        <i class="fas fa-link me-1"></i>Links ativos (${d.compartilhamentos.length})</div>`;
+    for (const c of d.compartilhamentos) {
+        html += `<div class="link-ativo-card">
+            <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
+                <span style="font-size:.78rem;color:#8b949e">Expira: <strong style="color:#e6edf3">${c.expira_em}</strong></span>
+                <span style="font-size:.78rem;color:#8b949e">Acessos: <strong style="color:#00d9ff">${c.acessos}</strong></span>
+                ${c.ftp_user ? `<span style="font-size:.78rem;color:#8b949e">User: <code style="color:#b464ff">${c.ftp_user}</code> Senha: <code style="color:#b464ff">${c.ftp_senha}</code></span>` : ''}
+                <button class="ms-auto fw-btn fw-btn-delete" onclick="fwRevogarLink(${c.id})" title="Revogar">
+                    <i class="fas fa-times me-1"></i><span style="font-size:.75rem">Revogar</span>
+                </button>
+            </div>
+            <div style="font-family:monospace;font-size:.78rem;color:#555;word-break:break-all">${c.links.http}</div>
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+async function fwRevogarLink(compId) {
+    const ok = await uiConfirm({
+        titulo: 'Revogar link',
+        msg: 'Este link ficará inacessível imediatamente.',
+        icone: 'fas fa-ban',
+        iconeCor: '#ffaa00',
+        btnLabel: 'Revogar',
+        btnCor: '#ffaa00',
+    });
+    if (!ok) return;
+    const r = await fetch(`/clientes/firmware/link/${compId}/revogar/`, {
+        method:'POST', headers:{'X-CSRFToken':CSRF}
+    });
+    const d = await r.json();
+    if (d.ok) fwCarregarLinksAtivos(FW_ARQUIVO_ATUAL);
+}
+
+async function fwVerLinks(arqId) {
+    const r = await fetch(`/clientes/firmware/arquivo/${arqId}/links/`);
+    const d = await r.json();
+    let html = '';
+    for (const c of d.compartilhamentos) {
+        html += `<div class="link-ativo-card mb-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+                <span style="font-size:.8rem;color:#8b949e">Expira: <strong style="color:#00ff88">${c.expira_em}</strong></span>
+                <span style="font-size:.8rem;color:#8b949e">Acessos: <strong style="color:#00d9ff">${c.acessos}</strong></span>
+                ${c.ftp_user ? `<span style="font-size:.78rem;color:#8b949e">Usuário: <code style="color:#b464ff">${c.ftp_user}</code></span>
+                <span style="font-size:.78rem;color:#8b949e">Senha: <code style="color:#b464ff">${c.ftp_senha}</code></span>` : ''}
+            </div>`;
+        html += fwLinksHtml(c.links);
+        html += `</div>`;
+    }
+    document.getElementById('modal-link-detalhe-body').innerHTML = html || '<p style="color:#555">Nenhum link ativo.</p>';
+    _modalLinkDetalhe = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLinkDetalhe'));
+    _modalLinkDetalhe.show();
+}
+
+function fwLinksHtml(links) {
+    let html = '';
+    for (const pd of PROTO_DEFS) {
+        const val = links[pd.key];
+        if (!val) continue;
+        html += `<div class="proto-row">
+            <div class="proto-label"><i class="${pd.icon} me-1" style="color:${pd.cor}"></i>${pd.label}</div>
+            <div class="proto-box">
+                <code>${val}</code>
+                <span class="proto-copy" onclick="fwCopiar(this,'${val.replace(/'/g,"\\'")}')">Copiar</span>
+            </div>
+        </div>`;
+    }
+    return html;
+}
+
+function fwCopiar(el, texto) {
+    navigator.clipboard.writeText(texto).then(() => {
+        el.textContent = 'Copiado!';
+        el.classList.add('copied');
+        setTimeout(() => { el.textContent='Copiar'; el.classList.remove('copied'); }, 1800);
+    });
+}
+
+// Carrega ao iniciar
+fwNavegar(null);
+</script>
+
+{% endblock %}

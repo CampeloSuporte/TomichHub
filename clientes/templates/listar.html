@@ -123,11 +123,12 @@
                                         </div>
                                         <div class="d-flex gap-2 flex-wrap">
                                         
-                                            <form method="POST" action="{% url 'deletar_acesso' acesso.id %}" 
-                                                style="display: inline;" 
-                                                onsubmit="return confirm('Tem certeza que deseja excluir: {{ acesso.tipo }}?')">
+                                            <form method="POST" action="{% url 'deletar_acesso' acesso.id %}"
+                                                style="display: inline;"
+                                                onsubmit="event.preventDefault()">
                                                 {% csrf_token %}
-                                                <button type="submit" class="icon-btn btn-sm" title="Excluir">
+                                                <button type="submit" class="icon-btn btn-sm" title="Excluir"
+                                                    onclick="uiConfirm({titulo:'Excluir Acesso', msg:'Tem certeza que deseja excluir: {{ acesso.tipo }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
@@ -942,14 +943,15 @@
                                                 
                                                 <!-- BOTÃO: Delete - Admin Only (Vermelho) -->
                                                 {% if not is_cliente %}
-                                                <form method="POST" 
-                                                    action="{% url 'deletar_topologia' topologia.id %}" 
-                                                    style="display: inline;" 
-                                                    onsubmit="return confirm('Tem certeza que deseja excluir: {{ topologia.nome }}?')">
+                                                <form method="POST"
+                                                    action="{% url 'deletar_topologia' topologia.id %}"
+                                                    style="display: inline;"
+                                                    onsubmit="event.preventDefault()">
                                                     {% csrf_token %}
-                                                    <button type="submit" 
-                                                            class="btn-action-overlay btn-delete-overlay" 
-                                                            title="Excluir">
+                                                    <button type="submit"
+                                                            class="btn-action-overlay btn-delete-overlay"
+                                                            title="Excluir"
+                                                            onclick="uiConfirm({titulo:'Excluir Topologia', msg:'Tem certeza que deseja excluir: {{ topologia.nome }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>
@@ -1110,11 +1112,12 @@
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                             {% if not is_cliente %}
-                                                <form method="POST" action="{% url 'deletar_proxy' proxy.id %}" 
-                                                    style="display: inline;" 
-                                                    onsubmit="return confirm('Tem certeza que deseja excluir o túnel: {{ proxy.nome }}?')">
+                                                <form method="POST" action="{% url 'deletar_proxy' proxy.id %}"
+                                                    style="display: inline;"
+                                                    onsubmit="event.preventDefault()">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="icon-btn btn-sm" title="Excluir">
+                                                    <button type="submit" class="icon-btn btn-sm" title="Excluir"
+                                                        onclick="uiConfirm({titulo:'Excluir Túnel', msg:'Tem certeza que deseja excluir o túnel: {{ proxy.nome }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>
@@ -1599,11 +1602,12 @@
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                             {% if not is_cliente %}
-                                                <form method="POST" action="{% url 'deletar_documento' doc.id %}" 
-                                                    style="display: inline;" 
-                                                    onsubmit="return confirm('Tem certeza que deseja excluir: {{ doc.nome }}?')">
+                                                <form method="POST" action="{% url 'deletar_documento' doc.id %}"
+                                                    style="display: inline;"
+                                                    onsubmit="event.preventDefault()">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn-action btn-delete" title="Excluir">
+                                                    <button type="submit" class="btn-action btn-delete" title="Excluir"
+                                                        onclick="uiConfirm({titulo:'Excluir Documento', msg:'Tem certeza que deseja excluir: {{ doc.nome }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>
@@ -2271,7 +2275,7 @@ window.ipamConfirmarDividir = async function(tipo, id){
             body: JSON.stringify({prefixlen: pl, descricao: desc, apenas_um: apUm}),
         });
         const d = await r.json();
-        if(!d.ok){ alert('Erro: ' + d.erro); return; }
+        if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
         document.getElementById('ipam-dividir-overlay').remove();
         // Atualizar dados
         ipamCarregarSubRedes();
@@ -2280,7 +2284,7 @@ window.ipamConfirmarDividir = async function(tipo, id){
             IPAM._bdOpen[id] = false;
             await ipamToggleBreakdown(id);
         }
-    } catch(e){ alert('Erro: ' + e.message); }
+    } catch(e){ uiAlert('Erro: ' + e.message); }
 };
 
 /* ─────────────────────────────────────────────────
@@ -2305,14 +2309,14 @@ async function _ipamMarcarEmUsoExec(pid, prefixo, breakdownPid){
             body: JSON.stringify({descricao: desc}),
         });
         const d = await r.json();
-        if(!d.ok){ alert('Erro: ' + d.erro); return; }
+        if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
         ipamCarregarPrefixos();
         ipamCarregarSubRedes();
         if(breakdownPid != null){
             IPAM._bdOpen[breakdownPid] = false;
             await ipamToggleBreakdown(breakdownPid);
         }
-    } catch(e){ alert('Erro: ' + e.message); }
+    } catch(e){ uiAlert('Erro: ' + e.message); }
 }
 
 window.ipamFiltrarSubredes = function(prefixo_id){
@@ -2844,7 +2848,7 @@ window.ipamSalvar = async function(){
         body: JSON.stringify(body),
     });
     const d = await r.json();
-    if(!d.ok){ alert('Erro: ' + d.erro); return; }
+    if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
     bootstrap.Modal.getInstance(document.getElementById('modalIpam'))?.hide();
     // Recarregar aba atual
     if(tipo==='prefixo') ipamCarregarPrefixos();
@@ -2879,27 +2883,27 @@ window.ipamEditarVpn = async function(id){
 
 /* ─── Deletar ─── */
 async function ipamDeletar(url, recarregar){
-    if(!confirm('Confirmar exclusão?')) return;
+    if(!await uiConfirm({titulo:'Confirmar Exclusão', msg:'Confirmar exclusão?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
     const r = await fetch(url, {method:'POST', headers:{'X-CSRFToken': getCsrfToken()}});
     const d = await r.json();
     if(d.ok) recarregar();
-    else alert('Erro: ' + d.erro);
+    else uiAlert('Erro: ' + d.erro);
 }
 window.ipamTogglePoolCheia = async function(id){
     const r = await fetch(`/clientes/ipam/prefixos/${id}/pool-cheia/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
     const d = await r.json();
     if(d.ok){ ipamCarregarPrefixos(); }
-    else alert('Erro: ' + d.erro);
+    else uiAlert('Erro: ' + d.erro);
 };
 window.ipamDeletarPrefixo = async function(id){
-    if(!confirm('Confirmar exclusão do prefixo?')) return;
+    if(!await uiConfirm({titulo:'Excluir Prefixo', msg:'Confirmar exclusão do prefixo?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
     const r = await fetch(`/clientes/ipam/prefixos/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
     const d = await r.json();
     if(d.ok){ delete IPAM._bdOpen[id]; ipamCarregarPrefixos(); }
-    else alert('Erro: ' + d.erro);
+    else uiAlert('Erro: ' + d.erro);
 };
 window.ipamDeletarSubRede = async function(id){
-    if(!confirm('Confirmar exclusão da sub-rede?')) return;
+    if(!await uiConfirm({titulo:'Excluir Sub-rede', msg:'Confirmar exclusão da sub-rede?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
     // Descobrir prefixo pai (se estiver numa linha de breakdown)
     const sr = IPAM.subredes.find(s => s.id === id);
     const r = await fetch(`/clientes/ipam/subredes/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
@@ -2916,7 +2920,7 @@ window.ipamDeletarSubRede = async function(id){
                 if(IPAM._bdOpen[pid]){ IPAM._bdOpen[pid]=false; ipamToggleBreakdown(parseInt(pid)); break; }
             }
         }
-    } else alert('Erro: ' + d.erro);
+    } else uiAlert('Erro: ' + d.erro);
 };
 window.ipamDeletarIP      = id => ipamDeletar(`/clientes/ipam/ips/${id}/deletar/`,      ipamCarregarIPs);
 window.ipamDeletarVlan    = id => ipamDeletar(`/clientes/ipam/vlans/${id}/deletar/`,    ipamCarregarVlans);
@@ -2927,7 +2931,7 @@ window.ipamImportar = async function(){
     const file  = document.getElementById('ipam-import-file').files[0];
     const modo  = document.getElementById('ipam-import-modo').value;
     const res   = document.getElementById('ipam-import-resultado');
-    if(!file){ alert('Selecione um arquivo CSV.'); return; }
+    if(!file){ uiAlert('Selecione um arquivo CSV.'); return; }
     res.style.display = '';
     res.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando…';
     const fd = new FormData();
@@ -3677,7 +3681,7 @@ function getCsrfToken(){
         const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
         const janela = window.open(url, `WEBFIG_VNC_${acessoId}`, opcoes);
         if (!janela) {
-            alert('⚠️ Não foi possível abrir o WebFig VNC. Verifique se bloqueadores de popup estão desabilitados.');
+            uiAlert({titulo:'Popup Bloqueado', msg:'Não foi possível abrir o WebFig VNC. Verifique se bloqueadores de popup estão desabilitados.', icone:'fas fa-exclamation-triangle', iconeCor:'#e0a060'});
         } else {
             janela.focus();
         }
@@ -4065,14 +4069,18 @@ function getCsrfToken(){
                             <button class="btn-action btn-info" onclick="validarBlocoManual(${bloco.id}, '${bloco.bloco}')" title="Validar Agora">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
+                            <button class="btn-action" onclick="window.open('{% url 'lg_pesquisa' %}?prefixo='+encodeURIComponent('${bloco.bloco}'),'_blank')" title="Consultar Looking Glass" style="background:rgba(0,217,255,.15);border:1px solid rgba(0,217,255,.4);color:#00d9ff">
+                                <i class="fas fa-route"></i>
+                            </button>
                             <button class="btn-action btn-view" onclick="abrirModalEditarBloco(${bloco.id})" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
                             {% if not is_cliente %}
-                            <form method="POST" action="/clientes/blocos/deletar/${bloco.id}/" style="display: inline;" 
-                                onsubmit="return confirm('Tem certeza que deseja excluir o bloco ${bloco.bloco}?')">
+                            <form method="POST" action="/clientes/blocos/deletar/${bloco.id}/" style="display: inline;"
+                                onsubmit="event.preventDefault()">
                                 <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
-                                <button type="submit" class="btn-action btn-delete" title="Excluir">
+                                <button type="submit" class="btn-action btn-delete" title="Excluir"
+                                    onclick="uiConfirm({titulo:'Excluir Bloco', msg:'Tem certeza que deseja excluir o bloco ${bloco.bloco}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
@@ -4460,7 +4468,7 @@ function getCsrfToken(){
 
     // ─── Enviar e-mail ────────────────────────────────────────────────────
     window.irrEnviar = async function() {
-        if (!confirm('Enviar atualização IRR para auto-dbm@bgp.net.br agora?')) return;
+        if (!await uiConfirm({titulo:'Enviar IRR', msg:'Enviar atualização IRR para auto-dbm@bgp.net.br agora?', icone:'fas fa-paper-plane', iconeCor:'#58a6ff', btnLabel:'Enviar'})) return;
         irrMsg('Enviando e-mail…', 'aviso');
         try {
             const dados = irrColetarForm();
@@ -4785,10 +4793,11 @@ function getCsrfToken(){
             // Botão Delete (apenas para admins)
             {% if not is_cliente %}
             html += `
-                <form method="POST" action="/clientes/backups/deletar/${backup.id}/" style="display: inline;" 
-                    onsubmit="return confirm('Tem certeza que deseja excluir este backup?')">
+                <form method="POST" action="/clientes/backups/deletar/${backup.id}/" style="display: inline;"
+                    onsubmit="event.preventDefault()">
                     <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
-                    <button type="submit" class="btn-action btn-delete" title="Excluir">
+                    <button type="submit" class="btn-action btn-delete" title="Excluir"
+                        onclick="uiConfirm({titulo:'Excluir Backup', msg:'Tem certeza que deseja excluir este backup?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                         <i class="fas fa-trash"></i>
                     </button>
                 </form>
@@ -5516,9 +5525,10 @@ function getCsrfToken(){
                             <i class="fas fa-eye me-1"></i> Ver
                         </button>
                         <form method="POST" action="/clientes/chamados/deletar/${chamado.id}/" style="display:inline;"
-                            onsubmit="return confirm('Excluir chamado #${chamado.id}?')">
+                            onsubmit="event.preventDefault()">
                             <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
-                            <button type="submit" class="btn-action-chamado btn-delete-chamado">
+                            <button type="submit" class="btn-action-chamado btn-delete-chamado"
+                                onclick="uiConfirm({titulo:'Excluir Chamado', msg:'Excluir chamado #${chamado.id}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
                                 <i class="fas fa-trash me-1"></i>
                             </button>
                         </form>
@@ -6066,7 +6076,7 @@ function getCsrfToken(){
             })
             .catch(error => {
                 console.error('Erro:', error);
-                alert('Não foi possível carregar os dados da VPN.');
+                uiAlert('Não foi possível carregar os dados da VPN.');
             });
     }
 
@@ -6195,11 +6205,11 @@ function getCsrfToken(){
                 wgCarregarLista();
                 wgVerScript(d.vpn_id);
             } else {
-                alert('Erro: ' + (d.erro || 'Falha ao criar VPN'));
+                uiAlert('Erro: ' + (d.erro || 'Falha ao criar VPN'));
                 wgCarregarLista();
             }
         } catch(e) {
-            alert('Erro: ' + e.message);
+            uiAlert('Erro: ' + e.message);
             wgCarregarLista();
         }
     }
@@ -6208,7 +6218,7 @@ function getCsrfToken(){
         try {
             const r = await fetch(`/clientes/vpn-wg/${vpnId}/script/`);
             const d = await r.json();
-            if (!d.ok) { alert('Erro ao gerar script'); return; }
+            if (!d.ok) { uiAlert('Erro ao gerar script'); return; }
 
             const html = `<div id="wg-script-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center">
                 <div style="background:#0d1117;border:1px solid #30363d;border-radius:12px;padding:24px;width:720px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
@@ -6237,7 +6247,7 @@ function getCsrfToken(){
                 </div>
             </div>`;
             document.body.insertAdjacentHTML('beforeend', html);
-        } catch(e) { alert('Erro: ' + e.message); }
+        } catch(e) { uiAlert('Erro: ' + e.message); }
     }
 
     function wgCopiarScript() {
@@ -6263,15 +6273,15 @@ function getCsrfToken(){
     }
 
     async function wgDeletar(vpnId, nome) {
-        if (!confirm(`Remover VPN "${nome}"?\n\nIsso também remove o peer do servidor.`)) return;
+        if (!await uiConfirm({titulo:'Remover VPN', msg:`Remover VPN "${nome}"?\n\nIsso também remove o peer do servidor.`, icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Remover'})) return;
         try {
             const r = await fetch(`/clientes/vpn-wg/${vpnId}/deletar/`, {
                 method: 'POST', headers: {'X-CSRFToken': WG_CSRF}
             });
             const d = await r.json();
             if (d.ok) wgCarregarLista();
-            else alert('Erro: ' + d.erro);
-        } catch(e) { alert('Erro: ' + e.message); }
+            else uiAlert('Erro: ' + d.erro);
+        } catch(e) { uiAlert('Erro: ' + e.message); }
     }
 
     async function wgReativar(vpnId) {
@@ -6281,8 +6291,8 @@ function getCsrfToken(){
             });
             const d = await r.json();
             if (d.ok) { wgCarregarLista(); }
-            else alert('Erro: ' + d.erro);
-        } catch(e) { alert('Erro: ' + e.message); }
+            else uiAlert('Erro: ' + d.erro);
+        } catch(e) { uiAlert('Erro: ' + e.message); }
     }
 
     function wgEditarRedes(vpnId) {
@@ -6332,9 +6342,9 @@ function getCsrfToken(){
                 document.getElementById('wg-edit-overlay').remove();
                 wgCarregarLista();
             } else {
-                alert('Erro: ' + d.erro);
+                uiAlert('Erro: ' + d.erro);
             }
-        } catch(e) { alert('Erro: ' + e.message); }
+        } catch(e) { uiAlert('Erro: ' + e.message); }
     }
 
     // Carrega ao abrir aba Tuneis
@@ -6535,31 +6545,31 @@ function getCsrfToken(){
             const el = document.getElementById('modalOpenVPNLogs');
             if (el.parentElement !== document.body) document.body.appendChild(el);
             bootstrap.Modal.getOrCreateInstance(el).show();
-        } catch(e) { alert('Erro ao carregar logs: ' + e.message); }
+        } catch(e) { uiAlert('Erro ao carregar logs: ' + e.message); }
     };
 
     window.ovpnReexecutar = async function(configId) {
-        if(!confirm('Reexecutar a configuração OpenVPN neste host?')) return;
+        if(!await uiConfirm({titulo:'Reexecutar OpenVPN', msg:'Reexecutar a configuração OpenVPN neste host?', icone:'fas fa-redo', iconeCor:'#58a6ff', btnLabel:'Reexecutar'})) return;
         try {
             const r = await fetch(`/clientes/openvpn/${configId}/reexecutar/`, {
                 method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }
             });
             const d = await r.json();
             if(d.ok) { ovpnCarregarLista(); ovpnIniciarPoll(configId); }
-            else alert('Erro: ' + d.erro);
-        } catch(e) { alert('Erro: ' + e.message); }
+            else uiAlert('Erro: ' + d.erro);
+        } catch(e) { uiAlert('Erro: ' + e.message); }
     };
 
     window.ovpnDeletar = async function(configId) {
-        if(!confirm('Remover esta configuração OpenVPN?')) return;
+        if(!await uiConfirm({titulo:'Remover OpenVPN', msg:'Remover esta configuração OpenVPN?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Remover'})) return;
         try {
             const r = await fetch(`/clientes/openvpn/${configId}/deletar/`, {
                 method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }
             });
             const d = await r.json();
             if(d.ok) ovpnCarregarLista();
-            else alert('Erro: ' + d.erro);
-        } catch(e) { alert('Erro: ' + e.message); }
+            else uiAlert('Erro: ' + d.erro);
+        } catch(e) { uiAlert('Erro: ' + e.message); }
     };
 
     // ovpnCarregarLista já é chamado via trocarAba acima
@@ -6609,7 +6619,7 @@ function getCsrfToken(){
     }
 
     window.ovpnUsuarioDeletar = async function(usuarioId) {
-        if(!confirm('Remover este usuário VPN?')) return;
+        if(!await uiConfirm({titulo:'Remover Usuário VPN', msg:'Remover este usuário VPN?', icone:'fas fa-user-minus', iconeCor:'#e06060', btnLabel:'Remover'})) return;
         await fetch(`/clientes/openvpn/usuario/${usuarioId}/deletar/`, {
             method:'POST', headers:{'X-CSRFToken':getCsrfToken()}
         });
@@ -7179,7 +7189,7 @@ function getCsrfToken(){
         const result = document.getElementById('testeDNSResultados');
 
         if (!dom) {
-            alert('Informe o domínio a ser testado.');
+            uiAlert('Informe o domínio a ser testado.');
             return;
         }
 

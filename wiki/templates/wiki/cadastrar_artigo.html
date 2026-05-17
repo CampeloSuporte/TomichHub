@@ -1135,17 +1135,17 @@ function buildPreview() {
 // ──────────────────────────────────────────────
 // SUBMETER
 // ──────────────────────────────────────────────
-function submitArtigo() {
+async function submitArtigo() {
     syncAllBlocks();
     const titulo = document.getElementById('artTitle').value.trim();
     const desc = document.getElementById('artDesc').value.trim();
     const cat = document.getElementById('selCat').value;
     const fab = document.getElementById('selFab').value;
 
-    if (!titulo) { alert('Digite o título do artigo'); return; }
-    if (!desc)   { alert('Digite a descrição curta'); return; }
-    if (!cat)    { alert('Selecione uma categoria'); return; }
-    if (!fab)    { alert('Selecione um fabricante'); return; }
+    if (!titulo) { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Digite o título do artigo', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
+    if (!desc)   { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Digite a descrição curta', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
+    if (!cat)    { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Selecione uma categoria', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
+    if (!fab)    { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Selecione um fabricante', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
 
     // Gerar conteúdo Markdown
     let conteudo = blocks.map(b => {
@@ -1186,10 +1186,10 @@ function closeCatModal() { document.getElementById('catModal').classList.remove(
 
 document.getElementById('catModal').addEventListener('click', e => { if (e.target === document.getElementById('catModal')) closeCatModal(); });
 
-function saveCategory() {
+async function saveCategory() {
     const nome = document.getElementById('catName').value.trim();
     const icone = document.getElementById('catIcon').value.trim() || 'fa-folder';
-    if (!nome) { alert('Digite o nome'); return; }
+    if (!nome) { await uiAlert({ titulo: 'Campo obrigatório', msg: 'Digite o nome da categoria', icone: 'fas fa-exclamation-circle', iconeCor: '#ffaa00' }); return; }
 
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
     fetch("{% url 'wiki:cadastrar_categoria_ajax' %}", {
@@ -1205,9 +1205,9 @@ function saveCategory() {
             sel.appendChild(o);
             closeCatModal();
             document.getElementById('catName').value = '';
-        } else alert(d.error || 'Erro');
+        } else uiAlert(d.error || 'Erro');
     })
-    .catch(() => alert('Erro de comunicação'));
+    .catch(() => uiAlert('Erro de comunicação'));
 }
 
 // ──────────────────────────────────────────────
