@@ -6,6 +6,7 @@ from .documentacao_views import (
     proxy_documentacao,
     proxy_ativo_cliente,
 )
+from . import ipam_views as ipam
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -65,6 +66,7 @@ urlpatterns = [
 
     # Terminal e Winbox
     path('terminal/', views.terminal_page, name='terminal_page'),
+    path('terminal/acessos/', views.listar_acessos_terminal, name='listar_acessos_terminal'),
     path('winbox/<int:acesso_id>/', views.winbox_page, name='winbox_page'),
     path('webfig-vnc/<int:acesso_id>/', views.webfig_vnc_page, name='webfig_vnc_page'),
 
@@ -95,4 +97,65 @@ urlpatterns = [
     path('doc/proxy/<int:cliente_id>/<str:tipo>/<path:path>', proxy_documentacao, name='proxy_doc'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
+
+    # ── VPN WireGuard ────────────────────────────────────────────────────
+    path('<int:cliente_id>/vpn-wg/listar/',          views.vpn_wg_listar,        name='vpn_wg_listar'),
+    path('<int:cliente_id>/vpn-wg/criar/',           views.vpn_wg_criar,         name='vpn_wg_criar'),
+    path('<int:cliente_id>/vpn-wg/status/',          views.vpn_wg_status,        name='vpn_wg_status'),
+    path('vpn-wg/<int:vpn_id>/script/',              views.vpn_wg_script,        name='vpn_wg_script'),
+    path('vpn-wg/<int:vpn_id>/deletar/',             views.vpn_wg_deletar,       name='vpn_wg_deletar'),
+    path('vpn-wg/<int:vpn_id>/reativar/',            views.vpn_wg_reativar_peer, name='vpn_wg_reativar'),
+    path('vpn-wg/<int:vpn_id>/editar/',              views.vpn_wg_editar,        name='vpn_wg_editar'),
+
+    # ── IPAM Nativo ──────────────────────────────────────────────────────
+    path('<int:cliente_id>/ipam/vlans/',                 ipam.ipam_vlans_listar,    name='ipam_vlans_listar'),
+    path('<int:cliente_id>/ipam/vlans/salvar/',          ipam.ipam_vlan_salvar,     name='ipam_vlan_salvar'),
+    path('ipam/vlans/<int:vlan_id>/deletar/',            ipam.ipam_vlan_deletar,    name='ipam_vlan_deletar'),
+    path('<int:cliente_id>/ipam/prefixos/',              ipam.ipam_prefixos_listar, name='ipam_prefixos_listar'),
+    path('<int:cliente_id>/ipam/prefixos/salvar/',       ipam.ipam_prefixo_salvar,  name='ipam_prefixo_salvar'),
+    path('ipam/prefixos/<int:prefixo_id>/deletar/',      ipam.ipam_prefixo_deletar,    name='ipam_prefixo_deletar'),
+    path('ipam/prefixos/<int:prefixo_id>/breakdown/',    ipam.ipam_prefixo_breakdown,  name='ipam_prefixo_breakdown'),
+    path('ipam/prefixos/<int:prefixo_id>/dividir/',        ipam.ipam_prefixo_dividir,       name='ipam_prefixo_dividir'),
+    path('ipam/prefixos/<int:prefixo_id>/marcar-em-uso/', ipam.ipam_prefixo_marcar_em_uso,  name='ipam_prefixo_marcar_em_uso'),
+    path('ipam/prefixos/<int:prefixo_id>/pool-cheia/',   ipam.ipam_prefixo_pool_cheia,      name='ipam_prefixo_pool_cheia'),
+    path('ipam/subredes/<int:subrede_id>/dividir/',        ipam.ipam_subrede_dividir,        name='ipam_subrede_dividir'),
+    path('<int:cliente_id>/ipam/subredes/',              ipam.ipam_subredes_listar, name='ipam_subredes_listar'),
+    path('<int:cliente_id>/ipam/subredes/salvar/',       ipam.ipam_subrede_salvar,  name='ipam_subrede_salvar'),
+    path('ipam/subredes/<int:subrede_id>/deletar/',      ipam.ipam_subrede_deletar, name='ipam_subrede_deletar'),
+    path('ipam/subredes/<int:subrede_id>/ips/',          ipam.ipam_subrede_ips,     name='ipam_subrede_ips'),
+    path('<int:cliente_id>/ipam/ips/',                   ipam.ipam_ips_listar,      name='ipam_ips_listar'),
+    path('<int:cliente_id>/ipam/ips/salvar/',            ipam.ipam_ip_salvar,       name='ipam_ip_salvar'),
+    path('ipam/ips/<int:ip_id>/deletar/',                ipam.ipam_ip_deletar,      name='ipam_ip_deletar'),
+    path('<int:cliente_id>/ipam/vpns/',                  ipam.ipam_vpns_listar,     name='ipam_vpns_listar'),
+    path('<int:cliente_id>/ipam/vpns/salvar/',           ipam.ipam_vpn_salvar,      name='ipam_vpn_salvar'),
+    path('ipam/vpns/<int:vpn_id>/deletar/',              ipam.ipam_vpn_deletar,     name='ipam_vpn_deletar'),
+    path('<int:cliente_id>/ipam/importar/',              ipam.ipam_importar,        name='ipam_importar'),
+
+    # ── OpenVPN ──────────────────────────────────────────────────────────
+    path('<int:cliente_id>/openvpn/listar/',          views.openvpn_listar,      name='openvpn_listar'),
+    path('<int:cliente_id>/openvpn/criar/',           views.openvpn_criar,       name='openvpn_criar'),
+    path('openvpn/<int:config_id>/status/',           views.openvpn_status,      name='openvpn_status'),
+    path('openvpn/<int:config_id>/download/',         views.openvpn_download,    name='openvpn_download'),
+    path('openvpn/<int:config_id>/deletar/',          views.openvpn_deletar,     name='openvpn_deletar'),
+    path('openvpn/<int:config_id>/logs/',             views.openvpn_logs,        name='openvpn_logs'),
+    path('openvpn/<int:config_id>/reexecutar/',       views.openvpn_reexecutar,      name='openvpn_reexecutar'),
+    path('openvpn/<int:config_id>/usuario/criar/',    views.openvpn_usuario_criar,    name='openvpn_usuario_criar'),
+    path('openvpn/usuario/<int:usuario_id>/status/',  views.openvpn_usuario_status,   name='openvpn_usuario_status'),
+    path('openvpn/usuario/<int:usuario_id>/download/',views.openvpn_usuario_download, name='openvpn_usuario_download'),
+    path('openvpn/usuario/<int:usuario_id>/deletar/', views.openvpn_usuario_deletar,  name='openvpn_usuario_deletar'),
+
+    # ── IRR Config ───────────────────────────────────────────────────────
+    path('<int:cliente_id>/irr/config/',       views.irr_config_get,       name='irr_config_get'),
+    path('<int:cliente_id>/irr/salvar/',       views.irr_config_salvar,    name='irr_config_salvar'),
+    path('<int:cliente_id>/irr/preview/',      views.irr_preview,          name='irr_preview'),
+    path('<int:cliente_id>/irr/enviar/',       views.irr_enviar,           name='irr_enviar'),
+    path('<int:cliente_id>/irr/consultar/',    views.irr_consultar_whois,   name='irr_consultar_whois'),
+    path('<int:cliente_id>/irr/verificar/',    views.irr_verificar_resposta, name='irr_verificar_resposta'),
+
+    # ── Editor de Topologia de Rede ──────────────────────────────────────
+    path('<int:cliente_id>/topologia/editor/', views.topologia_editor, name='topologia_editor'),
+    path('<int:cliente_id>/topologia/drawio/', views.topologia_drawio, name='topologia_drawio'),
+    path('<int:cliente_id>/topologia/dados/', views.topologia_dados, name='topologia_dados'),
+    path('<int:cliente_id>/topologia/salvar/', views.topologia_salvar, name='topologia_salvar'),
+    path('<int:cliente_id>/topologia/hosts/', views.topologia_hosts, name='topologia_hosts'),
 ]

@@ -22,6 +22,72 @@
         }
         .terminal-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
 
+        /* ─── HOST SIDEBAR ─── */
+        .host-sidebar {
+            display: flex; flex-direction: column;
+            width: 220px; min-width: 220px; max-width: 220px;
+            background: #0a0f0a; border-right: 1px solid #1a2a1a;
+            transition: width .2s, min-width .2s, max-width .2s;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .host-sidebar.collapsed { width: 0; min-width: 0; max-width: 0; }
+        .host-sidebar-header {
+            padding: 8px 10px; border-bottom: 1px solid #1a2a1a;
+            display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+        }
+        .host-sidebar-title {
+            font-size: 10px; font-weight: 700; color: #00ff88;
+            text-transform: uppercase; letter-spacing: 1.2px; flex: 1;
+        }
+        .host-search {
+            padding: 6px 8px; border-bottom: 1px solid #1a2a1a; flex-shrink: 0;
+        }
+        .host-search input {
+            width: 100%; background: #111; border: 1px solid #1e2e1e;
+            color: #aaa; font-family: 'JetBrains Mono', monospace;
+            font-size: 10px; padding: 4px 7px; border-radius: 2px; outline: none;
+        }
+        .host-search input:focus { border-color: #00ff88; color: #e0e0e0; }
+        .host-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #1e2e1e transparent; }
+        .host-list::-webkit-scrollbar { width: 3px; }
+        .host-list::-webkit-scrollbar-thumb { background: #1e2e1e; border-radius: 2px; }
+        .host-group-label {
+            padding: 6px 10px 3px; font-size: 9px; color: #2e4e2e;
+            text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+        }
+        .host-item {
+            padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #0f1a0f;
+            display: flex; align-items: center; gap: 6px;
+            transition: background .15s;
+        }
+        .host-item:hover { background: rgba(0,255,136,.06); }
+        .host-item:active { background: rgba(0,255,136,.12); }
+        .host-dot { width: 6px; height: 6px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; }
+        .host-info { flex: 1; min-width: 0; }
+        .host-name { font-size: 11px; color: #b0c0b0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .host-addr { font-size: 9px; color: #3a4a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .host-proto { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(0,255,136,.1); color: #00ff88; flex-shrink: 0; }
+        .host-proto.telnet { background: rgba(255,165,0,.1); color: #ffa500; }
+        .host-sidebar-empty { padding: 20px 10px; text-align: center; color: #2a3a2a; font-size: 10px; line-height: 1.8; }
+        .btn-sidebar-toggle {
+            background: transparent; border: none; color: #3a4a3a; cursor: pointer;
+            font-size: 14px; padding: 2px 4px; flex-shrink: 0; transition: color .15s;
+        }
+        .btn-sidebar-toggle:hover { color: #00ff88; }
+        /* Aba de reabrir sidebar quando colapsada */
+        .host-sidebar-tab {
+            position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+            background: #0a0f0a; border: 1px solid #1a2a1a; border-left: none;
+            color: #3a4a3a; font-size: 9px; writing-mode: vertical-rl;
+            padding: 8px 4px; cursor: pointer; border-radius: 0 3px 3px 0;
+            transition: color .15s, border-color .15s; z-index: 10;
+            display: none;
+        }
+        .host-sidebar-tab:hover { color: #00ff88; border-color: #00ff88; }
+        .host-sidebar-tab.visivel { display: block; }
+        /* Área central (tabs + terminal + footer) */
+        .terminal-main { display: flex; flex-direction: column; flex: 1; min-width: 0; position: relative; }
+
         /* ─── HEADER ─── */
         .terminal-header {
             background: rgba(0, 20, 10, 0.95);
@@ -467,36 +533,62 @@
 <body>
     <div class="terminal-container">
         <div class="terminal-header">
-            <div class="terminal-title">▶ Terminal</div>
+            <button class="btn-sidebar-toggle" id="btnSidebarToggle" onclick="toggleHostSidebar()" title="Mostrar/ocultar hosts">☰</button>
+            <div class="terminal-title">▶ Terminal SSH</div>
             <div class="terminal-status connected" id="terminalStatus">
                 <div class="status-dot connected"></div>
-                <span id="statusText">Pronto para conexões</span>
+                <span id="statusText">Pronto</span>
             </div>
-            <!-- Botão hamburguer apenas mobile -->
             <button class="btn-mobile-menu" onclick="abrirMenuMobile()" title="Menu">☰</button>
         </div>
-        <div class="terminal-tabs" id="terminalTabs"></div>
-        <div class="terminal-content" id="terminalContent" style="flex:1;min-height:0;">
-            <div class="terminal-pane active">
-                <div class="terminal-empty">
-                    <div style="font-size:32px;">⏳</div>
-                    <div class="terminal-empty-text">
-                        <p>Nenhum terminal conectado</p>
-                        <p style="font-size:11px;color:#777;margin-top:6px;">Clique em "Acessar" na página principal para abrir um terminal</p>
-                    </div>
+
+        <!-- Linha horizontal: sidebar de hosts + área do terminal -->
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden;position:relative;">
+
+            <!-- Sidebar de hosts -->
+            <div class="host-sidebar" id="hostSidebar">
+                <div class="host-sidebar-header">
+                    <span class="host-sidebar-title">Hosts SSH</span>
+                    <button class="btn-sidebar-toggle" onclick="toggleHostSidebar()" title="Recolher">◀</button>
+                </div>
+                <div class="host-search">
+                    <input type="text" id="hostSearchInput" placeholder="Filtrar hosts..." oninput="filtrarHosts(this.value)">
+                </div>
+                <div class="host-list" id="hostList">
+                    <div class="host-sidebar-empty">Carregando hosts...</div>
                 </div>
             </div>
-        </div>
-        <!-- Footer desktop -->
-        <div class="terminal-footer">
-            {% if request.user.is_staff %}
-            <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
-            {% endif %}
-            <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
-            <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
-            <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
-            <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
-            <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
+
+            <!-- Aba para reabrir sidebar quando colapsada -->
+            <button class="host-sidebar-tab" id="hostSidebarTab" onclick="toggleHostSidebar()">▶ Hosts</button>
+
+            <!-- Área principal do terminal -->
+            <div class="terminal-main">
+                <div class="terminal-tabs" id="terminalTabs"></div>
+                <div class="terminal-content" id="terminalContent" style="flex:1;min-height:0;">
+                    <div class="terminal-pane active">
+                        <div class="terminal-empty">
+                            <div style="font-size:32px;opacity:.4;">⌨</div>
+                            <div class="terminal-empty-text">
+                                <p>Nenhum terminal conectado</p>
+                                <p style="font-size:11px;color:#444;margin-top:6px;">Selecione um host na lista lateral</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Footer desktop -->
+                <div class="terminal-footer">
+                    {% if request.user.is_staff %}
+                    <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
+                    {% endif %}
+                    <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
+                    <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
+                    <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
+                    <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
+                    <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -1157,6 +1249,16 @@
 
         verificarAcessoPendente() {
             try {
+                // Lista completa de acessos (popout com múltiplas abas abertas)
+                const lista = localStorage.getItem('acessosPendentes');
+                if (lista) {
+                    localStorage.removeItem('acessosPendentes');
+                    localStorage.removeItem('acessoPendente');
+                    const acessos = JSON.parse(lista);
+                    acessos.forEach((a, i) => setTimeout(() => this.abrirTerminal(a), 500 + i * 300));
+                    return;
+                }
+                // Acesso único
                 const p = localStorage.getItem('acessoPendente');
                 if (p) { const a = JSON.parse(p); localStorage.removeItem('acessoPendente'); setTimeout(() => this.abrirTerminal(a), 500); }
             } catch(e) { addDebug('❌ ' + e.message); }
@@ -1441,6 +1543,99 @@
     window.addEventListener('load', () => {
         setTimeout(refitTerminalAtivo, 100);
     });
+
+    // ═══════════════════════════════════════════════
+    // HOST SIDEBAR
+    // ═══════════════════════════════════════════════
+    (function() {
+        const sidebar   = document.getElementById('hostSidebar');
+        const tab       = document.getElementById('hostSidebarTab');
+        const listEl    = document.getElementById('hostList');
+        const searchEl  = document.getElementById('hostSearchInput');
+        let allHosts    = [];   // [{id, tipo, host, porta, protocolo, cliente_nome, funcao}, ...]
+        let sidebarOpen = true;
+
+        // ── Toggle visibilidade ──
+        window.toggleHostSidebar = function() {
+            sidebarOpen = !sidebarOpen;
+            sidebar.classList.toggle('collapsed', !sidebarOpen);
+            tab.classList.toggle('visivel', !sidebarOpen);
+            setTimeout(refitTerminalAtivo, 220);
+        };
+
+        // ── Filtrar lista ──
+        window.filtrarHosts = function(q) {
+            renderHosts(q.trim().toLowerCase());
+        };
+
+        // ── Renderizar lista (opcionalmente filtrada) ──
+        function renderHosts(q) {
+            const filtered = q
+                ? allHosts.filter(h =>
+                    h.tipo.toLowerCase().includes(q) ||
+                    h.host.toLowerCase().includes(q) ||
+                    h.cliente_nome.toLowerCase().includes(q) ||
+                    h.funcao.toLowerCase().includes(q))
+                : allHosts;
+
+            if (!filtered.length) {
+                listEl.innerHTML = '<div class="host-sidebar-empty">Nenhum host encontrado</div>';
+                return;
+            }
+
+            // Agrupar por cliente
+            const groups = {};
+            filtered.forEach(h => {
+                if (!groups[h.cliente_nome]) groups[h.cliente_nome] = [];
+                groups[h.cliente_nome].push(h);
+            });
+
+            let html = '';
+            Object.keys(groups).sort().forEach(cliente => {
+                html += `<div class="host-group-label">${_esc(cliente)}</div>`;
+                groups[cliente].forEach(h => {
+                    const proto = h.protocolo.toUpperCase();
+                    const cls   = proto === 'SSH' ? '' : ' telnet';
+                    html += `<div class="host-item" onclick="abrirHostSidebar(${h.id})" title="${_esc(h.tipo)} — ${_esc(h.host)}">
+                        <div class="host-dot"></div>
+                        <div class="host-info">
+                            <div class="host-name">${_esc(h.tipo)}</div>
+                            <div class="host-addr">${_esc(h.host)}:${h.porta}</div>
+                        </div>
+                        <span class="host-proto${cls}">${proto}</span>
+                    </div>`;
+                });
+            });
+            listEl.innerHTML = html;
+        }
+
+        function _esc(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ── Abrir terminal para host ──
+        window.abrirHostSidebar = function(acessoId) {
+            const h = allHosts.find(x => x.id === acessoId);
+            if (h) terminalManager.abrirTerminal(h);
+        };
+
+        // ── Carregar hosts da API (repassa ?cliente= se presente na URL) ──
+        function carregarHosts() {
+            const clienteId = new URLSearchParams(window.location.search).get('cliente') || '';
+            const apiUrl = '/clientes/terminal/acessos/' + (clienteId ? `?cliente=${clienteId}` : '');
+            fetch(apiUrl)
+                .then(r => r.json())
+                .then(data => {
+                    allHosts = data.acessos || [];
+                    renderHosts('');
+                })
+                .catch(() => {
+                    listEl.innerHTML = '<div class="host-sidebar-empty">Erro ao carregar hosts</div>';
+                });
+        }
+
+        carregarHosts();
+    })();
     </script>
 </body>
 </html>

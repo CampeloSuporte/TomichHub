@@ -123,6 +123,7 @@ class SSHConnectionPool:
             return t
 
     def invalidate(self, proxy_id: int):
+        TunnelPortCache.invalidate(proxy_id)
         with self._lock:
             t = self._pool.pop(proxy_id, None)
             if t:
@@ -132,6 +133,7 @@ class SSHConnectionPool:
                     pass
 
     def close_all(self):
+        TunnelPortCache.close_all()
         with self._lock:
             for t in self._pool.values():
                 try:
@@ -150,25 +152,23 @@ class LocalTunnelServer:
     Inicia um socket TCP local (porta efêmera) e encaminha cada conexão
     recebida via Paramiko direct-tcpip para (target_host, target_port).
 
-    Uso:
-        with LocalTunnelServer(transport, '10.0.0.1', 443) as local_port:
-            raw = socket.create_connection(('127.0.0.1', local_port), timeout=10)
-            # raw é um socket TCP real → pode ser envolvido com ssl.wrap_socket
+    Aceita transport_getter: callable que retorna o paramiko.Transport atual.
+    Isso permite reutilizar o servidor mesmo após reconexão SSH.
     """
 
-    def __init__(self, transport: paramiko.Transport, target_host: str, target_port: int):
-        self.transport   = transport
-        self.target_host = target_host
-        self.target_port = target_port
-        self._stop       = threading.Event()
-        self._server     = None
-        self.local_port  = None
+    def __init__(self, transport_getter, target_host: str, target_port: int):
+        self.transport_getter = transport_getter
+        self.target_host      = target_host
+        self.target_port      = target_port
+        self._stop            = threading.Event()
+        self._server          = None
+        self.local_port       = None
 
     def __enter__(self):
         self._server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._server.bind(('127.0.0.1', 0))
-        self._server.listen(32)
+        self._server.listen(64)
         self._server.settimeout(1.0)
         self.local_port = self._server.getsockname()[1]
         threading.Thread(target=self._accept_loop, daemon=True).start()
@@ -180,6 +180,9 @@ class LocalTunnelServer:
             self._server.close()
         except Exception:
             pass
+
+    def is_alive(self) -> bool:
+        return not self._stop.is_set() and self._server is not None
 
     def _accept_loop(self):
         while not self._stop.is_set():
@@ -193,11 +196,12 @@ class LocalTunnelServer:
 
     def _handle(self, client_sock: socket.socket):
         try:
-            channel = self.transport.open_channel(
+            transport = self.transport_getter()
+            channel = transport.open_channel(
                 'direct-tcpip',
                 (self.target_host, self.target_port),
                 ('127.0.0.1', 0),
-                timeout=15,
+                timeout=10,
             )
         except Exception as e:
             logger.error("[TUNNEL] Falha direct-tcpip → %s:%s: %s",
@@ -245,6 +249,62 @@ class LocalTunnelServer:
                     s.close()
                 except Exception:
                     pass
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 2b. Cache de LocalTunnelServer persistente
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TunnelPortCache:
+    """
+    Mantém um LocalTunnelServer vivo por (proxy_id, host, port).
+
+    Benefício: para uma página com 30+ assets (CSS/JS/imagens), todos
+    os requests reutilizam o mesmo servidor local em vez de cada um
+    fazer bind/listen/thread do zero — reduz overhead por request de ~50ms.
+    """
+    _lock  = threading.Lock()
+    _cache = {}  # (proxy_id, host, port) -> LocalTunnelServer
+
+    @classmethod
+    def get_port(cls, proxy, target_host: str, target_port: int,
+                 pool: 'SSHConnectionPool') -> int:
+        key = (proxy.id, target_host, target_port)
+        with cls._lock:
+            srv = cls._cache.get(key)
+            if srv is not None and srv.is_alive():
+                return srv.local_port
+            # Criar novo servidor de tunnel
+            srv = LocalTunnelServer(
+                lambda: pool.get_transport(proxy),
+                target_host, target_port,
+            )
+            srv.__enter__()
+            cls._cache[key] = srv
+            logger.info("[TUNNEL_CACHE] Novo tunnel %s:%s → porta local %d",
+                        target_host, target_port, srv.local_port)
+            return srv.local_port
+
+    @classmethod
+    def invalidate(cls, proxy_id: int):
+        with cls._lock:
+            dead = [k for k in cls._cache if k[0] == proxy_id]
+            for k in dead:
+                srv = cls._cache.pop(k)
+                try:
+                    srv.__exit__(None, None, None)
+                except Exception:
+                    pass
+
+    @classmethod
+    def close_all(cls):
+        with cls._lock:
+            for srv in cls._cache.values():
+                try:
+                    srv.__exit__(None, None, None)
+                except Exception:
+                    pass
+            cls._cache.clear()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -318,39 +378,49 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 
     # ── Contexto SSL permissivo para equipamentos embedded ────────────────────
 
-    @staticmethod
-    def _make_ssl_context(server_hostname: str) -> ssl.SSLContext:
+    _ssl_ctx_cache: ssl.SSLContext = None
+    _ssl_ctx_lock = threading.Lock()
+
+    @classmethod
+    def _make_ssl_context(cls, server_hostname: str = None) -> ssl.SSLContext:
         """
         Cria SSLContext sem verificação de certificado e com suporte a TLS antigo.
-        O server_hostname é usado APENAS para SNI — não para validar o cert.
+        Cacheado globalmente — mesmas configurações para todos os hosts.
+        O server_hostname é usado apenas em wrap_socket (SNI), não no contexto.
         """
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.check_hostname = False
-        ctx.verify_mode    = ssl.CERT_NONE
+        if cls._ssl_ctx_cache is not None:
+            return cls._ssl_ctx_cache
+        with cls._ssl_ctx_lock:
+            if cls._ssl_ctx_cache is not None:
+                return cls._ssl_ctx_cache
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.check_hostname = False
+            ctx.verify_mode    = ssl.CERT_NONE
 
-        # TLS 1.0/1.1 são comuns em equipamentos antigos; tentar do mais antigo
-        for ver in ('TLSv1', 'TLSv1_1', 'TLSv1_2'):
-            try:
-                ctx.minimum_version = getattr(ssl.TLSVersion, ver)
-                break
-            except (AttributeError, ssl.SSLError, OSError):
-                continue
+            # TLS 1.0/1.1 são comuns em equipamentos antigos
+            for ver in ('TLSv1', 'TLSv1_1', 'TLSv1_2'):
+                try:
+                    ctx.minimum_version = getattr(ssl.TLSVersion, ver)
+                    break
+                except (AttributeError, ssl.SSLError, OSError):
+                    continue
 
-        # Reduzir nível de segurança de cifras (SECLEVEL=0 aceita RSA 512+)
-        for ciphers in ('DEFAULT@SECLEVEL=0', 'DEFAULT'):
-            try:
-                ctx.set_ciphers(ciphers)
-                break
-            except ssl.SSLError:
-                continue
+            # SECLEVEL=0 aceita RSA 512+ (equipamentos antigos)
+            for ciphers in ('DEFAULT@SECLEVEL=0', 'DEFAULT'):
+                try:
+                    ctx.set_ciphers(ciphers)
+                    break
+                except ssl.SSLError:
+                    continue
 
-        return ctx
+            cls._ssl_ctx_cache = ctx
+            return ctx
 
     # ── Método principal ──────────────────────────────────────────────────────
 
     def do_request(self, method: str, url: str,
                    headers: dict = None, body: bytes = None,
-                   timeout: tuple = (12, 30)):
+                   timeout: tuple = (8, 25)):
         """
         Executa requisição HTTP/HTTPS.
         Retorna objeto _Resp ou None em caso de falha.
@@ -468,12 +538,6 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
           6. Retorna resposta sem seguir redirects
              (proxy_web_acesso na view já reescreve Location e devolve ao browser)
         """
-        try:
-            transport = self._ssh_pool.get_transport(self.proxy_server)
-        except Exception as e:
-            logger.error("[TUNNEL] Falha ao obter transport SSH: %s", e)
-            return None
-
         parsed   = urlparse(url)
         path     = parsed.path or '/'
         if parsed.query:
@@ -483,9 +547,6 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                     if target_port in (80, 443)
                     else f'{target_host}:{target_port}')
 
-        # Origin e Referer devem SEMPRE apontar para o equipamento.
-        # views.py não os repassa; e mesmo que o browser os enviasse, apontariam
-        # para crm.tomich.com.br — o que faz dispositivos com CSRF retornarem 403.
         device_origin = f'{scheme}://{host_hdr}'
         req_headers = {
             'Host':            host_hdr,
@@ -498,110 +559,106 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
             'Connection':      'close',
         }
-        # NÃO enviar Accept-Encoding — evita ter que descomprimir manualmente
-        # NÃO repassar Authorization: Digest do browser — a URI no hash aponta para
-        # o path do proxy, não para o path real do equipamento; o hash não confere.
-        # O proxy faz a negociação Digest transparentemente usando device_username/password.
         for k, v in headers.items():
             kl = k.lower()
             if kl in ('accept-encoding', 'origin', 'referer'):
                 continue
             if (kl == 'authorization' and isinstance(v, str)
                     and v.strip().lower().startswith('digest ')):
-                continue  # Recomputado abaixo se o equipamento exigir Digest
+                continue
             clean_v = self._sanitize_header(k, v)
             if clean_v is not None:
                 req_headers[k] = clean_v
 
         try:
-            with LocalTunnelServer(transport, target_host, target_port) as local_port:
-                logger.info("[TUNNEL] %s %s → local_port=%d", method, url, local_port)
+            # Reutiliza o LocalTunnelServer em cache para este (proxy, host, porta)
+            local_port = TunnelPortCache.get_port(
+                self.proxy_server, target_host, target_port, self._ssh_pool
+            )
+            logger.debug("[TUNNEL] %s %s → local_port=%d", method, url, local_port)
 
-                def _open_socket():
-                    """Abre (e opcionalmente envolve com SSL) um socket para o túnel."""
-                    try:
-                        s = socket.create_connection(
-                            ('127.0.0.1', local_port), timeout=timeout[0]
-                        )
-                        s.settimeout(timeout[1])
-                    except Exception as e:
-                        logger.error("[TUNNEL] Falha ao conectar na porta local %d: %s",
-                                     local_port, e)
-                        return None
-                    if scheme == 'https':
-                        try:
-                            ctx = self._make_ssl_context(target_host)
-                            cs = ctx.wrap_socket(s, server_hostname=target_host)
-                            cs.settimeout(timeout[1])
-                            logger.info("[TUNNEL] SSL OK (SNI=%s)", target_host)
-                            return cs
-                        except Exception as e:
-                            logger.error("[TUNNEL] SSL falhou (SNI=%s): %s", target_host, e)
-                            try:
-                                s.close()
-                            except Exception:
-                                pass
-                            return None
-                    return s
-
-                def _do_request(sock, hdrs):
-                    """Executa uma requisição HTTP no socket e retorna (http_resp, content, cookies_raw)."""
-                    conn = http.client.HTTPConnection('_')
-                    conn.sock = sock
-                    conn.request(method, path,
-                                 body=body if method in ('POST', 'PUT', 'PATCH') else None,
-                                 headers=hdrs)
-                    r = conn.getresponse()
-                    c = r.read()
-                    ck = [v for n, v in r.headers.items() if n.lower() == 'set-cookie']
-                    return r, c, ck
-
-                # ── 1ª tentativa ──────────────────────────────────────────────
-                conn_sock = _open_socket()
-                if conn_sock is None:
-                    return None
-
+            def _open_socket():
+                """Abre (e opcionalmente envolve com SSL) um socket para o túnel."""
                 try:
-                    resp, content, cookies_raw = _do_request(conn_sock, req_headers)
-                    logger.info("[TUNNEL] status=%d size=%d", resp.status, len(content))
+                    # Porta local: timeout curto — é loopback, deve responder em ms
+                    s = socket.create_connection(('127.0.0.1', local_port), timeout=3)
+                    s.settimeout(timeout[1])
                 except Exception as e:
-                    logger.error("[TUNNEL] Erro na requisição HTTP: %s", e)
+                    logger.error("[TUNNEL] Falha ao conectar na porta local %d: %s",
+                                 local_port, e)
                     return None
-                finally:
+                if scheme == 'https':
                     try:
-                        conn_sock.close()
-                    except Exception:
-                        pass
+                        ctx = self._make_ssl_context(target_host)
+                        cs = ctx.wrap_socket(s, server_hostname=target_host)
+                        cs.settimeout(timeout[1])
+                        return cs
+                    except Exception as e:
+                        logger.error("[TUNNEL] SSL falhou (SNI=%s): %s", target_host, e)
+                        try:
+                            s.close()
+                        except Exception:
+                            pass
+                        return None
+                return s
 
-                # ── Retry com Digest se necessário ────────────────────────────
-                if (resp.status == 401 and self.device_username):
-                    www_auth = resp.getheader('WWW-Authenticate', '')
-                    if 'Digest' in www_auth:
-                        auth_hdr = self._compute_digest_auth(
-                            method, path,
-                            self.device_username, self.device_password,
-                            www_auth,
-                        )
-                        if auth_hdr:
-                            logger.info("[TUNNEL] 401 Digest → retry com credenciais")
-                            retry_headers = {**req_headers, 'Authorization': auth_hdr}
-                            conn_sock2 = _open_socket()
-                            if conn_sock2 is not None:
+            def _do_request(sock, hdrs):
+                conn = http.client.HTTPConnection('_')
+                conn.sock = sock
+                conn.request(method, path,
+                             body=body if method in ('POST', 'PUT', 'PATCH') else None,
+                             headers=hdrs)
+                r = conn.getresponse()
+                c = r.read()
+                ck = [v for n, v in r.headers.items() if n.lower() == 'set-cookie']
+                return r, c, ck
+
+            # ── 1ª tentativa ──────────────────────────────────────────────
+            conn_sock = _open_socket()
+            if conn_sock is None:
+                return None
+
+            try:
+                resp, content, cookies_raw = _do_request(conn_sock, req_headers)
+                logger.debug("[TUNNEL] status=%d size=%d", resp.status, len(content))
+            except Exception as e:
+                logger.error("[TUNNEL] Erro na requisição HTTP: %s", e)
+                return None
+            finally:
+                try:
+                    conn_sock.close()
+                except Exception:
+                    pass
+
+            # ── Retry com Digest se necessário ────────────────────────────
+            if resp.status == 401 and self.device_username:
+                www_auth = resp.getheader('WWW-Authenticate', '')
+                if 'Digest' in www_auth:
+                    auth_hdr = self._compute_digest_auth(
+                        method, path,
+                        self.device_username, self.device_password,
+                        www_auth,
+                    )
+                    if auth_hdr:
+                        logger.info("[TUNNEL] 401 Digest → retry com credenciais")
+                        retry_headers = {**req_headers, 'Authorization': auth_hdr}
+                        conn_sock2 = _open_socket()
+                        if conn_sock2 is not None:
+                            try:
+                                resp, content, cookies_raw = _do_request(
+                                    conn_sock2, retry_headers
+                                )
+                                logger.debug("[TUNNEL] retry status=%d size=%d",
+                                             resp.status, len(content))
+                            except Exception as e:
+                                logger.error("[TUNNEL] Erro no retry Digest: %s", e)
+                            finally:
                                 try:
-                                    resp, content, cookies_raw = _do_request(
-                                        conn_sock2, retry_headers
-                                    )
-                                    logger.info("[TUNNEL] retry status=%d size=%d",
-                                                resp.status, len(content))
-                                except Exception as e:
-                                    logger.error("[TUNNEL] Erro no retry Digest: %s", e)
-                                finally:
-                                    try:
-                                        conn_sock2.close()
-                                    except Exception:
-                                        pass
+                                    conn_sock2.close()
+                                except Exception:
+                                    pass
 
-                return self._build_resp(resp, content, cookies_raw)
+            return self._build_resp(resp, content, cookies_raw)
 
         except Exception as e:
             logger.exception("[TUNNEL] Erro inesperado: %s", e)

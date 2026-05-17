@@ -6,7 +6,7 @@
             <button class="btn-close-modal" onclick="fecharModalAcesso()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body-acesso">
-            <form method="POST" action="{% url 'cadastrar_acesso' %}">
+            <form id="formCadastrarAcesso" method="POST" action="{% url 'cadastrar_acesso' %}">
                 {% csrf_token %}
                 <input type="hidden" name="cliente" value="{{ cliente.id }}">
                 <div class="row">
@@ -367,7 +367,7 @@
                         <i class="fas fa-times me-2"></i> Cancelar
                     </button>
                     <button type="submit" class="btn-submit-modal">
-                        <i class="fas fa-save me-2"></i> Cadastrar Cópia
+                        <i class="fas fa-save me-2"></i> Salvar
                     </button>
                 </div>
             </form>
@@ -385,7 +385,7 @@
             <button class="btn-close-modal" onclick="fecharModalDuplicarAcesso()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body-acesso">
-           <form method="POST" action="{% url 'cadastrar_acesso' %}">
+           <form id="formDuplicarAcesso" method="POST" action="{% url 'cadastrar_acesso' %}">
                 {% csrf_token %}
                 <input type="hidden" name="cliente" value="{{ cliente.id }}">
                 <div class="row">
@@ -1984,6 +1984,41 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ─── AJAX form submission for acesso modals (no full-page redirect) ───
+function _acessoAjaxSubmit(formId, fecharFn) {
+    const formEl = document.getElementById(formId);
+    if (!formEl) return;
+    formEl.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = formEl.querySelector('button[type="submit"]');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...'; }
+        fetch(formEl.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formEl)
+        })
+        .then(r => r.json())
+        .then(json => {
+            if (json.success) {
+                fecharFn();
+                // Preservar aba principal; funcaoAtiva já está no sessionStorage via mostrarFuncao
+                sessionStorage.setItem('abaAtiva', 'acessos');
+                location.reload();
+            } else {
+                alert(json.error || 'Erro ao salvar acesso.');
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-2"></i> Salvar'; }
+            }
+        })
+        .catch(() => {
+            alert('Erro de comunicação ao salvar acesso.');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-2"></i> Salvar'; }
+        });
+    });
+}
 
+// Attach immediately — forms are already in DOM at this point (inline include)
+_acessoAjaxSubmit('formCadastrarAcesso', fecharModalAcesso);
+_acessoAjaxSubmit('formEditarAcesso',    fecharModalEditarAcesso);
+_acessoAjaxSubmit('formDuplicarAcesso',  fecharModalDuplicarAcesso);
 
 </script>

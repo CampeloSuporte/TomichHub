@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Draw.io — {{ cliente.nome_empresa }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;display:flex;flex-direction:column;height:100vh;font-family:'Segoe UI',sans-serif}
+#toolbar{height:40px;background:#161b22;border-bottom:1px solid #30363d;display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
+#toolbar span{color:#e6edf3;font-size:.85rem;font-weight:600}
+.tb-btn{background:rgba(255,255,255,.06);border:1px solid #30363d;color:#e6edf3;border-radius:5px;padding:4px 12px;cursor:pointer;font-size:.78rem}
+.tb-btn:hover{border-color:#00d9ff;color:#00d9ff}
+#save-status{margin-left:auto;font-size:.75rem;color:#8b949e;display:flex;align-items:center;gap:6px}
+#drawio-frame{flex:1;border:none;width:100%}
+#loading-overlay{position:absolute;inset:0;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10}
+#loading-overlay .spinner{width:40px;height:40px;border:3px solid #30363d;border-top-color:#00d9ff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-overlay p{color:#8b949e;font-size:.85rem}
+#err-overlay{position:absolute;inset:0;background:#0d1117;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:10}
+#err-overlay p{color:#f85149;font-size:.9rem}
+#err-overlay small{color:#8b949e;font-size:.78rem;text-align:center;max-width:400px}
+body{position:relative}
+/* embed: hide close btn */
+body.embed-mode #btn-fechar{display:none}
+</style>
+</head>
+<body>
+{% csrf_token %}
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p>Carregando Draw.io...</p>
+</div>
+
+<div id="err-overlay">
+  <p><i>&#9888;</i> Não foi possível carregar o Draw.io</p>
+  <small>Verifique se há conexão com a internet.<br>O Draw.io requer acesso a <strong>embed.diagrams.net</strong></small>
+  <button class="tb-btn" onclick="reloadFrame()">Tentar novamente</button>
+</div>
+
+<div id="toolbar">
+  <span>Draw.io — {{ cliente.nome_empresa }}</span>
+  <button class="tb-btn" onclick="salvarManual()" title="Forçar salvar"><i>&#128190;</i> Salvar</button>
+  <div id="save-status">
+    <span id="st-text">Aguardando editor...</span>
+  </div>
+  <button class="tb-btn" id="btn-fechar" onclick="window.close()">✕ Fechar</button>
+</div>
+
+<iframe id="drawio-frame"
+  src="https://embed.diagrams.net/?embed=1&spin=1&proto=json&saveAndExit=0&noSaveBtn=0&noExitBtn=1&libraries=1&lang=pt&theme=dark"
+  allow="clipboard-read; clipboard-write"
+  onload="frameLoaded()"
+  onerror="frameError()">
+</iframe>
+
+<script>
+const CLIENTE_ID = {{ cliente.id }};
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+const frame = document.getElementById('drawio-frame');
+const stText = document.getElementById('st-text');
+const loadingEl = document.getElementById('loading-overlay');
+const errEl = document.getElementById('err-overlay');
+
+// Embed mode
+if (new URLSearchParams(window.location.search).get('embed') === '1') {
+  document.body.classList.add('embed-mode');
+}
+
+// Saved XML from DB (may be empty)
+const SAVED_XML = `{{ drawio_xml|escapejs }}`.trim();
+
+let editorReady = false;
+let pendingSave = null;
+let loadTimeout;
+
+function frameLoaded() {
+  // Start timeout — if 'init' event not received in 10s, show error
+  loadTimeout = setTimeout(() => {
+    if (!editorReady) {
+      loadingEl.style.display = 'none';
+      errEl.style.display = 'flex';
+    }
+  }, 10000);
+}
+
+function frameError() {
+  loadingEl.style.display = 'none';
+  errEl.style.display = 'flex';
+}
+
+function reloadFrame() {
+  errEl.style.display = 'none';
+  loadingEl.style.display = 'flex';
+  editorReady = false;
+  frame.src = frame.src;
+}
+
+function salvarManual() {
+  if (!editorReady) return;
+  frame.contentWindow.postMessage(JSON.stringify({action: 'export', format: 'xml', xml: true}), '*');
+}
+
+async function salvarXML(xml) {
+  stText.textContent = 'Salvando...';
+  try {
+    const r = await fetch(`/clientes/${CLIENTE_ID}/topologia/salvar/`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+      body: JSON.stringify({drawio_xml: xml})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      stText.textContent = '✓ Salvo ' + new Date().toLocaleTimeString('pt-BR');
+      stText.style.color = '#3fb950';
+    } else {
+      stText.textContent = 'Erro ao salvar';
+      stText.style.color = '#f85149';
+    }
+  } catch(e) {
+    stText.textContent = 'Erro: ' + e.message;
+    stText.style.color = '#f85149';
+  }
+}
+
+window.addEventListener('message', async e => {
+  if (!e.data) return;
+  let msg;
+  try { msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
+
+  if (msg.event === 'init') {
+    clearTimeout(loadTimeout);
+    editorReady = true;
+    loadingEl.style.display = 'none';
+    stText.textContent = 'Editor pronto';
+    stText.style.color = '#8b949e';
+
+    // Load saved XML or open blank canvas
+    if (SAVED_XML) {
+      frame.contentWindow.postMessage(JSON.stringify({action: 'load', xml: SAVED_XML}), '*');
+    } else {
+      frame.contentWindow.postMessage(JSON.stringify({action: 'load', xml: '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>'}), '*');
+    }
+  }
+
+  if (msg.event === 'autosave' && msg.xml) {
+    await salvarXML(msg.xml);
+  }
+
+  if (msg.event === 'save' && msg.xml) {
+    await salvarXML(msg.xml);
+  }
+
+  if (msg.event === 'export' && msg.xml) {
+    await salvarXML(msg.xml);
+  }
+});
+</script>
+</body>
+</html>

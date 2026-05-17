@@ -143,3 +143,69 @@ def listar_chamados_por_status(request, status):
     }
     
     return render(request, 'listar_chamados_status.html', context)
+
+import json
+from django.http import JsonResponse
+
+@login_required(login_url='login')
+@admin_required
+def smtp_testar(request):
+    """Envia um e-mail de teste com as configurações SMTP salvas."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'erro': 'Método não permitido'}, status=405)
+    import smtplib
+    from email.mime.text import MIMEText
+    from clientes.models import ConfiguracaoSistema
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'JSON inválido'}, status=400)
+    destino = body.get('destino', '').strip()
+    if not destino:
+        return JsonResponse({'ok': False, 'erro': 'Endereço de destino não informado'}, status=400)
+    cfg = ConfiguracaoSistema.get()
+    if not cfg.smtp_host or not cfg.smtp_user:
+        return JsonResponse({'ok': False, 'erro': 'SMTP não configurado. Preencha Host, Usuário e Senha primeiro.'}, status=400)
+    try:
+        msg = MIMEText('Este é um e-mail de teste enviado pelo CRM.', 'plain', 'utf-8')
+        msg['Subject'] = 'Teste SMTP - CRM'
+        msg['From']    = cfg.smtp_from or cfg.smtp_user
+        msg['To']      = destino
+        with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=30) as server:
+            server.ehlo()
+            if cfg.smtp_use_tls:
+                server.starttls()
+            server.login(cfg.smtp_user, cfg.smtp_pass)
+            server.sendmail(msg['From'], [destino], msg.as_string())
+        return JsonResponse({'ok': True, 'mensagem': f'E-mail de teste enviado para {destino}'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+@admin_required
+def configuracoes_sistema(request):
+    from clientes.models import ConfiguracaoSistema
+    cfg = ConfiguracaoSistema.get()
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except Exception:
+            return JsonResponse({'ok': False, 'erro': 'JSON inválido'}, status=400)
+        # SMTP
+        if 'smtp_host' in body:
+            cfg.smtp_host    = body.get('smtp_host', '').strip()
+            cfg.smtp_port    = int(body.get('smtp_port', 587))
+            cfg.smtp_user    = body.get('smtp_user', '').strip()
+            cfg.smtp_from    = body.get('smtp_from', '').strip()
+            cfg.smtp_use_tls = bool(body.get('smtp_use_tls', True))
+            if body.get('smtp_pass'):
+                cfg.smtp_pass = body['smtp_pass']
+        # IMAP
+        if 'imap_host' in body:
+            cfg.imap_host    = body.get('imap_host', '').strip()
+            cfg.imap_port    = int(body.get('imap_port', 993))
+            cfg.imap_use_ssl = bool(body.get('imap_use_ssl', True))
+        cfg.save()
+        return JsonResponse({'ok': True})
+    return render(request, 'configuracoes_sistema.html', {'cfg': cfg})

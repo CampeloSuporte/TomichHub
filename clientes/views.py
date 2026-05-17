@@ -11,7 +11,7 @@ from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import ProxyServer
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
@@ -97,13 +97,14 @@ def listar_clientes(request):
 
     # ✅ NOVO: Adicionar flag de tipo de usuário ao contexto
     is_cliente = False
+    is_admin = request.user.is_staff or request.user.is_superuser
     try:
-        if Cliente.objects.get(usuario=request.user).id == cliente.id:
+        if not is_admin and Cliente.objects.get(usuario=request.user).id == cliente.id:
             is_cliente = True
     except:
         pass
 
-    return render(request, 'listar.html', {
+    response = render(request, 'listar.html', {
         'cliente': cliente,
         'funcoes': funcoes,
         'acessos': acessos,
@@ -115,8 +116,12 @@ def listar_clientes(request):
         'imagens_topologia': imagens_topologia,
         'proxies': proxies,
         'is_cliente': is_cliente,
+        'is_admin': is_admin,
         'destinos_padrao': DESTINOS_PADRAO,
     })
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    return response
 
 @login_required(login_url='login')
 @admin_required  # ← ADICIONAR ESTA LINHA
@@ -213,6 +218,8 @@ def cadastrar_acesso(request):
 
         # 🧠 Verifica se já existe um Acesso com o mesmo tipo para o mesmo cliente
         if Acesso.objects.filter(tipo=tipo, cliente_id=cliente_id).exists():
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': f'O tipo "{tipo}" já está cadastrado para este cliente.'})
             messages.error(request, f'O tipo "{tipo}" já está cadastrado para este cliente.')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
@@ -237,6 +244,8 @@ def cadastrar_acesso(request):
         )
         acesso.save()
 
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
         messages.success(request, 'Acesso cadastrado com sucesso!')
         return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
@@ -425,10 +434,14 @@ def editar_acesso(request, acesso_id):
 
             acesso.save()
 
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             messages.success(request, 'Acesso atualizado com sucesso!')
             return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente.id}")
 
         except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
             messages.error(request, f'Erro ao editar acesso: {str(e)}')
             return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente.id}")
 
@@ -1430,29 +1443,34 @@ def realizar_backup(acesso, usuario=None):
 
             proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
             if not proxy:
-                raise Exception(
-                    "IP privado sem proxy SSH ativo. "
-                    "Configure um túnel SSH na aba 'Túneis SSH'."
+                # Verificar se VPN WireGuard ativa cobre este IP
+                if vpn_cobre_ip(acesso.cliente, acesso.host):
+                    print(f"✅ VPN WireGuard cobre {acesso.host} — conectando diretamente")
+                    # host_conexao e porta_conexao já apontam para o host diretamente via VPN
+                else:
+                    raise Exception(
+                        "IP privado sem proxy SSH ativo. "
+                        "Configure um túnel SSH na aba 'Túneis SSH'."
+                    )
+            else:
+                print(f"✅ Proxy encontrado: {proxy.nome}")
+
+                ssh_tunnel = criar_ssh_tunnel(
+                    {
+                        'host':    proxy.host,
+                        'porta':   proxy.porta,
+                        'usuario': proxy.usuario,
+                        'senha':   proxy.senha
+                    },
+                    acesso.host,
+                    porta_conexao
                 )
 
-            print(f"✅ Proxy encontrado: {proxy.nome}")
+                host_conexao = ssh_tunnel['local_host']
+                porta_conexao = ssh_tunnel['local_port']
 
-            ssh_tunnel = criar_ssh_tunnel(
-                {
-                    'host':    proxy.host,
-                    'porta':   proxy.porta,
-                    'usuario': proxy.usuario,
-                    'senha':   proxy.senha
-                },
-                acesso.host,
-                porta_conexao
-            )
-
-            host_conexao = ssh_tunnel['local_host']
-            porta_conexao = ssh_tunnel['local_port']
-
-            print(f"✅ Túnel criado: localhost:{porta_conexao} → {acesso.host}:{acesso.porta}")
-            time.sleep(1)
+                print(f"✅ Túnel criado: localhost:{porta_conexao} → {acesso.host}:{acesso.porta}")
+                time.sleep(1)
 
         # ✅ Preparar diretório de backup
         backup_dir = preparar_diretorio_backup(acesso.cliente.id, acesso.id)
@@ -2520,6 +2538,25 @@ def is_private_ip(ip):
 
 
 
+def vpn_cobre_ip(cliente, host):
+    """Verifica se existe VPN WireGuard com peer configurado que cobre o IP do host."""
+    try:
+        import ipaddress as _ipa
+        from .models import VPNWireGuard
+        vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
+        host_ip = _ipa.ip_address(host)
+        for vpn in vpns:
+            for rede_str in vpn.redes_lista():
+                try:
+                    if host_ip in _ipa.ip_network(rede_str, strict=False):
+                        return True
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+    return False
+
+
 def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=10):
     """
     ✅ MESMA FUNÇÃO DO TERMINAL SSH
@@ -2823,6 +2860,53 @@ def terminal_page(request):
 
 
 @login_required(login_url='login')
+@require_http_methods(["GET"])
+def listar_acessos_terminal(request):
+    """Retorna JSON com acessos SSH/Telnet. Filtra por cliente_id se informado."""
+    cliente_id = request.GET.get('cliente')
+
+    base_qs = Acesso.objects.select_related('cliente', 'funcao').filter(
+        protocolo__iregex=r'^(ssh|telnet|rlogin)$'
+    )
+
+    if cliente_id:
+        # Filtrar pelo cliente especificado — verificar permissão de acesso
+        cliente_obj = get_object_or_404(Cliente, id=cliente_id)
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                c = Cliente.objects.get(usuario=request.user)
+                if c.id != cliente_obj.id:
+                    return JsonResponse({'acessos': []})
+            except Cliente.DoesNotExist:
+                return JsonResponse({'acessos': []})
+        acessos = base_qs.filter(cliente=cliente_obj).order_by('tipo')
+    elif request.user.is_staff or request.user.is_superuser:
+        acessos = base_qs.order_by('cliente__nome_empresa', 'tipo')
+    else:
+        try:
+            cliente_obj = Cliente.objects.get(usuario=request.user)
+            acessos = base_qs.filter(cliente=cliente_obj).order_by('tipo')
+        except Cliente.DoesNotExist:
+            return JsonResponse({'acessos': []})
+
+    data = [
+        {
+            'id': a.id,
+            'tipo': a.tipo,
+            'host': a.host,
+            'porta': a.porta or 22,
+            'protocolo': a.protocolo,
+            'usuario': a.usuario,
+            'cliente_nome': a.cliente.nome_empresa,
+            'cliente_id': a.cliente.id,
+            'funcao': a.funcao.descricao if a.funcao else '',
+        }
+        for a in acessos
+    ]
+    return JsonResponse({'acessos': data})
+
+
+@login_required(login_url='login')
 def winbox_page(request, acesso_id):
     """Renderiza a página WebFig (interface web MikroTik) via proxy"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -2914,13 +2998,17 @@ def ping_acesso(request, acesso_id):
             ).first()
 
             if not proxy:
-                return JsonResponse({
-                    'error': 'IP privado sem proxy SSH ativo',
-                    'host': host,
-                    'status': 'erro'
-                }, status=400)
-
-            resultado = ping_via_proxy(proxy, host)
+                if vpn_cobre_ip(acesso.cliente, host):
+                    print(f"✅ VPN WireGuard cobre {host} — ping direto via VPN")
+                    resultado = ping_direto(host)
+                else:
+                    return JsonResponse({
+                        'error': 'IP privado sem proxy SSH ativo',
+                        'host': host,
+                        'status': 'erro'
+                    }, status=400)
+            else:
+                resultado = ping_via_proxy(proxy, host)
         else:
             # ✅ IP público, ping direto
             print(f"✅ IP PÚBLICO - Ping direto")
@@ -4104,6 +4192,20 @@ def _ssh_exec(proxy, cmd, timeout=45):
         client.close()
 
 
+def _exec_local(cmd, timeout=45):
+    """Executa comando localmente via subprocess. Retorna (stdout, stderr, return_code)."""
+    import subprocess
+    try:
+        proc = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=timeout
+        )
+        return proc.stdout, proc.stderr, proc.returncode
+    except subprocess.TimeoutExpired:
+        return '', 'Timeout', -1
+    except Exception as e:
+        return '', str(e), -1
+
+
 def _parse_ping_output(output, host):
     """Extrai estatísticas do output de ping (Linux)."""
     result = {'host': host, 'alcancavel': False, 'enviados': 0,
@@ -4143,8 +4245,24 @@ def teste_rede_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    usar_vpn_local = False
     if not proxy:
-        return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
+        from .models import VPNWireGuard
+        from . import vpn_manager as _wgm
+        vpns_ativas = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
+        if vpns_ativas.exists():
+            peers = _wgm.get_peers_status()
+            usar_vpn_local = any(
+                peers.get(v.cliente_public_key, {}).get('conectado') for v in vpns_ativas
+            )
+        if not usar_vpn_local:
+            return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
+
+    # Executor: SSH no proxy ou local via VPN
+    def _exec(cmd, timeout=45):
+        if usar_vpn_local:
+            return _exec_local(cmd, timeout)
+        return _ssh_exec(proxy, cmd, timeout)
 
     # ── Parâmetros ────────────────────────────────────────────────────────
     try:
@@ -4200,27 +4318,27 @@ def teste_rede_cliente(request, cliente_id):
         }
         try:
             if ipv in ('v4', 'ambos'):
-                out, _, _ = _ssh_exec(proxy, ping_cmd(destino, '-4'), timeout=ssh_ping_timeout)
+                out, _, _ = _exec(ping_cmd(destino, '-4'), timeout=ssh_ping_timeout)
                 resultado['ping_v4'] = _parse_ping_output(out, destino)
 
             if ipv in ('v6', 'ambos'):
-                out6, _, _ = _ssh_exec(proxy, ping_cmd(destino, '-6'), timeout=ssh_ping_timeout)
+                out6, _, _ = _exec(ping_cmd(destino, '-6'), timeout=ssh_ping_timeout)
                 resultado['ping_v6'] = _parse_ping_output(out6, destino)
 
             # MTR — só o protocolo primário para não duplicar
             mtr_flag = mtr_flag_v4 if ipv in ('v4', 'ambos') else mtr_flag_v6
-            out_mtr, err_mtr, _ = _ssh_exec(proxy, mtr_cmd(destino, mtr_flag), timeout=90)
+            out_mtr, err_mtr, _ = _exec(mtr_cmd(destino, mtr_flag), timeout=90)
             mtr_raw = (out_mtr + err_mtr).strip()[:4000]
             ferr    = 'mtr' if ('Loss%' in mtr_raw or 'HOST' in mtr_raw) else 'traceroute'
 
             if ipv in ('v4', 'ambos'):
                 resultado['mtr_v4'] = {'output': mtr_raw, 'ferramenta': ferr}
             if ipv == 'v6':
-                out_mtr6, err_mtr6, _ = _ssh_exec(proxy, mtr_cmd(destino, mtr_flag_v6), timeout=90)
+                out_mtr6, err_mtr6, _ = _exec(mtr_cmd(destino, mtr_flag_v6), timeout=90)
                 mtr_raw6 = (out_mtr6 + err_mtr6).strip()[:4000]
                 resultado['mtr_v6'] = {'output': mtr_raw6, 'ferramenta': ferr}
             elif ipv == 'ambos':
-                out_mtr6, err_mtr6, _ = _ssh_exec(proxy, mtr_cmd(destino, mtr_flag_v6), timeout=90)
+                out_mtr6, err_mtr6, _ = _exec(mtr_cmd(destino, mtr_flag_v6), timeout=90)
                 mtr_raw6 = (out_mtr6 + err_mtr6).strip()[:4000]
                 resultado['mtr_v6'] = {'output': mtr_raw6, 'ferramenta': ferr}
 
@@ -4240,9 +4358,11 @@ def teste_rede_cliente(request, cliente_id):
     ordem = {d: i for i, d in enumerate(todos_destinos)}
     resultados.sort(key=lambda r: ordem.get(r['destino'], 99))
 
+    proxy_info = {'nome': proxy.nome, 'host': proxy.host} if proxy else {'nome': 'VPN WireGuard (local)', 'host': 'servidor CRM'}
     return JsonResponse({
         'ok':        True,
-        'proxy':     {'nome': proxy.nome, 'host': proxy.host},
+        'proxy':     proxy_info,
+        'via_vpn':   usar_vpn_local,
         'ipv':       ipv,
         'packets':   packets,
         'wait':      wait,
@@ -4328,7 +4448,10 @@ def _nslookup_ssh(proxy, dominio, dns_ip, timeout=20):
         f'fi'
     )
     try:
-        out, err_out, _ = _ssh_exec(proxy, cmd, timeout=timeout)
+        if proxy is not None:
+            out, err_out, _ = _ssh_exec(proxy, cmd, timeout=timeout)
+        else:
+            out, err_out, _ = _exec_local(cmd, timeout=timeout)
         raw = (out + err_out).strip()
 
         ipv4_list = []
@@ -4420,8 +4543,18 @@ def teste_dns_cliente(request, cliente_id):
     dominio = re.sub(r'^https?://', '', dominio).split('/')[0]
 
     proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    usar_vpn_local_dns = False
     if not proxy:
-        return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
+        from .models import VPNWireGuard
+        from . import vpn_manager as _wgm
+        vpns_ativas = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
+        if vpns_ativas.exists():
+            peers = _wgm.get_peers_status()
+            usar_vpn_local_dns = any(
+                peers.get(v.cliente_public_key, {}).get('conectado') for v in vpns_ativas
+            )
+        if not usar_vpn_local_dns:
+            return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
 
     todos_dns = []
     if dns_cliente:
@@ -4523,10 +4656,12 @@ def teste_dns_cliente(request, cliente_id):
         consistente_geral = len(conjuntos) == 1
         status_geral      = 'ok' if consistente_geral else 'inconsistente'
 
+    proxy_info_dns = {'nome': proxy.nome, 'host': proxy.host} if proxy else {'nome': 'VPN WireGuard (local)', 'host': 'servidor CRM'}
     return JsonResponse({
         'ok':               True,
         'dominio':          dominio,
-        'proxy':            {'nome': proxy.nome, 'host': proxy.host},
+        'proxy':            proxy_info_dns,
+        'via_vpn':          usar_vpn_local_dns,
         'resultados':       resultados,
         'todos_ips_distintos': sorted(todos_ipv4),
         'consistente_geral':   consistente_geral,
@@ -4591,13 +4726,16 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     if ProxyEngine.is_private_ip(target_host):
         proxy_srv = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
         if not proxy_srv:
-            return HttpResponse(
-                ProxyEngine.get_error_page(
-                    f'IP privado (<code>{target_host}</code>) sem proxy SSH ativo.<br>'
-                    f'Configure um túnel SSH para este cliente.'
-                ),
-                content_type='text/html', status=400
-            )
+            if vpn_cobre_ip(acesso.cliente, target_host):
+                pass  # VPN ativa cobre este IP — acesso direto sem proxy
+            else:
+                return HttpResponse(
+                    ProxyEngine.get_error_page(
+                        f'IP privado (<code>{target_host}</code>) sem proxy SSH ativo.<br>'
+                        f'Configure um túnel SSH para este cliente.'
+                    ),
+                    content_type='text/html', status=400
+                )
 
     # ── Executar Requisição via ProxyEngine ───────────────────────────
     engine = ProxyEngine(proxy_srv,
@@ -4770,3 +4908,1187 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             content_type='text/html', status=500
         )
 
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EDITOR DE TOPOLOGIA DE REDE
+# ─────────────────────────────────────────────────────────────────────────────
+
+from .models import TopologiaDiagrama
+
+
+def _topologia_perm(request, cliente):
+    """Verifica permissão para acessar topologia."""
+    if request.user.is_staff or request.user.is_superuser:
+        return True
+    try:
+        return Cliente.objects.get(usuario=request.user).id == cliente.id
+    except Exception:
+        return False
+
+
+@login_required(login_url='login')
+def topologia_editor(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    diagrama = TopologiaDiagrama.objects.filter(cliente=cliente).first()
+    return render(request, 'topologia_editor.html', {
+        'cliente': cliente,
+        'diagrama': diagrama,
+        'dados_json': diagrama.dados_json if diagrama else '{"nodes":[],"links":[]}',
+        'diagrama_id': diagrama.id if diagrama else None,
+    })
+
+
+@login_required(login_url='login')
+def topologia_drawio(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    diagrama = TopologiaDiagrama.objects.filter(cliente=cliente).first()
+    return render(request, 'topologia_drawio.html', {
+        'cliente': cliente,
+        'drawio_xml': diagrama.drawio_xml if diagrama else '',
+        'diagrama_id': diagrama.id if diagrama else None,
+    })
+
+
+@login_required(login_url='login')
+def topologia_dados(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    diagrama = TopologiaDiagrama.objects.filter(cliente=cliente).first()
+    if not diagrama:
+        return JsonResponse({'nodes': [], 'links': [], 'diagrama_id': None})
+    import json as _json
+    try:
+        dados = _json.loads(diagrama.dados_json)
+    except Exception:
+        dados = {'nodes': [], 'links': []}
+    dados['diagrama_id'] = diagrama.id
+    dados['nome'] = diagrama.nome
+    dados['drawio_xml'] = diagrama.drawio_xml or ''
+    return JsonResponse(dados)
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def topologia_salvar(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Body invalido'}, status=400)
+    diagrama, _ = TopologiaDiagrama.objects.get_or_create(
+        cliente=cliente,
+        defaults={'nome': body.get('nome', 'Nova Topologia')}
+    )
+    if 'nome' in body:
+        diagrama.nome = body['nome']
+    if 'dados_json' in body:
+        v = body['dados_json']
+        diagrama.dados_json = v if isinstance(v, str) else json.dumps(v)
+    if 'drawio_xml' in body:
+        diagrama.drawio_xml = body['drawio_xml']
+    diagrama.save()
+    return JsonResponse({'ok': True, 'diagrama_id': diagrama.id, 'nome': diagrama.nome})
+
+
+@login_required(login_url='login')
+def topologia_hosts(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao', 'modelo')
+    hosts = []
+    for a in acessos:
+        funcao_nome = ((a.funcao.descricao or '') if a.funcao else '').lower()
+        tipo_lower = (a.tipo or '').lower()
+        tipo = 'host'
+        mapa = [
+            (['router','roteador','core','border','borda'], 'router'),
+            (['switch l3','sw-l3','camada 3'], 'switch_l3'),
+            (['switch','sw-','catalyst','nexus'], 'switch_l2'),
+            (['radio','wireless','ubiquiti','mikrotik','ap ','airmax','ltu'], 'radio'),
+            (['dwdm','oadm','ots','mstp','transponder'], 'dwdm'),
+            (['olt','gpon','xgs','epon'], 'olt'),
+            (['onu','ont'], 'onu'),
+            (['server','servidor','zabbix','grafana','proxmox'], 'server'),
+            (['firewall','utm','fortigate','pfsense','sophos'], 'firewall'),
+            (['cpe','modem'], 'cpe'),
+        ]
+        for keywords, dev_tipo in mapa:
+            if any(k in funcao_nome or k in tipo_lower for k in keywords):
+                tipo = dev_tipo
+                break
+        hosts.append({
+            'id': a.id,
+            'label': a.tipo,
+            'ip': a.host,
+            'porta': a.porta,
+            'protocolo': a.protocolo,
+            'usuario': a.usuario,
+            'tipo': tipo,
+            'cliente_id': cliente.id,
+            'funcao': (a.funcao.descricao or '') if a.funcao else '',
+            'modelo': (a.modelo.nome or '') if a.modelo else '',
+        })
+    return JsonResponse({'hosts': hosts, 'total': len(hosts)})
+
+
+def _exec_migration_topologia(request):
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponse('Proibido', status=403)
+    try:
+        from django.db import connection as _conn
+        with _conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS clientes_topologiadiagrama (
+                    id BIGSERIAL PRIMARY KEY,
+                    nome VARCHAR(255) NOT NULL DEFAULT 'Nova Topologia',
+                    dados_json TEXT NOT NULL DEFAULT '{"nodes":[],"links":[]}',
+                    drawio_xml TEXT NOT NULL DEFAULT '',
+                    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    cliente_id BIGINT NOT NULL REFERENCES clientes_cliente(id) ON DELETE CASCADE
+                );
+                INSERT INTO django_migrations (app, name, applied)
+                VALUES ('clientes', '0040_topologia_diagrama', NOW())
+                ON CONFLICT (app, name) DO NOTHING;
+            """)
+        return HttpResponse('Migration aplicada com sucesso!', status=200)
+    except Exception as e:
+        return HttpResponse(f'Erro: {e}', status=500)
+
+
+# =============================================================================
+# VPN WireGuard
+# =============================================================================
+from .models import VPNWireGuard, VPNServidorConfig
+from . import vpn_manager as wgm
+import json as _json
+
+def _get_servidor_config():
+    """Retorna config do servidor, criando se não existir."""
+    cfg = VPNServidorConfig.objects.first()
+    if not cfg:
+        priv, pub = wgm.gerar_par_chaves()
+        cfg = VPNServidorConfig.objects.create(
+            servidor_private_key=priv,
+            servidor_public_key=pub,
+            servidor_endpoint='179.48.68.73',
+            servidor_porta=51820,
+        )
+    return cfg
+
+
+@login_required
+@require_http_methods(["GET"])
+def vpn_wg_listar(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    vpns    = VPNWireGuard.objects.filter(cliente=cliente)
+    cfg     = _get_servidor_config()
+
+    # Status em tempo real
+    peers_status = {}
+    try:
+        peers_status = wgm.get_peers_status()
+    except Exception:
+        pass
+
+    vpns_data = []
+    for v in vpns:
+        st = peers_status.get(v.cliente_public_key, {})
+        vpns_data.append({
+            'id':             v.id,
+            'nome':           v.nome,
+            'vpn_ip':         v.vpn_ip,
+            'redes':          v.redes_lista(),
+            'ativo':          v.ativo,
+            'peer_no_servidor': v.peer_no_servidor,
+            'conectado':      st.get('conectado', False),
+            'last_handshake': st.get('last_handshake', 0),
+            'rx':             wgm.formatar_bytes(st.get('rx_bytes', 0)),
+            'tx':             wgm.formatar_bytes(st.get('tx_bytes', 0)),
+            'criado_em':      v.criado_em.strftime('%d/%m/%Y %H:%M'),
+        })
+
+    return JsonResponse({'vpns': vpns_data, 'servidor_endpoint': cfg.servidor_endpoint})
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_wg_criar(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        body = _json.loads(request.body)
+        nome          = body.get('nome', 'VPN MikroTik').strip() or 'VPN MikroTik'
+        redes_raw     = body.get('redes_privadas', '').strip()
+
+        cfg           = _get_servidor_config()
+        priv, pub     = wgm.gerar_par_chaves()
+        psk           = wgm.gerar_preshared_key()
+        vpn_ip        = wgm.alocar_proximo_ip()
+
+        vpn = VPNWireGuard.objects.create(
+            cliente=cliente,
+            nome=nome,
+            cliente_private_key=priv,
+            cliente_public_key=pub,
+            preshared_key=psk,
+            vpn_ip=vpn_ip,
+            redes_privadas=redes_raw,
+            ativo=True,
+        )
+
+        # Adicionar peer ao wg0 do servidor
+        try:
+            wgm.adicionar_peer(pub, psk, vpn_ip, vpn.redes_lista())
+            wgm.salvar_config_persistente()
+            vpn.peer_no_servidor = True
+            vpn.save()
+        except Exception as e:
+            logger.warning(f'Peer não adicionado ao wg0: {e}')
+
+        return JsonResponse({'ok': True, 'vpn_id': vpn.id, 'vpn_ip': vpn_ip})
+
+    except Exception as e:
+        logger.error(f'vpn_wg_criar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["GET"])
+def vpn_wg_script(request, vpn_id):
+    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
+    cfg = _get_servidor_config()
+    script = wgm.gerar_script_mikrotik(vpn, cfg)
+    return JsonResponse({'ok': True, 'script': script, 'nome': vpn.nome})
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_wg_deletar(request, vpn_id):
+    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
+    try:
+        if vpn.peer_no_servidor:
+            wgm.remover_peer(vpn.cliente_public_key, vpn.redes_lista())
+            wgm.salvar_config_persistente()
+        vpn.delete()
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        logger.error(f'vpn_wg_deletar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["GET"])
+def vpn_wg_status(request, cliente_id):
+    vpns = VPNWireGuard.objects.filter(cliente_id=cliente_id, ativo=True)
+    peers = {}
+    try:
+        peers = wgm.get_peers_status()
+    except Exception:
+        pass
+
+    result = []
+    for v in vpns:
+        st = peers.get(v.cliente_public_key, {})
+        result.append({
+            'id':        v.id,
+            'vpn_ip':    v.vpn_ip,
+            'conectado': st.get('conectado', False),
+            'last_handshake': st.get('last_handshake', 0),
+        })
+    return JsonResponse({'vpns': result})
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_wg_reativar_peer(request, vpn_id):
+    """Re-adiciona peer ao wg0 (útil após reboot do servidor)."""
+    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
+    cfg = _get_servidor_config()
+    try:
+        wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
+                           vpn.vpn_ip, vpn.redes_lista())
+        wgm.salvar_config_persistente()
+        vpn.peer_no_servidor = True
+        vpn.save()
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_wg_editar(request, vpn_id):
+    """Atualiza nome e redes privadas de uma VPN WireGuard."""
+    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
+    try:
+        body = _json.loads(request.body)
+        nome_novo   = body.get('nome', '').strip() or vpn.nome
+        redes_novas = body.get('redes_privadas', '').strip()
+
+        redes_antigas = vpn.redes_lista()
+
+        vpn.nome           = nome_novo
+        vpn.redes_privadas = redes_novas
+        vpn.save()
+
+        if vpn.peer_no_servidor:
+            # Remover rotas antigas e re-adicionar peer com novas redes
+            wgm.remover_peer(vpn.cliente_public_key, redes_antigas)
+            wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
+                               vpn.vpn_ip, vpn.redes_lista())
+            wgm.salvar_config_persistente()
+
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        logger.error(f'vpn_wg_editar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# OpenVPN — Configuração automatizada em MikroTik
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+def openvpn_listar(request, cliente_id):
+    """Lista as configurações OpenVPN do cliente incluindo usuários adicionais."""
+    from .models import OpenVPNConfig
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    qs = OpenVPNConfig.objects.filter(cliente=cliente).select_related('acesso').prefetch_related('usuarios')
+    data = []
+    for c in qs:
+        usuarios = [
+            {
+                'id':       u.id,
+                'nome':     u.nome,
+                'username': u.username,
+                'status':   u.status,
+                'erro_msg': u.erro_msg,
+                'tem_arquivo': bool(u.ovpn_path),
+            }
+            for u in c.usuarios.all()
+        ]
+        data.append({
+            'id':          c.id,
+            'nome_vpn':    c.nome_vpn,
+            'ip_publico':  c.ip_publico,
+            'porta':       c.porta,
+            'ros_version': c.ros_version,
+            'status':      c.status,
+            'erro_msg':    c.erro_msg,
+            'acesso_host': c.acesso.host if c.acesso else '',
+            'acesso_tipo': c.acesso.tipo if c.acesso else '',
+            'vpn_username': c.vpn_username,
+            'vpn_password': c.vpn_password,
+            'tem_arquivo': bool(c.ovpn_path),
+            'criado_em':   c.criado_em.strftime('%d/%m/%Y %H:%M'),
+            'usuarios':    usuarios,
+        })
+    return JsonResponse({'ok': True, 'configs': data})
+
+
+@login_required
+@require_http_methods(['POST'])
+def openvpn_criar(request, cliente_id):
+    """Cria uma nova configuração OpenVPN e inicia a execução em background."""
+    import threading
+    from .models import OpenVPNConfig
+    from .openvpn_manager import gerar_senha, executar_config_openvpn
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        body       = json.loads(request.body)
+        acesso_id  = body.get('acesso_id')
+        ip_publico = body.get('ip_publico', '').strip()
+        porta      = int(body.get('porta', 61194))
+        nome_vpn   = body.get('nome_vpn', '').strip()
+        ros_ver    = body.get('ros_version', '7')
+
+        if not ip_publico or not nome_vpn or not acesso_id:
+            return JsonResponse({'ok': False, 'erro': 'ip_publico, nome_vpn e acesso_id são obrigatórios'}, status=400)
+
+        acesso = get_object_or_404(Acesso, id=acesso_id, cliente=cliente)
+
+        config = OpenVPNConfig.objects.create(
+            cliente         = cliente,
+            acesso          = acesso,
+            nome_vpn        = nome_vpn,
+            ip_publico      = ip_publico,
+            porta           = porta,
+            ros_version     = ros_ver,
+            vpn_pool        = body.get('vpn_pool', '192.168.250.128-192.168.250.254'),
+            vpn_local_ip    = body.get('vpn_local_ip', '192.168.250.1'),
+            vpn_username    = body.get('vpn_username') or nome_vpn,
+            vpn_password    = body.get('vpn_password') or gerar_senha(14),
+            cert_passphrase = body.get('cert_passphrase') or gerar_senha(10),
+            rate_limit      = body.get('rate_limit', '50M/50M'),
+            status          = 'configurando',
+        )
+
+        # Executa em background para não bloquear o request
+        t = threading.Thread(target=executar_config_openvpn, args=(config.id,), daemon=True)
+        t.start()
+
+        return JsonResponse({'ok': True, 'id': config.id})
+    except Exception as e:
+        logger.error(f'openvpn_criar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+def openvpn_status(request, config_id):
+    """Retorna o status atual de uma configuração OpenVPN (usado para polling)."""
+    from .models import OpenVPNConfig
+    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    return JsonResponse({
+        'ok':        True,
+        'status':    c.status,
+        'erro_msg':  c.erro_msg,
+        'tem_arquivo': bool(c.ovpn_path),
+    })
+
+
+@login_required
+def openvpn_download(request, config_id):
+    """Faz o download do arquivo .ovpn gerado."""
+    from .models import OpenVPNConfig
+    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    if not c.ovpn_path:
+        return JsonResponse({'ok': False, 'erro': 'Arquivo ainda não gerado'}, status=404)
+    caminho = os.path.join(settings.MEDIA_ROOT, c.ovpn_path)
+    if not os.path.exists(caminho):
+        return JsonResponse({'ok': False, 'erro': 'Arquivo não encontrado no servidor'}, status=404)
+    return FileResponse(
+        open(caminho, 'rb'),
+        as_attachment=True,
+        filename=f'{c.nome_vpn}.ovpn',
+    )
+
+
+@login_required
+@require_http_methods(['POST'])
+def openvpn_deletar(request, config_id):
+    """Remove uma configuração OpenVPN e seu arquivo .ovpn."""
+    from .models import OpenVPNConfig
+    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    if c.ovpn_path:
+        try:
+            caminho = os.path.join(settings.MEDIA_ROOT, c.ovpn_path)
+            if os.path.exists(caminho):
+                os.remove(caminho)
+        except Exception:
+            pass
+    c.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def openvpn_logs(request, config_id):
+    """Retorna os logs de execução de uma configuração OpenVPN."""
+    from .models import OpenVPNConfig
+    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    return JsonResponse({'ok': True, 'logs': c.logs or '(sem logs)'})
+
+
+@login_required
+@require_http_methods(['POST'])
+def openvpn_reexecutar(request, config_id):
+    """Re-executa a configuração OpenVPN (útil quando houve erro)."""
+    import threading
+    from .models import OpenVPNConfig
+    from .openvpn_manager import executar_config_openvpn
+    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    c.status   = 'configurando'
+    c.erro_msg = ''
+    c.save(update_fields=['status', 'erro_msg'])
+    t = threading.Thread(target=executar_config_openvpn, args=(c.id,), daemon=True)
+    t.start()
+    return JsonResponse({'ok': True})
+
+
+# ── OpenVPN — Usuários adicionais ─────────────────────────────────────────────
+
+@login_required
+@require_http_methods(['POST'])
+def openvpn_usuario_criar(request, config_id):
+    import threading
+    import json
+    from .models import OpenVPNConfig, OpenVPNUsuario
+    from .openvpn_manager import adicionar_usuario_openvpn, gerar_senha
+
+    config = get_object_or_404(OpenVPNConfig, id=config_id)
+    try:
+        data     = json.loads(request.body)
+        nome     = data.get('nome', '').strip()
+        username = data.get('username', '').strip() or nome
+        if not nome:
+            return JsonResponse({'ok': False, 'erro': 'Nome é obrigatório'})
+
+        u = OpenVPNUsuario.objects.create(
+            config=config, nome=nome,
+            username=username, password=gerar_senha(16),
+        )
+        t = threading.Thread(target=adicionar_usuario_openvpn, args=(u.id,), daemon=True)
+        t.start()
+        return JsonResponse({'ok': True, 'id': u.id})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)})
+
+
+@login_required
+def openvpn_usuario_status(request, usuario_id):
+    from .models import OpenVPNUsuario
+    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    return JsonResponse({
+        'status': u.status, 'erro_msg': u.erro_msg,
+        'tem_arquivo': bool(u.ovpn_path),
+    })
+
+
+@login_required
+def openvpn_usuario_download(request, usuario_id):
+    from .models import OpenVPNUsuario
+    from django.http import FileResponse
+    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    if not u.ovpn_path:
+        return JsonResponse({'erro': 'Arquivo não disponível'}, status=404)
+    path = os.path.join(settings.MEDIA_ROOT, u.ovpn_path)
+    return FileResponse(open(path, 'rb'), as_attachment=True,
+                        filename=f'{u.nome}.ovpn')
+
+
+@login_required
+@require_http_methods(['POST'])
+def openvpn_usuario_deletar(request, usuario_id):
+    from .models import OpenVPNUsuario
+    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    if u.ovpn_path:
+        try:
+            os.remove(os.path.join(settings.MEDIA_ROOT, u.ovpn_path))
+        except Exception:
+            pass
+    u.delete()
+    return JsonResponse({'ok': True})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IRR Config — Atualização de objetos IRR via e-mail (TC)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _irr_gerar_corpo(cfg):
+    """Gera o corpo completo do e-mail de atualização IRR a partir de um IRRConfig."""
+    from datetime import date
+    hoje = date.today().strftime('%Y%m%d')
+    asn     = cfg.asn
+    as_full = f'AS{asn}'
+    mntner  = f'MAINT-AS{asn}'
+    rs      = f'{as_full}:RS-ROUTES'
+    email   = cfg.email_contato
+
+    partes = []
+
+    # ── Autenticação ──────────────────────────────────────────────────────────
+    partes.append(f'password: {cfg.irr_password}\n')
+
+    # ── Person ───────────────────────────────────────────────────────────────
+    partes.append(
+        f'person:  {cfg.person_name}\n'
+        f'address: {cfg.address}\n'
+        f'phone:   {cfg.phone}\n'
+        f'e-mail:  {email}\n'
+        f'nic-hdl: {cfg.nic_hdl}\n'
+        f'mnt-by:  {mntner}\n'
+        f'changed: {email} {hoje}\n'
+        f'source:  TC\n'
+    )
+
+    # ── Mntner ────────────────────────────────────────────────────────────────
+    # Gera hash bcrypt automaticamente a partir da senha plaintext
+    import bcrypt as _bcrypt
+    _bcrypt_hash = _bcrypt.hashpw(cfg.irr_password.encode(), _bcrypt.gensalt()).decode()
+    auth_line = f'auth:    BCRYPT-PW {_bcrypt_hash}\n'
+    partes.append(
+        f'mntner:  {mntner}\n'
+        f'descr:   {cfg.empresa_descr}\n'
+        f'admin-c: {cfg.nic_hdl}\n'
+        f'tech-c:  {cfg.nic_hdl}\n'
+        f'upd-to:  {email}\n'
+        f'mnt-nfy: {email}\n'
+        + auth_line +
+        f'mnt-by:  {mntner}\n'
+        f'changed: {email} {hoje}\n'
+        f'source:  TC\n'
+    )
+
+    # ── Route-set ─────────────────────────────────────────────────────────────
+    mp_members_lines = ''
+    for m in (cfg.route_set_members or []):
+        mp_members_lines += f'mp-members: {m}\n'
+    partes.append(
+        f'route-set: {rs}\n'
+        f'descr:     {cfg.empresa_descr}\n'
+        + mp_members_lines +
+        f'admin-c:   {cfg.nic_hdl}\n'
+        f'tech-c:    {cfg.nic_hdl}\n'
+        f'notify:    {email}\n'
+        f'mnt-by:    {mntner}\n'
+        f'changed:   {email} {hoje}\n'
+        f'source:    TC\n'
+    )
+
+    # ── Geo lines helper ─────────────────────────────────────────────────────
+    def geo_lines():
+        linhas = ''
+        if cfg.geo_pais:        linhas += f'geoidx: {cfg.geo_pais}\n'
+        if cfg.geo_pais_alpha3: linhas += f'geoidx: {cfg.geo_pais_alpha3}\n'
+        if cfg.geo_pais_num:    linhas += f'geoidx: {cfg.geo_pais_num}\n'
+        if cfg.geo_estado:      linhas += f'geoidx: {cfg.geo_estado}\n'
+        if cfg.geo_cidade:      linhas += f'geoidx: {cfg.geo_cidade}\n'
+        return linhas
+
+    # ── route objects ─────────────────────────────────────────────────────────
+    for prefix in (cfg.ipv4_rotas or []):
+        partes.append(
+            f'route:  {prefix}\n'
+            f'descr:  {cfg.empresa_descr}\n'
+            f'origin: {as_full}\n'
+            f'member-of: {rs}\n'
+            f'notify: {email}\n'
+            + geo_lines() +
+            f'mnt-by: {mntner}\n'
+            f'changed: {email} {hoje}\n'
+            f'source: TC\n'
+        )
+
+    # ── route6 objects ────────────────────────────────────────────────────────
+    for prefix in (cfg.ipv6_rotas or []):
+        partes.append(
+            f'route6: {prefix}\n'
+            f'descr:  {cfg.empresa_descr}\n'
+            f'origin: {as_full}\n'
+            f'member-of: {rs}\n'
+            f'notify: {email}\n'
+            + geo_lines() +
+            f'mnt-by: {mntner}\n'
+            f'changed: {email} {hoje}\n'
+            f'source: TC\n'
+        )
+
+    # ── AS-set UPSTREAMS ──────────────────────────────────────────────────────
+    up_members = ''
+    for u in (cfg.upstream_asns or []):
+        nome_comment = f'  # {u["nome"]}' if u.get('nome') else ''
+        up_members += f'members: {u["asn"]}{nome_comment}\n'
+    partes.append(
+        f'as-set: {as_full}:AS-UPSTREAMS\n'
+        f'descr:  as-set containing {as_full} upstream providers\n'
+        + up_members +
+        f'admin-c: {cfg.nic_hdl}\n'
+        f'tech-c:  {cfg.nic_hdl}\n'
+        f'notify:  {email}\n'
+        f'mnt-by:  {mntner}\n'
+        f'changed: {email} {hoje}\n'
+        f'source:  TC\n'
+    )
+
+    # ── AS-set CUSTOMERS ──────────────────────────────────────────────────────
+    cust_members = ''
+    for c in (cfg.customer_asns or []):
+        if c.get('asn'):
+            nome_comment = f'  # {c["nome"]}' if c.get('nome') else ''
+            cust_members += f'members: {c["asn"]}{nome_comment}\n'
+    if not cust_members:
+        cust_members = 'members: #\n'
+    partes.append(
+        f'as-set: {as_full}:AS-CUSTOMERS\n'
+        f'descr:  as-set containing {as_full} and its downstream customers\n'
+        + cust_members +
+        f'admin-c: {cfg.nic_hdl}\n'
+        f'tech-c:  {cfg.nic_hdl}\n'
+        f'notify:  {email}\n'
+        f'mnt-by:  {mntner}\n'
+        f'changed: {email} {hoje}\n'
+        f'source:  TC\n'
+    )
+
+    # ── AS-set principal ──────────────────────────────────────────────────────
+    partes.append(
+        f'as-set: {as_full}:AS-{cfg.as_name}\n'
+        f'descr:  {cfg.empresa_descr} - ANNOUNCEMENTS\n'
+        f'members: {as_full}\n'
+        f'members: {as_full}:AS-CUSTOMERS\n'
+        f'admin-c: {cfg.nic_hdl}\n'
+        f'tech-c:  {cfg.nic_hdl}\n'
+        f'notify:  {email}\n'
+        f'mnt-by:  {mntner}\n'
+        f'changed: {email} {hoje}\n'
+        f'source:  TC\n'
+    )
+
+    # ── aut-num ───────────────────────────────────────────────────────────────
+    import_lines = ''
+    export_lines = ''
+    for u in (cfg.upstream_asns or []):
+        import_lines += f'import:   from {u["asn"]}  accept ANY\n'
+    for u in (cfg.upstream_asns or []):
+        export_lines += f'export:   to {u["asn"]}  announce {as_full}:AS-{cfg.as_name}\n'
+
+    ix_lines = ''
+    if cfg.ix_members:
+        ix_lines = 'remarks:        ==========================================================\n'
+        ix_lines += 'remarks:        Participante IX:\n'
+        ix_lines += 'remarks:        ...\n'
+        for ix in cfg.ix_members:
+            ix_lines += f'member-of:      {ix}\n'
+        ix_lines += 'remarks:        ...\n'
+        ix_lines += 'remarks:        ==========================================================\n'
+
+    abuse_email  = cfg.email_abuse or email
+    website_line = f'remarks:        Website....................: {cfg.website}\n' if cfg.website else ''
+
+    partes.append(
+        f'aut-num:        {as_full}\n'
+        f'as-name:        {cfg.as_name}\n'
+        f'descr:          {cfg.empresa_descr}\n'
+        + ix_lines +
+        f'remarks:        ==========================================================\n'
+        + import_lines
+        + export_lines +
+        f'remarks:        ==========================================================\n'
+        f'remarks:        Abuse/UCE..................: {abuse_email}\n'
+        f'remarks:        Network....................: {abuse_email}\n'
+        f'remarks:        Peering....................: https://{as_full}.peeringdb.com/\n'
+        + website_line +
+        f'remarks:        ==========================================================\n'
+        f'admin-c:        {cfg.nic_hdl}\n'
+        f'tech-c:         {cfg.nic_hdl}\n'
+        f'mnt-by:         {mntner}\n'
+        f'changed:        {email} {hoje}\n'
+        f'source:         TC\n'
+    )
+
+    return '\n\n'.join(partes)
+
+
+@login_required
+def irr_config_get(request, cliente_id):
+    """Retorna a configuração IRR do cliente (ou objeto vazio se não existir)."""
+    from .models import IRRConfig
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        cfg = cliente.irr_config
+        data = {
+            'ok': True,
+            'existe': True,
+            'asn': cfg.asn,
+            'as_name': cfg.as_name,
+            'empresa_descr': cfg.empresa_descr,
+            'nic_hdl': cfg.nic_hdl,
+            'irr_password': cfg.irr_password,
+            'auth_bcrypt': cfg.auth_bcrypt,
+            'email_contato': cfg.email_contato,
+            'email_abuse': cfg.email_abuse,
+            'website': cfg.website,
+            'person_name': cfg.person_name,
+            'address': cfg.address,
+            'phone': cfg.phone,
+            'ipv4_rotas': cfg.ipv4_rotas,
+            'ipv6_rotas': cfg.ipv6_rotas,
+            'route_set_members': cfg.route_set_members,
+            'upstream_asns': cfg.upstream_asns,
+            'customer_asns': cfg.customer_asns,
+            'ix_members': cfg.ix_members,
+            'geo_pais': cfg.geo_pais,
+            'geo_pais_alpha3': cfg.geo_pais_alpha3,
+            'geo_pais_num': cfg.geo_pais_num,
+            'geo_estado': cfg.geo_estado,
+            'geo_cidade': cfg.geo_cidade,
+        }
+    except IRRConfig.DoesNotExist:
+        # Tenta obter ASN a partir dos blocos IP já cadastrados
+        from .models import BlocoIP
+        bloco = (BlocoIP.objects
+                 .filter(cliente=cliente)
+                 .exclude(asn__isnull=True)
+                 .exclude(asn='')
+                 .order_by('id')
+                 .first())
+        asn_sugerido = ''
+        if bloco and bloco.asn:
+            asn_sugerido = bloco.asn.upper().lstrip('AS').strip()
+        data = {'ok': True, 'existe': False, 'asn_sugerido': asn_sugerido}
+    return JsonResponse(data)
+
+
+@login_required
+@require_http_methods(['POST'])
+def irr_config_salvar(request, cliente_id):
+    """Cria ou atualiza a configuração IRR do cliente."""
+    from .models import IRRConfig
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'JSON inválido'}, status=400)
+
+    cfg, _ = IRRConfig.objects.get_or_create(cliente=cliente)
+
+    campos_simples = [
+        'asn','as_name','empresa_descr','nic_hdl','irr_password','auth_bcrypt',
+        'email_contato','email_abuse','website','person_name','address','phone',
+        'geo_pais','geo_pais_alpha3','geo_pais_num','geo_estado','geo_cidade',
+    ]
+    for campo in campos_simples:
+        if campo in body:
+            setattr(cfg, campo, body[campo])
+
+    campos_json = ['ipv4_rotas','ipv6_rotas','route_set_members','upstream_asns','customer_asns','ix_members']
+    for campo in campos_json:
+        if campo in body:
+            setattr(cfg, campo, body[campo])
+
+    cfg.save()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def irr_preview(request, cliente_id):
+    """Retorna o preview do e-mail IRR gerado a partir da config salva."""
+    from .models import IRRConfig
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        cfg = cliente.irr_config
+    except IRRConfig.DoesNotExist:
+        return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada. Salve os dados primeiro.'}, status=404)
+    corpo = _irr_gerar_corpo(cfg)
+    return JsonResponse({'ok': True, 'corpo': corpo, 'assunto': 'IRR Route Update', 'destino': 'auto-dbm@bgp.net.br'})
+
+
+@login_required
+@require_http_methods(['POST'])
+def irr_enviar(request, cliente_id):
+    """Gera e envia o e-mail de atualização IRR ao servidor TC."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from .models import IRRConfig
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        cfg = cliente.irr_config
+    except IRRConfig.DoesNotExist:
+        return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada.'}, status=404)
+
+    corpo   = _irr_gerar_corpo(cfg)
+    assunto = 'IRR Route Update'
+    destino = 'auto-dbm@bgp.net.br'
+
+    # Configuração SMTP global
+    from .models import ConfiguracaoSistema
+    smtp_cfg  = ConfiguracaoSistema.get()
+    smtp_host = smtp_cfg.smtp_host or getattr(settings, 'EMAIL_HOST', '')
+    smtp_port = smtp_cfg.smtp_port or getattr(settings, 'EMAIL_PORT', 587)
+    smtp_user = smtp_cfg.smtp_user or getattr(settings, 'EMAIL_HOST_USER', '')
+    smtp_pass = smtp_cfg.smtp_pass or getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+    remetente = smtp_cfg.smtp_from or cfg.email_contato
+
+    if not smtp_host or not smtp_user:
+        return JsonResponse({'ok': False, 'erro': 'SMTP não configurado. Acesse Sistema → Configurações para preencher as credenciais SMTP.'}, status=400)
+
+    try:
+        msg = MIMEText(corpo, 'plain', 'utf-8')
+        msg['Subject'] = assunto
+        msg['From']    = remetente
+        msg['To']      = destino
+
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+            server.ehlo()
+            if smtp_cfg.smtp_use_tls:
+                server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(remetente, [destino], msg.as_string())
+
+        return JsonResponse({'ok': True, 'mensagem': f'E-mail enviado com sucesso para {destino}'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': f'Falha ao enviar e-mail: {str(e)}'}, status=500)
+
+
+@login_required
+def irr_consultar_whois(request, cliente_id):
+    """Consulta o WHOIS do TC/NIC.br para o ASN informado e retorna objetos parsados."""
+    import socket
+    asn_param = request.GET.get('asn', '').strip().upper().lstrip('AS').strip()
+    if not asn_param:
+        return JsonResponse({'ok': False, 'erro': 'Informe o número do AS'}, status=400)
+
+    asn_full = f'AS{asn_param}'
+
+    def whois_query(server, query, port=43, timeout=10):
+        try:
+            with socket.create_connection((server, port), timeout=timeout) as s:
+                s.sendall((query + '\r\n').encode())
+                resp = b''
+                while True:
+                    chunk = s.recv(4096)
+                    if not chunk:
+                        break
+                    resp += chunk
+            return resp.decode('utf-8', errors='replace')
+        except Exception as e:
+            return f'%% Erro: {e}'
+
+    # Tenta servidores em ordem
+    servidores = ['whois.nic.br', 'irr.nic.br']
+    resultados = {}
+
+    for srv in servidores:
+        # aut-num
+        resp_autnum = whois_query(srv, f'-T aut-num {asn_full}')
+        if asn_full in resp_autnum and '%% Not found' not in resp_autnum and 'Erro:' not in resp_autnum:
+            resultados['aut_num_raw'] = resp_autnum
+            resultados['servidor']    = srv
+            break
+
+    if not resultados:
+        # Tenta RADB como fallback
+        resp_radb = whois_query('whois.radb.net', f'-T aut-num {asn_full}')
+        if asn_full in resp_radb and 'Not found' not in resp_radb:
+            resultados['aut_num_raw'] = resp_radb
+            resultados['servidor']    = 'whois.radb.net'
+
+    # Busca routes
+    srv_final = resultados.get('servidor', 'whois.nic.br')
+    resp_routes  = whois_query(srv_final, f'-T route -i origin {asn_full}')
+    resp_routes6 = whois_query(srv_final, f'-T route6 -i origin {asn_full}')
+    resp_mntner  = whois_query(srv_final, f'-T mntner MAINT-{asn_full}')
+
+    def parse_field(texto, campo):
+        """Extrai o primeiro valor de um campo RPSL."""
+        for linha in texto.splitlines():
+            if linha.lower().startswith(campo.lower() + ':'):
+                return linha.split(':', 1)[1].strip()
+        return ''
+
+    def parse_all_field(texto, campo):
+        """Extrai todos os valores de um campo repetido."""
+        valores = []
+        for linha in texto.splitlines():
+            if linha.lower().startswith(campo.lower() + ':'):
+                v = linha.split(':', 1)[1].strip()
+                if v and not v.startswith('#'):
+                    valores.append(v)
+        return valores
+
+    def parse_prefixes_from_response(texto, tipo='route'):
+        """Extrai todos os prefixos de objetos route ou route6."""
+        prefixos = []
+        for linha in texto.splitlines():
+            if linha.lower().startswith(tipo + ':'):
+                p = linha.split(':', 1)[1].strip()
+                if p:
+                    prefixos.append(p)
+        return prefixos
+
+    dados = {
+        'ok':      True,
+        'servidor': srv_final,
+        'asn':     asn_param,
+    }
+
+    autnum_raw = resultados.get('aut_num_raw', '')
+    if autnum_raw:
+        dados['as_name']       = parse_field(autnum_raw, 'as-name')
+        dados['descr']         = parse_field(autnum_raw, 'descr')
+        changed_parts = parse_field(autnum_raw, 'changed').split()
+        dados['email_contato'] = parse_field(autnum_raw, 'e-mail') or (changed_parts[0] if changed_parts else '')
+        dados['nic_hdl']       = parse_field(autnum_raw, 'admin-c')
+        dados['mntner']        = parse_field(autnum_raw, 'mnt-by')
+
+        # imports/exports → upstream ASNs
+        imports = parse_all_field(autnum_raw, 'import')
+        upstream = []
+        for imp in imports:
+            # "from AS52554 accept ANY" → AS52554
+            parts = imp.split()
+            if len(parts) >= 2 and parts[0].lower() == 'from':
+                upstream.append({'asn': parts[1], 'nome': ''})
+        dados['upstream_asns'] = upstream
+
+    # Rotas IPv4
+    dados['ipv4_rotas'] = parse_prefixes_from_response(resp_routes, 'route')
+
+    # Rotas IPv6
+    dados['ipv6_rotas'] = parse_prefixes_from_response(resp_routes6, 'route6')
+
+    # Auth hash do mntner
+    if resp_mntner and 'BCRYPT-PW' in resp_mntner:
+        for linha in resp_mntner.splitlines():
+            if 'auth' in linha.lower() and 'BCRYPT-PW' in linha:
+                dados['auth_bcrypt'] = linha.split(':', 1)[1].strip()
+                break
+
+    dados['raw'] = {
+        'aut_num':  autnum_raw[:8000] if autnum_raw else '',
+        'routes':   resp_routes[:8000],
+        'routes6':  resp_routes6[:8000],
+        'mntner':   resp_mntner[:4000],
+    }
+
+    return JsonResponse(dados)
+
+
+@login_required
+def irr_verificar_resposta(request, cliente_id):
+    """
+    Conecta via IMAP à caixa do remetente e busca a resposta do TC
+    referente à última atualização IRR enviada para auto-dbm@bgp.net.br.
+    Retorna o corpo do e-mail de resposta e um resumo de aceitos/rejeitados.
+    """
+    import imaplib
+    import email as email_lib
+    from email.header import decode_header
+    from .models import ConfiguracaoSistema, IRRConfig
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+
+    smtp_cfg = ConfiguracaoSistema.get()
+    if not smtp_cfg.imap_host or not smtp_cfg.smtp_user:
+        return JsonResponse({
+            'ok': False,
+            'erro': 'IMAP não configurado. Acesse Sistema → Configurações e preencha Host IMAP.'
+        }, status=400)
+
+    try:
+        cfg = cliente.irr_config
+    except IRRConfig.DoesNotExist:
+        return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada.'}, status=404)
+
+    try:
+        # Conecta IMAP
+        if smtp_cfg.imap_use_ssl:
+            mail = imaplib.IMAP4_SSL(smtp_cfg.imap_host, smtp_cfg.imap_port)
+        else:
+            mail = imaplib.IMAP4(smtp_cfg.imap_host, smtp_cfg.imap_port)
+
+        mail.login(smtp_cfg.smtp_user, smtp_cfg.smtp_pass)
+        mail.select('INBOX')
+
+        # Busca e-mails dos últimos 14 dias com subject contendo "IRR Route Update"
+        from datetime import date, timedelta
+        data_limite = (date.today() - timedelta(days=14)).strftime('%d-%b-%Y')
+
+        status_imap, msgs = mail.search(None,
+            f'(SINCE {data_limite} SUBJECT "IRR Route Update")'
+        )
+        ids = msgs[0].split() if msgs[0] else []
+
+        if not ids:
+            # Fallback: busca por remetente do TC
+            status_imap, msgs = mail.search(None,
+                f'(SINCE {data_limite} FROM "nic.br")'
+            )
+            ids = msgs[0].split() if msgs[0] else []
+
+        if not ids:
+            mail.logout()
+            return JsonResponse({
+                'ok': True,
+                'encontrado': False,
+                'mensagem': (
+                    'Nenhuma resposta do TC encontrada nos últimos 14 dias. '
+                    'O e-mail pode ainda não ter sido processado — aguarde alguns minutos e tente novamente.'
+                )
+            })
+
+        # Pega o e-mail mais recente
+        ultimo_id = ids[-1]
+        status_imap, data = mail.fetch(ultimo_id, '(RFC822)')
+        mail.logout()
+
+        raw = data[0][1]
+        msg = email_lib.message_from_bytes(raw)
+
+        # Decodifica subject
+        subj_raw = msg.get('Subject', '')
+        subject = ''
+        for part, enc in decode_header(subj_raw):
+            if isinstance(part, bytes):
+                subject += part.decode(enc or 'utf-8', errors='replace')
+            else:
+                subject += part
+
+        remetente = msg.get('From', '')
+        data_msg  = msg.get('Date', '')
+
+        # Extrai corpo texto simples
+        corpo = ''
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == 'text/plain':
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        corpo = payload.decode(part.get_content_charset() or 'utf-8', errors='replace')
+                        break
+        else:
+            payload = msg.get_payload(decode=True)
+            if payload:
+                corpo = payload.decode(msg.get_content_charset() or 'utf-8', errors='replace')
+
+        # Parseia resultado: ACCEPTED / REJECTED por objeto RPSL
+        aceitos    = []
+        rejeitados = []
+        erros      = []
+        objeto_atual = ''
+
+        for i, linha in enumerate(corpo.splitlines()):
+            l = linha.strip()
+            for tipo in ('route:', 'route6:', 'aut-num:', 'mntner:', 'person:',
+                         'route-set:', 'as-set:'):
+                if l.lower().startswith(tipo):
+                    objeto_atual = l
+                    break
+            lu = l.upper()
+            if lu in ('ACCEPTED',) or lu.startswith('OBJECT ACCEPTED'):
+                aceitos.append(objeto_atual or f'objeto #{i}')
+                objeto_atual = ''
+            elif lu in ('REJECTED', 'FAILED') or lu.startswith('OBJECT REJECTED'):
+                rejeitados.append(objeto_atual or f'objeto #{i}')
+                objeto_atual = ''
+            elif '***Error***' in linha or ('ERROR' in lu and ':' in l):
+                erros.append(l)
+
+        if 'SUCCESS' in subject.upper():
+            status_geral = 'sucesso'
+        elif 'FAIL' in subject.upper() or 'ERROR' in subject.upper():
+            status_geral = 'erro'
+        elif rejeitados or erros:
+            status_geral = 'parcial'
+        elif aceitos:
+            status_geral = 'sucesso'
+        else:
+            status_geral = 'desconhecido'
+
+        return JsonResponse({
+            'ok':           True,
+            'encontrado':   True,
+            'subject':      subject,
+            'remetente':    remetente,
+            'data_msg':     data_msg,
+            'status_geral': status_geral,
+            'aceitos':      aceitos,
+            'rejeitados':   rejeitados,
+            'erros':        erros,
+            'corpo':        corpo[:6000],
+        })
+
+    except imaplib.IMAP4.error as e:
+        return JsonResponse({'ok': False, 'erro': f'Falha IMAP: {str(e)}'}, status=500)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': f'Erro ao verificar resposta: {str(e)}'}, status=500)

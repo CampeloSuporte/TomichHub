@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor de Topologia — {{ cliente.nome_empresa }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+  --green:#00ff88;--cyan:#00d9ff;--blue:#58a6ff;--orange:#ffa657;--red:#f85149;
+  --purple:#bc8cff;--yellow:#e3b341;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+/* modo embed: esconde botão fechar */
+body.embed-mode #btn-fechar{display:none!important}
+/* ── Toolbar ── */
+#toolbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;flex-shrink:0;z-index:10}
+.tb-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.8rem;display:flex;align-items:center;gap:6px;transition:all .15s}
+.tb-btn:hover{background:rgba(255,255,255,.1);border-color:var(--cyan);color:var(--cyan)}
+.tb-btn.active{background:rgba(0,217,255,.15);border-color:var(--cyan);color:var(--cyan)}
+.tb-btn.danger:hover{border-color:var(--red);color:var(--red)}
+.tb-sep{width:1px;height:28px;background:var(--border);margin:0 4px}
+#nome-diagrama{background:transparent;border:1px solid transparent;color:var(--text);font-size:.9rem;padding:4px 8px;border-radius:6px;min-width:180px}
+#nome-diagrama:hover,#nome-diagrama:focus{border-color:var(--border);outline:none;background:var(--bg)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+/* ── Main layout ── */
+#main{display:flex;flex:1;overflow:hidden}
+/* ── Palette ── */
+#palette{width:180px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.pal-title{padding:8px 12px;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border)}
+.pal-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:grab;border-bottom:1px solid rgba(48,54,61,.5);transition:all .15s;user-select:none}
+.pal-item:hover{background:rgba(255,255,255,.05)}
+.pal-item:active{cursor:grabbing}
+.pal-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pal-icon svg{width:24px;height:24px}
+.pal-label{font-size:.78rem;color:var(--text);line-height:1.2}
+.pal-sub{font-size:.67rem;color:var(--muted)}
+/* ── Canvas ── */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+#canvas-svg{width:100%;height:100%;cursor:default}
+.grid-bg{fill:url(#grid-pattern)}
+/* Node styles */
+.node{cursor:move;user-select:none}
+.node-body{transition:filter .15s}
+.node.selected .node-body{filter:drop-shadow(0 0 8px currentColor)}
+.node.selected .node-ring{stroke-opacity:1!important}
+.node-ring{fill:none;stroke-opacity:0;transition:stroke-opacity .15s}
+.anchor{cursor:crosshair;opacity:0;transition:opacity .2s;pointer-events:all}
+.node:hover .anchor,.node.selected .anchor{opacity:1}
+/* Link styles */
+.link{fill:none;stroke-width:2.5;cursor:pointer;transition:stroke-opacity .15s}
+.link:hover,.link.selected{stroke-width:3.5}
+.link-hit{fill:none;stroke:transparent;stroke-width:16;cursor:pointer}
+.link-label-bg{fill:var(--surface);rx:4}
+.link-label{font-size:10px;fill:var(--muted);text-anchor:middle;pointer-events:none}
+.link-arrow{overflow:visible}
+/* Connect preview */
+#connect-preview{fill:none;stroke:var(--cyan);stroke-width:2;stroke-dasharray:6 4;pointer-events:none;opacity:.7}
+/* ── Properties panel ── */
+#props{width:240px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#props-content{padding:12px;flex:1}
+.prop-title{font-size:.78rem;color:var(--cyan);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.prop-group{margin-bottom:14px}
+.prop-label{font-size:.72rem;color:var(--muted);margin-bottom:4px;display:block}
+.prop-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.8rem;outline:none}
+.prop-input:focus{border-color:var(--cyan)}
+.prop-select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.8rem;outline:none}
+.prop-row{display:flex;gap:6px}
+.prop-row .prop-input{flex:1}
+.prop-btn{width:100%;padding:7px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:.78rem;margin-top:6px;transition:all .15s}
+.prop-btn:hover{background:rgba(0,217,255,.1);border-color:var(--cyan);color:var(--cyan)}
+.prop-btn.danger:hover{background:rgba(248,81,73,.1);border-color:var(--red);color:var(--red)}
+.iface-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:.65rem;font-weight:700;margin:2px}
+/* ── Status bar ── */
+#statusbar{height:24px;background:#0a0f14;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;font-size:.7rem;color:var(--muted);gap:16px;flex-shrink:0}
+#statusbar span{display:flex;align-items:center;gap:4px}
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:380px;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:1rem;font-weight:700;color:var(--cyan);margin-bottom:16px}
+.modal-footer{display:flex;gap:8px;margin-top:16px}
+.btn-ok{flex:1;padding:8px;background:rgba(0,255,136,.15);border:1px solid var(--green);color:var(--green);border-radius:6px;cursor:pointer;font-size:.85rem}
+.btn-cancel{flex:1;padding:8px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:.85rem}
+/* Link IP labels */
+.link-ip{font-size:9px;fill:#8b949e;text-anchor:middle;font-family:'Courier New',monospace;pointer-events:none}
+/* Text box node */
+.text-box-node .node-body{fill:transparent!important;stroke-dasharray:5,3}
+.text-box-node .node-ring{display:none}
+.text-box-node .anchor{opacity:0}
+.text-box-node:hover .anchor{opacity:1}
+/* Toast */
+#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#161b22;border:1px solid var(--green);color:var(--green);padding:8px 20px;border-radius:20px;font-size:.82rem;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+</style>
+</head>
+<body>
+{% csrf_token %}
+<div id="toolbar">
+  <input id="nome-diagrama" value="{{ diagrama.nome|default:'Nova Topologia' }}" title="Nome do diagrama (clique para editar)">
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="topo.save()" title="Salvar (Ctrl+S)"><i class="fas fa-save"></i> Salvar</button>
+  <button class="tb-btn" onclick="topo.importHosts()" title="Importar hosts do CRM"><i class="fas fa-cloud-download-alt"></i> Importar Hosts</button>
+<button class="tb-btn" onclick="topo.exportPNG()" title="Exportar PNG"><i class="fas fa-image"></i> PNG</button>
+  <button class="tb-btn" onclick="topo.undo()" title="Desfazer (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+  <button class="tb-btn" onclick="topo.redo()" title="Refazer (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-grid" onclick="topo.toggleGrid()" title="Toggle grid"><i class="fas fa-th"></i> Grid</button>
+  <button class="tb-btn" id="btn-snap" onclick="topo.toggleSnap()" title="Snap ao grid"><i class="fas fa-magnet"></i> Snap</button>
+  <button class="tb-btn" id="btn-connect" onclick="topo.toggleConnectMode()" title="Modo conexão (C)"><i class="fas fa-project-diagram"></i> Conectar</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="topo.zoomFit()" title="Ajustar zoom"><i class="fas fa-expand-arrows-alt"></i></button>
+  <button class="tb-btn" onclick="topo.zoomIn()"><i class="fas fa-search-plus"></i></button>
+  <button class="tb-btn" onclick="topo.zoomOut()"><i class="fas fa-search-minus"></i></button>
+  <div class="tb-right">
+    <span style="font-size:.75rem;color:var(--muted)">{{ cliente.nome_empresa }}</span>
+    <button class="tb-btn" id="btn-fechar" onclick="window.close()" style="margin-left:6px"><i class="fas fa-times"></i> Fechar</button>
+  </div>
+</div>
+
+<div id="main">
+  <!-- Palette -->
+  <div id="palette">
+    <div class="pal-title"><i class="fas fa-cubes" style="margin-right:5px"></i>Dispositivos</div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <svg id="canvas-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="10" cy="10" r=".7" fill="#21262d"/>
+        </pattern>
+        <marker id="arrow-end" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#30363d"/>
+        </marker>
+      </defs>
+      <rect id="grid-bg" width="20000" height="20000" x="-10000" y="-10000" class="grid-bg"/>
+      <g id="viewport">
+        <path id="connect-preview" d="" style="display:none"/>
+        <g id="links-layer"></g>
+        <g id="nodes-layer"></g>
+      </g>
+    </svg>
+    <div style="position:absolute;bottom:8px;right:8px;font-size:.7rem;color:var(--muted);background:rgba(13,17,23,.8);padding:4px 10px;border-radius:8px" id="zoom-label">100%</div>
+  </div>
+
+  <!-- Properties -->
+  <div id="props">
+    <div id="props-content">
+      <div class="prop-title"><i class="fas fa-sliders-h"></i> Propriedades</div>
+      <div id="props-body" style="color:var(--muted);font-size:.8rem;text-align:center;padding-top:40px">
+        <i class="fas fa-mouse-pointer" style="font-size:2rem;margin-bottom:12px;display:block;opacity:.3"></i>
+        Selecione um dispositivo<br>ou conexão
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span><i class="fas fa-circle" style="color:var(--green)"></i> <span id="st-nodes">0</span> dispositivos</span>
+  <span><i class="fas fa-project-diagram"></i> <span id="st-links">0</span> conexões</span>
+  <span id="st-mode">Modo: Seleção</span>
+  <span id="st-save" style="margin-left:auto"></span>
+</div>
+
+<div id="toast"></div>
+<script>
+  window.TOPO_CLIENTE_ID  = {{ cliente.id }};
+  window.TOPO_DIAGRAMA_ID = {{ diagrama_id|default:'null' }};
+  window.TOPO_DADOS = {{ dados_json|safe }};
+  if (new URLSearchParams(window.location.search).get('embed') === '1') {
+    document.body.classList.add('embed-mode');
+  }
+</script>
+<script src="/static/js/topo_engine.js?v=6"></script>
+<script src="/static/js/topo_main.js?v=6"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+gunicorn.sock
+
+# Arquivos estáticos coletados
+static/
+
+# Mídia (uploads, backups, documentos gerados)
+media/
+
+# Temporários
+tmp/
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid

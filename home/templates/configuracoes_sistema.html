@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="main-content">
+  <div class="container-fluid" style="max-width:860px">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="{% url 'quadro_geral' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Dashboard
+      </a>
+      <h4 class="mb-0"><i class="fas fa-cog me-2" style="color:#00ff88"></i>Configurações do Sistema</h4>
+    </div>
+
+    <!-- ── IMAP ────────────────────────────────────────────────────── -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="mb-1"><i class="fas fa-inbox me-2" style="color:#b464ff"></i>Configuração IMAP</h5>
+        <small style="color:#8b949e">Usada para verificar a resposta do TC após envio de atualizações IRR. Usa o mesmo usuário e senha do SMTP.</small>
+
+        <div id="imap-msg" style="display:none;margin-top:14px"></div>
+
+        <div class="row g-3 mt-2">
+          <div class="col-md-7">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Host IMAP</label>
+            <input id="imap-host" type="text" class="form-control form-control-sm sys-input"
+              value="{{ cfg.imap_host }}" placeholder="imap.gmail.com">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Porta</label>
+            <input id="imap-port" type="number" class="form-control form-control-sm sys-input"
+              value="{{ cfg.imap_port }}">
+          </div>
+          <div class="col-md-3 d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="imap-ssl"
+                {% if cfg.imap_use_ssl %}checked{% endif %}>
+              <label class="form-check-label" style="font-size:.82rem;color:#8b949e" for="imap-ssl">
+                SSL
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert mt-3" style="background:rgba(180,100,255,.07);border-left:3px solid #b464ff;font-size:.8rem;color:#8b949e">
+          <i class="fas fa-info-circle me-2" style="color:#b464ff"></i>
+          <strong>Gmail:</strong> Host <code>imap.gmail.com</code> · Porta <code>993</code> · SSL ativado.
+          O sistema busca e-mails com assunto <code>IRR Route Update</code> nos últimos 14 dias.
+        </div>
+
+        <div class="mt-3">
+          <button class="btn btn-sm" onclick="imapSalvar()"
+            style="background:rgba(180,100,255,.2);border:1px solid #b464ff;color:#b464ff">
+            <i class="fas fa-save me-1"></i> Salvar IMAP
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SMTP ────────────────────────────────────────────────────── -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="mb-1"><i class="fas fa-envelope me-2" style="color:#00d9ff"></i>Configuração SMTP</h5>
+        <small style="color:#8b949e">Usada para envio de atualizações IRR e outras notificações do sistema.</small>
+
+        <div id="smtp-msg" style="display:none;margin-top:14px"></div>
+
+        <div class="row g-3 mt-2">
+          <div class="col-md-7">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Host SMTP</label>
+            <input id="smtp-host" type="text" class="form-control form-control-sm sys-input"
+              value="{{ cfg.smtp_host }}" placeholder="smtp.gmail.com">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Porta</label>
+            <input id="smtp-port" type="number" class="form-control form-control-sm sys-input"
+              value="{{ cfg.smtp_port }}">
+          </div>
+          <div class="col-md-3 d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="smtp-tls"
+                {% if cfg.smtp_use_tls %}checked{% endif %}>
+              <label class="form-check-label" style="font-size:.82rem;color:#8b949e" for="smtp-tls">
+                STARTTLS
+              </label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Usuário SMTP</label>
+            <input id="smtp-user" type="text" class="form-control form-control-sm sys-input"
+              value="{{ cfg.smtp_user }}" placeholder="contato@empresa.com.br">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">Senha SMTP</label>
+            <input id="smtp-pass" type="password" class="form-control form-control-sm sys-input"
+              placeholder="{% if cfg.smtp_pass %}••••••••••{% else %}(vazia){% endif %}">
+            <small style="color:#555;font-size:.75rem">Deixe em branco para não alterar a senha atual.</small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" style="font-size:.82rem;color:#8b949e">E-mail Remetente (FROM)</label>
+            <input id="smtp-from" type="email" class="form-control form-control-sm sys-input"
+              value="{{ cfg.smtp_from }}" placeholder="sistema@empresa.com.br">
+            <small style="color:#555;font-size:.75rem">Endereço de origem dos e-mails enviados pelo sistema.</small>
+          </div>
+        </div>
+
+        <div class="alert mt-3" style="background:rgba(0,217,255,.07);border-left:3px solid #00d9ff;font-size:.8rem;color:#8b949e">
+          <i class="fas fa-info-circle me-2" style="color:#00d9ff"></i>
+          <strong>Gmail:</strong> use senha de app em <em>Configurações → Segurança → Senhas de app</em>.
+          Host: <code>smtp.gmail.com</code> · Porta: <code>587</code> · STARTTLS: ativado.<br>
+          <strong>IRR:</strong> o remetente real do e-mail IRR é o <em>email_contato</em> de cada cliente;
+          esta configuração fornece as credenciais de autenticação SMTP.
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-sm" onclick="smtpSalvar()"
+            style="background:rgba(0,255,136,.2);border:1px solid #00ff88;color:#00ff88">
+            <i class="fas fa-save me-1"></i> Salvar SMTP
+          </button>
+          <button class="btn btn-sm" onclick="smtpTestar()"
+            style="background:rgba(0,217,255,.1);border:1px solid #00d9ff;color:#00d9ff">
+            <i class="fas fa-paper-plane me-1"></i> Testar Envio
+          </button>
+        </div>
+
+        {% if cfg.atualizado_em %}
+        <div style="margin-top:10px;font-size:.75rem;color:#555">
+          Última atualização: {{ cfg.atualizado_em|date:"d/m/Y H:i" }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function smtpMsg(texto, tipo) {
+    const el = document.getElementById('smtp-msg');
+    const cor = tipo === 'ok' ? '#00ff88' : tipo === 'erro' ? '#e06060' : '#ffaa00';
+    const bg  = tipo === 'ok' ? 'rgba(0,255,136,.08)' : tipo === 'erro' ? 'rgba(224,96,96,.1)' : 'rgba(255,170,0,.08)';
+    el.style.display = '';
+    el.innerHTML = `<div style="padding:8px 12px;border-radius:6px;background:${bg};border:1px solid ${cor};color:${cor};font-size:.83rem;">
+        <i class="fas fa-${tipo==='ok'?'check-circle':tipo==='erro'?'times-circle':'info-circle'} me-2"></i>${texto}</div>`;
+    if (tipo === 'ok') setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function getCsrf() {
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (el) return el.value;
+    const c = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    return c ? c.trim().split('=')[1] : '';
+}
+
+async function smtpSalvar() {
+    const dados = {
+        smtp_host:    document.getElementById('smtp-host').value.trim(),
+        smtp_port:    parseInt(document.getElementById('smtp-port').value) || 587,
+        smtp_user:    document.getElementById('smtp-user').value.trim(),
+        smtp_pass:    document.getElementById('smtp-pass').value,
+        smtp_from:    document.getElementById('smtp-from').value.trim(),
+        smtp_use_tls: document.getElementById('smtp-tls').checked,
+    };
+    try {
+        const r = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify(dados),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.erro);
+        smtpMsg('Configuração SMTP salva com sucesso!', 'ok');
+        document.getElementById('smtp-pass').placeholder = '••••••••••';
+        document.getElementById('smtp-pass').value = '';
+    } catch(e) { smtpMsg('Erro ao salvar: ' + e.message, 'erro'); }
+}
+
+function imapMsg(texto, tipo) {
+    const el = document.getElementById('imap-msg');
+    const cor = tipo === 'ok' ? '#00ff88' : tipo === 'erro' ? '#e06060' : '#b464ff';
+    const bg  = tipo === 'ok' ? 'rgba(0,255,136,.08)' : tipo === 'erro' ? 'rgba(224,96,96,.1)' : 'rgba(180,100,255,.08)';
+    el.style.display = '';
+    el.innerHTML = `<div style="padding:8px 12px;border-radius:6px;background:${bg};border:1px solid ${cor};color:${cor};font-size:.83rem;">
+        <i class="fas fa-${tipo==='ok'?'check-circle':tipo==='erro'?'times-circle':'info-circle'} me-2"></i>${texto}</div>`;
+    if (tipo === 'ok') setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+async function imapSalvar() {
+    const dados = {
+        imap_host:    document.getElementById('imap-host').value.trim(),
+        imap_port:    parseInt(document.getElementById('imap-port').value) || 993,
+        imap_use_ssl: document.getElementById('imap-ssl').checked,
+    };
+    try {
+        const r = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify(dados),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.erro);
+        imapMsg('Configuração IMAP salva com sucesso!', 'ok');
+    } catch(e) { imapMsg('Erro ao salvar: ' + e.message, 'erro'); }
+}
+
+async function smtpTestar() {
+    const dest = prompt('Enviar e-mail de teste para qual endereço?');
+    if (!dest) return;
+    smtpMsg('Enviando e-mail de teste…', 'aviso');
+    try {
+        const r = await fetch('{% url "smtp_testar" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ destino: dest }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.erro);
+        smtpMsg(d.mensagem, 'ok');
+    } catch(e) { smtpMsg('Erro: ' + e.message, 'erro'); }
+}
+</script>
+
+{% endblock %}

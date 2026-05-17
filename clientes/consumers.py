@@ -29,14 +29,16 @@ class SSHConsumer(WebsocketConsumer):
             except:
                 pass
 
-        for attr in ('ssh_process', 'telnet_client', 'tunnel_process', '_paramiko_client', '_tunnel_server'):
+        for attr in ('ssh_process', 'telnet_client', 'tunnel_process',
+                     '_paramiko_shell', '_paramiko_dest_transport',
+                     '_paramiko_client', '_tunnel_server'):
             obj = getattr(self, attr, None)
             if obj:
                 try:
                     obj.close()
                 except:
                     pass
-            setattr(self, attr, None)  # ← garante None após fechar
+            setattr(self, attr, None)
 
         self.protocol         = None
         self.read_thread      = None
@@ -71,6 +73,27 @@ class SSHConsumer(WebsocketConsumer):
             logger.error(f"❌ Erro na função receive: {str(e)}")
             self.send_error(f"Erro: {str(e)}")
 
+    def _vpn_cobre_ip(self, cliente, host):
+        """Verifica se existe VPN WireGuard com peer configurado que cobre o IP do host."""
+        try:
+            import ipaddress as _ipa
+            from .models import VPNWireGuard
+
+            vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
+            host_ip = _ipa.ip_address(host)
+
+            for vpn in vpns:
+                for rede_str in vpn.redes_lista():
+                    try:
+                        if host_ip in _ipa.ip_network(rede_str, strict=False):
+                            logger.info(f"✅ VPN WG cobre {host} via {vpn.nome}")
+                            return True
+                    except ValueError:
+                        pass
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao verificar VPN: {e}")
+        return False
+
     def conectar_acesso(self, acesso_id):
         try:
             self.acessoId = acesso_id
@@ -86,7 +109,14 @@ class SSHConsumer(WebsocketConsumer):
             logger.info(f"🔗 Protocolo: {protocol.upper()} | Huawei: {self.is_huawei}")
 
             if self.is_private_ip(acesso.host):
-                if protocol == 'ssh':
+                # Verifica se VPN WireGuard ativa cobre este IP (sem proxy)
+                if self._vpn_cobre_ip(acesso.cliente, acesso.host):
+                    self.send_json({'type': 'info', 'message': '🔒 Conectando via VPN WireGuard...'})
+                    if protocol == 'ssh':
+                        self.connect_ssh(acesso)
+                    else:
+                        self.connect_telnet(acesso)
+                elif protocol == 'ssh':
                     self.connect_ssh_via_proxy(acesso)
                 else:
                     self.connect_telnet_via_proxy(acesso)
@@ -105,13 +135,15 @@ class SSHConsumer(WebsocketConsumer):
     def enviar_comando(self, command):
         """
         BACKSPACE FIX: xterm.js envia DEL (\x7f); equipamentos esperam BS (\x08).
-        Usa os.write() direto no fd do pty para SSH — sem overhead do pexpect.send().
+        Usa os.write() direto no fd do pty para SSH direto, ou channel.send() para proxy.
         """
         try:
             command = command.replace('\x7f', '\x08')
 
             if self.protocol == 'ssh':
-                if self.ssh_process:
+                if getattr(self, '_paramiko_shell', None):
+                    self._paramiko_shell.send(command.encode('utf-8'))
+                elif self.ssh_process:
                     os.write(self.ssh_process.child_fd, command.encode('utf-8'))
             elif self.protocol == 'telnet':
                 if self.telnet_client:
@@ -287,40 +319,66 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro SSH: {str(e)}')
 
     # =========================================================
-    # SSH via proxy
+    # SSH via proxy — paramiko end-to-end (sem pexpect, sem socket local)
     # =========================================================
 
     def connect_ssh_via_proxy(self, acesso):
         tempo_inicio = time.time()
         try:
             proxy = self.get_active_proxy(acesso.cliente)
-            logger.info(f"🔗 SSH via proxy (paramiko): {proxy.nome}")
-
+            logger.info(f"🔗 SSH via proxy (paramiko e2e): {proxy.nome}")
             self.send_json({'type': 'info', 'message': f'⚡ Conectando via proxy {proxy.nome}...'})
 
-            local_port = self._criar_tunel_paramiko(proxy, acesso.host, int(acesso.porta))
-
-            elapsed = time.time() - tempo_inicio
-            logger.info(f"⏱️  Túnel pronto em {elapsed:.1f}s — localhost:{local_port} → {acesso.host}:{acesso.porta}")
-
-            terminal_type = "vt100" if self.is_huawei else "xterm-256color"
-            ssh_cmd       = self._build_ssh_cmd(acesso.usuario, '127.0.0.1', local_port)
-
-            env        = os.environ.copy()
-            env['TERM'] = terminal_type
-
-            self.ssh_process = pexpect.spawn(
-                ssh_cmd, timeout=15, encoding=None, maxread=262144, env=env
+            # 1. Conectar ao proxy
+            proxy_client = paramiko.SSHClient()
+            proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            proxy_client.connect(
+                hostname=proxy.host, port=int(proxy.porta),
+                username=proxy.usuario, password=proxy.senha,
+                timeout=10, look_for_keys=False, allow_agent=False,
+                banner_timeout=10,
             )
+            self._paramiko_client = proxy_client
+            logger.info(f"✅ Proxy conectado: {proxy.host}:{proxy.porta}")
 
-            self._authenticate_ssh_process(self.ssh_process, acesso.senha)
+            # 2. Abrir canal direct-tcpip para o destino
+            proxy_transport = proxy_client.get_transport()
+            dest_sock = proxy_transport.open_channel(
+                'direct-tcpip',
+                (acesso.host, int(acesso.porta)),
+                ('127.0.0.1', 0),
+                timeout=10,
+            )
+            logger.info(f"✅ Canal aberto → {acesso.host}:{acesso.porta}")
+
+            # 3. Criar transporte SSH sobre o canal
+            dest_transport = paramiko.Transport(dest_sock)
+            dest_transport.start_client(timeout=10)
+            self._paramiko_dest_transport = dest_transport
+
+            # 4. Autenticar no equipamento
+            try:
+                dest_transport.auth_password(acesso.usuario, acesso.senha)
+            except paramiko.AuthenticationException:
+                raise Exception("Senha incorreta ou acesso negado no equipamento")
+            if not dest_transport.is_authenticated():
+                raise Exception("Autenticação falhou no equipamento")
+
+            # 5. Abrir shell interativo
+            shell = dest_transport.open_session()
+            terminal_type = "vt100" if self.is_huawei else "xterm-256color"
+            shell.get_pty(term=terminal_type, width=220, height=50)
+            shell.invoke_shell()
+            shell.settimeout(0.05)
+            self._paramiko_shell = shell
 
             if self.is_huawei:
-                self._disable_huawei_paging()
+                time.sleep(0.5)
+                shell.send("screen-length 0 temporary\r")
 
             tempo_total = time.time() - tempo_inicio
             self.send_json({
-                'type':    'connected',
+                'type': 'connected',
                 'message': (
                     f'✓ SSH a {acesso.host}:{acesso.porta} via {proxy.nome} ({tempo_total:.1f}s)'
                     + (" [HUAWEI]" if self.is_huawei else "")
@@ -328,7 +386,7 @@ class SSHConsumer(WebsocketConsumer):
             })
 
             self.is_reading  = True
-            self.read_thread = threading.Thread(target=self.read_ssh_output, daemon=True)
+            self.read_thread = threading.Thread(target=self._read_paramiko_shell, daemon=True)
             self.read_thread.start()
 
         except Exception as e:
@@ -336,6 +394,42 @@ class SSHConsumer(WebsocketConsumer):
             logger.error(f"❌ SSH via proxy falhou em {tempo_total:.1f}s: {str(e)}")
             self.send_error(f'Erro SSH via proxy: {str(e)}')
             self.limpar_recursos()
+
+    def _read_paramiko_shell(self):
+        """Loop de leitura para conexão SSH via paramiko (proxy)."""
+        shell = self._paramiko_shell
+        buf   = bytearray()
+        logger.info("📖 Thread paramiko shell iniciada")
+        try:
+            while self.is_reading and shell and not shell.closed:
+                try:
+                    data = shell.recv(65536)
+                    if not data:
+                        break
+                    buf += data
+                    # Drena tudo que estiver disponível sem esperar
+                    while shell.recv_ready():
+                        more = shell.recv(65536)
+                        if more:
+                            buf += more
+                        else:
+                            break
+                    self.send_output(buf.decode('utf-8', errors='replace'))
+                    buf.clear()
+                except socket.timeout:
+                    if buf:
+                        self.send_output(buf.decode('utf-8', errors='replace'))
+                        buf.clear()
+                    continue
+                except Exception as e:
+                    if self.is_reading:
+                        logger.info(f"🔌 Paramiko shell encerrado: {e}")
+                    break
+        except Exception as e:
+            logger.error(f"❌ Erro thread paramiko: {e}")
+        finally:
+            logger.info("🛑 Thread paramiko shell finalizada")
+            self.is_reading = False
 
     # =========================================================
     # Telnet via proxy
@@ -378,12 +472,12 @@ class SSHConsumer(WebsocketConsumer):
             f"-o UserKnownHostsFile=/dev/null "
             f"-o IdentitiesOnly=yes "
             f"-o PubkeyAuthentication=no "
-            f"-o PreferredAuthentications=password "
+            f"-o PreferredAuthentications=password,keyboard-interactive "
             f"-o ConnectTimeout=10 "
             f"-o ServerAliveInterval=60 "
             f"-o ServerAliveCountMax=3 "
             f"-o LogLevel=ERROR "
-            f"-o NumberOfPasswordPrompts=1 "
+            f"-o NumberOfPasswordPrompts=3 "
             f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
             f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
             f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
@@ -394,50 +488,91 @@ class SSHConsumer(WebsocketConsumer):
 
     def _authenticate_ssh_process(self, process, senha):
         index = process.expect([
-            b"password:",
-            b"Password:",
-            b"Are you sure",
-            rb".*[#>$\]].*",
-            pexpect.TIMEOUT,
-            pexpect.EOF
-        ], timeout=12)
+            b"password:",           # 0
+            b"Password:",           # 1
+            b"Are you sure",        # 2
+            rb".*[#>$\]].*",        # 3 — já logado (prompt)
+            b"username:",           # 4 — OLTs que pedem username via terminal
+            b"Username:",           # 5
+            b"login:",              # 6
+            b"Login:",              # 7
+            b"Permission denied",   # 8 — falha antes de enviar senha
+            b"Connection refused",  # 9
+            pexpect.TIMEOUT,        # 10
+            pexpect.EOF             # 11
+        ], timeout=15)
 
-        if index == 2:  # fingerprint
+        # Aceitar fingerprint e re-esperar
+        if index == 2:
             process.sendline(b"yes")
-            index = process.expect([b"password:", b"Password:", pexpect.TIMEOUT], timeout=10)
+            index = process.expect([
+                b"password:", b"Password:",
+                b"username:", b"Username:", b"login:", b"Login:",
+                rb".*[#>$\]].*",
+                pexpect.TIMEOUT, pexpect.EOF
+            ], timeout=12)
+            # Re-mapeia para índices originais aproximados
+            if index in (2, 3, 4, 5):   index = 4  # username prompt
+            elif index == 6:             index = 3  # já no prompt
+            elif index in (0, 1):        pass       # password prompt
+            else:                        index = 10 # timeout/eof
 
+        # Prompt de username inesperado — alguns OLTs exibem mesmo via SSH
+        if index in (4, 5, 6, 7):
+            process.sendline(process.args[0].split('@')[0].encode() if hasattr(process, 'args') else b'')
+            index = process.expect([
+                b"password:", b"Password:",
+                rb".*[#>$\]].*",
+                pexpect.TIMEOUT, pexpect.EOF
+            ], timeout=12)
+            # Ajuste: 0/1=senha, 2=prompt, 3=timeout, 4=eof
+            if index == 2:   index = 3
+            elif index == 3: index = 10
+            elif index == 4: index = 11
+
+        # Já no prompt (sem precisar de senha)
         if index == 3:
             time.sleep(0.2)
             process.send('\r')
             return
 
+        # Erros antes mesmo de enviar senha
+        if index == 8:
+            raise Exception("Acesso negado — verifique usuário/chave SSH")
+        if index == 9:
+            raise Exception("Conexão recusada pelo equipamento")
+        if index == 10:
+            raise Exception("Timeout ao conectar ao equipamento (sem resposta em 15s)")
+        if index == 11:
+            before = (process.before or b'').decode('utf-8', errors='ignore').strip()
+            detail = f" — {before[:200]}" if before else ""
+            raise Exception(f"Equipamento encerrou conexão antes do prompt de senha{detail}")
+
+        # Enviar senha (index 0 ou 1 = password:)
         if index in (0, 1):
             process.sendline(senha)
             result = process.expect([
-                b"Permission denied",
-                b"Access denied",
-                b"Authentication failed",
-                b"Login incorrect",
-                rb".*[#>$\]].*",
-                pexpect.TIMEOUT,
-                pexpect.EOF
-            ], timeout=12)
+                b"Permission denied",   # 0
+                b"Access denied",       # 1
+                b"Authentication failed", # 2
+                b"Login incorrect",     # 3
+                b"password:",           # 4 — segunda tentativa (senha errada)
+                b"Password:",           # 5
+                rb".*[#>$\]].*",        # 6 — sucesso
+                pexpect.TIMEOUT,        # 7
+                pexpect.EOF             # 8
+            ], timeout=15)
 
-            if result in [0, 1, 2, 3]:
+            if result in (0, 1, 2, 3, 4, 5):
                 raise Exception("Senha incorreta ou acesso negado no equipamento")
-            if result == 5:
+            if result == 7:
                 raise Exception("Timeout ao autenticar no equipamento")
-            if result == 6:
-                raise Exception("Equipamento encerrou conexão")
+            if result == 8:
+                raise Exception("Equipamento encerrou conexão após envio de senha")
 
             time.sleep(0.2)
             process.send('\r')
             return
-
-        if index == 4:
-            raise Exception("Timeout ao conectar ao equipamento")
-        if index == 5:
-            raise Exception("Equipamento encerrou conexão")
 
     def _disable_huawei_paging(self):
         try:

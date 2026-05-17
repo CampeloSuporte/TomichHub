@@ -5,15 +5,15 @@
 <script>
 window.INLINE_SSH_ACESSOS = [
   {% for acesso in acessos %}{% with p=acesso.protocolo|upper %}{% if p == 'SSH' or p == 'TELNET' or p == 'RLOGIN' %}
-  {"id":{{ acesso.id }},"tipo":"{{ acesso.tipo|escapejs }}","host":"{{ acesso.host|escapejs }}","porta":{{ acesso.porta|default:22 }},"usuario":"{{ acesso.usuario|escapejs }}","protocolo":"{{ acesso.protocolo|escapejs }}","winbox":{% if acesso.winbox %}{{ acesso.winbox }}{% else %}0{% endif %}},
+  {"id":{{ acesso.id }},"tipo":"{{ acesso.tipo|escapejs }}","host":"{{ acesso.host|escapejs }}","porta":{{ acesso.porta|default:22 }},"usuario":"{{ acesso.usuario|escapejs }}","protocolo":"{{ acesso.protocolo|escapejs }}","winbox":{% if acesso.winbox %}{{ acesso.winbox }}{% else %}0{% endif %},"cliente_id":{{ acesso.cliente_id }}},
   {% endif %}{% endwith %}{% endfor %}
 ];
 </script>
 
-{# ─── VT323 + Share Tech Mono — cyberpunk terminal fonts via Google Fonts ─── #}
+{# ─── JetBrains Mono — terminal font via Google Fonts ─── #}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
 
 {# ─── xterm.js ─── #}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
@@ -48,12 +48,28 @@ window.INLINE_SSH_ACESSOS = [
 }
 #itpFab.visivel { opacity: 1; pointer-events: auto; }
 #itpFab:hover { transform: scale(1.1); box-shadow: 0 0 24px rgba(0,255,136,.45), 0 6px 16px rgba(0,0,0,.5); }
+
+/* FAB — Abrir em nova página */
+#itpFabPopout {
+    position: fixed; bottom: 82px; right: 24px;
+    z-index: calc(var(--itp-z) + 1);
+    width: 38px; height: 38px; border-radius: 50%;
+    background: #0a0d1a; border: 1.5px solid #a0c4ff;
+    color: #a0c4ff; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 12px rgba(160,196,255,.2), 0 4px 10px rgba(0,0,0,.5);
+    transition: transform .2s, box-shadow .2s, opacity .2s;
+    opacity: 0; pointer-events: none;
+    title: "Abrir terminal em nova página";
+}
+#itpFabPopout.visivel { opacity: 1; pointer-events: auto; }
+#itpFabPopout:hover { transform: scale(1.12); box-shadow: 0 0 20px rgba(160,196,255,.4), 0 4px 12px rgba(0,0,0,.5); }
 .itp-fab-badge {
     position: absolute; top: -4px; right: -4px;
     background: var(--itp-green); color: #000; font-size: 9px; font-weight: 800;
     width: 16px; height: 16px; border-radius: 50%;
     display: none; align-items: center; justify-content: center;
-    font-family: 'Share Tech Mono','Courier New',monospace;
+    font-family: 'JetBrains Mono','Courier New',monospace;
 }
 .itp-fab-badge.show { display: flex; }
 
@@ -63,7 +79,7 @@ window.INLINE_SSH_ACESSOS = [
     height: var(--itp-height); min-height: var(--itp-min-h); max-height: var(--itp-max-h);
     background: var(--itp-bg); border-top: 2px solid var(--itp-green);
     z-index: var(--itp-z); display: flex; flex-direction: column;
-    font-family: 'Share Tech Mono','Courier New',monospace; font-size: 12px;
+    font-family: 'JetBrains Mono','Courier New',monospace; font-size: 12px;
     transform: translateY(100%);
     transition: transform .32s cubic-bezier(.4,0,.2,1);
     box-shadow: 0 -4px 32px rgba(0,0,0,.6), 0 -1px 0 rgba(0,255,136,.12);
@@ -191,6 +207,8 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
 .itp-btn-hdr.minimize:hover { background: rgba(255,165,0,.06); border-color: var(--itp-orange); }
 .itp-btn-hdr.fechar-tudo { color: var(--itp-red); border-color: rgba(255,85,85,.2); }
 .itp-btn-hdr.fechar-tudo:hover { background: rgba(255,85,85,.08); border-color: var(--itp-red); }
+.itp-btn-hdr.popout { color: #a0c4ff; border-color: rgba(160,196,255,.2); }
+.itp-btn-hdr.popout:hover { background: rgba(160,196,255,.08); border-color: #a0c4ff; }
 
 /* Tabs */
 .itp-tabs {
@@ -257,7 +275,7 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
     display: flex; flex-direction: column; z-index: 10;
     transform: translateX(100%); transition: transform .3s ease, width .2s ease;
     overflow: hidden; min-width: 300px; max-width: 98%;
-    font-family: 'Share Tech Mono','Courier New',monospace;
+    font-family: 'JetBrains Mono','Courier New',monospace;
 }
 .itp-wiki-sidebar.aberta { transform: translateX(0); }
 .itp-wiki-sidebar.maximizado { width: 100% !important; border-left: none; transition: width .2s ease; }
@@ -568,7 +586,10 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 
 <!-- ═════════════════════════ HTML ═════════════════════════ -->
 
-<!-- FAB -->
+<!-- FAB — abrir terminal em nova página -->
+<button id="itpFabPopout" onclick="itpPopout()" title="Abrir terminal em nova página">⧉</button>
+
+<!-- FAB — abrir/fechar painel inline -->
 <button id="itpFab" onclick="itpToggle()" title="Terminal SSH">
     <span>⌨</span>
     <span class="itp-fab-badge" id="itpFabBadge">0</span>
@@ -609,6 +630,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
                     {% endif %}
                     <button class="itp-btn-hdr" onclick="itpLimpar()">&#10005; Limpar</button>
                     <button class="itp-btn-hdr" onclick="itpReconectar()" title="Reconectar">&#8635;</button>
+                    <button class="itp-btn-hdr popout" onclick="itpPopout()" title="Abrir em página separada">&#10696; Página</button>
                     <button class="itp-btn-hdr minimize" onclick="itpToggle()">&#9660; Min</button>
                     <button class="itp-btn-hdr fechar-tudo" onclick="itpFecharTodos()" title="Fechar tudo e minimizar">&#9211;</button>
                 </div>
@@ -685,6 +707,7 @@ const MAX_RETRY = 3, RETRY_DELAY = 2500;
 // ─── DOM ─────────────────────────────────────────────
 const $panel      = document.getElementById('itpPanel');
 const $fab        = document.getElementById('itpFab');
+const $fabPopout  = document.getElementById('itpFabPopout');
 const $fabBadge   = document.getElementById('itpFabBadge');
 const $tabs       = document.getElementById('itpTabs');
 const $content    = document.getElementById('itpContent');
@@ -732,6 +755,7 @@ window.itpToggle = function() {
     _panelOpen = !_panelOpen;
     $panel.classList.toggle('aberto', _panelOpen);
     $fab.classList.toggle('visivel', !_panelOpen);
+    $fabPopout.classList.toggle('visivel', !_panelOpen);
     if (_panelOpen) setTimeout(_refitAll, 350);
 };
 function _abrirPanel() { if (!_panelOpen) itpToggle(); }
@@ -916,8 +940,8 @@ window.itpCtxWinbox = function() {
 };
 
 // ─── Open terminal ───────────────────────────────────
-const ITP_FONT   = 'VT323';
-const ITP_FONT_SIZE = 18;
+const ITP_FONT   = 'JetBrains Mono';
+const ITP_FONT_SIZE = 14;
 
 window.itpAbrirTerminal = function(acessoData) {
     _abrirPanel();
@@ -951,7 +975,7 @@ window.itpAbrirTerminal = function(acessoData) {
             cursorBlink: true,
             fontSize: ITP_FONT_SIZE,
             fontFamily: `'${ITP_FONT}','Courier New',monospace`,
-            fontWeight: 400, fontWeightBold: 400, lineHeight: 1.1, letterSpacing: 0.5,
+            fontWeight: 400, fontWeightBold: 700, lineHeight: 1.2, letterSpacing: 0,
             theme: { background: '#000000', foreground: '#e0e0e0', cursor: '#00ff88',
                      cursorAccent: '#000000', selectionBackground: 'rgba(0,255,136,0.2)' },
             scrollback: 8000, allowTransparency: true, convertEol: true,
@@ -1090,6 +1114,34 @@ window.itpReconectar = function() {
     tObj.terminal?.clear();
     tObj.terminal?.writeln('\x1b[1;33m\u21bb Reconectando...\x1b[0m\n');
     setTimeout(() => _conectarWS(_activeTerm), 400);
+};
+
+window.itpPopout = function() {
+    // Coletar todos os acessos abertos para reabrir na página externa
+    const acessos = [];
+    _terms.forEach(tObj => { if (tObj.acesso) acessos.push(tObj.acesso); });
+
+    if (acessos.length === 0) {
+        // Nenhuma sessão — abre a página vazia para o usuário conectar manualmente
+        window.open('/clientes/terminal/', '_blank');
+        return;
+    }
+
+    // Múltiplas sessões: salvar lista; sessão única: salvar só o acessoPendente
+    if (acessos.length > 1) {
+        localStorage.setItem('acessosPendentes', JSON.stringify(acessos));
+        localStorage.removeItem('acessoPendente');
+    } else {
+        localStorage.setItem('acessoPendente', JSON.stringify(acessos[0]));
+        localStorage.removeItem('acessosPendentes');
+    }
+
+    // Passar cliente_id na URL para a página filtrar apenas hosts desse cliente
+    const clienteId = (acessos[0] || _acessos[0])?.cliente_id
+                   || new URLSearchParams(window.location.search).get('id')
+                   || '';
+    const url = '/clientes/terminal/' + (clienteId ? `?cliente=${clienteId}` : '');
+    window.open(url, '_blank');
 };
 
 // ─── Status bar ──────────────────────────────────────
@@ -1677,11 +1729,10 @@ window._itpWikiVoltar        = function() { _renderWikiResultados(_wikiLastResul
 // ─── Init ────────────────────────────────────────────
 // Pré-carrega a fonte Terminus para que o xterm.js use as métricas corretas
 // na primeira vez que o terminal for aberto (canvas depende da fonte estar ready)
-document.fonts.load('18px VT323').catch(() => {});
-document.fonts.load('18px "Share Tech Mono"').catch(() => {});
+document.fonts.load('14px "JetBrains Mono"').catch(() => {});
 
 _renderHosts(_acessos);
-setTimeout(() => { if (!_panelOpen) $fab.classList.add('visivel'); }, 800);
+setTimeout(() => { if (!_panelOpen) { $fab.classList.add('visivel'); $fabPopout.classList.add('visivel'); } }, 800);
 
 window.inlineTerminalPanel = {
     abrirTerminal: itpAbrirTerminal,

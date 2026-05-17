@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.contrib.auth.models import User
 from funcao_equipamento.models import Funcao_equipamento
 from modelo_equipamento.models import Modelo_equipamento
@@ -92,6 +94,23 @@ class Documento(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class TopologiaDiagrama(models.Model):
+    """Armazena o estado do editor de topologia SVG e/ou XML do draw.io."""
+    cliente       = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='diagramas_topologia')
+    nome          = models.CharField(max_length=255, default='Nova Topologia')
+    dados_json    = models.TextField(default='{"nodes":[],"links":[]}', verbose_name='Dados do editor')
+    drawio_xml    = models.TextField(blank=True, default='', verbose_name='XML draw.io')
+    atualizado_em = models.DateTimeField(auto_now=True)
+    criado_em     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-atualizado_em"]
+
+    def __str__(self):
+        return f"{self.nome} — {self.cliente.nome_empresa}"
+
     
 
 class ArquivoVPN(models.Model):
@@ -239,6 +258,48 @@ class ProxyServer(models.Model):
         verbose_name = 'Servidor Proxy'
         verbose_name_plural = 'Servidores Proxy'
         ordering = ['-ativo', 'nome']
+
+
+class VPNServidorConfig(models.Model):
+    """Configuração global do servidor WireGuard (singleton)."""
+    servidor_public_key  = models.CharField(max_length=200)
+    servidor_private_key = models.CharField(max_length=200)
+    servidor_endpoint    = models.CharField(max_length=200, help_text='IP ou hostname público do servidor')
+    servidor_porta       = models.IntegerField(default=51820)
+    interface_criada     = models.BooleanField(default=False)
+    criado_em            = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Configuração Servidor VPN'
+
+    def __str__(self):
+        return f'VPN Server — {self.servidor_endpoint}:{self.servidor_porta}'
+
+
+class VPNWireGuard(models.Model):
+    """VPN WireGuard por cliente (MikroTik)."""
+    cliente             = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='vpns_wg')
+    nome                = models.CharField(max_length=100, default='VPN MikroTik')
+    cliente_private_key = models.CharField(max_length=200)
+    cliente_public_key  = models.CharField(max_length=200)
+    preshared_key       = models.CharField(max_length=200, blank=True)
+    vpn_ip              = models.GenericIPAddressField(unique=True)
+    redes_privadas      = models.TextField(blank=True, help_text='Uma rede por linha, ex: 192.168.1.0/24')
+    ativo               = models.BooleanField(default=True)
+    peer_no_servidor    = models.BooleanField(default=False, help_text='Peer adicionado ao wg0')
+    criado_em           = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'VPN WireGuard'
+        verbose_name_plural = 'VPNs WireGuard'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.nome} — {self.cliente.nome_empresa} ({self.vpn_ip})'
+
+    def redes_lista(self):
+        import re
+        return [r.strip() for r in re.split(r'[,\n]+', self.redes_privadas) if r.strip()]
 
 
 class BackupTemplate(models.Model):
@@ -420,4 +481,316 @@ class DocumentacaoRedeConfig(models.Model):
 
     def __str__(self):
         return f'DocConfig - {self.cliente.nome_empresa}'
+
+
+# =============================================================================
+# IPAM — Documentação Nativa de IPs, VLANs, Sub-redes e VPNs
+# =============================================================================
+
+class IPAMVlan(models.Model):
+    STATUS = [('ativo','Ativo'),('reservado','Reservado'),('deprecado','Deprecado')]
+
+    cliente   = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_vlans')
+    numero    = models.PositiveIntegerField()
+    nome      = models.CharField(max_length=100)
+    descricao = models.TextField(blank=True)
+    status    = models.CharField(max_length=15, choices=STATUS, default='ativo')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('cliente', 'numero')
+        ordering = ['numero']
+
+    def __str__(self):
+        return f'VLAN {self.numero} — {self.nome}'
+
+
+class IPAMPrefixo(models.Model):
+    TIPO   = [('container','Container'),('rede','Rede'),('pool','Pool')]
+    STATUS = [('ativo','Ativo'),('reservado','Reservado'),('deprecado','Deprecado')]
+
+    cliente      = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_prefixos')
+    prefixo      = models.CharField(max_length=50)          # CIDR ex: 10.0.0.0/8
+    tipo         = models.CharField(max_length=15, choices=TIPO,   default='rede')
+    status       = models.CharField(max_length=15, choices=STATUS, default='ativo')
+    descricao    = models.TextField(blank=True)
+    local        = models.CharField(max_length=150, blank=True)
+    pool_cheia   = models.BooleanField(default=False)
+    criado_em    = models.DateTimeField(auto_now_add=True)
+    atualizado_em= models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['prefixo']
+
+    def __str__(self):
+        return self.prefixo
+
+
+class IPAMSubRede(models.Model):
+    STATUS = [('ativo','Ativo'),('reservado','Reservado'),('deprecado','Deprecado')]
+
+    cliente      = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_subredes')
+    prefixo      = models.ForeignKey(IPAMPrefixo, null=True, blank=True,
+                                     on_delete=models.SET_NULL, related_name='subredes')
+    vlan         = models.ForeignKey(IPAMVlan, null=True, blank=True,
+                                     on_delete=models.SET_NULL, related_name='subredes')
+    rede         = models.CharField(max_length=50)           # CIDR ex: 192.168.1.0/24
+    gateway      = models.CharField(max_length=45, blank=True)
+    descricao    = models.TextField(blank=True)
+    local        = models.CharField(max_length=150, blank=True)
+    status       = models.CharField(max_length=15, choices=STATUS, default='ativo')
+    criado_em    = models.DateTimeField(auto_now_add=True)
+    atualizado_em= models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['rede']
+
+    def __str__(self):
+        return self.rede
+
+    def total_hosts(self):
+        import ipaddress
+        try:
+            return ipaddress.ip_network(self.rede, strict=False).num_addresses
+        except Exception:
+            return 0
+
+    def usados(self):
+        return self.ips.count()
+
+    def utilizacao_pct(self):
+        total = self.total_hosts()
+        if total == 0:
+            return 0
+        return round(self.usados() / total * 100, 1)
+
+
+class IPAMEndereco(models.Model):
+    TIPO   = [('fixo','Fixo'),('dhcp','DHCP'),('reservado','Reservado'),
+              ('gateway','Gateway'),('rede','Endereço de Rede'),('broadcast','Broadcast')]
+    STATUS = [('ativo','Ativo'),('inativo','Inativo'),('reservado','Reservado')]
+
+    cliente     = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_ips')
+    subrede     = models.ForeignKey(IPAMSubRede, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name='ips')
+    ip          = models.CharField(max_length=45)
+    tipo        = models.CharField(max_length=15, choices=TIPO,   default='fixo')
+    status      = models.CharField(max_length=15, choices=STATUS, default='ativo')
+    hostname    = models.CharField(max_length=255, blank=True)
+    descricao   = models.TextField(blank=True)
+    mac_address = models.CharField(max_length=20, blank=True)
+    acesso      = models.ForeignKey('Acesso', null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name='ipam_enderecos')
+    criado_em   = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['ip']
+
+    def __str__(self):
+        return self.ip
+
+
+class IPAMVpnDoc(models.Model):
+    TIPO   = [('ipsec','IPSec'),('gre','GRE'),('l2tp','L2TP'),
+              ('mpls','MPLS/L3VPN'),('wireguard','WireGuard'),
+              ('openvpn','OpenVPN'),('outro','Outro')]
+    STATUS = [('ativo','Ativo'),('inativo','Inativo')]
+
+    cliente         = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_vpns')
+    nome            = models.CharField(max_length=150)
+    tipo            = models.CharField(max_length=15, choices=TIPO, default='ipsec')
+    endpoint_local  = models.CharField(max_length=100, blank=True)
+    endpoint_remoto = models.CharField(max_length=100, blank=True)
+    rede_local      = models.CharField(max_length=200, blank=True)
+    rede_remota     = models.CharField(max_length=200, blank=True)
+    as_local        = models.CharField(max_length=20, blank=True)
+    as_remoto       = models.CharField(max_length=20, blank=True)
+    descricao       = models.TextField(blank=True)
+    status          = models.CharField(max_length=10, choices=STATUS, default='ativo')
+    criado_em       = models.DateTimeField(auto_now_add=True)
+    atualizado_em   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return f'{self.nome} ({self.get_tipo_display()})'
+
+
+# ── OpenVPN Server — configuração automatizada ──────────────────────────────
+class OpenVPNConfig(models.Model):
+    STATUS = [
+        ('configurando', 'Configurando'),
+        ('concluido',    'Concluído'),
+        ('erro',         'Erro'),
+    ]
+    ROS = [('6', 'v6'), ('7', 'v7')]
+
+    cliente         = models.ForeignKey(Cliente, on_delete=models.CASCADE,
+                                        related_name='openvpn_configs')
+    acesso          = models.ForeignKey('Acesso', on_delete=models.SET_NULL,
+                                        null=True, related_name='openvpn_configs')
+    nome_vpn        = models.CharField(max_length=60)       # nome do cert e usuário
+    ip_publico      = models.CharField(max_length=45)
+    porta           = models.IntegerField(default=61194)
+    ros_version     = models.CharField(max_length=2, choices=ROS, default='7')
+    vpn_pool        = models.CharField(max_length=100,
+                                       default='192.168.250.128-192.168.250.254')
+    vpn_local_ip    = models.CharField(max_length=45, default='192.168.250.1')
+    vpn_username    = models.CharField(max_length=100)
+    vpn_password    = models.CharField(max_length=100)
+    cert_passphrase = models.CharField(max_length=100)
+    rate_limit      = models.CharField(max_length=50, default='50M/50M')
+    ovpn_path       = models.CharField(max_length=500, blank=True)
+    status          = models.CharField(max_length=20, choices=STATUS,
+                                       default='configurando')
+    logs            = models.TextField(blank=True)
+    erro_msg        = models.TextField(blank=True)
+    criado_em       = models.DateTimeField(auto_now_add=True)
+    atualizado_em   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.nome_vpn} ({self.cliente})'
+
+
+class OpenVPNUsuario(models.Model):
+    STATUS = [
+        ('configurando', 'Configurando'),
+        ('concluido',    'Concluído'),
+        ('erro',         'Erro'),
+    ]
+    config      = models.ForeignKey(OpenVPNConfig, on_delete=models.CASCADE,
+                                    related_name='usuarios')
+    nome        = models.CharField(max_length=60)      # nome do cert / display
+    username    = models.CharField(max_length=100)
+    password    = models.CharField(max_length=100)
+    ovpn_path   = models.CharField(max_length=500, blank=True)
+    status      = models.CharField(max_length=20, choices=STATUS, default='configurando')
+    logs        = models.TextField(blank=True)
+    erro_msg    = models.TextField(blank=True)
+    criado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.username} → {self.config.nome_vpn}'
+
+
+# ── Configuração Global do Sistema ────────────────────────────────────────────
+
+class ConfiguracaoSistema(models.Model):
+    """Singleton — configurações globais do sistema (SMTP, IMAP, etc.)."""
+    smtp_host    = models.CharField(max_length=200, blank=True, verbose_name='Host SMTP')
+    smtp_port    = models.IntegerField(default=587,  verbose_name='Porta SMTP')
+    smtp_user    = models.CharField(max_length=200, blank=True, verbose_name='Usuário SMTP')
+    smtp_pass    = models.CharField(max_length=200, blank=True, verbose_name='Senha SMTP')
+    smtp_from    = models.EmailField(blank=True,    verbose_name='E-mail Remetente')
+    smtp_use_tls = models.BooleanField(default=True, verbose_name='Usar TLS (STARTTLS)')
+
+    # IMAP — para verificar respostas do TC após envio de atualização IRR
+    imap_host    = models.CharField(max_length=200, blank=True, verbose_name='Host IMAP')
+    imap_port    = models.IntegerField(default=993,  verbose_name='Porta IMAP')
+    imap_use_ssl = models.BooleanField(default=True, verbose_name='Usar SSL (IMAP)')
+
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração do Sistema'
+
+    def __str__(self):
+        return 'Configuração do Sistema'
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+# ── IRR Config ────────────────────────────────────────────────────────────────
+
+class IRRConfig(models.Model):
+    """Configuração IRR por cliente — usada para gerar e enviar atualização ao TC via e-mail."""
+    cliente = models.OneToOneField(Cliente, on_delete=models.CASCADE, related_name='irr_config')
+
+    # Identificadores principais
+    asn            = models.CharField(max_length=20, help_text='Número do AS sem prefixo. Ex: 272418')
+    as_name        = models.CharField(max_length=100, help_text='Nome curto do AS. Ex: INFORLIMA')
+    empresa_descr  = models.CharField(max_length=200, help_text='Descrição completa. Ex: INFORLIMA TELECOM')
+
+    # Maintainer
+    nic_hdl        = models.CharField(max_length=80, help_text='Handle NIC. Ex: JOLJE19-NICBR')
+    irr_password   = models.CharField(max_length=200, help_text='Senha plaintext enviada no e-mail IRR')
+    auth_bcrypt    = models.CharField(max_length=400, blank=True, help_text='Hash BCRYPT-PW do mntner')
+
+    # Contato
+    email_contato  = models.EmailField(help_text='E-mail do responsável técnico (changed, upd-to, notify)')
+    email_abuse    = models.EmailField(blank=True, help_text='E-mail de abuse/rede (remarks)')
+    website        = models.CharField(max_length=300, blank=True)
+
+    # Person object
+    person_name    = models.CharField(max_length=200)
+    address        = models.TextField()
+    phone          = models.CharField(max_length=50)
+
+    # Prefixos e rotas (listas JSON)
+    ipv4_rotas           = models.JSONField(default=list, blank=True, help_text='Lista de prefixos IPv4. Ex: ["186.65.76.0/22"]')
+    ipv6_rotas           = models.JSONField(default=list, blank=True, help_text='Lista de prefixos IPv6. Ex: ["2804:80E0::/32"]')
+    route_set_members    = models.JSONField(default=list, blank=True, help_text='mp-members do route-set com range. Ex: ["201.7.168.0/21^21-24"]')
+
+    # AS-sets
+    upstream_asns  = models.JSONField(default=list, blank=True, help_text='Lista [{"asn":"AS52554","nome":"MEGASNET"}]')
+    customer_asns  = models.JSONField(default=list, blank=True, help_text='Lista [{"asn":"AS268024","nome":""}]')
+    ix_members     = models.JSONField(default=list, blank=True, help_text='Lista de member-of (IX). Ex: ["AS-PTTMetro-SP","AS65001:AS-ANNOUNCEMENTS"]')
+
+    # Geo (usado nos objetos route/route6)
+    geo_pais       = models.CharField(max_length=5,   default='BR')
+    geo_pais_alpha3= models.CharField(max_length=5,   default='BRA')
+    geo_pais_num   = models.CharField(max_length=5,   default='076')
+    geo_estado     = models.CharField(max_length=20,  blank=True)
+    geo_cidade     = models.CharField(max_length=100, blank=True)
+
+    criado_em      = models.DateTimeField(auto_now_add=True)
+    atualizado_em  = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'IRR AS{self.asn} — {self.cliente.nome_empresa}'
+
+    @property
+    def mntner(self):
+        return f'MAINT-AS{self.asn}'
+
+    @property
+    def as_full(self):
+        return f'AS{self.asn}'
+
+
+# ── Auto-create default IPAM prefixes for new clients ──────────────────────
+_DEFAULT_PREFIXOS = [
+    ('100.64.0.0/10', 'container', 'CGNAT / Carrier-grade NAT'),
+    ('192.168.0.0/16', 'rede',      'Redes privadas RFC1918'),
+    ('10.0.0.0/8',     'rede',      'Redes privadas RFC1918'),
+    ('172.16.0.0/12',  'rede',      'Redes privadas RFC1918'),
+    ('198.18.0.0/15',  'rede',      'Testes de benchmark RFC2544'),
+    ('fc00::/7',       'rede',      'Endereços locais únicos IPv6 (ULA) RFC4193'),
+]
+
+@receiver(post_save, sender=Cliente)
+def criar_prefixos_padrao(sender, instance, created, **kwargs):
+    if not created:
+        return
+    existentes = set(IPAMPrefixo.objects.filter(cliente=instance).values_list('prefixo', flat=True))
+    for cidr, tipo, descricao in _DEFAULT_PREFIXOS:
+        if cidr not in existentes:
+            IPAMPrefixo.objects.create(
+                cliente=instance,
+                prefixo=cidr,
+                tipo=tipo,
+                status='ativo',
+                descricao=descricao,
+            )
     

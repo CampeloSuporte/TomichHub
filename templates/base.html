@@ -53,6 +53,11 @@
                             {% endif %}
                         {% endif %}
                         
+                        {% if request.user.is_staff %}
+                        <li><a class="dropdown-item" href="{% url 'configuracoes_sistema' %}">
+                            <i class="fas fa-sliders-h me-2"></i>Configurações
+                        </a></li>
+                        {% endif %}
                         <li><hr class="dropdown-divider"></li>
                     </ul>
                 </div>

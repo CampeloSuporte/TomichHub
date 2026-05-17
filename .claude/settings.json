@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(ls -1 /opt/crm/clientes/migrations/*.py)",
+      "Bash(journalctl -u gunicorn -n 50 --no-pager)",
+      "Bash(echo \"---EXISTS:$?\")",
+      "Bash(git rm:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git config:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
