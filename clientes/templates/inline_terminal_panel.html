@@ -648,7 +648,60 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 
             <div class="itp-footer">
                 <span style="font-size:9px;color:#2a3a2a;letter-spacing:.5px;flex:1;">CONEXA Terminal</span>
+                {% if request.user.is_staff %}
+                <button class="itp-btn-foot" id="itpBtnScripts" onclick="itpScriptsAbrir()" title="Executar script no equipamento ativo" style="color:#ffa500;border-color:rgba(255,165,0,.35);">&#9889; Scripts</button>
+                {% endif %}
                 <button class="itp-btn-foot active-toggle" id="itpBtnSidebar" onclick="itpToggleSidebar()">&#9664; Hosts</button>
+            </div>
+
+            <!-- ── Scripts Panel ── -->
+            <div id="itpScriptsPainel" style="position:absolute;top:0;right:-540px;width:520px;height:100%;background:#0d0d0d;border-left:1px solid #222;display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);z-index:50;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                <div style="padding:12px 16px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;gap:10px;">
+                    <span style="color:#ffa500;font-weight:700;font-size:13px;flex:1;">&#9889; Scripts de Automação</span>
+                    <span id="itpSpEquip" style="font-size:10px;color:#555;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    <button onclick="itpScriptsFechar()" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px 6px;" title="Fechar">&#10005;</button>
+                </div>
+                <!-- tabs -->
+                <div style="display:flex;border-bottom:1px solid #1a1a1a;padding:0 12px;">
+                    <button id="itpSpt-exec" onclick="itpSpTab('exec')" style="background:none;border:none;border-bottom:2px solid #ffa500;color:#ffa500;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Executar</button>
+                    <button id="itpSpt-output" onclick="itpSpTab('output')" style="background:none;border:none;border-bottom:2px solid transparent;color:#555;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Output</button>
+                    <button id="itpSpt-hist" onclick="itpSpTab('hist')" style="background:none;border:none;border-bottom:2px solid transparent;color:#555;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Histórico</button>
+                </div>
+                <!-- pane exec -->
+                <div id="itpSpp-exec" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;">
+                    <div>
+                        <div style="font-size:10px;color:#555;margin-bottom:4px;">EQUIPAMENTO</div>
+                        <select id="itpSpAcesoSelect" onchange="itpSpSelecionarAceso(this.value)" style="width:100%;background:#111;border:1px solid #ffa500;color:#ccc;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
+                            <option value="">— Selecione o equipamento —</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="itpSpFab" onchange="itpSpCarregarScripts()" style="background:#111;border:1px solid #2a2a2a;color:#888;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
+                            <option value="">— Todos fabricantes —</option>
+                            <option value="mikrotik">MikroTik</option>
+                            <option value="cisco">Cisco</option>
+                            <option value="huawei">Huawei</option>
+                            <option value="zte">ZTE</option>
+                            <option value="datacom">Datacom</option>
+                            <option value="parks">Parks</option>
+                            <option value="generico">Genérico</option>
+                        </select>
+                        <select id="itpSpSelect" onchange="itpSpSelecionarScript(this.value)" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#ccc;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
+                            <option value="">— Selecione um script —</option>
+                        </select>
+                    </div>
+                    <div id="itpSpDesc" style="font-size:10px;color:#444;min-height:16px;"></div>
+                    <div id="itpSpParams" style="display:flex;flex-direction:column;gap:8px;"></div>
+                    <button id="itpSpBtnExec" onclick="itpSpExecutar()" style="margin-top:4px;padding:9px;background:rgba(255,165,0,.12);border:1px solid #ffa500;color:#ffa500;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='rgba(255,165,0,.22)'" onmouseout="this.style.background='rgba(255,165,0,.12)'">&#9654; Executar Script</button>
+                </div>
+                <!-- pane output -->
+                <div id="itpSpp-output" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:4px;">
+                    <div id="itpSpOutputBox" style="flex:1;background:#050505;border:1px solid #1a1a1a;border-radius:4px;padding:10px;min-height:200px;overflow-y:auto;font-size:11px;color:#ccc;white-space:pre-wrap;word-break:break-all;"></div>
+                </div>
+                <!-- pane hist -->
+                <div id="itpSpp-hist" style="flex:1;overflow-y:auto;padding:14px;display:none;">
+                    <div id="itpSpHistBox" style="font-size:11px;color:#888;"></div>
+                </div>
             </div>
 
             <!-- Wiki sidebar -->
@@ -962,6 +1015,7 @@ window.itpAbrirTerminal = function(acessoData) {
                    socket: null, connected: false, wsRetries: 0 };
     _terms.set(tid, tObj);
     _activeTerm = tid;
+    window._itpActiveAcesso = acessoData; // expõe para painel de scripts
 
     _criarAba(tid, acessoData);
     _updateFab();
@@ -1056,6 +1110,8 @@ function _ativarTerminal(tid) {
     }
     _activeTerm = tid;
     const tObj = _terms.get(tid);
+    // Expõe o acesso ativo globalmente para o painel de scripts
+    window._itpActiveAcesso = tObj ? tObj.acesso : null;
     if (tObj) {
         tObj.pane.classList.add('ativo');
         document.getElementById(`itpTab-${tid}`)?.classList.add('ativo');
@@ -1725,6 +1781,232 @@ window.itpEnviarAoTerminal = function(idx) {
 window._itpVerArtigo         = _itpVerArtigo;
 window._renderWikiResultados = _renderWikiResultados;
 window._itpWikiVoltar        = function() { _renderWikiResultados(_wikiLastResults); };
+
+// ─── Scripts Panel ────────────────────────────────────
+(function() {
+    let _spAcesoId = null, _spScriptAtual = null, _spExec = false;
+
+    function _csrf() { const m = document.cookie.match(/csrftoken=([^;]+)/); return m ? m[1] : ''; }
+    function _esc2(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    async function _itpCarregarAcessosScript() {
+        try {
+            const clienteId = new URLSearchParams(window.location.search).get('id') || '';
+            const url = '/clientes/terminal/acessos/' + (clienteId ? `?cliente=${clienteId}` : '');
+            const r = await fetch(url);
+            const data = await r.json();
+            const sel = document.getElementById('itpSpAcesoSelect');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">— Selecione o equipamento —</option>';
+            (data.acessos || []).forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.dataset.tipo = a.tipo || '';
+                opt.dataset.host = a.host || '';
+                opt.textContent = `${a.tipo} — ${a.host}`;
+                sel.appendChild(opt);
+            });
+            // Pré-seleciona terminal ativo se disponível
+            const acesso = window._itpActiveAcesso
+                || (_activeTerm ? _terms.get(_activeTerm)?.acesso : null);
+            if (acesso && acesso.id) {
+                sel.value = acesso.id;
+                itpSpSelecionarAceso(acesso.id);
+            }
+        } catch(e) {}
+    }
+
+    window.itpSpSelecionarAceso = function(id) {
+        _spAcesoId = id ? parseInt(id) : null;
+        const sel = document.getElementById('itpSpAcesoSelect');
+        const opt = sel ? sel.options[sel.selectedIndex] : null;
+        document.getElementById('itpSpEquip').textContent = opt && opt.value ? (opt.dataset.host || opt.dataset.tipo || '') : '';
+        if (opt && opt.value) {
+            const tipo = (opt.dataset.tipo || '').toLowerCase();
+            const sf = document.getElementById('itpSpFab');
+            if (sf) {
+                if      (tipo.includes('zte'))                               sf.value = 'zte';
+                else if (tipo.includes('huawei'))                            sf.value = 'huawei';
+                else if (tipo.includes('cisco'))                             sf.value = 'cisco';
+                else if (tipo.includes('mikrotik')||tipo.includes('router')) sf.value = 'mikrotik';
+                else if (tipo.includes('datacom'))                           sf.value = 'datacom';
+                else if (tipo.includes('parks'))                             sf.value = 'parks';
+                else sf.value = '';
+                itpSpCarregarScripts();
+            }
+        }
+        if (_spAcesoId) itpSpCarregarHistorico();
+    };
+
+    window.itpScriptsAbrir = function() {
+        document.getElementById('itpScriptsPainel').style.right = '0';
+        itpSpTab('exec');
+        _itpCarregarAcessosScript();
+        itpSpCarregarScripts();
+    };
+
+    window.itpScriptsFechar = function() {
+        document.getElementById('itpScriptsPainel').style.right = '-540px';
+    };
+
+    window.itpSpTab = function(tab) {
+        ['exec','output','hist'].forEach(t => {
+            const pane = document.getElementById('itpSpp-'+t);
+            const tabEl = document.getElementById('itpSpt-'+t);
+            if (!pane || !tabEl) return;
+            const ativo = t === tab;
+            pane.style.display = ativo ? 'flex' : 'none';
+            if (ativo) pane.style.flexDirection = 'column';
+            tabEl.style.color = ativo ? '#ffa500' : '#555';
+            tabEl.style.borderBottom = ativo ? '2px solid #ffa500' : '2px solid transparent';
+        });
+    };
+
+    window.itpSpCarregarScripts = async function() {
+        const fab = document.getElementById('itpSpFab')?.value || '';
+        const url = '/clientes/scripts/' + (fab ? '?fabricante='+fab : '');
+        try {
+            const r = await fetch(url);
+            const data = await r.json();
+            const scripts = data.scripts || [];
+            const sel = document.getElementById('itpSpSelect');
+            sel.innerHTML = '<option value="">— Selecione um script —</option>';
+            scripts.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id;
+                o.textContent = '['+s.fabricante_display+'] '+s.nome;
+                sel.appendChild(o);
+            });
+        } catch(e) { console.warn('[ITP Scripts]', e); }
+    };
+
+    window.itpSpSelecionarScript = async function(id) {
+        _spScriptAtual = null;
+        document.getElementById('itpSpDesc').textContent = '';
+        document.getElementById('itpSpParams').innerHTML = '';
+        if (!id) return;
+        try {
+            const r = await fetch('/clientes/scripts/'+id+'/');
+            _spScriptAtual = await r.json();
+            document.getElementById('itpSpDesc').textContent = _spScriptAtual.descricao || '';
+            const box = document.getElementById('itpSpParams');
+            (_spScriptAtual.parametros || []).forEach(p => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+                const lbl = document.createElement('span');
+                lbl.style.cssText = 'font-size:10px;color:#666;';
+                lbl.textContent = (p.label || p.nome) + (p.obrigatorio ? ' *' : '');
+                let inp;
+                if (p.tipo === 'select' && p.opcoes) {
+                    inp = document.createElement('select');
+                    inp.style.cssText = 'background:#111;border:1px solid #222;color:#ccc;padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px;';
+                    const opcList = Array.isArray(p.opcoes) ? p.opcoes : p.opcoes.split(',');
+                    opcList.map(o => o.trim()).filter(Boolean).forEach(o => {
+                        const opt = document.createElement('option');
+                        opt.value = o; opt.textContent = o;
+                        if (o === p.default) opt.selected = true;
+                        inp.appendChild(opt);
+                    });
+                } else {
+                    inp = document.createElement('input');
+                    inp.type = p.tipo === 'password' ? 'password' : (p.tipo === 'number' ? 'number' : 'text');
+                    inp.style.cssText = 'background:#111;border:1px solid #222;color:#ccc;padding:5px 8px;border-radius:3px;font-family:inherit;font-size:11px;';
+                    if (p.placeholder) inp.placeholder = p.placeholder;
+                    if (p.default !== undefined && p.default !== null) inp.value = p.default;
+                }
+                inp.id = 'itpSp-param-'+p.nome;
+                label.appendChild(lbl);
+                label.appendChild(inp);
+                box.appendChild(label);
+            });
+        } catch(e) { console.warn('[ITP Scripts]', e); }
+    };
+
+    window.itpSpExecutar = async function() {
+        if (_spExec) return;
+        // Lê direto do seletor (fonte definitiva)
+        const sel = document.getElementById('itpSpAcesoSelect');
+        if (sel && sel.value) _spAcesoId = parseInt(sel.value);
+        if (!_spAcesoId) { alert('Selecione o equipamento alvo no topo do painel.'); return; }
+        if (!_spScriptAtual) { alert('Selecione um script.'); return; }
+
+        const params = {};
+        const faltando = [];
+        (_spScriptAtual.parametros || []).forEach(p => {
+            const el = document.getElementById('itpSp-param-'+p.nome);
+            const val = el ? el.value.trim() : '';
+            if (p.obrigatorio && !val) faltando.push(p.label || p.nome);
+            params[p.nome] = val;
+        });
+        if (faltando.length) { alert('Parâmetros obrigatórios:\n• '+faltando.join('\n• ')); return; }
+
+        _spExec = true;
+        const btn = document.getElementById('itpSpBtnExec');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Executando...'; }
+        itpSpTab('output');
+        const out = document.getElementById('itpSpOutputBox');
+        out.textContent = '';
+
+        try {
+            const res = await fetch('/clientes/scripts/executar/', {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json', 'X-CSRFToken': _csrf() },
+                body: JSON.stringify({ acesso_id: _spAcesoId, script_id: _spScriptAtual.id, parametros: params }),
+            });
+            if (!res.body) { out.textContent = 'Erro: stream não suportado.'; return; }
+            const reader = res.body.getReader();
+            const dec = new TextDecoder();
+            let buf = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += dec.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop();
+                lines.forEach(line => {
+                    if (!line.startsWith('data:')) return;
+                    try {
+                        const ev = JSON.parse(line.slice(5).trim());
+                        const tipo = ev.tipo || '';
+                        const txt  = ev.texto || ev.output || ev.mensagem || '';
+                        if (tipo === 'cmd')      out.textContent += '\n$ ' + txt + '\n';
+                        else if (tipo === 'output')    out.textContent += txt;
+                        else if (tipo === 'erro_cmd')  out.textContent += '\n[ERRO] ' + txt + '\n';
+                        else if (tipo === 'info')      out.textContent += '[INFO] ' + txt + '\n';
+                        else if (tipo === 'erro')      out.textContent += '\n[FALHA] ' + txt + '\n';
+                        else if (tipo === 'fim')       out.textContent += '\n─── Concluído ───\n';
+                        out.scrollTop = out.scrollHeight;
+                    } catch(_) {}
+                });
+            }
+        } catch(e) {
+            out.textContent += '\n[Erro de conexão] ' + e.message;
+        } finally {
+            _spExec = false;
+            if (btn) { btn.disabled = false; btn.textContent = '▶ Executar Script'; }
+            itpSpCarregarHistorico();
+        }
+    };
+
+    window.itpSpCarregarHistorico = async function() {
+        if (!_spAcesoId) return;
+        try {
+            const r = await fetch('/clientes/scripts/historico/'+_spAcesoId+'/');
+            const data = await r.json();
+            const box = document.getElementById('itpSpHistBox');
+            if (!data.historico || !data.historico.length) { box.innerHTML = '<div style="color:#444;padding:10px;">Nenhuma execução registrada.</div>'; return; }
+            box.innerHTML = data.historico.map(h => `
+                <div style="border:1px solid #1a1a1a;border-radius:4px;padding:8px 10px;margin-bottom:6px;">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+                        <span style="color:${h.status==='sucesso'?'#00ff88':h.status==='erro'?'#ff5555':'#ffa500'};font-size:10px;">${_esc2(h.status)}</span>
+                        <span style="color:#555;font-size:10px;">${_esc2(h.script||h.script_nome||'')}</span>
+                        <span style="color:#333;font-size:10px;margin-left:auto;">${_esc2(h.iniciado_em)}</span>
+                    </div>
+                    <pre style="color:#666;font-size:10px;margin:0;white-space:pre-wrap;max-height:80px;overflow-y:auto;">${_esc2((h.output||'').slice(0,400))}</pre>
+                </div>`).join('');
+        } catch(e) {}
+    };
+})();
 
 // ─── Init ────────────────────────────────────────────
 // Pré-carrega a fonte Terminus para que o xterm.js use as métricas corretas

@@ -21,6 +21,7 @@
 13. [Criar Superusuário](#13-criar-superusuário)
 14. [Verificação Final](#14-verificação-final)
 15. [Comandos Úteis do Dia a Dia](#15-comandos-úteis-do-dia-a-dia)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -63,10 +64,13 @@ sudo apt install -y \
     openssh-client \
     sshpass \
     expect \
+    novnc \
     sudo
 ```
 
 > **Nota:** O Python 3.12 é obrigatório. Verifique com `python3.12 --version`.
+
+> **Nota:** O pacote `novnc` é necessário para o acesso via WinBox/VNC no navegador. Após instalar, copie os arquivos para os estáticos do projeto (ver seção [9 — Arquivos Estáticos e Mídia](#9-arquivos-estáticos-e-mídia)).
 
 ---
 
@@ -195,7 +199,9 @@ source venv/bin/activate
 python manage.py migrate
 ```
 
-> Isso cria todas as tabelas necessárias (50+ migrations).
+> Isso cria todas as tabelas necessárias (55+ migrations).
+>
+> A migration `0055` insere automaticamente o script ZTE Auto-Provisionamento via `RunPython` — nenhuma ação adicional necessária.
 
 ---
 
@@ -207,6 +213,10 @@ source venv/bin/activate
 
 # Coleta arquivos estáticos para /opt/crm/static/
 python manage.py collectstatic --noinput
+
+# Copiar noVNC para os estáticos (necessário para WinBox/VNC no navegador)
+mkdir -p /opt/crm/static/novnc
+cp -r /usr/share/novnc/* /opt/crm/static/novnc/
 
 # Criar diretório de mídia com permissões corretas
 mkdir -p /opt/crm/media
@@ -418,6 +428,10 @@ server {
         proxy_send_timeout 600s;
     }
 
+    # Upload via URL — o download é feito pelo servidor Django (não passa pelo navegador),
+    # portanto não requer buffering especial; timeout padrão é suficiente.
+    # A rota /clientes/firmware/upload-url/ é coberta pelo bloco location / abaixo.
+
     # Requisições HTTP normais (Gunicorn via socket Unix)
     location / {
         include proxy_params;
@@ -617,13 +631,122 @@ pip install \
 
 Após a instalação, acesse o sistema e configure:
 
-1. **Sistema → Configurações** — Configure o servidor SMTP para envio de e-mails IRR
+1. **Sistema → Configurações** — Configure o servidor SMTP e IMAP para envio de e-mails (IRR, correções GeoIP) e confirmação automática de e-mails MaxMind
+   - **SMTP:** host, porta, usuário, senha, remetente, TLS
+   - **IMAP:** host, porta, usuário, senha (necessário para confirmação automática MaxMind)
 2. **Sistema → Usuários** — Crie usuários da equipe
+   - Marque `is_staff` nos usuários que devem ter acesso ao menu **Ferramentas** (Pesquisa LG, Geolocalização IP, Firmware)
 3. **Sistema → Clientes** — Cadastre os primeiros clientes
 4. **Sistema → Função de equipamento** — Cadastre tipos (Roteador, Switch, OLT, Firewall...)
 5. **Sistema → Modelos de equipamento** — Cadastre modelos específicos
-6. **Sistema → Ferramentas → Arquivos / Firmware** — Crie a estrutura de pastas para firmware e arquivos de configuração
-7. **Sistema → Ferramentas → Pesquisa LG** — Disponível imediatamente; acessível também pelo botão "Consultar LG" na aba IRR/RPKI de cada cliente
+6. **Ferramentas → Arquivos / Firmware** — Crie a estrutura de pastas para firmware e arquivos de configuração. Use o botão "Via URL" para baixar firmwares diretamente de URLs HTTP/HTTPS sem passar pelo navegador
+7. **Ferramentas → Pesquisa LG** — Disponível imediatamente; acessível também pelo botão "Consultar LG" na aba IRR/RPKI de cada cliente
+8. **Ferramentas → Geolocalização IP** — Disponível imediatamente após configurar SMTP (e IMAP, para confirmação automática MaxMind)
+9. **Ferramentas → Relatório de Backups** — Disponível imediatamente após os primeiros backups serem executados
+10. **Scripts de Automação** — O script ZTE Auto-Provisionamento é inserido automaticamente na migration 0055. Acesse `/clientes/scripts/gerenciar/` (requer `is_staff`) para criar novos scripts ou editar os existentes
+
+> **Nota:** O menu **Ferramentas** é visível apenas para usuários com `is_staff = True`. Usuários sem essa flag não verão nem terão acesso às ferramentas de rede.
+
+---
+
+## Troubleshooting
+
+### 502 Bad Gateway após reinicialização
+
+**Causa mais comum:** O processo `gunicorn` foi encerrado (ex: `pkill -f gunicorn` mata tanto o worker quanto o socket).
+
+```bash
+# Verificar status
+sudo systemctl status gunicorn
+
+# Reiniciar corretamente (nunca use pkill -f gunicorn)
+sudo systemctl restart gunicorn daphne
+```
+
+> **Atenção:** Use sempre `systemctl restart gunicorn daphne` para reiniciar os serviços após atualizações de código. Nunca use `pkill -f gunicorn` — isso pode derrubar todos os workers sem o systemd saber, e o socket fica órfão.
+
+---
+
+### WinBox/VNC não carrega (erro ao importar noVNC)
+
+**Causa:** O diretório `/opt/crm/static/novnc/` não existe ou está vazio.
+
+```bash
+# Verificar se o pacote novnc está instalado
+dpkg -l novnc
+
+# Recopiar os arquivos
+mkdir -p /opt/crm/static/novnc
+cp -r /usr/share/novnc/* /opt/crm/static/novnc/
+sudo chown -R www-data:www-data /opt/crm/static/novnc/
+```
+
+---
+
+### Proxmox: ações POST retornam 401 Unauthorized via proxy
+
+**Causa:** O cabeçalho `CSRFPreventionToken` não estava sendo encaminhado pelo proxy HTTP. Isso foi corrigido na Sessão 8. Se o problema ocorrer em nova instalação, verifique se o código em `clientes/views.py` contém o bloco:
+
+```python
+if 'HTTP_CSRFPREVENTIONTOKEN' in request.META:
+    req_headers['CSRFPreventionToken'] = request.META['HTTP_CSRFPREVENTIONTOKEN']
+```
+
+---
+
+### Proxmox: Shell abre o dashboard do CRM
+
+**Causa:** O inject JavaScript do proxy não interceptava mudanças de `src` em `HTMLIFrameElement`. Corrigido na Sessão 8 em `clientes/proxy_engine.py`. A linha `_fixProp(HTMLIFrameElement.prototype,'src')` deve estar presente no bloco de `_fixProp`.
+
+---
+
+### Monitoramento: "Zabbix tem IP privado mas não há proxy SSH ativo"
+
+**Situação:** O cliente usa WireGuard VPN (sem túnel SSH) e o Zabbix está na rede privada do cliente.
+
+**Solução:** Verifique se a `VPNWireGuard` do cliente está configurada com `peer_no_servidor=True` e com as redes corretas (`redes_lista()`). A partir da Sessão 9, o sistema verifica automaticamente o WireGuard antes de exigir túnel SSH.
+
+---
+
+### Terminal: caracteres aparecem com atraso ao digitar
+
+**Causa provável:** Renderer DOM ativo no xterm.js v5 (sem addon de renderer carregado) ou protocolo JSON para keypresses.
+
+**Verificação:** Abra o DevTools → Network → WS → inspecione os frames enviados. Se as teclas aparecerem como texto JSON (`{"action":"command",...}`), o código está desatualizado.
+
+**Solução:** Verifique se o template `clientes/templates/terminal.html` contém:
+- Scripts `xterm-addon-canvas` e `xterm-addon-webgl` carregados
+- `socket.binaryType = 'arraybuffer'`
+- `terminal.onData` enviando `_enc.encode(input)` (não `JSON.stringify`)
+
+Se necessário, faça `git pull` e `systemctl restart gunicorn daphne`.
+
+---
+
+### Dashboard financeiro não carrega "Próximas a Vencer"
+
+**Causa:** A migration ou a view `api_proximas_vencer` não foi aplicada/registrada.
+
+**Verificação:**
+
+```bash
+# Confirmar que a URL existe
+/opt/crm/venv/bin/python manage.py show_urls | grep proximas-vencer
+
+# Confirmar que a view está no arquivo
+grep -n "api_proximas_vencer" /opt/crm/financeiro/views.py
+grep -n "proximas-vencer" /opt/crm/financeiro/urls.py
+```
+
+Se alguma linha estiver ausente, faça `git pull` e `systemctl restart gunicorn daphne`.
+
+---
+
+### Scripts de automação — página `/clientes/scripts/gerenciar/` retorna 403
+
+**Causa:** Apenas usuários com `is_staff = True` têm acesso ao gerenciador de scripts.
+
+**Solução:** No Django Admin (`/admin/auth/user/<id>/`), marque `Staff status` para o usuário.
 
 ---
 

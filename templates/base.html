@@ -6,12 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOMICH HUB - Painel de Servidor</title>
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
     <!-- Custom CSS -->
     <link href="{% static 'css/style.css'%}" rel="stylesheet">
     
@@ -37,38 +38,66 @@
                         <i class="fas fa-cog me-1"></i> Sistema
                     </button>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'cadastrar_usuario'%}">Usuários</a></li>
-                        <li><a class="dropdown-item" href="{%url 'cadastrar_cliente'%}">Clientes</a></li>
-                        <li><a class="dropdown-item" href="{%url 'listar_funcoes'%}">Função de equipamento</a></li>
-                        <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">Modelos de equipamento</a></li>
-                        <li><a class="dropdown-item" href="{% url 'wiki:dashboard' %}">
-                            <i class="fas fa-book me-2"></i>Wiki
+                        <li><a class="dropdown-item" href="{% url 'cadastrar_usuario'%}">
+                            <i class="fas fa-users me-2" style="color:#8b949e"></i>Usuários
                         </a></li>
-                        
+                        <li><a class="dropdown-item" href="{%url 'cadastrar_cliente'%}">
+                            <i class="fas fa-building me-2" style="color:#8b949e"></i>Clientes
+                        </a></li>
+                        <li><a class="dropdown-item" href="{%url 'listar_funcoes'%}">
+                            <i class="fas fa-puzzle-piece me-2" style="color:#8b949e"></i>Função de equipamento
+                        </a></li>
+                        <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">
+                            <i class="fas fa-server me-2" style="color:#8b949e"></i>Modelos de equipamento
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'wiki:dashboard' %}">
+                            <i class="fas fa-book me-2" style="color:#8b949e"></i>Wiki
+                        </a></li>
                         {% if request.user.is_staff %}
                             {% if request.user.id == 1 or request.user.id == 2 %}
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_financeiro' %}">
-                                <i class="fas fa-chart-line me-2"></i>Financeiro
+                                <i class="fas fa-chart-line me-2" style="color:#00c864"></i>Financeiro
                             </a></li>
                             {% endif %}
                         {% endif %}
-                        
-                        {% if request.user.is_staff %}
+                        {% if request.user.is_superuser %}
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'configuracoes_sistema' %}">
-                            <i class="fas fa-sliders-h me-2"></i>Configurações
+                            <i class="fas fa-sliders-h me-2" style="color:#ffaa00"></i>Configurações
                         </a></li>
                         {% endif %}
-                        <li><hr class="dropdown-divider"></li>
-                        <li><span style="font-size:.7rem;color:#555;text-transform:uppercase;letter-spacing:.06em;padding:4px 16px;display:block">Ferramentas</span></li>
-                        <li><a class="dropdown-item" href="{% url 'lg_pesquisa' %}">
-                            <i class="fas fa-route me-2"></i>Pesquisa LG
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'firmware_index' %}">
-                            <i class="fas fa-hdd me-2"></i>Arquivos / Firmware
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
                     </ul>
                 </div>
+
+                {% if request.user.is_staff %}
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-tools me-1"></i> Ferramentas
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'lg_pesquisa' %}">
+                            <i class="fas fa-route me-2" style="color:#00d9ff"></i>Pesquisa LG
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'geo_consulta' %}">
+                            <i class="fas fa-map-marker-alt me-2" style="color:#00ff88"></i>Geolocalização IP
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'firmware_index' %}">
+                            <i class="fas fa-hdd me-2" style="color:#ffaa00"></i>Arquivos / Firmware
+                        </a></li>
+                        <li><a class="dropdown-item" href="/clientes/scripts/gerenciar/">
+                            <i class="fas fa-bolt me-2" style="color:#ffa500"></i>Scripts de Automação
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'relatorio_backups' %}">
+                            <i class="fas fa-database me-2" style="color:#00f5ff"></i>Relatório de Backups
+                        </a></li>
+                        <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1);"></li>
+                        <li><a class="dropdown-item" href="{% url 'backup_config' %}">
+                            <i class="fas fa-cogs me-2" style="color:#888"></i>Config. Backup
+                        </a></li>
+                    </ul>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Direita: busca de cliente + menu usuário -->
@@ -350,97 +379,80 @@
 
     .client-search-input {
         width: 210px;
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(0,245,255,.05);
+        border: 1px solid rgba(0,245,255,.2);
         color: #fff;
-        transition: border-color 0.2s, width 0.3s;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 12px;
+        transition: border-color .2s, width .3s, box-shadow .2s;
     }
-
-    .client-search-input::placeholder { color: #aaa; }
-
+    .client-search-input::placeholder { color: rgba(0,245,255,.3); }
     .client-search-input:focus {
         width: 250px;
-        background: rgba(255,255,255,0.12);
-        border-color: #00d9ff;
-        box-shadow: 0 0 0 2px rgba(0,217,255,0.2);
+        background: rgba(0,245,255,.08);
+        border-color: #00f5ff;
+        box-shadow: 0 0 0 2px rgba(0,245,255,.15), 0 0 12px rgba(0,245,255,.1);
         color: #fff;
         outline: none;
     }
 
     .btn-close-client-search {
         background: transparent;
-        border: 1px solid rgba(255,255,255,0.2);
-        color: #aaa;
+        border: 1px solid rgba(0,245,255,.2);
+        color: rgba(0,245,255,.5);
         padding: 4px 8px;
-        border-radius: 4px;
+        border-radius: 3px;
         cursor: pointer;
         line-height: 1;
-        transition: border-color 0.2s, color 0.2s;
+        transition: border-color .2s, color .2s;
     }
     .btn-close-client-search:hover {
-        border-color: #e74c3c;
-        color: #e74c3c;
+        border-color: #ff3b4e;
+        color: #ff3b4e;
     }
 
-    /* ── Dropdown de resultados ─────────────────────────────────────── */
+    /* ── Dropdown de resultados ── */
     .client-search-results {
         position: absolute;
-        top: calc(100% + 6px);
-        left: 0;
-        min-width: 280px;
-        max-height: 320px;
+        top: calc(100% + 6px); left: 0;
+        min-width: 280px; max-height: 320px;
         overflow-y: auto;
-        background: #1a1a2e;
-        border: 1px solid #333;
-        border-radius: 6px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        background: rgba(4, 8, 22, .98);
+        border: 1px solid rgba(0,245,255,.18);
+        border-radius: 4px;
+        box-shadow: 0 8px 32px rgba(0,0,0,.7), 0 0 16px rgba(0,245,255,.06);
         z-index: 9999;
+        backdrop-filter: blur(10px);
     }
 
     .client-result-item {
         padding: 10px 14px;
         cursor: pointer;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        transition: background 0.15s;
+        border-bottom: 1px solid rgba(0,245,255,.06);
+        transition: background .15s, padding-left .15s;
+        font-family: 'Share Tech Mono', monospace;
     }
-
     .client-result-item:last-child { border-bottom: none; }
-
     .client-result-item:hover,
     .client-result-item.active {
-        background: rgba(0,217,255,0.08);
+        background: rgba(0,245,255,.07);
+        padding-left: 18px;
     }
 
-    .client-result-nome {
-        font-size: 13px;
-        color: #e0e0e0;
-        font-weight: 500;
-    }
-
-    .client-result-cnpj {
-        font-size: 11px;
-        color: #777;
-        margin-top: 2px;
-    }
-
-    .client-result-empty {
-        padding: 14px;
-        color: #777;
-        font-size: 13px;
-        text-align: center;
-    }
+    .client-result-nome { font-size: 12px; color: #d0e8f0; }
+    .client-result-cnpj { font-size: 11px; color: rgba(0,245,255,.35); margin-top: 2px; }
+    .client-result-empty { padding: 14px; color: rgba(0,245,255,.35); font-size: 12px; text-align: center; }
 
     .client-search-results mark {
-        background: rgba(0,217,255,0.25);
-        color: #00d9ff;
+        background: rgba(0,245,255,.2);
+        color: #00f5ff;
         border-radius: 2px;
         padding: 0 1px;
     }
 
-    /* Scrollbar discreta */
-    .client-search-results::-webkit-scrollbar { width: 4px; }
+    .client-search-results::-webkit-scrollbar { width: 3px; }
     .client-search-results::-webkit-scrollbar-track { background: transparent; }
-    .client-search-results::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+    .client-search-results::-webkit-scrollbar-thumb { background: rgba(0,245,255,.2); border-radius: 4px; }
     </style>
 </body>
 
@@ -451,18 +463,18 @@
 <!-- Modal de confirmação -->
 <div class="modal fade" id="uiModalConfirm" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-sm modal-dialog-centered">
-    <div class="modal-content" style="background:#161b22;border:1px solid #30363d;box-shadow:0 8px 40px rgba(0,0,0,.7)">
+    <div class="modal-content" style="background:rgba(4,8,22,.98);border:1px solid rgba(0,245,255,.2);box-shadow:0 8px 40px rgba(0,0,0,.8),0 0 30px rgba(0,245,255,.06);font-family:'Share Tech Mono',monospace;">
       <div class="modal-body" style="padding:28px 24px 16px;text-align:center">
-        <div id="ui-confirm-icon" style="font-size:2.2rem;margin-bottom:14px"></div>
-        <div id="ui-confirm-title" style="font-size:.95rem;font-weight:600;color:#e6edf3;margin-bottom:8px"></div>
-        <div id="ui-confirm-msg" style="font-size:.82rem;color:#8b949e;line-height:1.55"></div>
+        <div id="ui-confirm-icon" style="font-size:2rem;margin-bottom:14px"></div>
+        <div id="ui-confirm-title" style="font-size:.9rem;font-weight:600;color:#d0e8f0;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'Orbitron',monospace;"></div>
+        <div id="ui-confirm-msg" style="font-size:.8rem;color:rgba(0,245,255,.5);line-height:1.6"></div>
       </div>
-      <div class="modal-footer" style="border-color:#30363d;padding:12px 20px;gap:8px">
+      <div class="modal-footer" style="border-color:rgba(0,245,255,.1);padding:12px 20px;gap:8px">
         <button id="ui-confirm-cancel" class="btn btn-sm flex-fill"
-          style="background:transparent;border:1px solid #30363d;color:#8b949e">
+          style="background:transparent;border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.5);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;">
           Cancelar
         </button>
-        <button id="ui-confirm-ok" class="btn btn-sm flex-fill" style="font-weight:500">
+        <button id="ui-confirm-ok" class="btn btn-sm flex-fill" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;">
           Confirmar
         </button>
       </div>
@@ -473,15 +485,15 @@
 <!-- Modal de alerta -->
 <div class="modal fade" id="uiModalAlert" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-sm modal-dialog-centered">
-    <div class="modal-content" style="background:#161b22;border:1px solid #30363d;box-shadow:0 8px 40px rgba(0,0,0,.7)">
+    <div class="modal-content" style="background:rgba(4,8,22,.98);border:1px solid rgba(0,245,255,.2);box-shadow:0 8px 40px rgba(0,0,0,.8),0 0 30px rgba(0,245,255,.06);font-family:'Share Tech Mono',monospace;">
       <div class="modal-body" style="padding:28px 24px 16px;text-align:center">
-        <div id="ui-alert-icon" style="font-size:2.2rem;margin-bottom:14px"></div>
-        <div id="ui-alert-title" style="font-size:.95rem;font-weight:600;color:#e6edf3;margin-bottom:8px"></div>
-        <div id="ui-alert-msg" style="font-size:.82rem;color:#8b949e;line-height:1.55"></div>
+        <div id="ui-alert-icon" style="font-size:2rem;margin-bottom:14px"></div>
+        <div id="ui-alert-title" style="font-size:.9rem;font-weight:600;color:#d0e8f0;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'Orbitron',monospace;"></div>
+        <div id="ui-alert-msg" style="font-size:.8rem;color:rgba(0,245,255,.5);line-height:1.6"></div>
       </div>
-      <div class="modal-footer" style="border-color:#30363d;padding:12px 20px">
+      <div class="modal-footer" style="border-color:rgba(0,245,255,.1);padding:12px 20px">
         <button id="ui-alert-ok" class="btn btn-sm w-100"
-          style="background:rgba(0,217,255,.12);border:1px solid rgba(0,217,255,.4);color:#00d9ff;font-weight:500">
+          style="background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.35);color:#00f5ff;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;">
           OK
         </button>
       </div>

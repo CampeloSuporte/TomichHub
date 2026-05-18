@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="main-content">
+<div class="container-fluid">
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="fas fa-database me-2" style="color:var(--accent-cyan);"></i>Configurações de Backup</h4>
+    <button class="btn btn-sm btn-primary" onclick="abrirModalTemplate(null)">
+        <i class="fas fa-plus me-1"></i> Novo Template
+    </button>
+</div>
+
+<!-- ── Tabs ─────────────────────────────────────────────────────────── -->
+<ul class="nav nav-tabs mb-4" id="backupConfigTabs">
+    <li class="nav-item">
+        <a class="nav-link active" href="#" onclick="tabConfig(event,'templates')">
+            <i class="fas fa-file-code me-1"></i> Templates
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" onclick="tabConfig(event,'acessos')">
+            <i class="fas fa-server me-1"></i> Acessos
+        </a>
+    </li>
+</ul>
+
+<!-- ── Aba Templates ─────────────────────────────────────────────────── -->
+<div id="tab-templates">
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Fabricante</th>
+                            <th>Comandos</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in templates %}
+                        <tr id="row-template-{{ t.id }}">
+                            <td><strong style="color:var(--primary-green);">{{ t.nome }}</strong></td>
+                            <td>
+                                <span class="badge" style="background:rgba(0,245,255,.15);color:var(--accent-cyan);border:1px solid rgba(0,245,255,.3);">
+                                    {{ t.get_fabricante_display }}
+                                </span>
+                            </td>
+                            <td style="font-size:12px;color:var(--text-muted);">
+                                {{ t.get_comandos_list|length }} comando{{ t.get_comandos_list|length|pluralize }}
+                            </td>
+                            <td style="font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                {{ t.descricao|default:"-" }}
+                            </td>
+                            <td>
+                                {% if t.ativo %}
+                                <span class="badge badge-success" style="font-size:11px;padding:4px 8px;">Ativo</span>
+                                {% else %}
+                                <span class="badge badge-danger" style="font-size:11px;padding:4px 8px;">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm" style="background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.3);color:var(--accent-cyan);padding:4px 8px;"
+                                        onclick='abrirModalTemplate({{ t.id }})' title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm" style="background:rgba(220,53,69,.12);border:1px solid rgba(220,53,69,.35);color:#dc3545;padding:4px 8px;"
+                                        onclick="deletarTemplate({{ t.id }}, '{{ t.nome|escapejs }}')" title="Excluir">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">Nenhum template cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Aba Acessos ────────────────────────────────────────────────────── -->
+<div id="tab-acessos" style="display:none;">
+    <div class="mb-3">
+        <div class="input-group" style="max-width:400px;">
+            <span class="input-group-text" style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--primary-green);">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" id="pesquisaAcesso" class="form-control" placeholder="Pesquisar equipamento ou cliente..."
+                style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);"
+                oninput="filtrarAcessos(this.value)">
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Equipamento</th>
+                            <th>Host</th>
+                            <th>Habilitado</th>
+                            <th>Automático</th>
+                            <th>Template</th>
+                            <th>Salvar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyAcessos">
+                        {% for ac in acessos %}
+                        <tr class="acesso-row" data-cliente="{{ ac.cliente.nome_empresa|lower }}" data-tipo="{{ ac.tipo|lower }}" data-host="{{ ac.host|lower }}">
+                            <td style="font-size:13px;">{{ ac.cliente.nome_empresa }}</td>
+                            <td style="color:var(--primary-green);font-weight:600;">{{ ac.tipo }}</td>
+                            <td style="font-family:monospace;font-size:12px;">{{ ac.host }}</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="hab-{{ ac.id }}"
+                                        {% if ac.backup_habilitado %}checked{% endif %}>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="auto-{{ ac.id }}"
+                                        {% if ac.backup_automatico %}checked{% endif %}>
+                                </div>
+                            </td>
+                            <td>
+                                <select id="tpl-{{ ac.id }}" class="form-select form-select-sm"
+                                    style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);min-width:180px;font-size:12px;">
+                                    <option value="">— Nenhum —</option>
+                                    {% for t in templates %}
+                                    <option value="{{ t.id }}" {% if ac.backup_template_id == t.id %}selected{% endif %}>
+                                        {{ t.get_fabricante_display }} — {{ t.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm" style="background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.4);color:var(--primary-green);padding:4px 10px;"
+                                    onclick="salvarConfigAcesso({{ ac.id }})" title="Salvar">
+                                    <i class="fas fa-save me-1"></i> Salvar
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Nenhum acesso cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /container -->
+</div><!-- /main-content -->
+
+
+<!-- ── Modal Template ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalTemplate" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);">
+            <div class="modal-header" style="border-bottom:1px solid rgba(0,255,136,.2);">
+                <h5 class="modal-title" id="modalTemplateTitulo"><i class="fas fa-file-code me-2"></i>Template de Backup</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="tplId">
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <label class="form-label">Nome *</label>
+                        <input type="text" id="tplNome" class="form-control"
+                            style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);"
+                            placeholder="Ex: MikroTik RouterOS — Running Config">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Fabricante *</label>
+                        <select id="tplFabricante" class="form-select"
+                            style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);">
+                            {% for val, label in fabricantes %}
+                            <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">
+                            Comandos
+                            <small class="text-muted ms-1">— um por linha</small>
+                        </label>
+                        <textarea id="tplComandos" rows="8" class="form-control"
+                            style="background:#02030a;border:1px solid var(--primary-green);color:#00ff88;font-family:'Share Tech Mono',monospace;font-size:13px;resize:vertical;"
+                            placeholder="/export compact&#10;/ip address print&#10;/interface print"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descrição</label>
+                        <input type="text" id="tplDescricao" class="form-control"
+                            style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);"
+                            placeholder="Descrição breve do template">
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="tplAtivo" checked>
+                            <label class="form-check-label" for="tplAtivo">Ativo</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid rgba(0,255,136,.2);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarTemplate()">
+                    <i class="fas fa-save me-1"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dados dos templates para edição
+const templatesData = {
+    {% for t in templates %}
+    {{ t.id }}: {
+        nome: "{{ t.nome|escapejs }}",
+        fabricante: "{{ t.fabricante }}",
+        comandos: "{{ t.comandos|escapejs }}",
+        descricao: "{{ t.descricao|default:''|escapejs }}",
+        ativo: {{ t.ativo|yesno:"true,false" }},
+    },
+    {% endfor %}
+};
+
+function tabConfig(e, nome) {
+    e.preventDefault();
+    document.querySelectorAll('#backupConfigTabs .nav-link').forEach(l => l.classList.remove('active'));
+    e.target.closest('.nav-link').classList.add('active');
+    document.getElementById('tab-templates').style.display = nome === 'templates' ? '' : 'none';
+    document.getElementById('tab-acessos').style.display = nome === 'acessos' ? '' : 'none';
+}
+
+function abrirModalTemplate(id) {
+    document.getElementById('tplId').value = id || '';
+    if (id && templatesData[id]) {
+        const t = templatesData[id];
+        document.getElementById('modalTemplateTitulo').innerHTML = '<i class="fas fa-edit me-2"></i>Editar Template';
+        document.getElementById('tplNome').value = t.nome;
+        document.getElementById('tplFabricante').value = t.fabricante;
+        document.getElementById('tplComandos').value = t.comandos;
+        document.getElementById('tplDescricao').value = t.descricao || '';
+        document.getElementById('tplAtivo').checked = t.ativo;
+    } else {
+        document.getElementById('modalTemplateTitulo').innerHTML = '<i class="fas fa-plus me-2"></i>Novo Template';
+        document.getElementById('tplNome').value = '';
+        document.getElementById('tplFabricante').value = 'GENERICO';
+        document.getElementById('tplComandos').value = '';
+        document.getElementById('tplDescricao').value = '';
+        document.getElementById('tplAtivo').checked = true;
+    }
+    new bootstrap.Modal(document.getElementById('modalTemplate')).show();
+}
+
+function salvarTemplate() {
+    const id = document.getElementById('tplId').value;
+    const nome = document.getElementById('tplNome').value.trim();
+    if (!nome) { uiToast('Informe o nome do template', 'erro'); return; }
+
+    const payload = {
+        id: id ? parseInt(id) : null,
+        nome,
+        fabricante: document.getElementById('tplFabricante').value,
+        comandos: document.getElementById('tplComandos').value,
+        descricao: document.getElementById('tplDescricao').value,
+        ativo: document.getElementById('tplAtivo').checked,
+    };
+
+    fetch('/home/configuracoes/backup/template/salvar/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            uiToast(id ? 'Template atualizado' : 'Template criado', 'ok');
+            bootstrap.Modal.getInstance(document.getElementById('modalTemplate')).hide();
+            setTimeout(() => location.reload(), 600);
+        } else {
+            uiToast('Erro: ' + data.erro, 'erro');
+        }
+    })
+    .catch(() => uiToast('Erro de rede', 'erro'));
+}
+
+function deletarTemplate(id, nome) {
+    uiConfirm({
+        titulo: 'Excluir Template',
+        msg: `Tem certeza que deseja excluir o template <strong>${nome}</strong>?`,
+        icone: 'fas fa-trash',
+        iconeCor: '#dc3545',
+        btnLabel: 'Excluir',
+        btnCor: 'danger',
+    }).then(ok => {
+        if (!ok) return;
+        fetch(`/home/configuracoes/backup/template/${id}/deletar/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                uiToast('Template excluído', 'ok');
+                const row = document.getElementById('row-template-' + id);
+                if (row) row.remove();
+            } else {
+                uiToast('Erro: ' + data.erro, 'erro');
+            }
+        })
+        .catch(() => uiToast('Erro de rede', 'erro'));
+    });
+}
+
+function salvarConfigAcesso(acessoId) {
+    const hab = document.getElementById('hab-' + acessoId).checked;
+    const auto = document.getElementById('auto-' + acessoId).checked;
+    const tplId = document.getElementById('tpl-' + acessoId).value;
+
+    fetch(`/home/configuracoes/backup/acesso/${acessoId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+            backup_habilitado: hab,
+            backup_automatico: auto,
+            backup_template_id: tplId ? parseInt(tplId) : null,
+        }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            uiToast('Configuração salva', 'ok');
+        } else {
+            uiToast('Erro: ' + data.erro, 'erro');
+        }
+    })
+    .catch(() => uiToast('Erro de rede', 'erro'));
+}
+
+function filtrarAcessos(termo) {
+    const t = termo.toLowerCase();
+    document.querySelectorAll('.acesso-row').forEach(row => {
+        const match = !t ||
+            row.dataset.cliente.includes(t) ||
+            row.dataset.tipo.includes(t) ||
+            row.dataset.host.includes(t);
+        row.style.display = match ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

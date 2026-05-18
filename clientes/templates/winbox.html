@@ -94,43 +94,53 @@
         .wb-splash-msg h2 { font-size: 14px; font-weight: 700; color: var(--orange); margin-bottom: 8px; text-align: center; }
         .wb-splash-msg p { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.8; }
         
-        canvas { outline: none; }
+        canvas { outline: none; display: block; }
     </style>
-    <!-- Importar noVNC via módulo ES do CDN jsdelivr -->
+    <!-- noVNC servido localmente para melhor performance -->
     <script type="module">
-        import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
+        import RFB from '{% static "novnc/core/rfb.js" %}';
 
         let rfb;
         const acessoId = "{{ acesso.id }}";
-        
+
         function setStatus(cls, txt) {
             const el = document.getElementById('wbStatus');
             el.className = 'wb-status ' + cls;
             document.getElementById('wbStatusText').textContent = txt;
         }
 
+        function getContainerSize() {
+            const body = document.getElementById('wbBody');
+            return { w: body.clientWidth, h: body.clientHeight };
+        }
+
         function initVNC() {
             setStatus('connecting', 'Conectando VNC...');
-            
-            // Usar wss:// se for https, senão ws://
+
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const vncMode = "{{ vnc_mode|default:'winbox' }}";
             const wsUrl = `${protocol}//${window.location.host}/ws/vnc/${acessoId}/?mode=${vncMode}`;
 
-            
-            // Instanciar RFB (noVNC)
-            rfb = new RFB(document.getElementById('vnc-container'), wsUrl, {
-                credentials: { password: '' } // x11vnc rodando sem senha
+            const container = document.getElementById('vnc-container');
+
+            rfb = new RFB(container, wsUrl, {
+                credentials: { password: '' },
+                wsProtocols: ['binary'],
             });
-            
-            // Fazer o Canvas preencher e escalar na tela do navegador
+
+            // Escalar viewport para preencher o container
             rfb.scaleViewport = true;
+            rfb.clipViewport = false;
             rfb.background = '#0a0a0a';
-            rfb.resizeSession = true; // Se o servidor suportar, altera a resolução remotamente
+            // Solicita ao servidor VNC que ajuste a resolução ao tamanho real do container
+            rfb.resizeSession = true;
 
             rfb.addEventListener('connect', () => {
                 setStatus('connected', 'Conectado');
                 document.getElementById('wbSplash').classList.add('hidden');
+                // Forçar resize para preencher toda a área disponível
+                const { w, h } = getContainerSize();
+                rfb.resizeSession && rfb._sendEncodings && rfb._sendDesktopSize && rfb._sendDesktopSize(w, h);
             });
 
             rfb.addEventListener('disconnect', (e) => {
@@ -140,16 +150,20 @@
                 document.getElementById('wbSplashDesc').innerText = "A conexão com o servidor foi perdida.";
                 document.getElementById('wbRing').style.display = 'none';
             });
-            
-            // Enviar requisição inicial para ligar o WinBox no servidor
-            // Como o RFB tenta conectar assim que instanciado, precisamos garantir
-            // que a nossa lógica no VNCConsumer seja ativada.
-            // Solução: O VNCConsumer vai ler a string "connect" se for texto, 
-            // ou RFB protocol (bytes) se for binário. 
-            // O RFB usa binário. Então o VNCConsumer precisa iniciar *automaticamente* no connect() do WebSocket 
-            // sem precisar de um JSON explícito.
+
+            // Ajustar resolução quando janela for redimensionada
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    if (rfb && rfb._rfbConnectionState === 'connected') {
+                        const { w, h } = getContainerSize();
+                        try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
+                    }
+                }, 300);
+            });
         }
-        
+
         window.recarregar = function() {
             window.location.reload();
         }

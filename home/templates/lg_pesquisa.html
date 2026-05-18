@@ -10,8 +10,8 @@
         <i class="fas fa-arrow-left me-1"></i> Dashboard
       </a>
       <div>
-        <h4 class="mb-0"><i class="fas fa-route me-2" style="color:#00d9ff"></i>Pesquisa Looking Glass</h4>
-        <small style="color:#8b949e">Consulta um prefixo em múltiplos route servers e LGs públicos simultaneamente</small>
+        <h4 class="mb-0"><i class="fas fa-route me-2" style="color:#00f5ff"></i>Pesquisa Looking Glass</h4>
+        <small style="color:rgba(0,245,255,.4)">Consulta um prefixo em múltiplos route servers e LGs públicos simultaneamente</small>
       </div>
     </div>
 
@@ -20,7 +20,7 @@
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-5">
-            <label class="form-label" style="font-size:.82rem;color:#8b949e">Prefixo IPv4 ou IPv6</label>
+            <label class="form-label" style="font-size:.82rem;color:rgba(0,245,255,.4)">Prefixo IPv4 ou IPv6</label>
             <input id="lg-prefixo" type="text" class="form-control"
               placeholder="Ex: 179.0.110.0/24  ou  2804:80e0::/32"
               value="{{ prefixo_inicial }}"
@@ -28,13 +28,13 @@
           </div>
           <div class="col-auto">
             <button id="lg-btn" class="btn" onclick="lgBuscar()"
-              style="background:rgba(0,217,255,.15);border:1px solid #00d9ff;color:#00d9ff;min-width:130px">
+              style="background:rgba(0,245,255,.15);border:1px solid #00f5ff;color:#00f5ff;min-width:130px">
               <i class="fas fa-search me-1"></i> Pesquisar
             </button>
           </div>
           <div class="col-auto">
-            <span id="lg-loading" style="display:none;color:#8b949e;font-size:.85rem">
-              <i class="fas fa-circle-notch fa-spin me-1" style="color:#00d9ff"></i>
+            <span id="lg-loading" style="display:none;color:rgba(0,245,255,.4);font-size:.85rem">
+              <i class="fas fa-circle-notch fa-spin me-1" style="color:#00f5ff"></i>
               Consultando LGs… pode levar até 25 segundos
             </span>
           </div>
@@ -43,9 +43,10 @@
         <!-- Fontes consultadas -->
         <div class="mt-3 d-flex flex-wrap gap-2" id="lg-fontes-badges">
           <span style="font-size:.75rem;color:#555">Fontes:</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);color:#8b949e">RIPE RIS Looking Glass (26 coletores)</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);color:#8b949e">RIPE Prefix Overview</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);color:#8b949e">RIPE RIS Whois</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">RIPE RIS Looking Glass</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,200,100,.07);border:1px solid rgba(0,200,100,.3);color:#00c864">🇧🇷 IX.br / NIC.br (PTTs Brasileiros)</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">RIPE Prefix Overview</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">RIPE RIS Whois</span>
         </div>
       </div>
     </div>
@@ -59,7 +60,13 @@
       <!-- AS paths agrupados -->
       <div class="card mb-4">
         <div class="card-body">
-          <h5 class="mb-3"><i class="fas fa-project-diagram me-2" style="color:#00ff88"></i>AS Paths encontrados</h5>
+          <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+            <h5 class="mb-0"><i class="fas fa-project-diagram me-2" style="color:#00ff88"></i>AS Paths encontrados</h5>
+            <button id="lg-topo-btn" class="btn btn-sm" onclick="lgVerTopologia()"
+              style="display:none;background:rgba(180,100,255,.15);border:1px solid #b464ff;color:#b464ff;font-size:.78rem">
+              <i class="fas fa-sitemap me-1"></i>Ver Topologia BGP
+            </button>
+          </div>
           <div id="lg-aspath-lista"></div>
         </div>
       </div>
@@ -80,6 +87,31 @@
   </div>
 </div>
 
+<!-- Tooltip flutuante para info de ASN -->
+<div id="lg-asn-tip" style="display:none;opacity:0"></div>
+
+<!-- Modal de Topologia BGP -->
+<div id="lg-topo-modal" style="display:none;position:fixed;inset:0;z-index:1060;background:rgba(0,0,0,.75);overflow:auto">
+  <div style="max-width:1100px;margin:40px auto;padding:0 16px">
+    <div style="background:#02030a;border:1px solid rgba(0,245,255,.15);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.7)">
+      <div style="padding:16px 20px;border-bottom:1px solid #21262d;display:flex;align-items:center;gap:12px">
+        <i class="fas fa-sitemap" style="color:#b464ff;font-size:1.1rem"></i>
+        <span style="font-weight:600;color:#e6edf3;font-size:1rem">Topologia de Interligação BGP</span>
+        <span id="lg-topo-subtitulo" style="font-size:.8rem;color:rgba(0,245,255,.4);margin-left:4px"></span>
+        <button onclick="document.getElementById('lg-topo-modal').style.display='none'"
+          style="margin-left:auto;background:none;border:none;color:rgba(0,245,255,.4);font-size:1.2rem;cursor:pointer;line-height:1">&times;</button>
+      </div>
+      <div style="padding:16px 20px">
+        <div id="lg-topo-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:.75rem;color:rgba(0,245,255,.4)"></div>
+        <div id="lg-topo-svg-wrap" style="overflow:auto;border:1px solid #21262d;border-radius:8px;background:#0a0e14">
+          <svg id="lg-topo-svg" style="display:block"></svg>
+        </div>
+        <div style="font-size:.72rem;color:#555;margin-top:8px">Seta indica propagação do prefixo: Origem → Trânsito → Tier 1 / Peer</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
 .lg-path-card {
     border-radius:8px;
@@ -94,7 +126,7 @@
     color:#e6edf3;
     word-break:break-all;
     padding:8px 12px;
-    background:#0d1117;
+    background:#02030a;
     border-radius:6px;
     margin:8px 0;
 }
@@ -102,12 +134,18 @@
     display:inline-block;
     padding:1px 6px;
     border-radius:4px;
-    background:rgba(0,217,255,.12);
-    border:1px solid rgba(0,217,255,.25);
-    color:#00d9ff;
+    background:rgba(0,245,255,.12);
+    border:1px solid rgba(0,245,255,.25);
+    color:#00f5ff;
     font-size:.82rem;
     margin:1px;
     font-family:monospace;
+    cursor:pointer;
+    transition:background .15s, border-color .15s;
+}
+.lg-asn:hover {
+    background:rgba(0,245,255,.22);
+    border-color:rgba(0,245,255,.5);
 }
 .lg-asn.origin {
     background:rgba(0,255,136,.12);
@@ -115,6 +153,28 @@
     color:#00ff88;
     font-weight:600;
 }
+.lg-asn.origin:hover {
+    background:rgba(0,255,136,.22);
+    border-color:rgba(0,255,136,.55);
+}
+/* Tooltip do ASN */
+#lg-asn-tip {
+    position:fixed;
+    z-index:9999;
+    pointer-events:none;
+    padding:7px 12px;
+    border-radius:7px;
+    background:#060c18;
+    border:1px solid #00f5ff;
+    box-shadow:0 4px 20px rgba(0,0,0,.6);
+    font-size:.8rem;
+    color:#e6edf3;
+    max-width:280px;
+    transition:opacity .15s;
+}
+#lg-asn-tip .tip-asn { color:#00f5ff; font-family:monospace; font-weight:600; }
+#lg-asn-tip .tip-nome { color:#e6edf3; margin-top:2px; }
+#lg-asn-tip .tip-spin { color:rgba(0,245,255,.4); font-style:italic; }
 .lg-fonte-card {
     border:1px solid var(--border);
     border-radius:8px;
@@ -159,7 +219,7 @@ const CSRF = (function(){
 
 // Paleta de cores para diferenciar AS paths distintos
 const PATH_CORES = [
-    {brd:'#00d9ff', bg:'rgba(0,217,255,.08)', txt:'#00d9ff'},
+    {brd:'#00f5ff', bg:'rgba(0,245,255,.08)', txt:'#00f5ff'},
     {brd:'#00ff88', bg:'rgba(0,255,136,.08)', txt:'#00ff88'},
     {brd:'#ffaa00', bg:'rgba(255,170,0,.08)', txt:'#ffaa00'},
     {brd:'#b464ff', bg:'rgba(180,100,255,.08)', txt:'#b464ff'},
@@ -172,7 +232,8 @@ function lgAsPathHtml(path) {
     const asns = path.trim().split(/\s+/);
     return asns.map((asn, i) => {
         const cls = i === asns.length - 1 ? 'lg-asn origin' : 'lg-asn';
-        return `<span class="${cls}">${asn}</span>`;
+        const num = asn.replace(/^AS/i, '');
+        return `<span class="${cls}" data-asn="${num}" onmouseenter="lgAsnShow(this)" onmouseleave="lgAsnHide()">${asn}</span>`;
     }).join(' <span style="color:#555;font-size:.7rem">›</span> ');
 }
 
@@ -223,30 +284,43 @@ function renderLGResultado(d) {
     const totalPeers = ripeRes ? ripeRes.vantage_points.reduce((s, vp) => s + (vp.n_peers || 0), 0) : 0;
     const totalRrcs  = ripeRes ? ripeRes.vantage_points.length : 0;
     const originInfo = d.origin_info;
+    const geoInfo    = d.geo_info;
+
+    // Monta badge de geolocalização
+    let geoBadge = '';
+    if (geoInfo) {
+        const bandeira = geoInfo.pais ? `<img src="https://flagcdn.com/16x12/${geoInfo.pais.toLowerCase()}.png" style="vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : '';
+        const local = [geoInfo.cidade, geoInfo.pais].filter(Boolean).join(', ');
+        geoBadge = `<span style="margin-left:10px;font-size:.78rem;color:rgba(0,245,255,.4);display:inline-flex;align-items:center;gap:4px">
+            <i class="fas fa-map-marker-alt" style="color:#ffaa00;font-size:.72rem"></i>
+            ${bandeira}<span style="color:#e6edf3">${local}</span>
+            ${geoInfo.cobertura < 100 ? `<span style="color:#555">(${Math.round(geoInfo.cobertura)}%)</span>` : ''}
+        </span>`;
+    }
 
     document.getElementById('lg-resumo').innerHTML = `
         <div class="card-body">
             <div style="padding:12px 16px;border-radius:8px;background:${bg};border:1px solid ${cor};color:${cor};font-size:.9rem;margin-bottom:${d.encontrado?'14px':'0'}">
                 <i class="fas fa-${icone} me-2"></i>${msg}
-                ${originInfo ? `<span style="margin-left:12px;font-size:.82rem;color:#8b949e">ASN de origem: <strong style="color:#00d9ff">AS${originInfo.asn}</strong>${originInfo.nome ? ` – ${originInfo.nome}` : ''}</span>` : ''}
+                ${originInfo ? `<span style="margin-left:12px;font-size:.82rem;color:rgba(0,245,255,.4)">ASN de origem: <strong style="color:#00f5ff">AS${originInfo.asn}</strong>${originInfo.nome ? ` – <span style="color:#e6edf3">${originInfo.nome}</span>` : ''}${geoBadge}</span>` : geoBadge ? `<span style="margin-left:8px">${geoBadge}</span>` : ''}
             </div>
             ${d.encontrado && nPaths > 0 ? `
             <div class="row g-3 mt-1">
                 <div class="col-6 col-md-3">
-                    <div style="font-size:.75rem;color:#8b949e">AS Paths distintos</div>
+                    <div style="font-size:.75rem;color:rgba(0,245,255,.4)">AS Paths distintos</div>
                     <div style="font-size:1.6rem;font-weight:700;color:#e6edf3">${nPaths}</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div style="font-size:.75rem;color:#8b949e">Coletores RIPE RIS</div>
-                    <div style="font-size:1.6rem;font-weight:700;color:#00d9ff">${totalRrcs}</div>
+                    <div style="font-size:.75rem;color:rgba(0,245,255,.4)">Coletores RIPE RIS</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#00f5ff">${totalRrcs}</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div style="font-size:.75rem;color:#8b949e">Total de peers</div>
-                    <div style="font-size:1.6rem;font-weight:700;color:#00d9ff">${totalPeers}</div>
+                    <div style="font-size:.75rem;color:rgba(0,245,255,.4)">Total de peers</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#00f5ff">${totalPeers}</div>
                 </div>
                 ${pathConsensual ? `
                 <div class="col-12 col-md-3">
-                    <div style="font-size:.75rem;color:#8b949e;margin-bottom:4px">Path mais visto (${d.por_aspath[pathConsensual].length} RRCs)</div>
+                    <div style="font-size:.75rem;color:rgba(0,245,255,.4);margin-bottom:4px">Path mais visto (${d.por_aspath[pathConsensual].length} RRCs)</div>
                     <div style="font-size:.78rem">${lgAsPathHtml(pathConsensual)}</div>
                 </div>` : ''}
             </div>` : ''}
@@ -260,12 +334,13 @@ function renderLGResultado(d) {
         let html = '';
         let idx  = 0;
         const vpRipeAll = (d.resultados.find(r=>r.fonte==='RIPE RIS')?.vantage_points||[]);
+        const vpIxbrAll = (d.resultados.find(r=>r.fonte==='IX.br')?.vantage_points||[]);
         for (const [path, lgs] of Object.entries(d.por_aspath)) {
             const c      = PATH_CORES[idx % PATH_CORES.length];
             const nLgs   = lgs.length;
             const isMain = idx === 0;
-            // Verifica se RRC brasileiro confirmou este path
-            const brConfirmou = vpRipeAll.some(v => v.as_path === path && v.nacional);
+            // Verifica se RRC ou PTT brasileiro confirmou este path
+            const brConfirmou = [...vpRipeAll, ...vpIxbrAll].some(v => v.as_path === path && v.nacional);
             const brBadge = brConfirmou
                 ? `<span style="font-size:.68rem;padding:1px 7px;border-radius:10px;background:rgba(0,200,100,.12);border:1px solid rgba(0,200,100,.35);color:#00c864">🇧🇷 confirmado no BR</span>`
                 : `<span style="font-size:.68rem;padding:1px 7px;border-radius:10px;background:rgba(100,150,255,.1);border:1px solid rgba(100,150,255,.25);color:#7aa4ff">🌐 apenas internacional</span>`;
@@ -275,11 +350,11 @@ function renderLGResultado(d) {
                     <span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:${c.bg};border:1px solid ${c.brd};color:${c.txt}">
                         ${isMain ? '★ Path principal' : `Path #${idx+1}`}
                     </span>
-                    <span style="font-size:.75rem;color:#8b949e">${nLgs} RRC${nLgs>1?'s':''} confirmaram</span>
+                    <span style="font-size:.75rem;color:rgba(0,245,255,.4)">${nLgs} RRC${nLgs>1?'s':''} confirmaram</span>
                     ${brBadge}
                 </div>
                 <div class="lg-path-code">${lgAsPathHtml(path)}</div>
-                <div style="font-size:.78rem;color:#8b949e;margin-top:6px">
+                <div style="font-size:.78rem;color:rgba(0,245,255,.4);margin-top:6px">
                     <i class="fas fa-eye me-1" style="color:${c.txt}"></i>
                     ${lgs.map(l => `<span style="margin-right:8px">${l.ponto}</span>`).join('')}
                 </div>
@@ -301,41 +376,50 @@ function renderLGResultado(d) {
     // Ordena: RIPE RIS primeiro
     const sortedRes = [...d.resultados].sort((a,b) => a.fonte === 'RIPE RIS' ? -1 : b.fonte === 'RIPE RIS' ? 1 : 0);
     for (const res of sortedRes) {
-        const ok  = res.encontrado;
-        const cor = ok ? '#00ff88' : '#555';
-        const vps = res.vantage_points || [];
-        const isRipe = res.fonte === 'RIPE RIS';
+        const ok       = res.encontrado;
+        const cor      = ok ? '#00ff88' : '#555';
+        const vps      = res.vantage_points || [];
+        const isRipe   = res.fonte === 'RIPE RIS';
+        const isIxbr   = res.fonte === 'IX.br';
         const collapseId = `lg-vps-${res.fonte.replace(/\s/g,'_')}`;
 
+        const podeExpandir = (isRipe || isIxbr) && ok && vps.length > 0;
+        const expandLabel  = isIxbr ? 'expandir PTTs' : 'expandir RRCs';
+        const totalLabel   = isIxbr
+            ? `${vps.length} PTTs brasileiros, ${vps.reduce((s,v)=>s+(v.n_peers||0),0)} rotas`
+            : `${vps.length} coletores, ${vps.reduce((s,v)=>s+(v.n_peers||0),0)} peers`;
         fontesHtml += `
-        <div class="lg-fonte-card">
-            <div class="d-flex align-items-center gap-2 flex-wrap" style="cursor:${isRipe && ok?'pointer':'default'}"
-                 ${isRipe && ok ? `onclick="document.getElementById('${collapseId}').classList.toggle('d-none')"` : ''}>
-                <i class="fas fa-${ok ? 'check-circle' : 'times-circle'}" style="color:${cor}"></i>
+        <div class="lg-fonte-card" ${isIxbr ? 'style="border-color:rgba(0,200,100,.3);background:rgba(0,200,100,.03)"' : ''}>
+            <div class="d-flex align-items-center gap-2 flex-wrap" style="cursor:${podeExpandir?'pointer':'default'}"
+                 ${podeExpandir ? `onclick="document.getElementById('${collapseId}').classList.toggle('d-none')"` : ''}>
+                <i class="fas fa-${ok ? 'check-circle' : 'times-circle'}" style="color:${isIxbr && ok ? '#00c864' : cor}"></i>
                 <span style="font-weight:600;color:#e6edf3;font-size:.88rem">${res.fonte}</span>
                 <span style="font-size:.75rem;color:#555">${res.descricao || ''}</span>
-                ${ok && vps.length ? `<span style="font-size:.73rem;color:#8b949e;margin-left:4px">${vps.length} coletores, ${vps.reduce((s,v)=>s+(v.n_peers||0),0)} peers</span>` : ''}
-                ${isRipe && ok ? `<span style="font-size:.68rem;color:#00d9ff;margin-left:auto"><i class="fas fa-chevron-down me-1"></i>expandir RRCs</span>` : ''}
+                ${ok && vps.length ? `<span style="font-size:.73rem;color:rgba(0,245,255,.4);margin-left:4px">${totalLabel}</span>` : ''}
+                ${podeExpandir ? `<span style="font-size:.68rem;color:${isIxbr?'#00c864':'#00f5ff'};margin-left:auto"><i class="fas fa-chevron-down me-1"></i>${expandLabel}</span>` : ''}
                 ${res.erro ? `<span style="font-size:.73rem;color:#e06060;margin-left:auto">Erro: ${res.erro}</span>` : ''}
             </div>`;
-
         if (ok && vps.length) {
-            fontesHtml += `<div id="${collapseId}" class="${isRipe ? 'd-none' : ''}" style="margin-top:8px">`;
+            fontesHtml += `<div id="${collapseId}" class="${(isRipe || isIxbr) ? 'd-none' : ''}" style="margin-top:8px">`;
             for (const vp of vps) {
-                const c   = pathCores[vp.as_path] || {txt:'#8b949e'};
+                const c   = pathCores[vp.as_path] || {txt:'rgba(0,245,255,.4)'};
                 const cnt = d.por_aspath[vp.as_path]?.length || 0;
+                const srcLabel = isIxbr ? 'PTT' : 'RRC';
                 const tag = cnt > 1
-                    ? `<span class="lg-tag-match"><i class="fas fa-link me-1"></i>${cnt} RRCs mesmo path</span>`
-                    : `<span class="lg-tag-unico">path único neste RRC</span>`;
+                    ? `<span class="lg-tag-match"><i class="fas fa-link me-1"></i>${cnt} ${srcLabel}s mesmo path</span>`
+                    : `<span class="lg-tag-unico">path único neste ${srcLabel}</span>`;
                 const locTag = vp.nacional
-                    ? `<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:rgba(0,200,100,.12);border:1px solid rgba(0,200,100,.35);color:#00c864;white-space:nowrap">🇧🇷 BR</span>`
+                    ? (isIxbr
+                        ? `<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:rgba(0,200,100,.15);border:1px solid rgba(0,200,100,.4);color:#00c864;white-space:nowrap">🇧🇷 IX.br</span>`
+                        : `<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:rgba(0,200,100,.12);border:1px solid rgba(0,200,100,.35);color:#00c864;white-space:nowrap">🇧🇷 BR</span>`)
                     : `<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:rgba(100,150,255,.1);border:1px solid rgba(100,150,255,.25);color:#7aa4ff;white-space:nowrap">🌐 ${vp.pais || 'INT'}</span>`;
+                const peersLabel = isIxbr ? 'rotas neste PTT' : 'peers neste RRC';
                 fontesHtml += `
                 <div class="lg-vp-row">
-                    <div style="min-width:240px;color:#8b949e;font-size:.8rem;display:flex;align-items:center;gap:6px">${locTag}<span>${vp.nome}</span></div>
+                    <div style="min-width:240px;color:rgba(0,245,255,.4);font-size:.8rem;display:flex;align-items:center;gap:6px">${locTag}<span>${vp.nome}</span></div>
                     <div style="flex:1">
                         <span style="font-family:monospace;font-size:.8rem;color:${c.txt}">${vp.as_path}</span>
-                        ${vp.n_peers > 1 ? `<span style="font-size:.68rem;color:#555;margin-left:8px">(${vp.n_peers} peers neste RRC)</span>` : ''}
+                        ${vp.n_peers > 1 ? `<span style="font-size:.68rem;color:#555;margin-left:8px">(${vp.n_peers} ${peersLabel})</span>` : ''}
                     </div>
                     <div>${tag}</div>
                 </div>`;
@@ -349,7 +433,229 @@ function renderLGResultado(d) {
     fontesEl.innerHTML = fontesHtml;
 
     document.getElementById('lg-resultado').style.display = '';
+
+    // Guarda dados para topologia e exibe botão
+    _lgLastData = d;
+    const topoBtn = document.getElementById('lg-topo-btn');
+    topoBtn.style.display = (d.encontrado && Object.keys(d.por_aspath).length > 0) ? '' : 'none';
 }
+
+// ── Tooltip de ASN ───────────────────────────────────────────────────────
+let _lgLastData = null; // último resultado para topologia
+const _asnCache = {};   // ASN → nome (string) ou null
+let   _asnTipTimer = null;
+let   _asnHideTimer = null;
+
+function lgAsnShow(el) {
+    clearTimeout(_asnHideTimer);
+    const asn = el.dataset.asn;
+    if (!asn) return;
+
+    const tip = document.getElementById('lg-asn-tip');
+
+    // Posiciona o tooltip logo abaixo do elemento
+    const rect = el.getBoundingClientRect();
+    tip.style.left    = Math.min(rect.left, window.innerWidth - 300) + 'px';
+    tip.style.top     = (rect.bottom + 6) + 'px';
+    tip.style.opacity = '1';
+    tip.style.display = '';
+
+    if (_asnCache[asn] !== undefined) {
+        _renderTip(tip, asn, _asnCache[asn]);
+        return;
+    }
+
+    // Estado de carregamento
+    tip.innerHTML = `<span class="tip-asn">AS${asn}</span><div class="tip-spin"><i class="fas fa-circle-notch fa-spin me-1"></i>consultando…</div>`;
+
+    // Debounce: só faz fetch se o mouse ficar 300ms sobre o ASN
+    clearTimeout(_asnTipTimer);
+    _asnTipTimer = setTimeout(async () => {
+        try {
+            const r = await fetch(`{% url 'lg_asn_info' %}?asn=${asn}`);
+            const d = await r.json();
+            _asnCache[asn] = d.ok ? (d.nome || null) : null;
+        } catch (_) {
+            _asnCache[asn] = null;
+        }
+        // Verifica se o tooltip ainda está visível e é o mesmo ASN
+        if (tip.style.display !== 'none') {
+            _renderTip(tip, asn, _asnCache[asn]);
+        }
+    }, 300);
+}
+
+function _renderTip(tip, asn, nome) {
+    if (nome) {
+        tip.innerHTML = `<span class="tip-asn">AS${asn}</span><div class="tip-nome">${nome}</div>`;
+    } else {
+        tip.innerHTML = `<span class="tip-asn">AS${asn}</span><div class="tip-spin" style="color:#555">sem informação disponível</div>`;
+    }
+}
+
+function lgAsnHide() {
+    clearTimeout(_asnTipTimer);
+    _asnHideTimer = setTimeout(() => {
+        const tip = document.getElementById('lg-asn-tip');
+        tip.style.opacity = '0';
+        setTimeout(() => { tip.style.display = 'none'; }, 150);
+    }, 120);
+}
+
+// ── Topologia BGP ────────────────────────────────────────────────────────
+const TIER1_ASNS = new Set([174,701,1239,1299,2914,3257,3320,3356,3491,5511,6453,6461,6762,6830,6939,7018,12956]);
+
+function lgVerTopologia() {
+    if (!_lgLastData) return;
+    const d = _lgLastData;
+
+    const nodeMap = {};   // asn → {layer, x, y, cx, cy, nome}
+    const edgeSet = new Set();
+    const edges   = [];
+    const originSet = new Set();
+
+    // Passo 1: atribui camadas (layer=0 é a origem, layer max é upstream/tier1)
+    for (const path of Object.keys(d.por_aspath)) {
+        const asns = path.trim().split(/\s+/).map(a => a.replace(/^AS/i,''));
+        if (!asns.length) continue;
+        originSet.add(asns[asns.length - 1]);
+        for (let i = 0; i < asns.length; i++) {
+            const asn = asns[i];
+            const layer = asns.length - 1 - i; // distância da origem
+            if (nodeMap[asn] === undefined || layer > nodeMap[asn].layer) {
+                nodeMap[asn] = { layer, nome: _asnCache[asn] || null };
+            }
+        }
+    }
+
+    // Passo 2: coleta arestas únicas (direção: origem → upstream)
+    for (const path of Object.keys(d.por_aspath)) {
+        const asns = path.trim().split(/\s+/).map(a => a.replace(/^AS/i,''));
+        for (let i = asns.length - 1; i > 0; i--) {
+            const key = `${asns[i]}→${asns[i-1]}`;
+            if (!edgeSet.has(key)) { edgeSet.add(key); edges.push({from:asns[i], to:asns[i-1]}); }
+        }
+    }
+
+    // Layout SVG
+    const COL_W  = 170;
+    const ROW_H  = 54;
+    const N_W    = 140;
+    const N_H    = 38;
+    const PAD_X  = 20;
+    const PAD_Y  = 36;
+
+    const maxLayer = Math.max(...Object.values(nodeMap).map(n=>n.layer));
+    const byLayer  = {};
+    for (let l = 0; l <= maxLayer; l++) byLayer[l] = [];
+    for (const [asn, node] of Object.entries(nodeMap)) byLayer[node.layer].push(asn);
+
+    const maxRows = Math.max(...Object.values(byLayer).map(a=>a.length));
+    const svgW = PAD_X * 2 + (maxLayer + 1) * COL_W;
+    const svgH = PAD_Y * 2 + maxRows * ROW_H;
+
+    // Calcula posição central de cada nó
+    for (let l = 0; l <= maxLayer; l++) {
+        const list = byLayer[l];
+        const colCX = PAD_X + l * COL_W + COL_W / 2;
+        const totalH = list.length * ROW_H;
+        const startY = (svgH - totalH) / 2;
+        list.forEach((asn, i) => {
+            const cy = startY + i * ROW_H + ROW_H / 2;
+            nodeMap[asn].cx = colCX;
+            nodeMap[asn].cy = cy;
+            nodeMap[asn].x  = colCX - N_W / 2;
+            nodeMap[asn].y  = cy - N_H / 2;
+        });
+    }
+
+    // ── Renderiza SVG ──────────────────────────────────────────────
+    const svg = document.getElementById('lg-topo-svg');
+    svg.setAttribute('width',  svgW);
+    svg.setAttribute('height', svgH);
+    svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+
+    let defs = `<defs>
+        <marker id="arr-gray"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#30363d"/></marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00ff88"/></marker>
+        <marker id="arr-blue"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00f5ff"/></marker>
+        <marker id="arr-purp"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#b464ff"/></marker>
+    </defs>`;
+
+    // Arestas
+    let edgesSvg = '';
+    for (const e of edges) {
+        const fn = nodeMap[e.from], tn = nodeMap[e.to];
+        if (!fn || !tn) continue;
+        const x1 = fn.cx + N_W / 2 - 2;
+        const y1 = fn.cy;
+        const x2 = tn.cx - N_W / 2 + 2;
+        const y2 = tn.cy;
+        const dx = (x2 - x1) * 0.45;
+        const isOriginEdge = originSet.has(e.from);
+        const isTier1Edge  = TIER1_ASNS.has(parseInt(e.to));
+        const col  = isOriginEdge ? '#00ff8840' : isTier1Edge ? '#00f5ff30' : '#30363d';
+        const arr  = isOriginEdge ? 'arr-green'  : isTier1Edge ? 'arr-blue'  : 'arr-gray';
+        edgesSvg += `<path d="M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}"
+            fill="none" stroke="${col}" stroke-width="1.5" marker-end="url(#${arr})"/>`;
+    }
+
+    // Nós
+    let nodesSvg = '';
+    for (const [asn, node] of Object.entries(nodeMap)) {
+        const isOrigin = originSet.has(asn);
+        const isTier1  = TIER1_ASNS.has(parseInt(asn));
+        const brd   = isOrigin ? '#00ff88' : isTier1 ? '#00f5ff' : '#30363d';
+        const bg    = isOrigin ? 'rgba(0,255,136,.14)' : isTier1 ? 'rgba(0,245,255,.10)' : 'rgba(255,255,255,.04)';
+        const tcol  = isOrigin ? '#00ff88' : isTier1 ? '#00f5ff' : 'rgba(0,245,255,.4)';
+        const label = node.nome ? node.nome.substring(0, 18) : '';
+        const rx = node.x, ry = node.y;
+        nodesSvg += `<g class="topo-node" data-asn="${asn}">
+            <rect x="${rx}" y="${ry}" width="${N_W}" height="${N_H}" rx="6" fill="${bg}" stroke="${brd}" stroke-width="1.2"/>
+            <text x="${rx + N_W/2}" y="${ry + 14}" text-anchor="middle" font-family="monospace" font-size="12" fill="${tcol}" font-weight="600">AS${asn}</text>
+            <text x="${rx + N_W/2}" y="${ry + 28}" text-anchor="middle" font-size="10" fill="#556" class="topo-nome" id="topo-nome-${asn}">${label}</text>
+        </g>`;
+    }
+
+    svg.innerHTML = defs + edgesSvg + nodesSvg;
+
+    // Busca nomes dos ASNs ainda não no cache
+    for (const asn of Object.keys(nodeMap)) {
+        if (_asnCache[asn] === undefined) {
+            fetch(`{% url 'lg_asn_info' %}?asn=${asn}`)
+                .then(r=>r.json())
+                .then(data => {
+                    _asnCache[asn] = data.ok ? (data.nome || null) : null;
+                    const el = document.getElementById(`topo-nome-${asn}`);
+                    if (el && _asnCache[asn]) {
+                        el.textContent = _asnCache[asn].substring(0, 18);
+                        el.setAttribute('fill', 'rgba(0,245,255,.4)');
+                    }
+                }).catch(()=>{ _asnCache[asn] = null; });
+        } else if (_asnCache[asn]) {
+            const el = document.getElementById(`topo-nome-${asn}`);
+            if (el) { el.textContent = _asnCache[asn].substring(0, 18); el.setAttribute('fill', 'rgba(0,245,255,.4)'); }
+        }
+    }
+
+    // Legenda
+    const nNodes = Object.keys(nodeMap).length;
+    const nEdges = edges.length;
+    document.getElementById('lg-topo-subtitulo').textContent = `${nNodes} ASNs · ${nEdges} conexões`;
+    document.getElementById('lg-topo-legend').innerHTML = `
+        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(0,255,136,.14)" stroke="#00ff88" stroke-width="1.2"/></svg> Origem (anunciante do prefixo)</span>
+        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(0,245,255,.10)" stroke="#00f5ff" stroke-width="1.2"/></svg> Tier 1 / Upstream</span>
+        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(255,255,255,.04)" stroke="#30363d" stroke-width="1.2"/></svg> Trânsito</span>
+        <span style="color:#555">← Setas mostram propagação do prefixo</span>`;
+
+    document.getElementById('lg-topo-modal').style.display = '';
+}
+
+// Fecha modal ao clicar fora
+document.addEventListener('click', e => {
+    const modal = document.getElementById('lg-topo-modal');
+    if (e.target === modal) modal.style.display = 'none';
+});
 
 // Enter no campo de prefixo
 document.getElementById('lg-prefixo').addEventListener('keydown', e => {

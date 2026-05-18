@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Terminal</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100%; height: 100%; }
         body {
-            background: #0a0a0a; color: #ffffff;
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #02030a; color: #d0e8f0;
+            font-family: 'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace;
             font-weight: 400; font-size: 13px; line-height: 1.2;
             overflow: hidden; height: 100vh; width: 100vw;
             -webkit-font-smoothing: antialiased;
@@ -26,59 +26,76 @@
         .host-sidebar {
             display: flex; flex-direction: column;
             width: 220px; min-width: 220px; max-width: 220px;
-            background: #0a0f0a; border-right: 1px solid #1a2a1a;
+            background: #02030a; border-right: 1px solid rgba(0,245,255,.12);
             transition: width .2s, min-width .2s, max-width .2s;
             overflow: hidden; flex-shrink: 0;
         }
         .host-sidebar.collapsed { width: 0; min-width: 0; max-width: 0; }
         .host-sidebar-header {
-            padding: 8px 10px; border-bottom: 1px solid #1a2a1a;
+            padding: 8px 10px; border-bottom: 1px solid rgba(0,245,255,.1);
             display: flex; align-items: center; gap: 6px; flex-shrink: 0;
         }
         .host-sidebar-title {
-            font-size: 10px; font-weight: 700; color: #00ff88;
+            font-size: 10px; font-weight: 700; color: #00f5ff;
             text-transform: uppercase; letter-spacing: 1.2px; flex: 1;
         }
         .host-search {
-            padding: 6px 8px; border-bottom: 1px solid #1a2a1a; flex-shrink: 0;
+            padding: 6px 8px; border-bottom: 1px solid rgba(0,245,255,.1); flex-shrink: 0;
         }
         .host-search input {
-            width: 100%; background: #111; border: 1px solid #1e2e1e;
-            color: #aaa; font-family: 'JetBrains Mono', monospace;
+            width: 100%; background: #060c18; border: 1px solid rgba(0,245,255,.12);
+            color: rgba(0,245,255,.5); font-family: 'Share Tech Mono', monospace;
             font-size: 10px; padding: 4px 7px; border-radius: 2px; outline: none;
         }
         .host-search input:focus { border-color: #00ff88; color: #e0e0e0; }
-        .host-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #1e2e1e transparent; }
+        .host-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(0,245,255,.15) transparent; }
         .host-list::-webkit-scrollbar { width: 3px; }
-        .host-list::-webkit-scrollbar-thumb { background: #1e2e1e; border-radius: 2px; }
+        .host-list::-webkit-scrollbar-thumb { background: rgba(0,245,255,.15); border-radius: 2px; }
         .host-group-label {
-            padding: 6px 10px 3px; font-size: 9px; color: #2e4e2e;
+            padding: 6px 10px 3px; font-size: 9px; color: rgba(0,245,255,.25);
             text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
         }
         .host-item {
-            padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #0f1a0f;
+            padding: 6px 10px; cursor: pointer; border-bottom: 1px solid rgba(0,245,255,.06);
             display: flex; align-items: center; gap: 6px;
             transition: background .15s;
         }
         .host-item:hover { background: rgba(0,255,136,.06); }
         .host-item:active { background: rgba(0,255,136,.12); }
-        .host-dot { width: 6px; height: 6px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; }
+        .host-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,245,255,.15); flex-shrink: 0; }
         .host-info { flex: 1; min-width: 0; }
-        .host-name { font-size: 11px; color: #b0c0b0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .host-addr { font-size: 9px; color: #3a4a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .host-name { font-size: 11px; color: #d0e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .host-addr { font-size: 9px; color: rgba(0,245,255,.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
         .host-proto { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(0,255,136,.1); color: #00ff88; flex-shrink: 0; }
         .host-proto.telnet { background: rgba(255,165,0,.1); color: #ffa500; }
-        .host-sidebar-empty { padding: 20px 10px; text-align: center; color: #2a3a2a; font-size: 10px; line-height: 1.8; }
+        .host-badge-wbx { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(0,245,255,.1); color: #00f5ff; flex-shrink: 0; }
+        /* Expand row for winbox hosts */
+        .host-wbx-expand {
+            display: none; gap: 6px; padding: 5px 10px 7px 22px;
+            background: rgba(0,245,255,.03); border-bottom: 1px solid rgba(0,245,255,.06);
+        }
+        .host-wbx-expand.aberto { display: flex; }
+        .host-item.wbx-open { background: rgba(0,245,255,.04); }
+        .btn-wbx {
+            flex: 1; padding: 5px 8px; border-radius: 3px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+            letter-spacing: .5px; transition: .15s; border: 1px solid;
+        }
+        .btn-wbx.ssh  { background: rgba(0,255,136,.08); border-color: #00ff88; color: #00ff88; }
+        .btn-wbx.ssh:hover  { background: rgba(0,255,136,.18); }
+        .btn-wbx.wbx  { background: rgba(0,245,255,.08); border-color: #00f5ff; color: #00f5ff; }
+        .btn-wbx.wbx:hover  { background: rgba(0,245,255,.18); }
+        .host-sidebar-empty { padding: 20px 10px; text-align: center; color: rgba(0,245,255,.2); font-size: 10px; line-height: 1.8; }
         .btn-sidebar-toggle {
-            background: transparent; border: none; color: #3a4a3a; cursor: pointer;
+            background: transparent; border: none; color: rgba(0,245,255,.3); cursor: pointer;
             font-size: 14px; padding: 2px 4px; flex-shrink: 0; transition: color .15s;
         }
         .btn-sidebar-toggle:hover { color: #00ff88; }
         /* Aba de reabrir sidebar quando colapsada */
         .host-sidebar-tab {
             position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-            background: #0a0f0a; border: 1px solid #1a2a1a; border-left: none;
-            color: #3a4a3a; font-size: 9px; writing-mode: vertical-rl;
+            background: #02030a; border: 1px solid rgba(0,245,255,.12); border-left: none;
+            color: rgba(0,245,255,.3); font-size: 9px; writing-mode: vertical-rl;
             padding: 8px 4px; cursor: pointer; border-radius: 0 3px 3px 0;
             transition: color .15s, border-color .15s; z-index: 10;
             display: none;
@@ -90,23 +107,23 @@
 
         /* ─── HEADER ─── */
         .terminal-header {
-            background: rgba(0, 20, 10, 0.95);
-            border-bottom: 2px solid #00ff88;
+            background: rgba(2, 3, 10, 0.95);
+            border-bottom: 1px solid rgba(0,245,255,.35);
             padding: 10px 14px;
             display: flex; align-items: center; gap: 12px;
             flex-shrink: 0; min-height: 50px;
         }
-        .terminal-title { font-size: 13px; font-weight: 700; color: #00ff88; flex: 1; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888; white-space: nowrap; }
+        .terminal-title { font-size: 13px; font-weight: 700; color: #00f5ff; flex: 1; font-family: 'Share Tech Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(0,245,255,.4); white-space: nowrap; }
         .terminal-status.connected { color: #00ff88; }
-        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #888; flex-shrink: 0; animation: pulse 1s infinite; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,245,255,.3); flex-shrink: 0; animation: pulse 1s infinite; }
         .status-dot.connected { background: #00ff88; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
         /* Botão menu mobile no header */
         .btn-mobile-menu {
             display: none;
-            background: transparent; border: 1px solid #333; color: #888;
+            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.4);
             width: 34px; height: 34px; border-radius: 4px; cursor: pointer;
             font-size: 16px; align-items: center; justify-content: center;
             flex-shrink: 0; transition: 0.2s;
@@ -115,41 +132,42 @@
 
         /* ─── TABS ─── */
         .terminal-tabs {
-            display: flex; background: #000; border-bottom: 1px solid #222;
+            display: flex; background: #02030a; border-bottom: 1px solid rgba(0,245,255,.1);
             overflow-x: auto; gap: 4px; padding: 6px 8px; min-height: 38px; flex-shrink: 0;
             -webkit-overflow-scrolling: touch; scrollbar-width: none;
         }
         .terminal-tabs::-webkit-scrollbar { display: none; }
         .terminal-tab {
-            background: rgba(50,50,50,0.5); border: 1px solid #333; border-bottom: none;
-            color: #888; padding: 6px 12px; cursor: pointer; font-size: 11px;
+            background: rgba(4,8,22,.8); border: 1px solid rgba(0,245,255,.14); border-bottom: none;
+            color: rgba(0,245,255,.4); padding: 6px 12px; cursor: pointer; font-size: 11px;
             border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 6px;
-            white-space: nowrap; transition: all 0.2s; font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; transition: all 0.2s; font-family: 'Share Tech Mono', monospace;
             user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        .terminal-tab:active { background: rgba(100,100,100,0.5); }
-        .terminal-tab.active { background: #0a0a0a; border: 1px solid #00ff88; border-bottom: 1px solid #0a0a0a; color: #00ff88; }
+        .terminal-tab:active { background: rgba(0,245,255,.06); }
+        .terminal-tab.active { background: #02030a; border: 1px solid #00ff88; border-bottom: 1px solid #0a0a0a; color: #00ff88; }
         .terminal-tab-close { cursor: pointer; opacity: 0.6; transition: 0.2s; padding: 2px 4px; /* área de toque maior */ }
         .terminal-tab-close:hover { color: #ff4444; opacity: 1; }
-        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: #888; flex-shrink: 0; }
+        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,245,255,.3); flex-shrink: 0; }
         .terminal-tab-status.connected { background: #00ff88; }
 
         /* ─── CONTEÚDO ─── */
-        .terminal-content { flex: 1; overflow: hidden; background: #000; display: flex; flex-direction: column; position: relative; min-height: 0; }
+        .terminal-content { flex: 1; overflow: hidden; background: #02030a; display: flex; flex-direction: column; position: relative; min-height: 0; }
         .terminal-pane { width: 100%; height: 100%; display: none; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
         .terminal-pane.active { display: flex; }
         .xterm { flex: 1; overflow: hidden; width: 100%; height: 100%; position: relative; min-height: 0; min-width: 0; }
         .xterm-screen { width: 100%; height: 100%; }
-        .xterm-viewport { background-color: #000; }
+        .xterm-viewport { background-color: #02030a; }
+        .xterm-screen { filter: drop-shadow(0 0 4px rgba(0,245,255,0.3)); }
         .xterm-char-measure-element {
             display: inline-block; position: absolute; visibility: hidden; left: -9999px;
-            font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
+            font-family: 'Share Tech Mono', monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
         }
 
         /* ─── FOOTER ─── */
         .terminal-footer {
-            background: rgba(0, 20, 10, 0.8);
-            border-top: 1px solid #1a2a1a;
+            background: rgba(2, 3, 10, 0.8);
+            border-top: 1px solid rgba(0,245,255,.1);
             padding: 8px 12px;
             display: flex; gap: 6px;
             overflow-x: auto; flex-shrink: 0;
@@ -158,24 +176,26 @@
         }
         .terminal-footer::-webkit-scrollbar { display: none; }
         .btn-terminal {
-            background: transparent; border: 1px solid #333; color: #888;
+            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.4);
             padding: 6px 10px; border-radius: 3px; cursor: pointer;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            font-family: 'Share Tech Mono', monospace; font-size: 11px;
             font-weight: 500; transition: 0.2s; text-transform: uppercase;
             white-space: nowrap; flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
         }
         .btn-terminal:hover { border-color: #00ff88; color: #00ff88; }
         .btn-terminal:active { background: rgba(0,255,136,0.08); border-color: #00ff88; color: #00ff88; }
-        .btn-terminal.btn-wiki { border-color: #00d9ff; color: #00d9ff; }
-        .btn-terminal.btn-wiki:hover, .btn-terminal.btn-wiki:active { background: rgba(0,217,255,0.1); }
-        .btn-terminal.btn-cores-off { border-color: #444; color: #444; }
+        .btn-terminal.btn-wiki { border-color: #00f5ff; color: #00f5ff; }
+        .btn-terminal.btn-wiki:hover, .btn-terminal.btn-wiki:active { background: rgba(0,245,255,0.1); }
+        .btn-terminal.btn-scripts { border-color: #ffa500; color: #ffa500; }
+        .btn-terminal.btn-scripts:hover, .btn-terminal.btn-scripts:active { background: rgba(255,165,0,0.1); }
+        .btn-terminal.btn-cores-off { border-color: rgba(0,245,255,.25); color: rgba(0,245,255,.25); }
 
         /* ─── BOTÃO TECLADO MOBILE ─── */
         .btn-mobile-keyboard {
             display: none;
             position: fixed; bottom: 58px; right: 14px;
-            background: rgba(0,255,136,0.12); border: 2px solid #00ff88;
+            background: rgba(0,255,136,0.12); border: 1px solid rgba(0,245,255,.35);
             color: #00ff88; width: 48px; height: 48px;
             border-radius: 50%; cursor: pointer; font-size: 22px;
             align-items: center; justify-content: center;
@@ -196,9 +216,9 @@
         /* ─── ESTADO VAZIO ─── */
         .terminal-empty {
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; height: 100%; color: #555; font-size: 13px; gap: 12px;
+            justify-content: center; height: 100%; color: rgba(0,245,255,.3); font-size: 13px; gap: 12px;
         }
-        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'JetBrains Mono', monospace; padding: 0 20px; }
+        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'Share Tech Mono', monospace; padding: 0 20px; }
 
         /* ─── MENU MOBILE (drawer de ações) ─── */
         .mobile-menu-overlay {
@@ -209,7 +229,7 @@
         .mobile-menu-overlay.aberto { display: block; }
         .mobile-menu-drawer {
             position: fixed; bottom: 0; left: 0; right: 0;
-            background: #111; border-top: 2px solid #00ff88;
+            background: #060c18; border-top: 1px solid rgba(0,245,255,.35);
             border-radius: 14px 14px 0 0;
             padding: 8px 0 env(safe-area-inset-bottom, 12px);
             transform: translateY(100%); transition: transform 0.28s ease;
@@ -223,16 +243,16 @@
         .mobile-menu-item {
             display: flex; align-items: center; gap: 14px;
             padding: 14px 22px; cursor: pointer; transition: background 0.15s;
-            font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #aaa;
-            border-bottom: 1px solid #1a1a1a;
+            font-family: 'Share Tech Mono', monospace; font-size: 13px; color: rgba(0,245,255,.5);
+            border-bottom: 1px solid rgba(0,245,255,.1);
             -webkit-tap-highlight-color: transparent;
         }
         .mobile-menu-item:active { background: rgba(0,255,136,0.05); }
         .mobile-menu-item:last-child { border-bottom: none; }
         .mobile-menu-item span:first-child { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
-        .mobile-menu-item.item-wiki { color: #00d9ff; }
+        .mobile-menu-item.item-wiki { color: #00f5ff; }
         .mobile-menu-item.item-danger { color: #ff5555; }
-        .mobile-menu-separator { height: 6px; background: #0d0d0d; margin: 4px 0; }
+        .mobile-menu-separator { height: 6px; background: #02030a; margin: 4px 0; }
 
         .debug-panel { display: none !important; }
         .btn-terminal.reconnecting { border-color: #ffa500; color: #ffa500; animation: pulseOrange 1s infinite; }
@@ -241,11 +261,11 @@
         /* ─── WIKI SIDEBAR ─── */
         .wiki-sidebar {
             position: fixed; top: 0; right: -9999px; width: 480px; height: 100vh;
-            background: #111; border-left: 2px solid #00ff88;
+            background: #060c18; border-left: 1px solid rgba(0,245,255,.35);
             display: flex; flex-direction: column; z-index: 9999;
             box-shadow: -5px 0 30px rgba(0,0,0,0.7);
             transition: right 0.3s ease, width 0.2s ease;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'Share Tech Mono', monospace;
             min-width: 300px; max-width: 98vw;
         }
         .wiki-sidebar.aberto { right: 0; }
@@ -264,67 +284,67 @@
         body.wiki-resizing { cursor: ew-resize !important; user-select: none !important; }
         body.wiki-resizing * { cursor: ew-resize !important; }
         .wiki-sidebar-header {
-            background: #0a0a0a; padding: 10px 14px; border-bottom: 2px solid #00ff88;
+            background: #02030a; padding: 10px 14px; border-bottom: 1px solid rgba(0,245,255,.35);
             display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 8px;
         }
-        .wiki-sidebar-header h3 { margin: 0; color: #00ff88; font-size: 15px; font-weight: 700; letter-spacing: 1px; flex: 1; }
+        .wiki-sidebar-header h3 { margin: 0; color: #00f5ff; font-size: 15px; font-weight: 700; letter-spacing: 1px; flex: 1; }
         .wiki-header-actions { display: flex; align-items: center; gap: 4px; }
         .wiki-width-indicator {
-            font-size: 9px; color: #333; padding: 2px 6px; background: #0d0d0d;
-            border: 1px solid #1a1a1a; border-radius: 2px; font-family: 'JetBrains Mono', monospace;
+            font-size: 9px; color: #333; padding: 2px 6px; background: #02030a;
+            border: 1px solid rgba(0,245,255,.1); border-radius: 2px; font-family: 'Share Tech Mono', monospace;
             white-space: nowrap; transition: color 0.2s;
         }
         body.wiki-resizing .wiki-width-indicator { color: #00ff88; border-color: #00ff88; }
         .btn-wiki-action {
-            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
             width: 32px; height: 32px; border-radius: 3px; cursor: pointer; font-size: 13px;
             display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; line-height: 1;
         }
         .btn-wiki-action:hover { border-color: #00ff88; color: #00ff88; }
-        .btn-wiki-action.maximizar:hover { border-color: #00d9ff; color: #00d9ff; }
+        .btn-wiki-action.maximizar:hover { border-color: #00f5ff; color: #00f5ff; }
         .btn-wiki-action.fechar:hover { border-color: #ff4444; color: #ff4444; }
         .wiki-size-presets { display: flex; gap: 3px; align-items: center; }
         .btn-preset {
-            background: transparent; border: 1px solid #1e1e1e; color: #444;
+            background: transparent; border: 1px solid rgba(0,245,255,.1); color: rgba(0,245,255,.25);
             padding: 3px 7px; border-radius: 2px; cursor: pointer; font-size: 9px;
-            font-family: 'JetBrains Mono', monospace; transition: 0.15s; white-space: nowrap;
+            font-family: 'Share Tech Mono', monospace; transition: 0.15s; white-space: nowrap;
         }
         .btn-preset:hover { border-color: #00ff88; color: #00ff88; }
-        .wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
+        .wiki-sidebar-search { padding: 12px 16px; background: #02030a; border-bottom: 1px solid rgba(0,245,255,.1); flex-shrink: 0; }
         .wiki-search-input {
-            width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
-            padding: 10px 13px; border-radius: 3px; font-family: 'JetBrains Mono', monospace;
+            width: 100%; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff;
+            padding: 10px 13px; border-radius: 3px; font-family: 'Share Tech Mono', monospace;
             font-size: 13px; outline: none; transition: border-color 0.2s;
             -webkit-appearance: none;
         }
         .wiki-search-input:focus { border-color: #00ff88; }
-        .wiki-search-input::placeholder { color: #444; }
+        .wiki-search-input::placeholder { color: rgba(0,245,255,.25); }
         .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; -webkit-overflow-scrolling: touch; }
         .wiki-sidebar-results::-webkit-scrollbar { width: 4px; }
         .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-        .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background 0.15s; }
+        .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid rgba(0,245,255,.1); cursor: pointer; transition: background 0.15s; }
         .wiki-result-item:active { background: rgba(0,255,136,0.04); }
-        .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #555; }
-        .wiki-result-categoria { color: #00d9ff; font-size: 10px; }
+        .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: rgba(0,245,255,.3); }
+        .wiki-result-categoria { color: #00f5ff; font-size: 10px; }
         .wiki-favorito { color: #ffd700; margin-left: auto; font-size: 10px; }
         .wiki-result-titulo { color: #00ff88; font-size: 13px; margin: 0 0 6px 0; font-weight: 600; }
-        .wiki-result-descricao { color: #888; font-size: 11px; margin: 0 0 8px 0; line-height: 1.5; }
+        .wiki-result-descricao { color: rgba(0,245,255,.4); font-size: 11px; margin: 0 0 8px 0; line-height: 1.5; }
         .wiki-result-footer { display: flex; gap: 6px; }
-        .wiki-fabricante { background: rgba(0,217,255,0.12); color: #00d9ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
-        .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: #555; font-size: 12px; }
-        .wiki-artigo-view { color: #ccc; font-size: 12px; line-height: 1.6; }
+        .wiki-fabricante { background: rgba(0,245,255,0.12); color: #00f5ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: rgba(0,245,255,.3); font-size: 12px; }
+        .wiki-artigo-view { color: #d0e8f0; font-size: 12px; line-height: 1.6; }
         .btn-voltar-wiki {
             display: flex; align-items: center; gap: 8px; width: 100%;
-            background: #0a0a0a; border: none; border-bottom: 1px solid #1e1e1e;
-            color: #00d9ff; padding: 12px 16px; cursor: pointer;
-            font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: left; transition: background 0.15s;
+            background: #02030a; border: none; border-bottom: 1px solid rgba(0,245,255,.1);
+            color: #00f5ff; padding: 12px 16px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 12px; text-align: left; transition: background 0.15s;
         }
         .btn-voltar-wiki:hover { background: #141414; }
-        .wiki-artigo-header { padding: 16px; border-bottom: 1px solid #1e1e1e; background: #0e0e0e; }
+        .wiki-artigo-header { padding: 16px; border-bottom: 1px solid rgba(0,245,255,.1); background: #060c18; }
         .wiki-artigo-header h2 { color: #fff; font-size: 15px; margin: 0 0 10px 0; font-weight: 700; line-height: 1.4; }
         .wiki-artigo-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-        .wiki-artigo-meta span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #888; }
-        .badge-cat { background: rgba(0,217,255,0.12); color: #00d9ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .wiki-artigo-meta span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: rgba(0,245,255,.4); }
+        .badge-cat { background: rgba(0,245,255,0.12); color: #00f5ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
         .badge-fab { background: rgba(0,255,136,0.12); color: #00ff88; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
         .wiki-artigo-conteudo { padding: 16px; }
         .wiki-artigo-conteudo h2, .wiki-artigo-conteudo h3, .wiki-artigo-conteudo h4 {
@@ -333,12 +353,12 @@
         }
         .wiki-artigo-conteudo h2::before, .wiki-artigo-conteudo h3::before, .wiki-artigo-conteudo h4::before {
             content: '\201C'; display: inline-flex; align-items: center; justify-content: center;
-            min-width: 30px; width: 30px; background: rgba(0,120,180,0.35); color: #00d9ff;
+            min-width: 30px; width: 30px; background: rgba(0,80,200,0.35); color: #00f5ff;
             font-size: 18px; font-weight: 900; border-radius: 2px 0 0 2px; flex-shrink: 0;
         }
         .wiki-titulo-texto {
             flex: 1; display: flex; align-items: center; padding: 0 12px;
-            background: rgba(0,80,120,0.2); color: #00d9ff; border-bottom: 2px solid #00d9ff;
+            background: rgba(0,20,80,0.2); color: #00f5ff; border-bottom: 2px solid #00f5ff;
             text-transform: uppercase; min-height: 30px;
         }
         .wiki-artigo-conteudo p { margin: 8px 0; color: #bbb; font-size: 12px; }
@@ -346,28 +366,28 @@
         .wiki-artigo-conteudo li { margin: 4px 0; color: #bbb; font-size: 12px; }
         .wiki-artigo-conteudo code {
             background: rgba(0,255,136,0.1); color: #00ff88; padding: 1px 5px;
-            border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            border-radius: 2px; font-family: 'Share Tech Mono', monospace; font-size: 11px;
         }
-        .wiki-code-wrapper { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; margin: 12px 0; }
-        .wiki-code-toolbar { background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 5px; }
+        .wiki-code-wrapper { background: #02030a; border: 1px solid rgba(0,245,255,.1); border-radius: 3px; overflow: hidden; margin: 12px 0; }
+        .wiki-code-toolbar { background: #060c18; padding: 6px 10px; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; align-items: center; gap: 5px; }
         .wiki-code-toolbar-title { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
         .wiki-code-lang-badge {
             background: rgba(255,170,0,0.15); color: #ffa500; font-size: 9px; font-weight: 800;
             padding: 2px 7px; border-radius: 2px; border: 1px solid rgba(255,170,0,0.25);
-            white-space: nowrap; flex-shrink: 0; font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; flex-shrink: 0; font-family: 'Share Tech Mono', monospace;
             text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .wiki-code-title-text { color: #888; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wiki-code-title-text { color: rgba(0,245,255,.4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-bloco {
-            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
             padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
-            font-family: 'JetBrains Mono', monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
+            font-family: 'Share Tech Mono', monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-bloco:hover { color: #aaa; border-color: #444; }
+        .btn-bloco:hover { color: rgba(0,245,255,.5); border-color: rgba(0,245,255,.25); }
         .btn-bloco.btn-editar:hover  { color: #ffa500; border-color: #ffa500; }
         .btn-bloco.btn-editar.ativo  { color: #ffa500; border-color: #ffa500; background: rgba(255,165,0,0.08); }
-        .btn-bloco.btn-copiar:hover  { color: #00d9ff; border-color: #00d9ff; }
+        .btn-bloco.btn-copiar:hover  { color: #00f5ff; border-color: #00f5ff; }
         .btn-bloco.btn-copiar.copiado { color: #00ff88; border-color: #00ff88; }
         .btn-bloco.btn-enviar { color: #00ff88; border-color: #00ff88; background: rgba(0,255,136,0.07); font-weight: 600; }
         .btn-bloco.btn-enviar:hover { background: rgba(0,255,136,0.16); box-shadow: 0 0 8px rgba(0,255,136,0.2); }
@@ -376,8 +396,8 @@
             border-bottom: 1px solid rgba(255,165,0,0.15); color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
         }
         .wiki-bloco-edit-aviso.visivel { display: flex; }
-        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0a0a0a; border-left: 3px solid #00ff88; -webkit-overflow-scrolling: touch; }
-        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
+        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #02030a; border-left: 3px solid #00ff88; -webkit-overflow-scrolling: touch; }
+        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'Share Tech Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
         .wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
         .wiki-codigo-pre code .ln::before {
             content: counter(linhas); display: table-cell; width: 34px; min-width: 34px;
@@ -386,35 +406,35 @@
         }
         .wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
         .wiki-codigo-pre code .ln .lc .wiki-var-highlight { background: rgba(255,170,0,0.18); color: #ffaa00; border-radius: 2px; padding: 0 2px; border-bottom: 1px dashed #ffa500; }
-        .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0a0a0a; }
+        .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #02030a; }
         .wiki-codigo-editor-wrap.visivel { display: block; }
         .wiki-codigo-editor {
-            width: 100%; min-height: 80px; max-height: 420px; background: #0d0d0d; color: #e8e8e8;
-            border: none; outline: none; resize: vertical; font-family: 'JetBrains Mono', monospace;
+            width: 100%; min-height: 80px; max-height: 420px; background: #02030a; color: #e8e8e8;
+            border: none; outline: none; resize: vertical; font-family: 'Share Tech Mono', monospace;
             font-size: 12px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
             scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
             -webkit-overflow-scrolling: touch;
         }
         .wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
         .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-        .wiki-codigo-editor:focus { background: #0f0f0f; }
+        .wiki-codigo-editor:focus { background: #02030a; }
         .wiki-bloco-footer {
-            display: none; padding: 8px 12px; background: #0e0e0e; border-top: 1px solid #1e1e1e;
+            display: none; padding: 8px 12px; background: #060c18; border-top: 1px solid rgba(0,245,255,.1);
             align-items: center; justify-content: space-between; gap: 8px;
         }
         .wiki-bloco-footer.visivel { display: flex; }
         .wiki-bloco-footer-info { color: #3a3a3a; font-size: 10px; }
         .wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
         .btn-resetar {
-            background: transparent; border: 1px solid #2a2a2a; color: #555;
+            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
             padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
-            font-family: 'JetBrains Mono', monospace; transition: 0.2s;
+            font-family: 'Share Tech Mono', monospace; transition: 0.2s;
         }
         .btn-resetar:hover { color: #ff5555; border-color: #ff5555; }
         .btn-enviar-grande {
             background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;
             padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
-            font-family: 'JetBrains Mono', monospace; font-weight: 600; transition: 0.2s;
+            font-family: 'Share Tech Mono', monospace; font-weight: 600; transition: 0.2s;
             display: flex; align-items: center; gap: 6px;
         }
         .btn-enviar-grande:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 12px rgba(0,255,136,0.28); }
@@ -429,38 +449,38 @@
         .wiki-vars-toggle:hover { background: rgba(255,170,0,0.09); }
         .wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #ffa500; text-transform: uppercase; letter-spacing: 0.8px; }
         .wiki-vars-badge { background: rgba(255,170,0,0.2); color: #ffa500; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
-        .wiki-vars-toggle-arrow { color: #555; font-size: 11px; transition: transform 0.25s; user-select: none; }
+        .wiki-vars-toggle-arrow { color: rgba(0,245,255,.3); font-size: 11px; transition: transform 0.25s; user-select: none; }
         .wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
         .wiki-vars-body { padding: 10px 12px; display: none; flex-direction: column; gap: 8px; }
         .wiki-vars-body.visivel { display: flex; }
-        .wiki-vars-hint { font-size: 10px; color: #555; padding: 4px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 2px; line-height: 1.5; }
+        .wiki-vars-hint { font-size: 10px; color: rgba(0,245,255,.3); padding: 4px 0; border-bottom: 1px solid rgba(0,245,255,.1); margin-bottom: 2px; line-height: 1.5; }
         .wiki-vars-hint code { background: rgba(255,170,0,0.12); color: #ffa500; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
         .wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
         .wiki-var-row { display: flex; align-items: center; gap: 8px; }
-        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'JetBrains Mono', monospace; }
+        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'Share Tech Mono', monospace; }
         .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
-        .wiki-var-inp { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
+        .wiki-var-inp { flex: 1; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'Share Tech Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
         .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
         .wiki-var-inp::placeholder { color: #3a3a3a; }
         .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
-        .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #1a1a1a; flex-wrap: wrap; }
-        .btn-vars-limpar { background: transparent; border: 1px solid #2a2a2a; color: #555; padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'JetBrains Mono', monospace; transition: 0.2s; }
+        .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(0,245,255,.1); flex-wrap: wrap; }
+        .btn-vars-limpar { background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3); padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'Share Tech Mono', monospace; transition: 0.2s; }
         .btn-vars-limpar:hover { color: #ff5555; border-color: #ff5555; }
         .wiki-vars-preview-wrap { display: none; }
         .wiki-vars-preview-wrap.visivel { display: block; }
-        .wiki-vars-preview-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        .wiki-vars-preview-pre { background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1); border-left: 3px solid rgba(0,255,136,0.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
-        .wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1a1a1a; }
-        .wiki-bloco-extra { margin: 0 16px 14px; background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 3px; overflow: hidden; }
-        .wiki-bloco-extra-header { background: #111; padding: 8px 12px; border-bottom: 1px solid #1e1e1e; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .wiki-bloco-extra-header strong { color: #00d9ff; font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
+        .wiki-vars-preview-label { font-size: 10px; color: rgba(0,245,255,.25); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .wiki-vars-preview-pre { background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1); border-left: 3px solid rgba(0,255,136,0.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
+        .wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: rgba(0,245,255,.25); text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid rgba(0,245,255,.1); }
+        .wiki-bloco-extra { margin: 0 16px 14px; background: #02030a; border: 1px solid rgba(0,245,255,.1); border-radius: 3px; overflow: hidden; }
+        .wiki-bloco-extra-header { background: #060c18; padding: 8px 12px; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .wiki-bloco-extra-header strong { color: #00f5ff; font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
         .wiki-bloco-acoes { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
-        .wiki-bloco-lang { font-size: 9px; color: #444; background: #0a0a0a; padding: 2px 7px; border-radius: 10px; border: 1px solid #222; }
-        .wiki-bloco-descricao { padding: 8px 12px; color: #666; font-size: 11px; border-bottom: 1px solid #1e1e1e; margin: 0; }
+        .wiki-bloco-lang { font-size: 9px; color: rgba(0,245,255,.25); background: #02030a; padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(0,245,255,.1); }
+        .wiki-bloco-descricao { padding: 8px 12px; color: rgba(0,245,255,.35); font-size: 11px; border-bottom: 1px solid rgba(0,245,255,.1); margin: 0; }
         .wiki-toast {
-            position: fixed; bottom: 70px; right: 16px; background: #111;
+            position: fixed; bottom: 70px; right: 16px; background: #060c18;
             border: 1px solid #00ff88; color: #00ff88; padding: 8px 16px;
-            border-radius: 3px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+            border-radius: 3px; font-size: 11px; font-family: 'Share Tech Mono', monospace;
             z-index: 99999; opacity: 0; transform: translateY(8px);
             transition: opacity 0.2s, transform 0.2s; pointer-events: none;
         }
@@ -491,7 +511,7 @@
             .btn-mobile-keyboard { display: flex; }
 
             /* Wiki: tela cheia no mobile */
-            .wiki-sidebar { width: 100vw !important; min-width: unset; border-left: none; border-top: 2px solid #00ff88; }
+            .wiki-sidebar { width: 100vw !important; min-width: unset; border-left: none; border-top: 1px solid rgba(0,245,255,.35); }
             .wiki-resize-handle { display: none; }
             .wiki-size-presets { display: none; }
             .wiki-width-indicator { display: none; }
@@ -571,7 +591,7 @@
                             <div style="font-size:32px;opacity:.4;">⌨</div>
                             <div class="terminal-empty-text">
                                 <p>Nenhum terminal conectado</p>
-                                <p style="font-size:11px;color:#444;margin-top:6px;">Selecione um host na lista lateral</p>
+                                <p style="font-size:11px;color:rgba(0,245,255,.25);margin-top:6px;">Selecione um host na lista lateral</p>
                             </div>
                         </div>
                     </div>
@@ -580,6 +600,9 @@
                 <div class="terminal-footer">
                     {% if request.user.is_staff %}
                     <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
+                    {% endif %}
+                    {% if request.user.is_staff %}
+                    <button class="btn-terminal btn-scripts" id="btnScripts" onclick="abrirPainelScripts()" title="Executar script no equipamento ativo">⚡ Scripts</button>
                     {% endif %}
                     <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
                     <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
@@ -632,6 +655,81 @@
 
     <div class="debug-panel" id="debugPanel" style="display:none;"></div>
 
+    <!-- ── Scripts Panel ── -->
+    <div id="scriptsPainel" style="
+        position:fixed; top:0; right:-560px; width:540px; height:100vh;
+        background:#060c18; border-left:2px solid #ffa500;
+        display:flex; flex-direction:column; z-index:9998;
+        box-shadow:-5px 0 30px rgba(0,0,0,.8);
+        transition:right .3s ease;
+        font-family:'Share Tech Mono',monospace;
+    ">
+        <!-- Header -->
+        <div style="background:#02030a;padding:10px 14px;border-bottom:2px solid #ffa500;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+            <span style="color:#ffa500;font-size:14px;font-weight:700;letter-spacing:1px;">⚡ Scripts de Automação</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <span id="spAcesoLabel" style="font-size:10px;color:rgba(0,245,255,.3);"></span>
+                <button onclick="fecharPainelScripts()" style="background:transparent;border:1px solid rgba(0,245,255,.14);color:rgba(0,245,255,.3);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:inherit;font-size:12px;">✕</button>
+            </div>
+        </div>
+        <!-- Tabs -->
+        <div style="display:flex;border-bottom:1px solid rgba(0,245,255,.1);background:#02030a;flex-shrink:0;">
+            <div id="sp-tab-exec" class="sp-tab sp-tab-ativo" onclick="spTab('exec')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:#ffa500;border-bottom:2px solid #ffa500;">Executar</div>
+            <div id="sp-tab-hist" class="sp-tab" onclick="spTab('hist')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(0,245,255,.3);border-bottom:2px solid transparent;">Histórico</div>
+            <div id="sp-tab-output" class="sp-tab" onclick="spTab('output')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(0,245,255,.3);border-bottom:2px solid transparent;">Output</div>
+        </div>
+
+        <!-- Tab: Executar -->
+        <div id="sp-pane-exec" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div>
+                <label style="font-size:10px;color:rgba(0,245,255,.35);display:block;margin-bottom:5px;">EQUIPAMENTO ALVO</label>
+                <select id="spAcesoSelect" onchange="spSelecionarAceso(this.value)" style="width:100%;background:#02030a;border:1px solid #ffa500;border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;">
+                    <option value="">— Selecione o equipamento —</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:10px;color:rgba(0,245,255,.35);display:block;margin-bottom:5px;">FABRICANTE</label>
+                <select id="spFabricante" onchange="spFiltrarScripts()" style="width:100%;background:#02030a;border:1px solid rgba(0,245,255,.14);border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;">
+                    <option value="">Todos</option>
+                    <option value="zte">ZTE</option>
+                    <option value="huawei">Huawei</option>
+                    <option value="cisco">Cisco</option>
+                    <option value="mikrotik">MikroTik</option>
+                    <option value="datacom">Datacom</option>
+                    <option value="parks">Parks</option>
+                    <option value="generico">Genérico</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:10px;color:rgba(0,245,255,.35);display:block;margin-bottom:5px;">SCRIPT</label>
+                <select id="spScriptSelect" onchange="spCarregarScript()" style="width:100%;background:#02030a;border:1px solid rgba(0,245,255,.14);border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;">
+                    <option value="">— Selecione um script —</option>
+                </select>
+            </div>
+            <div id="spDescBox" style="font-size:11px;color:rgba(0,245,255,.4);padding:6px 8px;background:#02030a;border-radius:4px;border:1px solid rgba(0,245,255,.08);display:none;"></div>
+            <div id="spParamsBox" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+                <button id="spBtnExecutar" onclick="spExecutar()" style="flex:1;padding:9px;background:rgba(255,165,0,.15);border:1px solid #ffa500;color:#ffa500;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:background .2s;" onmouseover="this.style.background='rgba(255,165,0,.25)'" onmouseout="this.style.background='rgba(255,165,0,.15)'">
+                    ▶ Executar Script
+                </button>
+                <a href="/clientes/scripts/gerenciar/" target="_blank" style="padding:9px 12px;background:transparent;border:1px solid #333;color:rgba(0,245,255,.3);border-radius:4px;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:none;display:flex;align-items:center;">⚙</a>
+            </div>
+        </div>
+
+        <!-- Tab: Histórico -->
+        <div id="sp-pane-hist" style="flex:1;overflow-y:auto;padding:14px;display:none;">
+            <div id="spHistContent" style="font-size:11px;color:rgba(0,245,255,.25);text-align:center;padding:30px 0;">
+                Selecione um equipamento para ver o histórico.
+            </div>
+        </div>
+
+        <!-- Tab: Output -->
+        <div id="sp-pane-output" style="flex:1;overflow-y:auto;padding:14px;display:none;">
+            <div id="spOutputBox" style="font-size:11px;font-family:'Share Tech Mono',monospace;line-height:1.6;white-space:pre-wrap;"></div>
+            <div id="spOutputEmpty" style="color:rgba(0,245,255,.25);text-align:center;padding:30px 0;font-size:12px;">Nenhum output ainda.</div>
+        </div>
+    </div>
+
     <!-- Wiki Sidebar -->
     <div id="wikiSidebar" class="wiki-sidebar">
         <div class="wiki-resize-handle" id="wikiResizeHandle" title="Arraste para redimensionar"></div>
@@ -662,6 +760,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-canvas@0.7.0/lib/xterm-addon-canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.18.0/lib/xterm-addon-webgl.min.js"></script>
     <script>
 
     // ============================================================
@@ -962,7 +1062,7 @@
                         ${artigo.modelo ? `<span class="badge-cat">${esc(artigo.modelo)}</span>` : ''}
                     </div>
                     ${tagsHtml}
-                    <div style="color:#444;font-size:10px;margin-top:8px;">🕐 ${esc(artigo.data_atualizacao)}</div>
+                    <div style="color:rgba(0,245,255,.25);font-size:10px;margin-top:8px;">🕐 ${esc(artigo.data_atualizacao)}</div>
                 </div>
                 <div class="wiki-artigo-conteudo">${bodyHtml}</div>
                 ${blocosHtml}
@@ -1226,12 +1326,13 @@
     }
 
     const _enc = new TextEncoder();
+    const _dec = new TextDecoder();
 
     function writeToTerminal(terminal, text) {
-        if (!colorizeEnabled && text.length < 500) {
-            terminal.write(_enc.encode(text));
-        } else {
+        if (colorizeEnabled && text.length >= 30) {
             terminal.write(colorizeOutput(text));
+        } else {
+            terminal.write(text);
         }
     }
 
@@ -1272,16 +1373,17 @@
             const terminalId = `terminal-${++this.tabCounter}`;
             try {
                 // Tamanho de fonte menor no mobile para melhor aproveitamento da tela
-                const fontSizeMobile = window.innerWidth < 400 ? 10 : window.innerWidth < 640 ? 11 : 13;
+                const fontSizeMobile = window.innerWidth < 400 ? 10 : window.innerWidth < 640 ? 11 : 15;
                 const terminal = new Terminal({
                     cursorBlink: true,
                     fontSize: fontSizeMobile,
-                    fontFamily: "'JetBrains Mono','Courier New',monospace",
+                    fontFamily: "'Share Tech Mono','Courier New',monospace",
                     fontWeight: 400, fontWeightBold: 600, lineHeight: 1.2, letterSpacing: 0,
-                    theme: { background:'#000000', foreground:'#ffffff', cursor:'#ffffff', cursorAccent:'#000000' },
+                    theme: { background:'#02030a', foreground:'#00f5ff', cursor:'#00f5ff', cursorAccent:'#02030a',
+                             selectionBackground:'rgba(0,245,255,0.25)',
+                             black:'#02030a', white:'#d0e8f0', brightBlack:'#2a3a4a', brightWhite:'#ffffff' },
                     scrollback: 5000, rows: 24, cols: 120,
                     allowTransparency: true, windowsMode: false, convertEol: true,
-                    rendererType: 'canvas',
                     // No mobile evita seleção indesejada por touch
                     disableStdin: false,
                     rightClickSelectsWord: false,
@@ -1313,6 +1415,15 @@
                 content.appendChild(pane);
                 terminal.open(pane);
 
+                // Ativa renderer acelerado (WebGL > Canvas > DOM)
+                try {
+                    const webgl = new WebglAddon.WebglAddon();
+                    webgl.onContextLoss(() => webgl.dispose());
+                    terminal.loadAddon(webgl);
+                } catch(_) {
+                    try { terminal.loadAddon(new CanvasAddon.CanvasAddon()); } catch(__) {}
+                }
+
                 const tObj = {
                     id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
                     socket: null, connected: false, wsRetries: 0
@@ -1326,8 +1437,8 @@
 
                 terminal.onData(input => {
                     if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
-                        const cmd = input.replace(/\x7f/g, '\x08');
-                        tObj.socket.send(JSON.stringify({ action: 'command', command: cmd }));
+                        // Envia bytes puros — sem serialização JSON por tecla
+                        tObj.socket.send(_enc.encode(input.replace(/\x7f/g, '\x08')));
                     }
                 });
 
@@ -1352,6 +1463,41 @@
             tabs.appendChild(tab);
         }
 
+        // ── Aba Winbox (iframe) ──
+        abrirWinboxTab(acessoId, acesso) {
+            const tid = `terminal-${++this.tabCounter}`;
+            // Se já existe aba para este winbox, só ativar
+            for (const [id, tObj] of this.terminals) {
+                if (tObj.tipo === 'winbox' && tObj.acesso && tObj.acesso.id === acessoId) {
+                    this.ativarTerminal(id); return;
+                }
+            }
+            const pane = document.createElement('div');
+            pane.className = 'terminal-pane'; pane.id = `pane-${tid}`;
+            pane.style.flex = '1'; pane.style.display = 'none';
+            pane.style.minHeight = '0'; pane.style.minWidth = '0';
+
+            const iframe = document.createElement('iframe');
+            iframe.src = `/clientes/winbox/${acessoId}/`;
+            iframe.style.cssText = 'width:100%;height:100%;border:none;flex:1;';
+            pane.appendChild(iframe);
+
+            const content = document.getElementById('terminalContent');
+            content.querySelectorAll('.terminal-pane.active').forEach(p => {
+                p.classList.remove('active'); p.style.display = 'none';
+            });
+            content.appendChild(pane);
+
+            const tObj = {
+                id: tid, tipo: 'winbox', terminal: null, fitAddon: null,
+                pane, acesso: acesso || { id: acessoId, tipo: 'Winbox', host: '' },
+                socket: null, connected: true
+            };
+            this.terminals.set(tid, tObj);
+            this.criarAba(tid, tObj.acesso);
+            this.ativarTerminal(tid);
+        }
+
         ativarTerminal(terminalId) {
             if (this.activeTerminal) {
                 const ant = this.terminals.get(this.activeTerminal);
@@ -1363,11 +1509,14 @@
             }
             this.activeTerminal = terminalId;
             const tObj = this.terminals.get(terminalId);
+            if (tObj?.acesso) window._spActiveAcesso = tObj.acesso;
             if (tObj) {
                 tObj.pane.classList.add('active'); tObj.pane.style.display = 'flex';
                 const tab = document.getElementById(`tab-${terminalId}`);
                 if (tab) tab.classList.add('active');
-                setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} if (!isMobile()) tObj.terminal.focus(); }, 50);
+                if (tObj.tipo !== 'winbox') {
+                    setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} if (!isMobile()) tObj.terminal?.focus(); }, 50);
+                }
             }
         }
 
@@ -1377,12 +1526,19 @@
             const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
             try {
                 tObj.socket = new WebSocket(wsUrl);
+                tObj.socket.binaryType = 'arraybuffer';
                 tObj.socket.onopen = () => {
                     tObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
                     tObj.wsRetries = 0;
                     tObj.socket.send(JSON.stringify({ action: 'connect', acesso_id: tObj.acesso.id }));
                 };
                 tObj.socket.onmessage = e => {
+                    // Hot path: binary frame = terminal output puro
+                    if (e.data instanceof ArrayBuffer) {
+                        writeToTerminal(tObj.terminal, _dec.decode(e.data));
+                        return;
+                    }
+                    // Texto = mensagem de controle (JSON)
                     const data = JSON.parse(e.data);
                     if (data.type === 'connected') {
                         tObj.connected = true;
@@ -1409,8 +1565,9 @@
 
         fecharTerminal(terminalId) {
             const tObj = this.terminals.get(terminalId); if (!tObj) return;
-            if (tObj.socket) tObj.socket.close();
-            tObj.terminal.dispose(); tObj.pane.remove();
+            if (tObj.socket) try { tObj.socket.close(); } catch(e) {}
+            if (tObj.terminal) try { tObj.terminal.dispose(); } catch(e) {}
+            tObj.pane.remove();
             const tab = document.getElementById(`tab-${terminalId}`); if (tab) tab.remove();
             this.terminals.delete(terminalId);
             if (this.activeTerminal === terminalId) {
@@ -1425,6 +1582,7 @@
     }
 
     const terminalManager = new TerminalManager();
+    window.terminalManager = terminalManager;
 
     function limparTela() {
         if (terminalManager.activeTerminal) {
@@ -1594,16 +1752,27 @@
             Object.keys(groups).sort().forEach(cliente => {
                 html += `<div class="host-group-label">${_esc(cliente)}</div>`;
                 groups[cliente].forEach(h => {
-                    const proto = h.protocolo.toUpperCase();
-                    const cls   = proto === 'SSH' ? '' : ' telnet';
-                    html += `<div class="host-item" onclick="abrirHostSidebar(${h.id})" title="${_esc(h.tipo)} — ${_esc(h.host)}">
+                    const proto   = h.protocolo.toUpperCase();
+                    const cls     = proto === 'SSH' ? '' : ' telnet';
+                    const clickFn = h.winbox ? `toggleWbxExpand(${h.id})` : `abrirHostSidebar(${h.id})`;
+                    const wbxBadge = h.winbox ? `<span class="host-badge-wbx">WBX</span>` : '';
+                    html += `
+                    <div class="host-item${h.winbox ? '' : ''}" id="hostItem-${h.id}"
+                         onclick="${clickFn}"
+                         title="${_esc(h.tipo)} — ${_esc(h.host)}:${h.porta}${h.winbox ? ' | Winbox:'+h.winbox : ''}">
                         <div class="host-dot"></div>
                         <div class="host-info">
                             <div class="host-name">${_esc(h.tipo)}</div>
                             <div class="host-addr">${_esc(h.host)}:${h.porta}</div>
                         </div>
                         <span class="host-proto${cls}">${proto}</span>
-                    </div>`;
+                        ${wbxBadge}
+                    </div>
+                    ${h.winbox ? `
+                    <div class="host-wbx-expand" id="wbxExp-${h.id}">
+                        <button class="btn-wbx ssh" onclick="event.stopPropagation();abrirHostSidebar(${h.id})">⌨ SSH</button>
+                        <button class="btn-wbx wbx" onclick="event.stopPropagation();abrirWinbox(${h.id})">🖥 Winbox</button>
+                    </div>` : ''}`;
                 });
             });
             listEl.innerHTML = html;
@@ -1617,6 +1786,26 @@
         window.abrirHostSidebar = function(acessoId) {
             const h = allHosts.find(x => x.id === acessoId);
             if (h) terminalManager.abrirTerminal(h);
+        };
+
+        // ── Toggle expand row para hosts com winbox ──
+        window.toggleWbxExpand = function(id) {
+            const exp = document.getElementById(`wbxExp-${id}`);
+            const item = document.getElementById(`hostItem-${id}`);
+            if (!exp) { abrirHostSidebar(id); return; }
+            const isOpen = exp.classList.contains('aberto');
+            document.querySelectorAll('.host-wbx-expand.aberto').forEach(el => el.classList.remove('aberto'));
+            document.querySelectorAll('.host-item.wbx-open').forEach(el => el.classList.remove('wbx-open'));
+            if (!isOpen) {
+                exp.classList.add('aberto');
+                item?.classList.add('wbx-open');
+            }
+        };
+
+        // ── Abrir winbox como aba no terminal ──
+        window.abrirWinbox = function(acessoId) {
+            const acesso = allHosts.find(x => x.id === acessoId);
+            terminalManager.abrirWinboxTab(acessoId, acesso);
         };
 
         // ── Carregar hosts da API (repassa ?cliente= se presente na URL) ──
@@ -1635,6 +1824,354 @@
         }
 
         carregarHosts();
+    })();
+    </script>
+
+    <!-- ── Scripts Panel JS ── -->
+    <script>
+    (function() {
+        'use strict';
+
+        // ── Helpers ──
+        function _getCookie(name) {
+            const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return m ? m.pop() : '';
+        }
+
+        function _escHtml(s) {
+            return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ── Estado ──
+        let spAcesoId = null;
+        let spScripts = [];
+        let spScriptAtual = null;
+        let spExecutando = false;
+
+        // ── Carregar equipamentos disponíveis ──
+        async function spCarregarAcessos() {
+            try {
+                const clienteId = new URLSearchParams(window.location.search).get('cliente') || '';
+                const url = '/clientes/terminal/acessos/' + (clienteId ? `?cliente=${clienteId}` : '');
+                const r = await fetch(url);
+                const data = await r.json();
+                const sel = document.getElementById('spAcesoSelect');
+                if (!sel) return;
+                const acessos = data.acessos || [];
+                sel.innerHTML = '<option value="">— Selecione o equipamento —</option>';
+                acessos.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.dataset.tipo = a.tipo || '';
+                    opt.dataset.host = a.host || '';
+                    opt.textContent = `${a.tipo} — ${a.host} (${a.cliente_nome})`;
+                    sel.appendChild(opt);
+                });
+                // Tenta pré-selecionar o terminal ativo
+                const acesso = window._spActiveAcesso
+                    || (window.terminalManager?.activeTerminal
+                        ? window.terminalManager.terminals.get(window.terminalManager.activeTerminal)?.acesso
+                        : null);
+                if (acesso && acesso.id) {
+                    sel.value = acesso.id;
+                    spSelecionarAceso(acesso.id);
+                }
+            } catch(e) { console.warn('[Scripts] erro ao carregar acessos:', e); }
+        }
+
+        window.spSelecionarAceso = function(id) {
+            spAcesoId = id ? parseInt(id) : null;
+            const sel = document.getElementById('spAcesoSelect');
+            const opt = sel ? sel.options[sel.selectedIndex] : null;
+            const label = document.getElementById('spAcesoLabel');
+            if (label) label.textContent = opt && opt.value ? (opt.dataset.host || opt.dataset.tipo) : '';
+            // Infere fabricante pelo tipo
+            if (opt && opt.value) {
+                const tipo = (opt.dataset.tipo || '').toLowerCase();
+                const selFab = document.getElementById('spFabricante');
+                if (selFab) {
+                    if      (tipo.includes('zte'))                               selFab.value = 'zte';
+                    else if (tipo.includes('huawei'))                            selFab.value = 'huawei';
+                    else if (tipo.includes('cisco'))                             selFab.value = 'cisco';
+                    else if (tipo.includes('mikrotik')||tipo.includes('router')) selFab.value = 'mikrotik';
+                    else if (tipo.includes('datacom'))                           selFab.value = 'datacom';
+                    else if (tipo.includes('parks'))                             selFab.value = 'parks';
+                    else selFab.value = '';
+                    spFiltrarScripts();
+                }
+            }
+            if (spAcesoId) spCarregarHistorico(spAcesoId);
+        };
+
+        // ── Abrir/Fechar ──
+        window.abrirPainelScripts = function() {
+            const painel = document.getElementById('scriptsPainel');
+            painel.style.right = '0';
+            spCarregarAcessos();
+            spCarregarListaScripts();
+        };
+
+        window.fecharPainelScripts = function() {
+            document.getElementById('scriptsPainel').style.right = '-560px';
+        };
+
+        // ── Tab ──
+        window.spTab = function(tab) {
+            ['exec','hist','output'].forEach(t => {
+                const pane = document.getElementById(`sp-pane-${t}`);
+                const tabEl = document.getElementById(`sp-tab-${t}`);
+                if (!pane || !tabEl) return;
+                const ativo = t === tab;
+                pane.style.display = ativo ? 'flex' : 'none';
+                if (t === 'exec') pane.style.flexDirection = ativo ? 'column' : '';
+                tabEl.style.color = ativo ? '#ffa500' : '#555';
+                tabEl.style.borderBottom = ativo ? '2px solid #ffa500' : '2px solid transparent';
+            });
+        };
+
+        // ── Carregar scripts ──
+        async function spCarregarListaScripts() {
+            try {
+                const fab = document.getElementById('spFabricante')?.value || '';
+                const url = '/clientes/scripts/' + (fab ? `?fabricante=${fab}` : '');
+                const r = await fetch(url);
+                const data = await r.json();
+                spScripts = data.scripts || [];
+                renderScriptOptions(spScripts);
+            } catch(e) {
+                console.warn('[Scripts] Erro ao carregar lista:', e);
+            }
+        }
+
+        function renderScriptOptions(scripts) {
+            const sel = document.getElementById('spScriptSelect');
+            if (!sel) return;
+            const val = sel.value;
+            sel.innerHTML = '<option value="">— Selecione um script —</option>';
+            scripts.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `[${s.fabricante_display}] ${s.nome}`;
+                sel.appendChild(opt);
+            });
+            if (val) sel.value = val;
+        }
+
+        window.spFiltrarScripts = function() {
+            spCarregarListaScripts();
+        };
+
+        window.spCarregarScript = async function() {
+            const sel = document.getElementById('spScriptSelect');
+            const id = sel?.value;
+            if (!id) { spScriptAtual = null; renderParamsForm([]); return; }
+
+            try {
+                const r = await fetch(`/clientes/scripts/${id}/`);
+                const data = await r.json();
+                spScriptAtual = data;
+                const descBox = document.getElementById('spDescBox');
+                if (descBox) {
+                    descBox.textContent = data.descricao || '';
+                    descBox.style.display = data.descricao ? '' : 'none';
+                }
+                renderParamsForm(data.parametros || []);
+            } catch(e) {
+                console.warn('[Scripts] Erro ao carregar script:', e);
+            }
+        };
+
+        function renderParamsForm(params) {
+            const box = document.getElementById('spParamsBox');
+            if (!box) return;
+            box.innerHTML = '';
+            params.forEach(p => {
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+                let inputHtml = '';
+                const commonStyle = 'width:100%;background:#02030a;border:1px solid rgba(0,245,255,.14);border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;';
+
+                if (p.tipo === 'select' && p.opcoes) {
+                    const opts = p.opcoes.split(',').map(o => {
+                        const v = o.trim();
+                        return `<option value="${_escHtml(v)}" ${v===p.default?'selected':''}>${_escHtml(v)}</option>`;
+                    }).join('');
+                    inputHtml = `<select id="sp-param-${p.nome}" style="${commonStyle}">${opts}</select>`;
+                } else if (p.tipo === 'number') {
+                    inputHtml = `<input type="number" id="sp-param-${p.nome}" value="${_escHtml(p.default||'')}" style="${commonStyle}">`;
+                } else if (p.tipo === 'password') {
+                    inputHtml = `<input type="password" id="sp-param-${p.nome}" value="${_escHtml(p.default||'')}" style="${commonStyle}">`;
+                } else {
+                    inputHtml = `<input type="text" id="sp-param-${p.nome}" value="${_escHtml(p.default||'')}" placeholder="${_escHtml(p.ajuda||p.nome)}" style="${commonStyle}">`;
+                }
+
+                const labelHtml = `<label style="font-size:10px;color:rgba(0,245,255,.4);">${_escHtml(p.label||p.nome)}${p.obrigatorio ? ' <span style="color:#ff5555">*</span>':''}</label>`;
+                div.innerHTML = labelHtml + inputHtml;
+                if (p.ajuda) {
+                    const hint = document.createElement('div');
+                    hint.style.cssText = 'font-size:10px;color:rgba(0,245,255,.25);';
+                    hint.textContent = p.ajuda;
+                    div.appendChild(hint);
+                }
+                box.appendChild(div);
+            });
+        }
+
+        // ── Executar ──
+        window.spExecutar = async function() {
+            if (spExecutando) return;
+
+            // Lê direto do seletor (fonte definitiva)
+            const sel = document.getElementById('spAcesoSelect');
+            if (sel && sel.value) spAcesoId = parseInt(sel.value);
+
+            if (!spAcesoId) {
+                alert('Selecione o equipamento alvo no topo do painel.');
+                return;
+            }
+            if (!spScriptAtual) {
+                alert('Selecione um script.');
+                return;
+            }
+
+            // Coletar params
+            const params = {};
+            let faltando = [];
+            (spScriptAtual.parametros || []).forEach(p => {
+                const el = document.getElementById(`sp-param-${p.nome}`);
+                const val = el ? el.value.trim() : '';
+                if (p.obrigatorio && !val) faltando.push(p.label || p.nome);
+                params[p.nome] = val;
+            });
+
+            if (faltando.length) {
+                alert('Parâmetros obrigatórios não preenchidos:\n• ' + faltando.join('\n• '));
+                return;
+            }
+
+            spExecutando = true;
+            const btn = document.getElementById('spBtnExecutar');
+            if (btn) { btn.textContent = '⏳ Executando...'; btn.disabled = true; }
+
+            // Limpar output e mudar para aba output
+            const outBox = document.getElementById('spOutputBox');
+            const outEmpty = document.getElementById('spOutputEmpty');
+            if (outBox) outBox.innerHTML = '';
+            if (outEmpty) outEmpty.style.display = 'none';
+            spTab('output');
+
+            function appendOut(html) {
+                if (!outBox) return;
+                outBox.innerHTML += html;
+                outBox.scrollTop = outBox.scrollHeight;
+            }
+
+            try {
+                const response = await fetch('/clientes/scripts/executar/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': _getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        acesso_id: spAcesoId,
+                        script_id: spScriptAtual.id,
+                        parametros: params,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({error: response.statusText}));
+                    appendOut(`<span style="color:#ff5555">ERRO HTTP ${response.status}: ${_escHtml(err.error||'')}</span>\n`);
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, {stream: true});
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+                    for (const part of parts) {
+                        if (!part.startsWith('data:')) continue;
+                        try {
+                            const ev = JSON.parse(part.slice(5).trim());
+                            _renderEvento(ev, appendOut);
+                        } catch(e) {}
+                    }
+                }
+
+                if (outEmpty && outBox.innerHTML.trim() === '') outEmpty.style.display = '';
+
+            } catch(e) {
+                appendOut(`<span style="color:#ff5555">ERRO: ${_escHtml(String(e))}</span>\n`);
+            } finally {
+                spExecutando = false;
+                if (btn) { btn.textContent = '▶ Executar Script'; btn.disabled = false; }
+                if (spAcesoId) spCarregarHistorico(spAcesoId);
+            }
+        };
+
+        function _renderEvento(ev, append) {
+            const tipo = ev.tipo;
+            if (tipo === 'info') {
+                append(`<span style="color:rgba(0,245,255,.3)">ℹ ${_escHtml(ev.msg)}</span>\n`);
+            } else if (tipo === 'cmd') {
+                const prog = ev.total > 0 ? ` [${ev.idx}/${ev.total}]` : '';
+                append(`\n<span style="color:#ffa500;font-weight:700">▶ ${_escHtml(ev.cmd)}${prog}</span>\n`);
+            } else if (tipo === 'output') {
+                append(`<span style="color:#00ff88">${_escHtml(ev.output)}</span>\n`);
+            } else if (tipo === 'erro_cmd') {
+                append(`<span style="color:#ff5555">✗ Erro no comando '${_escHtml(ev.cmd)}': ${_escHtml(ev.erro)}</span>\n`);
+            } else if (tipo === 'erro') {
+                append(`\n<span style="color:#ff5555;font-weight:700">✗ ERRO: ${_escHtml(ev.erro)}</span>\n`);
+            } else if (tipo === 'fim') {
+                const color = ev.status === 'sucesso' ? '#00ff88' : ev.status === 'parcial' ? '#ffa500' : '#ff5555';
+                append(`\n<span style="color:${color};font-weight:700">━━ Concluído: ${_escHtml(ev.status)} ━━</span>\n`);
+            }
+        }
+
+        // ── Histórico ──
+        async function spCarregarHistorico(acessoId) {
+            const container = document.getElementById('spHistContent');
+            if (!container) return;
+            container.textContent = 'Carregando...';
+            container.style.color = '#555';
+
+            try {
+                const r = await fetch(`/clientes/scripts/historico/${acessoId}/`);
+                const data = await r.json();
+                const hist = data.historico || [];
+
+                if (hist.length === 0) {
+                    container.innerHTML = '<div style="color:rgba(0,245,255,.25);text-align:center;padding:20px">Nenhuma execução registrada para este equipamento.</div>';
+                    return;
+                }
+
+                const statusColor = {sucesso:'#00ff88', erro:'#ff5555', parcial:'#ffa500', executando:'#00f5ff'};
+                let html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+                html += '<tr style="border-bottom:1px solid rgba(0,245,255,.15);"><th style="text-align:left;padding:6px 8px;color:rgba(0,245,255,.25);font-size:10px;">Script</th><th style="text-align:left;padding:6px 8px;color:rgba(0,245,255,.25);font-size:10px;">Status</th><th style="text-align:left;padding:6px 8px;color:rgba(0,245,255,.25);font-size:10px;">Início</th></tr>';
+                hist.forEach(h => {
+                    const cor = statusColor[h.status] || 'rgba(0,245,255,.3)';
+                    html += `<tr style="border-bottom:1px solid rgba(0,245,255,.06);">
+                        <td style="padding:7px 8px;color:rgba(0,245,255,.5);">${_escHtml(h.script)}</td>
+                        <td style="padding:7px 8px;"><span style="color:${cor}">● ${_escHtml(h.status)}</span></td>
+                        <td style="padding:7px 8px;color:rgba(0,245,255,.3);">${_escHtml(h.iniciado_em)}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+                container.innerHTML = html;
+                container.style.color = '';
+            } catch(e) {
+                container.innerHTML = '<div style="color:#ff5555;text-align:center;padding:20px">Erro ao carregar histórico.</div>';
+            }
+        }
+
     })();
     </script>
 </body>

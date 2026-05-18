@@ -305,6 +305,86 @@ def firmware_download(request, token, nome_arquivo):
 # ── Info de compartilhamentos ativos de um arquivo ───────────────────────────
 @login_required(login_url='login')
 @admin_required
+@require_POST
+def firmware_upload_url(request):
+    """Faz download de um arquivo via HTTP/HTTPS e salva no gerenciador."""
+    import requests as req_lib
+    from urllib.parse import urlparse, unquote
+
+    data = json.loads(request.body)
+    url = data.get('url', '').strip()
+    pasta_id = data.get('pasta_id') or None
+
+    if not url:
+        return JsonResponse({'ok': False, 'erro': 'URL não informada'}, status=400)
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        return JsonResponse({'ok': False, 'erro': 'Apenas URLs http:// ou https:// são suportadas'}, status=400)
+
+    pasta = FirmwarePasta.objects.get(pk=int(pasta_id)) if pasta_id else None
+
+    # Nome do arquivo a partir da URL
+    path_part = parsed.path.rstrip('/')
+    nome = unquote(os.path.basename(path_part)) or 'arquivo'
+    if '.' not in nome:
+        nome = nome + '.bin'
+
+    # Diretório de destino
+    dest_dir = os.path.join(FIRMWARE_ROOT, pasta.caminho_completo) if pasta else FIRMWARE_ROOT
+    os.makedirs(dest_dir, exist_ok=True)
+
+    # Evitar colisão de nomes
+    dest_path = os.path.join(dest_dir, nome)
+    base, ext = os.path.splitext(nome)
+    contador = 1
+    while os.path.exists(dest_path):
+        nome = f'{base}({contador}){ext}'
+        dest_path = os.path.join(dest_dir, nome)
+        contador += 1
+
+    try:
+        resp = req_lib.get(url, stream=True, timeout=30, verify=True,
+                           headers={'User-Agent': 'Mozilla/5.0 (firmware-manager)'})
+        resp.raise_for_status()
+        with open(dest_path, 'wb') as fp:
+            for chunk in resp.iter_content(chunk_size=8 * 1024 * 1024):
+                if chunk:
+                    fp.write(chunk)
+    except req_lib.exceptions.SSLError:
+        return JsonResponse({'ok': False, 'erro': 'Erro de certificado SSL na URL informada'}, status=400)
+    except req_lib.exceptions.ConnectionError:
+        return JsonResponse({'ok': False, 'erro': 'Não foi possível conectar ao servidor remoto'}, status=400)
+    except req_lib.exceptions.Timeout:
+        return JsonResponse({'ok': False, 'erro': 'Tempo limite excedido ao tentar baixar o arquivo'}, status=400)
+    except req_lib.exceptions.HTTPError as e:
+        return JsonResponse({'ok': False, 'erro': f'Servidor remoto retornou erro: {e.response.status_code}'}, status=400)
+    except Exception as e:
+        # Remove arquivo parcial se houver
+        if os.path.exists(dest_path):
+            try:
+                os.remove(dest_path)
+            except Exception:
+                pass
+        return JsonResponse({'ok': False, 'erro': f'Erro ao baixar arquivo: {str(e)}'}, status=500)
+
+    tamanho = os.path.getsize(dest_path)
+    mime_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    pasta_rel = os.path.join('firmware', pasta.caminho_completo, nome) if pasta else os.path.join('firmware', nome)
+
+    arq = FirmwareArquivo.objects.create(
+        nome=nome,
+        arquivo=pasta_rel,
+        tamanho=tamanho,
+        mime_type=mime_type,
+        pasta=pasta,
+        criado_por=request.user,
+    )
+    return JsonResponse({'ok': True, 'arquivo': _serialize_arquivo(arq, request)})
+
+
+@login_required(login_url='login')
+@admin_required
 def firmware_links_ativos(request, arquivo_id):
     arq   = get_object_or_404(FirmwareArquivo, pk=arquivo_id)
     comps = arq.compartilhamentos.filter(expira_em__gt=timezone.now())

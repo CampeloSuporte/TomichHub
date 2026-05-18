@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+:root {
+    --cy: #00f5ff;
+    --gr: #00ff88;
+    --bl: #1a4fff;
+    --or: #ffa500;
+    --rd: #ff5555;
+    --bg: #02030a;
+    --bg2: #060c18;
+    --muted: rgba(0,245,255,0.4);
+}
+
+.rpt-page {
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 1.5rem;
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+.rpt-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    color: var(--cy);
+    text-shadow: 0 0 18px rgba(0,245,255,0.5);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+.rpt-subtitle { color: var(--muted); font-size: .75rem; letter-spacing: 2px; }
+
+/* Filter bar */
+.filter-bar {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.15);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .7rem;
+    align-items: flex-end;
+}
+.filter-group { display: flex; flex-direction: column; gap: .25rem; }
+.filter-group label {
+    font-size: .65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+.filter-group select,
+.filter-group input[type=date] {
+    background: #030a14;
+    border: 1px solid rgba(0,245,255,0.2);
+    border-radius: 4px;
+    color: var(--cy);
+    padding: .35rem .6rem;
+    font-family: inherit;
+    font-size: .8rem;
+    outline: none;
+    min-width: 140px;
+}
+.filter-group select:focus,
+.filter-group input:focus {
+    border-color: rgba(0,245,255,0.5);
+}
+.btn-filter {
+    background: rgba(0,245,255,0.1);
+    border: 1px solid rgba(0,245,255,0.3);
+    color: var(--cy);
+    border-radius: 4px;
+    padding: .35rem 1rem;
+    font-family: inherit;
+    font-size: .8rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: background .2s;
+    height: fit-content;
+    align-self: flex-end;
+}
+.btn-filter:hover { background: rgba(0,245,255,0.2); }
+.btn-reset {
+    background: transparent;
+    border: 1px solid rgba(0,245,255,0.15);
+    color: var(--muted);
+    border-radius: 4px;
+    padding: .35rem .8rem;
+    font-family: inherit;
+    font-size: .75rem;
+    cursor: pointer;
+    height: fit-content;
+    align-self: flex-end;
+    text-decoration: none;
+    display: inline-block;
+    line-height: 1.5;
+}
+.btn-reset:hover { color: var(--cy); border-color: rgba(0,245,255,0.3); }
+
+/* Summary row */
+.sum-row {
+    display: flex;
+    gap: .8rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+}
+.sum-chip {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.12);
+    border-radius: 6px;
+    padding: .5rem 1rem;
+    font-size: .78rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.sum-chip .sum-n {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+}
+
+/* Table */
+.rpt-card {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.15);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.rpt-card-head {
+    padding: .8rem 1.2rem;
+    border-bottom: 1px solid rgba(0,245,255,0.12);
+    font-family: 'Orbitron', sans-serif;
+    font-size: .78rem;
+    color: var(--cy);
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    justify-content: space-between;
+}
+.cy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+}
+.cy-table thead th {
+    background: rgba(0,245,255,0.05);
+    color: var(--cy);
+    font-size: .68rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: .55rem .8rem;
+    border-bottom: 1px solid rgba(0,245,255,0.12);
+    white-space: nowrap;
+}
+.cy-table tbody tr {
+    border-bottom: 1px solid rgba(0,245,255,0.05);
+    transition: background .12s;
+}
+.cy-table tbody tr:hover { background: rgba(0,245,255,0.03); }
+.cy-table td { padding: .5rem .8rem; color: #c9d8e8; }
+
+.badge-cy { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: .68rem; font-weight: 600; letter-spacing: .5px; }
+.badge-ok   { background: rgba(0,255,136,.12); color: #00ff88; border: 1px solid rgba(0,255,136,.3); }
+.badge-err  { background: rgba(255,85,85,.12);  color: #ff5555; border: 1px solid rgba(255,85,85,.3); }
+.badge-warn { background: rgba(255,165,0,.12);  color: #ffa500; border: 1px solid rgba(255,165,0,.3); }
+.badge-info { background: rgba(0,245,255,.1);   color: #00f5ff; border: 1px solid rgba(0,245,255,.25); }
+
+/* Pagination */
+.pager {
+    display: flex;
+    gap: .4rem;
+    justify-content: center;
+    padding: 1rem;
+    flex-wrap: wrap;
+}
+.pager a, .pager span {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.15);
+    color: var(--cy);
+    border-radius: 4px;
+    padding: .3rem .7rem;
+    font-size: .78rem;
+    text-decoration: none;
+    transition: background .15s;
+}
+.pager a:hover { background: rgba(0,245,255,0.1); }
+.pager .current {
+    background: rgba(0,245,255,0.15);
+    border-color: rgba(0,245,255,0.4);
+    font-weight: bold;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+}
+.empty-state i { font-size: 2.5rem; display: block; margin-bottom: .6rem; opacity:.4; }
+</style>
+
+<div class="rpt-page">
+    <!-- Header -->
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:1.2rem; flex-wrap:wrap; gap:.5rem;">
+        <div>
+            <div class="rpt-title"><i class="fas fa-database" style="margin-right:.5rem;"></i> Relatório de Backups</div>
+            <div class="rpt-subtitle">Histórico de backups dos hosts dos clientes</div>
+        </div>
+        <a href="{% url 'quadro_geral' %}" style="color:var(--muted); font-size:.75rem; text-decoration:none;">
+            ← Dashboard
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="filter-bar">
+        <div class="filter-group">
+            <label>Cliente</label>
+            <select name="cliente">
+                <option value="">Todos</option>
+                {% for c in clientes %}
+                <option value="{{ c.id }}" {% if cliente_id == c.id|stringformat:"s" %}selected{% endif %}>
+                    {{ c.nome_empresa|truncatechars:28 }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Status</label>
+            <select name="status">
+                <option value="">Todos</option>
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if status_f == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>De</label>
+            <input type="date" name="data_ini" value="{{ data_ini }}">
+        </div>
+        <div class="filter-group">
+            <label>Até</label>
+            <input type="date" name="data_fim" value="{{ data_fim }}">
+        </div>
+        <button type="submit" class="btn-filter"><i class="fas fa-search"></i> Filtrar</button>
+        <a href="{% url 'relatorio_backups' %}" class="btn-reset">Limpar</a>
+    </form>
+
+    <!-- Resumo -->
+    <div class="sum-row">
+        <div class="sum-chip">
+            <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">Total</span>
+            <span class="sum-n" style="color:var(--cy);">{{ total }}</span>
+        </div>
+        <div class="sum-chip">
+            <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">OK</span>
+            <span class="sum-n" style="color:#00ff88;">{{ total_ok }}</span>
+        </div>
+        <div class="sum-chip">
+            <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">Erro</span>
+            <span class="sum-n" style="color:#ff5555;">{{ total_erro }}</span>
+        </div>
+        <div class="sum-chip">
+            <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">Sem Mud.</span>
+            <span class="sum-n" style="color:#ffa500;">{{ total_sem }}</span>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <span><i class="fas fa-list"></i> Registros</span>
+            <span style="font-family:'Share Tech Mono',monospace; font-size:.7rem; color:var(--muted);">
+                Página {{ backups.number }} de {{ backups.paginator.num_pages }}
+            </span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="cy-table">
+                <thead>
+                    <tr>
+                        <th>Data / Hora</th>
+                        <th>Cliente</th>
+                        <th>Host</th>
+                        <th>Template</th>
+                        <th>Status</th>
+                        <th>Duração</th>
+                        <th>Hash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for bk in backups %}
+                <tr>
+                    <td style="white-space:nowrap; color:var(--muted);">{{ bk.data_backup|date:"d/m/Y H:i:s" }}</td>
+                    <td>
+                        <a href="{% url 'listar_clientes' %}?id={{ bk.cliente.id }}" style="color:var(--cy); text-decoration:none;">
+                            {{ bk.cliente.nome_empresa|truncatechars:22 }}
+                        </a>
+                    </td>
+                    <td style="color:#c9d8e8;">{{ bk.acesso.host }}</td>
+                    <td style="color:var(--muted); font-size:.75rem;">{{ bk.template.nome|default:"—"|truncatechars:20 }}</td>
+                    <td>
+                        {% if bk.status == 'SUCESSO' %}
+                            <span class="badge-cy badge-ok">SUCESSO</span>
+                        {% elif bk.status == 'ERRO' %}
+                            <span class="badge-cy badge-err">ERRO</span>
+                        {% elif bk.status == 'SEM_MUDANCAS' %}
+                            <span class="badge-cy badge-warn">SEM MUD.</span>
+                        {% elif bk.status == 'PARCIAL' %}
+                            <span class="badge-cy badge-info">PARCIAL</span>
+                        {% else %}
+                            <span class="badge-cy badge-info">{{ bk.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--muted); white-space:nowrap;">
+                        {% if bk.duracao_segundos %}{{ bk.duracao_segundos }}s{% else %}—{% endif %}
+                    </td>
+                    <td style="font-size:.7rem; color:rgba(0,245,255,.35); font-family:'Share Tech Mono',monospace;">
+                        {% if bk.hash_conteudo %}{{ bk.hash_conteudo|truncatechars:12 }}{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7">
+                    <div class="empty-state">
+                        <i class="fas fa-database"></i>
+                        Nenhum backup encontrado com os filtros selecionados.
+                    </div>
+                </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if backups.has_other_pages %}
+        <div class="pager">
+            {% if backups.has_previous %}
+                <a href="?page=1{% if cliente_id %}&cliente={{ cliente_id }}{% endif %}{% if status_f %}&status={{ status_f }}{% endif %}{% if data_ini %}&data_ini={{ data_ini }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">«</a>
+                <a href="?page={{ backups.previous_page_number }}{% if cliente_id %}&cliente={{ cliente_id }}{% endif %}{% if status_f %}&status={{ status_f }}{% endif %}{% if data_ini %}&data_ini={{ data_ini }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">‹</a>
+            {% endif %}
+
+            {% for num in backups.paginator.page_range %}
+                {% if backups.number == num %}
+                    <span class="current">{{ num }}</span>
+                {% elif num > backups.number|add:'-3' and num < backups.number|add:'3' %}
+                    <a href="?page={{ num }}{% if cliente_id %}&cliente={{ cliente_id }}{% endif %}{% if status_f %}&status={{ status_f }}{% endif %}{% if data_ini %}&data_ini={{ data_ini }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if backups.has_next %}
+                <a href="?page={{ backups.next_page_number }}{% if cliente_id %}&cliente={{ cliente_id }}{% endif %}{% if status_f %}&status={{ status_f }}{% endif %}{% if data_ini %}&data_ini={{ data_ini }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">›</a>
+                <a href="?page={{ backups.paginator.num_pages }}{% if cliente_id %}&cliente={{ cliente_id }}{% endif %}{% if status_f %}&status={{ status_f }}{% endif %}{% if data_ini %}&data_ini={{ data_ini }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">»</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

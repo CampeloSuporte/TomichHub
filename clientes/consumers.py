@@ -7,6 +7,8 @@ import ipaddress
 import logging
 import time
 import os
+import ssl
+import struct
 import socket
 import paramiko
 from channels.generic.websocket import WebsocketConsumer
@@ -51,7 +53,15 @@ class SSHConsumer(WebsocketConsumer):
         self.limpar_recursos()
         logger.info("✅ Limpeza concluída")
 
-    def receive(self, text_data):
+    def receive(self, text_data=None, bytes_data=None):
+        # Hot path: binary frame = raw keypress bytes (sem JSON overhead)
+        if bytes_data is not None:
+            try:
+                self.enviar_comando(bytes_data.decode('utf-8', errors='replace'))
+            except Exception as e:
+                logger.error(f"❌ Erro ao enviar bytes: {e}")
+            return
+
         try:
             data   = json.loads(text_data)
             action = data.get('action')
@@ -369,7 +379,7 @@ class SSHConsumer(WebsocketConsumer):
             terminal_type = "vt100" if self.is_huawei else "xterm-256color"
             shell.get_pty(term=terminal_type, width=220, height=50)
             shell.invoke_shell()
-            shell.settimeout(0.05)
+            shell.settimeout(0.005)
             self._paramiko_shell = shell
 
             if self.is_huawei:
@@ -699,7 +709,7 @@ class SSHConsumer(WebsocketConsumer):
             while self.is_reading and self.ssh_process:
                 try:
                     # Bloqueia no SO até dado chegar — sem spin, sem sleep Python
-                    r, _, _ = select.select([fd], [], [], 0.05)
+                    r, _, _ = select.select([fd], [], [], 0.001)
                     if not r:
                         if buf:
                             self.send_output(buf.decode('utf-8', errors='replace'))
@@ -767,8 +777,8 @@ class SSHConsumer(WebsocketConsumer):
                     if not sock:
                         break
 
-                    # Aguarda dados por até 50ms — sem sleep desnecessário
-                    r, _, _ = select.select([sock], [], [], 0.05)
+                    # Aguarda dados por até 1ms — latência mínima ao digitar
+                    r, _, _ = select.select([sock], [], [], 0.001)
                     if not r:
                         if buf:
                             self.send_output(buf.decode('utf-8', errors='ignore'))
@@ -830,10 +840,9 @@ class SSHConsumer(WebsocketConsumer):
         raise Exception("Nenhuma porta disponível")
 
     def send_output(self, text):
-        """Envia output do terminal — caminho mais rápido, sem dict intermediário."""
+        """Envia output do terminal — bytes puros, sem JSON overhead."""
         try:
-            # Monta JSON manualmente para evitar serialização de dict completo
-            self.send(text_data='{"type":"output","data":' + json.dumps(text) + '}')
+            self.send(bytes_data=text.encode('utf-8'))
         except Exception:
             pass
 
@@ -1098,3 +1107,242 @@ class WinboxVNCConsumer(SSHConsumer):
         finally:
             self.limpar_recursos()
             self.close()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WebSocket Proxy Consumer
+# Aceita WS do browser e faz bridge para o equipamento via túnel SSH.
+# Rota: /ws/proxy/<acesso_id>/<porta>/<scheme>/<path>
+# ─────────────────────────────────────────────────────────────────────────────
+
+class WebSocketProxyConsumer(WebsocketConsumer):
+
+    def connect(self):
+        self.ws_sock     = None
+        self.is_running  = False
+        self.recv_thread = None
+
+        subprotocols = self.scope.get('subprotocols', [])
+        try:
+            if subprotocols:
+                self.accept(subprotocol=subprotocols[0])
+            else:
+                self.accept()
+        except Exception:
+            self.accept()
+
+        try:
+            kwargs      = self.scope['url_route']['kwargs']
+            acesso_id   = kwargs['acesso_id']
+            porta       = int(kwargs['porta'])
+            scheme      = kwargs['scheme']
+            path        = '/' + kwargs.get('path', '')
+            qs          = self.scope.get('query_string', b'').decode()
+            full_path   = path + ('?' + qs if qs else '')
+
+            acesso      = Acesso.objects.get(id=acesso_id)
+            target_host = acesso.host.strip()
+            if '://' in target_host:
+                from urllib.parse import urlparse as _up
+                target_host = _up(target_host).hostname
+
+            try:
+                is_private = ipaddress.ip_address(target_host).is_private
+            except ValueError:
+                is_private = False
+
+            if is_private:
+                proxy_srv = ProxyServer.objects.filter(
+                    cliente=acesso.cliente, ativo=True
+                ).first()
+                if not proxy_srv:
+                    raise Exception(f'Sem proxy SSH ativo para {acesso.cliente}')
+                from .proxy_engine import TunnelPortCache, SSHConnectionPool
+                local_port = TunnelPortCache.get_port(
+                    proxy_srv, target_host, porta, SSHConnectionPool()
+                )
+                connect_host, connect_port = '127.0.0.1', local_port
+            else:
+                connect_host, connect_port = target_host, porta
+
+            raw_sock = socket.create_connection((connect_host, connect_port), timeout=10)
+
+            if scheme == 'https':
+                ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                ctx.check_hostname = False
+                ctx.verify_mode    = ssl.CERT_NONE
+                try:
+                    ctx.set_ciphers('DEFAULT@SECLEVEL=0')
+                except Exception:
+                    pass
+                raw_sock = ctx.wrap_socket(raw_sock, server_hostname=target_host)
+
+            raw_sock, leftover = self._ws_handshake(
+                raw_sock, target_host, porta, full_path,
+                subprotocols=subprotocols or ['binary']
+            )
+            self.ws_sock = raw_sock
+
+            if leftover:
+                self.send(bytes_data=leftover)
+
+            self.is_running  = True
+            self.recv_thread = threading.Thread(
+                target=self._forward_from_device, daemon=True
+            )
+            self.recv_thread.start()
+            logger.info(f"[WS_PROXY] OK acesso={acesso_id} {scheme}://{target_host}:{porta}{path}")
+
+        except Exception as e:
+            logger.error(f"[WS_PROXY] Falha ao conectar: {e}")
+            self.close()
+
+    def disconnect(self, close_code):
+        self.is_running = False
+        if self.ws_sock:
+            try:
+                self.ws_sock.close()
+            except Exception:
+                pass
+            self.ws_sock = None
+
+    def receive(self, text_data=None, bytes_data=None):
+        if not self.ws_sock or not self.is_running:
+            return
+        data = bytes_data if bytes_data is not None else (text_data or '').encode()
+        if not data:
+            return
+        try:
+            self._ws_send_frame(self.ws_sock, data, is_binary=(bytes_data is not None))
+        except Exception as e:
+            logger.error(f"[WS_PROXY] Erro ao enviar para device: {e}")
+            self.is_running = False
+            self.close()
+
+    def _forward_from_device(self):
+        try:
+            while self.is_running and self.ws_sock:
+                ftype, data = self._ws_recv_frame(self.ws_sock)
+                if ftype is None or ftype == 'close':
+                    break
+                if ftype == 'ping':
+                    self._ws_send_pong(self.ws_sock, data)
+                    continue
+                if ftype in ('binary', 'text', 'cont'):
+                    if ftype == 'text':
+                        self.send(text_data=data.decode('utf-8', errors='replace'))
+                    else:
+                        self.send(bytes_data=data)
+        except Exception as e:
+            if self.is_running:
+                logger.error(f"[WS_PROXY] Erro ao ler do device: {e}")
+        finally:
+            self.is_running = False
+            try:
+                self.close()
+            except Exception:
+                pass
+
+    # ── Helpers WebSocket protocol ────────────────────────────────────────────
+
+    @staticmethod
+    def _ws_handshake(sock, host, port, path_qs, subprotocols=None):
+        import base64, os as _os
+        key = base64.b64encode(_os.urandom(16)).decode()
+        lines = [
+            f'GET {path_qs} HTTP/1.1',
+            f'Host: {host}:{port}',
+            'Upgrade: websocket',
+            'Connection: Upgrade',
+            f'Sec-WebSocket-Key: {key}',
+            'Sec-WebSocket-Version: 13',
+        ]
+        if subprotocols:
+            lines.append(f'Sec-WebSocket-Protocol: {", ".join(subprotocols)}')
+        lines += ['', '']
+        sock.sendall('\r\n'.join(lines).encode())
+
+        buf = b''
+        while b'\r\n\r\n' not in buf:
+            chunk = sock.recv(4096)
+            if not chunk:
+                raise RuntimeError('Conexão encerrada no handshake WebSocket')
+            buf += chunk
+
+        head, _, leftover = buf.partition(b'\r\n\r\n')
+        if b' 101 ' not in head:
+            raise RuntimeError(
+                f'Upgrade WebSocket falhou: {head[:300].decode("utf-8", errors="replace")}'
+            )
+        return sock, leftover
+
+    @staticmethod
+    def _ws_recv_frame(sock):
+        def _recv(n):
+            buf = b''
+            while len(buf) < n:
+                chunk = sock.recv(n - len(buf))
+                if not chunk:
+                    return None
+                buf += chunk
+            return buf
+
+        hdr = _recv(2)
+        if hdr is None:
+            return None, None
+
+        byte1, byte2 = hdr[0], hdr[1]
+        opcode = byte1 & 0x0F
+        masked = bool(byte2 & 0x80)
+        length = byte2 & 0x7F
+
+        if length == 126:
+            d = _recv(2)
+            if d is None:
+                return None, None
+            length = struct.unpack('!H', d)[0]
+        elif length == 127:
+            d = _recv(8)
+            if d is None:
+                return None, None
+            length = struct.unpack('!Q', d)[0]
+
+        mask_key = _recv(4) if masked else None
+        payload  = _recv(length) if length > 0 else b''
+        if payload is None:
+            return None, None
+
+        if masked and mask_key:
+            payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
+
+        ftype = {0x0: 'cont', 0x1: 'text', 0x2: 'binary',
+                 0x8: 'close', 0x9: 'ping', 0xA: 'pong'}.get(opcode, 'binary')
+        return ftype, payload
+
+    @staticmethod
+    def _ws_send_frame(sock, data, is_binary=True):
+        import os as _os
+        opcode   = 0x2 if is_binary else 0x1
+        length   = len(data)
+        mask_key = _os.urandom(4)
+        masked   = bytes(b ^ mask_key[i % 4] for i, b in enumerate(data))
+        frame    = bytearray()
+        frame.append(0x80 | opcode)
+        if length < 126:
+            frame.append(0x80 | length)
+        elif length < 65536:
+            frame.append(0x80 | 126)
+            frame.extend(struct.pack('!H', length))
+        else:
+            frame.append(0x80 | 127)
+            frame.extend(struct.pack('!Q', length))
+        frame.extend(mask_key)
+        frame.extend(masked)
+        sock.sendall(bytes(frame))
+
+    @staticmethod
+    def _ws_send_pong(sock, data):
+        frame = bytearray([0x8A])
+        frame.append(0x80 | min(len(data), 125))
+        frame.extend(b'\x00\x00\x00\x00')
+        frame.extend(data[:125])
+        sock.sendall(bytes(frame))

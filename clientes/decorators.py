@@ -58,6 +58,22 @@ def admin_required(view_func):
     return wrapper
 
 
+def superuser_required(view_func):
+    """
+    Decorador que verifica se o usuário é superusuário (administrador).
+    Apenas usuários com is_superuser=True têm acesso.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if not request.user.is_superuser:
+            messages.error(request, 'Você não possui permissão para acessar esta página.')
+            return redirect('quadro_geral')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 def cliente_or_admin_required(view_func):
     """
     Decorador que verifica se o usuário é cliente ou admin.

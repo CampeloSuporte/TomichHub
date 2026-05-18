@@ -2,318 +2,589 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<style>
+:root {
+    --cy: #00f5ff;
+    --gr: #00ff88;
+    --bl: #1a4fff;
+    --or: #ffa500;
+    --rd: #ff5555;
+    --pu: #b060ff;
+    --bg: #02030a;
+    --bg2: #060c18;
+    --bg3: #0a1628;
+    --muted: rgba(0,245,255,0.4);
+}
 
-    {% if not cliente %}
-    <!-- ============================================ -->
-    <!-- DASHBOARD EXECUTIVO -->
-    <!-- ============================================ -->
+.fin-page {
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 1.5rem;
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
 
-    <div class="mb-4">
-        <h1 class="display-6 fw-bold mb-1">💰 Painel Financeiro</h1>
-        <p class="text-muted">Visão executiva em tempo real</p>
+.fin-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.5rem;
+    color: var(--cy);
+    text-shadow: 0 0 18px rgba(0,245,255,0.5);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+.fin-subtitle { color: var(--muted); font-size: .75rem; letter-spacing: 2px; }
+
+/* ── KPI Cards ── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.kpi-card {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.13);
+    border-radius: 8px;
+    padding: 1.2rem 1rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    cursor: default;
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--kpi-color, var(--cy));
+    box-shadow: 0 0 10px var(--kpi-color, var(--cy));
+}
+.kpi-card:hover {
+    border-color: rgba(0,245,255,0.3);
+    box-shadow: 0 0 20px rgba(0,245,255,0.07);
+    transform: translateY(-2px);
+}
+.kpi-label {
+    font-size: .65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: .4rem;
+}
+.kpi-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--kpi-color, var(--cy));
+    text-shadow: 0 0 10px var(--kpi-color, var(--cy));
+}
+.kpi-value .kpi-prefix { font-size: 1rem; opacity: .7; }
+.kpi-sub { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
+.kpi-icon {
+    position: absolute;
+    right: .9rem; top: 50%;
+    transform: translateY(-50%);
+    font-size: 2rem;
+    color: var(--kpi-color, var(--cy));
+    opacity: .1;
+}
+.kpi-badge { display: inline-block; font-size: .7rem; margin-top: .25rem; }
+
+/* ── Cards genéricos ── */
+.cy-card {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.13);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.2rem;
+}
+.cy-card-head {
+    padding: .75rem 1.1rem;
+    border-bottom: 1px solid rgba(0,245,255,0.1);
+    font-family: 'Orbitron', sans-serif;
+    font-size: .75rem;
+    color: var(--cy);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    justify-content: space-between;
+}
+.cy-card-body { padding: 1rem 1.1rem; }
+
+/* ── Alert strip ── */
+.vencer-strip {
+    background: rgba(255,165,0,0.07);
+    border: 1px solid rgba(255,165,0,0.25);
+    border-radius: 6px;
+    padding: .7rem 1rem;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+.vencer-strip .strip-icon { color: var(--or); font-size: 1.1rem; flex-shrink: 0; }
+.vencer-strip .strip-text { font-size: .78rem; color: #e0c080; }
+.vencer-strip .strip-items { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .3rem; }
+.vencer-chip {
+    background: rgba(255,165,0,.1);
+    border: 1px solid rgba(255,165,0,.25);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: .7rem;
+    color: var(--or);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .15s;
+}
+.vencer-chip:hover { background: rgba(255,165,0,.2); color: var(--or); }
+
+/* ── Layout grid ── */
+.two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
+.two-col-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
+@media(max-width: 900px) { .two-col, .two-col-eq { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Tables ── */
+.cy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .78rem;
+}
+.cy-table thead th {
+    background: rgba(0,245,255,0.04);
+    color: var(--cy);
+    font-size: .65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: .5rem .75rem;
+    border-bottom: 1px solid rgba(0,245,255,0.1);
+    white-space: nowrap;
+}
+.cy-table tbody tr {
+    border-bottom: 1px solid rgba(0,245,255,0.05);
+    transition: background .1s;
+}
+.cy-table tbody tr:hover { background: rgba(0,245,255,0.03); }
+.cy-table td { padding: .45rem .75rem; color: #c9d8e8; }
+
+.badge-cy { display:inline-block; padding:2px 7px; border-radius:3px; font-size:.65rem; font-weight:600; letter-spacing:.5px; }
+.b-ok    { background:rgba(0,255,136,.1); color:#00ff88; border:1px solid rgba(0,255,136,.3); }
+.b-err   { background:rgba(255,85,85,.1);  color:#ff5555; border:1px solid rgba(255,85,85,.3); }
+.b-warn  { background:rgba(255,165,0,.1);  color:#ffa500; border:1px solid rgba(255,165,0,.3); }
+.b-info  { background:rgba(0,245,255,.08); color:#00f5ff; border:1px solid rgba(0,245,255,.22); }
+.b-pu    { background:rgba(176,96,255,.1); color:#b060ff; border:1px solid rgba(176,96,255,.3); }
+
+/* ── Search ── */
+.cy-search-wrap { position: relative; }
+.cy-search-wrap i { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+.cy-search-input {
+    width: 100%;
+    background: #030a14;
+    border: 1px solid rgba(0,245,255,0.2);
+    border-radius: 6px;
+    color: var(--cy);
+    padding: .5rem .75rem .5rem 2.2rem;
+    font-family: inherit;
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .2s;
+}
+.cy-search-input:focus { border-color: rgba(0,245,255,0.5); }
+.cy-search-input::placeholder { color: rgba(0,245,255,0.3); }
+#resultado-pesquisa { margin-top: .75rem; }
+
+/* ── Aging bars ── */
+.aging-row { margin-bottom: 1rem; }
+.aging-label { display:flex; justify-content:space-between; margin-bottom:.3rem; font-size:.75rem; }
+.aging-label .name { color: #c9d8e8; }
+.aging-label .val  { color: var(--cy); font-family:'Orbitron',sans-serif; font-size:.7rem; }
+.aging-bar-bg { height: 6px; background: rgba(255,255,255,.07); border-radius: 3px; overflow: hidden; }
+.aging-bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+/* ── Tabs (client mode) ── */
+.cy-tabs { display:flex; gap:0; border-bottom:1px solid rgba(0,245,255,0.15); margin-bottom:1.2rem; flex-wrap:wrap; }
+.cy-tab {
+    padding: .55rem 1.1rem;
+    font-size: .72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    font-family: inherit;
+    transition: color .15s, border-color .15s;
+}
+.cy-tab:hover { color: var(--cy); }
+.cy-tab.active { color: var(--cy); border-bottom-color: var(--cy); }
+
+.cy-tab-pane { display: none; }
+.cy-tab-pane.active { display: block; }
+
+/* ── Btn ── */
+.btn-cy {
+    background: rgba(0,245,255,.08);
+    border: 1px solid rgba(0,245,255,.25);
+    color: var(--cy);
+    border-radius: 5px;
+    padding: .35rem .9rem;
+    font-family: inherit;
+    font-size: .75rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background .15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+.btn-cy:hover { background: rgba(0,245,255,.15); color: var(--cy); }
+.btn-cy-gr { --c: #00ff88; background:rgba(0,255,136,.08); border-color:rgba(0,255,136,.25); color:#00ff88; }
+.btn-cy-gr:hover { background:rgba(0,255,136,.15); color:#00ff88; }
+.btn-cy-rd { background:rgba(255,85,85,.08); border-color:rgba(255,85,85,.25); color:#ff5555; }
+.btn-cy-rd:hover { background:rgba(255,85,85,.15); color:#ff5555; }
+.btn-cy-or { background:rgba(255,165,0,.08); border-color:rgba(255,165,0,.25); color:#ffa500; }
+.btn-cy-or:hover { background:rgba(255,165,0,.15); color:#ffa500; }
+.btn-cy-sm { padding:.2rem .6rem; font-size:.7rem; }
+
+/* ── Spinner ── */
+.cy-spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(0,245,255,.3);
+    border-top-color: var(--cy);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Modals ── */
+.modal-content {
+    background: #060c18 !important;
+    border: 1px solid rgba(0,245,255,0.2) !important;
+    border-radius: 8px !important;
+    color: #c9d8e8 !important;
+}
+.modal-header {
+    border-bottom: 1px solid rgba(0,245,255,0.12) !important;
+    padding: 1rem 1.25rem;
+    background: rgba(0,245,255,0.04) !important;
+}
+.modal-title {
+    font-family: 'Orbitron', sans-serif !important;
+    font-size: .85rem !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase;
+    color: var(--cy) !important;
+}
+.modal-footer { border-top: 1px solid rgba(0,245,255,0.1) !important; }
+.modal-body { padding: 1.25rem; }
+.btn-close-white { filter: invert(1) sepia(1) saturate(3) hue-rotate(155deg) !important; }
+
+/* Forms inside modals */
+.form-label { color: rgba(0,245,255,0.6) !important; font-size: .72rem !important; letter-spacing: 1px !important; text-transform: uppercase; }
+.form-control, .form-select {
+    background: #030a14 !important;
+    border: 1px solid rgba(0,245,255,0.2) !important;
+    color: #c9d8e8 !important;
+    border-radius: 4px !important;
+    font-family: 'Share Tech Mono','Courier New',monospace !important;
+    font-size: .82rem !important;
+}
+.form-control:focus, .form-select:focus {
+    background: #040d1a !important;
+    border-color: rgba(0,245,255,0.5) !important;
+    box-shadow: 0 0 0 .15rem rgba(0,245,255,.15) !important;
+    color: #e8f4f8 !important;
+}
+.form-control::placeholder { color: rgba(0,245,255,0.2) !important; }
+.form-select option { background: #060c18; }
+.input-group-text { background: #040d1a !important; border-color: rgba(0,245,255,.2) !important; color: var(--muted) !important; }
+.alert-danger   { background:rgba(255,85,85,.1) !important;   border-color:rgba(255,85,85,.3) !important;   color:#ffa0a0 !important; }
+.alert-warning  { background:rgba(255,165,0,.1) !important;   border-color:rgba(255,165,0,.3) !important;   color:#ffc870 !important; }
+.alert-info     { background:rgba(0,245,255,.07) !important;  border-color:rgba(0,245,255,.2) !important;   color:#80d8e8 !important; }
+.alert-light    { background:rgba(0,245,255,.04) !important;  border-color:rgba(0,245,255,.12) !important;  color:#c0d4e0 !important; }
+
+/* Nav tabs (Bootstrap compat) */
+.nav-tabs { border-bottom-color: rgba(0,245,255,.15) !important; }
+.nav-link { color: var(--muted) !important; font-size:.72rem !important; letter-spacing:1.5px; text-transform:uppercase; font-family:inherit !important; }
+.nav-link.active { color: var(--cy) !important; border-bottom-color: var(--cy) !important; background: rgba(0,245,255,.04) !important; border-color: rgba(0,245,255,.15) rgba(0,245,255,.15) transparent !important; }
+.nav-link:hover:not(.active) { color: var(--cy) !important; }
+
+/* Tables inside dynamic HTML */
+.table { color: #c9d8e8 !important; font-size:.8rem !important; }
+.table thead th, .table-light th { background:rgba(0,245,255,.04) !important; color:var(--cy) !important; font-size:.65rem !important; letter-spacing:1.5px; text-transform:uppercase; border-color:rgba(0,245,255,.1) !important; }
+.table tbody tr { border-color:rgba(0,245,255,.06) !important; }
+.table-hover tbody tr:hover { background:rgba(0,245,255,.03) !important; }
+.table-light { background: rgba(0,245,255,.03) !important; }
+.table-light td { color:#a0b8c8 !important; background:rgba(0,245,255,.03) !important; }
+.table-warning { background:rgba(255,165,0,.07) !important; }
+.table-warning td { color:#ffc870 !important; background:rgba(255,165,0,.07) !important; }
+
+/* Badges inside dynamic HTML */
+.badge.bg-danger   { background:rgba(255,85,85,.2) !important; color:#ff7070; border:1px solid rgba(255,85,85,.3); }
+.badge.bg-success  { background:rgba(0,255,136,.12) !important; color:#00ff88; border:1px solid rgba(0,255,136,.3); }
+.badge.bg-warning  { background:rgba(255,165,0,.12) !important; color:#ffa500; border:1px solid rgba(255,165,0,.3); }
+.badge.bg-secondary{ background:rgba(150,150,180,.15) !important; color:#9090b0; border:1px solid rgba(150,150,180,.25); }
+.badge.bg-primary  { background:rgba(26,79,255,.2) !important; color:#6090ff; border:1px solid rgba(26,79,255,.3); }
+
+/* Spinner */
+.spinner-border { color: var(--cy) !important; }
+.spinner-border-sm { width:1rem; height:1rem; }
+
+/* Progress */
+.progress { background: rgba(255,255,255,.06) !important; height: 6px !important; border-radius: 3px !important; }
+
+/* scan divider */
+.scan-line { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--cy),transparent); margin:1.2rem 0; opacity:.2; }
+
+/* client cards */
+.client-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
+@media(max-width:800px){ .client-stat-grid { grid-template-columns:repeat(2,1fr); } }
+</style>
+
+<div class="fin-page">
+{% if not cliente %}
+<!-- ============================================================ -->
+<!-- DASHBOARD EXECUTIVO -->
+<!-- ============================================================ -->
+
+<div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem;">
+    <div>
+        <div class="fin-title"><i class="fas fa-coins" style="margin-right:.5rem;"></i>Painel Financeiro</div>
+        <div class="fin-subtitle">Visão executiva em tempo real</div>
     </div>
+</div>
 
-    <!-- CARDS DE RESUMO -->
-    <div class="row mb-4 g-3">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <div class="card-body text-white">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-1 fw-semibold opacity-85 text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Faturamento (Mês)</p>
-                            <h3 class="mb-0 fw-bold">R$ <span id="total-faturamento">...</span></h3>
-                            <small class="opacity-80" id="info-faturamento">—</small>
-                        </div>
-                        <div class="opacity-25"><i class="fas fa-chart-line fa-2x"></i></div>
-                    </div>
-                    <div class="mt-2">
-                        <small class="opacity-80" id="variacao-badge">—</small>
-                    </div>
-                </div>
+<!-- KPI Cards -->
+<div class="kpi-grid">
+    <div class="kpi-card" style="--kpi-color: var(--cy);">
+        <div class="kpi-label">Faturamento (Mês)</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> <span id="total-faturamento">…</span></div>
+        <div class="kpi-sub" id="info-faturamento">—</div>
+        <div class="kpi-badge" id="variacao-badge"></div>
+        <i class="fas fa-chart-line kpi-icon"></i>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--rd);">
+        <div class="kpi-label">Em Atraso</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> <span id="total-em-aberto">…</span></div>
+        <div class="kpi-sub" id="info-aberto">—</div>
+        <i class="fas fa-exclamation-triangle kpi-icon"></i>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--bl);">
+        <div class="kpi-label">Prospecção Futura</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> <span id="prospeccao-valor">…</span></div>
+        <div class="kpi-sub" id="info-prospeccao">—</div>
+        <i class="fas fa-rocket kpi-icon"></i>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--gr);">
+        <div class="kpi-label">Ticket Médio</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> <span id="ticket-medio">…</span></div>
+        <div class="kpi-sub" id="info-ticket">—</div>
+        <i class="fas fa-tag kpi-icon"></i>
+    </div>
+</div>
+
+<!-- Alertas de vencimento próximo -->
+<div id="vencer-strip-wrap"></div>
+
+<!-- Gráfico + Aging -->
+<div class="two-col">
+    <div class="cy-card" style="margin-bottom:0;">
+        <div class="cy-card-head">
+            <span><i class="fas fa-chart-bar"></i> Faturamento Mensal — <span id="ano-grafico"></span></span>
+            <span style="font-size:.68rem; color:var(--muted);" id="total-anual-label"></span>
+        </div>
+        <div class="cy-card-body">
+            <div style="position:relative; height:230px;">
+                <canvas id="graficoFaturamento"></canvas>
             </div>
         </div>
+    </div>
+    <div class="cy-card" style="margin-bottom:0;">
+        <div class="cy-card-head"><i class="fas fa-layer-group"></i> Aging de Cobranças</div>
+        <div class="cy-card-body" id="aging-container">
+            <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
+        </div>
+    </div>
+</div>
 
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="card-body text-white">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-1 fw-semibold opacity-85 text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Em Atraso</p>
-                            <h3 class="mb-0 fw-bold">R$ <span id="total-em-aberto">...</span></h3>
-                            <small class="opacity-80" id="info-aberto">—</small>
-                        </div>
-                        <div class="opacity-25"><i class="fas fa-exclamation-triangle fa-2x"></i></div>
-                    </div>
-                </div>
+<div class="scan-line"></div>
+
+<!-- Top Clientes + Busca -->
+<div class="two-col-eq">
+    <div class="cy-card" style="margin-bottom:0;">
+        <div class="cy-card-head"><i class="fas fa-trophy"></i> Top Clientes por Receita</div>
+        <div class="cy-card-body" id="top-clientes-container">
+            <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
+        </div>
+    </div>
+    <div class="cy-card" style="margin-bottom:0;">
+        <div class="cy-card-head"><i class="fas fa-search"></i> Buscar Cliente</div>
+        <div class="cy-card-body">
+            <div class="cy-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" class="cy-search-input" id="pesquisaCliente"
+                    placeholder="Nome, CNPJ ou e-mail…" onkeyup="pesquisarClientes(event)">
+            </div>
+            <div id="resultado-pesquisa" style="display:none;">
+                <div id="lista-clientes-pesquisa"></div>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <div class="card-body text-white">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-1 fw-semibold opacity-85 text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Prospecção Futura</p>
-                            <h3 class="mb-0 fw-bold">R$ <span id="prospeccao-valor">...</span></h3>
-                            <small class="opacity-80" id="info-prospeccao">—</small>
-                        </div>
-                        <div class="opacity-25"><i class="fas fa-rocket fa-2x"></i></div>
-                    </div>
+<div class="scan-line"></div>
+
+<!-- Faturas vencidas -->
+<div class="cy-card">
+    <div class="cy-card-head" style="color:var(--rd);"><i class="fas fa-clock"></i> Clientes com Faturas Vencidas</div>
+    <div id="tabela-clientes-aberto" style="overflow-x:auto;">
+        <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
+    </div>
+</div>
+
+<!-- Pagamentos quitados em atraso -->
+<div class="cy-card">
+    <div class="cy-card-head" style="justify-content:space-between;">
+        <span style="color:var(--gr);"><i class="fas fa-check-circle"></i> Clientes que Quitaram em Atraso</span>
+        <select id="filtroPeriodoPagos" onchange="carregarClientesPagaramVencidos()"
+            style="background:#030a14; border:1px solid rgba(0,245,255,.2); color:var(--cy); border-radius:4px; padding:2px 8px; font-family:inherit; font-size:.72rem; outline:none;">
+            <option value="30">Últimos 30 dias</option>
+            <option value="60">Últimos 60 dias</option>
+            <option value="90" selected>Últimos 90 dias</option>
+            <option value="365">Último ano</option>
+            <option value="0">Todos</option>
+        </select>
+    </div>
+    <div id="tabela-clientes-pagaram" style="overflow-x:auto;">
+        <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
+    </div>
+</div>
+
+{% else %}
+<!-- ============================================================ -->
+<!-- DASHBOARD DO CLIENTE -->
+<!-- ============================================================ -->
+
+<div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem;">
+    <div>
+        <div class="fin-title"><i class="fas fa-briefcase" style="margin-right:.5rem;"></i>{{ cliente.nome_empresa }}</div>
+        <div class="fin-subtitle">CNPJ: {{ cliente.cnpj }}{% if cliente.email %} &nbsp;|&nbsp; {{ cliente.email }}{% endif %}</div>
+    </div>
+    <a href="{% url 'dashboard_financeiro' %}" class="btn-cy">
+        <i class="fas fa-arrow-left"></i> Painel Geral
+    </a>
+</div>
+
+<!-- Cards resumo -->
+<div class="client-stat-grid">
+    <div class="kpi-card" style="--kpi-color: var(--pu);">
+        <div class="kpi-label">Consultorias</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> {{ total_consultorias|floatformat:2 }}</div>
+        <div class="kpi-sub">{{ consultorias.count }} contrato(s)</div>
+        <i class="fas fa-briefcase kpi-icon"></i>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--cy);">
+        <div class="kpi-label">Aluguéis IPv4</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> {{ total_alugueis|floatformat:2 }}</div>
+        <div class="kpi-sub">{{ alugueis.count }} bloco(s)</div>
+        <i class="fas fa-network-wired kpi-icon"></i>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--gr);">
+        <div class="kpi-label">Total Recebido</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> {{ total_pago|floatformat:2 }}</div>
+        <div class="kpi-sub">faturas pagas</div>
+        <i class="fas fa-check-circle kpi-icon"></i>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--rd);">
+        <div class="kpi-label">Saldo Aberto</div>
+        <div class="kpi-value"><span class="kpi-prefix">R$</span> {{ saldo_aberto|floatformat:2 }}</div>
+        <div class="kpi-sub">à receber</div>
+        <i class="fas fa-file-invoice-dollar kpi-icon"></i>
+    </div>
+</div>
+
+<!-- Tabs do cliente -->
+<div class="cy-card" style="margin-bottom:0;">
+    <div class="cy-card-head" style="padding:0;">
+        <ul class="nav nav-tabs" style="margin:0; border:none; width:100%; padding:0 .5rem;" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#consultorias-tab">
+                    <i class="fas fa-briefcase me-1"></i> Consultorias
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#alugueis-tab">
+                    <i class="fas fa-network-wired me-1"></i> Aluguéis IPv4
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#vendas-tab">
+                    <i class="fas fa-shopping-bag me-1"></i> Equipamentos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#faturas-tab">
+                    <i class="fas fa-file-invoice me-1"></i> Faturas
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="cy-card-body">
+        <div class="tab-content">
+            <div id="consultorias-tab" class="tab-pane fade show active">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+                    <span style="font-size:.75rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase;">Contratos de Consultoria</span>
+                    <button class="btn-cy btn-cy-sm" data-bs-toggle="modal" data-bs-target="#modalNovaConsultoria">
+                        <i class="fas fa-plus"></i> Nova
+                    </button>
+                </div>
+                <div id="lista-consultorias">
+                    <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
                 </div>
             </div>
-        </div>
-
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                <div class="card-body text-white">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-1 fw-semibold opacity-85 text-uppercase" style="font-size:.72rem;letter-spacing:.08em;">Ticket Médio</p>
-                            <h3 class="mb-0 fw-bold">R$ <span id="ticket-medio">...</span></h3>
-                            <small class="opacity-80" id="info-ticket">—</small>
-                        </div>
-                        <div class="opacity-25"><i class="fas fa-tag fa-2x"></i></div>
-                    </div>
+            <div id="alugueis-tab" class="tab-pane fade">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+                    <span style="font-size:.75rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase;">Blocos IPv4 Alugados</span>
+                    <button class="btn-cy btn-cy-sm" style="--c:#00f5ff;" data-bs-toggle="modal" data-bs-target="#modalNovoAluguel">
+                        <i class="fas fa-plus"></i> Novo
+                    </button>
+                </div>
+                <div id="lista-alugueis">
+                    <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
+                </div>
+            </div>
+            <div id="vendas-tab" class="tab-pane fade">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+                    <span style="font-size:.75rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase;">Vendas de Equipamentos</span>
+                    <button class="btn-cy btn-cy-gr btn-cy-sm" data-bs-toggle="modal" data-bs-target="#modalNovaVenda">
+                        <i class="fas fa-plus"></i> Nova Venda
+                    </button>
+                </div>
+                <div id="lista-vendas">
+                    <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
+                </div>
+            </div>
+            <div id="faturas-tab" class="tab-pane fade">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+                    <span style="font-size:.75rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase;">Histórico de Faturas</span>
+                    <button class="btn-cy btn-cy-sm" data-bs-toggle="modal" data-bs-target="#modalNovaFatura">
+                        <i class="fas fa-plus"></i> Fatura Manual
+                    </button>
+                </div>
+                <div id="lista-faturas">
+                    <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- GRÁFICO + AGING -->
-    <div class="row mb-4 g-3">
-        <div class="col-xl-8">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-chart-area text-primary me-2"></i>Faturamento Mensal — <span id="ano-grafico"></span></h6>
-                    <small class="text-muted" id="total-anual-label"></small>
-                </div>
-                <div class="card-body">
-                    <div style="position:relative;height:260px;">
-                        <canvas id="graficoFaturamento"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-layer-group text-warning me-2"></i>Aging de Cobranças</h6>
-                </div>
-                <div class="card-body" id="aging-container">
-                    <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PESQUISA + TABELAS -->
-    <div class="row g-3">
-
-        <!-- BUSCAR CLIENTE -->
-        <div class="col-md-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-title fw-bold mb-3"><i class="fas fa-search me-2 text-primary"></i>Buscar Cliente</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                <input type="text" class="form-control" id="pesquisaCliente"
-                                    placeholder="Nome, CNPJ ou e-mail…" onkeyup="pesquisarClientes(event)">
-                            </div>
-                        </div>
-                    </div>
-                    <div id="resultado-pesquisa" class="mt-3" style="display:none;">
-                        <div id="lista-clientes-pesquisa"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CLIENTES COM FATURAS VENCIDAS -->
-        <div class="col-md-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-clock text-danger me-2"></i>Clientes com Faturas Vencidas</h6>
-                </div>
-                <div class="card-body" id="tabela-clientes-aberto">
-                    <div class="text-center py-4"><div class="spinner-border text-danger"></div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CLIENTES QUE QUITARAM BOLETOS EM ATRASO -->
-        <div class="col-md-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="fas fa-check-circle text-success me-2"></i>Clientes que Quitaram Boletos em Atraso
-                    </h6>
-                    <div class="d-flex align-items-center gap-2">
-                        <small class="text-muted">Período:</small>
-                        <select class="form-select form-select-sm" id="filtroPeriodoPagos"
-                            onchange="carregarClientesPagaramVencidos()" style="width:auto;">
-                            <option value="30">Últimos 30 dias</option>
-                            <option value="60">Últimos 60 dias</option>
-                            <option value="90" selected>Últimos 90 dias</option>
-                            <option value="365">Último ano</option>
-                            <option value="0">Todos</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="card-body" id="tabela-clientes-pagaram">
-                    <div class="text-center py-4"><div class="spinner-border text-success"></div></div>
-                </div>
-            </div>
-        </div>
-
-    </div><!-- /row g-3 -->
-
-    {% else %}
-
-    <!-- ============================================ -->
-    <!-- DASHBOARD DO CLIENTE -->
-    <!-- ============================================ -->
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-0 fw-bold">💼 {{ cliente.nome_empresa }}</h2>
-            <small class="text-muted">CNPJ: {{ cliente.cnpj }}{% if cliente.email %} | {{ cliente.email }}{% endif %}</small>
-        </div>
-        <a href="{% url 'dashboard_financeiro' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-arrow-left me-1"></i> Painel Geral
-        </a>
-    </div>
-
-    <!-- Cards resumo do cliente -->
-    <div class="row mb-4 g-3">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #6c63ff !important;">
-                <div class="card-body">
-                    <p class="text-muted small mb-1 fw-semibold">CONSULTORIAS</p>
-                    <h4 class="fw-bold mb-0">R$ {{ total_consultorias|floatformat:2 }}</h4>
-                    <small class="text-muted">{{ consultorias.count }} contrato(s)</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #17a2b8 !important;">
-                <div class="card-body">
-                    <p class="text-muted small mb-1 fw-semibold">ALUGUEIS IPv4</p>
-                    <h4 class="fw-bold mb-0">R$ {{ total_alugueis|floatformat:2 }}</h4>
-                    <small class="text-muted">{{ alugueis.count }} bloco(s)</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #28a745 !important;">
-                <div class="card-body">
-                    <p class="text-muted small mb-1 fw-semibold">TOTAL RECEBIDO</p>
-                    <h4 class="fw-bold text-success mb-0">R$ {{ total_pago|floatformat:2 }}</h4>
-                    <small class="text-muted">faturas pagas</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm" style="border-left:4px solid #dc3545 !important;">
-                <div class="card-body">
-                    <p class="text-muted small mb-1 fw-semibold">SALDO ABERTO</p>
-                    <h4 class="fw-bold text-danger mb-0">R$ {{ saldo_aberto|floatformat:2 }}</h4>
-                    <small class="text-muted">à receber</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabs do cliente -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-transparent border-bottom">
-            <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active fw-semibold" data-bs-toggle="tab" href="#consultorias-tab">
-                        <i class="fas fa-briefcase me-1"></i> Consultorias
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-semibold" data-bs-toggle="tab" href="#alugueis-tab">
-                        <i class="fas fa-network-wired me-1"></i> Alugueis IPv4
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-semibold" data-bs-toggle="tab" href="#vendas-tab">
-                        <i class="fas fa-shopping-bag me-1"></i> Equipamentos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-semibold" data-bs-toggle="tab" href="#faturas-tab">
-                        <i class="fas fa-file-invoice me-1"></i> Faturas
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <div class="card-body">
-            <div class="tab-content">
-
-                <!-- TAB CONSULTORIAS -->
-                <div id="consultorias-tab" class="tab-pane fade show active">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 fw-bold">Contratos de Consultoria</h6>
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovaConsultoria">
-                            <i class="fas fa-plus me-1"></i> Nova Consultoria
-                        </button>
-                    </div>
-                    <div id="lista-consultorias">
-                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>
-                    </div>
-                </div>
-
-                <!-- TAB ALUGUEIS -->
-                <div id="alugueis-tab" class="tab-pane fade">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 fw-bold">Blocos IPv4 Alugados</h6>
-                        <button class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#modalNovoAluguel">
-                            <i class="fas fa-plus me-1"></i> Novo Aluguel
-                        </button>
-                    </div>
-                    <div id="lista-alugueis">
-                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>
-                    </div>
-                </div>
-
-                <!-- TAB VENDAS -->
-                <div id="vendas-tab" class="tab-pane fade">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 fw-bold">Vendas de Equipamentos</h6>
-                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovaVenda">
-                            <i class="fas fa-plus me-1"></i> Nova Venda
-                        </button>
-                    </div>
-                    <div id="lista-vendas">
-                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>
-                    </div>
-                </div>
-
-                <!-- TAB FATURAS -->
-                <div id="faturas-tab" class="tab-pane fade">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 fw-bold">Histórico de Faturas</h6>
-                        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovaFatura">
-                            <i class="fas fa-plus me-1"></i> Nova Fatura Manual
-                        </button>
-                    </div>
-                    <div id="lista-faturas">
-                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    {% endif %}
-</div><!-- /container-fluid -->
+{% endif %}
+</div><!-- /fin-page -->
 
 
 <!-- ================================================== -->
@@ -324,29 +595,29 @@
 <div class="modal fade" id="modalNovaConsultoria" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary">
-                <h5 class="modal-title text-white fw-bold"><i class="fas fa-briefcase me-2"></i>Nova Consultoria</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-briefcase me-2"></i>Nova Consultoria</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formNovaConsultoria" onsubmit="enviarNovaConsultoria(event)">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Descrição *</label>
+                        <label class="form-label">Descrição *</label>
                         <input type="text" class="form-control" name="descricao" placeholder="Ex: Consultoria de Redes" required>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Valor/mês (R$) *</label>
+                            <label class="form-label">Valor/mês (R$) *</label>
                             <input type="number" class="form-control" name="valor_unitario" placeholder="1000.00" step="0.01" min="0.01" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Qtd. Meses *</label>
+                            <label class="form-label">Qtd. Meses *</label>
                             <input type="number" class="form-control" name="quantidade_meses" value="1" min="1" required>
                         </div>
                     </div>
                     <div class="mb-3 mt-2">
-                        <label class="form-label fw-semibold">Periodicidade</label>
+                        <label class="form-label">Periodicidade</label>
                         <select class="form-select" name="periodicidade">
                             <option value="MENSAL">Mensal</option>
                             <option value="TRIMESTRAL">Trimestral</option>
@@ -356,14 +627,14 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Data de Início *</label>
+                        <label class="form-label">Data de Início *</label>
                         <input type="date" class="form-control" name="data_inicio" required>
                     </div>
                     <div id="msgErroConsultoria" class="alert alert-danger d-none py-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary btn-sm" id="btnSalvarConsultoria">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-gr btn-cy-sm" id="btnSalvarConsultoria">
                         <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerConsultoria"></span>Salvar
                     </button>
                 </div>
@@ -372,13 +643,12 @@
     </div>
 </div>
 
-
 <!-- MODAL: EDITAR CONSULTORIA -->
 <div class="modal fade" id="modalEditarConsultoria" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-warning">
-                <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Editar Consultoria</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Consultoria</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formEditarConsultoria" onsubmit="enviarEdicaoConsultoria(event)">
@@ -386,16 +656,16 @@
                 <input type="hidden" id="editConsultoriaId">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Descrição *</label>
+                        <label class="form-label">Descrição *</label>
                         <input type="text" class="form-control" id="editConsultoriaDescricao" name="descricao" required>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Valor/mês (R$) *</label>
+                            <label class="form-label">Valor/mês (R$) *</label>
                             <input type="number" class="form-control" id="editConsultoriaValor" name="valor_unitario" step="0.01" min="0.01" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Periodicidade</label>
+                            <label class="form-label">Periodicidade</label>
                             <select class="form-select" id="editConsultoriaPeriodicidade" name="periodicidade">
                                 <option value="MENSAL">Mensal</option>
                                 <option value="TRIMESTRAL">Trimestral</option>
@@ -406,18 +676,18 @@
                         </div>
                     </div>
                     <div class="mb-3 mt-3">
-                        <label class="form-label fw-semibold">Data de Início</label>
+                        <label class="form-label">Data de Início</label>
                         <input type="date" class="form-control" id="editConsultoriaDataInicio" name="data_inicio">
-                        <div class="alert alert-warning py-2 mt-2 d-none" id="avisoDataConsultoria" style="font-size:.85rem;">
+                        <div class="alert alert-warning py-2 mt-2 d-none" id="avisoDataConsultoria" style="font-size:.82rem;">
                             <i class="fas fa-exclamation-triangle me-1"></i>
-                            Alterar a data ajustará os vencimentos de <strong>todas</strong> as faturas vinculadas a esta consultoria.
+                            Alterar a data ajustará os vencimentos de <strong>todas</strong> as faturas vinculadas.
                         </div>
                     </div>
                     <div id="msgErroEditConsultoria" class="alert alert-danger d-none py-2 mt-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-warning btn-sm">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-or btn-cy-sm">
                         <i class="fas fa-save me-1"></i>Salvar Alterações
                     </button>
                 </div>
@@ -430,33 +700,33 @@
 <div class="modal fade" id="modalNovoAluguel" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info">
-                <h5 class="modal-title text-white fw-bold"><i class="fas fa-network-wired me-2"></i>Novo Aluguel IPv4</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-network-wired me-2"></i>Novo Aluguel IPv4</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formNovoAluguel" onsubmit="enviarNovoAluguel(event)">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Descrição do Bloco *</label>
+                        <label class="form-label">Descrição do Bloco *</label>
                         <input type="text" class="form-control" name="bloco_descricao" placeholder="Ex: 200.100.50.0/24" required>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
-                            <label class="form-label fw-semibold">Qtd. IPs *</label>
+                            <label class="form-label">Qtd. IPs *</label>
                             <input type="number" class="form-control" name="quantidade_ips" placeholder="256" min="1" required>
                         </div>
                         <div class="col-4">
-                            <label class="form-label fw-semibold">Valor/mês (R$) *</label>
+                            <label class="form-label">Valor/mês (R$) *</label>
                             <input type="number" class="form-control" name="valor_mensal" placeholder="500.00" step="0.01" min="0.01" required>
                         </div>
                         <div class="col-4">
-                            <label class="form-label fw-semibold">Qtd. Meses *</label>
+                            <label class="form-label">Qtd. Meses *</label>
                             <input type="number" class="form-control" name="quantidade_meses" value="1" min="1" required>
                         </div>
                     </div>
                     <div class="mb-3 mt-2">
-                        <label class="form-label fw-semibold">Bloco IP (opcional)</label>
+                        <label class="form-label">Bloco IP (opcional)</label>
                         <select class="form-select" name="bloco_ip">
                             <option value="">-- Nenhum --</option>
                             {% for bloco in blocos_ip %}
@@ -465,14 +735,14 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Data de Início *</label>
+                        <label class="form-label">Data de Início *</label>
                         <input type="date" class="form-control" name="data_inicio" required>
                     </div>
                     <div id="msgErroAluguel" class="alert alert-danger d-none py-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-info btn-sm text-white" id="btnSalvarAluguel">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-sm" id="btnSalvarAluguel">
                         <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerAluguel"></span>Salvar
                     </button>
                 </div>
@@ -485,8 +755,8 @@
 <div class="modal fade" id="modalEditarAluguel" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-warning">
-                <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Editar Aluguel IPv4</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Aluguel IPv4</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formEditarAluguel" onsubmit="enviarEdicaoAluguel(event)">
@@ -494,32 +764,32 @@
                 <input type="hidden" id="editAluguelId">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Descrição *</label>
+                        <label class="form-label">Descrição *</label>
                         <input type="text" class="form-control" id="editAluguelDescricao" name="bloco_descricao" required>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Valor/mês (R$) *</label>
+                            <label class="form-label">Valor/mês (R$) *</label>
                             <input type="number" class="form-control" id="editAluguelValor" name="valor_mensal" step="0.01" min="0.01" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Qtd. IPs *</label>
+                            <label class="form-label">Qtd. IPs *</label>
                             <input type="number" class="form-control" id="editAluguelIps" name="quantidade_ips" min="1" required>
                         </div>
                     </div>
                     <div class="mb-3 mt-3">
-                        <label class="form-label fw-semibold">Data de Início</label>
+                        <label class="form-label">Data de Início</label>
                         <input type="date" class="form-control" id="editAluguelDataInicio" name="data_inicio">
-                        <div class="alert alert-warning py-2 mt-2 d-none" id="avisoDataAluguel" style="font-size:.85rem;">
+                        <div class="alert alert-warning py-2 mt-2 d-none" id="avisoDataAluguel" style="font-size:.82rem;">
                             <i class="fas fa-exclamation-triangle me-1"></i>
-                            Alterar a data ajustará os vencimentos de <strong>todas</strong> as faturas vinculadas a este aluguel.
+                            Alterar a data ajustará os vencimentos de <strong>todas</strong> as faturas vinculadas.
                         </div>
                     </div>
                     <div id="msgErroEditAluguel" class="alert alert-danger d-none py-2 mt-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-warning btn-sm">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-or btn-cy-sm">
                         <i class="fas fa-save me-1"></i>Salvar Alterações
                     </button>
                 </div>
@@ -532,41 +802,41 @@
 <div class="modal fade" id="modalNovaVenda" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-success">
-                <h5 class="modal-title text-white fw-bold"><i class="fas fa-shopping-bag me-2"></i>Nova Venda de Equipamento</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-shopping-bag me-2"></i>Nova Venda de Equipamento</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formNovaVenda" onsubmit="enviarNovaVenda(event)">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Equipamento *</label>
+                        <label class="form-label">Equipamento *</label>
                         <input type="text" class="form-control" name="descricao" placeholder="Ex: Switch Cisco 48 portas" required>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Valor Total (R$) *</label>
+                            <label class="form-label">Valor Total (R$) *</label>
                             <input type="number" class="form-control" id="vendaValorTotal" name="valor_total"
                                 placeholder="5000.00" step="0.01" min="0.01" required oninput="atualizarValorParcela()">
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Qtd. Parcelas *</label>
+                            <label class="form-label">Qtd. Parcelas *</label>
                             <input type="number" class="form-control" id="vendaParcelas" name="quantidade_parcelas"
                                 value="1" min="1" max="60" required oninput="atualizarValorParcela()">
                         </div>
                     </div>
-                    <div class="alert alert-info py-2 mt-2 small">
-                        💳 Valor da parcela: <strong id="valor-parcela">R$ 0,00</strong>
+                    <div class="alert alert-info py-2 mt-2" style="font-size:.8rem;">
+                        Valor da parcela: <strong id="valor-parcela" style="color:var(--cy);">R$ 0,00</strong>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Data de Início *</label>
+                        <label class="form-label">Data de Início *</label>
                         <input type="date" class="form-control" name="data_inicio" required>
                     </div>
                     <div id="msgErroVenda" class="alert alert-danger d-none py-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success btn-sm" id="btnSalvarVenda">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-gr btn-cy-sm" id="btnSalvarVenda">
                         <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerVenda"></span>Salvar
                     </button>
                 </div>
@@ -580,14 +850,14 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold"><i class="fas fa-file-invoice me-2"></i>Nova Fatura Manual</h5>
+                <h5 class="modal-title"><i class="fas fa-file-invoice me-2"></i>Nova Fatura Manual</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formNovaFatura" onsubmit="enviarNovaFatura(event)">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Tipo *</label>
+                        <label class="form-label">Tipo *</label>
                         <select class="form-select" name="tipo" required>
                             <option value="">-- Selecione --</option>
                             <option value="CONSULTORIA">Consultoria</option>
@@ -597,14 +867,14 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Vencimento *</label>
+                        <label class="form-label">Vencimento *</label>
                         <input type="date" class="form-control" name="data_vencimento" required>
                     </div>
                     <div id="msgErroFatura" class="alert alert-danger d-none py-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary btn-sm" id="btnSalvarFatura">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-sm" id="btnSalvarFatura">
                         <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerFatura"></span>Gerar Fatura
                     </button>
                 </div>
@@ -617,21 +887,21 @@
 <div class="modal fade" id="modalVisualizarFatura" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary">
-                <h5 class="modal-title text-white fw-bold"><i class="fas fa-file-invoice me-2"></i>Detalhes da Fatura</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-invoice me-2"></i>Detalhes da Fatura</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="conteudo-fatura">
-                <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+                <div style="text-align:center; padding:2rem;"><div class="cy-spinner"></div></div>
             </div>
             <div id="secaoPagamentosRegistrados" style="display:none;" class="px-3 pb-3">
-                <hr>
-                <h6 class="fw-bold mb-2"><i class="fas fa-history me-2"></i>Pagamentos Registrados</h6>
+                <hr style="border-color:rgba(0,245,255,.12);">
+                <div style="font-family:'Orbitron',sans-serif; font-size:.72rem; color:var(--cy); letter-spacing:2px; margin-bottom:.75rem; text-transform:uppercase;">
+                    <i class="fas fa-history me-2"></i>Pagamentos Registrados
+                </div>
                 <div id="tabelaPagamentosContainer">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="table-light">
-                            <tr><th>Recibo</th><th>Data</th><th>Valor</th><th>Comprovantes</th><th></th></tr>
-                        </thead>
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Recibo</th><th>Data</th><th>Valor</th><th>Comprovantes</th><th></th></tr></thead>
                         <tbody id="corpoPagamentos"></tbody>
                     </table>
                 </div>
@@ -640,10 +910,10 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-success btn-sm" onclick="abrirModalPagamento()">
+                <button type="button" class="btn-cy btn-cy-gr btn-cy-sm" onclick="abrirModalPagamento()">
                     <i class="fas fa-money-bill me-1"></i>Registrar Pagamento
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -653,29 +923,30 @@
 <div class="modal fade" id="modalRegistrarPagamento" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-success">
-                <h5 class="modal-title text-white fw-bold"><i class="fas fa-money-bill-wave me-2"></i>Registrar Pagamento</h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-money-bill-wave me-2"></i>Registrar Pagamento</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formRegistrarPagamento" onsubmit="enviarRegistroPagamento(event)" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="alert alert-light border py-2 mb-3">
-                        <small>Fatura: <strong id="pagto-numero-fatura">—</strong> | Valor: <strong id="pagto-valor-total">R$ 0,00</strong></small>
+                    <div class="alert alert-light py-2 mb-3" style="font-size:.8rem;">
+                        Fatura: <strong id="pagto-numero-fatura" style="color:var(--cy);">—</strong>
+                        &nbsp;|&nbsp; Valor: <strong id="pagto-valor-total" style="color:var(--gr);">R$ 0,00</strong>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Data Pagamento *</label>
+                            <label class="form-label">Data Pagamento *</label>
                             <input type="date" class="form-control" name="data_pagamento" id="dataPagamento" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-semibold">Valor (R$) *</label>
+                            <label class="form-label">Valor (R$) *</label>
                             <input type="number" class="form-control" name="valor_pagado" id="valorPagado" step="0.01" min="0.01" required>
                         </div>
                     </div>
                     <small class="d-block mb-3 mt-1" id="alerta-valor"></small>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Tipo de Pagamento</label>
+                        <label class="form-label">Tipo de Pagamento</label>
                         <select class="form-select" name="tipo_pagamento">
                             <option value="COMPROVANTE">Comprovante</option>
                             <option value="PIX">PIX</option>
@@ -685,19 +956,19 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Comprovante (opcional)</label>
+                        <label class="form-label">Comprovante (opcional)</label>
                         <input type="file" class="form-control" name="comprovante" accept=".pdf,.jpg,.jpeg,.png">
-                        <small class="text-muted">PDF, JPG ou PNG (máx 5MB)</small>
+                        <small style="color:var(--muted); font-size:.7rem;">PDF, JPG ou PNG (máx 5MB)</small>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Observações</label>
+                        <label class="form-label">Observações</label>
                         <textarea class="form-control" name="observacoes" rows="2" placeholder="Detalhes do pagamento…"></textarea>
                     </div>
                     <div id="msgErroPagamento" class="alert alert-danger d-none py-2"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success btn-sm" id="btnRegistrarPagamento">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-gr btn-cy-sm" id="btnRegistrarPagamento">
                         <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerPagamento"></span>Confirmar Pagamento
                     </button>
                 </div>
@@ -706,21 +977,19 @@
     </div>
 </div>
 
-<!-- MODAL: DETALHE FATURAS QUITADAS EM ATRASO -->
+<!-- MODAL: DETALHE QUITADAS EM ATRASO -->
 <div class="modal fade" id="modalDetalheQuitadas" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-success">
-                <h5 class="modal-title text-white fw-bold">
-                    <i class="fas fa-check-circle me-2"></i>Faturas Quitadas em Atraso — <span id="detalheQuitadasNome"></span>
-                </h5>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Quitadas em Atraso — <span id="detalheQuitadasNome"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detalheQuitadasBody">
-                <div class="text-center py-4"><div class="spinner-border text-success"></div></div>
+                <div style="text-align:center; padding:2rem;"><div class="cy-spinner"></div></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -728,7 +997,7 @@
 
 
 <!-- ================================================== -->
-<!-- JAVASCRIPT -->
+<!-- JAVASCRIPT  -->
 <!-- ================================================== -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
@@ -749,6 +1018,8 @@ document.addEventListener('DOMContentLoaded', () => {
         carregarGrafico();
         carregarAging();
         carregarClientesPagaramVencidos();
+        carregarTopClientes();
+        carregarProximasVencer();
     }
 
     document.getElementById('valorPagado')?.addEventListener('input', function () {
@@ -756,9 +1027,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const el = document.getElementById('alerta-valor');
         if (!el || !faturaAtualValor) return;
         if (v <= 0) { el.innerHTML = ''; return; }
-        if (v === faturaAtualValor)        el.innerHTML = '<span class="badge bg-success">✅ Pagamento completo</span>';
-        else if (v < faturaAtualValor)     el.innerHTML = `<span class="badge bg-warning text-dark">⚠️ Parcial — saldo: R$ ${(faturaAtualValor - v).toFixed(2)}</span>`;
-        else                               el.innerHTML = `<span class="badge bg-danger">❌ Excede em R$ ${(v - faturaAtualValor).toFixed(2)}</span>`;
+        if (v === faturaAtualValor)
+            el.innerHTML = '<span class="badge-cy b-ok">✅ Pagamento completo</span>';
+        else if (v < faturaAtualValor)
+            el.innerHTML = `<span class="badge-cy b-warn">⚠️ Parcial — saldo: R$ ${(faturaAtualValor - v).toFixed(2)}</span>`;
+        else
+            el.innerHTML = `<span class="badge-cy b-err">❌ Excede em R$ ${(v - faturaAtualValor).toFixed(2)}</span>`;
     });
 });
 
@@ -775,12 +1049,13 @@ function limparErro(elId) {
     if (el) el.classList.add('d-none');
 }
 function mostrarToast(msg, tipo = 'success') {
-    const cores = { success: '#28a745', warning: '#e0a800', danger: '#dc3545', info: '#17a2b8' };
+    const cores = { success: 'rgba(0,255,136,.9)', warning: 'rgba(255,165,0,.9)', danger: 'rgba(255,85,85,.9)', info: 'rgba(0,245,255,.9)' };
     const el = document.createElement('div');
     el.style.cssText = `position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
-        background:${cores[tipo] || '#333'};color:#fff;padding:.75rem 1.25rem;
-        border-radius:.5rem;font-size:.875rem;font-weight:600;max-width:360px;
-        box-shadow:0 4px 15px rgba(0,0,0,.35);animation:slideIn .3s ease;`;
+        background:${cores[tipo]||'#333'};color:#020c14;padding:.7rem 1.2rem;
+        border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:.82rem;
+        font-weight:700;max-width:360px;letter-spacing:.5px;
+        box-shadow:0 0 20px ${cores[tipo]||'#333'};animation:slideIn .3s ease;`;
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 4000);
@@ -793,50 +1068,50 @@ function carregarDashboardInicial() {
     .then(data => {
         if (!data.sucesso) {
             document.getElementById('tabela-clientes-aberto').innerHTML =
-                `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i><strong>Erro:</strong> ${data.erro}</div>`;
+                `<div style="color:#ff8080;padding:1rem;font-size:.8rem;"><i class="fas fa-exclamation-triangle me-2"></i>${data.erro}</div>`;
             return;
         }
 
-        document.getElementById('total-faturamento').textContent  = fmt(data.total_faturamento);
-        document.getElementById('total-em-aberto').textContent    = fmt(data.total_em_aberto);
-        document.getElementById('prospeccao-valor').textContent   = fmt(data.prospeccao_valor);
-        document.getElementById('ticket-medio').textContent       = fmt(data.ticket_medio);
-        document.getElementById('info-faturamento').textContent   = `${data.total_faturas} fatura(s) paga(s)`;
-        document.getElementById('info-aberto').textContent        = `${data.faturas_vencidas} fatura(s) em ${data.clientes_devendo} cliente(s)`;
-        document.getElementById('info-prospeccao').textContent    = `${data.faturas_futuras} fatura(s) a vencer`;
-        document.getElementById('info-ticket').textContent        = 'média por fatura paga';
+        document.getElementById('total-faturamento').textContent = fmt(data.total_faturamento);
+        document.getElementById('total-em-aberto').textContent   = fmt(data.total_em_aberto);
+        document.getElementById('prospeccao-valor').textContent  = fmt(data.prospeccao_valor);
+        document.getElementById('ticket-medio').textContent      = fmt(data.ticket_medio);
+        document.getElementById('info-faturamento').textContent  = `${data.total_faturas} fatura(s) paga(s)`;
+        document.getElementById('info-aberto').textContent       = `${data.faturas_vencidas} fatura(s) em ${data.clientes_devendo} cliente(s)`;
+        document.getElementById('info-prospeccao').textContent   = `${data.faturas_futuras} fatura(s) a vencer`;
+        document.getElementById('info-ticket').textContent       = 'média por fatura paga';
 
-        const vp  = data.variacao_percentual;
-        const cor = vp >= 0 ? '#90ffb9' : '#ff9090';
+        const vp = data.variacao_percentual;
+        const cor = vp >= 0 ? '#00ff88' : '#ff5555';
         const sinal = vp >= 0 ? '▲' : '▼';
         document.getElementById('variacao-badge').innerHTML =
-            `<span style="color:${cor}">${sinal} ${Math.abs(vp).toFixed(1)}% vs mês anterior</span>`;
+            `<span style="color:${cor};font-size:.68rem;">${sinal} ${Math.abs(vp).toFixed(1)}% vs mês anterior</span>`;
 
         // Tabela vencidas
         const div = document.getElementById('tabela-clientes-aberto');
         if (!data.clientes_abertos.length) {
-            div.innerHTML = `<div class="text-center py-5">
-                <i class="fas fa-check-circle text-success fa-3x mb-3 d-block"></i>
-                <strong>Todos os clientes estão em dia!</strong>
+            div.innerHTML = `<div style="text-align:center;padding:2.5rem;color:var(--gr);">
+                <i class="fas fa-check-circle" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.6;"></i>
+                <span style="font-size:.8rem;color:var(--muted);">Todos os clientes estão em dia!</span>
             </div>`;
         } else {
-            let html = `<div class="table-responsive"><table class="table table-hover mb-0">
+            let html = `<div style="overflow-x:auto;"><table class="cy-table">
                 <thead><tr>
                     <th>Cliente</th><th>CNPJ</th>
-                    <th class="text-center">Faturas Vencidas</th>
-                    <th class="text-end">Valor em Atraso</th>
-                    <th class="text-center">Dias Máx.</th>
+                    <th style="text-align:center;">Faturas</th>
+                    <th style="text-align:right;">Valor Vencido</th>
+                    <th style="text-align:center;">Dias</th>
                     <th></th>
                 </tr></thead><tbody>`;
             data.clientes_abertos.forEach(c => {
-                const urg = c.dias_atraso > 60 ? 'text-danger fw-bold' : c.dias_atraso > 30 ? 'text-warning' : '';
+                const cor = c.dias_atraso > 60 ? 'var(--rd)' : c.dias_atraso > 30 ? 'var(--or)' : '#c9d8e8';
                 html += `<tr>
-                    <td><strong>${c.nome_empresa}</strong></td>
-                    <td><small>${c.cnpj}</small></td>
-                    <td class="text-center"><span class="badge bg-danger">${c.boletos_abertos}</span></td>
-                    <td class="text-end ${urg}">R$ ${fmt(c.valor_total)}</td>
-                    <td class="text-center ${urg}">${c.dias_atraso}d</td>
-                    <td><a href="?cliente_id=${c.id}" class="btn btn-sm btn-primary"><i class="fas fa-arrow-right"></i></a></td>
+                    <td style="color:var(--cy);font-weight:600;">${c.nome_empresa}</td>
+                    <td style="color:var(--muted);font-size:.72rem;">${c.cnpj}</td>
+                    <td style="text-align:center;"><span class="badge-cy b-err">${c.boletos_abertos}</span></td>
+                    <td style="text-align:right;color:${cor};font-family:'Orbitron',sans-serif;font-size:.8rem;">R$ ${fmt(c.valor_total)}</td>
+                    <td style="text-align:center;color:${cor};font-size:.75rem;">${c.dias_atraso}d</td>
+                    <td><a href="?cliente_id=${c.id}" class="btn-cy btn-cy-sm"><i class="fas fa-arrow-right"></i></a></td>
                 </tr>`;
             });
             html += `</tbody></table></div>`;
@@ -845,22 +1120,74 @@ function carregarDashboardInicial() {
     })
     .catch(e => {
         document.getElementById('tabela-clientes-aberto').innerHTML =
-            `<div class="alert alert-danger">Erro de conexão: ${e.message}</div>`;
+            `<div style="color:#ff8080;padding:1rem;font-size:.8rem;">Erro: ${e.message}</div>`;
     });
+}
+
+// ===== PRÓXIMAS A VENCER =====
+function carregarProximasVencer() {
+    fetch('/financeiro/api/proximas-vencer/?dias=15')
+    .then(r => r.json())
+    .then(data => {
+        const wrap = document.getElementById('vencer-strip-wrap');
+        if (!data.sucesso || !data.total) { wrap.innerHTML = ''; return; }
+        let chips = data.faturas.map(f =>
+            `<a href="?cliente_id=${f.cliente_id}" class="vencer-chip" title="${f.numero} — R$ ${fmt(f.valor)} — vence ${f.vencimento}">
+                ${f.cliente.substring(0,18)} <span style="opacity:.6;">(${f.dias_restantes}d)</span>
+            </a>`
+        ).join('');
+        wrap.innerHTML = `<div class="vencer-strip">
+            <i class="fas fa-bell strip-icon"></i>
+            <div>
+                <div class="strip-text"><strong>${data.total}</strong> fatura(s) vencem nos próximos 15 dias</div>
+                <div class="strip-items">${chips}</div>
+            </div>
+        </div>`;
+    })
+    .catch(() => {});
+}
+
+// ===== TOP CLIENTES =====
+function carregarTopClientes() {
+    fetch("{% url 'api_top_clientes' %}")
+    .then(r => r.json())
+    .then(data => {
+        const div = document.getElementById('top-clientes-container');
+        if (!data.sucesso || !data.clientes.length) {
+            div.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.78rem;">Nenhum dado de receita ainda.</div>`;
+            return;
+        }
+        const maxVal = data.clientes[0].total_pago;
+        let html = '';
+        data.clientes.forEach((c, i) => {
+            const pct = maxVal > 0 ? (c.total_pago / maxVal * 100) : 0;
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+            html += `<div style="margin-bottom:.75rem;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:.25rem;font-size:.75rem;">
+                    <span><a href="?cliente_id=${c.id}" style="color:var(--cy);text-decoration:none;">${medal} ${c.nome.substring(0,24)}</a></span>
+                    <span style="color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.7rem;">R$ ${fmt(c.total_pago)}</span>
+                </div>
+                <div class="aging-bar-bg">
+                    <div class="aging-bar-fill" style="width:${pct.toFixed(1)}%;background:var(--gr);"></div>
+                </div>
+            </div>`;
+        });
+        div.innerHTML = html;
+    })
+    .catch(() => { document.getElementById('top-clientes-container').innerHTML = '<p style="color:var(--muted);font-size:.78rem;text-align:center;padding:1rem;">Indisponível.</p>'; });
 }
 
 // ===== CLIENTES QUE PAGARAM VENCIDOS =====
 function carregarClientesPagaramVencidos() {
     const periodo = document.getElementById('filtroPeriodoPagos')?.value || 90;
     const div = document.getElementById('tabela-clientes-pagaram');
-    div.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-success"></div></div>';
+    div.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);"><div class="cy-spinner"></div></div>';
 
     fetch(`/financeiro/api/clientes-pagaram-vencidos/?periodo=${periodo}`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => {
         if (!r.ok) {
-            // Tenta ler o corpo para diagnóstico
             return r.text().then(txt => {
                 const preview = txt.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
                 throw new Error(`HTTP ${r.status} — ${preview}`);
@@ -870,54 +1197,44 @@ function carregarClientesPagaramVencidos() {
     })
     .then(data => {
         if (!data.sucesso) {
-            div.innerHTML = `<div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Erro:</strong> ${data.erro}
-            </div>`;
+            div.innerHTML = `<div style="color:#ff8080;padding:1rem;font-size:.8rem;"><i class="fas fa-exclamation-triangle me-2"></i>${data.erro}</div>`;
             return;
         }
-
         if (!data.clientes.length) {
             const msg = data.periodo_dias > 0
-                ? `Nenhum pagamento de boleto em atraso nos últimos ${data.periodo_dias} dias.`
-                : 'Nenhum pagamento de boleto em atraso registrado.';
-            div.innerHTML = `<div class="text-center py-4 text-muted">
-                <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
-                <small>${msg}</small>
+                ? `Nenhum pagamento em atraso nos últimos ${data.periodo_dias} dias.`
+                : 'Nenhum pagamento em atraso registrado.';
+            div.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.78rem;">
+                <i class="fas fa-inbox" style="display:block;font-size:1.5rem;margin-bottom:.5rem;opacity:.3;"></i>${msg}
             </div>`;
             return;
         }
 
-        let html = `<div class="table-responsive">
-        <table class="table table-hover mb-0">
+        let html = `<div style="overflow-x:auto;"><table class="cy-table">
             <thead><tr>
-                <th>Cliente</th>
-                <th>CNPJ</th>
-                <th class="text-center">Faturas Quitadas</th>
-                <th class="text-end">Total Quitado</th>
-                <th class="text-center">Atraso Médio</th>
-                <th class="text-center">Último Pagamento</th>
-                <th class="text-center">Ações</th>
+                <th>Cliente</th><th>CNPJ</th>
+                <th style="text-align:center;">Quitadas</th>
+                <th style="text-align:right;">Total Quitado</th>
+                <th style="text-align:center;">Atraso Médio</th>
+                <th style="text-align:center;">Último Pgto.</th>
+                <th style="text-align:center;">Ações</th>
             </tr></thead><tbody>`;
 
         data.clientes.forEach(c => {
-            const corBadge = c.media_dias_atraso > 60 ? 'bg-danger'
-                           : c.media_dias_atraso > 30 ? 'bg-warning text-dark'
-                           : 'bg-secondary';
+            const corBadge = c.media_dias_atraso > 60 ? 'b-err' : c.media_dias_atraso > 30 ? 'b-warn' : 'b-info';
             html += `<tr>
-                <td><strong>${c.nome_empresa}</strong></td>
-                <td><small>${c.cnpj}</small></td>
-                <td class="text-center"><span class="badge bg-success">${c.faturas_pagas_atraso}</span></td>
-                <td class="text-end text-success fw-bold">R$ ${fmt(c.valor_total_quitado)}</td>
-                <td class="text-center"><span class="badge ${corBadge}">${c.media_dias_atraso}d</span></td>
-                <td class="text-center"><small>${c.ultimo_pagamento}</small></td>
-                <td class="text-center text-nowrap">
-                    <button class="btn btn-sm btn-outline-success me-1"
-                        onclick='abrirDetalheQuitadas(${JSON.stringify(c)})'
-                        title="Ver faturas">
+                <td style="color:var(--cy);">${c.nome_empresa}</td>
+                <td style="color:var(--muted);font-size:.72rem;">${c.cnpj}</td>
+                <td style="text-align:center;"><span class="badge-cy b-ok">${c.faturas_pagas_atraso}</span></td>
+                <td style="text-align:right;color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(c.valor_total_quitado)}</td>
+                <td style="text-align:center;"><span class="badge-cy ${corBadge}">${c.media_dias_atraso}d</span></td>
+                <td style="text-align:center;color:var(--muted);font-size:.72rem;">${c.ultimo_pagamento}</td>
+                <td style="text-align:center;white-space:nowrap;">
+                    <button class="btn-cy btn-cy-sm" style="margin-right:.3rem;"
+                        onclick='abrirDetalheQuitadas(${JSON.stringify(c)})' title="Ver faturas">
                         <i class="fas fa-list"></i>
                     </button>
-                    <a href="?cliente_id=${c.id}" class="btn btn-sm btn-outline-primary" title="Ver cliente">
+                    <a href="?cliente_id=${c.id}" class="btn-cy btn-cy-sm" title="Ver cliente">
                         <i class="fas fa-arrow-right"></i>
                     </a>
                 </td>
@@ -925,50 +1242,42 @@ function carregarClientesPagaramVencidos() {
         });
 
         html += `</tbody></table></div>
-        <div class="mt-2 text-end">
-            <small class="text-muted">${data.total_clientes} cliente(s)</small>
-        </div>`;
+        <div style="text-align:right;padding:.5rem 1rem;font-size:.7rem;color:var(--muted);">${data.total_clientes} cliente(s)</div>`;
         div.innerHTML = html;
     })
     .catch(e => {
-        div.innerHTML = `<div class="alert alert-danger">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Erro:</strong> ${e.message}
-        </div>`;
-        console.error('carregarClientesPagaramVencidos:', e);
+        div.innerHTML = `<div style="color:#ff8080;padding:1rem;font-size:.8rem;"><i class="fas fa-exclamation-triangle me-2"></i>${e.message}</div>`;
     });
 }
 
 function abrirDetalheQuitadas(cliente) {
     document.getElementById('detalheQuitadasNome').textContent = cliente.nome_empresa;
 
-    let html = `<div class="table-responsive">
-    <table class="table table-sm table-hover mb-0">
-        <thead class="table-light"><tr>
+    let html = `<div style="overflow-x:auto;"><table class="cy-table">
+        <thead><tr>
             <th>Número</th>
-            <th class="text-end">Valor</th>
-            <th class="text-center">Vencimento</th>
-            <th class="text-center">Pago em</th>
-            <th class="text-center">Atraso</th>
+            <th style="text-align:right;">Valor</th>
+            <th style="text-align:center;">Vencimento</th>
+            <th style="text-align:center;">Pago em</th>
+            <th style="text-align:center;">Atraso</th>
         </tr></thead><tbody>`;
 
     let totalValor = 0;
     cliente.faturas.forEach(f => {
         totalValor += f.valor;
-        const cor = f.dias_atraso > 60 ? 'text-danger fw-bold'
-                  : f.dias_atraso > 30 ? 'text-warning' : 'text-muted';
+        const cor = f.dias_atraso > 60 ? 'var(--rd)' : f.dias_atraso > 30 ? 'var(--or)' : 'var(--muted)';
         html += `<tr>
-            <td><strong>${f.numero}</strong></td>
-            <td class="text-end">R$ ${fmt(f.valor)}</td>
-            <td class="text-center"><small>${f.vencimento}</small></td>
-            <td class="text-center"><small class="text-success fw-semibold">${f.pago_em}</small></td>
-            <td class="text-center"><small class="${cor}">${f.dias_atraso}d</small></td>
+            <td style="color:var(--cy);">${f.numero}</td>
+            <td style="text-align:right;">R$ ${fmt(f.valor)}</td>
+            <td style="text-align:center;color:var(--muted);font-size:.72rem;">${f.vencimento}</td>
+            <td style="text-align:center;color:var(--gr);font-size:.72rem;">${f.pago_em}</td>
+            <td style="text-align:center;color:${cor};font-size:.72rem;">${f.dias_atraso}d</td>
         </tr>`;
     });
 
-    html += `<tr class="table-light fw-bold">
-        <td>Total</td>
-        <td class="text-end text-success">R$ ${fmt(totalValor)}</td>
+    html += `<tr style="border-top:1px solid rgba(0,245,255,.15);">
+        <td style="color:var(--muted);">Total</td>
+        <td style="text-align:right;color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(totalValor)}</td>
         <td colspan="3"></td>
     </tr></tbody></table></div>`;
 
@@ -995,29 +1304,35 @@ function carregarGrafico() {
                     {
                         label: 'Recebido',
                         data: data.valores_pagos,
-                        backgroundColor: 'rgba(102,126,234,.85)',
-                        borderColor: 'rgba(102,126,234,1)',
+                        backgroundColor: 'rgba(0,255,136,0.55)',
+                        borderColor: '#00ff88',
                         borderWidth: 1, borderRadius: 4, order: 1,
                     },
                     {
                         label: 'Em Aberto',
                         data: data.valores_abertos,
-                        backgroundColor: 'rgba(245,87,108,.6)',
-                        borderColor: 'rgba(245,87,108,1)',
+                        backgroundColor: 'rgba(255,85,85,0.4)',
+                        borderColor: '#ff5555',
                         borderWidth: 1, borderRadius: 4, order: 2,
                     }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ccc', font: { size: 12 } } } },
+                plugins: {
+                    legend: { labels: { color: 'rgba(0,245,255,.5)', font: { size: 11, family: "'Share Tech Mono',monospace" } } },
+                    tooltip: { backgroundColor: '#060c18', titleColor: '#00f5ff', bodyColor: '#c9d8e8', borderColor: 'rgba(0,245,255,.2)', borderWidth: 1 }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { color: '#aaa', callback: v => 'R$ ' + fmt(v) },
-                        grid: { color: 'rgba(255,255,255,0.05)' }
+                        ticks: { color: 'rgba(0,245,255,.45)', callback: v => 'R$ ' + fmt(v), font: { family:"'Share Tech Mono',monospace", size:10 } },
+                        grid: { color: 'rgba(0,245,255,.06)' }
                     },
-                    x: { ticks: { color: '#aaa' }, grid: { display: false } }
+                    x: {
+                        ticks: { color: 'rgba(0,245,255,.45)', font: { family:"'Share Tech Mono',monospace", size:10 } },
+                        grid: { display: false }
+                    }
                 }
             }
         });
@@ -1030,33 +1345,33 @@ function carregarAging() {
     .then(r => r.json())
     .then(data => {
         const div = document.getElementById('aging-container');
-        if (!data.sucesso) { div.innerHTML = '<p class="text-danger small">Erro ao carregar.</p>'; return; }
+        if (!data.sucesso) { div.innerHTML = '<p style="color:var(--rd);font-size:.8rem;">Erro ao carregar.</p>'; return; }
 
-        const cores = { '0_30': '#28a745', '31_60': '#ffc107', '61_90': '#fd7e14', '90_mais': '#dc3545' };
+        const coresMap = { '0_30': 'var(--gr)', '31_60': 'var(--or)', '61_90': '#ff8c00', '90_mais': 'var(--rd)' };
         const total = data.total_geral;
         let html = '';
 
         Object.entries(data.faixas).forEach(([key, f]) => {
             const pct = total > 0 ? (f.total / total * 100) : 0;
-            html += `<div class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                    <small class="fw-semibold">${f.label}</small>
-                    <small class="fw-bold">R$ ${fmt(f.total)} <span class="text-muted">(${f.faturas.length})</span></small>
+            const cor = coresMap[key] || 'var(--cy)';
+            html += `<div class="aging-row">
+                <div class="aging-label">
+                    <span class="name">${f.label}</span>
+                    <span class="val">R$ ${fmt(f.total)} <span style="color:var(--muted);font-family:inherit;font-size:.65rem;">(${f.faturas.length})</span></span>
                 </div>
-                <div class="progress" style="height:8px;">
-                    <div class="progress-bar" style="width:${pct.toFixed(1)}%;background:${cores[key]};"></div>
+                <div class="aging-bar-bg">
+                    <div class="aging-bar-fill" style="width:${pct.toFixed(1)}%;background:${cor};"></div>
                 </div>
             </div>`;
         });
 
-        html += `<hr>
-        <div class="d-flex justify-content-between">
-            <strong>Total Vencido</strong>
-            <strong>R$ ${fmt(total)}</strong>
+        html += `<div style="display:flex;justify-content:space-between;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(0,245,255,.1);font-size:.78rem;">
+            <span style="color:var(--muted);">Total Vencido</span>
+            <span style="color:var(--rd);font-family:'Orbitron',sans-serif;font-size:.75rem;">R$ ${fmt(total)}</span>
         </div>`;
-        div.innerHTML = html || '<p class="text-muted small text-center py-3">Sem faturas vencidas 🎉</p>';
+        div.innerHTML = html || '<div style="text-align:center;padding:2rem;color:var(--gr);font-size:.8rem;">Sem faturas vencidas 🎉</div>';
     })
-    .catch(() => document.getElementById('aging-container').innerHTML = '<p class="text-muted small">Indisponível.</p>');
+    .catch(() => { document.getElementById('aging-container').innerHTML = '<p style="color:var(--muted);font-size:.78rem;">Indisponível.</p>'; });
 }
 
 // ===== PESQUISA =====
@@ -1066,7 +1381,7 @@ function pesquisarClientes() {
     const div   = document.getElementById('resultado-pesquisa');
     const lista = document.getElementById('lista-clientes-pesquisa');
     if (termo.length < 2) { div.style.display = 'none'; return; }
-    lista.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
+    lista.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:.5rem;"><div class="cy-spinner" style="display:inline-block;"></div> Buscando…</div>';
     div.style.display = 'block';
 
     timeoutPesquisa = setTimeout(() => {
@@ -1074,22 +1389,21 @@ function pesquisarClientes() {
         .then(r => r.json())
         .then(data => {
             if (!data.sucesso || !data.total) {
-                lista.innerHTML = '<p class="text-muted small">Nenhum cliente encontrado.</p>';
+                lista.innerHTML = '<p style="color:var(--muted);font-size:.78rem;padding:.5rem;">Nenhum cliente encontrado.</p>';
                 return;
             }
-            let html = '<div class="row g-2">';
+            let html = '<div style="display:flex;flex-direction:column;gap:.4rem;">';
             data.clientes.forEach(c => {
                 const badge = c.boletos_abertos > 0
-                    ? `<span class="badge bg-danger ms-1">${c.boletos_abertos} vencida(s)</span>`
-                    : `<span class="badge bg-success ms-1">Em dia</span>`;
-                html += `<div class="col-md-4">
-                    <a href="?cliente_id=${c.id}" class="card text-decoration-none h-100 border-0 shadow-sm">
-                        <div class="card-body py-2 px-3">
-                            <div class="fw-semibold small">${c.nome_empresa}${badge}</div>
-                            <small class="text-muted">${c.cnpj}</small>
-                        </div>
-                    </a>
-                </div>`;
+                    ? `<span class="badge-cy b-err" style="margin-left:.5rem;">${c.boletos_abertos} vencida(s)</span>`
+                    : `<span class="badge-cy b-ok" style="margin-left:.5rem;">Em dia</span>`;
+                html += `<a href="?cliente_id=${c.id}" style="
+                    display:block; background:var(--bg3); border:1px solid rgba(0,245,255,.12);
+                    border-radius:5px; padding:.5rem .75rem; text-decoration:none;
+                    transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(0,245,255,.35)'" onmouseout="this.style.borderColor='rgba(0,245,255,.12)'">
+                    <span style="color:var(--cy);font-size:.8rem;">${c.nome_empresa}${badge}</span><br>
+                    <span style="color:var(--muted);font-size:.7rem;">${c.cnpj}</span>
+                </a>`;
             });
             html += '</div>';
             lista.innerHTML = html;
@@ -1281,7 +1595,7 @@ function carregarAlugueis() {
 
 // ===== VENDAS =====
 function atualizarValorParcela() {
-    const total   = parseFloat(document.getElementById('vendaValorTotal')?.value) || 0;
+    const total    = parseFloat(document.getElementById('vendaValorTotal')?.value) || 0;
     const parcelas = parseInt(document.getElementById('vendaParcelas')?.value) || 1;
     const el = document.getElementById('valor-parcela');
     if (el) el.textContent = 'R$ ' + fmt(parcelas > 0 ? total / parcelas : 0);
@@ -1377,11 +1691,9 @@ function carregarFaturas() {
     .then(data => {
         if (data.sucesso) {
             document.getElementById('lista-faturas').innerHTML = `
-            <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
-                <thead class="table-light">
-                    <tr><th>Número</th><th>Tipo</th><th>Valor</th><th>Vencimento</th><th>Status</th><th></th></tr>
-                </thead>
+            <div style="overflow-x:auto;">
+            <table class="cy-table">
+                <thead><tr><th>Número</th><th>Tipo</th><th>Valor</th><th>Vencimento</th><th>Status</th><th></th></tr></thead>
                 <tbody>${data.html}</tbody>
             </table></div>`;
         }
@@ -1413,7 +1725,7 @@ async function confirmarDeletarFatura(faturaId, numero, valor) {
 // ===== VISUALIZAR FATURA =====
 function visualizarFatura(faturaId) {
     faturaAtualId = faturaId;
-    document.getElementById('conteudo-fatura').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    document.getElementById('conteudo-fatura').innerHTML = '<div style="text-align:center;padding:2rem;"><div class="cy-spinner"></div></div>';
     document.getElementById('secaoPagamentosRegistrados').style.display = 'none';
     new bootstrap.Modal(document.getElementById('modalVisualizarFatura')).show();
 
@@ -1429,33 +1741,49 @@ function visualizarFatura(faturaId) {
         faturaAtualNumero = f.numero_fatura;
 
         const vencidaBadge = f.vencida
-            ? `<span class="badge bg-danger ms-2">⚠️ ${f.dias_vencido}d em atraso</span>` : '';
+            ? `<span class="badge-cy b-err" style="margin-left:.5rem;">⚠️ ${f.dias_vencido}d em atraso</span>` : '';
 
         const itensHtml = f.itens.length
-            ? f.itens.map(i => `<tr><td>${i.descricao}</td><td><span class="badge bg-secondary">${i.tipo}</span></td><td class="text-end fw-bold">R$ ${fmt(i.valor)}</td></tr>`).join('')
-            : '<tr><td colspan="3" class="text-center text-muted">Nenhum item associado</td></tr>';
+            ? f.itens.map(i => `<tr>
+                <td>${i.descricao}</td>
+                <td><span class="badge-cy b-info">${i.tipo}</span></td>
+                <td style="text-align:right;color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(i.valor)}</td>
+              </tr>`).join('')
+            : '<tr><td colspan="3" style="text-align:center;color:var(--muted);">Nenhum item associado</td></tr>';
+
+        const statusCls = f.status === 'PAGA' ? 'b-ok' : 'b-err';
 
         document.getElementById('conteudo-fatura').innerHTML = `
-        <div class="row mb-3">
-            <div class="col-6"><p class="mb-1 text-muted small">Número</p><h5 class="fw-bold text-primary">${f.numero_fatura}</h5></div>
-            <div class="col-6"><p class="mb-1 text-muted small">Status</p>
-                <h5><span class="badge ${f.status === 'PAGA' ? 'bg-success' : 'bg-danger'} fs-6">${f.status}</span>${vencidaBadge}</h5>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div>
+                <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Número</div>
+                <div style="font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--cy);">${f.numero_fatura}</div>
+            </div>
+            <div>
+                <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Status</div>
+                <div><span class="badge-cy ${statusCls}" style="font-size:.8rem;">${f.status}</span>${vencidaBadge}</div>
             </div>
         </div>
-        <div class="row mb-3">
-            <div class="col-6"><p class="mb-1 text-muted small">Valor Total</p><h4 class="fw-bold text-success">R$ ${fmt(f.valor_total)}</h4></div>
-            <div class="col-6"><p class="mb-1 text-muted small">Vencimento</p><h5 class="fw-semibold">${f.data_vencimento}</h5></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div>
+                <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Valor Total</div>
+                <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--gr);">R$ ${fmt(f.valor_total)}</div>
+            </div>
+            <div>
+                <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Vencimento</div>
+                <div style="font-size:.9rem;color:#c9d8e8;">${f.data_vencimento}</div>
+            </div>
         </div>
-        <hr>
-        <p class="mb-1 text-muted small fw-semibold">CLIENTE</p>
-        <div class="alert alert-light border py-2 mb-3">
-            <strong>${f.cliente.nome}</strong><br>
-            <small>CNPJ: ${f.cliente.cnpj}${f.cliente.email ? ' | ' + f.cliente.email : ''}</small>
+        <hr style="border-color:rgba(0,245,255,.1);">
+        <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Cliente</div>
+        <div style="background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.1);border-radius:5px;padding:.6rem .75rem;margin-bottom:1rem;">
+            <div style="color:var(--cy);font-size:.85rem;">${f.cliente.nome}</div>
+            <div style="color:var(--muted);font-size:.72rem;">CNPJ: ${f.cliente.cnpj}${f.cliente.email ? ' | ' + f.cliente.email : ''}</div>
         </div>
-        <p class="mb-1 text-muted small fw-semibold">ITENS DA FATURA</p>
-        <div class="table-responsive">
-        <table class="table table-sm mb-0">
-            <thead class="table-light"><tr><th>Descrição</th><th>Tipo</th><th class="text-end">Valor</th></tr></thead>
+        <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Itens da Fatura</div>
+        <div style="overflow-x:auto;">
+        <table class="cy-table">
+            <thead><tr><th>Descrição</th><th>Tipo</th><th style="text-align:right;">Valor</th></tr></thead>
             <tbody>${itensHtml}</tbody>
         </table></div>`;
 
@@ -1489,31 +1817,31 @@ function carregarPagamentos(faturaId) {
         data.pagamentos.forEach(p => {
             let btns = '';
             if (p.tem_comprovante_usuario)
-                btns += `<a href="${p.comprovante_usuario_url}" target="_blank" class="btn btn-sm btn-outline-warning me-1" title="Comprovante"><i class="fas fa-file-upload"></i></a>`;
+                btns += `<a href="${p.comprovante_usuario_url}" target="_blank" class="btn-cy btn-cy-sm btn-cy-or" title="Comprovante"><i class="fas fa-file-upload"></i></a> `;
             if (p.tem_pdf_gerado)
-                btns += `<a href="${p.comprovante_pdf_url}" target="_blank" class="btn btn-sm btn-outline-info me-1" title="PDF Recibo"><i class="fas fa-file-pdf"></i></a>`;
+                btns += `<a href="${p.comprovante_pdf_url}" target="_blank" class="btn-cy btn-cy-sm" title="PDF Recibo"><i class="fas fa-file-pdf"></i></a>`;
             if (!p.tem_algum_comprovante)
-                btns = '<span class="text-muted small">—</span>';
+                btns = '<span style="color:var(--muted);font-size:.72rem;">—</span>';
 
             tbody.innerHTML += `<tr>
-                <td><small class="badge bg-secondary">${p.numero_recibo}</small></td>
-                <td><small>${p.data_pagamento}</small></td>
-                <td><strong>R$ ${fmt(p.valor)}</strong></td>
+                <td><span class="badge-cy b-info">${p.numero_recibo}</span></td>
+                <td style="font-size:.72rem;color:var(--muted);">${p.data_pagamento}</td>
+                <td style="color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(p.valor)}</td>
                 <td>${btns}</td>
-                <td><button onclick="deletarPagamento(${p.id})" class="btn btn-sm btn-outline-danger" title="Deletar"><i class="fas fa-trash"></i></button></td>
+                <td><button onclick="deletarPagamento(${p.id})" class="btn-cy btn-cy-rd btn-cy-sm" title="Deletar"><i class="fas fa-trash"></i></button></td>
             </tr>`;
         });
 
-        tbody.innerHTML += `<tr class="table-light fw-bold">
-            <td colspan="2" class="text-end">Total Pago:</td>
-            <td>R$ ${fmt(data.total_pago)}</td>
+        tbody.innerHTML += `<tr style="border-top:1px solid rgba(0,245,255,.15);">
+            <td colspan="2" style="text-align:right;color:var(--muted);font-size:.72rem;">Total Pago:</td>
+            <td style="color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(data.total_pago)}</td>
             <td colspan="2"></td>
         </tr>`;
 
         if (data.saldo_fatura > 0) {
-            tbody.innerHTML += `<tr class="table-warning fw-bold">
-                <td colspan="2" class="text-end">Saldo Pendente:</td>
-                <td class="text-danger">R$ ${fmt(data.saldo_fatura)}</td>
+            tbody.innerHTML += `<tr>
+                <td colspan="2" style="text-align:right;color:var(--muted);font-size:.72rem;">Saldo Pendente:</td>
+                <td style="color:var(--rd);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(data.saldo_fatura)}</td>
                 <td colspan="2"></td>
             </tr>`;
         }
@@ -1569,59 +1897,11 @@ function enviarRegistroPagamento(event) {
     .catch(e => mostrarErro('msgErroPagamento', e.message))
     .finally(() => { btn.disabled = false; spinner.classList.add('d-none'); });
 }
+
+// animation
+const style = document.createElement('style');
+style.textContent = '@keyframes slideIn { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }';
+document.head.appendChild(style);
 </script>
-
-<style>
-@keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-.kpi-card { transition: transform .15s ease, box-shadow .15s ease; }
-.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,.35) !important; }
-
-/* Formulários dark */
-.form-control, .form-select {
-    background-color: #2a2a2a !important;
-    color: #fff !important;
-    border-color: #444 !important;
-}
-.form-control:focus, .form-select:focus {
-    background-color: #333 !important;
-    color: #fff !important;
-    border-color: #00ff88 !important;
-    box-shadow: 0 0 0 .2rem rgba(0,255,136,.2);
-}
-.form-control::placeholder { color: #777 !important; }
-.form-label { color: #ccc; }
-
-/* Cards e layout */
-.card { background-color: #1a1a1a !important; border-color: #2d2d2d !important; color: #fff !important; }
-.card-header { background-color: #222 !important; border-color: #2d2d2d !important; color: #fff !important; }
-
-/* Modals */
-.modal-content { background-color: #1e1e1e !important; color: #fff !important; border-color: #333 !important; }
-.modal-header  { border-bottom-color: #333 !important; }
-.modal-footer  { border-top-color: #333 !important; }
-
-/* Tabelas */
-.table { color: #ddd !important; }
-.table-light, .table-light th, .table-light td { background-color: #2a2a2a !important; color: #ccc !important; }
-.table-hover tbody tr:hover { background-color: rgba(0,255,136,.07) !important; }
-.table-warning { background-color: rgba(255,193,7,.1) !important; }
-
-/* Nav tabs */
-.nav-link         { color: #aaa !important; }
-.nav-link.active  { color: #00ff88 !important; border-bottom-color: #00ff88 !important; }
-
-/* Progress */
-.progress { background-color: #333; }
-
-/* Alerts */
-.alert-light { background-color: #2a2a2a !important; border-color: #444 !important; color: #ddd !important; }
-.alert-info  { background-color: #1a3a4a !important; border-color: #17a2b8 !important; color: #7dd8e8 !important; }
-
-/* Input group */
-.input-group-text { background-color: #333 !important; border-color: #444 !important; color: #ccc !important; }
-
-.text-muted { color: #888 !important; }
-</style>
 
 {% endblock %}

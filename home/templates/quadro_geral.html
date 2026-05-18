@@ -2,508 +2,448 @@
 {% load static %}
 
 {% block content %}
-<div class="main-content">
-    <div class="container-fluid">
-        
-        <!-- Header do Dashboard -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h4 class="mb-0">Dashboard - Visão Geral</h4>
+<style>
+:root {
+    --cy: #00f5ff;
+    --gr: #00ff88;
+    --bl: #1a4fff;
+    --or: #ffa500;
+    --rd: #ff5555;
+    --bg: #02030a;
+    --bg2: #060c18;
+    --bg3: #0a1628;
+    --muted: rgba(0,245,255,0.4);
+}
+
+.dash-page {
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 1.5rem;
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+.dash-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem;
+    color: var(--cy);
+    text-shadow: 0 0 18px rgba(0,245,255,0.5);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+}
+
+.dash-subtitle {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 2px;
+}
+
+/* ---- Stat cards ---- */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.15);
+    border-radius: 8px;
+    padding: 1.2rem 1rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s;
+}
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent, var(--cy));
+    box-shadow: 0 0 10px var(--accent, var(--cy));
+}
+.stat-card:hover {
+    border-color: rgba(0,245,255,0.35);
+    box-shadow: 0 0 16px rgba(0,245,255,0.08);
+}
+.stat-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: .4rem;
+}
+.stat-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--accent, var(--cy));
+    text-shadow: 0 0 12px var(--accent, var(--cy));
+}
+.stat-icon {
+    position: absolute;
+    right: 1rem; top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.8rem;
+    color: var(--accent, var(--cy));
+    opacity: 0.12;
+}
+
+/* ---- Chart card ---- */
+.chart-card {
+    background: var(--bg2);
+    border: 1px solid rgba(0,245,255,0.15);
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+.card-heading {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--cy);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.card-heading i { opacity: .7; }
+
+/* ---- Tables ---- */
+.cy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.cy-table thead th {
+    background: rgba(0,245,255,0.05);
+    color: var(--cy);
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: .55rem .7rem;
+    border-bottom: 1px solid rgba(0,245,255,0.15);
+    white-space: nowrap;
+}
+.cy-table tbody tr {
+    border-bottom: 1px solid rgba(0,245,255,0.06);
+    transition: background .15s;
+}
+.cy-table tbody tr:hover { background: rgba(0,245,255,0.04); }
+.cy-table td {
+    padding: .5rem .7rem;
+    color: #c9d8e8;
+}
+.cy-table code {
+    background: rgba(0,245,255,0.07);
+    color: var(--cy);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: .78rem;
+}
+
+/* status badges */
+.badge-cy {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: .7rem;
+    letter-spacing: .5px;
+    font-weight: 600;
+}
+.badge-ok    { background: rgba(0,255,136,.12); color: var(--gr); border:1px solid rgba(0,255,136,.3); }
+.badge-err   { background: rgba(255,85,85,.12);  color: var(--rd); border:1px solid rgba(255,85,85,.3); }
+.badge-warn  { background: rgba(255,165,0,.12);  color: var(--or); border:1px solid rgba(255,165,0,.3); }
+.badge-info  { background: rgba(0,245,255,.1);   color: var(--cy); border:1px solid rgba(0,245,255,.25); }
+
+/* two-col layout */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+@media(max-width:768px){ .two-col { grid-template-columns: 1fr; } .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gr);
+}
+.empty-state i { font-size: 1.8rem; display: block; margin-bottom: .5rem; opacity:.7; }
+.empty-state p { font-size: .78rem; color: var(--muted); }
+
+.link-cy {
+    color: var(--cy);
+    text-decoration: none;
+    font-size: .75rem;
+    letter-spacing: 1px;
+    opacity: .7;
+    transition: opacity .2s;
+}
+.link-cy:hover { opacity: 1; }
+
+.scan-line {
+    width: 100%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cy), transparent);
+    margin: 1.5rem 0;
+    opacity: .25;
+}
+</style>
+
+<div class="dash-page">
+    <!-- Header -->
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem;">
+        <div>
+            <div class="dash-title"><i class="fas fa-tachometer-alt" style="margin-right:.5rem;"></i> Dashboard</div>
+            <div class="dash-subtitle">{{ data_hoje|date:"d/m/Y" }} &nbsp;|&nbsp; VISÃO GERAL DO SISTEMA</div>
+        </div>
+        <a href="{% url 'relatorio_backups' %}" class="link-cy" style="opacity:1; font-size:.8rem;">
+            <i class="fas fa-database"></i> Relatório de Backups
+        </a>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+        <div class="stat-card" style="--accent: var(--cy);">
+            <div class="stat-label">Clientes</div>
+            <div class="stat-value">{{ total_clientes }}</div>
+            <i class="fas fa-users stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: #1a4fff;">
+            <div class="stat-label">Hosts Cadastrados</div>
+            <div class="stat-value">{{ total_acessos }}</div>
+            <i class="fas fa-server stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: var(--cy);">
+            <div class="stat-label">Hosts c/ Backup</div>
+            <div class="stat-value">{{ acessos_com_backup }}</div>
+            <i class="fas fa-hdd stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: var(--gr);">
+            <div class="stat-label">Backups OK Hoje</div>
+            <div class="stat-value">{{ backups_hoje_ok }}</div>
+            <i class="fas fa-check-circle stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: var(--rd);">
+            <div class="stat-label">Backups Erro Hoje</div>
+            <div class="stat-value">{{ backups_hoje_erro }}</div>
+            <i class="fas fa-times-circle stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: var(--or);">
+            <div class="stat-label">Sem Mudança Hoje</div>
+            <div class="stat-value">{{ backups_sem_mudanca }}</div>
+            <i class="fas fa-minus-circle stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: var(--rd);">
+            <div class="stat-label">RPKI Inválidos</div>
+            <div class="stat-value">{{ total_blocos_rpki_invalidos }}</div>
+            <i class="fas fa-shield-alt stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent: var(--or);">
+            <div class="stat-label">IRR Inválidos</div>
+            <div class="stat-value">{{ total_blocos_irr_invalidos }}</div>
+            <i class="fas fa-route stat-icon"></i>
+        </div>
+    </div>
+
+    <!-- Backup chart -->
+    <div class="chart-card">
+        <div class="card-heading"><i class="fas fa-chart-bar"></i> Backups — Últimos 14 Dias</div>
+        <canvas id="backupChart" style="max-height:220px;"></canvas>
+    </div>
+
+    <!-- últimos backups + top clientes -->
+    <div class="two-col">
+        <!-- últimos backups -->
+        <div class="chart-card" style="margin-bottom:0;">
+            <div class="card-heading" style="justify-content:space-between;">
+                <span><i class="fas fa-history"></i> Últimos Backups</span>
+                <a href="{% url 'relatorio_backups' %}" class="link-cy">ver todos →</a>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="cy-table">
+                    <thead><tr>
+                        <th>Host</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for bk in ultimos_backups %}
+                    <tr>
+                        <td><span style="color:var(--cy);">{{ bk.acesso.host|truncatechars:18 }}</span></td>
+                        <td>{{ bk.cliente.nome_empresa|truncatechars:16 }}</td>
+                        <td>
+                            {% if bk.status == 'SUCESSO' %}<span class="badge-cy badge-ok">OK</span>
+                            {% elif bk.status == 'ERRO' %}<span class="badge-cy badge-err">ERRO</span>
+                            {% elif bk.status == 'SEM_MUDANCAS' %}<span class="badge-cy badge-warn">SEM MUD.</span>
+                            {% else %}<span class="badge-cy badge-info">{{ bk.status }}</span>{% endif %}
+                        </td>
+                        <td style="color:var(--muted); white-space:nowrap;">{{ bk.data_backup|date:"d/m H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4">
+                        <div class="empty-state"><i class="fas fa-database"></i><p>Nenhum backup registrado.</p></div>
+                    </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- ✅ RPKI/IRR NO INÍCIO -->
-        <div class="row mb-4">
-            <!-- RPKI Inválidos -->
-            <div class="col-lg-6 mb-3">
-                <div class="card">
-                    <div class="card-header" style="border-bottom: 2px solid #ff6b6b; padding: 1rem;">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <h5 class="mb-0" style="color: #ff6b6b;">
-                                    <i class="fas fa-exclamation-circle"></i> RPKI Inválidos
-                                </h5>
-                                <small style="color: #8b949e;">Total: {{ total_blocos_rpki_invalidos }} bloco(s)</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        {% if blocos_rpki_invalidos %}
-                            <div class="table-responsive">
-                                <table class="custom-table" style="font-size: 0.85rem;">
-                                    <thead>
-                                        <tr>
-                                            <th>Bloco</th>
-                                            <th>Cliente</th>
-                                            <th>Status</th>
-                                            <th>Mensagem</th>
-                                            <th>Última Validação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for bloco in blocos_rpki_invalidos %}
-                                            <tr style="border-left: 3px solid #ff6b6b;">
-                                                <td>
-                                                    <code style="background: rgba(255,107,107,0.1); padding: 2px 6px; border-radius: 3px;">
-                                                        {{ bloco.bloco }}
-                                                    </code>
-                                                </td>
-                                                <td>
-                                                    <small>{{ bloco.cliente.nome_empresa|truncatechars:20 }}</small>
-                                                </td>
-                                                <td>
-                                                    <span class="badge" style="background-color: #ff6b6b; color: white; font-size: 0.75rem;">
-                                                        {{ bloco.get_status_rpki_display }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <small style="color: #8b949e;">{{ bloco.rpki_mensagem|truncatechars:30 }}</small>
-                                                </td>
-                                                <td>
-                                                    <small>
-                                                        {% if bloco.ultima_validacao %}
-                                                            {{ bloco.ultima_validacao|date:"d/m H:i" }}
-                                                        {% else %}
-                                                            <span style="color: #ff6b6b;">Nunca</span>
-                                                        {% endif %}
-                                                    </small>
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <div style="text-align: center; padding: 2rem; color: #00ff88;">
-                                <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
-                                <p>Todos os blocos RPKI foram validados com sucesso! ✅</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- IRR Inválidos -->
-            <div class="col-lg-6 mb-3">
-                <div class="card">
-                    <div class="card-header" style="border-bottom: 2px solid #ffa94d; padding: 1rem;">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <h5 class="mb-0" style="color: #ffa94d;">
-                                    <i class="fas fa-exclamation-triangle"></i> IRR Inválidos
-                                </h5>
-                                <small style="color: #8b949e;">Total: {{ total_blocos_irr_invalidos }} bloco(s)</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        {% if blocos_irr_invalidos %}
-                            <div class="table-responsive">
-                                <table class="custom-table" style="font-size: 0.85rem;">
-                                    <thead>
-                                        <tr>
-                                            <th>Bloco</th>
-                                            <th>Cliente</th>
-                                            <th>Status</th>
-                                            <th>Mensagem</th>
-                                            <th>Última Validação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for bloco in blocos_irr_invalidos %}
-                                            <tr style="border-left: 3px solid #ffa94d;">
-                                                <td>
-                                                    <code style="background: rgba(255,169,77,0.1); padding: 2px 6px; border-radius: 3px;">
-                                                        {{ bloco.bloco }}
-                                                    </code>
-                                                </td>
-                                                <td>
-                                                    <small>{{ bloco.cliente.nome_empresa|truncatechars:20 }}</small>
-                                                </td>
-                                                <td>
-                                                    <span class="badge" style="background-color: #ffa94d; color: white; font-size: 0.75rem;">
-                                                        {{ bloco.get_status_irr_display }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <small style="color: #8b949e;">{{ bloco.irr_mensagem|truncatechars:30 }}</small>
-                                                </td>
-                                                <td>
-                                                    <small>
-                                                        {% if bloco.ultima_validacao %}
-                                                            {{ bloco.ultima_validacao|date:"d/m H:i" }}
-                                                        {% else %}
-                                                            <span style="color: #ffa94d;">Nunca</span>
-                                                        {% endif %}
-                                                    </small>
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <div style="text-align: center; padding: 2rem; color: #00ff88;">
-                                <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
-                                <p>Todos os blocos IRR foram validados com sucesso! ✅</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
+        <!-- top clientes -->
+        <div class="chart-card" style="margin-bottom:0;">
+            <div class="card-heading"><i class="fas fa-star"></i> Top Clientes por Hosts</div>
+            <div style="overflow-x:auto;">
+                <table class="cy-table">
+                    <thead><tr>
+                        <th>#</th>
+                        <th>Cliente</th>
+                        <th>Hosts</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for c in top_clientes %}
+                    <tr>
+                        <td style="color:var(--muted);">{{ forloop.counter }}</td>
+                        <td>
+                            <a href="{% url 'listar_clientes' %}?id={{ c.id }}" style="color:var(--cy); text-decoration:none;">
+                                {{ c.nome_empresa|truncatechars:24 }}
+                            </a>
+                        </td>
+                        <td><span class="badge-cy badge-info">{{ c.total_hosts }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">
+                        <div class="empty-state"><i class="fas fa-users"></i><p>Nenhum cliente cadastrado.</p></div>
+                    </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
 
-        <!-- Cards de Estatísticas -->
-        <div class="row mb-4">
-            <!-- Total de Chamados -->
-            <div class="col-md-3 mb-3">
-                <div class="card stat-card">
-                    <div class="card-body">
-                        <div class="stat-icon total">
-                            <i class="fas fa-ticket-alt"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ total_chamados }}</h3>
-                            <p>Total Hoje</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="scan-line"></div>
 
-            <!-- Abertos - TODOS -->
-            <div class="col-md-3 mb-3">
-                <a href="{% url 'listar_chamados_status' 'ABERTO' %}" class="card-link">
-                    <div class="card stat-card clickable">
-                        <div class="card-body">
-                            <div class="stat-icon aberto">
-                                <i class="fas fa-folder-open"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>{{ chamados_abertos }}</h3>
-                                <p>Abertos</p>
-                            </div>
-                        </div>
-                    </div>
-                </a>
+    <!-- RPKI / IRR -->
+    <div class="two-col">
+        <!-- RPKI -->
+        <div class="chart-card" style="margin-bottom:0;">
+            <div class="card-heading" style="color: var(--rd);">
+                <i class="fas fa-exclamation-circle"></i> RPKI Inválidos
+                <span style="margin-left:auto; font-size:.7rem; color:var(--muted);">{{ total_blocos_rpki_invalidos }} bloco(s)</span>
             </div>
-
-            <!-- Em Andamento - TODOS -->
-            <div class="col-md-3 mb-3">
-                <a href="{% url 'listar_chamados_status' 'EM_ANDAMENTO' %}" class="card-link">
-                    <div class="card stat-card clickable">
-                        <div class="card-body">
-                            <div class="stat-icon andamento">
-                                <i class="fas fa-sync-alt"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>{{ chamados_em_andamento }}</h3>
-                                <p>Em Andamento</p>
-                            </div>
-                        </div>
-                    </div>
-                </a>
+            {% if blocos_rpki_invalidos %}
+            <div style="overflow-x:auto;">
+                <table class="cy-table">
+                    <thead><tr><th>Bloco</th><th>Cliente</th><th>Status</th><th>Validado</th></tr></thead>
+                    <tbody>
+                    {% for bloco in blocos_rpki_invalidos %}
+                    <tr style="border-left: 2px solid var(--rd);">
+                        <td><code>{{ bloco.bloco }}</code></td>
+                        <td>{{ bloco.cliente.nome_empresa|truncatechars:18 }}</td>
+                        <td><span class="badge-cy badge-err">{{ bloco.get_status_rpki_display }}</span></td>
+                        <td style="color:var(--muted); white-space:nowrap;">
+                            {% if bloco.ultima_validacao %}{{ bloco.ultima_validacao|date:"d/m H:i" }}{% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
-
-            <!-- Aguardando - TODOS -->
-            <div class="col-md-3 mb-3">
-                <a href="{% url 'listar_chamados_status' 'AGUARDANDO' %}" class="card-link">
-                    <div class="card stat-card clickable">
-                        <div class="card-body">
-                            <div class="stat-icon aguardando">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>{{ chamados_aguardando }}</h3>
-                                <p>Aguardando</p>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-check-circle" style="color:var(--gr);"></i><p>Todos os blocos RPKI válidos.</p></div>
+            {% endif %}
         </div>
 
-        <!-- Segunda linha de cards -->
-        <div class="row mb-4">
-            <!-- Resolvidos -->
-            <div class="col-md-3 mb-3">
-                <a href="{% url 'listar_chamados_status' 'RESOLVIDO' %}" class="card-link">
-                    <div class="card stat-card clickable">
-                        <div class="card-body">
-                            <div class="stat-icon resolvido">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>{{ chamados_resolvidos }}</h3>
-                                <p>Resolvidos Hoje</p>
-                            </div>
-                        </div>
-                    </div>
-                </a>
+        <!-- IRR -->
+        <div class="chart-card" style="margin-bottom:0;">
+            <div class="card-heading" style="color: var(--or);">
+                <i class="fas fa-exclamation-triangle"></i> IRR Inválidos
+                <span style="margin-left:auto; font-size:.7rem; color:var(--muted);">{{ total_blocos_irr_invalidos }} bloco(s)</span>
             </div>
-
-            <!-- Fechados -->
-            <div class="col-md-3 mb-3">
-                <a href="{% url 'listar_chamados_status' 'FECHADO' %}" class="card-link">
-                    <div class="card stat-card clickable">
-                        <div class="card-body">
-                            <div class="stat-icon fechado">
-                                <i class="fas fa-check-double"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3>{{ chamados_fechados }}</h3>
-                                <p>Fechados Hoje</p>
-                            </div>
-                        </div>
-                    </div>
-                </a>
+            {% if blocos_irr_invalidos %}
+            <div style="overflow-x:auto;">
+                <table class="cy-table">
+                    <thead><tr><th>Bloco</th><th>Cliente</th><th>Status</th><th>Validado</th></tr></thead>
+                    <tbody>
+                    {% for bloco in blocos_irr_invalidos %}
+                    <tr style="border-left: 2px solid var(--or);">
+                        <td><code>{{ bloco.bloco }}</code></td>
+                        <td>{{ bloco.cliente.nome_empresa|truncatechars:18 }}</td>
+                        <td><span class="badge-cy badge-warn">{{ bloco.get_status_irr_display }}</span></td>
+                        <td style="color:var(--muted); white-space:nowrap;">
+                            {% if bloco.ultima_validacao %}{{ bloco.ultima_validacao|date:"d/m H:i" }}{% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
-
-            <!-- Urgentes -->
-            <div class="col-md-3 mb-3">
-                <div class="card stat-card">
-                    <div class="card-body">
-                        <div class="stat-icon urgente">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ urgentes }}</h3>
-                            <p>Urgentes Hoje</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Alta Prioridade -->
-            <div class="col-md-3 mb-3">
-                <div class="card stat-card">
-                    <div class="card-body">
-                        <div class="stat-icon alta">
-                            <i class="fas fa-arrow-up"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ alta_prioridade }}</h3>
-                            <p>Alta Prioridade Hoje</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-check-circle" style="color:var(--gr);"></i><p>Todos os blocos IRR válidos.</p></div>
+            {% endif %}
         </div>
-
-        <!-- Gráfico e Departamentos -->
-        <div class="row mb-4">
-            <!-- Gráfico -->
-            <div class="col-lg-8 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-4">Chamados - Últimos 30 Dias</h5>
-                        <canvas id="graficoChart" style="max-height: 350px;"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Distribuição por Departamento -->
-            <div class="col-lg-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-4">Por Departamento</h5>
-                        <div class="departamento-list">
-                            {% for dept in por_departamento %}
-                                <div class="departamento-item">
-                                    <div class="dept-info">
-                                        <span class="dept-name">{{ dept.departamento }}</span>
-                                        <span class="dept-count">{{ dept.total }}</span>
-                                    </div>
-                                    <div class="dept-bar">
-                                        <div class="dept-progress" style="width: {% widthratio dept.total total_chamados_geral 100 %}%"></div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Top Clientes e Chamados Recentes -->
-        <div class="row">
-            <!-- Top 5 Clientes -->
-            <div class="col-lg-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-4">Top 5 Clientes</h5>
-                        <div class="table-responsive">
-                            <table class="custom-table">
-                                <thead>
-                                    <tr>
-                                        <th>Cliente</th>
-                                        <th>Chamados</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for cliente in top_clientes %}
-                                        <tr>
-                                            <td>{{ cliente.nome_empresa|truncatechars:25 }}</td>
-                                            <td>{{ cliente.total_chamados }}</td>
-                                        </tr>
-                                    {% empty %}
-                                        <tr>
-                                            <td colspan="2" class="text-center" style="color: var(--text-muted);">
-                                                Nenhum cliente encontrado
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chamados Recentes -->
-            <div class="col-lg-8 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-4">Chamados Recentes</h5>
-                        <div class="table-responsive">
-                            <table class="custom-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Cliente</th>
-                                        <th>Título</th>
-                                        <th>Prioridade</th>
-                                        <th>Status</th>
-                                        <th>Data</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for chamado in chamados_recentes %}
-                                        <tr>
-                                            <td>#{{ chamado.id }}</td>
-                                            <td>{{ chamado.cliente.nome_empresa|truncatechars:20 }}</td>
-                                            <td>{{ chamado.titulo|truncatechars:30 }}</td>
-                                            <td>
-                                                <span class="badge-prioridade {{ chamado.prioridade|lower }}">
-                                                    {{ chamado.get_prioridade_display }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge-status {{ chamado.status|lower }}">
-                                                    {{ chamado.get_status_display }}
-                                                </span>
-                                            </td>
-                                            <td>{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>
-                                        </tr>
-                                    {% empty %}
-                                        <tr>
-                                            <td colspan="6" class="text-center" style="color: var(--text-muted);">
-                                                Nenhum chamado encontrado
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-
 <script>
-    // Dados do gráfico
-    const graficoLabels = [
-        {% for item in grafico_dados %}
-            '{{ item.data }}'{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-    
-    const graficoData = [
-        {% for item in grafico_dados %}
-            {{ item.quantidade }}{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
+(function(){
+    const raw = {{ grafico_backups|safe }};
+    const labels = raw.map(d => d.data);
+    const okData  = raw.map(d => d.ok);
+    const errData = raw.map(d => d.erro);
 
-    // Configuração do gráfico
-    const ctx = document.getElementById('graficoChart');
-    new Chart(ctx, {
-        type: 'line',
+    new Chart(document.getElementById('backupChart'), {
+        type: 'bar',
         data: {
-            labels: graficoLabels,
-            datasets: [{
-                label: 'Chamados Criados',
-                data: graficoData,
-                borderColor: '#00ff88',
-                backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                borderWidth: 2,
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: '#00ff88',
-                pointBorderColor: '#000',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
+            labels,
+            datasets: [
+                {
+                    label: 'OK',
+                    data: okData,
+                    backgroundColor: 'rgba(0,255,136,0.55)',
+                    borderColor: '#00ff88',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                },
+                {
+                    label: 'Erro',
+                    data: errData,
+                    backgroundColor: 'rgba(255,85,85,0.45)',
+                    borderColor: '#ff5555',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
                 legend: {
-                    display: false
+                    labels: { color: 'rgba(0,245,255,0.6)', font: { family: "'Share Tech Mono',monospace", size: 11 } }
                 },
                 tooltip: {
-                    backgroundColor: '#0a0a0a',
-                    titleColor: '#00ff88',
-                    bodyColor: '#e6edf3',
-                    borderColor: '#00ff88',
+                    backgroundColor: '#060c18',
+                    titleColor: '#00f5ff',
+                    bodyColor: '#c9d8e8',
+                    borderColor: 'rgba(0,245,255,0.3)',
                     borderWidth: 1,
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return 'Chamados: ' + context.parsed.y;
-                        }
-                    }
                 }
             },
             scales: {
+                x: {
+                    ticks: { color: 'rgba(0,245,255,0.45)', font: { family:"'Share Tech Mono',monospace", size:10 }, maxRotation:45 },
+                    grid: { color: 'rgba(0,245,255,0.05)' }
+                },
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        color: '#8b949e',
-                        font: {
-                            family: "'Courier New', monospace",
-                            size: 11
-                        },
-                        stepSize: 1
-                    },
-                    grid: {
-                        color: 'rgba(0, 255, 136, 0.1)',
-                        drawBorder: false
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#8b949e',
-                        font: {
-                            family: "'Courier New', monospace",
-                            size: 10
-                        },
-                        maxRotation: 45,
-                        minRotation: 45
-                    },
-                    grid: {
-                        display: false
-                    }
+                    ticks: { color: 'rgba(0,245,255,0.45)', font: { family:"'Share Tech Mono',monospace", size:10 }, stepSize: 1 },
+                    grid: { color: 'rgba(0,245,255,0.07)' }
                 }
             }
         }
     });
+})();
 </script>
 {% endblock %}

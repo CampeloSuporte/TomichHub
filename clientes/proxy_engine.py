@@ -1001,6 +1001,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     _fixProp(HTMLImageElement.prototype,'src');
     _fixProp(HTMLScriptElement.prototype,'src');
     _fixProp(HTMLMediaElement.prototype,'src');
+    _fixProp(HTMLIFrameElement.prototype,'src');
     _fixProp(HTMLLinkElement.prototype,'href');
     _fixProp(HTMLAnchorElement.prototype,'href');
   }})();
@@ -1008,6 +1009,52 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     var o=window.location[fn].bind(window.location);
     window.location[fn]=function(u){{if(u&&u.startsWith('/')&&!u.startsWith(B))u=B+u;return o(u);}};
   }});
+  // Intercepta new WebSocket para roteá-lo pelo proxy SSH do CRM.
+  // Proxmox constrói URLs como wss://crm.tomich.com.br/api2/... — sem o prefixo do proxy.
+  // Reescrevemos para wss://crm.tomich.com.br/ws/proxy/<id>/<porta>/<scheme>/api2/...
+  // que é tratado pelo WebSocketProxyConsumer do Django Channels.
+  // B = '/clientes/acessos/<id>/web/<porta>/<scheme>'
+  // split('/') => ['','clientes','acessos',id,'web',porta,scheme]
+  (function(){{
+    var _parts=B.split('/');
+    if(_parts.length>=7&&_parts[1]==='clientes'&&_parts[2]==='acessos'){{
+      var _aid=_parts[3],_aprt=_parts[5],_asch=_parts[6];
+      var _WS=window.WebSocket;
+      function _ProxyWS(u,p){{
+        if(typeof u==='string'){{
+          try{{
+            var pu=new URL(u,location.href);
+            if(pu.hostname===location.hostname){{
+              var np=pu.pathname+(pu.search||'');
+              if(np.indexOf('/ws/proxy/')!==0){{
+                var wsp=pu.protocol==='wss:'?'wss:':'ws:';
+                u=wsp+'//'+location.host+'/ws/proxy/'+_aid+'/'+_aprt+'/'+_asch+np;
+              }}
+            }}
+          }}catch(e){{}}
+        }}
+        return p?new _WS(u,p):new _WS(u);
+      }}
+      _ProxyWS.prototype=_WS.prototype;
+      _ProxyWS.CONNECTING=_WS.CONNECTING;
+      _ProxyWS.OPEN=_WS.OPEN;
+      _ProxyWS.CLOSING=_WS.CLOSING;
+      _ProxyWS.CLOSED=_WS.CLOSED;
+      window.WebSocket=_ProxyWS;
+    }}
+  }})();
+  // Intercepta window.open para que popups (ex: terminal Proxmox, console VMs)
+  // abram dentro do contexto do proxy em vez de ir para a raiz do CRM.
+  (function(){{
+    var _wo=window.open;
+    window.open=function(u,name,feat){{
+      if(typeof u==='string'){{
+        if(u.startsWith('/')&&!u.startsWith(B))u=B+u;
+        else{{try{{var p=new URL(u);if(p.origin===location.origin){{var pp=p.pathname+(p.search||'');if(pp.startsWith('/')&&!pp.startsWith(B))u=B+pp;}}}}catch(e){{}}}}
+      }}
+      return _wo.call(this,u,name,feat);
+    }};
+  }})();
   // React Router / Vue Router usam history.pushState e history.replaceState.
   // Sem interceptar, a navegação SPA muda a URL para a raiz do CRM (ex: https://crm/),
   // saindo do contexto do proxy.

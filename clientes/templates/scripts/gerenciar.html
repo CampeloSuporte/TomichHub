@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scripts de Automação — TOMICH HUB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg:        #0d0d0d;
+    --bg2:       #111;
+    --bg3:       #161616;
+    --border:    #1e1e1e;
+    --border2:   #252525;
+    --green:     #00ff88;
+    --green2:    rgba(0,255,136,.12);
+    --orange:    #ffa500;
+    --orange2:   rgba(255,165,0,.12);
+    --blue:      #00d9ff;
+    --blue2:     rgba(0,217,255,.1);
+    --red:       #ff5555;
+    --red2:      rgba(255,85,85,.12);
+    --yellow:    #ffcc00;
+    --text:      #ccc;
+    --text2:     #888;
+    --text3:     #555;
+    --mono:      'JetBrains Mono', monospace;
+    --radius:    6px;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+    background: var(--bg2);
+    border-bottom: 2px solid var(--green);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.topbar-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 1px;
+}
+.topbar-title span.icon { font-size: 18px; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.btn {
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn:hover { color: var(--text); border-color: #444; }
+.btn-green { border-color: var(--green); color: var(--green); }
+.btn-green:hover { background: var(--green2); }
+.btn-orange { border-color: var(--orange); color: var(--orange); }
+.btn-orange:hover { background: var(--orange2); }
+.btn-red { border-color: var(--red); color: var(--red); }
+.btn-red:hover { background: var(--red2); }
+.btn-blue { border-color: var(--blue); color: var(--blue); }
+.btn-blue:hover { background: var(--blue2); }
+
+/* ── LAYOUT ── */
+.layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    height: calc(100vh - 49px);
+    overflow: hidden;
+}
+
+/* ── LEFT PANEL ── */
+.left-panel {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.left-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.search-box {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color .2s;
+}
+.search-box:focus { border-color: var(--green); }
+.filter-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+.fab-filter {
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+}
+.fab-filter:hover { color: var(--text); border-color: #444; }
+.fab-filter.ativo { border-color: var(--green); color: var(--green); background: var(--green2); }
+
+.stats-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+.stat-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    color: var(--text2);
+    flex: 1;
+    text-align: center;
+}
+.stat-chip strong { color: var(--green); }
+
+.scripts-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+.scripts-list::-webkit-scrollbar { width: 4px; }
+.scripts-list::-webkit-scrollbar-track { background: transparent; }
+.scripts-list::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+.script-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .15s;
+    position: relative;
+}
+.script-item:hover { background: rgba(255,255,255,.02); }
+.script-item.ativo { background: var(--green2); border-left: 3px solid var(--green); }
+.script-item-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.script-item.ativo .script-item-name { color: var(--green); }
+.script-item-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.badge {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+.badge-fab {
+    background: rgba(0,217,255,.15);
+    color: var(--blue);
+    border: 1px solid rgba(0,217,255,.3);
+}
+.badge-modo-op { background: rgba(0,255,136,.1); color: var(--green); border: 1px solid rgba(0,255,136,.25); }
+.badge-modo-cfg { background: rgba(255,165,0,.1); color: var(--orange); border: 1px solid rgba(255,165,0,.25); }
+.badge-inativo { background: rgba(255,85,85,.1); color: var(--red); border: 1px solid rgba(255,85,85,.25); }
+.script-item-desc {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.left-footer {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+}
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0;
+}
+.tab {
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+    white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.ativo { color: var(--green); border-bottom-color: var(--green); }
+
+.tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+.tab-content::-webkit-scrollbar { width: 5px; }
+.tab-content::-webkit-scrollbar-track { background: transparent; }
+.tab-content::-webkit-scrollbar-thumb { background: #1e1e1e; border-radius: 3px; }
+.tab-pane { display: none; }
+.tab-pane.ativo { display: block; }
+
+/* ── FORM ── */
+.form-section {
+    margin-bottom: 20px;
+}
+.form-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+label {
+    font-size: 11px;
+    color: var(--text2);
+    font-weight: 500;
+}
+input[type="text"],
+input[type="number"],
+input[type="password"],
+select,
+textarea {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--green); }
+select option { background: #1a1a1a; }
+textarea.code {
+    font-size: 12px;
+    resize: vertical;
+    min-height: 180px;
+    line-height: 1.5;
+    tab-size: 4;
+}
+.hint { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* ── PARAMS BUILDER ── */
+.params-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.param-card {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px;
+    position: relative;
+}
+.param-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.param-card-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    font-family: var(--mono);
+}
+.param-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.param-card-grid .form-group.full { grid-column: 1 / -1; }
+.btn-remove-param {
+    background: transparent;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background .15s;
+    font-family: var(--mono);
+}
+.btn-remove-param:hover { background: var(--red2); }
+
+/* ── PREVIEW ── */
+.preview-box {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    min-height: 80px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: #88cc88;
+}
+.preview-param-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.preview-param-label {
+    font-size: 11px;
+    color: var(--text2);
+    width: 150px;
+    flex-shrink: 0;
+}
+
+/* ── HISTORY ── */
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.history-table th {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-size: 10px;
+}
+.history-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    vertical-align: top;
+}
+.history-table tr:hover td { background: rgba(255,255,255,.015); }
+.status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+.status-sucesso { background: var(--green); }
+.status-erro { background: var(--red); }
+.status-parcial { background: var(--orange); }
+.status-executando { background: var(--blue); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+}
+.empty-state .empty-icon { font-size: 40px; opacity: .3; margin-bottom: 12px; }
+.empty-state p { font-size: 13px; margin-bottom: 6px; }
+.empty-state small { font-size: 11px; }
+
+/* ── TOAST ── */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.toast {
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-family: var(--mono);
+    border-left: 3px solid var(--green);
+    background: var(--bg2);
+    color: var(--text);
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    animation: slideIn .2s ease;
+    max-width: 320px;
+}
+.toast.erro { border-left-color: var(--red); }
+.toast.aviso { border-left-color: var(--orange); }
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ── ZTE EXAMPLES BUTTON ── */
+.zte-btn-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--bg3);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.zte-hint { font-size: 10px; color: var(--text3); }
+
+/* ── MODAL ── */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+.modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.8);
+}
+.modal h3 { font-size: 14px; color: var(--green); margin-bottom: 10px; }
+.modal p { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-title">
+        <span class="icon">⚡</span>
+        Scripts de Automação
+    </div>
+    <div class="topbar-actions">
+        <a href="/clientes/terminal/" class="btn">⌨ Terminal</a>
+        <a href="/" class="btn">← Dashboard</a>
+    </div>
+</div>
+
+<div class="layout">
+
+    <!-- LEFT: script list -->
+    <div class="left-panel">
+        <div class="left-header">
+            <input type="text" class="search-box" id="searchInput" placeholder="Buscar scripts..." oninput="filtrarScripts()">
+            <div class="filter-row" id="filterRow">
+                <button class="fab-filter ativo" data-fab="" onclick="setFabFiltro(this, '')">Todos</button>
+                <button class="fab-filter" data-fab="zte" onclick="setFabFiltro(this,'zte')">ZTE</button>
+                <button class="fab-filter" data-fab="huawei" onclick="setFabFiltro(this,'huawei')">Huawei</button>
+                <button class="fab-filter" data-fab="mikrotik" onclick="setFabFiltro(this,'mikrotik')">MikroTik</button>
+                <button class="fab-filter" data-fab="cisco" onclick="setFabFiltro(this,'cisco')">Cisco</button>
+            </div>
+            <div class="stats-row">
+                <div class="stat-chip">Scripts: <strong id="statTotal">{{ scripts|length }}</strong></div>
+                <div class="stat-chip">Execuções: <strong id="statExec">{{ total_execucoes }}</strong></div>
+            </div>
+        </div>
+
+        <div class="scripts-list" id="scriptsList">
+            {% for s in scripts %}
+            <div class="script-item" data-id="{{ s.id }}" data-fab="{{ s.fabricante }}"
+                 data-nome="{{ s.nome }}" onclick="selecionarScript({{ s.id }})">
+                <div class="script-item-name">{{ s.nome }}</div>
+                <div class="script-item-meta">
+                    <span class="badge badge-fab">{{ s.get_fabricante_display }}</span>
+                    <span class="badge {% if s.modo_execucao == 'configuracao' %}badge-modo-cfg{% elif s.modo_execucao == 'zte_auto_prov' %}badge-modo-cfg{% else %}badge-modo-op{% endif %}">
+                        {% if s.modo_execucao == 'configuracao' %}config{% elif s.modo_execucao == 'zte_auto_prov' %}auto-prov{% else %}show{% endif %}
+                    </span>
+                    {% if not s.ativo %}<span class="badge badge-inativo">inativo</span>{% endif %}
+                </div>
+                {% if s.descricao %}<div class="script-item-desc">{{ s.descricao }}</div>{% endif %}
+            </div>
+            {% empty %}
+            <div class="empty-state" id="emptyList">
+                <div class="empty-icon">📋</div>
+                <p>Nenhum script cadastrado</p>
+                <small>Clique em "+ Novo Script" para começar</small>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="zte-btn-row">
+            <span class="zte-hint">Exemplos:</span>
+            <button class="btn btn-orange" onclick="confirmarCarregarZTE()">⚡ Carregar ZTE</button>
+        </div>
+
+        <div class="left-footer">
+            <button class="btn btn-green" style="flex:1" onclick="novoScript()">+ Novo Script</button>
+        </div>
+    </div>
+
+    <!-- RIGHT: editor + tabs -->
+    <div class="right-panel">
+        <div class="tabs">
+            <div class="tab ativo" data-tab="editor" onclick="mudarTab('editor')">Editor</div>
+            <div class="tab" data-tab="preview" onclick="mudarTab('preview')">Preview</div>
+            <div class="tab" data-tab="historico" onclick="mudarTab('historico')">Histórico</div>
+        </div>
+
+        <div class="tab-content">
+
+            <!-- TAB: Editor -->
+            <div class="tab-pane ativo" id="tab-editor">
+                <div id="editorEmpty" class="empty-state">
+                    <div class="empty-icon">⚡</div>
+                    <p>Selecione um script para editar</p>
+                    <small>ou clique em "+ Novo Script"</small>
+                </div>
+
+                <div id="editorForm" style="display:none">
+                    <input type="hidden" id="scriptId" value="">
+
+                    <!-- Informações básicas -->
+                    <div class="form-section">
+                        <div class="form-section-title">Informações</div>
+                        <div class="form-grid">
+                            <div class="form-group full">
+                                <label>Nome do Script *</label>
+                                <input type="text" id="fNome" placeholder="Ex: ZTE — Provisionar ONU">
+                            </div>
+                            <div class="form-group full">
+                                <label>Descrição</label>
+                                <input type="text" id="fDescricao" placeholder="Breve descrição do que o script faz">
+                            </div>
+                            <div class="form-group">
+                                <label>Fabricante</label>
+                                <select id="fFabricante">
+                                    <option value="zte">ZTE</option>
+                                    <option value="huawei">Huawei</option>
+                                    <option value="cisco">Cisco</option>
+                                    <option value="mikrotik">MikroTik</option>
+                                    <option value="datacom">Datacom</option>
+                                    <option value="parks">Parks</option>
+                                    <option value="generico" selected>Genérico</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Modo de Execução</label>
+                                <select id="fModo">
+                                    <option value="operacional">Operacional (show/get)</option>
+                                    <option value="configuracao">Configuração (config)</option>
+                                    <option value="zte_auto_prov">ZTE — Auto-Provisionamento em Massa</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="align-self:end">
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                                    <input type="checkbox" id="fAtivo" checked style="width:auto;accent-color:var(--green)">
+                                    Ativo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comandos -->
+                    <div class="form-section">
+                        <div class="form-section-title">Comandos</div>
+                        <div class="form-group">
+                            <label>Template de Comandos</label>
+                            <textarea class="code" id="fComandos" rows="10"
+                                placeholder="# Comentário (ignorado)&#10;show version&#10;interface gpon_olt-{PON}&#10;onu {ONU_ID} type {TIPO_ONU} sn {SERIAL}&#10;exit&#10;#FOR I FROM {ONU_INICIO} TO {ONU_FIM}&#10;show gpon onu detail-info gpon_onu-{PON}:{I}&#10;#ENDFOR"></textarea>
+                            <div class="hint">Use {PARAMETRO} para variáveis. Linhas com # são comentários. Suporte a #FOR VAR FROM X TO Y ... #ENDFOR</div>
+                        </div>
+                    </div>
+
+                    <!-- Parâmetros -->
+                    <div class="form-section">
+                        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                            <span>Parâmetros</span>
+                            <button class="btn btn-green" style="font-size:11px;padding:3px 10px" onclick="adicionarParam()">+ Parâmetro</button>
+                        </div>
+                        <div class="params-list" id="paramsList"></div>
+                        <div id="paramsEmpty" class="hint" style="padding:10px;text-align:center">
+                            Nenhum parâmetro. Clique em "+ Parâmetro" para adicionar.
+                        </div>
+                    </div>
+
+                    <!-- Ações do editor -->
+                    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:4px">
+                        <div style="display:flex;gap:8px">
+                            <button class="btn btn-green" onclick="salvarScript()">💾 Salvar</button>
+                            <button class="btn" onclick="cancelarEdicao()">Cancelar</button>
+                        </div>
+                        <button class="btn btn-red" id="btnDeletar" style="display:none" onclick="deletarScriptAtual()">🗑 Excluir</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Preview -->
+            <div class="tab-pane" id="tab-preview">
+                <div class="form-section">
+                    <div class="form-section-title">Preencha os Parâmetros para Prévia</div>
+                    <div id="previewParams" style="margin-bottom:14px"></div>
+                    <button class="btn btn-blue" onclick="gerarPreview()">▶ Gerar Preview</button>
+                </div>
+                <div class="form-section" style="margin-top:16px">
+                    <div class="form-section-title">Comandos Expandidos</div>
+                    <pre class="preview-box" id="previewBox">Selecione um script e preencha os parâmetros acima.</pre>
+                </div>
+            </div>
+
+            <!-- TAB: Histórico -->
+            <div class="tab-pane" id="tab-historico">
+                <div id="historicoContent">
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <p>Selecione um script para ver o histórico</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal confirmação ZTE -->
+<div class="modal-overlay" id="modalZTE">
+    <div class="modal">
+        <h3>⚡ Carregar Scripts ZTE de Exemplo</h3>
+        <p>Isso irá criar 4 scripts para equipamentos ZTE C610/C320:<br><br>
+        • <strong>ZTE — Autorizar ONUs em Massa (Auto)</strong> ← script original<br>
+        • <strong>ZTE — Provisionar ONU (único)</strong><br>
+        • <strong>ZTE — Alterar VLAN em Faixa de ONUs</strong><br>
+        • <strong>ZTE — Show ONUs na PON</strong><br><br>
+        Scripts já existentes com o mesmo nome serão ignorados.</p>
+        <div class="modal-actions">
+            <button class="btn" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-orange" onclick="carregarScriptsZTE()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ── Estado global ──
+let scriptAtual = null;
+let fabFiltro = '';
+let paramCount = 0;
+
+// ── ZTE Templates ──
+const ZTE_SCRIPTS = [
+    {
+        nome: 'ZTE — Autorizar ONUs em Massa (Auto)',
+        descricao: 'Detecta automaticamente as ONUs não autorizadas na PON e provisiona todas em sequência. Baseado no script original Oltzte.py.',
+        fabricante: 'zte',
+        modo_execucao: 'zte_auto_prov',
+        ativo: true,
+        comandos: '# Modo auto-provisionamento: a lógica é executada automaticamente pelo motor.\n# Parâmetros: PON, VLAN, TIPO_ONU, TCONT_PROFILE, NOME_PREFIX',
+        parametros: [
+            {nome:'PON',          label:'Interface PON',       tipo:'text',   default:'1/3/1', obrigatorio:true,  ajuda:'Ex: 1/3/1 ou 1/1/1',              opcoes:''},
+            {nome:'VLAN',         label:'VLAN do Cliente',     tipo:'number', default:'100',   obrigatorio:true,  ajuda:'VLAN de internet do cliente',     opcoes:''},
+            {nome:'TIPO_ONU',     label:'Tipo ONU',            tipo:'select', default:'F601',  obrigatorio:true,  ajuda:'Modelo da ONU',                   opcoes:'F601,F660,F670L,F6600P,ZXHN-F601'},
+            {nome:'TCONT_PROFILE',label:'Perfil TCONT',        tipo:'text',   default:'1g',    obrigatorio:true,  ajuda:'Ex: 1g, 100m, 50m',               opcoes:''},
+            {nome:'NOME_PREFIX',  label:'Prefixo Nome ONU',    tipo:'text',   default:'CLIENTE',obrigatorio:false, ajuda:'Prefixo para nome da ONU. Ex: CLIENTE → CLIENTE-5', opcoes:''},
+        ]
+    },
+    {
+        nome: 'ZTE — Provisionar ONU (único)',
+        descricao: 'Provisiona uma ONU nova na PON ZTE C610/C320',
+        fabricante: 'zte',
+        modo_execucao: 'configuracao',
+        ativo: true,
+        comandos: `# Provisionar ONU na PON ZTE C610/C320
+# Parâmetros: PON, ONU_ID, SERIAL, TIPO_ONU, VLAN, TCONT_PROFILE, NOME_CLIENTE
+interface gpon_olt-{PON}
+onu {ONU_ID} type {TIPO_ONU} sn {SERIAL}
+exit
+interface gpon_onu-{PON}:{ONU_ID}
+name {NOME_CLIENTE}
+sn-bind enable sn
+tcont 1 profile {TCONT_PROFILE}
+gemport 1 tcont 1
+exit
+interface vport-{PON}.{ONU_ID}:1
+service-port 1 user-vlan {VLAN} vlan {VLAN}
+exit
+pon-onu-mng gpon_onu-{PON}:{ONU_ID}
+service 1 gemport 1 vlan {VLAN}
+vlan port eth_0/1 mode tag vlan {VLAN}`,
+        parametros: [
+            {nome:'PON',          label:'Interface PON',  tipo:'text',   default:'1/3/1',    obrigatorio:true,  ajuda:'Ex: 1/3/1', opcoes:''},
+            {nome:'ONU_ID',       label:'Número da ONU',  tipo:'number', default:'1',        obrigatorio:true,  ajuda:'', opcoes:''},
+            {nome:'SERIAL',       label:'Serial da ONU',  tipo:'text',   default:'',         obrigatorio:true,  ajuda:'12 chars maiúsculos, ex: ZTEG12345678', opcoes:''},
+            {nome:'TIPO_ONU',     label:'Tipo ONU',       tipo:'select', default:'F601',      obrigatorio:true,  ajuda:'', opcoes:'F601,F660,F670L,F6600P,ZXHN-F601'},
+            {nome:'VLAN',         label:'VLAN do Cliente',tipo:'number', default:'100',       obrigatorio:true,  ajuda:'', opcoes:''},
+            {nome:'TCONT_PROFILE',label:'Perfil TCONT',   tipo:'text',   default:'1g',        obrigatorio:true,  ajuda:'Ex: 1g, 100m, 50m', opcoes:''},
+            {nome:'NOME_CLIENTE', label:'Nome do Cliente',tipo:'text',   default:'CLIENTE',   obrigatorio:false, ajuda:'', opcoes:''},
+        ]
+    },
+    {
+        nome: 'ZTE — Alterar VLAN em Faixa de ONUs',
+        descricao: 'Altera VLAN de múltiplas ONUs em sequência usando loop',
+        fabricante: 'zte',
+        modo_execucao: 'configuracao',
+        ativo: true,
+        comandos: `# Alterar VLAN em faixa de ONUs na PON
+# Parâmetros: PON, ONU_INICIO, ONU_FIM, VLAN_NOVA
+#FOR ONU_ID FROM {ONU_INICIO} TO {ONU_FIM}
+interface vport-{PON}.{ONU_ID}:1
+no service-port 1
+service-port 1 user-vlan {VLAN_NOVA} vlan {VLAN_NOVA}
+exit
+pon-onu-mng gpon_onu-{PON}:{ONU_ID}
+no service 1
+service 1 gemport 1 vlan {VLAN_NOVA}
+no vlan port eth_0/1 mode
+vlan port eth_0/1 mode tag vlan {VLAN_NOVA}
+#ENDFOR`,
+        parametros: [
+            {nome:'PON',        label:'Interface PON', tipo:'text',   default:'1/3/1', obrigatorio:true, ajuda:'', opcoes:''},
+            {nome:'ONU_INICIO', label:'ONU Inicial',   tipo:'number', default:'1',     obrigatorio:true, ajuda:'', opcoes:''},
+            {nome:'ONU_FIM',    label:'ONU Final',     tipo:'number', default:'10',    obrigatorio:true, ajuda:'', opcoes:''},
+            {nome:'VLAN_NOVA',  label:'Nova VLAN',     tipo:'number', default:'100',   obrigatorio:true, ajuda:'', opcoes:''},
+        ]
+    },
+    {
+        nome: 'ZTE — Show ONUs na PON',
+        descricao: 'Exibe estado de todas as ONUs em uma PON',
+        fabricante: 'zte',
+        modo_execucao: 'operacional',
+        ativo: true,
+        comandos: `show gpon onu state gpon_olt-{PON}
+show pon onu un sn`,
+        parametros: [
+            {nome:'PON', label:'Interface PON', tipo:'text', default:'1/3/1', obrigatorio:true, ajuda:'Ex: 1/3/1', opcoes:''},
+        ]
+    }
+];
+
+// ── Util ──
+function toast(msg, tipo='ok') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast' + (tipo === 'erro' ? ' erro' : tipo === 'aviso' ? ' aviso' : '');
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getCookie(name) {
+    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
+}
+
+// ── Filtros ──
+function setFabFiltro(btn, fab) {
+    document.querySelectorAll('.fab-filter').forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    fabFiltro = fab;
+    filtrarScripts();
+}
+
+function filtrarScripts() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    let vis = 0;
+    document.querySelectorAll('.script-item[data-id]').forEach(el => {
+        const nome = (el.dataset.nome || '').toLowerCase();
+        const fab  = el.dataset.fab || '';
+        const ok = (!q || nome.includes(q)) && (!fabFiltro || fab === fabFiltro);
+        el.style.display = ok ? '' : 'none';
+        if (ok) vis++;
+    });
+    const empty = document.getElementById('emptyList');
+    if (empty) empty.style.display = vis === 0 ? '' : 'none';
+}
+
+// ── Selecionar script ──
+function selecionarScript(id) {
+    fetch(`/clientes/scripts/${id}/`)
+        .then(r => r.json())
+        .then(data => {
+            scriptAtual = data;
+            document.querySelectorAll('.script-item').forEach(el => el.classList.remove('ativo'));
+            const el = document.querySelector(`.script-item[data-id="${id}"]`);
+            if (el) el.classList.add('ativo');
+            carregarFormulario(data);
+            mudarTab('editor');
+        })
+        .catch(() => toast('Erro ao carregar script', 'erro'));
+}
+
+function carregarFormulario(data) {
+    document.getElementById('editorEmpty').style.display = 'none';
+    document.getElementById('editorForm').style.display = 'block';
+    document.getElementById('scriptId').value = data.id || '';
+    document.getElementById('fNome').value = data.nome || '';
+    document.getElementById('fDescricao').value = data.descricao || '';
+    document.getElementById('fFabricante').value = data.fabricante || 'generico';
+    document.getElementById('fModo').value = data.modo || 'operacional';
+    document.getElementById('fAtivo').checked = data.ativo !== false;
+    document.getElementById('fComandos').value = data.comandos || '';
+    document.getElementById('btnDeletar').style.display = data.id ? 'inline-flex' : 'none';
+
+    // Parâmetros
+    renderParams(data.parametros || []);
+    atualizarPreviewParams(data);
+}
+
+function novoScript() {
+    scriptAtual = null;
+    document.querySelectorAll('.script-item').forEach(el => el.classList.remove('ativo'));
+    carregarFormulario({
+        id: null, nome:'', descricao:'', fabricante:'generico',
+        modo:'operacional', ativo:true, comandos:'', parametros:[]
+    });
+    mudarTab('editor');
+    document.getElementById('fNome').focus();
+}
+
+function cancelarEdicao() {
+    scriptAtual = null;
+    document.getElementById('editorEmpty').style.display = '';
+    document.getElementById('editorForm').style.display = 'none';
+    document.querySelectorAll('.script-item').forEach(el => el.classList.remove('ativo'));
+}
+
+// ── Params ──
+function renderParams(params) {
+    const list = document.getElementById('paramsList');
+    const empty = document.getElementById('paramsEmpty');
+    list.innerHTML = '';
+    paramCount = 0;
+
+    params.forEach(p => adicionarParamComDados(p));
+    empty.style.display = params.length === 0 ? '' : 'none';
+}
+
+function adicionarParam() {
+    adicionarParamComDados({nome:'', label:'', tipo:'text', default:'', obrigatorio:false, ajuda:'', opcoes:''});
+    document.getElementById('paramsEmpty').style.display = 'none';
+}
+
+function adicionarParamComDados(p) {
+    const idx = paramCount++;
+    const list = document.getElementById('paramsList');
+    const div = document.createElement('div');
+    div.className = 'param-card';
+    div.id = `param-${idx}`;
+    div.innerHTML = `
+        <div class="param-card-header">
+            <span class="param-card-name" id="param-name-${idx}">{${p.nome || 'NOVO'}}</span>
+            <button class="btn-remove-param" onclick="removerParam(${idx})">✕</button>
+        </div>
+        <div class="param-card-grid">
+            <div class="form-group">
+                <label>Nome (identificador)</label>
+                <input type="text" id="pnome-${idx}" value="${esc(p.nome||'')}" placeholder="EX: PON"
+                    oninput="document.getElementById('param-name-${idx}').textContent='{'+this.value.toUpperCase()+'}'">
+            </div>
+            <div class="form-group">
+                <label>Label (exibição)</label>
+                <input type="text" id="plabel-${idx}" value="${esc(p.label||'')}" placeholder="Interface PON">
+            </div>
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="ptipo-${idx}" onchange="toggleOpcoes(${idx})">
+                    <option value="text" ${p.tipo==='text'?'selected':''}>Texto</option>
+                    <option value="number" ${p.tipo==='number'?'selected':''}>Número</option>
+                    <option value="select" ${p.tipo==='select'?'selected':''}>Seleção</option>
+                    <option value="password" ${p.tipo==='password'?'selected':''}>Senha</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Valor padrão</label>
+                <input type="text" id="pdefault-${idx}" value="${esc(p.default||'')}">
+            </div>
+            <div class="form-group">
+                <label>Obrigatório</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-top:4px">
+                    <input type="checkbox" id="pobrigatorio-${idx}" ${p.obrigatorio?'checked':''}
+                        style="width:auto;accent-color:var(--green)"> Sim
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Ajuda / hint</label>
+                <input type="text" id="pajuda-${idx}" value="${esc(p.ajuda||'')}" placeholder="Ex: 1/3/1">
+            </div>
+            <div class="form-group full" id="popcoes-wrap-${idx}" style="${p.tipo==='select'?'':'display:none'}">
+                <label>Opções (separadas por vírgula)</label>
+                <input type="text" id="popcoes-${idx}" value="${esc(p.opcoes||'')}" placeholder="F601,F660,F670L">
+            </div>
+        </div>
+    `;
+    list.appendChild(div);
+}
+
+function removerParam(idx) {
+    const el = document.getElementById(`param-${idx}`);
+    if (el) el.remove();
+    const lista = document.querySelectorAll('.param-card');
+    document.getElementById('paramsEmpty').style.display = lista.length === 0 ? '' : 'none';
+}
+
+function toggleOpcoes(idx) {
+    const tipo = document.getElementById(`ptipo-${idx}`).value;
+    const wrap = document.getElementById(`popcoes-wrap-${idx}`);
+    if (wrap) wrap.style.display = tipo === 'select' ? '' : 'none';
+}
+
+function coletarParams() {
+    const params = [];
+    document.querySelectorAll('.param-card').forEach(card => {
+        const idx = card.id.replace('param-', '');
+        const nome = (document.getElementById(`pnome-${idx}`)?.value || '').trim().toUpperCase();
+        if (!nome) return;
+        params.push({
+            nome:        nome,
+            label:       document.getElementById(`plabel-${idx}`)?.value || nome,
+            tipo:        document.getElementById(`ptipo-${idx}`)?.value || 'text',
+            default:     document.getElementById(`pdefault-${idx}`)?.value || '',
+            obrigatorio: document.getElementById(`pobrigatorio-${idx}`)?.checked || false,
+            ajuda:       document.getElementById(`pajuda-${idx}`)?.value || '',
+            opcoes:      document.getElementById(`popcoes-${idx}`)?.value || '',
+        });
+    });
+    return params;
+}
+
+// ── Salvar ──
+async function salvarScript() {
+    const nome = document.getElementById('fNome').value.trim();
+    const comandos = document.getElementById('fComandos').value.trim();
+    if (!nome) { toast('Nome é obrigatório', 'erro'); return; }
+    if (!comandos) { toast('Comandos são obrigatórios', 'erro'); return; }
+
+    const id = document.getElementById('scriptId').value;
+    const url = id ? `/clientes/scripts/salvar/${id}/` : '/clientes/scripts/salvar/';
+    const body = {
+        nome,
+        descricao:    document.getElementById('fDescricao').value.trim(),
+        fabricante:   document.getElementById('fFabricante').value,
+        modo_execucao: document.getElementById('fModo').value,
+        comandos,
+        ativo:        document.getElementById('fAtivo').checked,
+        parametros:   coletarParams(),
+    };
+
+    try {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+            body: JSON.stringify(body),
+        });
+        const data = await r.json();
+        if (data.success) {
+            toast('Script salvo com sucesso!');
+            recarregarPagina();
+        } else {
+            toast(data.error || 'Erro ao salvar', 'erro');
+        }
+    } catch(e) {
+        toast('Erro de comunicação', 'erro');
+    }
+}
+
+async function deletarScriptAtual() {
+    const id = document.getElementById('scriptId').value;
+    if (!id) return;
+    if (!confirm('Excluir este script permanentemente?')) return;
+
+    try {
+        const r = await fetch(`/clientes/scripts/deletar/${id}/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')},
+        });
+        const data = await r.json();
+        if (data.success) {
+            toast('Script excluído.');
+            recarregarPagina();
+        } else {
+            toast(data.error || 'Erro ao excluir', 'erro');
+        }
+    } catch(e) {
+        toast('Erro de comunicação', 'erro');
+    }
+}
+
+function recarregarPagina() {
+    setTimeout(() => window.location.reload(), 800);
+}
+
+// ── Preview ──
+function atualizarPreviewParams(data) {
+    const params = data.parametros || scriptAtual?.parametros || [];
+    const container = document.getElementById('previewParams');
+    if (!container) return;
+    container.innerHTML = '';
+    params.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'preview-param-row';
+        let input = '';
+        if (p.tipo === 'select' && p.opcoes) {
+            const opts = p.opcoes.split(',').map(o => `<option value="${esc(o.trim())}" ${o.trim()===p.default?'selected':''}>${esc(o.trim())}</option>`).join('');
+            input = `<select id="prev-${p.nome}" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:5px 8px;color:var(--text);font-family:var(--mono);font-size:12px;">${opts}</select>`;
+        } else {
+            input = `<input type="${p.tipo==='password'?'password':'text'}" id="prev-${p.nome}" value="${esc(p.default||'')}" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:5px 8px;color:var(--text);font-family:var(--mono);font-size:12px;">`;
+        }
+        row.innerHTML = `<span class="preview-param-label">${esc(p.label||p.nome)}</span>${input}`;
+        container.appendChild(row);
+    });
+}
+
+function gerarPreview() {
+    const comandos = document.getElementById('fComandos').value;
+    const modo     = document.getElementById('fModo').value;
+    const params   = coletarParams();
+    const vals     = {};
+    params.forEach(p => {
+        const el = document.getElementById(`prev-${p.nome}`);
+        vals[p.nome.toUpperCase()] = el ? el.value : (p.default || '');
+    });
+
+    // Preview especial para ZTE Auto-Provisionamento
+    if (modo === 'zte_auto_prov') {
+        const pon    = vals['PON']    || '1/3/1';
+        const vlan   = vals['VLAN']   || '100';
+        const tipo   = vals['TIPO_ONU'] || 'F601';
+        const perfil = vals['TCONT_PROFILE'] || '1g';
+        const prefix = vals['NOME_PREFIX'] || 'CLIENTE';
+        const preview = [
+            `# ── Passo 1: Consultar ONUs autorizadas ──`,
+            `show gpon onu state`,
+            `# → filtra linhas com "${pon}" → conta X ONUs existentes`,
+            ``,
+            `# ── Passo 2: Consultar ONUs aguardando autorização ──`,
+            `show pon onu un sn`,
+            `# → filtra linhas com "gpon_olt-${pon}" → extrai serial (12 chars A-Z0-9)`,
+            ``,
+            `# ── Passo 3: Para cada ONU nova (exemplo ONU_ID=X+1, serial=SERIAL) ──`,
+            `interface gpon_olt-${pon}`,
+            `onu <X+1> type ${tipo} sn <SERIAL>`,
+            `exit`,
+            `interface gpon_onu-${pon}:<X+1>`,
+            `name ${prefix}-<X+1>`,
+            `sn-bind enable sn`,
+            `tcont 1 profile ${perfil}`,
+            `gemport 1 tcont 1`,
+            `exit`,
+            `interface vport-${pon}.<X+1>:1`,
+            `service-port 1 user-vlan ${vlan} vlan ${vlan}`,
+            `exit`,
+            `pon-onu-mng gpon_onu-${pon}:<X+1>`,
+            `service 1 gemport 1 vlan ${vlan}`,
+            `vlan port eth_0/1 mode tag vlan ${vlan}`,
+            `# (repete para cada ONU não autorizada encontrada)`,
+        ];
+        document.getElementById('previewBox').textContent = preview.join('\n');
+        return;
+    }
+
+    // Expansão client-side simplificada para preview (modos padrão)
+    const linhas = comandos.split('\n');
+    const resultado = [];
+    let i = 0;
+    while (i < linhas.length) {
+        const linha = linhas[i].trimEnd();
+        const stripped = linha.trim();
+        if (stripped.startsWith('#') && !stripped.toUpperCase().startsWith('#FOR') && !stripped.toUpperCase().startsWith('#ENDFOR')) {
+            i++; continue;
+        }
+        const forMatch = stripped.match(/^#FOR\s+(\w+)\s+FROM\s+(\S+)\s+TO\s+(\S+)/i);
+        if (forMatch) {
+            const varName = forMatch[1].toUpperCase();
+            let start = parseInt(subst(forMatch[2], vals)) || 0;
+            let end   = parseInt(subst(forMatch[3], vals)) || 0;
+            const corpo = [];
+            i++;
+            while (i < linhas.length && !linhas[i].trim().toUpperCase().startsWith('#ENDFOR')) {
+                corpo.push(linhas[i]);
+                i++;
+            }
+            for (let j = start; j <= end; j++) {
+                const lp = {...vals, [varName]: String(j)};
+                corpo.forEach(cl => {
+                    const exp = subst(cl.trimEnd(), lp);
+                    if (exp.trim() && !exp.trim().startsWith('#')) resultado.push(exp);
+                });
+            }
+            i++; continue;
+        }
+        if (stripped && !stripped.startsWith('#')) {
+            resultado.push(subst(linha, vals));
+        }
+        i++;
+    }
+
+    document.getElementById('previewBox').textContent = resultado.join('\n') || '(nenhum comando)';
+}
+
+function subst(text, params) {
+    for (const [k, v] of Object.entries(params)) {
+        text = text.replaceAll('{' + k.toUpperCase() + '}', v);
+        text = text.replaceAll('{' + k.toLowerCase() + '}', v);
+        text = text.replaceAll('{' + k + '}', v);
+    }
+    return text;
+}
+
+// ── Histórico ──
+async function carregarHistorico(scriptId) {
+    // O histórico de gestão mostra por script, mas precisamos de acesso_id
+    // Aqui mostramos últimas execuções gerais deste script
+    const container = document.getElementById('historicoContent');
+    container.innerHTML = '<div class="empty-state" style="padding:30px"><p>Carregando...</p></div>';
+
+    try {
+        // Busca direto do servidor via queryset por script (não por acesso)
+        // Como a API é por acesso_id, exibimos uma mensagem alternativa
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📊</div>
+                <p>Histórico disponível na tela do Terminal</p>
+                <small>No painel ⚡ Scripts do terminal, aba Histórico por equipamento</small>
+            </div>`;
+    } catch(e) {
+        container.innerHTML = '<div class="empty-state"><p>Erro ao carregar histórico</p></div>';
+    }
+}
+
+// ── ZTE ──
+function confirmarCarregarZTE() {
+    document.getElementById('modalZTE').classList.add('visible');
+}
+
+function fecharModal() {
+    document.getElementById('modalZTE').classList.remove('visible');
+}
+
+async function carregarScriptsZTE() {
+    fecharModal();
+    let criados = 0;
+    let erros = 0;
+
+    for (const s of ZTE_SCRIPTS) {
+        try {
+            const r = await fetch('/clientes/scripts/salvar/', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+                body: JSON.stringify(s),
+            });
+            const data = await r.json();
+            if (data.success) criados++;
+            else erros++;
+        } catch(e) {
+            erros++;
+        }
+    }
+
+    if (criados > 0) {
+        toast(`${criados} script(s) ZTE criados com sucesso!`);
+        recarregarPagina();
+    } else {
+        toast('Nenhum script criado' + (erros > 0 ? ' (erros)' : ''), 'aviso');
+    }
+}
+
+// ── Tabs ──
+function mudarTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('ativo', t.dataset.tab === tab));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('ativo', p.id === `tab-${tab}`));
+
+    if (tab === 'preview' && scriptAtual) {
+        atualizarPreviewParams(scriptAtual);
+        // Sync comandos do editor
+    }
+    if (tab === 'historico' && scriptAtual) {
+        carregarHistorico(scriptAtual.id);
+    }
+}
+
+// ── Init ──
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (document.getElementById('editorForm').style.display !== 'none') salvarScript();
+    }
+    if (e.key === 'Escape') fecharModal();
+});
+</script>
+</body>
+</html>

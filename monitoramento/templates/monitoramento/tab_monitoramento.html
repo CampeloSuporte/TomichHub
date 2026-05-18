@@ -8,9 +8,10 @@
   window.CLIENTE_ID = "{{ cliente.id }}";
 
   var _zbxCfg = {
-    zbxSalvar: '/monitoramento/zabbix/salvar/',
-    zbxBuscar: '/monitoramento/zabbix/buscar/',
-    zbxTestar: '/monitoramento/zabbix/testar/',
+    zbxSalvar:     '/monitoramento/zabbix/salvar/',
+    zbxBuscar:     '/monitoramento/zabbix/buscar/',
+    zbxTestar:     '/monitoramento/zabbix/testar/',
+    zbxAutoConfig: '/monitoramento/zabbix/autoconfig/',
   };
 
   function _csrf() {
@@ -48,6 +49,29 @@
   window.grphFecharZabbix = function() {
     var m = document.getElementById('grph-modal-zabbix');
     if (m) m.style.display = 'none';
+  };
+
+  window.grphAutoConfig = function() {
+    var res = document.getElementById('grph-zbx-result');
+    if (res) { res.textContent = 'Buscando configuração...'; res.className = 'grph-alert'; res.style.display = 'block'; }
+    fetch(_zbxCfg.zbxAutoConfig + '?id=' + window.CLIENTE_ID)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.encontrado) {
+          if (res) { res.textContent = d.message || 'Host "zabbix" não encontrado.'; res.className = 'grph-alert error'; }
+          return;
+        }
+        var u   = document.getElementById('grph-zbx-url');
+        var usr = document.getElementById('grph-zbx-user');
+        var pw  = document.getElementById('grph-zbx-pass');
+        if (u)   u.value   = d.url     || '';
+        if (usr) usr.value = d.usuario || '';
+        if (pw)  pw.value  = d.senha   || '';
+        if (res) { res.textContent = 'Dados preenchidos a partir do host "' + d.tipo + '" (' + d.host + ')'; res.className = 'grph-alert success'; }
+      })
+      .catch(function(e){
+        if (res) { res.textContent = 'Erro: ' + e.message; res.className = 'grph-alert error'; }
+      });
   };
 
   window.grphTestar = function() {
@@ -269,7 +293,7 @@
 
         <!-- ITEM OUT (UPLOAD) -->
         <label class="grph-label" style="margin-top:14px;">
-          <span style="color:#00d9ff;">↑</span> Item Upload (Bits sent) *
+          <span style="color:#00f5ff;">↑</span> Item Upload (Bits sent) *
         </label>
         <div class="grph-search-wrap">
           <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
@@ -281,7 +305,7 @@
                  oninput="grphFiltrarItens('out', this.value)"/>
         </div>
         <div id="grph-m-item-out-badge" class="grph-host-badge"
-             style="display:none; background:rgba(0,217,255,.06); border-color:rgba(0,217,255,.2); color:#00d9ff; margin-bottom:4px;"></div>
+             style="display:none; background:rgba(0,245,255,.06); border-color:rgba(0,245,255,.2); color:#00f5ff; margin-bottom:4px;"></div>
         <div id="grph-m-item-out-list" class="grph-search-results" style="display:none; max-height:180px;"></div>
         <input type="hidden" id="grph-m-item-out-id"/>
 
@@ -348,14 +372,23 @@
       <div id="grph-zbx-result" class="grph-alert" style="display:none;"></div>
     </div>
 
-    <div class="grph-modal-footer">
-      <button class="grph-btn grph-btn-ghost" onclick="grphTestar()">
+    <div class="grph-modal-footer" style="justify-content:space-between;">
+      <button class="grph-btn grph-btn-ghost" onclick="grphAutoConfig()" title="Preencher a partir do host 'zabbix' nos acessos do cliente">
         <svg viewBox="0 0 24 24" width="13" height="13">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M18 2v6h6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Testar
+        Auto-preencher
       </button>
-      <button class="grph-btn grph-btn-primary" onclick="grphSalvarZabbix()">Salvar</button>
+      <div style="display:flex;gap:8px;">
+        <button class="grph-btn grph-btn-ghost" onclick="grphTestar()">
+          <svg viewBox="0 0 24 24" width="13" height="13">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          Testar
+        </button>
+        <button class="grph-btn grph-btn-primary" onclick="grphSalvarZabbix()">Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -419,9 +452,9 @@
 .grph-btn-ghost { background: transparent; }
 .grph-btn-ghost:hover { background: #0d1829; }
 .grph-grid {
-  flex: 1; overflow-y: auto; padding: 18px;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
-  gap: 18px; align-content: start; background: #080f1a;
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(540px, 1fr));
+  gap: 20px; align-content: start; background: #080f1a;
 }
 .grph-grid.grph-layout-list { grid-template-columns: 1fr; }
 .grph-empty {
@@ -437,17 +470,19 @@
 .grph-empty-title { margin: 0; font-size: 1.05rem; font-weight: 700; color: #e2e8f0; letter-spacing: .2px; }
 .grph-empty-sub { margin: 0; font-size: .82rem; color: #475569; max-width: 320px; line-height: 1.5; }
 .grph-card {
-  background: #0d1829; border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
-  transition: border-color .2s, box-shadow .2s; position: relative;
+  background: linear-gradient(180deg, #0e1b30 0%, #0a1422 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+  transition: border-color .2s, box-shadow .2s, transform .15s; position: relative;
 }
 .grph-card:hover {
-  border-color: rgba(59,130,246,.25);
-  box-shadow: 0 0 0 1px rgba(59,130,246,.08), 0 8px 32px rgba(0,0,0,.3);
+  border-color: rgba(59,130,246,.3);
+  box-shadow: 0 0 0 1px rgba(59,130,246,.1), 0 12px 40px rgba(0,0,0,.4);
+  transform: translateY(-1px);
 }
 .grph-card-glow {
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,255,136,.3), rgba(0,217,255,.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0,255,136,.3), rgba(0,245,255,.3), transparent);
   opacity: 0; transition: opacity .2s;
 }
 .grph-card:hover .grph-card-glow { opacity: 1; }
@@ -486,20 +521,20 @@
 .grph-icon-btn.grph-danger:hover { background: rgba(220,38,38,.15); border-color: rgba(220,38,38,.3); color: #ef4444; }
 .grph-stats-row {
   display: flex; align-items: stretch;
-  background: rgba(0,0,0,.2); border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,.25); border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.grph-stat-block { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
-.grph-stat-divider { width: 1px; background: rgba(255,255,255,0.05); margin: 8px 0; }
-.grph-stat-arrow { font-size: 1.1rem; font-weight: 700; line-height: 1; flex-shrink: 0; }
+.grph-stat-block { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+.grph-stat-divider { width: 1px; background: rgba(255,255,255,0.06); margin: 6px 0; }
+.grph-stat-arrow { font-size: 1.2rem; font-weight: 700; line-height: 1; flex-shrink: 0; }
 .grph-stat-in  .grph-stat-arrow { color: #00ff88; }
 .grph-stat-out .grph-stat-arrow { color: #00d9ff; }
 .grph-stat-peak .grph-stat-arrow { color: #f59e0b; }
 .grph-stat-val {
   font-family: 'SF Mono','Fira Code','Courier New',monospace;
-  font-size: .82rem; font-weight: 700; color: #e2e8f0; letter-spacing: -.3px;
+  font-size: .9rem; font-weight: 700; color: #e2e8f0; letter-spacing: -.3px;
 }
-.grph-stat-label { font-size: .62rem; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
-.grph-canvas-wrap { height: 180px; padding: 10px 8px 4px; background: #080f1a; position: relative; }
+.grph-stat-label { font-size: .63rem; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+.grph-canvas-wrap { height: 240px; padding: 12px 10px 6px; background: #060d18; position: relative; border-top: 1px solid rgba(255,255,255,0.03); }
 .grph-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
 .grph-footer {
   display: flex; align-items: center; justify-content: space-between;
@@ -657,7 +692,7 @@ const GRAPH = (() => {
     in:      '#00ff88',
     out:     '#00d9ff',
     inFill:  'rgba(0,255,136,0.08)',
-    outFill: 'rgba(0,217,255,0.08)',
+    outFill: 'rgba(0,245,255,0.08)',
     grid:    'rgba(255,255,255,0.04)',
     text:    '#475569',
   };
@@ -1285,7 +1320,7 @@ const GRAPH = (() => {
       prev.style.display = 'block';
       prev.innerHTML =
         `<div class="grph-preview-row"><span>In Item ID</span><b style="color:#00ff88">${inId || '<span style="color:#64748b">—</span>'}</b></div>` +
-        `<div class="grph-preview-row"><span>Out Item ID</span><b style="color:#00d9ff">${outId || '<span style="color:#64748b">—</span>'}</b></div>`;
+        `<div class="grph-preview-row"><span>Out Item ID</span><b style="color:#00f5ff">${outId || '<span style="color:#64748b">—</span>'}</b></div>`;
     } else {
       prev.style.display = 'none';
     }

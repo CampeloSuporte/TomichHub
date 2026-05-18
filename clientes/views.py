@@ -35,6 +35,7 @@ import logging
 import paramiko
 import socket
 import os
+import hashlib
 from pathlib import Path
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -104,6 +105,18 @@ def listar_clientes(request):
     except:
         pass
 
+    # ── Detectar acessos com erro de backup ─────────────────────────────
+    acessos_com_erro_backup = []
+    for ac in cliente.acessos.filter(backup_habilitado=True):
+        ultimo_backup = BackupLog.objects.filter(acesso=ac).order_by('-data_backup').first()
+        if ultimo_backup and ultimo_backup.status == 'ERRO':
+            acessos_com_erro_backup.append({
+                'tipo': ac.tipo,
+                'host': ac.host,
+                'mensagem': ultimo_backup.mensagem or 'Erro desconhecido',
+                'data': ultimo_backup.data_backup.strftime('%d/%m/%Y %H:%M'),
+            })
+
     response = render(request, 'listar.html', {
         'cliente': cliente,
         'funcoes': funcoes,
@@ -118,6 +131,7 @@ def listar_clientes(request):
         'is_cliente': is_cliente,
         'is_admin': is_admin,
         'destinos_padrao': DESTINOS_PADRAO,
+        'acessos_com_erro_backup': acessos_com_erro_backup,
     })
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response['Pragma'] = 'no-cache'
@@ -1213,12 +1227,20 @@ def executar_backup_acesso(request, acesso_id):
         resultado = realizar_backup(acesso, request.user)
 
         if resultado['sucesso']:
+            if resultado.get('sem_mudancas'):
+                return JsonResponse({
+                    'success': True,
+                    'sem_mudancas': True,
+                    'message': 'Configuracao sem alteracoes — backup nao necessario.',
+                    'duracao': resultado['duracao'],
+                })
             return JsonResponse({
                 'success': True,
-                'message': f'Backup realizado com sucesso!',
+                'sem_mudancas': False,
+                'message': 'Backup realizado com sucesso!',
                 'arquivo': resultado['arquivo'],
                 'tamanho': resultado['tamanho'],
-                'duracao': resultado['duracao']
+                'duracao': resultado['duracao'],
             })
         else:
             return JsonResponse({
@@ -1230,61 +1252,6 @@ def executar_backup_acesso(request, acesso_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
-@login_required(login_url='login')
-def listar_backups_cliente(request):
-    """Lista backups do cliente"""
-    cliente_id = request.GET.get('id')
-
-    if not cliente_id:
-        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
-
-    # Verificar permissão
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get(usuario=request.user)
-            if str(cliente.id) != str(cliente_id):
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
-
-    cliente = get_object_or_404(Cliente, id=cliente_id)
-
-    # Buscar backups
-    backups = BackupLog.objects.filter(cliente=cliente).select_related(
-        'acesso', 'template', 'executado_por'
-    ).order_by('-data_backup')
-
-    # Validar arquivos
-    backups_validos = []
-    backups_para_deletar = []
-
-    for backup in backups:
-        arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
-        if os.path.exists(arquivo_path):
-            backups_validos.append(backup)
-        else:
-            backups_para_deletar.append(backup.id)
-
-    if backups_para_deletar:
-        BackupLog.objects.filter(id__in=backups_para_deletar).delete()
-
-    return JsonResponse({
-        'backups': [{
-            'id': backup.id,
-            'acesso_tipo': backup.acesso.tipo,
-            'acesso_host': backup.acesso.host,
-            'template': backup.template.nome if backup.template else 'N/A',
-            'status': backup.get_status_display(),
-            'status_code': backup.status,
-            'tamanho': backup.get_tamanho_formatado(),
-            'data': backup.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S'),
-            'duracao': f"{backup.duracao_segundos:.2f}s",
-            'executado_por': backup.executado_por.username if backup.executado_por else 'Sistema',
-            'mensagem': backup.mensagem or '',
-            'arquivo_path': backup.arquivo_path
-        } for backup in backups_validos]
-    })
 
 def _executar_comandos_pexpect(host_conexao, porta_conexao, usuario, senha, comandos):
     """
@@ -1530,7 +1497,46 @@ def realizar_backup(acesso, usuario=None):
         if len(output.strip()) < 100:
             raise Exception("Backup vazio ou muito pequeno. Verifique os comandos do template.")
 
-        # ✅ Salvar arquivo
+        # ── Normalizar saída e calcular hash ─────────────────────────────
+        # Remove ANSI escape codes e linhas que contenham apenas timestamps
+        output_norm = re.sub(r'\x1b\[[0-9;]*[mGKHF]', '', output)
+        # Remove linhas de paginação comuns (Huawei, Cisco)
+        output_norm = re.sub(r'(?m)^[ \t]*--[Mm]ore--|^[ \t]*<--- More --->', '', output_norm)
+        output_norm = output_norm.strip()
+        hash_novo = hashlib.sha256(output_norm.encode('utf-8', errors='replace')).hexdigest()
+
+        # ── Comparar com último backup bem-sucedido ──────────────────────
+        ultimo = BackupLog.objects.filter(
+            acesso=acesso,
+            status='SUCESSO',
+            hash_conteudo=hash_novo,
+        ).first()
+
+        duracao = time.time() - inicio
+
+        if ultimo:
+            print(f"\n🔁 Conteúdo idêntico ao backup {ultimo.id} — nada a salvar.")
+            BackupLog.objects.create(
+                acesso=acesso,
+                cliente=acesso.cliente,
+                template=acesso.backup_template,
+                arquivo_path='',
+                tamanho_bytes=0,
+                hash_conteudo=hash_novo,
+                status='SEM_MUDANCAS',
+                mensagem=f'Configuracao sem alteracoes desde o backup de {ultimo.data_backup.strftime("%d/%m/%Y %H:%M")}',
+                executado_por=usuario,
+                duracao_segundos=duracao,
+            )
+            return {
+                'sucesso': True,
+                'sem_mudancas': True,
+                'arquivo': '',
+                'tamanho': 0,
+                'duracao': f"{duracao:.2f}s",
+            }
+
+        # ── Salvar arquivo ───────────────────────────────────────────────
         print(f"\n{'='*80}")
         print(f"💾 SALVANDO ARQUIVO")
         print(f"{'='*80}")
@@ -1555,24 +1561,24 @@ def realizar_backup(acesso, usuario=None):
             f.write(output)
 
         tamanho = os.path.getsize(arquivo_path)
-        duracao = time.time() - inicio
         arquivo_relativo = os.path.relpath(arquivo_path, settings.MEDIA_ROOT)
 
         print(f"✅ Arquivo: {nome_arquivo}")
         print(f"📊 Tamanho: {tamanho} bytes")
         print(f"⏱️ Duração: {duracao:.2f}s")
 
-        # ✅ Registrar log
+        # ── Registrar log ────────────────────────────────────────────────
         BackupLog.objects.create(
             acesso=acesso,
             cliente=acesso.cliente,
             template=acesso.backup_template,
             arquivo_path=arquivo_relativo,
             tamanho_bytes=tamanho,
+            hash_conteudo=hash_novo,
             status='SUCESSO',
-            mensagem=f"Backup realizado com sucesso",
+            mensagem='Backup realizado com sucesso',
             executado_por=usuario,
-            duracao_segundos=duracao
+            duracao_segundos=duracao,
         )
 
         print(f"\n{'='*80}")
@@ -1581,9 +1587,10 @@ def realizar_backup(acesso, usuario=None):
 
         return {
             'sucesso': True,
+            'sem_mudancas': False,
             'arquivo': nome_arquivo,
             'tamanho': tamanho,
-            'duracao': f"{duracao:.2f}s"
+            'duracao': f"{duracao:.2f}s",
         }
 
     except Exception as e:
@@ -2748,6 +2755,10 @@ def listar_backups_cliente(request):
     backups_para_deletar = []
 
     for backup in backups:
+        if not backup.arquivo_path:
+            # SEM_MUDANCAS — sem arquivo, manter registro
+            backups_validos.append(backup)
+            continue
         arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
         if os.path.exists(arquivo_path):
             backups_validos.append(backup)
@@ -2770,12 +2781,14 @@ def listar_backups_cliente(request):
             'template': backup.template.nome if backup.template else 'N/A',
             'status': backup.get_status_display(),
             'status_code': backup.status,
-            'tamanho': backup.get_tamanho_formatado(),
+            'tamanho': backup.get_tamanho_formatado() if backup.tamanho_bytes else '-',
             'data': backup.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S'),
             'duracao': f"{backup.duracao_segundos:.2f}s",
             'executado_por': backup.executado_por.username if backup.executado_por else 'Sistema',
             'mensagem': backup.mensagem or '',
-            'arquivo_path': backup.arquivo_path
+            'arquivo_path': backup.arquivo_path,
+            'tem_arquivo': bool(backup.arquivo_path),
+            'hash': backup.hash_conteudo or '',
         } for backup in backups_validos]
     })
 
@@ -2853,6 +2866,48 @@ def buscar_templates_backup(request):
         } for t in templates]
     })
 
+@login_required(login_url='login')
+def backup_conteudo(request, backup_id):
+    """Retorna conteúdo do arquivo de backup para visualização no modal."""
+    try:
+        backup = BackupLog.objects.select_related('acesso', 'cliente').get(id=backup_id)
+
+        # Verificar permissão
+        if not request.user.is_staff and not request.user.is_superuser:
+            try:
+                cliente = Cliente.objects.get(usuario=request.user)
+                if backup.cliente.id != cliente.id:
+                    return JsonResponse({'error': 'Sem permissão'}, status=403)
+            except Cliente.DoesNotExist:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+        if not backup.arquivo_path:
+            return JsonResponse({'error': 'Este registro não possui arquivo (sem mudanças)'}, status=404)
+
+        arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+        if not os.path.exists(arquivo_path):
+            return JsonResponse({'error': 'Arquivo não encontrado no servidor'}, status=404)
+
+        tamanho = os.path.getsize(arquivo_path)
+        LIMITE = 512 * 1024  # 512 KB
+        with open(arquivo_path, 'r', encoding='utf-8', errors='replace') as f:
+            conteudo = f.read(LIMITE)
+
+        truncado = tamanho > LIMITE
+        return JsonResponse({
+            'conteudo': conteudo,
+            'nome': os.path.basename(arquivo_path),
+            'tamanho': backup.get_tamanho_formatado(),
+            'truncado': truncado,
+            'hash': backup.hash_conteudo or '',
+        })
+
+    except BackupLog.DoesNotExist:
+        return JsonResponse({'error': 'Backup não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 @require_http_methods(["GET"])
 def terminal_page(request):
     """Renderiza a página de terminal SSH múltiplo"""
@@ -2900,6 +2955,7 @@ def listar_acessos_terminal(request):
             'cliente_nome': a.cliente.nome_empresa,
             'cliente_id': a.cliente.id,
             'funcao': a.funcao.descricao if a.funcao else '',
+            'winbox': a.winbox or 0,
         }
         for a in acessos
     ]
@@ -4776,6 +4832,10 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         if meta_key.startswith('HTTP_X_'):
             header_name = meta_key[5:].replace('_', '-').title()
             req_headers[header_name] = meta_val
+    # Proxmox VE exige CSRFPreventionToken em todas as requisições POST/PUT/DELETE
+    # Esse header NÃO começa com X-, então não é capturado pelo loop acima
+    if 'HTTP_CSRFPREVENTIONTOKEN' in request.META:
+        req_headers['CSRFPreventionToken'] = request.META['HTTP_CSRFPREVENTIONTOKEN']
 
     body = request.body if request.method in ('POST', 'PUT', 'PATCH') else None
 
@@ -5948,12 +6008,16 @@ def irr_consultar_whois(request, cliente_id):
 def irr_verificar_resposta(request, cliente_id):
     """
     Conecta via IMAP à caixa do remetente e busca a resposta do TC
-    referente à última atualização IRR enviada para auto-dbm@bgp.net.br.
-    Retorna o corpo do e-mail de resposta e um resumo de aceitos/rejeitados.
+    referente à atualização IRR mais recente enviada para este cliente.
+
+    O match é feito pelo ASN do cliente (ex: "AS65001" / "MAINT-AS65001")
+    presente no corpo da resposta, garantindo que e-mails de outros clientes
+    não sejam retornados erroneamente.
     """
     import imaplib
     import email as email_lib
     from email.header import decode_header
+    from datetime import date, timedelta
     from .models import ConfiguracaoSistema, IRRConfig
 
     cliente = get_object_or_404(Cliente, id=cliente_id)
@@ -5970,64 +6034,16 @@ def irr_verificar_resposta(request, cliente_id):
     except IRRConfig.DoesNotExist:
         return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada.'}, status=404)
 
-    try:
-        # Conecta IMAP
-        if smtp_cfg.imap_use_ssl:
-            mail = imaplib.IMAP4_SSL(smtp_cfg.imap_host, smtp_cfg.imap_port)
-        else:
-            mail = imaplib.IMAP4(smtp_cfg.imap_host, smtp_cfg.imap_port)
+    if not cfg.asn:
+        return JsonResponse({'ok': False, 'erro': 'ASN não configurado no IRR do cliente.'}, status=400)
 
-        mail.login(smtp_cfg.smtp_user, smtp_cfg.smtp_pass)
-        mail.select('INBOX')
+    # Termos que identificam univocamente este AS na resposta do TC
+    asn_str   = str(cfg.asn).strip().lstrip('AS').lstrip('as')
+    as_full   = f'AS{asn_str}'          # ex: AS65001
+    mntner    = f'MAINT-AS{asn_str}'    # ex: MAINT-AS65001
 
-        # Busca e-mails dos últimos 14 dias com subject contendo "IRR Route Update"
-        from datetime import date, timedelta
-        data_limite = (date.today() - timedelta(days=14)).strftime('%d-%b-%Y')
-
-        status_imap, msgs = mail.search(None,
-            f'(SINCE {data_limite} SUBJECT "IRR Route Update")'
-        )
-        ids = msgs[0].split() if msgs[0] else []
-
-        if not ids:
-            # Fallback: busca por remetente do TC
-            status_imap, msgs = mail.search(None,
-                f'(SINCE {data_limite} FROM "nic.br")'
-            )
-            ids = msgs[0].split() if msgs[0] else []
-
-        if not ids:
-            mail.logout()
-            return JsonResponse({
-                'ok': True,
-                'encontrado': False,
-                'mensagem': (
-                    'Nenhuma resposta do TC encontrada nos últimos 14 dias. '
-                    'O e-mail pode ainda não ter sido processado — aguarde alguns minutos e tente novamente.'
-                )
-            })
-
-        # Pega o e-mail mais recente
-        ultimo_id = ids[-1]
-        status_imap, data = mail.fetch(ultimo_id, '(RFC822)')
-        mail.logout()
-
-        raw = data[0][1]
-        msg = email_lib.message_from_bytes(raw)
-
-        # Decodifica subject
-        subj_raw = msg.get('Subject', '')
-        subject = ''
-        for part, enc in decode_header(subj_raw):
-            if isinstance(part, bytes):
-                subject += part.decode(enc or 'utf-8', errors='replace')
-            else:
-                subject += part
-
-        remetente = msg.get('From', '')
-        data_msg  = msg.get('Date', '')
-
-        # Extrai corpo texto simples
+    def _extrair_corpo(msg):
+        """Extrai texto simples de uma mensagem email."""
         corpo = ''
         if msg.is_multipart():
             for part in msg.walk():
@@ -6040,11 +6056,93 @@ def irr_verificar_resposta(request, cliente_id):
             payload = msg.get_payload(decode=True)
             if payload:
                 corpo = payload.decode(msg.get_content_charset() or 'utf-8', errors='replace')
+        return corpo
 
-        # Parseia resultado: ACCEPTED / REJECTED por objeto RPSL
-        aceitos    = []
-        rejeitados = []
-        erros      = []
+    def _decode_subject(raw):
+        subject = ''
+        for part, enc in decode_header(raw):
+            if isinstance(part, bytes):
+                subject += part.decode(enc or 'utf-8', errors='replace')
+            else:
+                subject += str(part)
+        return subject
+
+    try:
+        # ── Conecta IMAP ─────────────────────────────────────────────────────
+        if smtp_cfg.imap_use_ssl:
+            mail = imaplib.IMAP4_SSL(smtp_cfg.imap_host, smtp_cfg.imap_port)
+        else:
+            mail = imaplib.IMAP4(smtp_cfg.imap_host, smtp_cfg.imap_port)
+
+        mail.login(smtp_cfg.smtp_user, smtp_cfg.smtp_pass)
+        mail.select('INBOX')
+
+        # ── Busca candidatos nos últimos 30 dias ─────────────────────────────
+        data_limite = (date.today() - timedelta(days=30)).strftime('%d-%b-%Y')
+
+        # Tenta primeiro: FROM nic.br com subject IRR
+        _, msgs = mail.search(None, f'(SINCE {data_limite} FROM "nic.br" SUBJECT "IRR")')
+        ids = msgs[0].split() if msgs[0] else []
+
+        if not ids:
+            # Fallback 1: apenas FROM nic.br
+            _, msgs = mail.search(None, f'(SINCE {data_limite} FROM "nic.br")')
+            ids = msgs[0].split() if msgs[0] else []
+
+        if not ids:
+            # Fallback 2: apenas SUBJECT IRR
+            _, msgs = mail.search(None, f'(SINCE {data_limite} SUBJECT "IRR")')
+            ids = msgs[0].split() if msgs[0] else []
+
+        if not ids:
+            mail.logout()
+            return JsonResponse({
+                'ok': True,
+                'encontrado': False,
+                'mensagem': (
+                    'Nenhuma resposta do TC encontrada nos últimos 30 dias. '
+                    'O e-mail pode ainda não ter sido processado — aguarde alguns minutos e tente novamente.'
+                )
+            })
+
+        # ── Itera do mais recente para o mais antigo buscando match do ASN ──
+        msg_encontrada = None
+        for uid in reversed(ids):
+            _, data = mail.fetch(uid, '(BODY.PEEK[TEXT])')
+            if not data or not data[0]:
+                continue
+            raw_text = data[0][1] if isinstance(data[0], tuple) else b''
+            texto = raw_text.decode('utf-8', errors='replace') if isinstance(raw_text, bytes) else str(raw_text)
+
+            if as_full in texto or mntner in texto:
+                # Busca o e-mail completo apenas quando há match
+                _, full_data = mail.fetch(uid, '(RFC822)')
+                if full_data and full_data[0]:
+                    msg_encontrada = email_lib.message_from_bytes(full_data[0][1])
+                break
+
+        mail.logout()
+
+        if msg_encontrada is None:
+            return JsonResponse({
+                'ok': True,
+                'encontrado': False,
+                'mensagem': (
+                    f'Nenhuma resposta do TC encontrada para {as_full} nos últimos 30 dias. '
+                    'Verifique se o envio foi realizado e aguarde alguns minutos.'
+                )
+            })
+
+        # ── Extrai metadados e corpo ─────────────────────────────────────────
+        subject   = _decode_subject(msg_encontrada.get('Subject', ''))
+        remetente = msg_encontrada.get('From', '')
+        data_msg  = msg_encontrada.get('Date', '')
+        corpo     = _extrair_corpo(msg_encontrada)
+
+        # ── Parseia resultado: ACCEPTED / REJECTED por objeto RPSL ──────────
+        aceitos      = []
+        rejeitados   = []
+        erros        = []
         objeto_atual = ''
 
         for i, linha in enumerate(corpo.splitlines()):
@@ -6055,7 +6153,7 @@ def irr_verificar_resposta(request, cliente_id):
                     objeto_atual = l
                     break
             lu = l.upper()
-            if lu in ('ACCEPTED',) or lu.startswith('OBJECT ACCEPTED'):
+            if lu == 'ACCEPTED' or lu.startswith('OBJECT ACCEPTED'):
                 aceitos.append(objeto_atual or f'objeto #{i}')
                 objeto_atual = ''
             elif lu in ('REJECTED', 'FAILED') or lu.startswith('OBJECT REJECTED'):
@@ -6064,9 +6162,10 @@ def irr_verificar_resposta(request, cliente_id):
             elif '***Error***' in linha or ('ERROR' in lu and ':' in l):
                 erros.append(l)
 
-        if 'SUCCESS' in subject.upper():
+        subj_up = subject.upper()
+        if 'SUCCESS' in subj_up:
             status_geral = 'sucesso'
-        elif 'FAIL' in subject.upper() or 'ERROR' in subject.upper():
+        elif 'FAIL' in subj_up or 'ERROR' in subj_up:
             status_geral = 'erro'
         elif rejeitados or erros:
             status_geral = 'parcial'
@@ -6078,6 +6177,7 @@ def irr_verificar_resposta(request, cliente_id):
         return JsonResponse({
             'ok':           True,
             'encontrado':   True,
+            'as_consultado': as_full,
             'subject':      subject,
             'remetente':    remetente,
             'data_msg':     data_msg,

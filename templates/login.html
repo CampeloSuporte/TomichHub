@@ -4,119 +4,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOMICH HUB - Login</title>
-    <link href="{% static 'css/css_login.css'%}" rel="stylesheet">
-    <style>
-        .alert-message {
-            background: rgba(255, 50, 50, 0.15);
-            border: 1px solid #ff3333;
-            color: #ff6666;
-            padding: 10px 14px;
-            margin-bottom: 16px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 13px;
-            animation: fadeIn 0.3s ease;
-        }
-        .alert-message.alert-success {
-            background: rgba(0, 255, 136, 0.1);
-            border-color: #00ff88;
-            color: #00ff88;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+    <title>TOMICH HUB — Acesso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="{% static 'css/css_login.css' %}" rel="stylesheet">
 </head>
 <body>
-    <canvas id="matrix-bg"></canvas>
-    
-    <div class="container">
-        <div class="login-box">
-            <div class="logo">
-                <h1>⚡ TOMICH HUB</h1>
-                <p>SISTEMA DE ACESSO</p>
+
+<canvas id="matrix-bg"></canvas>
+<div class="bg-grid"></div>
+<div class="bg-vignette"></div>
+<div class="scanlines"></div>
+
+<div class="page-wrap">
+
+    <!-- ── Left panel ── -->
+    <div class="left-panel">
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-br"></div>
+
+        <div class="brand-eyebrow">// Sistema de Gerenciamento v4.2</div>
+
+        <div class="brand-title">
+            <div class="line1">
+                <span class="glitch-wrap" data-text="TOMICH">TOMICH</span>
             </div>
+            <div class="line2">HUB</div>
+        </div>
 
-            <div class="terminal-line">Inicializando conexão segura<span class="cursor">_</span></div>
+        <p class="brand-desc">
+            Plataforma centralizada de gestão de infraestrutura de rede.<br>
+            Monitoramento, provisionamento e controle em tempo real.
+        </p>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert-message alert-{{ message.tags }}">
-                        ⚠ {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <form id="loginForm" action="{% url 'login'%}" method="post">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="usuario">USUÁRIO</label>
-                    <input type="text" id="usuario" name="username" placeholder="admin" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="senha">SENHA</label>
-                    <input type="password" id="senha" name="password" placeholder="••••••••" required>
-                </div>
-
-                <button type="submit" class="btn-login">
-                    🔓 ACESSAR SISTEMA
-                </button>
-            </form>
-
-            <div class="footer-links">
+        <div class="stat-row">
+            <div class="stat-item">
+                <span class="stat-value" id="statOnline">—</span>
+                <span class="stat-label">Sistemas Online</span>
             </div>
-
-            <div class="status-bar">
-                STATUS: <span class="status-online">● ONLINE</span> | 
+            <div class="stat-item">
+                <span class="stat-value" id="statTime">--:--</span>
+                <span class="stat-label">Hora Local</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">TLS</span>
+                <span class="stat-label">Criptografia</span>
             </div>
         </div>
     </div>
 
-    <script>
-        // Matrix rain effect with blue and purple
-        const canvas = document.getElementById('matrix-bg');
-        const ctx = canvas.getContext('2d');
+    <!-- ── Right panel ── -->
+    <div class="right-panel">
+        <div class="login-card">
+            <div class="hud-corner hud-tl"></div>
+            <div class="hud-corner hud-tr"></div>
+            <div class="hud-corner hud-bl"></div>
+            <div class="hud-corner hud-br"></div>
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+            <div class="card-header">
+                <div class="card-label">Autenticação Segura</div>
+                <div class="card-title">ACESSO AO SISTEMA</div>
+            </div>
 
-        const chars = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ<>{}[]()/*-+@#$%&';
-        const fontSize = 14;
-        const columns = canvas.width / fontSize;
-        const drops = Array(Math.floor(columns)).fill(1);
+            <div class="terminal-line" id="termLine">Aguardando credenciais<span class="cursor">_</span></div>
 
-        const colors = ['#8b5cf6', '#00d4ff', '#a855f7', '#0ea5e9', '#7c3aed'];
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-message alert-{{ message.tags }}">⚠ {{ message }}</div>
+                {% endfor %}
+            {% endif %}
 
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(10, 0, 21, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.font = fontSize + 'px monospace';
-            for (let i = 0; i < drops.length; i++) {
-                ctx.fillStyle = colors[i % colors.length];
-                const text = chars[Math.floor(Math.random() * chars.length)];
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
-            }
+            <form id="loginForm" action="{% url 'login' %}" method="post" autocomplete="off">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <div class="field-label">
+                        <span class="field-label-icon">▸</span>
+                        Usuário
+                    </div>
+                    <div class="field-wrap">
+                        <input type="text" id="usuario" name="username" placeholder="identificador" autocomplete="username" required>
+                        <div class="field-line"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="field-label">
+                        <span class="field-label-icon">▸</span>
+                        Senha
+                    </div>
+                    <div class="field-wrap">
+                        <input type="password" id="senha" name="password" placeholder="••••••••••" autocomplete="current-password" required>
+                        <div class="field-line"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    ⟶ &nbsp; INICIAR SESSÃO
+                </button>
+            </form>
+
+            <div class="status-bar">
+                <div class="status-dot"></div>
+                <span>SISTEMA ONLINE</span>
+                <span style="margin-left:auto;opacity:.4" id="statusDate"></span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function() {
+    // ── Matrix rain ──
+    const canvas = document.getElementById('matrix-bg');
+    const ctx    = canvas.getContext('2d');
+    const FONT   = 13;
+    const CHARS  = '01アイウエオカキクケコサシスセソタチツテトナニヌネノ<>[]{}/*-+@#$%&';
+    let cols, drops, W, H;
+
+    function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        cols  = Math.floor(W / FONT);
+        drops = Array(cols).fill(0).map(() => Math.random() * -80);
+    }
+
+    const PALETTE = ['#00f5ff','#1a4fff','#00ff88','rgba(0,245,255,.6)','rgba(26,79,255,.5)'];
+
+    function drawMatrix() {
+        ctx.fillStyle = 'rgba(2,3,10,.06)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.font = FONT + 'px Share Tech Mono, monospace';
+        for (let i = 0; i < cols; i++) {
+            ctx.fillStyle = PALETTE[i % PALETTE.length];
+            ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], i * FONT, drops[i] * FONT);
+            if (drops[i] * FONT > H && Math.random() > .972) drops[i] = 0;
+            drops[i] += .5;
         }
+    }
 
-        setInterval(drawMatrix, 35);
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
+    resize();
+    window.addEventListener('resize', resize);
+    setInterval(drawMatrix, 40);
 
-        // Login form — sem e.preventDefault() para não bloquear o POST em caso de erro
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const usuario = document.getElementById('usuario').value;
-            const terminalLine = document.querySelector('.terminal-line');
+    // ── Clock ──
+    function tick() {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2,'0');
+        const mm = String(now.getMinutes()).padStart(2,'0');
+        const ss = String(now.getSeconds()).padStart(2,'0');
+        const el = document.getElementById('statTime');
+        if (el) el.textContent = hh + ':' + mm + ':' + ss;
+        const ds = document.getElementById('statusDate');
+        if (ds) ds.textContent = now.toLocaleDateString('pt-BR');
+    }
+    tick(); setInterval(tick, 1000);
 
-            // Atualiza o terminal mas deixa o form submeter normalmente
-            terminalLine.innerHTML = 'Autenticando usuário: ' + usuario + '<span class="cursor">_</span>';
-        });
-    </script>
+    // ── Fake "online systems" counter ──
+    const statEl = document.getElementById('statOnline');
+    if (statEl) {
+        let v = 0;
+        const target = 247 + Math.floor(Math.random() * 30);
+        const step = setInterval(() => {
+            v += 7; if (v >= target) { v = target; clearInterval(step); }
+            statEl.textContent = v;
+        }, 18);
+    }
+
+    // ── Terminal line typing on submit ──
+    document.getElementById('loginForm').addEventListener('submit', function() {
+        const u  = document.getElementById('usuario').value;
+        const tl = document.getElementById('termLine');
+        if (tl) tl.innerHTML = 'Autenticando: ' + u + '<span class="cursor">_</span>';
+    });
+})();
+</script>
 </body>
 </html>

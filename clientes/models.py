@@ -341,18 +341,20 @@ class BackupLog(models.Model):
         ('SUCESSO', 'Sucesso'),
         ('ERRO', 'Erro'),
         ('PARCIAL', 'Parcial'),
+        ('SEM_MUDANCAS', 'Sem mudanças'),
     ]
-    
+
     acesso = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='backups')
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='backups')
     template = models.ForeignKey('BackupTemplate', on_delete=models.SET_NULL, null=True, blank=True)
-    
-    arquivo_path = models.CharField(max_length=500)  # Caminho relativo do arquivo
+
+    arquivo_path = models.CharField(max_length=500, blank=True, default='')
     tamanho_bytes = models.IntegerField(default=0)
-    
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SUCESSO')
+    hash_conteudo = models.CharField(max_length=64, blank=True, default='', verbose_name='Hash SHA-256')
+
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='SUCESSO')
     mensagem = models.TextField(blank=True, null=True)
-    
+
     executado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     data_backup = models.DateTimeField(auto_now_add=True)
     duracao_segundos = models.FloatField(default=0)
@@ -886,3 +888,134 @@ class FirmwareCompartilhamento(models.Model):
         user  = 'fw_' + ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
         senha = ''.join(secrets.choice(chars) for _ in range(12))
         return user, senha
+
+
+# ── Correções de Geolocalização IP ────────────────────────────────────────────
+
+class CorrecaoGeoIP(models.Model):
+    """Registro de solicitações de correção de geolocalização enviadas a RIRs."""
+
+    prefixo    = models.CharField(max_length=50,  db_index=True, verbose_name='Prefixo / IP')
+    pais       = models.CharField(max_length=5,   blank=True, verbose_name='País (ISO)')
+    regiao     = models.CharField(max_length=100, blank=True, verbose_name='Estado / Região')
+    cidade     = models.CharField(max_length=100, blank=True, verbose_name='Cidade')
+    org        = models.CharField(max_length=200, blank=True, verbose_name='Organização / ISP')
+    lat        = models.CharField(max_length=20,  blank=True, verbose_name='Latitude')
+    lon        = models.CharField(max_length=20,  blank=True, verbose_name='Longitude')
+
+    # Destinos que receberam e-mail: [{'label':'LACNIC','email':'hostmaster@lacnic.net'}, ...]
+    destinos_email = models.JSONField(default=list, verbose_name='Destinos (e-mail)')
+
+    data_envio   = models.DateTimeField(auto_now_add=True, verbose_name='Data de envio')
+    solicitante  = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='correcoes_geoip', verbose_name='Solicitante',
+    )
+
+    # ── Resposta IMAP ────────────────────────────────────────────────────────
+    resposta_recebida  = models.BooleanField(default=False, verbose_name='Resposta recebida')
+    resposta_remetente = models.CharField(max_length=200, blank=True, verbose_name='Remetente da resposta')
+    resposta_assunto   = models.CharField(max_length=300, blank=True, verbose_name='Assunto da resposta')
+    resposta_texto     = models.TextField(blank=True, verbose_name='Corpo da resposta')
+    data_resposta      = models.DateTimeField(null=True, blank=True, verbose_name='Data da resposta')
+
+    # ── Verificação de aplicação ─────────────────────────────────────────────
+    aplicado              = models.BooleanField(null=True, blank=True, verbose_name='Correção aplicada')
+    ultima_verificacao    = models.DateTimeField(null=True, blank=True, verbose_name='Última verificação')
+    resultado_verificacao = models.JSONField(null=True, blank=True, verbose_name='Resultado da verificação')
+    fontes_aplicadas      = models.IntegerField(default=0, verbose_name='Fontes que aplicaram')
+    fontes_total          = models.IntegerField(default=0, verbose_name='Total de fontes verificadas')
+
+    class Meta:
+        ordering = ['-data_envio']
+        verbose_name = 'Correção GeoIP'
+        verbose_name_plural = 'Correções GeoIP'
+
+    def __str__(self):
+        return f'{self.prefixo} – {self.data_envio:%d/%m/%Y %H:%M}'
+
+    @property
+    def status_resposta(self):
+        if self.resposta_recebida:
+            return 'respondido'
+        return 'aguardando'
+
+    @property
+    def status_aplicacao(self):
+        if self.aplicado is None:
+            return 'nao_verificado'
+        if self.aplicado:
+            return 'aplicado'
+        return 'pendente'
+
+
+# ── Scripts de Automação ──────────────────────────────────────────────────────
+
+from django.conf import settings as _dj_settings
+
+
+class ScriptCRM(models.Model):
+    """Script de automação com parâmetros dinâmicos para execução em equipamentos via SSH"""
+
+    FABRICANTES = [
+        ('zte',       'ZTE'),
+        ('huawei',    'Huawei'),
+        ('cisco',     'Cisco'),
+        ('mikrotik',  'MikroTik'),
+        ('datacom',   'Datacom'),
+        ('parks',     'Parks'),
+        ('generico',  'Genérico'),
+    ]
+
+    MODOS = [
+        ('operacional',    'Operacional (show/get)'),
+        ('configuracao',   'Configuração (config)'),
+        ('zte_auto_prov',  'ZTE — Auto-Provisionamento em Massa'),
+    ]
+
+    nome           = models.CharField(max_length=255, verbose_name='Nome')
+    descricao      = models.TextField(blank=True, verbose_name='Descrição')
+    fabricante     = models.CharField(max_length=30, choices=FABRICANTES, default='generico', verbose_name='Fabricante')
+    modo_execucao  = models.CharField(max_length=20, choices=MODOS, default='operacional', verbose_name='Modo')
+    comandos       = models.TextField(verbose_name='Comandos', help_text='Um comando por linha. Use {PARAM} para variáveis. Suporte a #FOR i FROM {X} TO {Y} ... #ENDFOR')
+    parametros     = models.JSONField(default=list, verbose_name='Parâmetros', help_text='Lista de parâmetros: [{nome, label, tipo, default, obrigatorio, ajuda, opcoes}]')
+    ativo          = models.BooleanField(default=True, verbose_name='Ativo')
+    criado_por     = models.ForeignKey(_dj_settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='scripts_criados')
+    criado_em      = models.DateTimeField(auto_now_add=True)
+    atualizado_em  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['fabricante', 'nome']
+        verbose_name = 'Script de Automação'
+        verbose_name_plural = 'Scripts de Automação'
+
+    def __str__(self):
+        return f"[{self.get_fabricante_display()}] {self.nome}"
+
+
+class ScriptExecucaoLog(models.Model):
+    """Histórico de execuções de scripts"""
+
+    STATUS = [
+        ('executando', 'Executando'),
+        ('sucesso',    'Sucesso'),
+        ('erro',       'Erro'),
+        ('parcial',    'Parcial'),
+    ]
+
+    script            = models.ForeignKey(ScriptCRM, on_delete=models.SET_NULL, null=True, related_name='execucoes')
+    acesso            = models.ForeignKey('Acesso', on_delete=models.SET_NULL, null=True, related_name='script_execucoes')
+    usuario           = models.ForeignKey(_dj_settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    parametros_usados = models.JSONField(default=dict)
+    output            = models.TextField(blank=True)
+    status            = models.CharField(max_length=20, choices=STATUS, default='executando')
+    iniciado_em       = models.DateTimeField(auto_now_add=True)
+    finalizado_em     = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-iniciado_em']
+        verbose_name = 'Log de Execução de Script'
+        verbose_name_plural = 'Logs de Execução de Scripts'
+
+    def __str__(self):
+        return f"Execução #{self.id} — {self.script} [{self.status}]"

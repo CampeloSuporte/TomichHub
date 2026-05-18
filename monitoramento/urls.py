@@ -14,6 +14,7 @@ urlpatterns = [
     path('zabbix/salvar/',      views.salvar_zabbix_config,    name='zabbix_salvar'),
     path('zabbix/buscar/',      views.buscar_zabbix_config,    name='zabbix_buscar'),
     path('zabbix/testar/',      views.testar_zabbix_conexao,   name='zabbix_testar'),
+    path('zabbix/autoconfig/',  views.autoconfig_zabbix,       name='zabbix_autoconfig'),
 
     # ── Dados do Zabbix ──────────────────────────────────────
     path('zabbix/hosts/',       views.listar_hosts_zabbix,     name='zabbix_hosts'),

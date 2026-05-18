@@ -15,6 +15,7 @@ urlpatterns = [
     # ===== APIS: RELATÓRIOS =====
     path('api/aging/', views.api_aging_report, name='api_aging_report'),
     path('api/top-clientes/', views.api_top_clientes, name='api_top_clientes'),
+    path('api/proximas-vencer/', views.api_proximas_vencer, name='api_proximas_vencer'),
 
     # ===== APIS: FATURAS =====
     # ⚠️ IMPORTANTE: rotas estáticas (criar, listar) ANTES das dinâmicas (<int:fatura_id>)

@@ -167,6 +167,16 @@ def _get_config_com_tunel(config, cliente_id):
     ).first()
 
     if not proxy:
+        # Verificar se VPN WireGuard cobre este IP (fallback sem túnel SSH)
+        try:
+            from clientes.views import vpn_cobre_ip
+            from clientes.models import Cliente as _Cliente
+            _cli = _Cliente.objects.get(id=cliente_id)
+            if vpn_cobre_ip(_cli, zbx_host):
+                logger.info(f"[ZBX] WireGuard VPN cobre {zbx_host} — conectando diretamente")
+                return config, None
+        except Exception as _e:
+            logger.debug(f"[ZBX] vpn_cobre_ip check falhou: {_e}")
         raise Exception(
             f"Zabbix tem IP privado ({zbx_host}) mas não há proxy SSH ativo "
             f"para este cliente. Configure na aba 'Túneis SSH'."
@@ -256,6 +266,45 @@ def buscar_zabbix_config(request):
         })
     except ZabbixConfig.DoesNotExist:
         return JsonResponse({'existe': False})
+
+
+@login_required(login_url='login')
+def autoconfig_zabbix(request):
+    """
+    Busca automaticamente a configuração do Zabbix a partir de um Acesso
+    do cliente cujo tipo contenha 'zabbix' (case-insensitive).
+    Retorna URL, usuário e senha para pré-preencher o modal.
+    """
+    cliente_id = request.GET.get('id')
+    if not _pode_acessar_cliente(request, cliente_id):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    from clientes.models import Acesso
+    acesso = Acesso.objects.filter(
+        cliente_id=cliente_id,
+        tipo__icontains='zabbix'
+    ).first()
+
+    if not acesso:
+        return JsonResponse({'encontrado': False, 'message': 'Nenhum host com nome "zabbix" encontrado nos acessos deste cliente.'})
+
+    protocolo = (acesso.protocolo or 'HTTPS').upper()
+    if protocolo in ('HTTP',):
+        scheme = 'http'
+    else:
+        scheme = 'https'
+
+    porta = acesso.porta or (443 if scheme == 'https' else 80)
+    url = f"{scheme}://{acesso.host}:{porta}"
+
+    return JsonResponse({
+        'encontrado': True,
+        'url': url,
+        'usuario': acesso.usuario or '',
+        'senha': acesso.senha or '',
+        'tipo': acesso.tipo,
+        'host': acesso.host,
+    })
 
 
 @login_required(login_url='login')

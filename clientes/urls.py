@@ -8,6 +8,7 @@ from .documentacao_views import (
 )
 from . import ipam_views as ipam
 from . import firmware_views as fw
+from . import script_views as sv
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -61,6 +62,7 @@ urlpatterns = [
     # Backups
     path('backups/executar/<int:acesso_id>/', views.executar_backup_acesso, name='executar_backup'),
     path('backups/listar/', views.listar_backups_cliente, name='listar_backups'),
+    path('backups/conteudo/<int:backup_id>/', views.backup_conteudo, name='backup_conteudo'),
     path('backups/download/<int:backup_id>/', views.download_backup, name='download_backup'),
     path('backups/deletar/<int:backup_id>/', views.deletar_backup, name='deletar_backup'),
     path('backups/templates/', views.buscar_templates_backup, name='buscar_templates_backup'),
@@ -158,6 +160,7 @@ urlpatterns = [
     path('firmware/listar/',                                fw.firmware_listar,           name='firmware_listar'),
     path('firmware/pasta/criar/',                           fw.firmware_criar_pasta,      name='firmware_criar_pasta'),
     path('firmware/upload/',                                fw.firmware_upload,           name='firmware_upload'),
+    path('firmware/upload-url/',                            fw.firmware_upload_url,       name='firmware_upload_url'),
     path('firmware/arquivo/<int:arquivo_id>/deletar/',      fw.firmware_deletar_arquivo,  name='firmware_deletar_arquivo'),
     path('firmware/pasta/<int:pasta_id>/deletar/',          fw.firmware_deletar_pasta,    name='firmware_deletar_pasta'),
     path('firmware/arquivo/<int:arquivo_id>/compartilhar/', fw.firmware_compartilhar,     name='firmware_compartilhar'),
@@ -170,4 +173,14 @@ urlpatterns = [
     path('<int:cliente_id>/topologia/dados/', views.topologia_dados, name='topologia_dados'),
     path('<int:cliente_id>/topologia/salvar/', views.topologia_salvar, name='topologia_salvar'),
     path('<int:cliente_id>/topologia/hosts/', views.topologia_hosts, name='topologia_hosts'),
+
+    # ── Scripts de Automação ─────────────────────────────────────────────────
+    path('scripts/',                                sv.listar_scripts,      name='listar_scripts'),
+    path('scripts/gerenciar/',                      sv.gerenciar_scripts,   name='gerenciar_scripts'),
+    path('scripts/salvar/',                         sv.salvar_script,       name='salvar_script'),
+    path('scripts/salvar/<int:script_id>/',         sv.salvar_script,       name='salvar_script_edit'),
+    path('scripts/deletar/<int:script_id>/',        sv.deletar_script,      name='deletar_script'),
+    path('scripts/executar/',                       sv.executar_script,     name='executar_script'),
+    path('scripts/historico/<int:acesso_id>/',      sv.historico_execucoes, name='historico_scripts'),
+    path('scripts/<int:script_id>/',                sv.detalhe_script,      name='detalhe_script'),
 ]

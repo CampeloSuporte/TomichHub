@@ -1743,3 +1743,44 @@ def api_top_clientes(request):
 
     except Exception as e:
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+# ============================================
+# API: PRÓXIMAS FATURAS A VENCER
+# ============================================
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(["GET"])
+def api_proximas_vencer(request):
+    try:
+        if not request.user.is_staff:
+            return JsonResponse({'sucesso': False, 'erro': 'Acesso negado'}, status=403)
+
+        hoje = date.today()
+        dias = int(request.GET.get('dias', 15))
+        limite = hoje + timedelta(days=dias)
+
+        faturas = Fatura.objects.filter(
+            status='ABERTA',
+            data_vencimento__gt=hoje,
+            data_vencimento__lte=limite
+        ).select_related('cliente').order_by('data_vencimento')[:20]
+
+        resultado = [
+            {
+                'id': f.id,
+                'numero': f.numero_fatura,
+                'cliente': f.cliente.nome_empresa,
+                'cliente_id': f.cliente.id,
+                'valor': float(f.valor_total),
+                'vencimento': f.data_vencimento.strftime('%d/%m/%Y'),
+                'dias_restantes': (f.data_vencimento - hoje).days,
+            }
+            for f in faturas
+        ]
+
+        return JsonResponse({'sucesso': True, 'faturas': resultado, 'total': len(resultado)})
+
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)

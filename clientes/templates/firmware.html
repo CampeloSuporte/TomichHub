@@ -23,6 +23,10 @@
         <i class="fas fa-cloud-upload-alt me-1"></i> Upload
         <input type="file" id="fw-upload-input" multiple style="display:none" onchange="fwUpload(this.files)">
       </label>
+      <button class="btn btn-sm" onclick="fwAbrirUploadUrl()"
+        style="background:rgba(180,100,255,.12);border:1px solid rgba(180,100,255,.4);color:#b464ff">
+        <i class="fas fa-link me-1"></i> Via URL
+      </button>
     </div>
   </div>
 
@@ -84,6 +88,39 @@
   </div>
 
 </div>
+</div>
+
+<!-- ══ Modal: Upload via URL ══════════════════════════════════════════════ -->
+<div class="modal fade" id="modalUploadUrl" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d">
+      <div class="modal-header" style="border-color:#30363d">
+        <h5 class="modal-title" style="font-size:.95rem"><i class="fas fa-link me-2" style="color:#b464ff"></i>Baixar arquivo via URL</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label style="font-size:.78rem;color:#8b949e;display:block;margin-bottom:6px">URL DO ARQUIVO (http / https):</label>
+        <input id="url-input" type="url" class="form-control" placeholder="https://exemplo.com/firmware.npk"
+          onkeydown="if(event.key==='Enter')fwBaixarUrl()">
+        <div style="font-size:.75rem;color:#555;margin-top:6px">O servidor irá baixar o arquivo diretamente para a pasta atual.</div>
+        <div id="url-erro" style="display:none;margin-top:10px;padding:6px 12px;border-radius:6px;background:rgba(224,96,96,.1);border:1px solid rgba(224,96,96,.3);color:#e06060;font-size:.82rem"></div>
+        <!-- barra de progresso indeterminada -->
+        <div id="url-loading" style="display:none;margin-top:12px">
+          <div style="font-size:.8rem;color:#8b949e;margin-bottom:6px" id="url-loading-msg">Baixando arquivo…</div>
+          <div class="progress" style="height:4px;background:rgba(255,255,255,.08)">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#b464ff"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:#30363d">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal" id="url-btn-cancelar">Cancelar</button>
+        <button class="btn btn-sm" id="url-btn-baixar" onclick="fwBaixarUrl()"
+          style="background:rgba(180,100,255,.15);border:1px solid #b464ff;color:#b464ff">
+          <i class="fas fa-download me-1"></i>Baixar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ Modal: Nova Pasta ══════════════════════════════════════════════════ -->
@@ -685,6 +722,66 @@ function fwCopiar(el, texto) {
         el.classList.add('copied');
         setTimeout(() => { el.textContent='Copiar'; el.classList.remove('copied'); }, 1800);
     });
+}
+
+// ── Upload via URL ────────────────────────────────────────────────────────
+let _modalUploadUrl = null;
+
+function fwAbrirUploadUrl() {
+    document.getElementById('url-input').value = '';
+    document.getElementById('url-erro').style.display = 'none';
+    document.getElementById('url-loading').style.display = 'none';
+    document.getElementById('url-btn-baixar').disabled = false;
+    document.getElementById('url-btn-cancelar').disabled = false;
+    if (!_modalUploadUrl) {
+        _modalUploadUrl = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUploadUrl'));
+    }
+    _modalUploadUrl.show();
+    setTimeout(() => document.getElementById('url-input').focus(), 300);
+}
+
+async function fwBaixarUrl() {
+    const url = document.getElementById('url-input').value.trim();
+    const erroEl = document.getElementById('url-erro');
+    erroEl.style.display = 'none';
+
+    if (!url) {
+        erroEl.textContent = 'Informe uma URL válida';
+        erroEl.style.display = '';
+        return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+        erroEl.textContent = 'Apenas URLs http:// ou https:// são suportadas';
+        erroEl.style.display = '';
+        return;
+    }
+
+    // Estado de carregamento
+    document.getElementById('url-btn-baixar').disabled = true;
+    document.getElementById('url-btn-cancelar').disabled = true;
+    document.getElementById('url-loading').style.display = '';
+    document.getElementById('url-loading-msg').textContent = 'Baixando arquivo do servidor remoto…';
+
+    const r = await fetch('/clientes/firmware/upload-url/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        body: JSON.stringify({url, pasta_id: FW_PASTA_ATUAL})
+    });
+    const d = await r.json();
+
+    document.getElementById('url-loading').style.display = 'none';
+    document.getElementById('url-btn-baixar').disabled = false;
+    document.getElementById('url-btn-cancelar').disabled = false;
+
+    if (!d.ok) {
+        erroEl.textContent = d.erro || 'Erro ao baixar arquivo';
+        erroEl.style.display = '';
+        return;
+    }
+
+    _modalUploadUrl.hide();
+    uiToast(`"${d.arquivo.nome}" baixado com sucesso (${d.arquivo.tamanho_str})`);
+    fwNavegar(FW_PASTA_ATUAL);
 }
 
 // Carrega ao iniciar
