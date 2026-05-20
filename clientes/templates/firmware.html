@@ -104,11 +104,20 @@
           onkeydown="if(event.key==='Enter')fwBaixarUrl()">
         <div style="font-size:.75rem;color:#555;margin-top:6px">O servidor irá baixar o arquivo diretamente para a pasta atual.</div>
         <div id="url-erro" style="display:none;margin-top:10px;padding:6px 12px;border-radius:6px;background:rgba(224,96,96,.1);border:1px solid rgba(224,96,96,.3);color:#e06060;font-size:.82rem"></div>
-        <!-- barra de progresso indeterminada -->
-        <div id="url-loading" style="display:none;margin-top:12px">
-          <div style="font-size:.8rem;color:#8b949e;margin-bottom:6px" id="url-loading-msg">Baixando arquivo…</div>
-          <div class="progress" style="height:4px;background:rgba(255,255,255,.08)">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#b464ff"></div>
+
+        <!-- Painel de progresso do download -->
+        <div id="url-progresso" style="display:none;margin-top:14px">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span id="url-prog-nome" style="font-size:.8rem;color:#8b949e;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px"></span>
+            <span id="url-prog-pct"  style="font-size:.82rem;color:#b464ff;font-weight:600;min-width:38px;text-align:right">0%</span>
+          </div>
+          <div class="progress" style="height:7px;background:rgba(255,255,255,.06);border-radius:4px">
+            <div id="url-prog-bar" class="progress-bar"
+                 style="background:linear-gradient(90deg,#7b2fff,#b464ff);width:0%;transition:width .3s ease;border-radius:4px"></div>
+          </div>
+          <div class="d-flex align-items-center justify-content-between mt-1">
+            <span id="url-prog-bytes" style="font-size:.72rem;color:#555"></span>
+            <span id="url-prog-status" style="font-size:.72rem;color:#555"></span>
           </div>
         </div>
       </div>
@@ -231,6 +240,45 @@
     </div>
   </div>
 </div>
+
+<!-- ══ Painel: Downloads em andamento (WebSocket) ═════════════════════════ -->
+<div id="fwDlOverlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
+  <div style="background:#0d1117;border:2px solid #00d9ff;border-radius:10px;width:92%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,217,255,.25);position:relative">
+    <div style="padding:14px 18px;border-bottom:1px solid #1c2230;display:flex;align-items:center;gap:10px">
+      <span id="fwDlPulse" style="width:9px;height:9px;border-radius:50%;background:#00ff88;display:inline-block;box-shadow:0 0 8px #00ff88;animation:pulse-green 1.2s ease-in-out infinite"></span>
+      <span style="font-size:.9rem;color:#e6edf3;font-weight:600"><i class="fas fa-download me-2" style="color:#00d9ff"></i>Downloads em andamento</span>
+      <span id="fwDlCount" style="margin-left:4px;font-size:.72rem;background:rgba(0,217,255,.15);border:1px solid rgba(0,217,255,.3);color:#00d9ff;border-radius:10px;padding:1px 8px"></span>
+      <button onclick="document.getElementById('fwDlOverlay').style.display='none'"
+              style="margin-left:auto;background:transparent;border:none;color:#555;font-size:1.2rem;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="fwDlLista" style="padding:14px 18px;display:flex;flex-direction:column;gap:12px">
+      <div style="color:#555;font-size:.85rem;text-align:center;padding:20px 0">Nenhum download ativo</div>
+    </div>
+  </div>
+</div>
+
+<!-- Botão flutuante (aparece quando há downloads ativos) -->
+<div id="fwDlBadge" onclick="fwDlAbrirOverlay()"
+  style="display:none;position:fixed;bottom:24px;right:24px;z-index:9998;cursor:pointer;
+  background:#0d1117;border:2px solid #00d9ff;border-radius:50px;padding:10px 18px;
+  box-shadow:0 0 20px rgba(0,217,255,.35);color:#00d9ff;font-size:.82rem;font-weight:600;align-items:center;gap:8px">
+  <span style="width:8px;height:8px;border-radius:50%;background:#00ff88;animation:pulse-green 1s ease-in-out infinite"></span>
+  <i class="fas fa-download me-1"></i>
+  <span id="fwDlBadgeTxt">0 downloads</span>
+</div>
+
+<style>
+@keyframes pulse-green {
+  0%,100% { box-shadow: 0 0 4px #00ff88; opacity:1; }
+  50%      { box-shadow: 0 0 12px #00ff88; opacity:.7; }
+}
+.fwdl-card { background:#0a0f1a;border:1px solid #1c2230;border-radius:8px;padding:12px 14px; }
+.fwdl-card.done { border-color:rgba(0,255,136,.45); }
+.fwdl-card.erro { border-color:rgba(224,96,96,.45); }
+.fwdl-bar-wrap { height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:8px;overflow:hidden; }
+.fwdl-bar { height:100%;border-radius:3px;background:linear-gradient(90deg,#0080cc,#00d9ff);transition:width .4s ease; }
+.fwdl-bar.done { background:linear-gradient(90deg,#00a86b,#00ff88); }
+</style>
 
 <!-- ══ Modal: Detalhes de Link Existente ══════════════════════════════════ -->
 <div class="modal fade" id="modalLinkDetalhe" tabindex="-1">
@@ -618,7 +666,7 @@ const PROTO_DEFS = [
     {key:'tftp',     label:'TFTP',           icon:'fas fa-exchange-alt',   cor:'#4fc3f7'},
     {key:'cisco',    label:'CISCO',          icon:'fas fa-network-wired',  cor:'#e06060'},
     {key:'mikrotik', label:'MIKROTIK',       icon:'fas fa-router',         cor:'#81c784'},
-    {key:'huawei',   label:'HUAWEI',         icon:'fas fa-server',         cor:'#ffcc80'},
+    {key:'huawei',   label:'HUAWEI',         icon:'fas fa-server',         cor:'#ffcc80', special:'huawei'},
     {key:'linux',    label:'WGET / LINUX',   icon:'fab fa-linux',          cor:'#8b949e'},
     {key:'curl',     label:'CURL',           icon:'fas fa-terminal',       cor:'#8b949e'},
 ];
@@ -628,12 +676,79 @@ function fwRenderLinks(links, nomeArq, container) {
     for (const pd of PROTO_DEFS) {
         const val = links[pd.key];
         if (!val) continue;
+
+        if (pd.special === 'huawei') {
+            // ── Bloco Huawei especial: SFTP + TFTP com IP resolvido ──
+            const ip        = links.huawei_ip || '';
+            const ipBadge   = ip ? `<span style="font-size:.7rem;color:#ffcc80;background:rgba(255,204,128,.1);border:1px solid rgba(255,204,128,.25);border-radius:4px;padding:1px 6px;margin-left:6px">IP: ${ip}</span>` : '';
+
+            // SFTP
+            const sftp      = val;
+            const sftpEsc   = sftp.replace(/'/g, "\\'");
+            const sftpSC    = sftp.replace(/ username \S+ password \S+/, '').trim();
+            const temCreds  = sftp !== sftpSC;
+            const sftpSCEsc = sftpSC.replace(/'/g, "\\'");
+
+            // TFTP
+            const tftpCmd   = links.huawei_tftp || '';
+            const tftpEsc   = tftpCmd.replace(/'/g, "\\'");
+
+            // FTP
+            const ftpCmd    = links.huawei_ftp || '';
+            const ftpSC     = ftpCmd.replace(/ username \S+ password \S+/, '').trim();
+            const ftpTemCreds = ftpCmd !== ftpSC;
+            const ftpEsc    = ftpCmd.replace(/'/g, "\\'");
+            const ftpSCEsc  = ftpSC.replace(/'/g, "\\'");
+
+            html += `
+            <div class="proto-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+                <div class="proto-label" style="width:100%;display:flex;align-items:center">
+                    <i class="${pd.icon} me-1" style="color:${pd.cor}"></i>${pd.label}${ipBadge}
+                </div>
+
+                <div style="font-size:.72rem;color:#8b949e">SFTP:</div>
+                <div class="proto-box" style="width:100%">
+                    <code style="white-space:pre-wrap;word-break:break-all">${sftp}</code>
+                    <span class="proto-copy" onclick="fwCopiar(this,'${sftpEsc}')">Copiar</span>
+                </div>
+                ${temCreds ? `
+                <div style="font-size:.72rem;color:#8b949e;margin-top:2px">SFTP sem credenciais (se a OLT pedir usuário/senha interativamente):</div>
+                <div class="proto-box" style="width:100%">
+                    <code style="white-space:pre-wrap;word-break:break-all;color:rgba(255,204,128,.6)">${sftpSC}</code>
+                    <span class="proto-copy" onclick="fwCopiar(this,'${sftpSCEsc}')">Copiar</span>
+                </div>` : ''}
+
+                ${tftpCmd ? `
+                <div style="font-size:.72rem;color:#8b949e;margin-top:4px">TFTP:</div>
+                <div class="proto-box" style="width:100%">
+                    <code style="white-space:pre-wrap;word-break:break-all;color:#4fc3f7">${tftpCmd}</code>
+                    <span class="proto-copy" onclick="fwCopiar(this,'${tftpEsc}')">Copiar</span>
+                </div>` : ''}
+
+                ${ftpCmd ? `
+                <div style="font-size:.72rem;color:#8b949e;margin-top:4px">FTP:</div>
+                <div class="proto-box" style="width:100%">
+                    <code style="white-space:pre-wrap;word-break:break-all;color:#ffaa00">${ftpCmd}</code>
+                    <span class="proto-copy" onclick="fwCopiar(this,'${ftpEsc}')">Copiar</span>
+                </div>
+                ${ftpTemCreds ? `
+                <div style="font-size:.72rem;color:#8b949e;margin-top:2px">FTP sem credenciais:</div>
+                <div class="proto-box" style="width:100%">
+                    <code style="white-space:pre-wrap;word-break:break-all;color:rgba(255,170,0,.6)">${ftpSC}</code>
+                    <span class="proto-copy" onclick="fwCopiar(this,'${ftpSCEsc}')">Copiar</span>
+                </div>` : ''}` : ''}
+            </div>`;
+            continue;
+        }
+
+        // Linha padrão
+        const valEsc = val.replace(/'/g, "\\'");
         html += `
         <div class="proto-row">
             <div class="proto-label"><i class="${pd.icon} me-1" style="color:${pd.cor}"></i>${pd.label}</div>
             <div class="proto-box">
                 <code>${val}</code>
-                <span class="proto-copy" onclick="fwCopiar(this,'${val.replace(/'/g,"\\'")}')">Copiar</span>
+                <span class="proto-copy" onclick="fwCopiar(this,'${valEsc}')">Copiar</span>
             </div>
         </div>`;
     }
@@ -728,10 +843,16 @@ function fwCopiar(el, texto) {
 let _modalUploadUrl = null;
 
 function fwAbrirUploadUrl() {
-    document.getElementById('url-input').value = '';
-    document.getElementById('url-erro').style.display = 'none';
-    document.getElementById('url-loading').style.display = 'none';
-    document.getElementById('url-btn-baixar').disabled = false;
+    document.getElementById('url-input').value  = '';
+    document.getElementById('url-erro').style.display      = 'none';
+    document.getElementById('url-progresso').style.display = 'none';
+    document.getElementById('url-prog-bar').style.width     = '0%';
+    document.getElementById('url-prog-bar').style.background = 'linear-gradient(90deg,#7b2fff,#b464ff)';
+    document.getElementById('url-prog-pct').textContent     = '0%';
+    document.getElementById('url-prog-nome').textContent    = '';
+    document.getElementById('url-prog-bytes').textContent   = '';
+    document.getElementById('url-prog-status').textContent  = '';
+    document.getElementById('url-btn-baixar').disabled   = false;
     document.getElementById('url-btn-cancelar').disabled = false;
     if (!_modalUploadUrl) {
         _modalUploadUrl = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUploadUrl'));
@@ -741,7 +862,7 @@ function fwAbrirUploadUrl() {
 }
 
 async function fwBaixarUrl() {
-    const url = document.getElementById('url-input').value.trim();
+    const url    = document.getElementById('url-input').value.trim();
     const erroEl = document.getElementById('url-erro');
     erroEl.style.display = 'none';
 
@@ -756,33 +877,262 @@ async function fwBaixarUrl() {
         return;
     }
 
-    // Estado de carregamento
-    document.getElementById('url-btn-baixar').disabled = true;
+    // ── 1. Inicia o download no servidor ─────────────────────────
+    document.getElementById('url-btn-baixar').disabled   = true;
     document.getElementById('url-btn-cancelar').disabled = true;
-    document.getElementById('url-loading').style.display = '';
-    document.getElementById('url-loading-msg').textContent = 'Baixando arquivo do servidor remoto…';
 
-    const r = await fetch('/clientes/firmware/upload-url/', {
-        method: 'POST',
+    const r0 = await fetch('/clientes/firmware/upload-url/', {
+        method:  'POST',
         headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
-        body: JSON.stringify({url, pasta_id: FW_PASTA_ATUAL})
+        body:    JSON.stringify({url, pasta_id: FW_PASTA_ATUAL}),
     });
-    const d = await r.json();
+    const d0 = await r0.json();
 
-    document.getElementById('url-loading').style.display = 'none';
-    document.getElementById('url-btn-baixar').disabled = false;
-    document.getElementById('url-btn-cancelar').disabled = false;
-
-    if (!d.ok) {
-        erroEl.textContent = d.erro || 'Erro ao baixar arquivo';
+    if (!d0.ok) {
+        erroEl.textContent = d0.erro || 'Erro ao iniciar download';
         erroEl.style.display = '';
+        document.getElementById('url-btn-baixar').disabled   = false;
+        document.getElementById('url-btn-cancelar').disabled = false;
         return;
     }
 
-    _modalUploadUrl.hide();
-    uiToast(`"${d.arquivo.nome}" baixado com sucesso (${d.arquivo.tamanho_str})`);
-    fwNavegar(FW_PASTA_ATUAL);
+    // ── 2. Mostra painel de progresso ────────────────────────────
+    const task_id = d0.task_id;
+    const elProg   = document.getElementById('url-progresso');
+    const elBar    = document.getElementById('url-prog-bar');
+    const elPct    = document.getElementById('url-prog-pct');
+    const elNome   = document.getElementById('url-prog-nome');
+    const elBytes  = document.getElementById('url-prog-bytes');
+    const elStatus = document.getElementById('url-prog-status');
+
+    elNome.textContent   = d0.nome || 'Aguardando…';
+    elPct.textContent    = '0%';
+    elBar.style.width    = '0%';
+    elBytes.textContent  = '';
+    elStatus.textContent = 'Conectando…';
+    elProg.style.display = '';
+
+    // ── 3. Polling a cada 300 ms ─────────────────────────────────
+    await new Promise((resolve) => {
+        const intervalo = setInterval(async () => {
+            let prog;
+            try {
+                const r = await fetch(`/clientes/firmware/upload-url/progresso/${task_id}/`);
+                prog = await r.json();
+            } catch (_) {
+                return; // rede temporariamente indisponível, tenta no próximo ciclo
+            }
+
+            if (!prog.ok) {
+                clearInterval(intervalo);
+                erroEl.textContent  = prog.erro || 'Tarefa não encontrada';
+                erroEl.style.display = '';
+                elProg.style.display = 'none';
+                document.getElementById('url-btn-baixar').disabled   = false;
+                document.getElementById('url-btn-cancelar').disabled = false;
+                resolve();
+                return;
+            }
+
+            // Atualizar UI
+            const pct  = prog.pct || 0;
+            const nome = prog.nome || '';
+            const tot  = prog.bytes_total || 0;
+            const bx   = prog.bytes_baixados || 0;
+            const st   = prog.status || '';
+
+            elNome.textContent = nome || '…';
+            elPct.textContent  = pct + '%';
+            elBar.style.width  = pct + '%';
+            elBytes.textContent = tot > 0
+                ? `${_fmtBytes(bx)} / ${_fmtBytes(tot)}`
+                : bx > 0 ? _fmtBytes(bx) : '';
+
+            const statusLabel = {
+                'conectando': 'Conectando ao servidor…',
+                'baixando':   'Baixando…',
+                'concluido':  '✓ Concluído',
+                'erro':       '✗ Erro',
+            };
+            elStatus.textContent = statusLabel[st] || st;
+
+            if (st === 'concluido') {
+                // Sucesso
+                elBar.style.background = 'linear-gradient(90deg,#00a86b,#00ff88)';
+                clearInterval(intervalo);
+                setTimeout(() => {
+                    _modalUploadUrl.hide();
+                    const arq = prog.arquivo || {};
+                    uiToast(`"${arq.nome || nome}" baixado com sucesso (${arq.tamanho_str || _fmtBytes(arq.tamanho || bx)})`);
+                    fwNavegar(FW_PASTA_ATUAL);
+                }, 600);
+                resolve();
+
+            } else if (st === 'erro') {
+                clearInterval(intervalo);
+                erroEl.textContent  = prog.erro || 'Erro ao baixar arquivo';
+                erroEl.style.display = '';
+                elProg.style.display = 'none';
+                document.getElementById('url-btn-baixar').disabled   = false;
+                document.getElementById('url-btn-cancelar').disabled = false;
+                resolve();
+            }
+        }, 300);
+    });
 }
+
+function _fmtBytes(n) {
+    if (n === 0 || !n) return '0 B';
+    const units = ['B','KB','MB','GB'];
+    const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), units.length - 1);
+    return (n / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+
+// ── Monitor de Downloads via WebSocket ────────────────────────────────────
+const _fwDlMap = {};   // dl_id → { nome, tamanho, ip, pct, status }
+let   _fwDlWs  = null;
+
+function fwDlConectar() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    _fwDlWs = new WebSocket(`${proto}://${location.host}/ws/firmware/downloads/`);
+
+    _fwDlWs.onmessage = (e) => {
+        try { fwDlHandleMsg(JSON.parse(e.data)); }
+        catch (_) {}
+    };
+
+    _fwDlWs.onclose = () => {
+        // Reconectar após 4 s se a página ainda estiver aberta
+        setTimeout(() => { if (document.visibilityState !== 'hidden') fwDlConectar(); }, 4000);
+    };
+}
+
+function fwDlHandleMsg(msg) {
+    const { event_type, dl_id } = msg;
+
+    if (event_type === 'download_start') {
+        _fwDlMap[dl_id] = {
+            nome:        msg.nome,
+            tamanho:     msg.tamanho,
+            tamanho_str: msg.tamanho_str,
+            ip:          msg.ip,
+            pct:         0,
+            bytes_sent:  0,
+            status:      'baixando',
+        };
+        fwDlRenderizar();
+        fwDlAbrirOverlay();
+
+    } else if (event_type === 'download_progress') {
+        if (!_fwDlMap[dl_id]) return;
+        _fwDlMap[dl_id].pct        = msg.pct;
+        _fwDlMap[dl_id].bytes_sent = msg.bytes_sent;
+        _fwDlMap[dl_id].status     = 'baixando';
+        fwDlRenderizarCard(dl_id);
+
+    } else if (event_type === 'download_complete') {
+        if (!_fwDlMap[dl_id]) return;
+        _fwDlMap[dl_id].pct    = 100;
+        _fwDlMap[dl_id].status = 'concluido';
+        fwDlRenderizarCard(dl_id);
+        // Remove após 6 s
+        setTimeout(() => {
+            delete _fwDlMap[dl_id];
+            fwDlRenderizar();
+        }, 6000);
+    }
+
+    fwDlAtualizarBadge();
+}
+
+function fwDlRenderizar() {
+    const lista = document.getElementById('fwDlLista');
+    const ids   = Object.keys(_fwDlMap);
+
+    if (!ids.length) {
+        lista.innerHTML = '<div style="color:#555;font-size:.85rem;text-align:center;padding:20px 0">Nenhum download ativo</div>';
+        return;
+    }
+
+    // Mantém cards existentes e adiciona novos
+    const existentes = new Set([...lista.querySelectorAll('.fwdl-card')].map(el => el.dataset.dlId));
+    for (const id of ids) {
+        if (!existentes.has(id)) {
+            const card = document.createElement('div');
+            card.className  = 'fwdl-card';
+            card.dataset.dlId = id;
+            lista.appendChild(card);
+        }
+        fwDlRenderizarCard(id);
+    }
+    // Remove cards de downloads que já saíram do mapa
+    for (const el of lista.querySelectorAll('.fwdl-card')) {
+        if (!_fwDlMap[el.dataset.dlId]) el.remove();
+    }
+}
+
+function fwDlRenderizarCard(dl_id) {
+    const dl   = _fwDlMap[dl_id];
+    if (!dl) return;
+    const card = document.querySelector(`.fwdl-card[data-dl-id="${dl_id}"]`);
+    if (!card) { fwDlRenderizar(); return; }
+
+    const isDone = dl.status === 'concluido';
+    card.className = 'fwdl-card' + (isDone ? ' done' : '');
+
+    const icone  = isDone
+        ? `<i class="fas fa-check-circle" style="color:#00ff88"></i>`
+        : `<i class="fas fa-arrow-circle-down" style="color:#00d9ff;animation:pulse-green 1s ease-in-out infinite"></i>`;
+
+    const bytesLabel = dl.tamanho > 0
+        ? `${_fmtBytes(dl.bytes_sent)} / ${dl.tamanho_str}`
+        : _fmtBytes(dl.bytes_sent);
+
+    card.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="margin-top:2px">${icone}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.84rem;color:#e6edf3;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+               title="${dl.nome}">${dl.nome}</div>
+          <div style="font-size:.72rem;color:#555;margin-top:2px">
+            <i class="fas fa-network-wired me-1" style="color:#555"></i>${dl.ip}
+            &nbsp;·&nbsp;${dl.tamanho_str}
+          </div>
+          <div class="fwdl-bar-wrap">
+            <div class="fwdl-bar ${isDone ? 'done' : ''}" style="width:${dl.pct}%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:.7rem;color:#555">${bytesLabel}</span>
+            <span style="font-size:.72rem;font-weight:600;color:${isDone ? '#00ff88' : '#00d9ff'}">${dl.pct}%</span>
+          </div>
+        </div>
+      </div>`;
+}
+
+function fwDlAtualizarBadge() {
+    const ids    = Object.keys(_fwDlMap);
+    const badge  = document.getElementById('fwDlBadge');
+    const badgeTxt = document.getElementById('fwDlBadgeTxt');
+    const count  = document.getElementById('fwDlCount');
+
+    if (ids.length) {
+        badge.style.display  = 'flex';
+        badgeTxt.textContent = `${ids.length} download${ids.length > 1 ? 's' : ''}`;
+        count.textContent    = ids.length;
+    } else {
+        badge.style.display  = 'none';
+        count.textContent    = '';
+    }
+}
+
+function fwDlAbrirOverlay() {
+    const ov = document.getElementById('fwDlOverlay');
+    ov.style.display = 'flex';
+    fwDlRenderizar();
+}
+
+// Inicia WebSocket
+fwDlConectar();
 
 // Carrega ao iniciar
 fwNavegar(null);

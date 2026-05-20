@@ -1693,6 +1693,9 @@
             </div>
 
                     
+            <!-- TAB MONITORAMENTO -->
+            {% include 'monitoramento/tab_monitoramento.html' %}
+
             <!-- TAB CHAMADOS -->
     <div id="tab-documentacao" class="tab-content-main" style="display: none;">
     <div class="ipam-page">
@@ -1891,22 +1894,1245 @@
     </div><!-- /ipam-page -->
     </div>
 
-    <!-- ═══ Modal IPAM ═══════════════════════════════════════════════════════ -->
-    <div class="modal fade" id="modalIpam" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="background:var(--surface);border:1px solid var(--border);">
-          <div class="modal-header" style="border-color:var(--border);">
-            <h5 class="modal-title" id="modalIpamTitle" style="color:var(--primary-green);font-family:'Share Tech Mono',monospace;"></h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body" id="modalIpamBody"></div>
-          <div class="modal-footer" style="border-color:var(--border);">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="ipamSalvar()"><i class="fas fa-save me-1"></i>Salvar</button>
-          </div>
+
+<!-- IPAM JS                                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+const CID = '{{ cliente.id }}';
+const IPAM = {
+    aba: 'prefixos',
+    modal: { tipo: null, id: null },
+    prefixos: [], subredes: [], vlans: [],
+    buscarTimer: null,
+};
+
+/* ── Estilos inline IPAM ── */
+(function(){
+    const s = document.createElement('style');
+    s.textContent = `
+    .ipam-sub { animation: fadeIn .2s; }
+
+    /* Badges de status */
+    .ipam-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.75rem; font-weight:600; }
+    .ipam-badge-ativo      { background:rgba(0,255,136,.15);  color:#00ff88; border:1px solid rgba(0,255,136,.3); }
+    .ipam-badge-reservado  { background:rgba(255,170,0,.15);  color:#ffaa00; border:1px solid rgba(255,170,0,.3); }
+    .ipam-badge-deprecado  { background:rgba(200,50,50,.15);  color:#e06060; border:1px solid rgba(200,50,50,.3); }
+    .ipam-badge-inativo    { background:rgba(150,150,150,.15);color:#999;    border:1px solid rgba(150,150,150,.3);}
+
+    /* Barra de utilização */
+    .ipam-util-bar  { height:6px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; }
+    .ipam-util-fill { height:100%; border-radius:3px; background:var(--primary-green); transition:width .4s ease; }
+    .ipam-util-fill.warn   { background:#ffaa00; }
+    .ipam-util-fill.danger { background:#e06060; }
+
+    /* Badges de tipo */
+    .ipam-tipo-badge  { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.72rem; font-weight:600; }
+    .ipam-tipo-rede      { background:rgba(0,217,255,.12); color:var(--accent-cyan);  border:1px solid rgba(0,217,255,.2); }
+    .ipam-tipo-container { background:rgba(128,0,255,.12); color:#a080ff;             border:1px solid rgba(128,0,255,.2); }
+    .ipam-tipo-pool      { background:rgba(255,100,0,.12); color:#ff8c42;             border:1px solid rgba(255,100,0,.2); }
+
+    /* ── Hover nos prefixos — sem sombra branca do Bootstrap ── */
+    .ipam-row-prefixo { transition: background .12s; }
+    .ipam-row-prefixo:hover > * {
+        --bs-table-hover-bg: transparent;
+        background: rgba(0,217,255,.06) !important;
+        box-shadow: none !important;
+    }
+    .ipam-row-prefixo:hover .ipam-pfx-addr { color: #7fe8ff !important; }
+    .ipam-row-prefixo td { border-color: rgba(255,255,255,.04) !important; vertical-align:middle; }
+
+    /* ── Hover nas sub-redes (linha inteira, sem sombra branca) ── */
+    .ipam-row-subrede { transition: background .1s; cursor: default; }
+    .ipam-row-subrede:hover > * {
+        --bs-table-hover-bg: transparent;
+        background: rgba(0,217,255,.055) !important;
+        box-shadow: none !important;
+        border-color: rgba(0,217,255,.12) !important;
+        color: var(--text-light) !important;
+    }
+    .ipam-row-subrede:hover .ipam-pfx-addr,
+    .ipam-row-subrede:hover strong { color: #8ee8ff !important; }
+
+    /* Botão breakdown */
+    .ipam-bd-btn { transition: background .12s, transform .12s !important; }
+    .ipam-bd-btn:hover { background: rgba(0,217,255,.25) !important; transform: scale(1.08); }
+    .ipam-bd-btn.active { background: rgba(0,217,255,.35) !important; outline: 1px solid rgba(0,217,255,.5); }
+
+    /* Painel de breakdown */
+    .ipam-bd-panel { animation: ipamSlide .18s ease; border-top: 1px solid rgba(0,217,255,.15) !important; }
+    @keyframes ipamSlide { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+
+    /* Cabeçalhos de tabelas IPAM */
+    .ipam-sub .table thead th {
+        border-bottom: 1px solid rgba(0,217,255,.2);
+        color: rgba(180,210,240,.65);
+        font-size:.74rem;
+        text-transform: uppercase;
+        letter-spacing:.06em;
+        font-weight:500;
+        padding-top:10px;
+        padding-bottom:10px;
+    }
+    .ipam-sub .table td { border-color: rgba(255,255,255,.04); }
+    /* Desabilitar sombra branca padrão do Bootstrap table-hover */
+    .ipam-sub .table-hover > tbody > tr:hover > * { box-shadow: none; }
+
+    /* Container — sem overflow horizontal */
+    .irr-input { background:var(--surface)!important;color:var(--text-light)!important;border-color:var(--border)!important; }
+    .irr-input:focus { border-color:#00ff88!important;box-shadow:0 0 0 .15rem rgba(0,255,136,.15)!important; }
+    #tab-documentacao { overflow-x: hidden; }
+    #tab-documentacao > .ipam-page { width:100%; max-width:100%; box-sizing:border-box; padding:0 12px; }
+    `;
+    document.head.appendChild(s);
+})();
+
+/* ── Navegação entre abas ── */
+window.ipamAba = function(e, nome) {
+    if(e){ e.preventDefault(); }
+    IPAM.aba = nome;
+    document.querySelectorAll('#ipamSubTabs .nav-link').forEach(a => a.classList.remove('active'));
+    if(e && e.currentTarget) e.currentTarget.classList.add('active');
+    document.querySelectorAll('.ipam-sub').forEach(d => d.style.display = 'none');
+    const el = document.getElementById('ipam-sub-' + nome);
+    if(el) el.style.display = '';
+    // Carregar dados
+    if(nome === 'prefixos')  ipamCarregarPrefixos();
+    if(nome === 'subredes')  ipamCarregarSubRedes();
+    if(nome === 'ips')       ipamCarregarIPs();
+    if(nome === 'vlans')     ipamCarregarVlans();
+    if(nome === 'vpns')      ipamCarregarVpns();
+};
+
+/* ── Helpers ── */
+function badge(status){
+    return `<span class="ipam-badge ipam-badge-${status}">${status.charAt(0).toUpperCase()+status.slice(1)}</span>`;
+}
+function tipoBadge(tipo){
+    return `<span class="ipam-tipo-badge ipam-tipo-${tipo}">${tipo}</span>`;
+}
+function utilBar(pct){
+    const cls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
+    return `<div class="ipam-util-bar"><div class="ipam-util-fill ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+            <small style="color:var(--text-muted)">${pct}% (${Math.round(pct)}%)</small>`;
+}
+function acoes(deletarFn, editarFn, id){
+    return `<button class="btn btn-xs btn-outline-primary me-1" onclick="${editarFn}(${id})" title="Editar" style="padding:2px 7px;font-size:.75rem;"><i class="fas fa-pencil-alt"></i></button>
+            <button class="btn btn-xs btn-outline-danger" onclick="${deletarFn}(${id})" title="Deletar" style="padding:2px 7px;font-size:.75rem;"><i class="fas fa-trash"></i></button>`;
+}
+function tbEmpty(cols, msg){ return `<tr><td colspan="${cols}" class="text-center text-muted py-3">${msg}</td></tr>`; }
+
+/* ─────────────────────────────────────────────────
+   PREFIXOS
+───────────────────────────────────────────────── */
+window.ipamCarregarPrefixos = async function(){
+    const tb = document.getElementById('ipam-prefixos-tbody');
+    tb.innerHTML = tbEmpty(7,'<i class="fas fa-spinner fa-spin"></i>');
+    let r, d;
+    try {
+        r = await fetch(`/clientes/${CID}/ipam/prefixos/`);
+        d = await r.json();
+    } catch(e) {
+        tb.innerHTML = tbEmpty(7, `<span style="color:#e06060">Erro ao carregar prefixos: ${e.message}</span>`);
+        return;
+    }
+    IPAM.prefixos = d.prefixos || [];
+    if(!IPAM.prefixos.length){ tb.innerHTML = tbEmpty(7,'Nenhum prefixo cadastrado.'); return; }
+    tb.innerHTML = IPAM.prefixos.map(p => {
+        const pfxLen  = parseInt((p.prefixo||'').split('/')[1]||'32', 10);
+        const ver     = (p.prefixo||'').includes(':') ? 6 : 4;
+        const maxPL   = ver === 6 ? 128 : 32;
+        const podeDividir = pfxLen < maxPL - 1;
+        return `
+    <tr id="pfx-row-${p.id}" class="ipam-row-prefixo">
+        <td style="white-space:nowrap;">
+            <button class="btn btn-xs ipam-bd-btn me-1" id="ipam-bd-btn-${p.id}"
+                style="padding:2px 7px;font-size:.72rem;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.25);color:var(--accent-cyan);border-radius:4px;"
+                onclick="ipamToggleBreakdown(${p.id})" title="Ver breakdown / sub-redes">
+                <i class="fas fa-sitemap"></i>
+            </button>
+            <strong class="ipam-pfx-addr" style="color:var(--accent-cyan);font-family:'Courier New',monospace;font-size:.9rem;">${p.prefixo}</strong>
+            ${p.pool_cheia ? `<span style="margin-left:6px;padding:1px 6px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.35);border-radius:4px;font-size:.7rem;color:#ff8080;vertical-align:middle;"><i class="fas fa-ban me-1"></i>Pool Cheia</span>` : ''}
+        </td>
+        <td>${tipoBadge(p.tipo)}</td>
+        <td>${badge(p.status)}</td>
+        <td>
+            <a href="#" style="color:var(--primary-green);font-weight:600;" onclick="ipamFiltrarSubredes(${p.id});return false;">${p.subredes}</a>
+        </td>
+        <td style="color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.descricao||''}">${p.descricao||''}</td>
+        <td style="color:var(--text-muted)">${p.local||''}</td>
+        <td style="white-space:nowrap;">
+            ${podeDividir ? `<button class="btn btn-xs me-1" title="Dividir prefixo"
+                style="padding:2px 7px;font-size:.75rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:4px;"
+                onclick="ipamAbrirDividir('prefixo',${p.id},'${p.prefixo}',${pfxLen},${ver})">
+                <i class="fas fa-cut"></i>
+            </button>` : ''}
+            <button class="btn btn-xs me-1" title="${p.pool_cheia ? 'Desmarcar pool cheia' : 'Marcar pool cheia'}"
+                style="padding:2px 7px;font-size:.75rem;background:${p.pool_cheia ? 'rgba(255,80,80,.2)' : 'rgba(255,170,0,.08)'};border:1px solid ${p.pool_cheia ? 'rgba(255,80,80,.4)' : 'rgba(255,170,0,.25)'};color:${p.pool_cheia ? '#ff8080' : '#ffaa00'};border-radius:4px;"
+                onclick="ipamTogglePoolCheia(${p.id})">
+                <i class="fas ${p.pool_cheia ? 'fa-times-circle' : 'fa-ban'}"></i>
+            </button>
+            ${acoes('ipamDeletarPrefixo','ipamEditarPrefixo',p.id)}
+        </td>
+    </tr>
+    <tr id="pfx-bd-${p.id}" style="display:none;"><td colspan="7" style="padding:0;border:none;"></td></tr>`;
+    }).join('');
+};
+
+/* ─── Breakdown inline ─── */
+IPAM._bdOpen = {};
+
+window.ipamToggleBreakdown = async function(pid){
+    const row = document.getElementById(`pfx-bd-${pid}`);
+    const btn = document.getElementById(`ipam-bd-btn-${pid}`);
+    if(!row) return;
+
+    if(IPAM._bdOpen[pid]){
+        row.style.display = 'none';
+        IPAM._bdOpen[pid] = false;
+        if(btn) btn.classList.remove('active');
+        return;
+    }
+
+    IPAM._bdOpen[pid] = true;
+    if(btn) btn.classList.add('active');
+    row.style.display = '';
+    row.children[0].innerHTML = `<div style="padding:14px 18px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-2"></i>Carregando breakdown…</div>`;
+
+    const resp = await fetch(`/clientes/ipam/prefixos/${pid}/breakdown/`);
+    const bd   = await resp.json();
+    if(!bd.ok){ row.children[0].innerHTML = `<div style="padding:12px 16px;color:#e06060;"><i class="fas fa-exclamation-triangle me-2"></i>${bd.erro}</div>`; return; }
+
+    row.children[0].innerHTML = _renderBreakdown(bd, pid);
+};
+
+function _renderBreakdown(bd, pid){
+    const isV6   = (bd.version === 6);
+    const pfxLen = bd.prefixlen;
+
+    /* ── Calcular proporção relativa ao prefixo pai ── */
+    function _pct(rede){
+        const childPL = parseInt(rede.split('/')[1], 10);
+        const diff = childPL - pfxLen;
+        if(diff <= 0)  return 100;
+        if(diff >= 52) return 0.05;
+        return 100 / Math.pow(2, diff);
+    }
+
+    /* ── Ordenação BigInt (funciona para v4 e v6) ── */
+    function _sortKey(rede){ return _ipSortBigInt(rede.split('/')[0]); }
+
+    /* ── Barra visual ── */
+    const statusColors = {ativo:'#00ff88', reservado:'#ffaa00', deprecado:'#e06060'};
+    const allItems = [
+        ...bd.alocadas.map(a => ({tipo:'alocada', rede:a.rede, status:a.status, pct:a.pct, _k:_sortKey(a.rede)})),
+        ...bd.livres.map(l   => ({tipo:'livre',   rede:l.rede,                             _k:_sortKey(l.rede)})),
+    ].sort((a,b) => a._k < b._k ? -1 : a._k > b._k ? 1 : 0);
+
+    let barHtml = '';
+    allItems.forEach(item => {
+        const wPct = Math.max(0.2, _pct(item.rede));
+        if(item.tipo === 'alocada'){
+            const c = statusColors[item.status] || '#00ff88';
+            barHtml += `<div title="${item.rede} · ${item.pct}%" style="display:inline-block;width:${wPct}%;min-width:3px;height:100%;background:${c};opacity:.75;vertical-align:top;border-right:1px solid rgba(0,0,0,.3);"></div>`;
+        } else {
+            barHtml += `<div title="${item.rede} (livre)" style="display:inline-block;width:${wPct}%;min-width:3px;height:100%;background:rgba(255,255,255,.07);border-right:1px solid rgba(255,255,255,.06);vertical-align:top;"></div>`;
+        }
+    });
+
+    /* ── Linhas da tabela ── */
+    const merged = [
+        ...bd.alocadas.map(a => ({...a, _tipo:'alocada', _k:_sortKey(a.rede)})),
+        ...bd.livres.map(l   => ({...l, _tipo:'livre',   _k:_sortKey(l.rede)})),
+    ].sort((a,b) => a._k < b._k ? -1 : a._k > b._k ? 1 : 0);
+
+    let rows = '';
+    merged.forEach(item => {
+        if(item._tipo === 'alocada'){
+            const barW = Math.min(100, item.pct);
+            const barC = item.pct >= 90 ? '#e06060' : item.pct >= 70 ? '#ffaa00' : '#00ff88';
+            const hostsLabel = isV6
+                ? `<span style="font-size:.7rem;">${_fmtIPv6Size(item.total_hosts)}</span>`
+                : `${item.pct}% · ${item.usados}/${item.total_hosts}`;
+            rows += `
+            <tr style="background:rgba(0,255,136,.03);">
+                <td style="padding:6px 12px;white-space:nowrap;">
+                    <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${statusColors[item.status]||'#00ff88'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>
+                    <strong style="font-family:'Courier New',monospace;color:var(--text-light);">${item.rede}</strong>
+                </td>
+                <td style="padding:6px 8px;color:var(--text-muted);font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.descricao||''}">${item.descricao||''}</td>
+                <td style="padding:6px 8px;color:#ffaa00;font-size:.8rem;white-space:nowrap;">${item.vlan||'—'}</td>
+                <td style="padding:6px 8px;font-size:.8rem;">${badge(item.status)}</td>
+                <td style="padding:6px 8px;min-width:130px;">
+                    <div class="ipam-util-bar"><div class="ipam-util-fill" style="width:${barW}%;background:${barC};"></div></div>
+                    <small style="color:var(--text-muted);font-size:.71rem;">${hostsLabel}</small>
+                </td>
+                <td style="padding:6px 8px;white-space:nowrap;">
+                    <button class="btn btn-xs btn-outline-primary me-1" onclick="ipamEditarSubRede(${item.id})" style="padding:1px 7px;font-size:.72rem;" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn btn-xs btn-outline-danger" onclick="ipamDeletarSubRede(${item.id})" style="padding:1px 7px;font-size:.72rem;" title="Remover"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        } else {
+            const sugsHtml = item.sugestoes.map(s =>
+                `<button class="btn btn-xs me-1 mb-1" style="padding:2px 8px;font-size:.72rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);color:var(--primary-green);"
+                    onclick="ipamCriarSubRedeNoEspaco('${item.rede}',${s.prefixlen},${pid})">${s.label}</button>`
+            ).join('');
+            rows += `
+            <tr style="background:rgba(255,255,255,.015);">
+                <td style="padding:6px 12px;white-space:nowrap;">
+                    <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(255,255,255,.12);border:1px dashed #444;margin-right:7px;vertical-align:middle;"></span>
+                    <span style="font-family:'Courier New',monospace;color:#666;">${item.rede}</span>
+                    <span class="ipam-badge" style="margin-left:8px;background:rgba(255,255,255,.04);color:#555;border:1px solid #333;font-size:.68rem;">livre</span>
+                </td>
+                <td colspan="4" style="padding:6px 8px;">
+                    <span style="font-size:.75rem;color:#555;margin-right:6px;">Alocar:</span>
+                    ${sugsHtml}
+                </td>
+                <td style="padding:6px 8px;">
+                    <button class="btn btn-xs" onclick="ipamCriarSubRedeNoEspaco('${item.rede}',0,${pid})"
+                        style="padding:2px 8px;font-size:.72rem;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);color:var(--primary-green);white-space:nowrap;">
+                        <i class="fas fa-plus me-1"></i>Personalizado
+                    </button>
+                </td>
+            </tr>`;
+        }
+    });
+
+    if(!merged.length){
+        rows = `<tr><td colspan="6" class="text-center" style="color:var(--text-muted);padding:16px;"><i class="fas fa-check-circle me-2" style="color:rgba(0,255,136,.4)"></i>Prefixo completamente livre.</td></tr>`;
+    }
+
+    /* ── Stats ── */
+    let statTotal, statAloc, statLivre;
+    if(isV6){
+        statTotal = `/${pfxLen}`;
+        try {
+            const tn = BigInt(bd.total_ips);
+            const an = BigInt(bd.total_alocado);
+            statAloc  = `<span style="font-size:.78rem;">${_fmtIPv6Size(bd.total_alocado)}</span>`;
+            statLivre = `<span style="font-size:.78rem;">${_fmtIPv6Size(String(tn - an))}</span>`;
+        } catch(e){ statAloc = statLivre = '—'; }
+    } else {
+        statTotal = Number(bd.total_ips).toLocaleString('pt-BR');
+        statAloc  = Number(bd.total_alocado).toLocaleString('pt-BR');
+        statLivre = (Number(bd.total_ips) - Number(bd.total_alocado)).toLocaleString('pt-BR');
+    }
+
+    const statsHtml = `
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Total</div><strong style="color:var(--text-light)">${statTotal}</strong></div>
+        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Alocado</div><strong style="color:var(--primary-green)">${statAloc}</strong></div>
+        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Livre</div><strong style="color:#ffaa00">${statLivre}</strong></div>
+        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Utilização</div><strong style="color:var(--accent-cyan)">${bd.pct_alocado}%</strong></div>
+        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Sub-redes</div><strong style="color:var(--text-light)">${bd.alocadas.length}</strong></div>
+        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Blocos livres</div><strong style="color:#666">${bd.livres.length}</strong></div>
+        ${isV6 ? '<div style="align-self:center;"><span class="ipam-badge" style="background:rgba(128,0,255,.12);color:#a080ff;border:1px solid rgba(128,0,255,.2);"><i class="fas fa-globe me-1"></i>IPv6</span></div>' : ''}
+    </div>`;
+
+    return `
+    <div class="ipam-bd-panel" style="padding:14px 18px 18px;background:rgba(0,0,0,.3);border-top:1px solid rgba(0,217,255,.12);">
+        ${statsHtml}
+        <div style="height:20px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.08);margin-bottom:14px;font-size:0;white-space:nowrap;background:rgba(255,255,255,.03);">
+            ${barHtml || '<div style="width:100%;height:100%;background:rgba(0,255,136,.06);display:inline-block;"></div>'}
         </div>
-      </div>
-    </div>
+        <div class="table-responsive">
+        <table class="table table-dark table-sm mb-0" style="font-size:.82rem;">
+            <thead><tr style="border-bottom:1px solid rgba(0,217,255,.15);">
+                <th style="padding:5px 12px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">Sub-rede</th>
+                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">Descrição</th>
+                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">VLAN</th>
+                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">Status</th>
+                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;min-width:130px;">Utilização</th>
+                <th style="padding:5px 8px;width:80px;"></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-sm" onclick="ipamCriarSubRedeNoEspaco(null,0,${pid})"
+                style="font-size:.8rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);color:var(--primary-green);">
+                <i class="fas fa-plus me-1"></i>Adicionar sub-rede
+            </button>
+            <button class="btn btn-sm" onclick="ipamAbrirDividir('prefixo', ${pid}, '${bd.prefixo}', ${bd.prefixlen}, ${bd.version})"
+                style="font-size:.8rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);">
+                <i class="fas fa-cut me-1"></i>Dividir prefixo
+            </button>
+        </div>
+    </div>`;
+}
+
+/* Converte IPv4 ou IPv6 → BigInt para ordenação */
+function _ipSortBigInt(addr){
+    if(!addr) return 0n;
+    try {
+        if(addr.includes(':')){
+            // IPv6 — expandir :: e converter para BigInt
+            let groups;
+            if(addr.includes('::')){
+                const [left, right] = addr.split('::');
+                const l = left  ? left.split(':')  : [];
+                const r = right ? right.split(':') : [];
+                const fill = 8 - l.length - r.length;
+                groups = [...l, ...Array(fill).fill('0'), ...r];
+            } else {
+                groups = addr.split(':');
+            }
+            let n = 0n;
+            for(const g of groups) n = (n << 16n) + BigInt(parseInt(g||'0', 16));
+            return n;
+        }
+        const parts = addr.split('.');
+        if(parts.length === 4) return BigInt(parts.reduce((acc,o)=>(acc<<8)+parseInt(o,10), 0) >>> 0);
+    } catch(e){}
+    return 0n;
+}
+
+/* Retrocompat — usado em outros lugares */
+function _ipaddrInt(ip){ return Number(_ipSortBigInt(ip)); }
+
+/* Formata tamanho IPv6 como "2^N endereços" */
+function _fmtIPv6Size(val){
+    try {
+        const n = BigInt(val);
+        if(n === 0n) return '0';
+        // achar potência de 2 mais próxima
+        let bits = 0n, tmp = n;
+        while(tmp > 1n){ tmp >>= 1n; bits++; }
+        return n === (1n << bits) ? `2<sup>${bits}</sup> end.` : `~2<sup>${bits}</sup> end.`;
+    } catch(e){ return String(val); }
+}
+
+/* Abre modal de sub-rede pré-preenchido com o bloco livre */
+window.ipamCriarSubRedeNoEspaco = function(rede_livre, prefixlen_sugerido, prefixo_id){
+    // Calcular sugestão de CIDR
+    let rede_sugerida = '';
+    if(rede_livre && prefixlen_sugerido > 0){
+        // Pegar o network_address do bloco livre + prefixlen sugerido
+        const base = rede_livre.split('/')[0];
+        rede_sugerida = `${base}/${prefixlen_sugerido}`;
+    } else if(rede_livre){
+        rede_sugerida = rede_livre;
+    }
+
+    // Pré-selecionar o prefixo pai
+    const dados = { prefixo_id, rede: rede_sugerida };
+    ipamAbrirModal('subrede', dados);
+};
+
+/* ─────────────────────────────────────────────────
+   DIVIDIR PREFIXO EM SUB-REDES IGUAIS
+───────────────────────────────────────────────── */
+/* tipo: 'prefixo' | 'subrede' */
+window.ipamAbrirDividir = function(tipo, id, cidr, pfxLen, version){
+    const maxPL = version === 6 ? 128 : 32;
+    let optsHtml = '';
+    for(let pl = pfxLen + 1; pl <= Math.min(maxPL, pfxLen + 10); pl++){
+        const n = Math.pow(2, pl - pfxLen);
+        if(n > 2048) break;
+        const ipsLabel = (version === 4 && maxPL - pl >= 0)
+            ? ` · ${Math.pow(2, maxPL - pl).toLocaleString('pt-BR')} IPs cada`
+            : '';
+        optsHtml += `<option value="${pl}">/${pl} — ${n} blocos${ipsLabel}</option>`;
+    }
+
+    const titulo = tipo === 'prefixo' ? 'Dividir prefixo' : 'Dividir sub-rede';
+    const html = `<div id="ipam-dividir-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;">
+        <div style="background:#0d1117;border:1px solid rgba(0,217,255,.25);border-radius:10px;padding:26px 28px;width:500px;max-width:96vw;">
+            <h6 style="color:var(--accent-cyan);margin-bottom:4px;"><i class="fas fa-cut me-2"></i>${titulo}</h6>
+            <p style="color:#8b949e;font-size:.82rem;margin-bottom:16px;">
+                Bloco: <strong style="font-family:'Courier New',monospace;color:var(--text-light);">${cidr}</strong>
+            </p>
+            <div style="margin-bottom:14px;">
+                <label style="color:#8b949e;font-size:.82rem;display:block;margin-bottom:6px;">Tamanho de cada bloco resultante</label>
+                <select id="ipam-dividir-pl" class="form-select form-select-sm"
+                    style="background:#161b22;border-color:rgba(0,217,255,.2);color:var(--text-light);"
+                    onchange="ipamDividirPreview(${pfxLen})">
+                    ${optsHtml}
+                </select>
+            </div>
+            <div id="ipam-dividir-preview" style="background:rgba(0,217,255,.04);border:1px solid rgba(0,217,255,.1);border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:.8rem;color:#8b949e;min-height:36px;"></div>
+            <div style="margin-bottom:16px;">
+                <label style="color:#8b949e;font-size:.82rem;display:block;margin-bottom:6px;">Descrição (opcional, aplicada a todos)</label>
+                <input id="ipam-dividir-desc" class="form-control form-control-sm" placeholder="ex: Bloco de distribuição"
+                    style="background:#161b22;border-color:#30363d;color:var(--text-light);">
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;">
+                <label style="color:#8b949e;font-size:.8rem;margin:0;cursor:pointer;flex:1;min-width:160px;">
+                    <input type="checkbox" id="ipam-dividir-apenasUm" class="me-1">Criar apenas o primeiro bloco
+                </label>
+                <button onclick="document.getElementById('ipam-dividir-overlay').remove()"
+                    style="background:transparent;border:1px solid #30363d;color:#8b949e;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:.82rem;">Cancelar</button>
+                <button onclick="ipamConfirmarDividir('${tipo}', ${id})"
+                    style="background:rgba(0,217,255,.12);border:1px solid rgba(0,217,255,.3);color:var(--accent-cyan);padding:5px 16px;border-radius:5px;cursor:pointer;font-size:.82rem;">
+                    <i class="fas fa-cut me-1"></i>Dividir
+                </button>
+            </div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    ipamDividirPreview(pfxLen);
+};
+
+window.ipamDividirPreview = function(pfxLen){
+    const sel = document.getElementById('ipam-dividir-pl');
+    const pre = document.getElementById('ipam-dividir-preview');
+    if(!sel || !pre) return;
+    const pl = parseInt(sel.value, 10);
+    const n  = Math.pow(2, pl - pfxLen);
+    pre.innerHTML = `<i class="fas fa-info-circle me-2" style="color:rgba(0,217,255,.5)"></i>`
+        + `Serão criadas <strong style="color:var(--accent-cyan)">${n}</strong> sub-rede(s) de tamanho `
+        + `<strong style="color:var(--text-light)">/${pl}</strong>. `
+        + `Blocos já existentes serão ignorados.`;
+};
+
+window.ipamConfirmarDividir = async function(tipo, id){
+    const pl   = parseInt(document.getElementById('ipam-dividir-pl').value, 10);
+    const desc = document.getElementById('ipam-dividir-desc').value.trim();
+    const apUm = document.getElementById('ipam-dividir-apenasUm').checked;
+    const url  = tipo === 'prefixo'
+        ? `/clientes/ipam/prefixos/${id}/dividir/`
+        : `/clientes/ipam/subredes/${id}/dividir/`;
+    try {
+        const r = await fetch(url, {
+            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},
+            body: JSON.stringify({prefixlen: pl, descricao: desc, apenas_um: apUm}),
+        });
+        const d = await r.json();
+        if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
+        document.getElementById('ipam-dividir-overlay').remove();
+        // Atualizar dados
+        ipamCarregarSubRedes();
+        ipamCarregarPrefixos();
+        if(tipo === 'prefixo'){
+            IPAM._bdOpen[id] = false;
+            await ipamToggleBreakdown(id);
+        }
+    } catch(e){ uiAlert('Erro: ' + e.message); }
+};
+
+/* ─────────────────────────────────────────────────
+   MARCAR PREFIXO COMO TODO EM USO
+───────────────────────────────────────────────── */
+window.ipamMarcarEmUso = async function(pid, prefixo){
+    await _ipamMarcarEmUsoExec(pid, prefixo, null);
+};
+
+/* Versão chamada de dentro do modal — fecha o modal antes */
+window.ipamMarcarEmUsoModal = async function(pid, prefixo){
+    ipamFecharModal();
+    await _ipamMarcarEmUsoExec(pid, prefixo, pid);
+};
+
+async function _ipamMarcarEmUsoExec(pid, prefixo, breakdownPid){
+    const desc = prompt(`Marcar "${prefixo}" como todo em uso.\nDescrição (opcional):`, 'Em uso');
+    if(desc === null) return;
+    try {
+        const r = await fetch(`/clientes/ipam/prefixos/${pid}/marcar-em-uso/`, {
+            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},
+            body: JSON.stringify({descricao: desc}),
+        });
+        const d = await r.json();
+        if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
+        ipamCarregarPrefixos();
+        ipamCarregarSubRedes();
+        if(breakdownPid != null){
+            IPAM._bdOpen[breakdownPid] = false;
+            await ipamToggleBreakdown(breakdownPid);
+        }
+    } catch(e){ uiAlert('Erro: ' + e.message); }
+}
+
+window.ipamFiltrarSubredes = function(prefixo_id){
+    document.querySelectorAll('#ipamSubTabs .nav-link').forEach((a,i) => a.classList.toggle('active', i===1));
+    document.querySelectorAll('.ipam-sub').forEach(d => d.style.display='none');
+    document.getElementById('ipam-sub-subredes').style.display='';
+    IPAM.aba = 'subredes';
+    const sel = document.getElementById('ipam-sr-filtro-prefixo');
+    if(sel) sel.value = prefixo_id;
+    ipamCarregarSubRedes();
+};
+
+/* ─────────────────────────────────────────────────
+   SUB-REDES
+───────────────────────────────────────────────── */
+/* ── Helpers de árvore para sub-redes ────────────────────────────── */
+function _srContains(parentCidr, childCidr){
+    try {
+        const [pIp, pPL] = [parentCidr.split('/')[0], parseInt(parentCidr.split('/')[1])];
+        const [cIp, cPL] = [childCidr.split('/')[0], parseInt(childCidr.split('/')[1])];
+        if(cPL <= pPL) return false;
+        const isV6  = parentCidr.includes(':');
+        const bits  = isV6 ? 128 : 32;
+        const size  = (1n << BigInt(bits)) - 1n;
+        const hBits = BigInt(bits - pPL);
+        const mask  = pPL === 0 ? 0n : (~((1n << hBits) - 1n)) & size;
+        const pA = _ipSortBigInt(pIp);
+        const cA = _ipSortBigInt(cIp);
+        return (pA & mask) === (cA & mask);
+    } catch(e){ return false; }
+}
+
+function _buildSrFlatTree(subredes){
+    // Ordena numericamente por endereço IP (asc), depois por prefixlen (asc = maiores blocos primeiro)
+    const sorted = [...subredes].sort((a,b)=>{
+        const ak = _ipSortBigInt(a.rede.split('/')[0]);
+        const bk = _ipSortBigInt(b.rede.split('/')[0]);
+        if(ak < bk) return -1; if(ak > bk) return 1;
+        return parseInt(a.rede.split('/')[1]) - parseInt(b.rede.split('/')[1]);
+    });
+    // Nós com lista de filhos diretos
+    const nodes = sorted.map(s => ({...s, _children:[], _parentId:null, _depth:0, _childCount:0}));
+    const byId  = {};
+    nodes.forEach(n => byId[n.id] = n);
+
+    // Para cada nó, achar o pai mais específico (maior prefixlen que ainda o contém)
+    for(let i=0; i<nodes.length; i++){
+        const child = nodes[i];
+        let bestParent = null, bestPL = -1;
+        for(let j=0; j<nodes.length; j++){
+            if(i===j) continue;
+            const par = nodes[j];
+            const pPL = parseInt(par.rede.split('/')[1]);
+            if(pPL > bestPL && _srContains(par.rede, child.rede)){
+                bestParent = par; bestPL = pPL;
+            }
+        }
+        if(bestParent){ child._parentId = bestParent.id; bestParent._children.push(child); }
+    }
+
+    // Propagar depth
+    function setDepth(n, d){ n._depth = d; n._childCount = n._children.length; n._children.forEach(c=>setDepth(c,d+1)); }
+    nodes.filter(n=>n._parentId===null).forEach(n=>setDepth(n,0));
+
+    // DFS order
+    function flatten(n){ return [n, ...n._children.flatMap(c=>flatten(c))]; }
+    return nodes.filter(n=>n._parentId===null).flatMap(n=>flatten(n));
+}
+
+/* Toggle expand/collapse da árvore de sub-redes */
+window.ipamToggleSrChildren = function(pid){
+    const btn = document.getElementById(`sr-expand-${pid}`);
+    const isOpen = btn && btn.getAttribute('data-open')==='1';
+    if(isOpen){
+        _srSetDescendants(pid, false);
+        if(btn){ btn.setAttribute('data-open','0'); btn.querySelector('i').className='fas fa-chevron-right'; }
+    } else {
+        document.querySelectorAll(`[data-sr-parent="${pid}"]`).forEach(r => r.style.display='');
+        if(btn){ btn.setAttribute('data-open','1'); btn.querySelector('i').className='fas fa-chevron-down'; }
+    }
+};
+function _srSetDescendants(pid, visible){
+    document.querySelectorAll(`[data-sr-parent="${pid}"]`).forEach(r => {
+        r.style.display = visible ? '' : 'none';
+        const cid = r.getAttribute('data-sr-id');
+        if(cid){
+            const cBtn = document.getElementById(`sr-expand-${cid}`);
+            if(!visible && cBtn){ cBtn.setAttribute('data-open','0'); cBtn.querySelector('i').className='fas fa-chevron-right'; }
+            _srSetDescendants(cid, visible);
+        }
+    });
+}
+
+window.ipamCarregarSubRedes = async function(){
+    const tb  = document.getElementById('ipam-subredes-tbody');
+    const sel = document.getElementById('ipam-sr-filtro-prefixo');
+    const filtro = sel ? sel.value : '';
+    // Salva quais linhas estão expandidas antes de re-renderizar
+    const expandidas = new Set(
+        [...document.querySelectorAll('[id^="sr-expand-"][data-open="1"]')]
+            .map(b => b.getAttribute('data-sr-id'))
+    );
+    tb.innerHTML = tbEmpty(8,'<i class="fas fa-spinner fa-spin"></i>');
+    const url = `/clientes/${CID}/ipam/subredes/` + (filtro ? `?prefixo_id=${filtro}` : '');
+    const r = await fetch(url);
+    const d = await r.json();
+    IPAM.subredes = d.subredes || [];
+    // Preencher select de filtro de prefixos
+    if(IPAM.prefixos.length && sel){
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">Todos os prefixos</option>' +
+            IPAM.prefixos.map(p=>`<option value="${p.id}" ${p.id==cur?'selected':''}>${p.prefixo}</option>`).join('');
+    }
+    const cnt = document.getElementById('ipam-sr-count');
+    if(cnt) cnt.textContent = `${IPAM.subredes.length} sub-rede${IPAM.subredes.length!==1?'s':''}`;
+    if(!IPAM.subredes.length){ tb.innerHTML = tbEmpty(8,'Nenhuma sub-rede cadastrada.'); return; }
+
+    const flat = _buildSrFlatTree(IPAM.subredes);
+    tb.innerHTML = flat.map(s => {
+        const pfxLen  = parseInt((s.rede||'').split('/')[1]||'24', 10);
+        const version = (s.rede||'').includes(':') ? 6 : 4;
+        const maxPL   = version === 6 ? 128 : 32;
+        const podeDividir  = pfxLen < maxPL - 1;
+        const depth        = s._depth;
+        const hasChildren  = s._childCount > 0;
+        const isChild      = s._parentId !== null;
+
+        const expandBtn = hasChildren
+            ? `<button id="sr-expand-${s.id}" data-open="0" data-sr-id="${s.id}"
+                onclick="ipamToggleSrChildren(${s.id})"
+                style="padding:1px 5px;font-size:.65rem;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:3px;cursor:pointer;vertical-align:middle;margin-right:4px;line-height:1.4;">
+                <i class="fas fa-chevron-right"></i></button>`
+            : `<span style="display:inline-block;width:${depth > 0 ? 0 : 22}px;"></span>`;
+        const indent = depth > 0
+            ? `<span style="display:inline-block;width:${depth * 18}px;"></span>`
+            : '';
+
+        return `
+    <tr class="ipam-row-subrede" id="sr-row-${s.id}" data-sr-id="${s.id}" data-sr-parent="${s._parentId||''}"${isChild ? ' style="display:none;"' : ''}>
+        <td style="white-space:nowrap;">
+            ${indent}${expandBtn}<strong style="font-family:'Courier New',monospace;color:var(--text-light);">${s.rede}</strong>
+        </td>
+        <td style="font-family:'Courier New',monospace;color:var(--text-muted)">${s.gateway||'—'}</td>
+        <td>${s.vlan ? `<span style="color:#ffaa00;">${s.vlan}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td style="color:var(--accent-cyan);font-size:.8rem">${s.prefixo||'—'}</td>
+        <td>${utilBar(s.utilizacao_pct)} <small style="color:var(--text-muted);font-size:.72rem;">${s.usados}/${s.total_hosts}</small></td>
+        <td>${badge(s.status)}</td>
+        <td style="color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.descricao||''}">${s.descricao||''}</td>
+        <td style="white-space:nowrap;">
+            ${podeDividir ? `<button class="btn btn-xs me-1" title="Dividir sub-rede"
+                style="padding:2px 6px;font-size:.72rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:3px;"
+                onclick="ipamAbrirDividir('subrede',${s.id},'${s.rede}',${pfxLen},${version})">
+                <i class="fas fa-cut"></i></button>` : ''}
+            ${acoes('ipamDeletarSubRede','ipamEditarSubRede',s.id)}
+        </td>
+    </tr>`;
+    }).join('');
+
+    // Restaurar linhas expandidas antes do re-render
+    if(expandidas.size) {
+        expandidas.forEach(id => {
+            const btn = document.getElementById('sr-expand-' + id);
+            if(btn && btn.getAttribute('data-open') === '0') {
+                ipamToggleSrChildren(parseInt(id));
+            }
+        });
+    }
+
+    // Atualizar select de sub-redes na aba IPs
+    const selIp = document.getElementById('ipam-ip-filtro-subrede');
+    if(selIp){
+        const cur = selIp.value;
+        selIp.innerHTML = '<option value="">Todas as sub-redes</option>' +
+            IPAM.subredes.map(s=>`<option value="${s.id}" ${s.id==cur?'selected':''}>${s.rede}</option>`).join('');
+    }
+};
+
+/* ─────────────────────────────────────────────────
+   ENDEREÇOS IP
+───────────────────────────────────────────────── */
+window.ipamCarregarIPs = async function(){
+    const tb  = document.getElementById('ipam-ips-tbody');
+    const sel = document.getElementById('ipam-ip-filtro-subrede');
+    const busca = (document.getElementById('ipam-ip-busca')||{}).value || '';
+    const filtro = sel ? sel.value : '';
+    tb.innerHTML = tbEmpty(8,'<i class="fas fa-spinner fa-spin"></i>');
+    let url = `/clientes/${CID}/ipam/ips/?`;
+    if(filtro) url += `subrede_id=${filtro}&`;
+    if(busca)  url += `q=${encodeURIComponent(busca)}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const ips = d.ips || [];
+    const cnt = document.getElementById('ipam-ip-count');
+    if(cnt) cnt.textContent = `${d.total} endereço${d.total!==1?'s':''}`;
+    // Preencher select sub-redes se ainda não foi
+    if(IPAM.subredes.length && sel && !sel.options.length){
+        sel.innerHTML = '<option value="">Todas as sub-redes</option>' +
+            IPAM.subredes.map(s=>`<option value="${s.id}">${s.rede}</option>`).join('');
+    }
+    if(!ips.length){ tb.innerHTML = tbEmpty(8,'Nenhum endereço encontrado.'); return; }
+    const tipoColors = {fixo:'#cdd9e5',dhcp:'var(--accent-cyan)',reservado:'#ffaa00',gateway:'var(--primary-green)',rede:'#888',broadcast:'#888'};
+    tb.innerHTML = ips.map(ip => `
+    <tr>
+        <td><strong style="font-family:'Courier New',monospace;color:${tipoColors[ip.tipo]||'#cdd9e5'}">${ip.ip}</strong></td>
+        <td style="color:var(--text-light)">${ip.hostname||'—'}</td>
+        <td style="color:var(--accent-cyan);font-size:.8rem">${ip.subrede||'—'}</td>
+        <td><span style="font-size:.75rem;color:${tipoColors[ip.tipo]||'#cdd9e5'}">${ip.tipo}</span></td>
+        <td>${badge(ip.status)}</td>
+        <td style="font-family:'Courier New',monospace;font-size:.8rem;color:var(--text-muted)">${ip.mac_address||'—'}</td>
+        <td style="color:var(--text-muted)">${ip.descricao||''}</td>
+        <td>${acoes('ipamDeletarIP','ipamEditarIP',ip.id)}</td>
+    </tr>`).join('');
+};
+
+window.ipamBuscarIPs = function(){
+    clearTimeout(IPAM.buscarTimer);
+    IPAM.buscarTimer = setTimeout(ipamCarregarIPs, 350);
+};
+
+/* ─────────────────────────────────────────────────
+   VLANs
+───────────────────────────────────────────────── */
+window.ipamCarregarVlans = async function(){
+    const tb = document.getElementById('ipam-vlans-tbody');
+    tb.innerHTML = tbEmpty(6,'<i class="fas fa-spinner fa-spin"></i>');
+    const r = await fetch(`/clientes/${CID}/ipam/vlans/`);
+    const d = await r.json();
+    IPAM.vlans = d.vlans || [];
+    if(!IPAM.vlans.length){ tb.innerHTML = tbEmpty(6,'Nenhuma VLAN cadastrada.'); return; }
+    tb.innerHTML = IPAM.vlans.map(v => `
+    <tr>
+        <td><strong style="color:#ffaa00;">${v.numero}</strong></td>
+        <td style="color:var(--text-light)">${v.nome}</td>
+        <td style="color:var(--text-muted)">${v.subredes}</td>
+        <td>${badge(v.status)}</td>
+        <td style="color:var(--text-muted)">${v.descricao||''}</td>
+        <td>${acoes('ipamDeletarVlan','ipamEditarVlan',v.id)}</td>
+    </tr>`).join('');
+};
+
+/* ─────────────────────────────────────────────────
+   VPNs documentadas
+───────────────────────────────────────────────── */
+window.ipamCarregarVpns = async function(){
+    const tb = document.getElementById('ipam-vpns-tbody');
+    tb.innerHTML = tbEmpty(9,'<i class="fas fa-spinner fa-spin"></i>');
+    const r = await fetch(`/clientes/${CID}/ipam/vpns/`);
+    const d = await r.json();
+    const vpns = d.vpns || [];
+    if(!vpns.length){ tb.innerHTML = tbEmpty(9,'Nenhuma VPN documentada.'); return; }
+    const tipoColors = {ipsec:'#00d9ff',gre:'#a080ff',l2tp:'#ffaa00',mpls:'#ff8c42',wireguard:'#00ff88',openvpn:'#60d060',outro:'#aaa'};
+    tb.innerHTML = vpns.map(v => `
+    <tr>
+        <td style="color:var(--text-light);font-weight:600">${v.nome}</td>
+        <td><span style="color:${tipoColors[v.tipo]||'#aaa'};font-size:.8rem;font-weight:600">${v.tipo_display}</span></td>
+        <td style="font-family:'Courier New',monospace;font-size:.8rem">${v.endpoint_local||'—'}</td>
+        <td style="font-family:'Courier New',monospace;font-size:.8rem">${v.endpoint_remoto||'—'}</td>
+        <td style="font-family:'Courier New',monospace;font-size:.8rem;color:var(--accent-cyan)">${v.rede_local||'—'}</td>
+        <td style="font-family:'Courier New',monospace;font-size:.8rem;color:var(--accent-cyan)">${v.rede_remota||'—'}</td>
+        <td style="color:var(--text-muted)">${v.as_local||'—'}</td>
+        <td>${badge(v.status)}</td>
+        <td>${acoes('ipamDeletarVpn','ipamEditarVpn',v.id)}</td>
+    </tr>`).join('');
+};
+
+/* ═════════════════════════════════════════════════
+   MODAL — Abrir / Salvar
+═════════════════════════════════════════════════ */
+const MODAL_FORMS = {
+    prefixo: (d={}) => `
+        <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label text-muted" style="font-size:.82rem">Prefixo CIDR *</label>
+            <input id="mf-prefixo" class="form-control form-control-sm" value="${d.prefixo||''}" placeholder="ex: 10.0.0.0/8"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Tipo</label>
+            <select id="mf-tipo" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['container','rede','pool'].map(t=>`<option value="${t}" ${d.tipo===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Status</label>
+            <select id="mf-status" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['ativo','reservado','deprecado'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-md-8">
+            <label class="form-label text-muted" style="font-size:.82rem">Descrição</label>
+            <input id="mf-descricao" class="form-control form-control-sm" value="${d.descricao||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Local / Site</label>
+            <input id="mf-local" class="form-control form-control-sm" value="${d.local||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        ${d.id ? `
+        <div class="col-12">
+            <hr style="border-color:var(--border);margin:4px 0 8px;">
+            <div style="background:rgba(255,170,0,.05);border:1px solid rgba(255,170,0,.15);border-radius:6px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div>
+                    <div style="color:#ffaa00;font-size:.82rem;font-weight:600;"><i class="fas fa-check-circle me-1"></i>Marcar prefixo como todo em uso</div>
+                    <div style="color:#8b949e;font-size:.78rem;margin-top:2px;">Cria uma sub-rede cobrindo todo o bloco <code style="color:var(--accent-cyan)">${d.prefixo||''}</code></div>
+                </div>
+                <button type="button" onclick="ipamMarcarEmUsoModal(${d.id},'${d.prefixo||''}')"
+                    style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3);color:#ffaa00;padding:4px 14px;border-radius:5px;font-size:.8rem;cursor:pointer;white-space:nowrap;">
+                    <i class="fas fa-check me-1"></i>Confirmar
+                </button>
+            </div>
+        </div>` : ''}
+        </div>`,
+
+    subrede: (d={}) => {
+        const pfOpts = IPAM.prefixos.map(p=>`<option value="${p.id}" ${d.prefixo_id==p.id?'selected':''}>${p.prefixo}</option>`).join('');
+        const vlOpts = IPAM.vlans.map(v=>`<option value="${v.id}" ${d.vlan_id==v.id?'selected':''}>VLAN ${v.numero} — ${v.nome}</option>`).join('');
+        return `
+        <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label text-muted" style="font-size:.82rem">Rede CIDR *</label>
+            <input id="mf-rede" class="form-control form-control-sm" value="${d.rede||''}" placeholder="ex: 192.168.1.0/24"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Gateway</label>
+            <input id="mf-gateway" class="form-control form-control-sm" value="${d.gateway||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Status</label>
+            <select id="mf-status" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['ativo','reservado','deprecado'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Prefixo pai</label>
+            <select id="mf-prefixo_id" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                <option value="">— nenhum —</option>${pfOpts}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">VLAN</label>
+            <select id="mf-vlan_id" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                <option value="">— nenhuma —</option>${vlOpts}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Local / Site</label>
+            <input id="mf-local" class="form-control form-control-sm" value="${d.local||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-12">
+            <label class="form-label text-muted" style="font-size:.82rem">Descrição</label>
+            <input id="mf-descricao" class="form-control form-control-sm" value="${d.descricao||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        ${d.id && d.rede ? (() => {
+            const pl  = parseInt((d.rede||'').split('/')[1]||'32', 10);
+            const ver = (d.rede||'').includes(':') ? 6 : 4;
+            const maxPL = ver === 6 ? 128 : 32;
+            const podeDividir = pl < maxPL - 1;
+            return `
+        <div class="col-12">
+            <hr style="border-color:var(--border);margin:4px 0 8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${podeDividir ? `<button type="button" onclick="ipamFecharModal();ipamAbrirDividir('subrede',${d.id},'${d.rede}',${pl},${ver})"
+                    style="background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);padding:4px 14px;border-radius:5px;font-size:.8rem;cursor:pointer;">
+                    <i class="fas fa-cut me-1"></i>Dividir sub-rede
+                </button>` : ''}
+            </div>
+        </div>`;
+        })() : ''}
+        </div>`;
+    },
+
+    ip: (d={}) => {
+        const srOpts = IPAM.subredes.map(s=>`<option value="${s.id}" ${d.subrede_id==s.id?'selected':''}>${s.rede}</option>`).join('');
+        return `
+        <div class="row g-2">
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Endereço IP *</label>
+            <input id="mf-ip" class="form-control form-control-sm" value="${d.ip||''}" placeholder="ex: 192.168.1.10"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Hostname / DNS</label>
+            <input id="mf-hostname" class="form-control form-control-sm" value="${d.hostname||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">MAC Address</label>
+            <input id="mf-mac_address" class="form-control form-control-sm" value="${d.mac_address||''}" placeholder="AA:BB:CC:DD:EE:FF"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Sub-rede</label>
+            <select id="mf-subrede_id" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                <option value="">— nenhuma —</option>${srOpts}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Tipo</label>
+            <select id="mf-tipo" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['fixo','dhcp','reservado','gateway','rede','broadcast'].map(t=>`<option value="${t}" ${d.tipo===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Status</label>
+            <select id="mf-status" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['ativo','inativo','reservado'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-12">
+            <label class="form-label text-muted" style="font-size:.82rem">Descrição</label>
+            <textarea id="mf-descricao" class="form-control form-control-sm" rows="2"
+                      style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">${d.descricao||''}</textarea>
+        </div>
+        </div>`;
+    },
+
+    vlan: (d={}) => `
+        <div class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Número *</label>
+            <input id="mf-numero" type="number" min="1" max="4094" class="form-control form-control-sm" value="${d.numero||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-5">
+            <label class="form-label text-muted" style="font-size:.82rem">Nome</label>
+            <input id="mf-nome" class="form-control form-control-sm" value="${d.nome||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Status</label>
+            <select id="mf-status" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['ativo','reservado','deprecado'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-12">
+            <label class="form-label text-muted" style="font-size:.82rem">Descrição</label>
+            <input id="mf-descricao" class="form-control form-control-sm" value="${d.descricao||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        </div>`,
+
+    vpn: (d={}) => `
+        <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label text-muted" style="font-size:.82rem">Nome *</label>
+            <input id="mf-nome" class="form-control form-control-sm" value="${d.nome||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Tipo</label>
+            <select id="mf-tipo" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['ipsec','gre','l2tp','mpls','wireguard','openvpn','outro'].map(t=>`<option value="${t}" ${d.tipo===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted" style="font-size:.82rem">Status</label>
+            <select id="mf-status" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+                ${['ativo','inativo'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Endpoint Local</label>
+            <input id="mf-endpoint_local" class="form-control form-control-sm" value="${d.endpoint_local||''}" placeholder="ex: 200.1.2.3"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted" style="font-size:.82rem">Endpoint Remoto</label>
+            <input id="mf-endpoint_remoto" class="form-control form-control-sm" value="${d.endpoint_remoto||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label text-muted" style="font-size:.82rem">AS Local</label>
+            <input id="mf-as_local" class="form-control form-control-sm" value="${d.as_local||''}" placeholder="64512"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label text-muted" style="font-size:.82rem">AS Remoto</label>
+            <input id="mf-as_remoto" class="form-control form-control-sm" value="${d.as_remoto||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label text-muted" style="font-size:.82rem">Rede Local</label>
+            <input id="mf-rede_local" class="form-control form-control-sm" value="${d.rede_local||''}" placeholder="ex: 10.0.0.0/24"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label text-muted" style="font-size:.82rem">Rede Remota</label>
+            <input id="mf-rede_remota" class="form-control form-control-sm" value="${d.rede_remota||''}"
+                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-12">
+            <label class="form-label text-muted" style="font-size:.82rem">Descrição / Observações</label>
+            <textarea id="mf-descricao" class="form-control form-control-sm" rows="2"
+                      style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">${d.descricao||''}</textarea>
+        </div>
+        </div>`,
+};
+
+const MODAL_TITLES = {
+    prefixo: 'Prefixo', subrede: 'Sub-rede', ip: 'Endereço IP', vlan: 'VLAN', vpn: 'VPN',
+};
+
+function ipamFecharModal(){
+    document.getElementById('modalIpamOverlay').style.display = 'none';
+}
+window.ipamFecharModal = ipamFecharModal;
+
+function ipamAbrirModal(tipo, dados){
+    const ovl = document.getElementById('modalIpamOverlay');
+    if(!ovl) return;
+    IPAM.modal.tipo = tipo;
+    IPAM.modal.id   = dados ? dados.id : null;
+    const titulo = (dados ? 'Editar' : 'Novo') + ' ' + MODAL_TITLES[tipo];
+    document.getElementById('modalIpamTitle').textContent = titulo;
+    document.getElementById('modalIpamBody').innerHTML = MODAL_FORMS[tipo](dados||{});
+    ovl.style.display = 'flex';
+}
+window.ipamAbrirModal = ipamAbrirModal;
+
+function mfVal(id){ const el = document.getElementById(id); return el ? el.value : undefined; }
+
+window.ipamSalvar = async function(){
+    const tipo = IPAM.modal.tipo;
+    const id   = IPAM.modal.id;
+    const body = {id};
+
+    const CAMPOS = {
+        prefixo: ['prefixo','tipo','status','descricao','local'],
+        subrede:  ['rede','gateway','status','prefixo_id','vlan_id','local','descricao'],
+        ip:       ['ip','tipo','status','hostname','mac_address','subrede_id','descricao'],
+        vlan:     ['numero','nome','status','descricao'],
+        vpn:      ['nome','tipo','status','endpoint_local','endpoint_remoto','rede_local','rede_remota','as_local','as_remoto','descricao'],
+    };
+    const URLS = {
+        prefixo: `/clientes/${CID}/ipam/prefixos/salvar/`,
+        subrede: `/clientes/${CID}/ipam/subredes/salvar/`,
+        ip:      `/clientes/${CID}/ipam/ips/salvar/`,
+        vlan:    `/clientes/${CID}/ipam/vlans/salvar/`,
+        vpn:     `/clientes/${CID}/ipam/vpns/salvar/`,
+    };
+
+    (CAMPOS[tipo]||[]).forEach(c => { const v = mfVal(`mf-${c}`); if(v !== undefined) body[c] = v; });
+
+    const r = await fetch(URLS[tipo], {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken': getCsrfToken()},
+        body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
+    ipamFecharModal();
+    // Recarregar aba atual
+    if(tipo==='prefixo') ipamCarregarPrefixos();
+    if(tipo==='subrede'){
+        ipamCarregarSubRedes();
+        // Se criou/editou via breakdown, recarregar o breakdown do prefixo pai
+        const pfxId = body.prefixo_id;
+        if(pfxId && IPAM._bdOpen[pfxId]){
+            IPAM._bdOpen[pfxId] = false;
+            await ipamToggleBreakdown(parseInt(pfxId));
+        }
+    }
+    if(tipo==='ip')   ipamCarregarIPs();
+    if(tipo==='vlan') { ipamCarregarVlans(); IPAM.vlans = []; }
+    if(tipo==='vpn')  ipamCarregarVpns();
+};
+
+/* ─── Editar: busca no cache local ─── */
+window.ipamEditarPrefixo = function(id){ ipamAbrirModal('prefixo', IPAM.prefixos.find(p=>p.id===id)); };
+window.ipamEditarSubRede = function(id){ ipamAbrirModal('subrede', IPAM.subredes.find(s=>s.id===id)); };
+window.ipamEditarVlan    = function(id){ ipamAbrirModal('vlan',    IPAM.vlans.find(v=>v.id===id)); };
+window.ipamEditarIP      = async function(id){
+    const r = await fetch(`/clientes/${CID}/ipam/ips/?q=&subrede_id=`);
+    const d = await r.json();
+    ipamAbrirModal('ip', (d.ips||[]).find(i=>i.id===id)||{id});
+};
+window.ipamEditarVpn = async function(id){
+    const r = await fetch(`/clientes/${CID}/ipam/vpns/`);
+    const d = await r.json();
+    ipamAbrirModal('vpn', (d.vpns||[]).find(v=>v.id===id)||{id});
+};
+
+/* ─── Deletar ─── */
+async function ipamDeletar(url, recarregar){
+    if(!await uiConfirm({titulo:'Confirmar Exclusão', msg:'Confirmar exclusão?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
+    const r = await fetch(url, {method:'POST', headers:{'X-CSRFToken': getCsrfToken()}});
+    const d = await r.json();
+    if(d.ok) recarregar();
+    else uiAlert('Erro: ' + d.erro);
+}
+window.ipamTogglePoolCheia = async function(id){
+    const r = await fetch(`/clientes/ipam/prefixos/${id}/pool-cheia/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
+    const d = await r.json();
+    if(d.ok){ ipamCarregarPrefixos(); }
+    else uiAlert('Erro: ' + d.erro);
+};
+window.ipamDeletarPrefixo = async function(id){
+    if(!await uiConfirm({titulo:'Excluir Prefixo', msg:'Confirmar exclusão do prefixo?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
+    const r = await fetch(`/clientes/ipam/prefixos/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
+    const d = await r.json();
+    if(d.ok){ delete IPAM._bdOpen[id]; ipamCarregarPrefixos(); }
+    else uiAlert('Erro: ' + d.erro);
+};
+window.ipamDeletarSubRede = async function(id){
+    if(!await uiConfirm({titulo:'Excluir Sub-rede', msg:'Confirmar exclusão da sub-rede?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
+    // Descobrir prefixo pai (se estiver numa linha de breakdown)
+    const sr = IPAM.subredes.find(s => s.id === id);
+    const r = await fetch(`/clientes/ipam/subredes/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
+    const d = await r.json();
+    if(d.ok){
+        ipamCarregarSubRedes();
+        // Recarregar breakdown do prefixo pai se estiver aberto
+        if(sr && sr.prefixo_id && IPAM._bdOpen[sr.prefixo_id]){
+            IPAM._bdOpen[sr.prefixo_id] = false;
+            await ipamToggleBreakdown(parseInt(sr.prefixo_id));
+        } else {
+            // Varrer todos os breakdowns abertos e recarregar
+            for(const pid of Object.keys(IPAM._bdOpen)){
+                if(IPAM._bdOpen[pid]){ IPAM._bdOpen[pid]=false; ipamToggleBreakdown(parseInt(pid)); break; }
+            }
+        }
+    } else uiAlert('Erro: ' + d.erro);
+};
+window.ipamDeletarIP      = id => ipamDeletar(`/clientes/ipam/ips/${id}/deletar/`,      ipamCarregarIPs);
+window.ipamDeletarVlan    = id => ipamDeletar(`/clientes/ipam/vlans/${id}/deletar/`,    ipamCarregarVlans);
+window.ipamDeletarVpn     = id => ipamDeletar(`/clientes/ipam/vpns/${id}/deletar/`,     ipamCarregarVpns);
+
+/* ─── Importar CSV ─── */
+window.ipamImportar = async function(){
+    const file  = document.getElementById('ipam-import-file').files[0];
+    const modo  = document.getElementById('ipam-import-modo').value;
+    const res   = document.getElementById('ipam-import-resultado');
+    if(!file){ uiAlert('Selecione um arquivo CSV.'); return; }
+    res.style.display = '';
+    res.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando…';
+    const fd = new FormData();
+    fd.append('arquivo', file);
+    fd.append('modo', modo);
+    const r = await fetch(`/clientes/${CID}/ipam/importar/`,{
+        method:'POST', headers:{'X-CSRFToken': getCsrfToken()}, body: fd,
+    });
+    const d = await r.json();
+    if(!d.ok){ res.innerHTML=`<div class="alert alert-danger">${d.erro}</div>`; return; }
+    const tipo_str = d.modo === 'subnets' ? 'sub-redes' : 'endereços IP';
+    let html = `<div class="alert alert-success mb-2"><i class="fas fa-check-circle me-2"></i>
+        <strong>${d.criados}</strong> ${tipo_str} importado${d.criados!==1?'s':''} com sucesso.
+        Modo detectado: <strong>${d.modo}</strong>.</div>`;
+    if(d.total_erros){
+        html += `<div class="alert alert-warning" style="font-size:.82rem;">
+            <strong>${d.total_erros} linha(s) com erro:</strong><br>
+            ${d.erros.map(e=>`<code>${e}</code>`).join('<br>')}
+            ${d.total_erros>20?`<br>…e mais ${d.total_erros-20} erros.`:''}
+        </div>`;
+    }
+    res.innerHTML = html;
+    // Recarregar dados
+    IPAM.prefixos = []; IPAM.subredes = []; IPAM.vlans = [];
+    if(d.modo==='subnets') { await ipamCarregarVlans(); await ipamCarregarSubRedes(); }
+    else ipamCarregarIPs();
+};
+
+/* ─── Carga automática quando aba torna visível ───
+   IMPORTANTE: tab-documentacao está DEPOIS desta tag <script> no HTML,
+   portanto getElementById retorna null durante a execução.
+   DOMContentLoaded garante que o elemento já existe.  ─── */
+document.addEventListener('DOMContentLoaded', function(){
+    const tabDoc = document.getElementById('tab-documentacao');
+    if(!tabDoc) return;
+    new MutationObserver(function(muts){
+        for(const m of muts){
+            if(m.target.style.display !== 'none'){
+                if(!IPAM.prefixos.length)  ipamCarregarPrefixos();
+                // Pré-carregar subredes em background para popular filtros
+                if(!IPAM.subredes.length)  ipamCarregarSubRedes();
+            }
+        }
+    }).observe(tabDoc, {attributes:true, attributeFilter:['style']});
+});
+
+/* helper CSRF */
+function getCsrfToken(){
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    if(el) return el.value;
+    const c = document.cookie.split(';').find(c=>c.trim().startsWith('csrftoken='));
+    return c ? c.trim().split('=')[1] : '';
+}
+
+</script>
+
+
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!-- ABA TESTES DE REDE                                                  -->
@@ -3626,18 +4852,16 @@
         if (event) event.preventDefault();
         document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
         document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
-        document.getElementById('tab-' + nomeAba).style.display = 'block';
+        var displayMode = (nomeAba === 'monitoramento') ? 'flex' : 'block';
+        document.getElementById('tab-' + nomeAba).style.display = displayMode;
         if (event && event.target) event.target.classList.add('active');
 
         sessionStorage.setItem('abaAtiva', nomeAba);
 
         if (nomeAba === 'monitoramento') {
-            // Aguarda o include renderizar e os scripts executarem
-            setTimeout(function() {
-                if (window.GRAPH && typeof window.GRAPH.init === 'function') {
-                    window.GRAPH.init();
-                }
-            }, 100);
+            if (window.GRAPH && typeof window.GRAPH.init === 'function') {
+                window.GRAPH.init();
+            }
         }
         if (nomeAba === 'topologia') {
             topoSubAba('editor');
@@ -4729,7 +5953,7 @@
 
             const tabElement  = document.getElementById('tab-' + abaAtiva);
             const linkElement = document.querySelector(`#mainTabs a[onclick*="${abaAtiva}"]`);
-            if (tabElement)  tabElement.style.display = 'block';
+            if (tabElement)  tabElement.style.display = (abaAtiva === 'monitoramento') ? 'flex' : 'block';
             if (linkElement) linkElement.classList.add('active');
 
             sessionStorage.removeItem('abaAtiva');
@@ -4745,6 +5969,9 @@
                     if (typeof ipamCarregarPrefixos === 'function') ipamCarregarPrefixos();
                     if (typeof ipamCarregarSubRedes === 'function') ipamCarregarSubRedes();
                 }, 300);
+            }
+            if (abaAtiva === 'monitoramento') {
+                if (window.GRAPH && typeof window.GRAPH.init === 'function') window.GRAPH.init();
             }
         }
 
@@ -5404,4 +6631,21 @@
     };
     </script>
 
+    <!-- ═══ Modal IPAM (overlay customizado, sem Bootstrap Modal) ═══════════ -->
+    <div id="modalIpamOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+      <div style="background:#0a0a0a;border:2px solid var(--primary-green);border-radius:8px;width:90%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 0 30px var(--glow-green);position:relative;z-index:100000;">
+        <div style="border-bottom:1px solid var(--border);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+          <h5 id="modalIpamTitle" style="color:var(--primary-green);font-family:'Share Tech Mono',monospace;margin:0;"></h5>
+          <button onclick="ipamFecharModal()" style="background:transparent;border:none;color:rgba(255,255,255,.7);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+        <div id="modalIpamBody" style="padding:20px;"></div>
+        <div style="border-top:1px solid var(--border);padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;">
+          <button onclick="ipamFecharModal()" class="btn btn-secondary">Cancelar</button>
+          <button onclick="ipamSalvar()" class="btn btn-primary"><i class="fas fa-save me-1"></i>Salvar</button>
+        </div>
+      </div>
+    </div>
+
     {% endblock content %}
+
+{% block modals %}{% endblock %}

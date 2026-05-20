@@ -1,0 +1,690 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Base de Conhecimento — Agent NOC{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Cabeçalho -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0 fw-bold text-info">
+        <i class="bi bi-book-fill me-2"></i>Base de Conhecimento
+      </h4>
+      <small class="text-muted">Artigos e documentos que o Agent NOC consulta durante diagnósticos</small>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-success btn-sm fw-bold" onclick="abrirUploadPDF()">
+        <i class="bi bi-file-earmark-pdf-fill me-1"></i>Upload PDF
+      </button>
+      <button class="btn btn-info btn-sm fw-bold" onclick="abrirNovoArtigo()">
+        <i class="bi bi-plus-lg me-1"></i>Novo Artigo
+      </button>
+    </div>
+  </div>
+
+  <!-- Abas -->
+  <ul class="nav nav-tabs border-secondary mb-3" id="knowledgeTabs">
+    <li class="nav-item">
+      <button class="nav-link active text-info" id="tab-artigos-btn" onclick="mudarAba('artigos')">
+        <i class="bi bi-journal-text me-1"></i>Artigos
+        <span class="badge bg-secondary ms-1">{{ artigos|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link text-info" id="tab-docs-btn" onclick="mudarAba('docs')">
+        <i class="bi bi-file-earmark-pdf-fill me-1"></i>Documentos PDF
+        <span class="badge bg-success ms-1">{{ docs|length }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <!-- ═══ ABA ARTIGOS ════════════════════════════════════════════════════════ -->
+  <div id="tab-artigos">
+    <!-- Filtros -->
+    <div class="card bg-dark border-secondary mb-3">
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <input type="text" id="filtroTexto" class="form-control form-control-sm bg-dark text-light border-secondary"
+                   placeholder="Buscar por título ou conteúdo..." oninput="filtrar()">
+          </div>
+          <div class="col-md-2">
+            <select id="filtroFabricante" class="form-select form-select-sm bg-dark text-light border-secondary" onchange="filtrar()">
+              <option value="">Todos os fabricantes</option>
+              {% for val, label in fabricantes %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select id="filtroCategoria" class="form-select form-select-sm bg-dark text-light border-secondary" onchange="filtrar()">
+              <option value="">Todas as categorias</option>
+              {% for val, label in categorias %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select id="filtroAtivo" class="form-select form-select-sm bg-dark text-light border-secondary" onchange="filtrar()">
+              <option value="">Todos</option>
+              <option value="1">Ativos</option>
+              <option value="0">Inativos</option>
+            </select>
+          </div>
+          <div class="col-md-2 text-end">
+            <small class="text-muted" id="contadorResultados"></small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-dark border-secondary">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0" id="tabelaArtigos">
+          <thead class="table-secondary text-dark">
+            <tr>
+              <th style="width:36%">Título</th>
+              <th style="width:12%">Fabricante</th>
+              <th style="width:13%">Categoria</th>
+              <th style="width:15%">Cliente</th>
+              <th style="width:6%" class="text-center">Usos</th>
+              <th style="width:10%">Atualizado</th>
+              <th style="width:8%" class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpoTabela">
+            {% for artigo in artigos %}
+            <tr class="artigo-row"
+                data-titulo="{{ artigo.titulo|lower }}"
+                data-conteudo="{{ artigo.conteudo|lower|truncatechars:200 }}"
+                data-fabricante="{{ artigo.fabricante }}"
+                data-categoria="{{ artigo.categoria }}"
+                data-ativo="{{ artigo.ativo|yesno:'1,0' }}">
+              <td>
+                <span class="{% if not artigo.ativo %}text-muted text-decoration-line-through{% else %}fw-semibold{% endif %}">
+                  {{ artigo.titulo }}
+                </span>
+                {% if artigo.tags %}
+                <div class="mt-1">
+                  {% for tag in artigo.tags %}
+                  <span class="badge bg-secondary bg-opacity-50 text-light me-1" style="font-size:.65rem">{{ tag }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </td>
+              <td><span class="badge bg-info bg-opacity-25 text-info">{{ artigo.get_fabricante_display }}</span></td>
+              <td><span class="badge bg-secondary bg-opacity-40 text-light">{{ artigo.get_categoria_display }}</span></td>
+              <td class="text-muted small">{{ artigo.cliente.nome_empresa|default:"Global" }}</td>
+              <td class="text-center"><span class="badge bg-dark border border-secondary">{{ artigo.uso_count }}</span></td>
+              <td class="text-muted small">{{ artigo.atualizado_em|date:"d/m/y H:i" }}</td>
+              <td class="text-center">
+                <button class="btn btn-outline-info btn-sm py-0 px-1 me-1" title="Editar" onclick="editarArtigo({{ artigo.id }})">
+                  <i class="bi bi-pencil-fill" style="font-size:.75rem"></i>
+                </button>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Deletar"
+                        onclick="confirmarDeletar({{ artigo.id }}, '{{ artigo.titulo|escapejs }}', 'artigo')">
+                  <i class="bi bi-trash-fill" style="font-size:.75rem"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-5">
+              <i class="bi bi-book display-4 d-block mb-2 opacity-25"></i>
+              Nenhum artigo cadastrado ainda.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ABA DOCUMENTOS PDF ════════════════════════════════════════════════ -->
+  <div id="tab-docs" style="display:none;">
+    <!-- Info -->
+    <div class="alert alert-dark border-secondary mb-3 py-2">
+      <i class="bi bi-info-circle me-2 text-info"></i>
+      <small class="text-muted">O Agent extrai e indexa o texto completo dos PDFs. Durante diagnósticos, ele busca automaticamente trechos relevantes usando a ferramenta <code>search_knowledge</code>.</small>
+    </div>
+
+    <div class="card bg-dark border-secondary">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0">
+          <thead class="table-secondary text-dark">
+            <tr>
+              <th style="width:32%">Documento</th>
+              <th style="width:10%">Fabricante</th>
+              <th style="width:13%">Categoria</th>
+              <th style="width:14%">Cliente</th>
+              <th style="width:7%" class="text-center">Páginas</th>
+              <th style="width:7%" class="text-center">Usos</th>
+              <th style="width:9%">Enviado</th>
+              <th style="width:8%" class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for doc in docs %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-file-earmark-pdf-fill text-danger mt-1" style="font-size:1.1rem;flex-shrink:0"></i>
+                  <div>
+                    <div class="fw-semibold {% if not doc.ativo %}text-muted text-decoration-line-through{% endif %}">
+                      {{ doc.titulo }}
+                    </div>
+                    <small class="text-muted font-monospace">{{ doc.nome_arquivo }}</small>
+                    <div class="mt-1">
+                      {% for tag in doc.tags %}
+                      <span class="badge bg-secondary bg-opacity-50 text-light me-1" style="font-size:.62rem">{{ tag }}</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge bg-info bg-opacity-25 text-info">{{ doc.get_fabricante_display }}</span></td>
+              <td><span class="badge bg-secondary bg-opacity-40 text-light">{{ doc.get_categoria_display }}</span></td>
+              <td class="text-muted small">{{ doc.cliente.nome_empresa|default:"Global" }}</td>
+              <td class="text-center">
+                <span class="badge bg-dark border border-secondary">{{ doc.paginas }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-dark border border-secondary">{{ doc.uso_count }}</span>
+              </td>
+              <td class="text-muted small">{{ doc.criado_em|date:"d/m/y H:i" }}</td>
+              <td class="text-center">
+                {% if doc.arquivo %}
+                <a href="{{ doc.arquivo.url }}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1 me-1" title="Baixar PDF">
+                  <i class="bi bi-download" style="font-size:.75rem"></i>
+                </a>
+                {% endif %}
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Deletar"
+                        onclick="confirmarDeletar({{ doc.id }}, '{{ doc.titulo|escapejs }}', 'doc')">
+                  <i class="bi bi-trash-fill" style="font-size:.75rem"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-5">
+              <i class="bi bi-file-earmark-pdf display-4 d-block mb-2 opacity-25"></i>
+              Nenhum documento PDF carregado ainda.<br>
+              <small>Clique em <strong>Upload PDF</strong> para adicionar documentos técnicos.</small>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ Overlay Upload PDF (customizado, sem Bootstrap Modal) ════════════════ -->
+<div id="overlayUploadPDF" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+  <div style="background:#0d1117;border:2px solid #0dcaf0;border-radius:8px;width:90%;max-width:600px;box-shadow:0 0 30px rgba(13,202,240,.2);">
+    <div style="border-bottom:1px solid #30363d;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <h5 style="color:#0dcaf0;font-family:'Share Tech Mono',monospace;margin:0;">
+        <i class="bi bi-file-earmark-pdf-fill me-2"></i>Upload de Documento PDF
+      </h5>
+      <button onclick="fecharUploadPDF()" style="background:transparent;border:none;color:rgba(255,255,255,.6);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+    <div style="padding:20px;">
+      <!-- Drop zone -->
+      <div id="dropZone"
+           style="border:2px dashed #30363d;border-radius:6px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:16px;"
+           onclick="document.getElementById('inputPDF').click()"
+           ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <i class="bi bi-cloud-upload" style="font-size:2.5rem;color:#0dcaf0;display:block;margin-bottom:8px;"></i>
+        <div style="color:#8b949e;font-size:.9rem;">Arraste o PDF aqui ou <span style="color:#0dcaf0;text-decoration:underline;">clique para selecionar</span></div>
+        <div style="color:#6e7681;font-size:.78rem;margin-top:4px;">Máximo 30 MB</div>
+        <div id="nomeArquivoSelecionado" style="color:#0dcaf0;font-size:.85rem;margin-top:8px;font-weight:600;"></div>
+      </div>
+      <input type="file" id="inputPDF" accept=".pdf" style="display:none;" onchange="arquivoSelecionado(this)">
+
+      <div class="row g-2">
+        <div class="col-12">
+          <label style="font-size:.8rem;color:#8b949e;">Título *</label>
+          <input type="text" id="upTitulo" placeholder="Ex: Manual de Comandos OLT Datacom"
+                 style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+        </div>
+        <div class="col-md-6">
+          <label style="font-size:.8rem;color:#8b949e;">Fabricante</label>
+          <select id="upFabricante" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+            {% for val, label in fabricantes %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label style="font-size:.8rem;color:#8b949e;">Categoria</label>
+          <select id="upCategoria" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+            {% for val, label in categorias %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label style="font-size:.8rem;color:#8b949e;">Tags (separadas por vírgula)</label>
+          <input type="text" id="upTags" placeholder="Ex: olt, gpon, comandos"
+                 style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+        </div>
+        <div class="col-md-4">
+          <label style="font-size:.8rem;color:#8b949e;">Cliente (vazio = global)</label>
+          <select id="upCliente" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+            <option value="">Global</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.nome_empresa }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Barra de progresso -->
+      <div id="progressArea" style="display:none;margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <small style="color:#8b949e;">Processando PDF...</small>
+          <small id="progressPct" style="color:#0dcaf0;">0%</small>
+        </div>
+        <div style="background:#21262d;border-radius:4px;height:6px;">
+          <div id="progressBar" style="background:#0dcaf0;height:6px;border-radius:4px;width:0%;transition:width .3s;"></div>
+        </div>
+        <small id="progressMsg" style="color:#6e7681;font-size:.75rem;margin-top:4px;display:block;"></small>
+      </div>
+
+      <!-- Resultado -->
+      <div id="uploadResultado" style="display:none;margin-top:12px;padding:10px 14px;border-radius:4px;font-size:.83rem;"></div>
+    </div>
+    <div style="border-top:1px solid #30363d;padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="fecharUploadPDF()" style="padding:7px 16px;background:transparent;border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer;">Cancelar</button>
+      <button id="btnEnviarPDF" onclick="enviarPDF()"
+              style="padding:7px 16px;background:#0dcaf0;border:none;border-radius:4px;color:#000;font-weight:700;cursor:pointer;">
+        <i class="bi bi-upload me-1"></i>Processar e Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Overlay Criar/Editar Artigo ══════════════════════════════════════════ -->
+<div id="overlayArtigo" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:rgba(0,0,0,0.85);align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 0;">
+  <div style="background:#0d1117;border:2px solid #0dcaf0;border-radius:8px;width:90%;max-width:820px;box-shadow:0 0 30px rgba(13,202,240,.2);margin:auto;">
+    <div style="border-bottom:1px solid #30363d;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <h5 id="artigoOverlayTitulo" style="color:#0dcaf0;font-family:'Share Tech Mono',monospace;margin:0;">
+        <i class="bi bi-journal-text me-2"></i>Novo Artigo
+      </h5>
+      <button onclick="fecharArtigoOverlay()" style="background:transparent;border:none;color:rgba(255,255,255,.6);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+    <div style="padding:20px;">
+      <input type="hidden" id="artigoId">
+      <div class="row g-3">
+        <div class="col-12">
+          <label style="font-size:.8rem;color:#8b949e;">Título *</label>
+          <input type="text" id="fTitulo" placeholder="Ex: ZTE — Verificar ONUs com LOS"
+                 style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+        </div>
+        <div class="col-md-4">
+          <label style="font-size:.8rem;color:#8b949e;">Fabricante *</label>
+          <select id="fFabricante" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+            {% for val, label in fabricantes %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label style="font-size:.8rem;color:#8b949e;">Categoria *</label>
+          <select id="fCategoria" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+            {% for val, label in categorias %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label style="font-size:.8rem;color:#8b949e;">Cliente (vazio = global)</label>
+          <select id="fCliente" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+            <option value="">Global (todos os clientes)</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.nome_empresa }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label style="font-size:.8rem;color:#8b949e;">Tags (separadas por vírgula)</label>
+          <input type="text" id="fTags" placeholder="Ex: onu, gpon, los, alarme"
+                 style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.85rem;">
+        </div>
+        <div class="col-12">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label style="font-size:.8rem;color:#8b949e;margin:0;">Conteúdo (Markdown) *</label>
+            <button onclick="togglePreview()" id="btnPreview"
+                    style="padding:3px 10px;background:transparent;border:1px solid #30363d;border-radius:4px;color:#8b949e;font-size:.78rem;cursor:pointer;">
+              <i class="bi bi-eye me-1"></i>Preview
+            </button>
+          </div>
+          <div id="editorWrapper">
+            <textarea id="fConteudo" rows="16"
+                      style="width:100%;padding:10px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:.82rem;font-family:monospace;resize:vertical;"
+                      placeholder="# Título&#10;&#10;## Descrição&#10;...&#10;&#10;```&#10;comando aqui&#10;```"></textarea>
+          </div>
+          <div id="previewWrapper" style="display:none;padding:12px;border:1px solid #30363d;border-radius:4px;background:#000;min-height:200px;max-height:450px;overflow-y:auto;color:#e6edf3;">
+            <div id="previewContent"></div>
+          </div>
+        </div>
+        <div class="col-12">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem;color:#8b949e;">
+            <input type="checkbox" id="fAtivo" checked style="width:15px;height:15px;">
+            Artigo ativo (visível para o agent)
+          </label>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #30363d;padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="fecharArtigoOverlay()" style="padding:7px 16px;background:transparent;border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer;">Cancelar</button>
+      <button onclick="salvarArtigo()" style="padding:7px 16px;background:#0dcaf0;border:none;border-radius:4px;color:#000;font-weight:700;cursor:pointer;">
+        <i class="bi bi-check-lg me-1"></i>Salvar Artigo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Overlay Confirmar Deletar ════════════════════════════════════════════ -->
+<div id="overlayDeletar" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9100;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+  <div style="background:#0d1117;border:2px solid #f85149;border-radius:8px;width:90%;max-width:380px;box-shadow:0 0 20px rgba(248,81,73,.2);">
+    <div style="border-bottom:1px solid #30363d;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#f85149;font-weight:700;"><i class="bi bi-trash-fill me-2"></i>Confirmar exclusão</span>
+      <button onclick="fecharDeletarOverlay()" style="background:transparent;border:none;color:rgba(255,255,255,.6);font-size:1.3rem;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+    <div style="padding:16px 18px;">
+      <p style="color:#8b949e;font-size:.85rem;margin-bottom:6px;">Deletar:</p>
+      <strong id="nomeDeletar" style="color:#e3b341;font-size:.85rem;"></strong>
+    </div>
+    <div style="border-top:1px solid #30363d;padding:10px 18px;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="fecharDeletarOverlay()" style="padding:6px 14px;background:transparent;border:1px solid #30363d;border-radius:4px;color:#8b949e;cursor:pointer;font-size:.85rem;">Cancelar</button>
+      <button id="btnConfirmarDeletar" style="padding:6px 14px;background:#f85149;border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer;font-size:.85rem;">Deletar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Marked.js para preview Markdown -->
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+
+<script>
+const URL_SALVAR    = "{% url 'agent_knowledge_salvar' %}";
+const URL_EDITAR    = "{% url 'agent_knowledge_editar' 0 %}";
+const URL_DELETAR   = "{% url 'agent_knowledge_deletar' 0 %}";
+const URL_DOC_DEL   = "{% url 'agent_knowledge_doc_deletar' 0 %}";
+const URL_UPLOAD    = "{% url 'agent_knowledge_doc_upload' %}";
+const CSRF          = "{{ csrf_token }}";
+
+// ── Abas ─────────────────────────────────────────────────────────────────────
+
+function mudarAba(aba) {
+  document.getElementById('tab-artigos').style.display = aba === 'artigos' ? '' : 'none';
+  document.getElementById('tab-docs').style.display    = aba === 'docs'    ? '' : 'none';
+  document.getElementById('tab-artigos-btn').classList.toggle('active', aba === 'artigos');
+  document.getElementById('tab-docs-btn').classList.toggle('active', aba === 'docs');
+}
+
+// ── Filtro artigos ────────────────────────────────────────────────────────────
+
+function filtrar() {
+  const texto      = document.getElementById('filtroTexto').value.toLowerCase();
+  const fabricante = document.getElementById('filtroFabricante').value;
+  const categoria  = document.getElementById('filtroCategoria').value;
+  const ativo      = document.getElementById('filtroAtivo').value;
+  const rows       = document.querySelectorAll('.artigo-row');
+  let visivel = 0;
+  rows.forEach(row => {
+    const ok =
+      (!texto      || row.dataset.titulo.includes(texto) || row.dataset.conteudo.includes(texto)) &&
+      (!fabricante || row.dataset.fabricante === fabricante) &&
+      (!categoria  || row.dataset.categoria  === categoria) &&
+      (!ativo      || row.dataset.ativo      === ativo);
+    row.style.display = ok ? '' : 'none';
+    if (ok) visivel++;
+  });
+  document.getElementById('contadorResultados').textContent = `${visivel} artigo(s)`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('filtroAtivo').value = '1';
+  filtrar();
+});
+
+// ── Overlay Artigo ────────────────────────────────────────────────────────────
+
+function abrirNovoArtigo() {
+  document.getElementById('artigoId').value     = '';
+  document.getElementById('artigoOverlayTitulo').innerHTML = '<i class="bi bi-journal-text me-2"></i>Novo Artigo';
+  document.getElementById('fTitulo').value      = '';
+  document.getElementById('fConteudo').value    = '';
+  document.getElementById('fTags').value        = '';
+  document.getElementById('fFabricante').value  = 'generico';
+  document.getElementById('fCategoria').value   = 'geral';
+  document.getElementById('fCliente').value     = '';
+  document.getElementById('fAtivo').checked     = true;
+  mostrarEditor();
+  document.getElementById('overlayArtigo').style.display = 'flex';
+}
+
+function fecharArtigoOverlay() {
+  document.getElementById('overlayArtigo').style.display = 'none';
+}
+
+async function editarArtigo(id) {
+  const url = URL_EDITAR.replace('/0/', `/${id}/`).replace('/salvar/', '/dados/');
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Não encontrado');
+    const d = await resp.json();
+    document.getElementById('artigoId').value     = id;
+    document.getElementById('artigoOverlayTitulo').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Artigo';
+    document.getElementById('fTitulo').value      = d.titulo     || '';
+    document.getElementById('fConteudo').value    = d.conteudo   || '';
+    document.getElementById('fTags').value        = (d.tags || []).join(', ');
+    document.getElementById('fFabricante').value  = d.fabricante || 'generico';
+    document.getElementById('fCategoria').value   = d.categoria  || 'geral';
+    document.getElementById('fCliente').value     = d.cliente_id || '';
+    document.getElementById('fAtivo').checked     = d.ativo !== false;
+    mostrarEditor();
+    document.getElementById('overlayArtigo').style.display = 'flex';
+  } catch(e) {
+    alert('Erro ao carregar artigo: ' + e.message);
+  }
+}
+
+async function salvarArtigo() {
+  const id       = document.getElementById('artigoId').value;
+  const titulo   = document.getElementById('fTitulo').value.trim();
+  const conteudo = document.getElementById('fConteudo').value.trim();
+  if (!titulo || !conteudo) { alert('Título e conteúdo são obrigatórios.'); return; }
+
+  const tags = document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean);
+  const payload = {
+    titulo, conteudo, tags,
+    fabricante : document.getElementById('fFabricante').value,
+    categoria  : document.getElementById('fCategoria').value,
+    cliente_id : document.getElementById('fCliente').value || null,
+    ativo      : document.getElementById('fAtivo').checked,
+  };
+  const url = id ? URL_EDITAR.replace('/0/', `/${id}/`) : URL_SALVAR;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (data.ok) { fecharArtigoOverlay(); location.reload(); }
+  else alert('Erro: ' + (data.erro || 'desconhecido'));
+}
+
+// ── Preview Markdown ──────────────────────────────────────────────────────────
+
+function togglePreview() {
+  const editor  = document.getElementById('editorWrapper');
+  const preview = document.getElementById('previewWrapper');
+  const btn     = document.getElementById('btnPreview');
+  if (preview.style.display === 'none') {
+    document.getElementById('previewContent').innerHTML = marked.parse(document.getElementById('fConteudo').value);
+    preview.style.display = '';
+    editor.style.display  = 'none';
+    btn.innerHTML = '<i class="bi bi-pencil me-1"></i>Editar';
+  } else { mostrarEditor(); }
+}
+
+function mostrarEditor() {
+  document.getElementById('editorWrapper').style.display  = '';
+  document.getElementById('previewWrapper').style.display = 'none';
+  document.getElementById('btnPreview').innerHTML = '<i class="bi bi-eye me-1"></i>Preview';
+}
+
+// ── Deletar (artigo ou doc) ───────────────────────────────────────────────────
+
+let _deletarId = null, _deletarTipo = null;
+
+function confirmarDeletar(id, nome, tipo) {
+  _deletarId   = id;
+  _deletarTipo = tipo;
+  document.getElementById('nomeDeletar').textContent = nome;
+  document.getElementById('overlayDeletar').style.display = 'flex';
+}
+
+function fecharDeletarOverlay() {
+  document.getElementById('overlayDeletar').style.display = 'none';
+}
+
+document.getElementById('btnConfirmarDeletar').addEventListener('click', async () => {
+  if (!_deletarId) return;
+  const url = _deletarTipo === 'doc'
+    ? URL_DOC_DEL.replace('/0/', `/${_deletarId}/`)
+    : URL_DELETAR.replace('/0/', `/${_deletarId}/`);
+  const resp = await fetch(url, { method: 'POST', headers: {'X-CSRFToken': CSRF} });
+  const data = await resp.json();
+  if (data.ok) { fecharDeletarOverlay(); location.reload(); }
+  else alert('Erro ao deletar: ' + (data.erro || 'desconhecido'));
+});
+
+// ── Upload PDF ────────────────────────────────────────────────────────────────
+
+let _arquivoPDF = null;
+
+function abrirUploadPDF() {
+  _arquivoPDF = null;
+  document.getElementById('nomeArquivoSelecionado').textContent = '';
+  document.getElementById('upTitulo').value    = '';
+  document.getElementById('upTags').value      = '';
+  document.getElementById('upFabricante').value = 'generico';
+  document.getElementById('upCategoria').value  = 'geral';
+  document.getElementById('upCliente').value    = '';
+  document.getElementById('progressArea').style.display    = 'none';
+  document.getElementById('uploadResultado').style.display = 'none';
+  document.getElementById('btnEnviarPDF').disabled = false;
+  document.getElementById('inputPDF').value = '';
+  document.getElementById('overlayUploadPDF').style.display = 'flex';
+  mudarAba('docs');
+}
+
+function fecharUploadPDF() {
+  document.getElementById('overlayUploadPDF').style.display = 'none';
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = '#0dcaf0';
+}
+
+function dragLeave(e) {
+  document.getElementById('dropZone').style.borderColor = '#30363d';
+}
+
+function dropFile(e) {
+  e.preventDefault();
+  dragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) processarArquivo(file);
+}
+
+function arquivoSelecionado(input) {
+  if (input.files[0]) processarArquivo(input.files[0]);
+}
+
+function processarArquivo(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    alert('Apenas arquivos PDF são aceitos.'); return;
+  }
+  _arquivoPDF = file;
+  document.getElementById('nomeArquivoSelecionado').textContent = `📄 ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+  document.getElementById('dropZone').style.borderColor = '#0dcaf0';
+  if (!document.getElementById('upTitulo').value) {
+    document.getElementById('upTitulo').value = file.name.replace(/\.pdf$/i, '');
+  }
+}
+
+async function enviarPDF() {
+  if (!_arquivoPDF) { alert('Selecione um arquivo PDF primeiro.'); return; }
+  const titulo = document.getElementById('upTitulo').value.trim();
+  if (!titulo)  { alert('Informe o título do documento.'); return; }
+
+  const btn = document.getElementById('btnEnviarPDF');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processando...';
+
+  const progressArea = document.getElementById('progressArea');
+  const progressBar  = document.getElementById('progressBar');
+  const progressPct  = document.getElementById('progressPct');
+  const progressMsg  = document.getElementById('progressMsg');
+  progressArea.style.display = '';
+  progressBar.style.width    = '30%';
+  progressPct.textContent    = '30%';
+  progressMsg.textContent    = 'Enviando arquivo...';
+
+  const form = new FormData();
+  form.append('arquivo',    _arquivoPDF);
+  form.append('titulo',     titulo);
+  form.append('fabricante', document.getElementById('upFabricante').value);
+  form.append('categoria',  document.getElementById('upCategoria').value);
+  form.append('tags',       document.getElementById('upTags').value);
+  form.append('cliente_id', document.getElementById('upCliente').value);
+
+  progressBar.style.width = '60%';
+  progressPct.textContent = '60%';
+  progressMsg.textContent = 'Extraindo texto do PDF...';
+
+  try {
+    const resp = await fetch(URL_UPLOAD, {
+      method: 'POST',
+      headers: {'X-CSRFToken': CSRF},
+      body: form,
+    });
+    const data = await resp.json();
+
+    progressBar.style.width = '100%';
+    progressPct.textContent = '100%';
+
+    const resultado = document.getElementById('uploadResultado');
+    resultado.style.display = '';
+    if (data.ok) {
+      progressMsg.textContent = 'Concluído!';
+      resultado.style.background = 'rgba(63,185,80,.1)';
+      resultado.style.border     = '1px solid rgba(63,185,80,.3)';
+      resultado.style.color      = '#3fb950';
+      resultado.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>${data.msg}`;
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Concluído!';
+      setTimeout(() => { fecharUploadPDF(); location.reload(); }, 2000);
+    } else {
+      progressMsg.textContent = 'Erro.';
+      resultado.style.background = 'rgba(248,81,73,.1)';
+      resultado.style.border     = '1px solid rgba(248,81,73,.3)';
+      resultado.style.color      = '#f85149';
+      resultado.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i>${data.erro}`;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-upload me-1"></i>Processar e Salvar';
+    }
+  } catch(e) {
+    progressMsg.textContent = 'Erro de conexão.';
+    alert('Erro: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-upload me-1"></i>Processar e Salvar';
+  }
+}
+</script>
+{% endblock content %}

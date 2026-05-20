@@ -1,0 +1,575 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+:root {
+    --cy: #00f5ff; --gr: #00ff88; --or: #ffa500; --rd: #ff5555; --pu: #b060ff;
+    --bg: #02030a; --bg2: #060c18; --bg3: #0a1628;
+    --muted: rgba(0,245,255,0.4);
+}
+.ag-page { background: var(--bg); min-height: 100vh; padding: 1.5rem; font-family: 'Share Tech Mono','Courier New',monospace; }
+.ag-title { font-family: 'Orbitron',sans-serif; font-size: 1.4rem; color: var(--cy); text-shadow: 0 0 16px rgba(0,245,255,0.5); letter-spacing: 3px; text-transform: uppercase; }
+.ag-sub   { color: var(--muted); font-size: .75rem; letter-spacing: 2px; }
+
+/* Cards */
+.ag-card { background: var(--bg2); border: 1px solid rgba(0,245,255,0.12); border-radius: 8px; overflow: hidden; transition: border-color .2s, box-shadow .2s; }
+.ag-card:hover { border-color: rgba(0,245,255,0.35); box-shadow: 0 0 18px rgba(0,245,255,0.08); }
+.ag-card-header { padding: .75rem 1rem; border-bottom: 1px solid rgba(0,245,255,0.08); display: flex; align-items: center; gap: .75rem; }
+.ag-card-body   { padding: 1rem; }
+
+/* Tabela */
+.ag-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.ag-table th { color: var(--muted); font-size: .7rem; letter-spacing: 1.5px; text-transform: uppercase; padding: .6rem .8rem; border-bottom: 1px solid rgba(0,245,255,0.1); }
+.ag-table td { padding: .7rem .8rem; border-bottom: 1px solid rgba(0,245,255,0.05); color: #c8dde8; vertical-align: middle; }
+.ag-table tr:hover td { background: rgba(0,245,255,0.03); }
+
+/* Badges */
+.badge-nivel { padding: .25rem .6rem; border-radius: 12px; font-size: .68rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.badge-leitura     { background: rgba(0,245,255,.15); color: var(--cy); border: 1px solid rgba(0,245,255,.3); }
+.badge-operacional { background: rgba(0,255,136,.15); color: var(--gr); border: 1px solid rgba(0,255,136,.3); }
+.badge-admin       { background: rgba(255,165,0,.15);  color: var(--or); border: 1px solid rgba(255,165,0,.3); }
+.badge-sem         { background: rgba(255,85,85,.12);  color: #ff8888;  border: 1px solid rgba(255,85,85,.25); }
+
+.badge-ativo   { background: rgba(0,255,136,.15); color: var(--gr); border: 1px solid rgba(0,255,136,.3);  padding: .2rem .5rem; border-radius: 10px; font-size: .68rem; }
+.badge-inativo { background: rgba(255,85,85,.12);  color: #ff8888;  border: 1px solid rgba(255,85,85,.25); padding: .2rem .5rem; border-radius: 10px; font-size: .68rem; }
+
+/* Botões */
+.btn-cy  { background: rgba(0,245,255,.12); border: 1px solid rgba(0,245,255,.3); color: var(--cy); padding: .35rem .9rem; border-radius: 6px; font-size: .78rem; cursor: pointer; transition: background .15s, box-shadow .15s; font-family: inherit; }
+.btn-cy:hover { background: rgba(0,245,255,.22); box-shadow: 0 0 10px rgba(0,245,255,.2); }
+.btn-gr  { background: rgba(0,255,136,.12); border: 1px solid rgba(0,255,136,.3); color: var(--gr); padding: .35rem .9rem; border-radius: 6px; font-size: .78rem; cursor: pointer; transition: background .15s; font-family: inherit; }
+.btn-gr:hover { background: rgba(0,255,136,.22); }
+.btn-rd  { background: rgba(255,85,85,.1);  border: 1px solid rgba(255,85,85,.3); color: var(--rd); padding: .3rem .7rem; border-radius: 6px; font-size: .75rem; cursor: pointer; transition: background .15s; font-family: inherit; }
+.btn-rd:hover { background: rgba(255,85,85,.22); }
+.btn-sm-icon { background: none; border: 1px solid rgba(0,245,255,.2); color: var(--cy); padding: .25rem .5rem; border-radius: 5px; cursor: pointer; font-size: .75rem; transition: background .15s; }
+.btn-sm-icon:hover { background: rgba(0,245,255,.1); }
+
+/* Stats strip */
+.stats-strip { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.stat-chip { background: var(--bg2); border: 1px solid rgba(0,245,255,.12); border-radius: 8px; padding: .5rem 1rem; display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+.stat-chip .val { font-size: 1.4rem; font-weight: 700; color: var(--cy); font-family: 'Orbitron',sans-serif; }
+.stat-chip .lbl { font-size: .65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+/* Grupo tipo ícone */
+.tipo-icon { font-size: 1.1rem; }
+
+/* Cliente cell */
+.cliente-vinculado { color: var(--cy); }
+.cliente-nao-vinculado { color: rgba(255,85,85,.8); font-style: italic; font-size: .78rem; }
+
+/* Hosts pill */
+.hosts-pill { background: rgba(0,245,255,.08); border: 1px solid rgba(0,245,255,.2); border-radius: 10px; padding: .15rem .5rem; font-size: .7rem; color: var(--cy); white-space: nowrap; }
+
+/* Modal */
+.ag-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 9000; display: none; align-items: center; justify-content: center; }
+.ag-modal-overlay.open { display: flex; }
+.ag-modal { background: var(--bg2); border: 1px solid rgba(0,245,255,.25); border-radius: 10px; width: 560px; max-width: 96vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 40px rgba(0,245,255,.12); }
+.ag-modal-header { padding: 1rem 1.2rem; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; justify-content: space-between; align-items: center; }
+.ag-modal-title  { font-family: 'Orbitron',sans-serif; font-size: .95rem; color: var(--cy); letter-spacing: 2px; }
+.ag-modal-body   { padding: 1.2rem; }
+.ag-modal-footer { padding: .8rem 1.2rem; border-top: 1px solid rgba(0,245,255,.1); display: flex; justify-content: flex-end; gap: .75rem; }
+.btn-close-modal { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+.btn-close-modal:hover { color: var(--rd); }
+
+/* Form elements */
+.ag-label { display: block; font-size: .72rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: .3rem; }
+.ag-input, .ag-select { width: 100%; background: var(--bg3); border: 1px solid rgba(0,245,255,.2); border-radius: 6px; padding: .5rem .75rem; color: #d0e8f0; font-family: inherit; font-size: .82rem; }
+.ag-input:focus, .ag-select:focus { outline: none; border-color: var(--cy); box-shadow: 0 0 8px rgba(0,245,255,.15); }
+.ag-select option { background: var(--bg3); }
+.ag-textarea { resize: vertical; min-height: 80px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+/* Hosts checklist */
+.hosts-list { max-height: 180px; overflow-y: auto; border: 1px solid rgba(0,245,255,.15); border-radius: 6px; padding: .5rem; background: var(--bg3); }
+.host-item { display: flex; align-items: center; gap: .5rem; padding: .3rem .25rem; border-bottom: 1px solid rgba(0,245,255,.05); font-size: .8rem; color: #c8dde8; cursor: pointer; }
+.host-item:last-child { border-bottom: none; }
+.host-item:hover { background: rgba(0,245,255,.05); border-radius: 4px; }
+.host-item input[type=checkbox] { accent-color: var(--cy); }
+.hosts-all-label { font-size: .75rem; color: var(--muted); padding: .3rem .25rem; }
+
+/* Toast */
+.ag-toast { position: fixed; top: 1.2rem; right: 1.2rem; z-index: 99999; display: flex; flex-direction: column; gap: .5rem; }
+.ag-toast-item { padding: .65rem 1rem; border-radius: 7px; font-size: .82rem; border: 1px solid; animation: toastIn .2s ease; min-width: 240px; }
+.ag-toast-ok   { background: rgba(0,255,136,.12); border-color: rgba(0,255,136,.3); color: var(--gr); }
+.ag-toast-erro { background: rgba(255,85,85,.12);  border-color: rgba(255,85,85,.3);  color: var(--rd); }
+@keyframes toastIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+/* Search */
+.search-wrap { position: relative; }
+.search-wrap input { padding-left: 2rem; }
+.search-icon { position: absolute; left: .6rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .85rem; pointer-events: none; }
+
+/* Cliente search-select */
+.cs-wrap { position: relative; }
+.cs-input { width: 100%; background: var(--bg3); border: 1px solid rgba(0,245,255,.2); border-radius: 6px; padding: .5rem .75rem; color: #d0e8f0; font-family: inherit; font-size: .82rem; cursor: pointer; }
+.cs-input:focus { outline: none; border-color: var(--cy); box-shadow: 0 0 8px rgba(0,245,255,.15); }
+.cs-input::placeholder { color: rgba(0,245,255,.35); }
+.cs-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #0a1628; border: 1px solid rgba(0,245,255,.3); border-radius: 6px; z-index: 9999; max-height: 220px; overflow-y: auto; box-shadow: 0 8px 28px rgba(0,0,0,.6); display: none; }
+.cs-dropdown.open { display: block; }
+.cs-option { padding: .5rem .75rem; font-size: .8rem; color: #c8dde8; cursor: pointer; border-bottom: 1px solid rgba(0,245,255,.05); transition: background .1s; }
+.cs-option:last-child { border-bottom: none; }
+.cs-option:hover, .cs-option.focused { background: rgba(0,245,255,.1); color: var(--cy); }
+.cs-option.is-none { color: rgba(255,85,85,.7); font-style: italic; }
+.cs-option em { color: var(--cy); font-style: normal; font-weight: 600; }
+.cs-empty { padding: .6rem .75rem; font-size: .78rem; color: var(--muted); font-style: italic; }
+
+/* Filtros */
+.filter-bar { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.2rem; }
+</style>
+
+<div class="ag-page">
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div>
+            <div class="ag-title">💬 Grupos & Contatos WhatsApp</div>
+            <div class="ag-sub">Vincule grupos da Evolution API aos clientes da plataforma</div>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+            <a href="{% url 'agent_config' %}" class="btn-cy text-decoration-none">⚙ Configurações</a>
+            <button class="btn-gr" onclick="syncGrupos()">↻ Sincronizar</button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-strip">
+        <div class="stat-chip">
+            <span class="val" id="stat-total">{{ grupos|length }}</span>
+            <span class="lbl">Total</span>
+        </div>
+        <div class="stat-chip">
+            <span class="val" id="stat-vinculados" style="color:var(--gr)">{{ total_vinculados }}</span>
+            <span class="lbl">Vinculados</span>
+        </div>
+        <div class="stat-chip">
+            <span class="val" id="stat-ativos" style="color:var(--or)">{{ total_ativos }}</span>
+            <span class="lbl">Ativos</span>
+        </div>
+        <div class="stat-chip">
+            <span class="val" id="stat-sem" style="color:var(--rd)">{{ total_sem }}</span>
+            <span class="lbl">Sem vínculo</span>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar">
+        <div class="search-wrap" style="flex:1;min-width:200px">
+            <span class="search-icon">🔍</span>
+            <input class="ag-input" type="text" id="busca" placeholder="Buscar grupo ou cliente..." oninput="filtrar()">
+        </div>
+        <select class="ag-select" id="filtroVinculo" onchange="filtrar()" style="width:180px">
+            <option value="">Todos</option>
+            <option value="vinculado">Vinculados</option>
+            <option value="sem">Sem vínculo</option>
+        </select>
+        <select class="ag-select" id="filtroNivel" onchange="filtrar()" style="width:160px">
+            <option value="">Todos os níveis</option>
+            <option value="leitura">Leitura</option>
+            <option value="operacional">Operacional</option>
+            <option value="admin">Admin</option>
+        </select>
+        <select class="ag-select" id="filtroStatus" onchange="filtrar()" style="width:140px">
+            <option value="">Ativo/Inativo</option>
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+        </select>
+    </div>
+
+    <!-- Tabela -->
+    <div class="ag-card">
+        <div class="ag-card-header">
+            <span style="color:var(--cy)">▶</span>
+            <span style="color:#c8dde8;font-size:.85rem;">Grupos sincronizados</span>
+            <span class="ms-auto" style="font-size:.72rem;color:var(--muted)" id="resultado-count"></span>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="ag-table" id="tabela-grupos">
+                <thead>
+                    <tr>
+                        <th style="width:40px"></th>
+                        <th>Nome / JID</th>
+                        <th>Cliente vinculado</th>
+                        <th>Nível</th>
+                        <th>Hosts</th>
+                        <th>Status</th>
+                        <th style="width:100px">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for g in grupos %}
+                <tr data-id="{{ g.id }}"
+                    data-nome="{{ g.nome|lower }}"
+                    data-cliente="{{ g.cliente.nome_empresa|default:''|lower }}"
+                    data-nivel="{{ g.nivel_permissao }}"
+                    data-ativo="{{ g.ativo|yesno:'ativo,inativo' }}"
+                    data-vinculo="{{ g.cliente|yesno:'vinculado,sem' }}">
+                    <td class="tipo-icon text-center">{{ g.tipo|yesno:'👥,👤' }}</td>
+                    <td>
+                        <div style="color:#d0e8f0;font-weight:600;font-size:.82rem">{{ g.nome }}</div>
+                        <div style="color:rgba(0,245,255,.4);font-size:.68rem;font-family:monospace">{{ g.jid }}</div>
+                    </td>
+                    <td>
+                        {% if g.cliente %}
+                            <span class="cliente-vinculado">{{ g.cliente.nome_empresa }}</span>
+                        {% else %}
+                            <span class="cliente-nao-vinculado">— não vinculado —</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if g.cliente %}
+                            <span class="badge-nivel badge-{{ g.nivel_permissao }}">{{ g.get_nivel_permissao_display|truncatechars:12 }}</span>
+                        {% else %}
+                            <span class="badge-nivel badge-sem">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% with total_hosts=g.hosts_disponiveis|length %}
+                            {% if g.hosts_permitidos.exists %}
+                                <span class="hosts-pill">{{ g.hosts_permitidos.count }} restrito(s)</span>
+                            {% elif g.cliente %}
+                                <span class="hosts-pill" style="color:var(--gr);border-color:rgba(0,255,136,.3)">todos ({{ total_hosts }})</span>
+                            {% else %}
+                                <span style="color:var(--muted);font-size:.72rem">—</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% if g.ativo %}
+                            <span class="badge-ativo">● ativo</span>
+                        {% else %}
+                            <span class="badge-inativo">○ inativo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn-sm-icon" title="Editar vínculo" onclick="abrirModal({{ g.id }}, '{{ g.nome|escapejs }}', '{{ g.jid|escapejs }}', {{ g.cliente.id|default:'null' }}, '{{ g.nivel_permissao }}', {{ g.ativo|yesno:'true,false' }})">✎</button>
+                            <button class="btn-sm-icon" title="{{ g.ativo|yesno:'Desativar,Ativar' }}" style="color:{{ g.ativo|yesno:'var(--or),var(--gr)' }}" onclick="toggleAtivo({{ g.id }}, this)">{{ g.ativo|yesno:'⊘,●' }}</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">
+                        Nenhum grupo sincronizado. Clique em <strong>↻ Sincronizar</strong> para buscar grupos da Evolution API.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="ag-toast" id="toastContainer"></div>
+
+<!-- Modal de vínculo -->
+<div class="ag-modal-overlay" id="modalOverlay">
+    <div class="ag-modal">
+        <div class="ag-modal-header">
+            <span class="ag-modal-title">✎ Vincular Grupo ao Cliente</span>
+            <button class="btn-close-modal" onclick="fecharModal()">✕</button>
+        </div>
+        <div class="ag-modal-body">
+            <!-- Info do grupo -->
+            <div style="background:var(--bg3);border-radius:6px;padding:.75rem 1rem;margin-bottom:1rem;border:1px solid rgba(0,245,255,.1)">
+                <div style="font-size:.85rem;color:var(--cy);font-weight:600" id="modal-nome"></div>
+                <div style="font-size:.7rem;color:var(--muted);font-family:monospace" id="modal-jid"></div>
+            </div>
+
+            <input type="hidden" id="modal-grupo-id">
+
+            <!-- Cliente (search-select) -->
+            <div class="mb-3">
+                <label class="ag-label">Cliente vinculado</label>
+                <input type="hidden" id="modal-cliente">
+                <div class="cs-wrap" id="cs-wrap">
+                    <input class="cs-input" type="text" id="cs-input" placeholder="🔍 Digite para buscar o cliente..." autocomplete="off"
+                           oninput="csFilter()" onfocus="csOpen()" onkeydown="csKeydown(event)">
+                    <div class="cs-dropdown" id="cs-dropdown"></div>
+                </div>
+                <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">
+                    O agent só poderá acessar hosts deste cliente quando chamado neste grupo.
+                </div>
+            </div>
+
+            <!-- Nível de permissão -->
+            <div class="mb-3">
+                <label class="ag-label">Nível de permissão</label>
+                <select class="ag-select" id="modal-nivel">
+                    <option value="leitura">🔍 Leitura — apenas show/display/get</option>
+                    <option value="operacional">⚙ Operacional — comandos pré-aprovados</option>
+                    <option value="admin">🔑 Admin — aprovação inline via WhatsApp</option>
+                </select>
+            </div>
+
+            <!-- Hosts permitidos -->
+            <div class="mb-3" id="secao-hosts">
+                <label class="ag-label">Hosts permitidos</label>
+                <div class="hosts-all-label">Marque hosts específicos ou deixe tudo desmarcado para permitir todos.</div>
+                <div class="hosts-list" id="hosts-list">
+                    <div style="color:var(--muted);font-size:.78rem;padding:.5rem">Selecione um cliente para carregar os hosts.</div>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="modal-ativo" style="accent-color:var(--cy);width:16px;height:16px">
+                <label for="modal-ativo" class="ag-label mb-0" style="cursor:pointer">Grupo ativo (agent responde neste grupo)</label>
+            </div>
+        </div>
+        <div class="ag-modal-footer">
+            <button class="btn-rd" onclick="fecharModal()">Cancelar</button>
+            <button class="btn-gr" onclick="salvarGrupo()">💾 Salvar vínculo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+const URL_SYNC          = '{% url "agent_sync_grupos" %}';
+const URL_HOSTS_CLIENTE = '{% url "agent_grupo_hosts_por_cliente" %}';
+
+// ── Cliente search-select ─────────────────────────────────────────────────────
+const CS_CLIENTES = [
+    {id: '', nome: '— Sem vínculo (desativar agent neste grupo) —', busca: '', none: true},
+    {% for c in clientes %}
+    {id: '{{ c.id }}', nome: '{{ c.nome_empresa|escapejs }}', cnpj: '{{ c.cnpj|escapejs }}', busca: '{{ c.nome_empresa|lower|escapejs }} {{ c.cnpj|escapejs }}'},
+    {% endfor %}
+];
+let csFocusIdx = -1;
+
+function csGetInput()    { return document.getElementById('cs-input'); }
+function csGetHidden()   { return document.getElementById('modal-cliente'); }
+function csGetDropdown() { return document.getElementById('cs-dropdown'); }
+
+function csOpen() {
+    csFilter();
+    csGetDropdown().classList.add('open');
+}
+
+function csClose() {
+    csGetDropdown().classList.remove('open');
+    csFocusIdx = -1;
+}
+
+function csFilter() {
+    const q    = csGetInput().value.toLowerCase().trim();
+    const drop = csGetDropdown();
+    const opts = CS_CLIENTES.filter(c => !q || c.none || c.busca.includes(q));
+
+    drop.innerHTML = opts.length ? opts.map((c, i) => {
+        const label = c.none ? c.nome
+            : highlight(`${c.nome}`, q) + (c.cnpj ? `<span style="color:var(--muted);font-size:.72rem;margin-left:.4rem">${c.cnpj}</span>` : '');
+        return `<div class="cs-option${c.none ? ' is-none' : ''}" data-id="${c.id}" data-nome="${c.none ? '' : c.nome}" data-idx="${i}"
+                     onmousedown="csSelect('${c.id}', '${c.none ? '' : c.nome.replace(/'/g,"\\'")}', ${c.none})">${label}</div>`;
+    }).join('') : `<div class="cs-empty">Nenhum cliente encontrado</div>`;
+
+    drop.classList.add('open');
+    csFocusIdx = -1;
+}
+
+function highlight(text, q) {
+    if (!q) return text;
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    return text.replace(re, '<em>$1</em>');
+}
+
+function csSelect(id, nome, isNone) {
+    csGetHidden().value   = id;
+    csGetInput().value    = isNone ? '' : nome;
+    csGetInput().placeholder = isNone ? '🔍 Digite para buscar o cliente...' : '';
+    csClose();
+    carregarHosts();
+}
+
+function csKeydown(e) {
+    const drop  = csGetDropdown();
+    const items = drop.querySelectorAll('.cs-option');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        csFocusIdx = Math.min(csFocusIdx + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        csFocusIdx = Math.max(csFocusIdx - 1, 0);
+    } else if (e.key === 'Enter' && csFocusIdx >= 0) {
+        e.preventDefault();
+        items[csFocusIdx].dispatchEvent(new MouseEvent('mousedown'));
+        return;
+    } else if (e.key === 'Escape') {
+        csClose(); return;
+    } else { return; }
+    items.forEach((el, i) => el.classList.toggle('focused', i === csFocusIdx));
+    items[csFocusIdx]?.scrollIntoView({block: 'nearest'});
+}
+
+document.addEventListener('click', e => {
+    if (!document.getElementById('cs-wrap').contains(e.target)) csClose();
+});
+
+// ── Filtro da tabela ──────────────────────────────────────────────────────────
+function filtrar() {
+    const busca   = document.getElementById('busca').value.toLowerCase();
+    const vinculo = document.getElementById('filtroVinculo').value;
+    const nivel   = document.getElementById('filtroNivel').value;
+    const status  = document.getElementById('filtroStatus').value;
+    const rows    = document.querySelectorAll('#tabela-grupos tbody tr[data-id]');
+    let vis = 0;
+    rows.forEach(r => {
+        const nome    = r.dataset.nome    || '';
+        const cliente = r.dataset.cliente || '';
+        const ok = (!busca   || nome.includes(busca) || cliente.includes(busca))
+                && (!vinculo || r.dataset.vinculo === vinculo)
+                && (!nivel   || r.dataset.nivel   === nivel)
+                && (!status  || r.dataset.ativo   === status);
+        r.style.display = ok ? '' : 'none';
+        if (ok) vis++;
+    });
+    document.getElementById('resultado-count').textContent = `${vis} grupo(s) visível(is)`;
+}
+filtrar();
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
+async function syncGrupos() {
+    mostrarToast('Sincronizando grupos...', 'ok');
+    try {
+        const r = await fetch(URL_SYNC, {
+            method: 'POST', headers: {'X-CSRFToken': CSRF}
+        });
+        const d = await r.json();
+        if (d.ok) {
+            mostrarToast(`✓ ${d.msg}`, 'ok');
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            mostrarToast(`✕ ${d.erro}`, 'erro');
+        }
+    } catch(e) { mostrarToast('Erro de conexão: ' + e.message, 'erro'); }
+}
+
+// ── Toggle ativo ─────────────────────────────────────────────────────────────
+async function toggleAtivo(id, btn) {
+    try {
+        const r = await fetch(`{% url "agent_grupo_toggle" 0 %}`.replace('/0/', `/${id}/`), {
+            method: 'POST', headers: {'X-CSRFToken': CSRF}
+        });
+        const d = await r.json();
+        if (d.ok) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            row.dataset.ativo = d.ativo ? 'ativo' : 'inativo';
+            const badge = row.querySelector('.badge-ativo, .badge-inativo');
+            if (d.ativo) {
+                badge.className = 'badge-ativo'; badge.textContent = '● ativo';
+                btn.textContent = '⊘'; btn.title = 'Desativar'; btn.style.color = 'var(--or)';
+            } else {
+                badge.className = 'badge-inativo'; badge.textContent = '○ inativo';
+                btn.textContent = '●'; btn.title = 'Ativar'; btn.style.color = 'var(--gr)';
+            }
+            mostrarToast(d.ativo ? '● Grupo ativado' : '○ Grupo desativado', 'ok');
+            filtrar();
+        }
+    } catch(e) { mostrarToast('Erro: ' + e.message, 'erro'); }
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+function abrirModal(id, nome, jid, clienteId, nivel, ativo) {
+    document.getElementById('modal-grupo-id').value = id;
+    document.getElementById('modal-nome').textContent = nome;
+    document.getElementById('modal-jid').textContent  = jid;
+    document.getElementById('modal-nivel').value = nivel;
+    document.getElementById('modal-ativo').checked = ativo;
+
+    // Popula o search-select de cliente
+    const clienteObj = clienteId ? CS_CLIENTES.find(c => c.id == clienteId) : null;
+    csGetHidden().value = clienteId || '';
+    csGetInput().value  = clienteObj ? clienteObj.nome : '';
+    csGetInput().placeholder = clienteObj ? '' : '🔍 Digite para buscar o cliente...';
+    csClose();
+
+    document.getElementById('modalOverlay').classList.add('open');
+    carregarHosts(id);
+}
+function fecharModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) fecharModal();
+});
+
+async function carregarHosts(grupoId) {
+    const clienteId = csGetHidden().value;
+    const container = document.getElementById('hosts-list');
+
+    if (!clienteId) {
+        container.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:.5rem">Selecione um cliente para carregar os hosts.</div>';
+        return;
+    }
+
+    container.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:.5rem">Carregando...</div>';
+
+    try {
+        // Busca hosts do cliente + quais já estão marcados no grupo
+        const gid = grupoId || document.getElementById('modal-grupo-id').value;
+        let permitidos = [];
+        if (gid) {
+            const urlHosts = `{% url "agent_grupo_hosts" 0 %}`.replace('/0/', `/${gid}/`);
+            const rp = await fetch(urlHosts);
+            const dp = await rp.json();
+            permitidos = dp.permitidos || [];
+        }
+
+        const r = await fetch(`${URL_HOSTS_CLIENTE}?cliente_id=${clienteId}`);
+        const d = await r.json();
+
+        if (!d.hosts || d.hosts.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:.5rem">Nenhum host cadastrado para este cliente.</div>';
+            return;
+        }
+
+        container.innerHTML = d.hosts.map(h => `
+            <label class="host-item">
+                <input type="checkbox" value="${h.id}" ${permitidos.includes(h.id) ? 'checked' : ''}>
+                <span style="color:var(--cy)">${h.host}</span>
+                <span style="color:var(--muted);font-size:.72rem">:${h.porta}</span>
+                <span style="color:#888;font-size:.7rem;margin-left:auto">${h.tipo}</span>
+            </label>
+        `).join('');
+    } catch(e) {
+        container.innerHTML = `<div style="color:var(--rd);font-size:.78rem;padding:.5rem">Erro: ${e.message}</div>`;
+    }
+}
+
+async function salvarGrupo() {
+    const id        = document.getElementById('modal-grupo-id').value;
+    const clienteId = csGetHidden().value;
+    const nivel     = document.getElementById('modal-nivel').value;
+    const ativo     = document.getElementById('modal-ativo').checked;
+    const hostsIds  = Array.from(document.querySelectorAll('#hosts-list input[type=checkbox]:checked')).map(c => parseInt(c.value));
+
+    try {
+        const r = await fetch(`{% url "agent_grupo_salvar" 0 %}`.replace('/0/', `/${id}/`), {
+            method: 'POST',
+            headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+            body: JSON.stringify({cliente_id: clienteId || null, nivel_permissao: nivel, ativo, hosts_ids: hostsIds})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            mostrarToast(`✓ ${d.msg}`, 'ok');
+            fecharModal();
+            setTimeout(() => location.reload(), 800);
+        } else {
+            mostrarToast(`✕ ${d.erro}`, 'erro');
+        }
+    } catch(e) { mostrarToast('Erro: ' + e.message, 'erro'); }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function mostrarToast(msg, tipo = 'ok') {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = `ag-toast-item ag-toast-${tipo}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+</script>
+{% endblock %}

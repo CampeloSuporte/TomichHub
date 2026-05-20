@@ -548,6 +548,112 @@
             .terminal-tabs { min-height: 28px; padding: 3px 6px; }
             .terminal-tab { padding: 3px 8px; }
         }
+
+        /* ─── AGENT NOC PANEL ─── */
+        .agent-sidebar {
+            display: flex; flex-direction: column;
+            width: 0; min-width: 0; max-width: 0;
+            background: #030510; border-left: 1px solid rgba(0,245,255,.12);
+            transition: width .25s, min-width .25s, max-width .25s;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .agent-sidebar.aberto {
+            width: 360px; min-width: 280px; max-width: 360px;
+        }
+        .agent-sidebar-header {
+            padding: 8px 10px; border-bottom: 1px solid rgba(0,245,255,.12);
+            display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+            background: rgba(0,245,255,.03);
+        }
+        .agent-sidebar-title {
+            font-size: 11px; font-weight: 700; color: #00f5ff;
+            text-transform: uppercase; letter-spacing: 1px; flex: 1;
+        }
+        .agent-msgs {
+            flex: 1; overflow-y: auto; padding: 8px; display: flex;
+            flex-direction: column; gap: 8px;
+            scrollbar-width: thin; scrollbar-color: rgba(0,245,255,.15) transparent;
+        }
+        .agent-msgs::-webkit-scrollbar { width: 3px; }
+        .agent-msgs::-webkit-scrollbar-thumb { background: rgba(0,245,255,.15); border-radius: 2px; }
+        .agent-msg {
+            font-size: 11px; line-height: 1.5; padding: 7px 9px;
+            border-radius: 6px; max-width: 100%; word-break: break-word;
+        }
+        .agent-msg.user {
+            background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.15);
+            color: #c0f0d0; align-self: flex-end; text-align: right;
+        }
+        .agent-msg.agent {
+            background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.12);
+            color: #d0e8f0; align-self: flex-start;
+            white-space: pre-wrap;
+        }
+        .agent-msg.agent code { font-family: 'Share Tech Mono', monospace; font-size: 10px;
+            background: rgba(0,0,0,.4); padding: 1px 4px; border-radius: 3px; }
+        .agent-msg.system {
+            background: rgba(255,165,0,.04); border: 1px solid rgba(255,165,0,.12);
+            color: rgba(255,165,0,.7); font-size: 10px; align-self: center;
+            text-align: center; font-style: italic;
+        }
+        .agent-msg.thinking {
+            background: transparent; border: none; color: rgba(0,245,255,.3);
+            font-size: 10px; align-self: center; animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:.3} 50%{opacity:.8} }
+        .agent-tool-call {
+            background: rgba(255,165,0,.05); border: 1px solid rgba(255,165,0,.2);
+            border-radius: 6px; padding: 7px 9px; font-size: 11px;
+        }
+        .agent-tool-call-header { color: #ffa500; font-size: 10px; margin-bottom: 4px; }
+        .agent-tool-call-cmd {
+            font-family: 'Share Tech Mono', monospace; font-size: 11px;
+            background: rgba(0,0,0,.4); padding: 4px 7px; border-radius: 3px;
+            color: #00ff88; word-break: break-all;
+        }
+        .agent-tool-call-btns { display: flex; gap: 6px; margin-top: 7px; }
+        .btn-agent-approve {
+            flex: 1; padding: 4px 8px; border-radius: 3px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+            border: 1px solid #00ff88; background: rgba(0,255,136,.08); color: #00ff88;
+            transition: .15s; text-transform: uppercase;
+        }
+        .btn-agent-approve:hover { background: rgba(0,255,136,.2); }
+        .btn-agent-reject {
+            flex: 1; padding: 4px 8px; border-radius: 3px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+            border: 1px solid #ff4444; background: rgba(255,68,68,.06); color: #ff4444;
+            transition: .15s; text-transform: uppercase;
+        }
+        .btn-agent-reject:hover { background: rgba(255,68,68,.15); }
+        .agent-input-area {
+            border-top: 1px solid rgba(0,245,255,.12); padding: 8px; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .agent-input-row { display: flex; gap: 5px; }
+        .agent-input {
+            flex: 1; background: #060c18; border: 1px solid rgba(0,245,255,.15);
+            color: #d0e8f0; font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; padding: 6px 8px; border-radius: 3px; outline: none; resize: none;
+        }
+        .agent-input:focus { border-color: #00f5ff; }
+        .btn-agent-send {
+            background: rgba(0,245,255,.08); border: 1px solid #00f5ff; color: #00f5ff;
+            padding: 6px 10px; border-radius: 3px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700;
+            transition: .15s; white-space: nowrap;
+        }
+        .btn-agent-send:hover { background: rgba(0,245,255,.2); }
+        .btn-agent-paste {
+            background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.2); color: rgba(0,255,136,.6);
+            padding: 4px 8px; border-radius: 3px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 10px;
+            transition: .15s;
+        }
+        .btn-agent-paste:hover { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,.1); }
+        .agent-tokens { font-size: 9px; color: rgba(0,245,255,.2); text-align: right; }
+        .btn-terminal.btn-agent { border-color: #aa00ff; color: #cc66ff; }
+        .btn-terminal.btn-agent:hover, .btn-terminal.btn-agent.ativo { background: rgba(170,0,255,.1); border-color: #cc66ff; color: #cc66ff; }
     </style>
 </head>
 <body>
@@ -582,6 +688,31 @@
             <!-- Aba para reabrir sidebar quando colapsada -->
             <button class="host-sidebar-tab" id="hostSidebarTab" onclick="toggleHostSidebar()">▶ Hosts</button>
 
+            <!-- Agent NOC Sidebar (direita) -->
+            <div class="agent-sidebar" id="agentSidebar">
+                <div class="agent-sidebar-header">
+                    <span class="agent-sidebar-title">🤖 Agent NOC</span>
+                    <span class="agent-tokens" id="agentTokens"></span>
+                    <button class="btn-sidebar-toggle" onclick="toggleAgentPanel()" title="Fechar">✕</button>
+                </div>
+                <div class="agent-msgs" id="agentMsgs">
+                    <div class="agent-msg system">Conectando ao Agent NOC...</div>
+                </div>
+                <div class="agent-input-area">
+                    <div class="agent-input-row">
+                        <textarea id="agentInput" class="agent-input" rows="2"
+                                  placeholder="Mensagem para o agent... (Enter envia, Shift+Enter quebra linha)"></textarea>
+                        <button class="btn-agent-send" onclick="agentEnviar()">Enviar</button>
+                    </div>
+                    <div style="display:flex;gap:5px;align-items:center">
+                        <button class="btn-agent-paste" onclick="agentColarOutput()" title="Colar output visível do terminal ativo para o agent analisar">
+                            📋 Colar output do terminal
+                        </button>
+                        <div class="agent-tokens" id="agentStatus" style="flex:1;text-align:left"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Área principal do terminal -->
             <div class="terminal-main">
                 <div class="terminal-tabs" id="terminalTabs"></div>
@@ -603,6 +734,9 @@
                     {% endif %}
                     {% if request.user.is_staff %}
                     <button class="btn-terminal btn-scripts" id="btnScripts" onclick="abrirPainelScripts()" title="Executar script no equipamento ativo">⚡ Scripts</button>
+                    {% endif %}
+                    {% if request.user.is_staff %}
+                    <button class="btn-terminal btn-agent" id="btnAgent" onclick="toggleAgentPanel()" title="Agent NOC — assistente de IA">🤖 Agent</button>
                     {% endif %}
                     <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
                     <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
@@ -642,6 +776,9 @@
         <div class="mobile-menu-separator"></div>
         <div class="mobile-menu-item item-wiki" onclick="toggleWikiSidebar();fecharMenuMobile()">
             <span>📖</span><span>Wiki</span>
+        </div>
+        <div class="mobile-menu-item" onclick="toggleAgentPanel();fecharMenuMobile()" style="color:#cc66ff">
+            <span>🤖</span><span>Agent NOC</span>
         </div>
         {% endif %}
         <div class="mobile-menu-separator"></div>
@@ -2172,6 +2309,299 @@
             }
         }
 
+    })();
+    </script>
+
+    <!-- ─── AGENT NOC ─────────────────────────────────────────── -->
+    <script>
+    (function() {
+        let _agentWs      = null;
+        let _agentSessaoId = null;
+        let _agentAberto  = false;
+        let _pendingApprovalKey = null;
+
+        // ── Abrir/fechar painel ──────────────────────────────────
+
+        window.toggleAgentPanel = function() {
+            const sidebar = document.getElementById('agentSidebar');
+            const btn     = document.getElementById('btnAgent');
+            _agentAberto  = !_agentAberto;
+            sidebar.classList.toggle('aberto', _agentAberto);
+            if (btn) btn.classList.toggle('ativo', _agentAberto);
+
+            if (_agentAberto && !_agentWs) {
+                _agentConectar();
+            }
+            // Forçar resize do terminal ativo
+            setTimeout(() => {
+                const mgr = window.terminalManager;
+                if (mgr && mgr.terminals) {
+                    mgr.terminals.forEach(t => { if (t.fitAddon) try { t.fitAddon.fit(); } catch(_){} });
+                }
+            }, 300);
+        };
+
+        // ── Conectar WebSocket ───────────────────────────────────
+
+        function _agentConectar() {
+            // Pegar acesso_id do terminal ativo e cliente_id da URL
+            const acessoId  = _getAcessoAtivoId() || '';
+            const clienteId = new URLSearchParams(location.search).get('cliente') || '';
+            const proto     = location.protocol === 'https:' ? 'wss' : 'ws';
+            const params    = clienteId ? `?cliente=${clienteId}` : '';
+            const url       = acessoId
+                ? `${proto}://${location.host}/ws/agent/${acessoId}/${params}`
+                : `${proto}://${location.host}/ws/agent/${params}`;
+
+            _agentSetStatus('Conectando...', '#ffa500');
+            _agentWs = new WebSocket(url);
+
+            _agentWs.onopen = () => {
+                _agentSetStatus('Conectado', '#00ff88');
+            };
+
+            _agentWs.onmessage = (e) => {
+                try { _agentHandleMsg(JSON.parse(e.data)); } catch(_) {}
+            };
+
+            _agentWs.onerror = () => {
+                _agentSetStatus('Erro de conexão', '#ff4444');
+            };
+
+            _agentWs.onclose = () => {
+                _agentSetStatus('Desconectado', '#ff5555');
+                _agentWs = null;
+                setTimeout(() => {
+                    if (_agentAberto) _agentConectar();
+                }, 3000);
+            };
+        }
+
+        // ── Handler de mensagens recebidas ───────────────────────
+
+        function _agentGetTerminalBuffer(linhas) {
+            const mgr = window.terminalManager;
+            if (!mgr || !mgr.terminals) return '';
+            // Preferir o terminal ativo; caso contrário, pegar o primeiro disponível
+            const ids = mgr.activeTerminal
+                ? [mgr.activeTerminal, ...Array.from(mgr.terminals.keys()).filter(k => k !== mgr.activeTerminal)]
+                : Array.from(mgr.terminals.keys());
+            for (const id of ids) {
+                const tObj = mgr.terminals.get(id);
+                if (!tObj || !tObj.terminal) continue;
+                try {
+                    const buf = tObj.terminal.buffer.active;
+                    const total = buf.length;
+                    const inicio = Math.max(0, total - (linhas || 200));
+                    const out = [];
+                    for (let i = inicio; i < total; i++) {
+                        const line = buf.getLine(i);
+                        if (line) out.push(line.translateToString(true));
+                    }
+                    return out.join('\n').trimEnd();
+                } catch(_) {}
+            }
+            return '';
+        }
+
+        function _agentHandleMsg(msg) {
+            switch(msg.type) {
+                case 'sessao_info':
+                    _agentSessaoId = msg.sessao_id;
+                    _agentLimpar();
+                    const retomada = msg.retomada ? ' (sessão retomada)' : '';
+                    _agentAddMsg('system', `🤖 Agent NOC | ${msg.cliente}${retomada}${msg.host ? ' | '+msg.host : ''}`);
+                    if (msg.historico_msgs > 0) {
+                        _agentAddMsg('system', `📜 ${msg.historico_msgs} mensagens anteriores nesta sessão`);
+                    }
+                    break;
+
+                case 'thinking':
+                    _agentSetThinking(msg.content || 'Processando...');
+                    break;
+
+                case 'agent_message':
+                    _agentRemThinking();
+                    _agentAddMsg('agent', msg.content || '');
+                    break;
+
+                case 'awaiting_approval':
+                    _agentRemThinking();
+                    _pendingApprovalKey = msg.tool_call_key;
+                    _agentAddApproval(msg.tool_call_key, msg.comando, msg.acesso_id);
+                    break;
+
+                case 'tool_call':
+                    if (!msg.requires_approval) {
+                        _agentAddMsg('system', `⚡ Executando: \`${msg.command}\` em ${msg.acesso_desc || msg.acesso_id}`);
+                    }
+                    break;
+
+                case 'tool_result':
+                    if (!msg.approved) {
+                        _agentAddMsg('system', `⛔ Comando rejeitado: ${msg.command || ''}`);
+                    } else {
+                        _agentAddMsg('system', `✅ Comando executado (output capturado)`);
+                    }
+                    break;
+
+                case 'tokens':
+                    const tok = document.getElementById('agentTokens');
+                    if (tok) tok.textContent = `${msg.used} tokens`;
+                    break;
+
+                case 'request_terminal_output':
+                    // Agent solicitou o buffer do xterm — responde imediatamente
+                    const tBuf = _agentGetTerminalBuffer(msg.linhas || 200);
+                    _agentAddMsg('system', `📟 Agent lendo terminal (${tBuf.split('\n').length} linhas)...`);
+                    if (_agentWs && _agentWs.readyState === WebSocket.OPEN) {
+                        _agentWs.send(JSON.stringify({type: 'terminal_output_response', content: tBuf}));
+                    }
+                    break;
+
+                case 'error':
+                    _agentRemThinking();
+                    _agentAddMsg('system', `❌ ${msg.message}`);
+                    break;
+            }
+            _agentScrollBottom();
+        }
+
+        // ── Enviar mensagem ──────────────────────────────────────
+
+        window.agentEnviar = function() {
+            if (!_agentWs || _agentWs.readyState !== WebSocket.OPEN) {
+                _agentAddMsg('system', '⚠️ Não conectado. Aguarde...');
+                if (_agentAberto) _agentConectar();
+                return;
+            }
+            const input = document.getElementById('agentInput');
+            const txt   = (input.value || '').trim();
+            if (!txt) return;
+            _agentAddMsg('user', txt);
+            _agentWs.send(JSON.stringify({type: 'message', content: txt}));
+            input.value = '';
+        };
+
+        // ── Colar output do terminal ─────────────────────────────
+
+        window.agentColarOutput = function() {
+            if (!_agentWs || _agentWs.readyState !== WebSocket.OPEN) {
+                _agentAddMsg('system', '⚠️ Agent não conectado.');
+                return;
+            }
+            const output = _agentGetTerminalBuffer(300);
+            if (!output) {
+                _agentAddMsg('system', '⚠️ Nenhum output capturado do terminal ativo.');
+                return;
+            }
+            _agentAddMsg('system', `📋 Output do terminal enviado ao agent (${output.split('\n').length} linhas)`);
+            _agentWs.send(JSON.stringify({type: 'context', terminal_output: output}));
+        };
+
+        // ── Aprovação inline ─────────────────────────────────────
+
+        function _agentAddApproval(key, comando, acessoId) {
+            const msgs  = document.getElementById('agentMsgs');
+            const el    = document.createElement('div');
+            el.className = 'agent-tool-call';
+            el.id = `approval-${key}`;
+            el.innerHTML = `
+                <div class="agent-tool-call-header">⚠️ Aprovação necessária — Host ID ${acessoId}</div>
+                <div class="agent-tool-call-cmd">${_escHtml(comando)}</div>
+                <div class="agent-tool-call-btns">
+                    <button class="btn-agent-approve" onclick="agentAprovar('${key}', this)">✓ Aprovar</button>
+                    <button class="btn-agent-reject"  onclick="agentRejeitar('${key}', this)">✕ Rejeitar</button>
+                </div>`;
+            msgs.appendChild(el);
+            _agentScrollBottom();
+        }
+
+        window.agentAprovar = function(key, btn) {
+            if (!_agentWs) return;
+            _agentWs.send(JSON.stringify({type: 'approve', tool_call_key: key}));
+            const el = document.getElementById(`approval-${key}`);
+            if (el) el.innerHTML = '<span style="color:#00ff88;font-size:11px">✓ Aprovado</span>';
+            _agentAddMsg('thinking', 'Executando comando...');
+        };
+
+        window.agentRejeitar = function(key, btn) {
+            if (!_agentWs) return;
+            _agentWs.send(JSON.stringify({type: 'reject', tool_call_key: key}));
+            const el = document.getElementById(`approval-${key}`);
+            if (el) el.innerHTML = '<span style="color:#ff4444;font-size:11px">✕ Rejeitado</span>';
+        };
+
+        // ── DOM helpers ──────────────────────────────────────────
+
+        function _agentAddMsg(tipo, conteudo) {
+            const msgs = document.getElementById('agentMsgs');
+            const el   = document.createElement('div');
+            el.className = `agent-msg ${tipo}`;
+            el.textContent = conteudo;
+            msgs.appendChild(el);
+            _agentScrollBottom();
+        }
+
+        let _thinkingEl = null;
+        function _agentSetThinking(texto) {
+            if (!_thinkingEl) {
+                _thinkingEl = document.createElement('div');
+                _thinkingEl.className = 'agent-msg thinking';
+                document.getElementById('agentMsgs').appendChild(_thinkingEl);
+            }
+            _thinkingEl.textContent = texto;
+            _agentScrollBottom();
+        }
+        function _agentRemThinking() {
+            if (_thinkingEl) { _thinkingEl.remove(); _thinkingEl = null; }
+        }
+
+        function _agentScrollBottom() {
+            const msgs = document.getElementById('agentMsgs');
+            if (msgs) msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        function _agentSetStatus(txt, cor) {
+            const el = document.getElementById('agentStatus');
+            if (el) { el.textContent = txt; el.style.color = cor; }
+        }
+
+        function _agentLimpar() {
+            const msgs = document.getElementById('agentMsgs');
+            if (msgs) msgs.innerHTML = '';
+            _thinkingEl = null;
+        }
+
+        function _escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function _getAcessoAtivoId() {
+            // Pegar o acesso_id do terminal ativo via terminalManager
+            const mgr = window.terminalManager;
+            if (mgr && mgr.activeTerminal) {
+                const tObj = mgr.terminals && mgr.terminals.get(mgr.activeTerminal);
+                if (tObj && tObj.acesso && tObj.acesso.id) return String(tObj.acesso.id);
+            }
+            // Fallback: URL
+            const m = location.search.match(/[?&]acesso=(\d+)/);
+            return m ? m[1] : '';
+        }
+
+        // ── Enter para enviar ────────────────────────────────────
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('agentInput');
+            if (input) {
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        window.agentEnviar();
+                    }
+                });
+            }
+        });
     })();
     </script>
 </body>

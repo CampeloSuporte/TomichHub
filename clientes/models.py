@@ -1019,3 +1019,342 @@ class ScriptExecucaoLog(models.Model):
 
     def __str__(self):
         return f"Execução #{self.id} — {self.script} [{self.status}]"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENT NOC TOMICH
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AgentConfig(models.Model):
+    """Singleton — configuração global do Agent NOC."""
+
+    PROVEDORES = [
+        ('claude',  'Claude (Anthropic)'),
+        ('openai',  'ChatGPT (OpenAI)'),
+    ]
+
+    # Provedor ativo
+    provedor_ia         = models.CharField(max_length=20, choices=PROVEDORES, default='claude', verbose_name='Provedor de IA')
+
+    # Claude API
+    claude_api_key      = models.CharField(max_length=300, blank=True, verbose_name='API Key Claude')
+    claude_model        = models.CharField(max_length=100, default='claude-sonnet-4-6', verbose_name='Modelo Claude')
+    claude_max_tokens   = models.IntegerField(default=4096, verbose_name='Max Tokens')
+    claude_temperature  = models.FloatField(default=0.2, verbose_name='Temperature')
+
+    # OpenAI API
+    openai_api_key      = models.CharField(max_length=300, blank=True, verbose_name='API Key OpenAI')
+    openai_model        = models.CharField(max_length=100, default='gpt-4o', verbose_name='Modelo OpenAI')
+    openai_max_tokens   = models.IntegerField(default=4096, verbose_name='Max Tokens OpenAI')
+    openai_temperature  = models.FloatField(default=0.2, verbose_name='Temperature OpenAI')
+
+    # Comportamento
+    aprovacao_padrao    = models.BooleanField(default=True, verbose_name='Exigir aprovação para comandos de escrita')
+    timeout_sessao_wa   = models.IntegerField(default=120, verbose_name='Timeout sessão WhatsApp (min)')
+    prefixo_wa          = models.CharField(max_length=20, default='@noc', verbose_name='Prefixo de invocação WA')
+    max_comandos_sessao = models.IntegerField(default=50, verbose_name='Máx. comandos por sessão')
+
+    # Escalonamento
+    wa_grupo_noc        = models.CharField(max_length=150, blank=True, verbose_name='JID grupo NOC interno (escalonamento)')
+    wa_noc_numero       = models.CharField(max_length=30, blank=True, verbose_name='Número plantão NOC (escalonamento)')
+
+    ativo               = models.BooleanField(default=True)
+    atualizado_em       = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração Agent NOC'
+
+    def __str__(self):
+        return 'Configuração Agent NOC'
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class EvolutionAPIConfig(models.Model):
+    """Singleton — conexão com a Evolution API (WhatsApp)."""
+
+    url             = models.CharField(max_length=300, blank=True, verbose_name='URL da API')
+    api_key         = models.CharField(max_length=300, blank=True, verbose_name='API Key')
+    instance_name   = models.CharField(max_length=100, blank=True, verbose_name='Nome da Instância')
+    webhook_secret  = models.CharField(max_length=300, blank=True, verbose_name='Webhook Secret')
+
+    # Status (atualizado na sincronização)
+    conectado       = models.BooleanField(default=False, verbose_name='Conectado')
+    numero_wa       = models.CharField(max_length=30, blank=True, verbose_name='Número WhatsApp conectado')
+    ultima_sync     = models.DateTimeField(null=True, blank=True, verbose_name='Última sincronização')
+
+    atualizado_em   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração Evolution API'
+
+    def __str__(self):
+        return f'Evolution API — {self.instance_name or "não configurado"}'
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class WhatsAppGrupo(models.Model):
+    """Grupo ou contato do WhatsApp vinculado a um cliente da plataforma."""
+
+    NIVEIS = [
+        ('leitura',     'Leitura — apenas show/display/get'),
+        ('operacional', 'Operacional — comandos pré-aprovados'),
+        ('admin',       'Admin — aprovação inline via WA'),
+    ]
+    TIPOS = [
+        ('grupo',   'Grupo'),
+        ('contato', 'Contato individual'),
+    ]
+
+    # Identificação no WhatsApp
+    jid             = models.CharField(max_length=150, unique=True, verbose_name='JID (ID WhatsApp)')
+    nome            = models.CharField(max_length=300, verbose_name='Nome')
+    tipo            = models.CharField(max_length=10, choices=TIPOS, default='grupo', verbose_name='Tipo')
+    foto_url        = models.URLField(blank=True, verbose_name='URL da foto')
+
+    # Vínculo com o cliente
+    cliente         = models.ForeignKey(
+        Cliente, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='wa_grupos', verbose_name='Cliente vinculado',
+        help_text='Grupo só poderá acessar hosts deste cliente'
+    )
+    nivel_permissao = models.CharField(max_length=20, choices=NIVEIS, default='leitura', verbose_name='Nível de permissão')
+
+    # Restrição adicional de hosts (vazio = todos os hosts do cliente)
+    hosts_permitidos = models.ManyToManyField(
+        'Acesso', blank=True,
+        related_name='wa_grupos_permitidos',
+        verbose_name='Hosts permitidos',
+        help_text='Vazio = todos os hosts do cliente vinculado'
+    )
+
+    # Estado
+    ativo           = models.BooleanField(default=True, verbose_name='Ativo')
+    sincronizado_em = models.DateTimeField(auto_now=True, verbose_name='Última sincronização')
+    criado_em       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Grupo/Contato WhatsApp'
+        verbose_name_plural = 'Grupos/Contatos WhatsApp'
+        ordering = ['nome']
+
+    def __str__(self):
+        cliente_nome = self.cliente.nome_empresa if self.cliente else 'Não vinculado'
+        return f'{self.nome} → {cliente_nome}'
+
+    def pode_acessar(self, acesso):
+        """
+        Verifica se este grupo tem permissão para solicitar acesso a um Acesso específico.
+        Garante isolamento: grupo só acessa hosts do cliente vinculado.
+        """
+        if not self.ativo:
+            return False
+        if not self.cliente:
+            return False
+        if acesso.cliente != self.cliente:
+            return False
+        hosts_restritos = self.hosts_permitidos.all()
+        if hosts_restritos.exists():
+            return hosts_restritos.filter(id=acesso.id).exists()
+        return True
+
+    def hosts_disponiveis(self):
+        """Retorna os acessos que este grupo pode usar."""
+        if not self.cliente:
+            return Acesso.objects.none()
+        hosts_restritos = self.hosts_permitidos.all()
+        if hosts_restritos.exists():
+            return hosts_restritos.filter(cliente=self.cliente)
+        return Acesso.objects.filter(cliente=self.cliente)
+
+
+class AgentKnowledge(models.Model):
+    """Base de conhecimento editável pelos operadores — injetada no contexto do agent."""
+
+    CATEGORIAS = [
+        ('comando',         'Referência de Comandos'),
+        ('procedure',       'Procedimento Operacional'),
+        ('troubleshooting', 'Troubleshooting'),
+        ('topologia',       'Topologia / Infraestrutura'),
+        ('equipamento',     'Equipamento / Modelo'),
+        ('alarme',          'Interpretação de Alarme'),
+        ('geral',           'Geral'),
+    ]
+    FABRICANTES = [
+        ('zte',      'ZTE'),
+        ('huawei',   'Huawei'),
+        ('cisco',    'Cisco'),
+        ('mikrotik', 'MikroTik'),
+        ('datacom',  'Datacom'),
+        ('parks',    'Parks'),
+        ('generico', 'Genérico'),
+    ]
+
+    titulo      = models.CharField(max_length=300, verbose_name='Título')
+    conteudo    = models.TextField(verbose_name='Conteúdo (Markdown)')
+    categoria   = models.CharField(max_length=30, choices=CATEGORIAS, default='geral', verbose_name='Categoria')
+    fabricante  = models.CharField(max_length=30, choices=FABRICANTES, default='generico', verbose_name='Fabricante')
+    tags        = models.JSONField(default=list, verbose_name='Tags', help_text='Ex: ["onu","gpon","los"]')
+
+    # Escopo: None = global (todos os clientes), preenchido = específico do cliente
+    cliente     = models.ForeignKey(
+        Cliente, null=True, blank=True, on_delete=models.CASCADE,
+        related_name='agent_knowledge', verbose_name='Cliente (específico)',
+        help_text='Vazio = conhecimento global disponível para todos'
+    )
+
+    ativo       = models.BooleanField(default=True)
+    uso_count   = models.IntegerField(default=0, verbose_name='Vezes consultado pelo agent')
+    criado_por  = models.ForeignKey(
+        'auth.User', null=True, on_delete=models.SET_NULL,
+        related_name='agent_knowledge_criados'
+    )
+    criado_em   = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Base de Conhecimento Agent'
+        verbose_name_plural = 'Base de Conhecimento Agent'
+        ordering = ['-uso_count', 'fabricante', 'titulo']
+
+    def __str__(self):
+        return f'[{self.get_fabricante_display()}] {self.titulo}'
+
+
+class AgentKnowledgeDoc(models.Model):
+    """Documentos PDF carregados na base de conhecimento — o Agent consulta o texto extraído."""
+
+    CATEGORIAS = AgentKnowledge.CATEGORIAS
+    FABRICANTES = AgentKnowledge.FABRICANTES
+
+    titulo           = models.CharField(max_length=300, verbose_name='Título')
+    arquivo          = models.FileField(upload_to='agent_docs/', verbose_name='Arquivo PDF')
+    nome_arquivo     = models.CharField(max_length=255, blank=True)
+    tamanho_kb       = models.PositiveIntegerField(default=0)
+    paginas          = models.PositiveIntegerField(default=0)
+    conteudo_extraido = models.TextField(blank=True, verbose_name='Texto extraído do PDF')
+
+    categoria  = models.CharField(max_length=30, choices=CATEGORIAS, default='geral',    verbose_name='Categoria')
+    fabricante = models.CharField(max_length=30, choices=FABRICANTES, default='generico', verbose_name='Fabricante')
+    tags       = models.JSONField(default=list, blank=True, verbose_name='Tags')
+
+    cliente = models.ForeignKey(
+        Cliente, null=True, blank=True, on_delete=models.CASCADE,
+        related_name='agent_docs', verbose_name='Cliente (específico)',
+        help_text='Vazio = disponível para todos'
+    )
+
+    ativo      = models.BooleanField(default=True)
+    uso_count  = models.IntegerField(default=0, verbose_name='Vezes consultado pelo agent')
+    criado_por = models.ForeignKey(
+        'auth.User', null=True, on_delete=models.SET_NULL,
+        related_name='agent_docs_criados'
+    )
+    criado_em     = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Documento PDF — Agent'
+        verbose_name_plural = 'Documentos PDF — Agent'
+        ordering = ['-uso_count', 'fabricante', 'titulo']
+
+    def __str__(self):
+        return f'[PDF][{self.get_fabricante_display()}] {self.titulo}'
+
+
+class AgentSessao(models.Model):
+    """Sessão de conversa com o Agent NOC — agrupa mensagens trocadas em um contexto."""
+
+    CANAIS = [
+        ('whatsapp', 'WhatsApp'),
+        ('terminal', 'Terminal Web'),
+    ]
+    STATUS = [
+        ('ativa',      'Ativa'),
+        ('encerrada',  'Encerrada'),
+        ('expirada',   'Expirada'),
+    ]
+
+    canal           = models.CharField(max_length=20, choices=CANAIS, verbose_name='Canal')
+    # Para WhatsApp: JID do grupo/contato.  Para terminal: vazio.
+    canal_id        = models.CharField(max_length=200, blank=True, verbose_name='ID do canal (JID ou session key)')
+
+    # Contexto de cliente / host selecionado na sessão
+    cliente         = models.ForeignKey(
+        Cliente, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='agent_sessoes', verbose_name='Cliente'
+    )
+    acesso_ativo    = models.ForeignKey(
+        'Acesso', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='agent_sessoes', verbose_name='Host ativo na sessão'
+    )
+    wa_grupo        = models.ForeignKey(
+        WhatsAppGrupo, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sessoes', verbose_name='Grupo WhatsApp'
+    )
+
+    # Usuário da plataforma que iniciou (terminal) ou None (WhatsApp)
+    usuario         = models.ForeignKey(
+        'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='agent_sessoes'
+    )
+
+    status          = models.CharField(max_length=20, choices=STATUS, default='ativa')
+    iniciada_em     = models.DateTimeField(auto_now_add=True)
+    ultima_atividade = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Sessão Agent NOC'
+        verbose_name_plural = 'Sessões Agent NOC'
+        ordering = ['-iniciada_em']
+
+    def __str__(self):
+        canal_desc = self.canal_id or self.usuario_id or '?'
+        return f'Sessão [{self.canal}] {canal_desc} — {self.iniciada_em:%d/%m/%Y %H:%M}'
+
+
+class AgentLog(models.Model):
+    """Log individual de cada interação com o Agent NOC."""
+
+    TIPOS = [
+        ('user_msg',   'Mensagem do usuário'),
+        ('agent_msg',  'Resposta do agent'),
+        ('tool_call',  'Chamada de ferramenta'),
+        ('tool_result','Resultado de ferramenta'),
+        ('error',      'Erro'),
+        ('system',     'Evento de sistema'),
+    ]
+
+    sessao          = models.ForeignKey(
+        AgentSessao, on_delete=models.CASCADE,
+        related_name='logs', verbose_name='Sessão'
+    )
+    tipo            = models.CharField(max_length=20, choices=TIPOS, verbose_name='Tipo')
+    conteudo        = models.TextField(verbose_name='Conteúdo')
+
+    # Para tool_call: nome da ferramenta e argumentos
+    tool_name       = models.CharField(max_length=100, blank=True, verbose_name='Ferramenta')
+    tool_input      = models.JSONField(null=True, blank=True, verbose_name='Input da ferramenta')
+    tool_output     = models.TextField(blank=True, verbose_name='Output da ferramenta')
+
+    # Métricas de custo/performance
+    tokens_input    = models.IntegerField(default=0, verbose_name='Tokens entrada')
+    tokens_output   = models.IntegerField(default=0, verbose_name='Tokens saída')
+    duracao_ms      = models.IntegerField(default=0, verbose_name='Duração (ms)')
+
+    criado_em       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Log Agent NOC'
+        verbose_name_plural = 'Logs Agent NOC'
+        ordering = ['criado_em']
+
+    def __str__(self):
+        return f'[{self.tipo}] sessão {self.sessao_id} — {self.criado_em:%H:%M:%S}'

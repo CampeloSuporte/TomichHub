@@ -401,8 +401,11 @@
 #tab-monitoramento * { box-sizing: border-box; }
 #tab-monitoramento {
   display: flex; flex-direction: column;
-  height: calc(100vh - 130px); min-height: 600px;
-  background: #080f1a; border-radius: 10px; overflow: hidden;
+  min-height: 600px;
+  background: #080f1a; border-radius: 10px;
+}
+#tab-monitoramento .grph-grid {
+  min-height: 300px;
 }
 .grph-toolbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -672,7 +675,7 @@
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS
 ════════════════════════════════════════════════════════ -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/static/js/chart.umd.min.js"></script>
 <script>
 'use strict';
 
@@ -725,6 +728,7 @@ const GRAPH = (() => {
   }
 
   function _carregarStorage() {
+    charts = [];
     try {
       const nid = localStorage.getItem(_storageKey() + '_nid');
       if (nid) nextChartId = parseInt(nid) || 1;
@@ -734,13 +738,18 @@ const GRAPH = (() => {
         ...c, titulo: c.titulo || '', hours: c.hours || 1,
         chartInstance: null, fsChartInstance: null, _interval: null, _fsSync: false,
       }));
-    } catch(e) { console.warn('[GRAPH] storage read:', e); }
+    } catch(e) { console.warn('[GRAPH] storage read:', e); charts = []; }
   }
 
   // ─────────────────────────────────────────────────────────
   // INIT
   // ─────────────────────────────────────────────────────────
   function init() {
+    // Destruir instâncias Chart.js antigas antes de re-renderizar
+    charts.forEach(c => {
+      if (c._interval)     { clearInterval(c._interval); c._interval = null; }
+      if (c.chartInstance) { c.chartInstance.destroy();  c.chartInstance = null; }
+    });
     clienteId = window.CLIENTE_ID || null;
     _carregarStorage();
     _renderGrid();
@@ -1411,12 +1420,4 @@ const GRAPH = (() => {
 })();
 
 window.GRAPH = GRAPH;
-
-(function() {
-  if (window.GRAPH && typeof window.GRAPH.init === 'function') {
-    if (document.getElementById('grph-grid')) {
-      window.GRAPH.init();
-    }
-  }
-})();
 </script>

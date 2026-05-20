@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+:root { --cy:#00f5ff;--gr:#00ff88;--or:#ffa500;--rd:#ff5555;--bg:#02030a;--bg2:#060c18;--bg3:#0a1628;--muted:rgba(0,245,255,0.4); }
+.cfg-page { background:var(--bg);min-height:100vh;padding:1.5rem;font-family:'Share Tech Mono','Courier New',monospace; }
+.cfg-title { font-family:'Orbitron',sans-serif;font-size:1.4rem;color:var(--cy);text-shadow:0 0 16px rgba(0,245,255,.5);letter-spacing:3px;text-transform:uppercase; }
+.cfg-sub   { color:var(--muted);font-size:.75rem;letter-spacing:2px; }
+
+.cfg-card  { background:var(--bg2);border:1px solid rgba(0,245,255,.12);border-radius:8px;margin-bottom:1.5rem;overflow:hidden; }
+.cfg-card-header { padding:.85rem 1.2rem;border-bottom:1px solid rgba(0,245,255,.08);display:flex;align-items:center;gap:.75rem; }
+.cfg-card-title  { font-family:'Orbitron',sans-serif;font-size:.85rem;color:var(--cy);letter-spacing:2px; }
+.cfg-card-body   { padding:1.2rem; }
+
+.cfg-label { display:block;font-size:.7rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:.3rem; }
+.cfg-input, .cfg-select { width:100%;background:var(--bg3);border:1px solid rgba(0,245,255,.2);border-radius:6px;padding:.5rem .75rem;color:#d0e8f0;font-family:inherit;font-size:.82rem; }
+.cfg-input:focus,.cfg-select:focus { outline:none;border-color:var(--cy);box-shadow:0 0 8px rgba(0,245,255,.15); }
+.cfg-select option { background:var(--bg3); }
+.form-grid { display:grid;grid-template-columns:1fr 1fr;gap:.75rem; }
+.form-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem; }
+
+.btn-cy { background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.3);color:var(--cy);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:inherit; }
+.btn-cy:hover { background:rgba(0,245,255,.22);box-shadow:0 0 10px rgba(0,245,255,.2); }
+.btn-gr { background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.3);color:var(--gr);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s;font-family:inherit; }
+.btn-gr:hover { background:rgba(0,255,136,.22); }
+.btn-or { background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.3);color:var(--or);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s;font-family:inherit; }
+.btn-or:hover { background:rgba(255,165,0,.22); }
+
+.status-pill { display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .7rem;border-radius:10px;font-size:.72rem; }
+.status-ok   { background:rgba(0,255,136,.12);color:var(--gr);border:1px solid rgba(0,255,136,.3); }
+.status-err  { background:rgba(255,85,85,.12); color:var(--rd);border:1px solid rgba(255,85,85,.25); }
+.status-unk  { background:rgba(0,245,255,.08); color:var(--muted);border:1px solid rgba(0,245,255,.15); }
+
+.help-text { font-size:.72rem;color:rgba(0,245,255,.35);margin-top:.25rem; }
+.section-divider { border:none;border-top:1px solid rgba(0,245,255,.07);margin:1rem 0; }
+
+.toggle-row { display:flex;align-items:center;gap:.75rem;padding:.5rem 0; }
+.toggle-row input[type=checkbox] { accent-color:var(--cy);width:16px;height:16px; }
+.toggle-label { font-size:.8rem;color:#c8dde8;cursor:pointer; }
+.toggle-desc  { font-size:.7rem;color:var(--muted); }
+
+/* API key field com reveal */
+.key-wrap { position:relative; }
+.key-wrap .cfg-input { padding-right:2.8rem; }
+.key-reveal { position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem; }
+.key-reveal:hover { color:var(--cy); }
+
+.ag-toast-container { position:fixed;top:1.2rem;right:1.2rem;z-index:99999;display:flex;flex-direction:column;gap:.5rem; }
+.ag-toast-item { padding:.65rem 1rem;border-radius:7px;font-size:.82rem;border:1px solid;animation:toastIn .2s ease;min-width:240px; }
+.ag-toast-ok   { background:rgba(0,255,136,.12);border-color:rgba(0,255,136,.3);color:var(--gr); }
+.ag-toast-erro { background:rgba(255,85,85,.12); border-color:rgba(255,85,85,.3); color:var(--rd); }
+.ag-toast-info { background:rgba(0,245,255,.1);  border-color:rgba(0,245,255,.3); color:var(--cy); }
+@keyframes toastIn { from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)} }
+
+.result-box { background:var(--bg3);border:1px solid rgba(0,245,255,.15);border-radius:6px;padding:.75rem;font-size:.78rem;color:#c8dde8;margin-top:.75rem;display:none; }
+.result-box.show { display:block; }
+</style>
+
+<div class="cfg-page">
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div>
+            <div class="cfg-title">🤖 Agent NOC Tomich</div>
+            <div class="cfg-sub">Configuração do agente de inteligência artificial</div>
+        </div>
+        <div class="ms-auto">
+            <a href="{% url 'agent_grupos' %}" class="btn-cy text-decoration-none">💬 Gerenciar Grupos WA</a>
+        </div>
+    </div>
+
+    <!-- ── Seletor de Provedor ── -->
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <span style="font-size:1.2rem">⚡</span>
+            <span class="cfg-card-title">Provedor de IA Ativo</span>
+        </div>
+        <div class="cfg-card-body">
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">
+                Selecione qual provedor de inteligência artificial o Agent NOC usará para processar as mensagens.
+                Ambos suportam as mesmas ferramentas (SSH, base de conhecimento, escalamento).
+            </div>
+            <div class="d-flex gap-3 flex-wrap" id="provedor-cards">
+                <div class="provedor-card {% if agent_cfg.provedor_ia == 'claude' %}provedor-ativo{% endif %}"
+                     id="card-claude" onclick="selecionarProvedor('claude')"
+                     style="flex:1;min-width:200px;cursor:pointer;border-radius:8px;padding:16px;
+                            border:2px solid {% if agent_cfg.provedor_ia == 'claude' %}var(--cy){% else %}rgba(0,245,255,.12){% endif %};
+                            background:{% if agent_cfg.provedor_ia == 'claude' %}rgba(0,245,255,.07){% else %}var(--bg3){% endif %};
+                            transition:all .2s">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span style="font-size:1.4rem">🧠</span>
+                        <span style="font-family:'Orbitron',sans-serif;font-size:.85rem;color:var(--cy)">Claude</span>
+                        <span style="font-size:.7rem;color:var(--muted)">Anthropic</span>
+                        {% if agent_cfg.provedor_ia == 'claude' %}<span class="ms-auto status-pill status-ok">● ativo</span>{% endif %}
+                    </div>
+                    <div style="font-size:.73rem;color:rgba(200,221,232,.6)">claude-sonnet-4-6 · claude-opus-4-6 · claude-haiku-4-5</div>
+                </div>
+                <div class="provedor-card {% if agent_cfg.provedor_ia == 'openai' %}provedor-ativo{% endif %}"
+                     id="card-openai" onclick="selecionarProvedor('openai')"
+                     style="flex:1;min-width:200px;cursor:pointer;border-radius:8px;padding:16px;
+                            border:2px solid {% if agent_cfg.provedor_ia == 'openai' %}#10a37f{% else %}rgba(16,163,127,.2){% endif %};
+                            background:{% if agent_cfg.provedor_ia == 'openai' %}rgba(16,163,127,.07){% else %}var(--bg3){% endif %};
+                            transition:all .2s">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span style="font-size:1.4rem">🤖</span>
+                        <span style="font-family:'Orbitron',sans-serif;font-size:.85rem;color:#10a37f">ChatGPT</span>
+                        <span style="font-size:.7rem;color:var(--muted)">OpenAI</span>
+                        {% if agent_cfg.provedor_ia == 'openai' %}<span class="ms-auto status-pill" style="background:rgba(16,163,127,.12);color:#10a37f;border:1px solid rgba(16,163,127,.3)">● ativo</span>{% endif %}
+                    </div>
+                    <div style="font-size:.73rem;color:rgba(200,221,232,.6)">gpt-4o · gpt-4o-mini · gpt-4-turbo</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Claude AI ── -->
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <span style="font-size:1.2rem">🧠</span>
+            <span class="cfg-card-title">Claude AI (Anthropic)</span>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <span class="status-pill status-unk" id="claude-status">● não testado</span>
+                <button class="btn-or" onclick="testarClaude()">Testar conexão</button>
+            </div>
+        </div>
+        <div class="cfg-card-body">
+            <div class="mb-3">
+                <label class="cfg-label">API Key</label>
+                <div class="key-wrap">
+                    <input class="cfg-input" type="password" id="claude_api_key" placeholder="sk-ant-api03-••••••••••••••••••">
+                    <button class="key-reveal" type="button" onclick="toggleReveal('claude_api_key', this)">👁</button>
+                </div>
+                <div class="help-text">Obtenha em console.anthropic.com → API Keys</div>
+            </div>
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">Modelo</label>
+                    <select class="cfg-select" id="claude_model">
+                        <option value="claude-sonnet-4-6" {% if agent_cfg.claude_model == 'claude-sonnet-4-6' %}selected{% endif %}>claude-sonnet-4-6 (recomendado)</option>
+                        <option value="claude-opus-4-6"   {% if agent_cfg.claude_model == 'claude-opus-4-6'   %}selected{% endif %}>claude-opus-4-6 (mais capaz)</option>
+                        <option value="claude-haiku-4-5-20251001" {% if agent_cfg.claude_model == 'claude-haiku-4-5-20251001' %}selected{% endif %}>claude-haiku-4-5 (mais rápido)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="cfg-label">Max Tokens por resposta</label>
+                    <input class="cfg-input" type="number" id="claude_max_tokens" value="{{ agent_cfg.claude_max_tokens }}" min="512" max="16384">
+                </div>
+            </div>
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">Temperature (0 = preciso, 1 = criativo)</label>
+                    <input class="cfg-input" type="number" id="claude_temperature" value="{{ agent_cfg.claude_temperature }}" min="0" max="1" step="0.05">
+                </div>
+                <div>
+                    <label class="cfg-label">Máx. comandos por sessão</label>
+                    <input class="cfg-input" type="number" id="max_comandos_sessao" value="{{ agent_cfg.max_comandos_sessao }}" min="1" max="200">
+                </div>
+            </div>
+            <hr class="section-divider">
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">Prefixo de invocação (WhatsApp)</label>
+                    <input class="cfg-input" type="text" id="prefixo_wa" value="{{ agent_cfg.prefixo_wa }}" placeholder="@noc">
+                    <div class="help-text">Mensagens começando com este prefixo ativam o agent no grupo</div>
+                </div>
+                <div>
+                    <label class="cfg-label">Timeout sessão WA (minutos)</label>
+                    <input class="cfg-input" type="number" id="timeout_sessao_wa" value="{{ agent_cfg.timeout_sessao_wa }}" min="5" max="1440">
+                    <div class="help-text">Inatividade neste período encerra a sessão do grupo</div>
+                </div>
+            </div>
+            <hr class="section-divider">
+            <div class="toggle-row mb-3">
+                <input type="checkbox" id="aprovacao_padrao" {% if agent_cfg.aprovacao_padrao %}checked{% endif %}>
+                <div>
+                    <label class="toggle-label" for="aprovacao_padrao">Exigir aprovação manual para comandos de escrita/configuração</label>
+                    <div class="toggle-desc">No terminal, o agent propõe e aguarda o operador aprovar antes de executar</div>
+                </div>
+            </div>
+            <hr class="section-divider">
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">JID grupo NOC interno (escalonamento)</label>
+                    <input class="cfg-input" type="text" id="wa_grupo_noc" value="{{ agent_cfg.wa_grupo_noc }}" placeholder="120363XXXXXXXXX@g.us">
+                    <div class="help-text">Grupo que recebe notificação quando o agent não consegue resolver</div>
+                </div>
+                <div>
+                    <label class="cfg-label">Número plantão NOC (escalonamento)</label>
+                    <input class="cfg-input" type="text" id="wa_noc_numero" value="{{ agent_cfg.wa_noc_numero }}" placeholder="5511999999999">
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <div class="result-box" id="claude-result" style="flex:1"></div>
+                <button class="btn-gr" onclick="salvarClaude()">💾 Salvar configuração Claude</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── OpenAI / ChatGPT ── -->
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <span style="font-size:1.2rem">🤖</span>
+            <span class="cfg-card-title" style="color:#10a37f">ChatGPT (OpenAI)</span>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <span class="status-pill status-unk" id="openai-status">● não testado</span>
+                <button class="btn-or" onclick="testarOpenAI()">Testar conexão</button>
+            </div>
+        </div>
+        <div class="cfg-card-body">
+            <div class="mb-3">
+                <label class="cfg-label">API Key</label>
+                <div class="key-wrap">
+                    <input class="cfg-input" type="password" id="openai_api_key" placeholder="sk-proj-••••••••••••••••••">
+                    <button class="key-reveal" type="button" onclick="toggleReveal('openai_api_key', this)">👁</button>
+                </div>
+                <div class="help-text">Obtenha em platform.openai.com → API Keys</div>
+            </div>
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">Modelo</label>
+                    <select class="cfg-select" id="openai_model">
+                        <option value="gpt-4o"           {% if agent_cfg.openai_model == 'gpt-4o'           %}selected{% endif %}>gpt-4o (recomendado)</option>
+                        <option value="gpt-4o-mini"      {% if agent_cfg.openai_model == 'gpt-4o-mini'      %}selected{% endif %}>gpt-4o-mini (mais rápido)</option>
+                        <option value="gpt-4-turbo"      {% if agent_cfg.openai_model == 'gpt-4-turbo'      %}selected{% endif %}>gpt-4-turbo</option>
+                        <option value="o1"               {% if agent_cfg.openai_model == 'o1'               %}selected{% endif %}>o1 (raciocínio)</option>
+                        <option value="o3-mini"          {% if agent_cfg.openai_model == 'o3-mini'          %}selected{% endif %}>o3-mini (raciocínio rápido)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="cfg-label">Max Tokens por resposta</label>
+                    <input class="cfg-input" type="number" id="openai_max_tokens" value="{{ agent_cfg.openai_max_tokens }}" min="512" max="16384">
+                </div>
+            </div>
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">Temperature (0 = preciso, 1 = criativo)</label>
+                    <input class="cfg-input" type="number" id="openai_temperature" value="{{ agent_cfg.openai_temperature }}" min="0" max="2" step="0.05">
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <div class="result-box" id="openai-result" style="flex:1"></div>
+                <button class="btn-gr" style="background:rgba(16,163,127,.12);border-color:rgba(16,163,127,.4);color:#10a37f" onclick="salvarOpenAI()">💾 Salvar configuração OpenAI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Evolution API ── -->
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <span style="font-size:1.2rem">💬</span>
+            <span class="cfg-card-title">Evolution API — WhatsApp</span>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                {% if evo_cfg.conectado %}
+                <span class="status-pill status-ok">● {{ evo_cfg.numero_wa|default:'conectado' }}</span>
+                {% else %}
+                <span class="status-pill status-err" id="evo-status">● desconectado</span>
+                {% endif %}
+                <button class="btn-or" onclick="testarEvolution()">Testar conexão</button>
+            </div>
+        </div>
+        <div class="cfg-card-body">
+            <div class="mb-3">
+                <label class="cfg-label">URL da API</label>
+                <input class="cfg-input" type="text" id="evo_url" value="{{ evo_cfg.url }}" placeholder="https://evo.suaempresa.com.br">
+                <div class="help-text">URL base da instância Evolution API (sem barra final)</div>
+            </div>
+            <div class="form-grid mb-3">
+                <div>
+                    <label class="cfg-label">API Key</label>
+                    <div class="key-wrap">
+                        <input class="cfg-input" type="password" id="evo_api_key" placeholder="••••••••••••••••••">
+                        <button class="key-reveal" type="button" onclick="toggleReveal('evo_api_key', this)">👁</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="cfg-label">Nome da Instância</label>
+                    <input class="cfg-input" type="text" id="evo_instance_name" value="{{ evo_cfg.instance_name }}" placeholder="tomich-noc">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="cfg-label">Webhook Secret (opcional)</label>
+                <div class="key-wrap">
+                    <input class="cfg-input" type="password" id="evo_webhook_secret" placeholder="••••••••••••••••••">
+                    <button class="key-reveal" type="button" onclick="toggleReveal('evo_webhook_secret', this)">👁</button>
+                </div>
+                <div class="help-text">Chave para validar os POSTs recebidos pelo webhook</div>
+            </div>
+
+            {% if evo_cfg.ultima_sync %}
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:1rem">
+                Última sincronização de grupos: {{ evo_cfg.ultima_sync|date:"d/m/Y \à\s H:i" }}
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="result-box" id="evo-result" style="flex:1;margin-top:0;margin-right:1rem"></div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'agent_grupos' %}" class="btn-cy text-decoration-none">Gerenciar Grupos</a>
+                    <button class="btn-gr" onclick="salvarEvolution()">💾 Salvar Evolution API</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Info / Instrução webhook ── -->
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <span style="font-size:1.2rem">📋</span>
+            <span class="cfg-card-title">Configuração do Webhook</span>
+        </div>
+        <div class="cfg-card-body">
+            <p style="color:#c8dde8;font-size:.82rem;margin-bottom:.75rem">
+                Configure o webhook na sua instância Evolution API para receber mensagens dos grupos:
+            </p>
+            <div style="background:var(--bg3);border-radius:6px;padding:.75rem 1rem;font-family:monospace;font-size:.8rem;color:var(--cy);border:1px solid rgba(0,245,255,.15)">
+                POST {{ request.scheme }}://{{ request.get_host }}/home/agent/wa/webhook/
+            </div>
+            <div class="help-text mt-2">
+                Eventos necessários: <strong>MESSAGES_UPSERT</strong> — marque apenas esse evento para reduzir o volume de chamadas.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ag-toast-container" id="toastContainer"></div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function toggleReveal(id, btn) {
+    const el = document.getElementById(id);
+    if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+    else { el.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function salvarClaude() {
+    const payload = {
+        secao: 'claude',
+        claude_api_key:      document.getElementById('claude_api_key').value.trim(),
+        claude_model:        document.getElementById('claude_model').value,
+        claude_max_tokens:   document.getElementById('claude_max_tokens').value,
+        claude_temperature:  document.getElementById('claude_temperature').value,
+        aprovacao_padrao:    document.getElementById('aprovacao_padrao').checked,
+        timeout_sessao_wa:   document.getElementById('timeout_sessao_wa').value,
+        prefixo_wa:          document.getElementById('prefixo_wa').value.trim(),
+        max_comandos_sessao: document.getElementById('max_comandos_sessao').value,
+        wa_grupo_noc:        document.getElementById('wa_grupo_noc').value.trim(),
+        wa_noc_numero:       document.getElementById('wa_noc_numero').value.trim(),
+    };
+    const r = await fetch('{% url "agent_config" %}', {
+        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+}
+
+async function salvarEvolution() {
+    const payload = {
+        secao:            'evolution',
+        url:              document.getElementById('evo_url').value.trim(),
+        api_key:          document.getElementById('evo_api_key').value.trim(),
+        instance_name:    document.getElementById('evo_instance_name').value.trim(),
+        webhook_secret:   document.getElementById('evo_webhook_secret').value.trim(),
+    };
+    const r = await fetch('{% url "agent_config" %}', {
+        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+}
+
+// ── Seletor de provedor ───────────────────────────────────────
+async function selecionarProvedor(provedor) {
+    const r = await fetch('{% url "agent_config" %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        body: JSON.stringify({secao: 'provedor', provedor_ia: provedor}),
+    });
+    const d = await r.json();
+    if (d.ok) {
+        mostrarToast(`✓ Provedor alterado para ${provedor === 'claude' ? 'Claude' : 'ChatGPT'}`, 'ok');
+        // Atualiza visual dos cards sem recarregar a página
+        const isOpenAI = provedor === 'openai';
+        const cardClaude = document.getElementById('card-claude');
+        const cardOpenAI = document.getElementById('card-openai');
+
+        cardClaude.style.borderColor = isOpenAI ? 'rgba(0,245,255,.12)' : 'var(--cy)';
+        cardClaude.style.background  = isOpenAI ? 'var(--bg3)' : 'rgba(0,245,255,.07)';
+        cardOpenAI.style.borderColor = isOpenAI ? '#10a37f' : 'rgba(16,163,127,.2)';
+        cardOpenAI.style.background  = isOpenAI ? 'rgba(16,163,127,.07)' : 'var(--bg3)';
+
+        // Remove badges de ativo
+        cardClaude.querySelectorAll('.status-pill').forEach(el => el.remove());
+        cardOpenAI.querySelectorAll('.status-pill').forEach(el => el.remove());
+
+        // Adiciona badge no ativo
+        const badge = document.createElement('span');
+        badge.className = 'ms-auto status-pill status-ok';
+        badge.textContent = '● ativo';
+        if (isOpenAI) {
+            badge.style.cssText = 'background:rgba(16,163,127,.12);color:#10a37f;border:1px solid rgba(16,163,127,.3)';
+            cardOpenAI.querySelector('.d-flex').appendChild(badge);
+        } else {
+            cardClaude.querySelector('.d-flex').appendChild(badge);
+        }
+    } else {
+        mostrarToast(`✕ ${d.erro}`, 'erro');
+    }
+}
+
+async function salvarOpenAI() {
+    const payload = {
+        secao:            'openai',
+        openai_api_key:   document.getElementById('openai_api_key').value.trim(),
+        openai_model:     document.getElementById('openai_model').value,
+        openai_max_tokens: document.getElementById('openai_max_tokens').value,
+        openai_temperature: document.getElementById('openai_temperature').value,
+    };
+    const r = await fetch('{% url "agent_config" %}', {
+        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+}
+
+async function testarOpenAI() {
+    const st = document.getElementById('openai-status');
+    st.className = 'status-pill status-unk'; st.textContent = '⏳ testando...';
+    const rb = document.getElementById('openai-result');
+    try {
+        const r = await fetch('{% url "agent_testar_openai" %}', {method:'POST', headers:{'X-CSRFToken':CSRF}});
+        const d = await r.json();
+        if (d.ok) {
+            st.className = 'status-pill';
+            st.style.background = 'rgba(16,163,127,.12)';
+            st.style.color = '#10a37f';
+            st.style.border = '1px solid rgba(16,163,127,.3)';
+            st.textContent = `● ${d.modelo}`;
+            rb.className = 'result-box show';
+            rb.innerHTML = `<span style="color:#10a37f">✓ Resposta do model:</span> ${d.resposta}`;
+        } else {
+            st.className = 'status-pill status-err'; st.textContent = '● erro';
+            rb.className = 'result-box show'; rb.style.color = 'var(--rd)';
+            rb.textContent = `✕ ${d.erro}`;
+        }
+    } catch(e) {
+        st.className = 'status-pill status-err'; st.textContent = '● erro';
+    }
+}
+
+async function testarClaude() {
+    const st = document.getElementById('claude-status');
+    st.className = 'status-pill status-unk'; st.textContent = '⏳ testando...';
+    const rb = document.getElementById('claude-result');
+    try {
+        const r = await fetch('{% url "agent_testar_claude" %}', {method:'POST', headers:{'X-CSRFToken':CSRF}});
+        const d = await r.json();
+        if (d.ok) {
+            st.className = 'status-pill status-ok';
+            st.textContent = `● ${d.modelo}`;
+            rb.className = 'result-box show';
+            rb.innerHTML = `<span style="color:var(--gr)">✓ Resposta do model:</span> ${d.resposta}`;
+        } else {
+            st.className = 'status-pill status-err'; st.textContent = '● erro';
+            rb.className = 'result-box show'; rb.style.color = 'var(--rd)';
+            rb.textContent = `✕ ${d.erro}`;
+        }
+    } catch(e) {
+        st.className = 'status-pill status-err'; st.textContent = '● erro';
+    }
+}
+
+async function testarEvolution() {
+    const st = document.getElementById('evo-status');
+    if (st) { st.className = 'status-pill status-unk'; st.textContent = '⏳ testando...'; }
+    const rb = document.getElementById('evo-result');
+    try {
+        const r = await fetch('{% url "agent_testar_evolution" %}', {method:'POST', headers:{'X-CSRFToken':CSRF}});
+        const d = await r.json();
+        rb.className = 'result-box show';
+        if (d.ok && d.conectado) {
+            if (st) { st.className = 'status-pill status-ok'; st.textContent = `● ${d.numero || 'conectado'}`; }
+            rb.innerHTML = `<span style="color:var(--gr)">✓ Conectado</span> — Número: ${d.numero} | Estado: ${d.estado}`;
+        } else if (d.ok) {
+            if (st) { st.className = 'status-pill status-err'; st.textContent = '● desconectado'; }
+            rb.innerHTML = `<span style="color:var(--or)">⚠ Instância encontrada mas desconectada</span> — Estado: ${d.estado}`;
+        } else {
+            if (st) { st.className = 'status-pill status-err'; st.textContent = '● erro'; }
+            rb.innerHTML = `<span style="color:var(--rd)">✕ ${d.erro}</span>`;
+        }
+    } catch(e) {
+        rb.className = 'result-box show';
+        rb.innerHTML = `<span style="color:var(--rd)">✕ Erro de conexão: ${e.message}</span>`;
+    }
+}
+
+function mostrarToast(msg, tipo = 'ok') {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = `ag-toast-item ag-toast-${tipo}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+</script>
+{% endblock %}

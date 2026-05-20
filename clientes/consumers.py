@@ -1345,4 +1345,220 @@ class WebSocketProxyConsumer(WebsocketConsumer):
         frame.append(0x80 | min(len(data), 125))
         frame.extend(b'\x00\x00\x00\x00')
         frame.extend(data[:125])
+
+
+# ── Firmware Download Progress ─────────────────────────────────────────────
+from channels.generic.websocket import AsyncWebsocketConsumer
+
+
+class FirmwareDownloadConsumer(AsyncWebsocketConsumer):
+    """
+    Admins conectam a ws/firmware/downloads/ para receber notificações em
+    tempo real sempre que alguém baixar um arquivo via link compartilhado.
+    """
+    GROUP = 'firmware_downloads'
+
+    async def connect(self):
+        user = self.scope.get('user')
+        if not user or not user.is_authenticated or not user.is_staff:
+            await self.close()
+            return
+        await self.channel_layer.group_add(self.GROUP, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, code):
+        await self.channel_layer.group_discard(self.GROUP, self.channel_name)
+
+    # Mensagens enviadas pelo grupo → repassadas ao browser
+    async def download_event(self, event):
+        await self.send(text_data=json.dumps(event))
         sock.sendall(bytes(frame))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Utilitário compartilhado: executa um único comando via SSH usando a mesma
+# infraestrutura da plataforma (algoritmos legados, proxy, autenticação).
+# Usado pelo Agent NOC para não reimplementar a lógica de conexão.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SSH_FLAGS = (
+    "-o StrictHostKeyChecking=no "
+    "-o UserKnownHostsFile=/dev/null "
+    "-o IdentitiesOnly=yes "
+    "-o PubkeyAuthentication=no "
+    "-o PreferredAuthentications=password,keyboard-interactive "
+    "-o ConnectTimeout=12 "
+    "-o LogLevel=ERROR "
+    "-o NumberOfPasswordPrompts=3 "
+    "-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+    "-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
+    "-o PubkeyAcceptedAlgorithms=+ssh-rsa "
+    "-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
+    "-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512"
+)
+
+_PROMPT_RE = rb'[>#\$\]] *$'
+
+
+def _pexpect_exec(cmd_line: str, senha: str, comando: str,
+                  is_huawei: bool, timeout: int = 25) -> str:
+    """Abre conexão SSH via pexpect, executa um comando e retorna o output."""
+    import re as _re
+    proc = pexpect.spawn(cmd_line, timeout=timeout, encoding=None, maxread=131072)
+    try:
+        # Autenticação
+        idx = proc.expect([
+            b'password:', b'Password:', b'Are you sure', b'yes/no',
+            b'username:', b'Username:', b'login:', b'Login:',
+            b'Permission denied', b'Connection refused',
+            pexpect.TIMEOUT, pexpect.EOF,
+        ], timeout=15)
+        if idx in (2, 3):
+            proc.sendline(b'yes')
+            idx = proc.expect([b'password:', b'Password:', pexpect.TIMEOUT, pexpect.EOF], timeout=10)
+        if idx in (4, 5, 6, 7):
+            raise Exception('Equipamento pediu username via prompt — não suportado neste modo')
+        if idx in (8, 9):
+            raise Exception('Acesso negado / conexão recusada')
+        if idx in (10, 11):
+            raise Exception('Timeout ou EOF durante autenticação')
+        # Enviar senha
+        proc.sendline(senha.encode())
+        # Aguardar prompt
+        proc.expect(_PROMPT_RE, timeout=15)
+
+        if is_huawei:
+            proc.sendline(b'screen-length 0 temporary')
+            proc.expect(_PROMPT_RE, timeout=8)
+
+        # Executar comando
+        proc.sendline(comando.encode())
+        proc.expect(_PROMPT_RE, timeout=timeout)
+
+        # Capturar output entre o eco do comando e o próximo prompt
+        raw = proc.before or b''
+        lines = raw.decode('utf-8', errors='replace').splitlines()
+        # Remove a primeira linha (eco do comando) e linhas em branco no início/fim
+        if lines and comando in lines[0]:
+            lines = lines[1:]
+        return '\n'.join(lines).strip()
+    finally:
+        try:
+            proc.sendline(b'quit')
+        except Exception:
+            pass
+        try:
+            proc.close(force=True)
+        except Exception:
+            pass
+
+
+def _paramiko_proxy_exec(proxy, acesso, comando: str,
+                          is_huawei: bool, timeout: int = 25) -> str:
+    """Executa comando via paramiko através de um proxy SSH (direct-tcpip)."""
+    import re as _re
+
+    proxy_client = paramiko.SSHClient()
+    proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    proxy_client.connect(
+        hostname=proxy.host, port=int(proxy.porta),
+        username=proxy.usuario, password=proxy.senha,
+        timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
+    )
+    try:
+        proxy_transport = proxy_client.get_transport()
+        dest_sock = proxy_transport.open_channel(
+            'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
+        )
+        dest_transport = paramiko.Transport(dest_sock)
+        dest_transport.start_client(timeout=12)
+        dest_transport.auth_password(acesso.usuario, acesso.senha)
+        if not dest_transport.is_authenticated():
+            raise Exception('Autenticação falhou no equipamento destino')
+
+        shell = dest_transport.open_session()
+        shell.get_pty(term='vt100' if is_huawei else 'xterm-256color', width=220, height=50)
+        shell.invoke_shell()
+        shell.settimeout(0.1)
+        time.sleep(0.5)
+
+        def _read_until_prompt(sh, wait=8.0) -> bytes:
+            buf = bytearray()
+            deadline = time.time() + wait
+            while time.time() < deadline:
+                try:
+                    chunk = sh.recv(65536)
+                    if not chunk:
+                        break
+                    buf.extend(chunk)
+                    if _re.search(_PROMPT_RE, bytes(buf)):
+                        break
+                except Exception:
+                    time.sleep(0.05)
+            return bytes(buf)
+
+        _read_until_prompt(shell, 6)  # consumir banner inicial
+
+        if is_huawei:
+            shell.send(b'screen-length 0 temporary\r')
+            _read_until_prompt(shell, 5)
+
+        shell.send(comando.encode() + b'\r')
+        raw = _read_until_prompt(shell, timeout)
+
+        lines = raw.decode('utf-8', errors='replace').splitlines()
+        if lines and comando in lines[0]:
+            lines = lines[1:]
+        # Remove últimas linhas que são só prompt
+        while lines and _re.search(r'[>#\$\]]\s*$', lines[-1]):
+            lines.pop()
+        return '\n'.join(lines).strip()
+    finally:
+        try:
+            shell.close()
+        except Exception:
+            pass
+        try:
+            dest_transport.close()
+        except Exception:
+            pass
+        try:
+            proxy_client.close()
+        except Exception:
+            pass
+
+
+def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
+    """
+    Executa um único comando SSH em um Acesso usando a mesma infraestrutura
+    da plataforma (suporte a algoritmos legados, proxy, Huawei paging).
+
+    Retorna o output como string. Lança Exception em caso de erro.
+    """
+    from .models import ProxyServer
+    import ipaddress as _ip
+
+    fabricante = ''
+    if acesso.modelo:
+        fabricante = (getattr(acesso.modelo, 'fabricante', '') or '').lower()
+    is_huawei = fabricante in ('huawei',) or 'huawei' in (acesso.tipo or '').lower()
+
+    def _is_private(host: str) -> bool:
+        try:
+            return _ip.ip_address(host).is_private
+        except ValueError:
+            return False
+
+    # Verificar se precisa de proxy (IP privado sem VPN)
+    proxy = None
+    if _is_private(acesso.host):
+        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+
+    if proxy:
+        return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+    else:
+        cmd_line = (
+            f"ssh {_SSH_FLAGS} "
+            f"-p {acesso.porta} {acesso.usuario}@{acesso.host}"
+        )
+        return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)

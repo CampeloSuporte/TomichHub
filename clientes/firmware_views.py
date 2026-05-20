@@ -1,7 +1,8 @@
-import os, json, mimetypes
+import os, json, mimetypes, threading, uuid, subprocess
 from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse, FileResponse, Http404, StreamingHttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
@@ -11,7 +12,61 @@ from django.views.decorators.http import require_POST, require_GET
 from clientes.decorators import admin_required
 from clientes.models import FirmwarePasta, FirmwareArquivo, FirmwareCompartilhamento
 
+
+def _fw_channel_send(event_type: str, data: dict):
+    """Envia mensagem ao grupo firmware_downloads via channel layer (seguro de sync)."""
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        layer = get_channel_layer()
+        if layer:
+            async_to_sync(layer.group_send)(
+                'firmware_downloads',
+                {'type': 'download_event', 'event_type': event_type, **data},
+            )
+    except Exception:
+        pass
+
 FIRMWARE_ROOT = os.path.join(settings.MEDIA_ROOT, 'firmware')
+
+
+def _criar_symlink_tftp(dest_path: str, nome: str):
+    """
+    Cria (ou atualiza) um symlink RELATIVO no root do TFTP/FTP apontando para o arquivo real.
+    Symlink relativo é necessário para funcionar dentro do chroot do vsftpd e tftpd-hpa.
+    Ex: firmware/MA5800V100R022C11.bin -> Firmware Huawei/OLT/MA5800/22C11/MA5800V100R022C11.bin
+    """
+    link_path = os.path.join(FIRMWARE_ROOT, nome)
+    if dest_path == link_path:
+        return  # arquivo já está no root
+    # Remove link/arquivo anterior conflitante
+    if os.path.islink(link_path) or os.path.exists(link_path):
+        try:
+            os.remove(link_path)
+        except Exception:
+            return
+    # Symlink relativo: caminho de dest_path relativo ao diretório do link (FIRMWARE_ROOT)
+    try:
+        rel_target = os.path.relpath(dest_path, FIRMWARE_ROOT)
+        os.symlink(rel_target, link_path)
+    except Exception:
+        pass
+
+
+# Chave Redis para progresso de download: fw_dl_progress:<task_id>
+_CACHE_PREFIX  = 'fw_dl_progress:'
+_CACHE_TIMEOUT = 3600  # 1 hora — limpeza automática
+
+
+def _progress_set(task_id: str, **kwargs):
+    key  = _CACHE_PREFIX + task_id
+    data = cache.get(key) or {}
+    data.update(kwargs)
+    cache.set(key, data, timeout=_CACHE_TIMEOUT)
+
+
+def _progress_get(task_id: str):
+    return cache.get(_CACHE_PREFIX + task_id)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -146,6 +201,18 @@ def firmware_upload(request):
         for chunk in f.chunks(chunk_size=8 * 1024 * 1024):
             fp.write(chunk)
 
+    # Garantir leitura pelo TFTP (tftpd-hpa roda como user 'tftp')
+    try:
+        import grp
+        tftp_gid = grp.getgrnam('tftp').gr_gid
+        os.chown(dest_path, -1, tftp_gid)
+        os.chmod(dest_path, 0o644)
+    except Exception:
+        pass
+
+    # Symlink no root TFTP para permitir load file tftp <IP> <nome>
+    _criar_symlink_tftp(dest_path, nome)
+
     tamanho   = os.path.getsize(dest_path)
     mime_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
 
@@ -216,6 +283,7 @@ def firmware_compartilhar(request, arquivo_id):
     ftp_user, ftp_senha = ('', '')
     if com_senha:
         ftp_user, ftp_senha = FirmwareCompartilhamento.gerar_credenciais()
+        _ftp_criar_usuario(ftp_user, ftp_senha)
 
     comp = FirmwareCompartilhamento.objects.create(
         arquivo=arq,
@@ -238,35 +306,127 @@ def firmware_compartilhar(request, arquivo_id):
         'tamanho': arq.tamanho_legivel(),
         'ftp_user': ftp_user,
         'ftp_senha': ftp_senha,
-        'links': _gerar_links(base, host, token, arq.nome, ftp_user, ftp_senha),
+        'links': _gerar_links(base, host, token, arq.nome, ftp_user, ftp_senha,
+                              tftp_path=arq.caminho_relativo),
     })
 
 
-def _gerar_links(base, host, token, nome_arquivo, ftp_user='', ftp_senha=''):
+def _resolver_ip(host: str) -> str:
+    """Resolve hostname para IP. Retorna o próprio host se já for IP ou falhar."""
+    import socket
+    import re
+    if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', host):
+        return host  # já é IPv4
+    try:
+        return socket.gethostbyname(host)
+    except Exception:
+        return host  # fallback: mantém o host original
+
+
+def _gerar_links(base, host, token, nome_arquivo, ftp_user='', ftp_senha='',
+                  tftp_path: str = ''):
+    """
+    Gera os links e comandos de download para todos os protocolos.
+
+    tftp_path: caminho relativo do arquivo dentro do TFTP root
+               (= FirmwareArquivo.caminho_relativo, ex: 'Firmware Huawei/MA5800.bin').
+               Se vazio, usa apenas o nome_arquivo.
+    """
     from django.urls import reverse
+
     path_dl   = reverse('firmware_download', kwargs={'token': token, 'nome_arquivo': nome_arquivo})
     url_http  = base + path_dl
     url_https = url_http.replace('http://', 'https://')
+
+    # IP resolvido — OLTs não aceitam hostname
+    host_ip = _resolver_ip(host)
+
     if ftp_user and ftp_senha:
         url_ftp  = f'ftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo}'
         url_sftp = f'sftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo}'
     else:
         url_ftp  = f'ftp://{host}/{nome_arquivo}'
         url_sftp = f'sftp://{host}/{nome_arquivo}'
-    url_tftp = f'tftp://{host}/{nome_arquivo}'
+
+    # Caminho para o TFTP — usa caminho_relativo se disponível
+    tftp_nome = tftp_path if tftp_path else nome_arquivo
+    url_tftp  = f'tftp://{host_ip}/{tftp_nome}'
+
+    # ── Huawei MA5800/MA5600 ──
+    # SFTP: load file sftp <IP> <arquivo> [username <user> password <pass>]
+    if ftp_user and ftp_senha:
+        huawei_sftp = (
+            f'load file sftp {host_ip} {nome_arquivo} '
+            f'username {ftp_user} password {ftp_senha}'
+        )
+    else:
+        huawei_sftp = f'load file sftp {host_ip} {nome_arquivo}'
+
+    # TFTP: load file tftp <IP> <arquivo>
+    # Huawei OLT só aceita nome simples (basename), sem barras/subdiretórios
+    huawei_tftp = f'load file tftp {host_ip} {nome_arquivo}'
+
+    # FTP: load file ftp <IP> <arquivo> [username <user> password <pass>]
+    if ftp_user and ftp_senha:
+        huawei_ftp = (
+            f'load file ftp {host_ip} {nome_arquivo} '
+            f'username {ftp_user} password {ftp_senha}'
+        )
+    else:
+        huawei_ftp = f'load file ftp {host_ip} {nome_arquivo}'
 
     return {
-        'http':    url_http,
-        'https':   url_https,
-        'ftp':     url_ftp,
-        'sftp':    url_sftp,
-        'tftp':    url_tftp,
-        'cisco':   f'copy ftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo} flash:' if ftp_user else f'copy http://{host}/ferramentas/firmware/dl/{token}/{nome_arquivo} flash:',
-        'mikrotik': f'/tool fetch url="{url_http}" dst-path="{nome_arquivo}"',
-        'huawei':  f'tftp {host} get {nome_arquivo}',
-        'linux':   f'wget "{url_http}" -O "{nome_arquivo}"',
-        'curl':    f'curl -L "{url_http}" -o "{nome_arquivo}"',
+        'http':        url_http,
+        'https':       url_https,
+        'ftp':         url_ftp,
+        'sftp':        url_sftp,
+        'tftp':        url_tftp,
+        'cisco':       (
+            f'copy ftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo} flash:'
+            if ftp_user
+            else f'copy http://{host}/ferramentas/firmware/dl/{token}/{nome_arquivo} flash:'
+        ),
+        'mikrotik':    f'/tool fetch url="{url_http}" dst-path="{nome_arquivo}"',
+        'huawei':      huawei_sftp,
+        'huawei_tftp': huawei_tftp,
+        'huawei_ftp':  huawei_ftp,
+        'huawei_ip':   host_ip,
+        'linux':       f'wget "{url_http}" -O "{nome_arquivo}"',
+        'curl':        f'curl -L "{url_http}" -o "{nome_arquivo}"',
     }
+
+
+def _ftp_criar_usuario(username: str, password: str):
+    """Cria usuário Linux dedicado para acesso FTP ao diretório de firmware."""
+    if not username or not username.startswith('fw_'):
+        return
+    try:
+        subprocess.run(
+            ['sudo', 'useradd', '-r', '-d', FIRMWARE_ROOT, '-s', '/usr/sbin/nologin',
+             '-M', '--no-user-group', username],
+            check=True, capture_output=True,
+        )
+    except subprocess.CalledProcessError:
+        pass  # usuário já existe — só atualiza a senha
+    try:
+        subprocess.run(
+            ['sudo', 'chpasswd'],
+            input=f'{username}:{password}',
+            text=True, check=True, capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        import logging
+        logging.getLogger(__name__).error('chpasswd falhou para %s: %s', username, exc.stderr)
+
+
+def _ftp_remover_usuario(username: str):
+    """Remove usuário Linux de FTP se existir."""
+    if not username or not username.startswith('fw_'):
+        return  # segurança: só remove usuários gerados pela plataforma
+    try:
+        subprocess.run(['sudo', 'userdel', username], check=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        pass
 
 
 @login_required(login_url='login')
@@ -274,6 +434,7 @@ def _gerar_links(base, host, token, nome_arquivo, ftp_user='', ftp_senha=''):
 @require_POST
 def firmware_revogar_link(request, comp_id):
     comp = get_object_or_404(FirmwareCompartilhamento, pk=comp_id)
+    _ftp_remover_usuario(comp.ftp_user)
     comp.delete()
     return JsonResponse({'ok': True})
 
@@ -291,96 +452,372 @@ def firmware_download(request, token, nome_arquivo):
     comp.acessos += 1
     comp.save(update_fields=['acessos'])
 
-    response = FileResponse(
-        open(arq.arquivo.path, 'rb'),
+    dl_id   = str(uuid.uuid4())
+    tamanho = arq.tamanho
+    nome    = arq.nome
+    ip_raw  = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '?'))
+    ip      = ip_raw.split(',')[0].strip()
+
+    # Notifica admins que um download começou
+    _fw_channel_send('download_start', {
+        'dl_id':       dl_id,
+        'token':       token,
+        'nome':        nome,
+        'tamanho':     tamanho,
+        'tamanho_str': arq.tamanho_legivel(),
+        'ip':          ip,
+    })
+
+    def _stream():
+        CHUNK            = 256 * 1024   # 256 KB por chunk
+        NOTIFY_INTERVAL  = 2 * 1024 * 1024  # notifica a cada 2 MB
+        bytes_sent       = 0
+        last_notify      = 0
+
+        try:
+            with open(arq.arquivo.path, 'rb') as fh:
+                while True:
+                    chunk = fh.read(CHUNK)
+                    if not chunk:
+                        break
+                    yield chunk
+                    bytes_sent += len(chunk)
+                    diff = bytes_sent - last_notify
+                    if diff >= NOTIFY_INTERVAL or bytes_sent >= tamanho:
+                        pct = int(bytes_sent / tamanho * 100) if tamanho > 0 else 0
+                        _fw_channel_send('download_progress', {
+                            'dl_id':       dl_id,
+                            'pct':         min(pct, 99),
+                            'bytes_sent':  bytes_sent,
+                            'bytes_total': tamanho,
+                        })
+                        last_notify = bytes_sent
+        finally:
+            # Garante notificação de conclusão mesmo em caso de erro/conexão fechada
+            _fw_channel_send('download_complete', {
+                'dl_id':       dl_id,
+                'nome':        nome,
+                'bytes_total': tamanho,
+                'ip':          ip,
+            })
+
+    response = StreamingHttpResponse(
+        _stream(),
         content_type=arq.mime_type or 'application/octet-stream',
-        as_attachment=True,
-        filename=arq.nome,
     )
-    response['Content-Length'] = arq.tamanho
-    response['Accept-Ranges'] = 'bytes'
+    response['Content-Disposition'] = f'attachment; filename="{nome}"'
+    response['Content-Length']      = tamanho
+    response['Accept-Ranges']       = 'bytes'
     return response
 
 
-# ── Info de compartilhamentos ativos de um arquivo ───────────────────────────
+# ── Helpers de download por URL ──────────────────────────────────────────────
+def _fw_normalizar_url(url: str) -> str:
+    """
+    Converte URLs de serviços conhecidos para links de download direto.
+
+    OneDrive pessoal (1drv.ms / onedrive.live.com):
+      https://1drv.ms/b/s!XXXXX  →  download direto via API
+      https://onedrive.live.com/personal/.../download.aspx?SourceUrl=...
+        → link pessoal requer autenticação; não é possível converter
+          automaticamente — retorna a URL original e o worker detectará
+          o HTML e vai informar o erro.
+
+    OneDrive compartilhado (link "Qualquer pessoa com o link"):
+      https://onedrive.live.com/...?resid=XXX&cid=YYY
+      https://1drv.ms/...
+        → adiciona &download=1
+
+    Google Drive:
+      https://drive.google.com/file/d/FILE_ID/view  →  /uc?export=download&id=FILE_ID
+      https://drive.google.com/open?id=FILE_ID      →  /uc?export=download&id=FILE_ID
+
+    Dropbox:
+      https://www.dropbox.com/s/XXX/file.bin?dl=0  →  ?dl=1
+    """
+    from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+
+    parsed = urlparse(url)
+    host   = parsed.netloc.lower()
+
+    # Google Drive
+    if 'drive.google.com' in host:
+        import re
+        m = re.search(r'/file/d/([^/]+)', parsed.path)
+        if m:
+            return f'https://drive.google.com/uc?export=download&confirm=t&id={m.group(1)}'
+        qs = parse_qs(parsed.query)
+        if 'id' in qs:
+            return f'https://drive.google.com/uc?export=download&confirm=t&id={qs["id"][0]}'
+
+    # Dropbox
+    if 'dropbox.com' in host:
+        return url.replace('?dl=0', '?dl=1').replace('&dl=0', '&dl=1') + (
+            '&dl=1' if 'dl=' not in url else ''
+        ).replace('&&', '&')
+
+    # OneDrive compartilhado (1drv.ms ou onedrive.live.com sem /personal/)
+    if '1drv.ms' in host:
+        return url + ('&' if '?' in url else '?') + 'download=1'
+
+    if 'onedrive.live.com' in host and '/personal/' not in parsed.path:
+        return url + ('&' if '?' in url else '?') + 'download=1'
+
+    return url
+
+
+def _fw_inferir_nome_url(url: str) -> str:
+    """
+    Tenta extrair o nome real do arquivo a partir da URL.
+    Handles:
+      - URLs normais:  .../MA5800.bin
+      - OneDrive/SharePoint: download.aspx?SourceUrl=.../MA5800.bin
+      - Google Drive, Dropbox e similares com parâmetros de query
+    """
+    from urllib.parse import urlparse, unquote, parse_qs
+
+    parsed    = urlparse(url)
+    path_part = parsed.path.rstrip('/')
+    nome      = unquote(os.path.basename(path_part)) or 'arquivo'
+
+    # Extensões de scripts servidor — o nome real está em algum parâmetro de query
+    _SCRIPT_EXTS = {'.aspx', '.ashx', '.php', '.jsp', '.do', '.axd', ''}
+    _, ext_check = os.path.splitext(nome.lower())
+    if ext_check in _SCRIPT_EXTS:
+        qs = parse_qs(parsed.query, keep_blank_values=False)
+        # Parâmetros comuns de OneDrive, SharePoint, CDNs, etc.
+        for param in ('SourceUrl', 'source', 'file', 'filename', 'name', 'f', 'dl', 'path'):
+            if param in qs:
+                candidate = unquote(qs[param][0]).replace('\\', '/')
+                candidate_name = os.path.basename(candidate.rstrip('/'))
+                if candidate_name and '.' in candidate_name:
+                    nome = candidate_name
+                    break
+
+    if '.' not in nome:
+        nome += '.bin'
+    return nome
+
+
+def _fw_nome_do_content_disposition(cd: str) -> str:
+    """
+    Extrai o nome do arquivo do cabeçalho Content-Disposition.
+    Suporta:
+      - filename="foo.bin"
+      - filename*=UTF-8''foo.bin  (RFC 5987 — OneDrive, Chrome downloads)
+    Retorna string vazia se não encontrar.
+    """
+    import re
+    from urllib.parse import unquote
+
+    if not cd:
+        return ''
+
+    # RFC 5987 tem prioridade: filename*=charset''encoded_name
+    m = re.search(r"filename\*\s*=\s*[A-Za-z0-9-]*''([^;\r\n]+)", cd, re.IGNORECASE)
+    if m:
+        return unquote(m.group(1).strip())
+
+    # Formato clássico: filename="..." ou filename=...
+    m = re.search(r'filename\s*=\s*["\']?([^"\';\r\n]+)', cd)
+    if m:
+        return m.group(1).strip().strip('"\'')
+
+    return ''
+
+
 @login_required(login_url='login')
 @admin_required
 @require_POST
 def firmware_upload_url(request):
-    """Faz download de um arquivo via HTTP/HTTPS e salva no gerenciador."""
-    import requests as req_lib
-    from urllib.parse import urlparse, unquote
-
-    data = json.loads(request.body)
-    url = data.get('url', '').strip()
+    """
+    Inicia download de um arquivo via HTTP/HTTPS em background.
+    Retorna task_id imediatamente; o cliente monitora via firmware_upload_url_progresso.
+    """
+    data     = json.loads(request.body)
+    url      = data.get('url', '').strip()
     pasta_id = data.get('pasta_id') or None
 
     if not url:
         return JsonResponse({'ok': False, 'erro': 'URL não informada'}, status=400)
 
+    from urllib.parse import urlparse
     parsed = urlparse(url)
     if parsed.scheme not in ('http', 'https'):
         return JsonResponse({'ok': False, 'erro': 'Apenas URLs http:// ou https:// são suportadas'}, status=400)
 
-    pasta = FirmwarePasta.objects.get(pk=int(pasta_id)) if pasta_id else None
+    nome_hint = _fw_inferir_nome_url(url)
 
-    # Nome do arquivo a partir da URL
-    path_part = parsed.path.rstrip('/')
-    nome = unquote(os.path.basename(path_part)) or 'arquivo'
-    if '.' not in nome:
-        nome = nome + '.bin'
+    task_id = str(uuid.uuid4())
+    _progress_set(task_id,
+                  status='conectando',
+                  pct=0,
+                  bytes_baixados=0,
+                  bytes_total=0,
+                  nome=nome_hint,
+                  arquivo=None,
+                  erro=None)
 
-    # Diretório de destino
-    dest_dir = os.path.join(FIRMWARE_ROOT, pasta.caminho_completo) if pasta else FIRMWARE_ROOT
-    os.makedirs(dest_dir, exist_ok=True)
+    threading.Thread(
+        target=_fw_download_worker,
+        args=(task_id, url, pasta_id, request.user.id),
+        daemon=True,
+    ).start()
 
-    # Evitar colisão de nomes
-    dest_path = os.path.join(dest_dir, nome)
-    base, ext = os.path.splitext(nome)
-    contador = 1
-    while os.path.exists(dest_path):
-        nome = f'{base}({contador}){ext}'
-        dest_path = os.path.join(dest_dir, nome)
-        contador += 1
+    return JsonResponse({'ok': True, 'task_id': task_id, 'nome': nome_hint})
+
+
+def _fw_download_worker(task_id: str, url: str, pasta_id, user_id: int):
+    """
+    Thread de download: baixa o arquivo em chunks de 256 KB e reporta o progresso
+    em cada chunk via Redis.
+    """
+    import requests as req_lib
+
+    dest_path = None
+
+    def _upd(**kw):
+        _progress_set(task_id, **kw)
+
+    def _resolver_colisao(dest_dir, nome):
+        dest = os.path.join(dest_dir, nome)
+        base, ext = os.path.splitext(nome)
+        c = 1
+        while os.path.exists(dest) or os.path.exists(dest + '.tmp'):
+            nome = f'{base}({c}){ext}'
+            dest = os.path.join(dest_dir, nome)
+            c += 1
+        return dest, nome
 
     try:
-        resp = req_lib.get(url, stream=True, timeout=30, verify=True,
-                           headers={'User-Agent': 'Mozilla/5.0 (firmware-manager)'})
+        url_dl   = _fw_normalizar_url(url)
+        nome     = _fw_inferir_nome_url(url)   # usa URL original para inferir nome
+        pasta    = FirmwarePasta.objects.get(pk=int(pasta_id)) if pasta_id else None
+        dest_dir = os.path.join(FIRMWARE_ROOT, pasta.caminho_completo) if pasta else FIRMWARE_ROOT
+        os.makedirs(dest_dir, exist_ok=True)
+
+        dest_path, nome = _resolver_colisao(dest_dir, nome)
+        tmp_path = dest_path + '.tmp'
+        _upd(nome=nome)
+
+        resp = req_lib.get(
+            url_dl, stream=True, timeout=60, verify=True,
+            headers={'User-Agent': 'Mozilla/5.0 (firmware-manager)'},
+        )
         resp.raise_for_status()
-        with open(dest_path, 'wb') as fp:
-            for chunk in resp.iter_content(chunk_size=8 * 1024 * 1024):
+
+        # Rejeitar respostas HTML — indica página de login, erro ou redirect não seguido
+        ct = resp.headers.get('Content-Type', '')
+        if 'text/html' in ct:
+            raise ValueError(
+                'O servidor retornou uma página HTML em vez do arquivo binário. '
+                'O link provavelmente requer autenticação (ex: OneDrive pessoal sem compartilhamento). '
+                'Use um link de compartilhamento público: no OneDrive clique em '
+                '"Compartilhar → Qualquer pessoa com o link" e cole o link gerado.'
+            )
+
+        # Tentar pegar nome real do Content-Disposition (suporta RFC 5987)
+        nome_cd = os.path.basename(_fw_nome_do_content_disposition(
+            resp.headers.get('Content-Disposition', '')
+        ))
+        if nome_cd and nome_cd != nome:
+            novo_dest, nome_cd = _resolver_colisao(dest_dir, nome_cd)
+            nome      = nome_cd
+            dest_path = novo_dest
+            tmp_path  = dest_path + '.tmp'
+            _upd(nome=nome)
+
+        total     = int(resp.headers.get('Content-Length', 0))
+        baixados  = 0
+        _upd(status='baixando', bytes_total=total)
+
+        with open(tmp_path, 'wb') as fp:
+            for chunk in resp.iter_content(chunk_size=256 * 1024):  # 256 KB
                 if chunk:
                     fp.write(chunk)
-    except req_lib.exceptions.SSLError:
-        return JsonResponse({'ok': False, 'erro': 'Erro de certificado SSL na URL informada'}, status=400)
-    except req_lib.exceptions.ConnectionError:
-        return JsonResponse({'ok': False, 'erro': 'Não foi possível conectar ao servidor remoto'}, status=400)
-    except req_lib.exceptions.Timeout:
-        return JsonResponse({'ok': False, 'erro': 'Tempo limite excedido ao tentar baixar o arquivo'}, status=400)
-    except req_lib.exceptions.HTTPError as e:
-        return JsonResponse({'ok': False, 'erro': f'Servidor remoto retornou erro: {e.response.status_code}'}, status=400)
-    except Exception as e:
-        # Remove arquivo parcial se houver
-        if os.path.exists(dest_path):
+                    baixados += len(chunk)
+                    pct = int(baixados / total * 100) if total > 0 else 0
+                    _upd(bytes_baixados=baixados, pct=min(pct, 99))
+
+        # Renomear .tmp → arquivo final
+        os.rename(tmp_path, dest_path)
+
+        # Garantir leitura pelo TFTP
+        try:
+            import grp
+            tftp_gid = grp.getgrnam('tftp').gr_gid
+            os.chown(dest_path, -1, tftp_gid)
+            os.chmod(dest_path, 0o644)
+        except Exception:
+            pass
+
+        # Symlink no root TFTP para permitir load file tftp <IP> <nome>
+        _criar_symlink_tftp(dest_path, nome)
+
+        tamanho   = os.path.getsize(dest_path)
+        mime_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+        pasta_rel = (
+            os.path.join('firmware', pasta.caminho_completo, nome)
+            if pasta else os.path.join('firmware', nome)
+        )
+
+        from django.contrib.auth.models import User
+        user = User.objects.filter(pk=user_id).first()
+
+        arq = FirmwareArquivo.objects.create(
+            nome=nome,
+            arquivo=pasta_rel,
+            tamanho=tamanho,
+            mime_type=mime_type,
+            pasta=pasta,
+            criado_por=user,
+        )
+
+        _upd(
+            status='concluido',
+            pct=100,
+            bytes_baixados=tamanho,
+            arquivo={
+                'id':          arq.pk,
+                'nome':        arq.nome,
+                'tamanho':     arq.tamanho,
+                'tamanho_str': arq.tamanho_legivel(),
+                'mime_type':   arq.mime_type,
+                'pasta_id':    arq.pasta_id,
+            },
+        )
+
+    except Exception as exc:
+        import traceback
+        msg = str(exc)
+        # Mensagens amigáveis
+        import requests as req_lib
+        if isinstance(exc, req_lib.exceptions.SSLError):
+            msg = 'Erro de certificado SSL na URL informada'
+        elif isinstance(exc, req_lib.exceptions.ConnectionError):
+            msg = 'Não foi possível conectar ao servidor remoto'
+        elif isinstance(exc, req_lib.exceptions.Timeout):
+            msg = 'Tempo limite excedido ao baixar o arquivo'
+        elif isinstance(exc, req_lib.exceptions.HTTPError):
+            msg = f'Servidor remoto retornou erro {exc.response.status_code}'
+        _upd(status='erro', erro=msg)
+        # Remover arquivo parcial
+        for f in ([dest_path, dest_path + '.tmp'] if dest_path else []):
             try:
-                os.remove(dest_path)
+                if f and os.path.exists(f):
+                    os.remove(f)
             except Exception:
                 pass
-        return JsonResponse({'ok': False, 'erro': f'Erro ao baixar arquivo: {str(e)}'}, status=500)
 
-    tamanho = os.path.getsize(dest_path)
-    mime_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
-    pasta_rel = os.path.join('firmware', pasta.caminho_completo, nome) if pasta else os.path.join('firmware', nome)
 
-    arq = FirmwareArquivo.objects.create(
-        nome=nome,
-        arquivo=pasta_rel,
-        tamanho=tamanho,
-        mime_type=mime_type,
-        pasta=pasta,
-        criado_por=request.user,
-    )
-    return JsonResponse({'ok': True, 'arquivo': _serialize_arquivo(arq, request)})
+@login_required(login_url='login')
+@admin_required
+def firmware_upload_url_progresso(request, task_id):
+    """Retorna o progresso de um download em andamento (polling)."""
+    data = _progress_get(task_id)
+    if data is None:
+        return JsonResponse({'ok': False, 'erro': 'Tarefa não encontrada ou expirada'}, status=404)
+    return JsonResponse({'ok': True, **data})
 
 
 @login_required(login_url='login')
@@ -399,6 +836,7 @@ def firmware_links_ativos(request, arquivo_id):
             'acessos': c.acessos,
             'ftp_user': c.ftp_user,
             'ftp_senha': c.ftp_senha,
-            'links': _gerar_links(base, host, c.token, arq.nome, c.ftp_user, c.ftp_senha),
+            'links': _gerar_links(base, host, c.token, arq.nome, c.ftp_user, c.ftp_senha,
+                                  tftp_path=arq.caminho_relativo),
         })
     return JsonResponse({'ok': True, 'compartilhamentos': result})

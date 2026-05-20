@@ -2,12 +2,23 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
 from datetime import datetime, timedelta
-from clientes.models import Cliente, BlocoIP, BackupTemplate, Acesso, BackupLog
+from clientes.models import (
+    Cliente, BlocoIP, BackupTemplate, Acesso, BackupLog,
+    AgentConfig, EvolutionAPIConfig, WhatsAppGrupo, AgentKnowledge,
+    AgentKnowledgeDoc, AgentSessao, AgentLog,
+)
 from django.contrib.auth.models import User
 from clientes.decorators import admin_required, superuser_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 import json
+import logging
+import hashlib
+import hmac
+import asyncio
+
+logger = logging.getLogger(__name__)
 
 @login_required(login_url='login')
 @admin_required
@@ -1711,3 +1722,667 @@ def backup_acesso_config(request, acesso_id):
         return JsonResponse({'ok': True})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENT NOC — Configuração e Gerenciamento de Grupos WhatsApp
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@login_required(login_url='login')
+@admin_required
+def agent_config(request):
+    """Painel de configuração do Agent NOC (Claude API + OpenAI + Evolution API)."""
+    agent_cfg = AgentConfig.get()
+    evo_cfg   = EvolutionAPIConfig.get()
+
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        secao = data.get('secao')
+
+        if secao == 'claude':
+            if data.get('claude_api_key'):
+                agent_cfg.claude_api_key = data['claude_api_key']
+            agent_cfg.claude_model        = data.get('claude_model', agent_cfg.claude_model)
+            agent_cfg.claude_max_tokens   = int(data.get('claude_max_tokens', agent_cfg.claude_max_tokens))
+            agent_cfg.claude_temperature  = float(data.get('claude_temperature', agent_cfg.claude_temperature))
+            agent_cfg.aprovacao_padrao    = bool(data.get('aprovacao_padrao', agent_cfg.aprovacao_padrao))
+            agent_cfg.timeout_sessao_wa   = int(data.get('timeout_sessao_wa', agent_cfg.timeout_sessao_wa))
+            agent_cfg.prefixo_wa          = data.get('prefixo_wa', agent_cfg.prefixo_wa).strip() or '@noc'
+            agent_cfg.max_comandos_sessao = int(data.get('max_comandos_sessao', agent_cfg.max_comandos_sessao))
+            agent_cfg.wa_grupo_noc        = data.get('wa_grupo_noc', agent_cfg.wa_grupo_noc)
+            agent_cfg.wa_noc_numero       = data.get('wa_noc_numero', agent_cfg.wa_noc_numero)
+            agent_cfg.save()
+            return JsonResponse({'ok': True, 'msg': 'Configuração Claude salva.'})
+
+        if secao == 'openai':
+            if data.get('openai_api_key'):
+                agent_cfg.openai_api_key = data['openai_api_key']
+            agent_cfg.openai_model       = data.get('openai_model', agent_cfg.openai_model)
+            agent_cfg.openai_max_tokens  = int(data.get('openai_max_tokens', agent_cfg.openai_max_tokens))
+            agent_cfg.openai_temperature = float(data.get('openai_temperature', agent_cfg.openai_temperature))
+            agent_cfg.save()
+            return JsonResponse({'ok': True, 'msg': 'Configuração OpenAI salva.'})
+
+        if secao == 'provedor':
+            provedor = data.get('provedor_ia', 'claude')
+            if provedor not in ('claude', 'openai'):
+                return JsonResponse({'ok': False, 'erro': 'Provedor inválido.'}, status=400)
+            agent_cfg.provedor_ia = provedor
+            agent_cfg.save()
+            return JsonResponse({'ok': True, 'msg': f'Provedor alterado para {provedor}.'})
+
+        if secao == 'evolution':
+            if data.get('api_key'):
+                evo_cfg.api_key = data['api_key']
+            if data.get('webhook_secret'):
+                evo_cfg.webhook_secret = data['webhook_secret']
+            evo_cfg.url           = data.get('url', evo_cfg.url).rstrip('/')
+            evo_cfg.instance_name = data.get('instance_name', evo_cfg.instance_name)
+            evo_cfg.save()
+            return JsonResponse({'ok': True, 'msg': 'Configuração Evolution API salva.'})
+
+        return JsonResponse({'ok': False, 'erro': 'Seção inválida.'}, status=400)
+
+    return render(request, 'agent_config.html', {
+        'agent_cfg': agent_cfg,
+        'evo_cfg':   evo_cfg,
+    })
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_testar_claude(request):
+    """Testa a conexão com a API Claude enviando uma mensagem simples."""
+    try:
+        import anthropic
+        cfg = AgentConfig.get()
+        if not cfg.claude_api_key:
+            return JsonResponse({'ok': False, 'erro': 'API Key não configurada.'})
+        client = anthropic.Anthropic(api_key=cfg.claude_api_key)
+        msg = client.messages.create(
+            model=cfg.claude_model,
+            max_tokens=50,
+            messages=[{'role': 'user', 'content': 'Responda apenas: OK'}],
+        )
+        resposta = msg.content[0].text if msg.content else '(sem resposta)'
+        return JsonResponse({'ok': True, 'resposta': resposta, 'modelo': cfg.claude_model})
+    except ImportError:
+        return JsonResponse({'ok': False, 'erro': 'Pacote "anthropic" não instalado. Execute: pip install anthropic'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)})
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_testar_openai(request):
+    """Testa a conexão com a API OpenAI enviando uma mensagem simples."""
+    try:
+        import openai as openai_lib
+        cfg = AgentConfig.get()
+        if not cfg.openai_api_key:
+            return JsonResponse({'ok': False, 'erro': 'API Key não configurada.'})
+        client = openai_lib.OpenAI(api_key=cfg.openai_api_key)
+        resp = client.chat.completions.create(
+            model=cfg.openai_model or 'gpt-4o',
+            max_tokens=50,
+            messages=[{'role': 'user', 'content': 'Responda apenas: OK'}],
+        )
+        resposta = resp.choices[0].message.content if resp.choices else '(sem resposta)'
+        return JsonResponse({'ok': True, 'resposta': resposta, 'modelo': cfg.openai_model})
+    except ImportError:
+        return JsonResponse({'ok': False, 'erro': 'Pacote "openai" não instalado. Execute: pip install openai'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)})
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_testar_evolution(request):
+    """Testa a conexão com a Evolution API verificando o status da instância."""
+    import urllib.request, ssl
+    try:
+        cfg = EvolutionAPIConfig.get()
+        if not cfg.url or not cfg.api_key:
+            return JsonResponse({'ok': False, 'erro': 'URL e API Key são obrigatórios.'})
+
+        url = f'{cfg.url}/instance/fetchInstances'
+        req = urllib.request.Request(
+            url,
+            headers={'apikey': cfg.api_key, 'Content-Type': 'application/json'},
+        )
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+            body = json.loads(resp.read())
+
+        # Localiza a instância configurada
+        instancias = body if isinstance(body, list) else body.get('instances', [])
+        alvo = next((i for i in instancias if i.get('name') == cfg.instance_name), None)
+        if not alvo:
+            nomes = [i.get('name') for i in instancias]
+            return JsonResponse({'ok': False, 'erro': f'Instância "{cfg.instance_name}" não encontrada. Disponíveis: {nomes}'})
+
+        estado = alvo.get('connectionStatus') or alvo.get('state') or 'desconhecido'
+        numero = (alvo.get('number') or alvo.get('ownerJid') or '').split('@')[0]
+
+        conectado = estado.lower() in ('open', 'connected', 'online')
+        if conectado:
+            evo = EvolutionAPIConfig.get()
+            evo.conectado  = True
+            evo.numero_wa  = numero
+            evo.save(update_fields=['conectado', 'numero_wa'])
+
+        return JsonResponse({'ok': True, 'estado': estado, 'numero': numero, 'conectado': conectado})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)})
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_sync_grupos(request):
+    """
+    Consulta a Evolution API e sincroniza os grupos/contatos no banco local.
+    Preserva vínculos e configurações existentes.
+    """
+    import urllib.request, ssl
+    try:
+        cfg = EvolutionAPIConfig.get()
+        if not cfg.url or not cfg.api_key or not cfg.instance_name:
+            return JsonResponse({'ok': False, 'erro': 'Evolution API não configurada completamente.'})
+
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        def evo_get(path):
+            req = urllib.request.Request(
+                f'{cfg.url}{path}',
+                headers={'apikey': cfg.api_key},
+            )
+            with urllib.request.urlopen(req, timeout=15, context=ctx) as r:
+                return json.loads(r.read())
+
+        # Busca grupos
+        grupos_raw = evo_get(f'/group/fetchAllGroups/{cfg.instance_name}?getParticipants=false')
+        if not isinstance(grupos_raw, list):
+            grupos_raw = grupos_raw.get('data', []) if isinstance(grupos_raw, dict) else []
+
+        novos = 0
+        atualizados = 0
+        for g in grupos_raw:
+            jid  = g.get('id') or g.get('jid') or ''
+            nome = g.get('subject') or g.get('name') or jid
+            foto = g.get('pictureUrl') or g.get('picture') or ''
+            if not jid:
+                continue
+            obj, criado = WhatsAppGrupo.objects.get_or_create(jid=jid, defaults={'nome': nome, 'tipo': 'grupo'})
+            if criado:
+                novos += 1
+            else:
+                obj.nome    = nome
+                obj.tipo    = 'grupo'
+                obj.foto_url = foto
+                obj.save(update_fields=['nome', 'tipo', 'foto_url', 'sincronizado_em'])
+                atualizados += 1
+
+        from django.utils import timezone
+        cfg.ultima_sync = timezone.now()
+        cfg.save(update_fields=['ultima_sync'])
+
+        total = WhatsAppGrupo.objects.count()
+        return JsonResponse({'ok': True, 'novos': novos, 'atualizados': atualizados, 'total': total,
+                             'msg': f'{novos} novo(s), {atualizados} atualizado(s). Total: {total} grupos.'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)})
+
+
+@login_required(login_url='login')
+@admin_required
+def agent_grupos(request):
+    """Lista e gerencia grupos/contatos WhatsApp vinculados a clientes."""
+    grupos   = list(WhatsAppGrupo.objects.select_related('cliente').prefetch_related('hosts_permitidos').order_by('nome'))
+    clientes = Cliente.objects.all().order_by('nome_empresa')
+    return render(request, 'agent_grupos.html', {
+        'grupos': grupos,
+        'clientes': clientes,
+        'total_vinculados': sum(1 for g in grupos if g.cliente_id),
+        'total_ativos':     sum(1 for g in grupos if g.ativo),
+        'total_sem':        sum(1 for g in grupos if not g.cliente_id),
+    })
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_grupo_salvar(request, grupo_id):
+    """Salva o vínculo de um grupo com um cliente e suas permissões."""
+    grupo = get_object_or_404(WhatsAppGrupo, id=grupo_id)
+    try:
+        data = json.loads(request.body)
+
+        cliente_id = data.get('cliente_id')
+        grupo.cliente = Cliente.objects.get(id=cliente_id) if cliente_id else None
+        grupo.nivel_permissao = data.get('nivel_permissao', 'leitura')
+        grupo.ativo = bool(data.get('ativo', True))
+        grupo.save(update_fields=['cliente', 'nivel_permissao', 'ativo'])
+
+        # Atualiza restrição de hosts
+        hosts_ids = data.get('hosts_ids', [])
+        if hosts_ids:
+            # Valida que todos pertencem ao cliente vinculado
+            hosts_validos = Acesso.objects.filter(id__in=hosts_ids)
+            if grupo.cliente:
+                hosts_validos = hosts_validos.filter(cliente=grupo.cliente)
+            grupo.hosts_permitidos.set(hosts_validos)
+        else:
+            grupo.hosts_permitidos.clear()
+
+        return JsonResponse({'ok': True, 'msg': f'Grupo "{grupo.nome}" salvo com sucesso.'})
+    except Cliente.DoesNotExist:
+        return JsonResponse({'ok': False, 'erro': 'Cliente não encontrado.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required(login_url='login')
+@admin_required
+def agent_grupo_hosts(request, grupo_id):
+    """Retorna os hosts do cliente vinculado ao grupo (para popular o selector no modal)."""
+    grupo = get_object_or_404(WhatsAppGrupo, id=grupo_id)
+    if not grupo.cliente:
+        return JsonResponse({'hosts': [], 'permitidos': []})
+
+    todos = list(Acesso.objects.filter(cliente=grupo.cliente).values('id', 'host', 'porta', 'tipo'))
+    permitidos = list(grupo.hosts_permitidos.values_list('id', flat=True))
+    return JsonResponse({'hosts': todos, 'permitidos': permitidos})
+
+
+@login_required(login_url='login')
+@admin_required
+def agent_grupo_hosts_por_cliente(request):
+    """Retorna hosts de um cliente (via ?cliente_id=) para o modal de vínculo."""
+    cliente_id = request.GET.get('cliente_id')
+    if not cliente_id:
+        return JsonResponse({'hosts': []})
+    hosts = list(Acesso.objects.filter(cliente_id=cliente_id).values('id', 'host', 'porta', 'tipo'))
+    return JsonResponse({'hosts': hosts})
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_grupo_toggle(request, grupo_id):
+    """Ativa/desativa um grupo rapidamente."""
+    grupo = get_object_or_404(WhatsAppGrupo, id=grupo_id)
+    grupo.ativo = not grupo.ativo
+    grupo.save(update_fields=['ativo'])
+    return JsonResponse({'ok': True, 'ativo': grupo.ativo})
+
+
+# ── Base de Conhecimento ──────────────────────────────────────────────────────
+
+@login_required(login_url='login')
+@admin_required
+def agent_knowledge(request):
+    """Lista e gerencia a base de conhecimento do agent."""
+    artigos  = AgentKnowledge.objects.select_related('cliente', 'criado_por').order_by('fabricante', 'titulo')
+    docs     = AgentKnowledgeDoc.objects.select_related('cliente', 'criado_por').order_by('fabricante', 'titulo')
+    clientes = Cliente.objects.all().order_by('nome_empresa')
+    return render(request, 'agent_knowledge.html', {
+        'artigos':     artigos,
+        'docs':        docs,
+        'clientes':    clientes,
+        'fabricantes': AgentKnowledge.FABRICANTES,
+        'categorias':  AgentKnowledge.CATEGORIAS,
+    })
+
+
+@login_required(login_url='login')
+@admin_required
+def agent_knowledge_dados(request, artigo_id):
+    """Retorna JSON com os dados de um artigo para edição."""
+    artigo = get_object_or_404(AgentKnowledge, id=artigo_id)
+    return JsonResponse({
+        'id':          artigo.id,
+        'titulo':      artigo.titulo,
+        'conteudo':    artigo.conteudo,
+        'fabricante':  artigo.fabricante,
+        'categoria':   artigo.categoria,
+        'tags':        artigo.tags,
+        'cliente_id':  artigo.cliente_id,
+        'ativo':       artigo.ativo,
+    })
+
+
+@login_required(login_url='login')
+@admin_required
+def agent_knowledge_salvar(request, artigo_id=None):
+    """Cria ou atualiza um artigo da base de conhecimento."""
+    artigo = get_object_or_404(AgentKnowledge, id=artigo_id) if artigo_id else None
+    try:
+        data = json.loads(request.body)
+        if not artigo:
+            artigo = AgentKnowledge(criado_por=request.user)
+        artigo.titulo     = data.get('titulo', '').strip()
+        artigo.conteudo   = data.get('conteudo', '').strip()
+        artigo.categoria  = data.get('categoria', 'geral')
+        artigo.fabricante = data.get('fabricante', 'generico')
+        artigo.tags       = data.get('tags', [])
+        artigo.ativo      = bool(data.get('ativo', True))
+        cliente_id = data.get('cliente_id')
+        artigo.cliente = Cliente.objects.get(id=cliente_id) if cliente_id else None
+        if not artigo.titulo:
+            return JsonResponse({'ok': False, 'erro': 'Título obrigatório.'}, status=400)
+        artigo.save()
+        return JsonResponse({'ok': True, 'id': artigo.id, 'msg': 'Artigo salvo.'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_knowledge_deletar(request, artigo_id):
+    get_object_or_404(AgentKnowledge, id=artigo_id).delete()
+    return JsonResponse({'ok': True})
+
+
+# ── Knowledge Docs (PDF) ──────────────────────────────────────────────────────
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_knowledge_doc_upload(request):
+    """Recebe upload de PDF, extrai texto com PyMuPDF e salva como AgentKnowledgeDoc."""
+    import fitz  # PyMuPDF
+    arquivo = request.FILES.get('arquivo')
+    if not arquivo:
+        return JsonResponse({'ok': False, 'erro': 'Nenhum arquivo enviado.'}, status=400)
+    if not arquivo.name.lower().endswith('.pdf'):
+        return JsonResponse({'ok': False, 'erro': 'Apenas arquivos PDF são aceitos.'}, status=400)
+    if arquivo.size > 30 * 1024 * 1024:  # 30 MB
+        return JsonResponse({'ok': False, 'erro': 'Arquivo muito grande (máx 30 MB).'}, status=400)
+
+    titulo     = request.POST.get('titulo', '').strip() or arquivo.name
+    fabricante = request.POST.get('fabricante', 'generico')
+    categoria  = request.POST.get('categoria', 'geral')
+    tags_raw   = request.POST.get('tags', '')
+    cliente_id = request.POST.get('cliente_id') or None
+    tags = [t.strip() for t in tags_raw.split(',') if t.strip()]
+
+    # Extrair texto do PDF
+    try:
+        pdf_bytes = arquivo.read()
+        doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+        paginas = doc.page_count
+        partes = []
+        for page in doc:
+            text = page.get_text('text')
+            if text.strip():
+                partes.append(text)
+        doc.close()
+        conteudo_extraido = '\n\n'.join(partes)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': f'Erro ao processar PDF: {e}'}, status=400)
+
+    # Reposicionar arquivo para salvar no storage
+    arquivo.seek(0)
+    cliente = Cliente.objects.get(id=cliente_id) if cliente_id else None
+    obj = AgentKnowledgeDoc(
+        titulo=titulo,
+        arquivo=arquivo,
+        nome_arquivo=arquivo.name,
+        tamanho_kb=round(arquivo.size / 1024),
+        paginas=paginas,
+        conteudo_extraido=conteudo_extraido,
+        fabricante=fabricante,
+        categoria=categoria,
+        tags=tags,
+        cliente=cliente,
+        criado_por=request.user,
+    )
+    obj.save()
+    return JsonResponse({'ok': True, 'id': obj.id, 'paginas': paginas, 'msg': f'PDF processado: {paginas} páginas, {len(conteudo_extraido)} caracteres extraídos.'})
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_knowledge_doc_deletar(request, doc_id):
+    doc = get_object_or_404(AgentKnowledgeDoc, id=doc_id)
+    if doc.arquivo:
+        try:
+            doc.arquivo.delete(save=False)
+        except Exception:
+            pass
+    doc.delete()
+    return JsonResponse({'ok': True})
+
+
+# ── WhatsApp Webhook ──────────────────────────────────────────────────────────
+
+@csrf_exempt
+@require_http_methods(['POST', 'GET'])
+def agent_wa_webhook(request):
+    """
+    Recebe eventos da Evolution API (WhatsApp).
+    GET  → validação de URL (retorna 200 OK)
+    POST → processar mensagem recebida
+    """
+    if request.method == 'GET':
+        return JsonResponse({'ok': True, 'status': 'webhook ativo'})
+
+    # Validar assinatura HMAC (se configurada)
+    try:
+        evo_config = EvolutionAPIConfig.get()
+        if evo_config.webhook_secret:
+            sig = request.headers.get('X-Hub-Signature-256', '')
+            if sig:
+                esperado = 'sha256=' + hmac.new(
+                    evo_config.webhook_secret.encode(),
+                    request.body,
+                    hashlib.sha256,
+                ).hexdigest()
+                if not hmac.compare_digest(sig, esperado):
+                    return JsonResponse({'ok': False, 'erro': 'Assinatura inválida'}, status=401)
+    except Exception:
+        pass
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'erro': 'JSON inválido'}, status=400)
+
+    # Processar em background (não bloquear o webhook)
+    try:
+        _processar_wa_webhook(payload)
+    except Exception as exc:
+        logger.warning(f"Erro ao enfileirar processamento do webhook WA: {exc}")
+
+    return JsonResponse({'ok': True})
+
+
+def _processar_wa_webhook(payload: dict):
+    """
+    Processa o payload da Evolution API.
+    Suporta os eventos: MESSAGES_UPSERT / messages.upsert
+    """
+    import threading
+
+    event = payload.get('event') or payload.get('type') or ''
+    if 'message' not in event.lower():
+        return  # Só nos interessa mensagens
+
+    data = payload.get('data') or {}
+    key  = data.get('key') or {}
+
+    # Ignorar mensagens enviadas por nós mesmos
+    if key.get('fromMe'):
+        return
+
+    jid_from   = key.get('remoteJid', '')
+    is_grupo   = '@g.us' in jid_from
+    sender_jid = data.get('participant') or jid_from  # remetente em grupos
+
+    # Extrair texto
+    message = data.get('message') or {}
+    texto   = (
+        message.get('conversation')
+        or (message.get('extendedTextMessage') or {}).get('text')
+        or ''
+    ).strip()
+
+    if not texto:
+        return
+
+    # Verificar prefixo de invocação
+    config = AgentConfig.get()
+    prefixo = (config.prefixo_wa or '@noc').lower()
+    texto_lower = texto.lower()
+    if not texto_lower.startswith(prefixo):
+        return  # Mensagem não direcionada ao agent
+
+    # Remover prefixo e trim
+    mensagem_agent = texto[len(prefixo):].strip()
+    if not mensagem_agent:
+        mensagem_agent = "Olá! Como posso ajudar?"
+
+    # Verificar grupo vinculado
+    jid_lookup = jid_from if is_grupo else sender_jid
+    try:
+        grupo = WhatsAppGrupo.objects.select_related('cliente').get(
+            jid=jid_lookup, ativo=True
+        )
+    except WhatsAppGrupo.DoesNotExist:
+        logger.debug(f"Webhook WA: grupo {jid_lookup} não vinculado — ignorando")
+        return
+
+    if not grupo.cliente:
+        return
+
+    # Executar em thread separada para não bloquear
+    t = threading.Thread(
+        target=_processar_wa_mensagem_sync,
+        args=(grupo, sender_jid, mensagem_agent),
+        daemon=True,
+    )
+    t.start()
+
+
+def _processar_wa_mensagem_sync(grupo: 'WhatsAppGrupo', sender_jid: str, mensagem: str):
+    """
+    Executa o processamento da mensagem WA em uma thread síncrona com loop asyncio próprio.
+    """
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_processar_wa_mensagem_async(grupo, sender_jid, mensagem))
+    except Exception as exc:
+        logger.exception(f"Erro no processamento WA: {exc}")
+    finally:
+        try:
+            loop.close()
+        except Exception:
+            pass
+
+
+async def _processar_wa_mensagem_async(grupo, sender_jid: str, mensagem: str):
+    """
+    Lógica assíncrona: cria/recupera sessão, processa com engine, envia resposta.
+    """
+    from asgiref.sync import sync_to_async
+    from django.utils import timezone
+    from datetime import timedelta
+    from home.agent_engine import AgentNOCEngine, _evolution_send
+
+    # Buscar ou criar sessão WhatsApp
+    config = await sync_to_async(AgentConfig.get)()
+    timeout_min = config.timeout_sessao_wa or 120
+    desde = timezone.now() - timedelta(minutes=timeout_min)
+
+    sessao = await sync_to_async(
+        AgentSessao.objects.filter(
+            canal='whatsapp',
+            canal_id=grupo.jid,
+            cliente=grupo.cliente,   # garante que o cliente bate com o grupo atual
+            status='ativa',
+            ultima_atividade__gte=desde,
+        ).order_by('-ultima_atividade').first
+    )()
+
+    if not sessao:
+        # Encerrar quaisquer sessões ativas deste JID com cliente diferente
+        await sync_to_async(
+            AgentSessao.objects.filter(
+                canal='whatsapp',
+                canal_id=grupo.jid,
+                status='ativa',
+            ).exclude(cliente=grupo.cliente).update
+        )(status='encerrada')
+        sessao = await sync_to_async(AgentSessao.objects.create)(
+            canal='whatsapp',
+            canal_id=grupo.jid,
+            cliente=grupo.cliente,
+            wa_grupo=grupo,
+            status='ativa',
+        )
+
+    # Callback de aprovação: nível define o que é permitido automaticamente
+    async def aprovacao_wa(acesso_id, comando):
+        from home.agent_engine import _is_safe_command, _is_operational_command, BLOCKED_COMMANDS
+        from clientes.models import Acesso
+        import re as _re
+        nivel = grupo.nivel_permissao
+        # Descobrir fabricante real do host
+        fabricante = 'generico'
+        try:
+            acesso_obj = await sync_to_async(
+                Acesso.objects.select_related('modelo').get
+            )(id=acesso_id)
+            if acesso_obj.modelo:
+                fabricante = getattr(acesso_obj.modelo, 'fabricante', 'generico') or 'generico'
+        except Exception:
+            pass
+        cmd_lower = comando.strip().lower()
+        # Sempre bloquear comandos destrutivos
+        for pattern in BLOCKED_COMMANDS:
+            if _re.search(pattern, cmd_lower):
+                return False
+        if nivel == 'leitura':
+            return _is_safe_command(comando, fabricante)
+        elif nivel == 'operacional':
+            return _is_operational_command(comando, fabricante)
+        elif nivel == 'admin':
+            return True  # Tudo exceto BLOCKED_COMMANDS (verificado acima)
+        return False
+
+    respostas_wa = []
+
+    async def notify_wa(msg):
+        if msg.get('type') == 'agent_message':
+            respostas_wa.append(msg.get('content', ''))
+
+    engine = AgentNOCEngine(
+        sessao_id=sessao.id,
+        canal='whatsapp',
+        aprovacao_cb=aprovacao_wa,
+        notify_cb=notify_wa,
+    )
+
+    # Processar mensagem
+    resposta = await engine.processar_mensagem(mensagem)
+
+    # Enviar resposta via Evolution API
+    try:
+        evo_config = await sync_to_async(EvolutionAPIConfig.get)()
+        if evo_config.url and evo_config.api_key:
+            texto_resp = resposta or (respostas_wa[-1] if respostas_wa else '')
+            if texto_resp:
+                await _evolution_send(evo_config, grupo.jid, texto_resp)
+    except Exception as exc:
+        logger.warning(f"Falha ao enviar resposta WA: {exc}")

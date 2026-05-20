@@ -27,6 +27,9 @@
    - [Sessão 10](#sessão-10--dashboard-geral-relatório-de-backups-e-scripts-de-automação) — Dashboard, Backups, Scripts
    - [Sessão 11](#sessão-11--módulo-financeiro--redesign-cyberpunk-e-novas-funcionalidades) — Financeiro
    - [Sessão 12](#sessão-12--terminal-web--otimizações-de-latência) — Terminal (latência)
+   - [Sessão 13](#sessão-13--firmware-progress-ws-ftp-fix-design-modais-e-agent-noc) — Firmware WS, FTP, Design, Agent NOC
+   - [Sessão 14](#sessão-14--firmware-url-fix-evolution-api-agent-grupos-e-bug-uiconfirm) — Firmware URL, Evolution API, Agent Grupos, uiConfirm
+   - [Sessão 15](#sessão-15--agent-noc-whatsapp-terminal-e-correções-de-infraestrutura) — Agent NOC: WhatsApp funcional, terminal funcional, SSH legado, permissões
 
 ---
 
@@ -1471,4 +1474,447 @@ r, _, _ = select.select([fd], [], [], 0.001)
 
 Aplica-se tanto ao loop SSH (`read_ssh_output`) quanto ao loop Telnet (`read_telnet_output`).
 
-**Arquivo:** `clientes/consumers.py`
+---
+
+### Sessão 13 — Firmware Progress WS, FTP Fix, Design Modais e Agent NOC
+
+**Data:** 19/05/2026
+
+---
+
+#### 1. Progresso de download em tempo real via WebSocket (Gerenciador de Firmware)
+
+Quando um link compartilhado é acessado (por uma OLT, equipamento ou usuário externo), os admins com a página de firmware aberta passam a ver um modal/painel com o progresso do download em tempo real.
+
+**Arquitetura:**
+
+- **Consumer WebSocket** `FirmwareDownloadConsumer` (`clientes/consumers.py`) — admins conectam em `ws/firmware/downloads/`; o consumer entra no grupo `firmware_downloads` no channel layer
+- **Rota** adicionada em `clientes/routing.py`: `ws/firmware/downloads/`
+- **Streaming com rastreamento** em `firmware_views.py` — `firmware_download` foi reescrito de `FileResponse` para `StreamingHttpResponse` com um generator que:
+  - Emite `download_start` (nome, tamanho, IP do solicitante) ao iniciar
+  - Emite `download_progress` (pct, bytes_sent) a cada 2 MB transferidos
+  - Emite `download_complete` no bloco `finally` (garante envio mesmo se a conexão cair)
+  - Usa `_fw_channel_send()` — wrapper `async_to_sync(channel_layer.group_send)` seguro de chamar de contexto síncrono
+
+**Helper centralizado:**
+```python
+def _fw_channel_send(event_type: str, data: dict):
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    layer = get_channel_layer()
+    if layer:
+        async_to_sync(layer.group_send)(
+            'firmware_downloads',
+            {'type': 'download_event', 'event_type': event_type, **data},
+        )
+```
+
+**Frontend (`clientes/templates/firmware.html`):**
+- Conecta WebSocket em `fwDlConectar()` com reconexão automática após 4 s
+- Painel flutuante `#fwDlOverlay` com lista de downloads ativos, barra de progresso por download, IP do solicitante e nome do arquivo
+- Badge flutuante `#fwDlBadge` (canto inferior direito) visível quando o painel está fechado, mostrando contagem de downloads ativos
+- Downloads concluídos ficam verdes e se auto-removem após 6 s
+
+**Arquivos modificados:**
+- `clientes/consumers.py` — classe `FirmwareDownloadConsumer`
+- `clientes/routing.py` — nova rota WS
+- `clientes/firmware_views.py` — `_fw_channel_send()`, `firmware_download()` reescrito
+- `clientes/templates/firmware.html` — modal + JavaScript WS
+
+---
+
+#### 2. Correção de permissão no upload de firmware (Via URL)
+
+**Problema:** O worker do Gunicorn (`www-data`) não tinha permissão para criar diretórios ou arquivos em `/opt/crm/media/firmware/` (dono `root:tftp`), causando `[Errno 13] Permission denied`.
+
+**Solução:**
+```bash
+usermod -aG tftp www-data          # www-data entra no grupo tftp
+chmod -R g+w /opt/crm/media/firmware/  # grupo com permissão de escrita recursiva
+systemctl restart gunicorn         # sessão do processo herda novo grupo
+```
+
+---
+
+#### 3. Correção de login FTP nos links compartilhados
+
+**Problema:** Usuários FTP temporários (`fw_XXXXXX`) gerados nos links compartilhados não conseguiam fazer login. O `useradd` falhava silenciosamente porque `www-data` não tinha permissão para executá-lo, e o `chpasswd` confirmava: `user "fw_xzijyq" does not exist`.
+
+**Causa raiz:** Gunicorn roda como `www-data`, que não tem privilégio para criar usuários do sistema.
+
+**Solução:** Criado `/etc/sudoers.d/crm-firmware-ftp` com regras restritas:
+```
+www-data ALL=(ALL) NOPASSWD: /usr/sbin/useradd -r -d /opt/crm/media/firmware -s /usr/sbin/nologin -M --no-user-group fw_*
+www-data ALL=(ALL) NOPASSWD: /usr/sbin/userdel fw_*
+www-data ALL=(ALL) NOPASSWD: /usr/sbin/chpasswd
+```
+
+As funções `_ftp_criar_usuario()` e `_ftp_remover_usuario()` em `firmware_views.py` foram atualizadas para chamar os comandos com `sudo`. Testado: `ftplib.FTP().login('fw_teste', 'Senha...')` retornou `LOGIN OK`.
+
+**Arquivos modificados:**
+- `/etc/sudoers.d/crm-firmware-ftp` (novo)
+- `clientes/firmware_views.py` — `_ftp_criar_usuario()`, `_ftp_remover_usuario()`
+
+---
+
+#### 4. Redesign: modais de Cadastro, Edição e Cópia de Acessos
+
+Os três modais de acesso (`modalAcesso`, `modalEditarAcesso`, `modalDuplicarAcesso`) estavam usando a paleta verde Matrix antiga enquanto o restante da plataforma já havia migrado para o tema cyberpunk cyan.
+
+**Mudanças em `static/css/style.css`:**
+
+| Elemento | Antes | Depois |
+|---|---|---|
+| `.modal-acesso` fundo | `#001a0d` | `var(--card-bg)` |
+| Borda do modal | `2px solid #00ff41` | `1px solid var(--border)` |
+| `.modal-title` fonte/cor | Courier New `#00ff41` | Orbitron + `var(--cyan)` |
+| `.modal-body-acesso` | `#000d06` | `var(--dark-bg)` |
+| Inputs fundo/texto/borda | verde escuro / `#4d8c6f` | `var(--card-bg)` / `var(--text-light)` / cyan dim |
+| Inputs `:focus` | borda `#00ff41` | borda `var(--cyan)` + glow `rgba(0,245,255,.08)` |
+| `btn-submit-modal` | fundo `#00ff41` / texto preto | fundo cyan translúcido / texto cyan |
+| `btn-cancel-modal` | fundo verde escuro | transparente + borda cyan dim |
+| `.search-select-*` | cores verdes Matrix | cores cyan da plataforma |
+| Scrollbar | verde | cyan translúcido |
+
+Adicionado seletor `appearance: auto` nos `select` para exibir a seta nativa estilizada via SVG inline cyan.
+
+---
+
+#### 5. Bug fix: checkboxes não apareciam marcados nos modais de acesso
+
+**Problema:** Ao clicar em "Habilitar backup" ou "Executar backup automaticamente", o checkbox não mostrava visualmente o estado marcado.
+
+**Causa raiz:** O seletor CSS `#modalEditarAcesso input { background: var(--card-bg) !important }` capturava todos os `<input>`, incluindo `type="checkbox"`, sobrescrevendo o `background-color` do estado `:checked` nativo do browser.
+
+**Correção em `static/css/style.css`:**
+- Todos os seletores de input dos três modais passaram a usar `:not([type="checkbox"]):not([type="radio"])` — excluindo checkboxes do override
+- Adicionada regra específica para checkboxes restaurando aparência nativa e definindo `accent-color: var(--cyan)`:
+```css
+#modalEditarAcesso input[type="checkbox"],
+#modalAcesso input[type="checkbox"],
+#modalDuplicarAcesso input[type="checkbox"] {
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    accent-color: var(--cyan) !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+**Arquivo modificado:** `static/css/style.css`
+
+---
+
+### Sessão 14 — Firmware URL fix, Evolution API, Agent Grupos e Bug uiConfirm
+
+#### 1. Fix: download por URL não respeitava nome do arquivo (OneDrive / RFC 5987)
+
+**Problema:** Ao tentar baixar um firmware via URL do OneDrive no formato `download.aspx?SourceUrl=.../MA5800.bin`, o arquivo era salvo como `download.aspx` porque o código extraía o nome somente do `path` da URL, ignorando a query string. Além disso, o header `Content-Disposition` no formato RFC 5987 (`filename*=UTF-8''...`) não era reconhecido pelo regex antigo.
+
+**Causa raiz em `clientes/firmware_views.py`:**
+- `os.path.basename(parsed.path)` → `download.aspx` (nome do script, não do arquivo)
+- Regex `filename=["\']?([^"\';\r\n]+)` não captura `filename*=UTF-8''...`
+
+**Solução:** Duas novas funções auxiliares:
+
+```python
+def _fw_inferir_nome_url(url):
+    # Se o basename for extensão de script (.aspx, .php, etc.),
+    # varre os parâmetros de query: SourceUrl, source, file, filename, name, f, dl, path
+    # e usa o basename do primeiro parâmetro que contenha um nome com extensão
+
+def _fw_nome_do_content_disposition(cd):
+    # 1) Tenta RFC 5987: filename*=charset''encoded_name  (prioridade)
+    # 2) Fallback: filename="..." ou filename=...
+```
+
+O `_fw_download_worker` foi simplificado para usar ambas as funções. O `firmware_upload_url` passou a usar `_fw_inferir_nome_url` para o `nome_hint` exibido na UI imediatamente.
+
+**Arquivos modificados:**
+- `clientes/firmware_views.py` — novas funções `_fw_inferir_nome_url`, `_fw_nome_do_content_disposition`; refatoração de `firmware_upload_url` e `_fw_download_worker`
+
+---
+
+#### 2. Fix: Evolution API — URL inacessível (hostname Docker interno)
+
+**Problema:** A URL cadastrada `http://evolution-api_evolution-api:8080` é um hostname interno Docker (convenção `{projeto}_{serviço}`). O CRM roda em bare-metal sem Docker e não consegue resolver esse nome.
+
+**Diagnóstico:** Varredura da rede `179.48.68.64/27` confirmou que a Evolution API está acessível em `https://evolution-api-evolution-api.mqezv6.easypanel.host` (EasyPanel).
+
+**Correção:** URL atualizada diretamente no banco via script Python. A API key `429683C4...` também estava incorreta (401 Unauthorized) — o usuário deve atualizar para a `AUTHENTICATION_API_KEY` correta definida nas variáveis de ambiente do EasyPanel.
+
+**Arquivo modificado:** banco de dados (`EvolutionAPIConfig.url`)
+
+---
+
+#### 3. Fix: TemplateSyntaxError — filtro `selectattr` não existe no Django
+
+**Problema:** `TemplateSyntaxError: Invalid filter: 'selectattr'` ao acessar `/home/agent/grupos/`. O template usava `{{ grupos|selectattr:'cliente'|list|length }}` — filtro Jinja2 que não existe no sistema de templates Django.
+
+**Correção:** Os três contadores foram movidos para a view `agent_grupos`:
+
+```python
+return render(request, 'agent_grupos.html', {
+    'grupos': grupos,
+    'clientes': clientes,
+    'total_vinculados': sum(1 for g in grupos if g.cliente_id),
+    'total_ativos':     sum(1 for g in grupos if g.ativo),
+    'total_sem':        sum(1 for g in grupos if not g.cliente_id),
+})
+```
+
+Template atualizado para usar `{{ total_vinculados }}`, `{{ total_ativos }}`, `{{ total_sem }}` diretamente.
+
+**Arquivos modificados:**
+- `home/views.py` — `agent_grupos`
+- `home/templates/agent_grupos.html` — stats strip
+
+---
+
+#### 4. UX: campo de vínculo de cliente com busca/autocomplete (Agent Grupos)
+
+**Problema:** O campo "Cliente vinculado" no modal de edição de grupos usava um `<select>` simples — com muitos clientes ficava difícil de usar.
+
+**Solução:** Campo substituído por search-select customizado:
+- Input de texto com placeholder "🔍 Digite para buscar o cliente..."
+- Dropdown com filtro em tempo real por nome e CNPJ com highlighting dos termos
+- Navegação por teclado (↑ ↓ Enter Esc)
+- Fechar ao clicar fora
+- Campo `<input type="hidden">` para armazenar o `id` selecionado
+- Opção "Sem vínculo" sempre no topo
+
+**Implementação:** CSS (`.cs-wrap`, `.cs-dropdown`, `.cs-option`) e JS (`csFilter`, `csSelect`, `csKeydown`, `csOpen`, `csClose`) adicionados inline no template. Lista de clientes serializada em `CS_CLIENTES` a partir do contexto Django.
+
+**Arquivos modificados:**
+- `home/templates/agent_grupos.html` — modal campo cliente
+
+---
+
+#### 5. Bug fix: tela ficando escura ao confirmar ações (uiConfirm backdrop preso)
+
+**Problema:** Em várias páginas (especialmente na aba IRR ao clicar "Enviar Atualização"), a tela ficava com overlay escuro permanente após fechar o modal de confirmação.
+
+**Causa raiz:** `uiConfirm` e `uiAlert` eram implementados como modais Bootstrap (`bootstrap.Modal`). O Bootstrap gerencia um `div.modal-backdrop` via animações CSS. Quando dois modais interagiam (ex: `modalIrrPreview` fechando via `data-bs-dismiss` enquanto `uiConfirm` abria), o Bootstrap acumulava backdrops ou não removia o último, deixando o overlay preso.
+
+**Solução:** `uiConfirm` e `uiAlert` reescritos como **overlays puros** — sem Bootstrap Modal, sem backdrop div, sem animação de fade:
+
+```html
+<!-- Antes: <div class="modal fade" data-bs-backdrop="static" ...> -->
+<!-- Depois: -->
+<div id="uiModalConfirm" style="display:none; position:fixed; inset:0;
+     background:rgba(0,0,0,.78); z-index:99995; backdrop-filter:blur(3px);
+     align-items:center; justify-content:center;">
+```
+
+```javascript
+// Antes: bootstrap.Modal.getOrCreateInstance(...).show() / .hide()
+// Depois:
+overlay.style.display = 'flex';   // abrir
+overlay.style.display = 'none';   // fechar — instantâneo, sem backdrop residual
+```
+
+A Promise resolve imediatamente ao clicar no botão — sem event listeners adicionais, sem race condition.
+
+**Arquivos modificados:**
+- `templates/base.html` — HTML dos dois modais + funções `uiConfirm`, `uiAlert`; removidas funções auxiliares `_uiHideAndClean` e `_uiCleanup` que não são mais necessárias
+
+---
+
+### Sessão 15 — Agent NOC: WhatsApp funcional, terminal funcional, SSH legado, permissões
+
+#### 1. Fix: `FieldDoesNotExist` — campo `tokens_usados` inexistente em `AgentSessao`
+
+**Problema:** `_atualizar_tokens` tentava fazer `.update(tokens_usados=total)` na model `AgentSessao`, mas esse campo não existe — tokens são registrados por interação em `AgentLog`.
+
+**Correção:** Removida a chamada `.update()` desnecessária. A notificação de tokens ao cliente via `notify_cb` foi mantida.
+
+**Arquivo:** `home/agent_engine.py` — método `_atualizar_tokens`
+
+---
+
+#### 2. Fix: Evolution API — payload sendText formato errado (v1 vs v2)
+
+**Problema:** O payload enviado usava formato v1 (`{"textMessage": {"text": "..."}}`), mas a Evolution API v2 espera `{"number": "...", "text": "..."}`. Resultado: HTTP 400 em todas as respostas do agente via WhatsApp.
+
+**Correção:** Atualizado payload em `_evolution_send` no `agent_engine.py`.
+
+```python
+# Antes (v1)
+payload = {"number": jid, "options": {"delay": 200}, "textMessage": {"text": texto}}
+# Depois (v2)
+payload = {"number": jid, "text": texto}
+```
+
+**Arquivo:** `home/agent_engine.py` — função `_evolution_send`
+
+---
+
+#### 3. Fix: Terminal Agent NOC — WebSocket conectando com dupla barra (`ws/agent//`)
+
+**Problema:** `_getAcessoAtivoId()` usava `window._termTabs` que nunca é populado (terminais ficam em `terminalManager.terminals`). Resultado: `acessoId` sempre vazio → URL `/ws/agent//` → Daphne retornava `No route found for path 'ws/agent//'`.
+
+**Correção:**
+- `_getAcessoAtivoId()` reescrita para ler de `terminalManager.terminals.get(mgr.activeTerminal)`
+- URL construída sem barra dupla quando `acessoId` é vazio
+- Adicionado `?cliente=ID` na URL do WebSocket (lido da query string da página)
+- Consumer lê `?cliente=` do `scope['query_string']` como fallback quando não há `acesso_id`
+
+**Arquivos:** `clientes/templates/terminal.html`, `home/agent_consumer.py`
+
+---
+
+#### 4. Fix: Terminal Agent NOC — "Não foi possível identificar o cliente"
+
+**Problema:** Usuários staff sem cliente vinculado à conta e sem acesso ativo aberto recebiam erro ao conectar ao Agent NOC pelo terminal.
+
+**Correção:** Consumer lê `?cliente=ID` da query string do WebSocket como primeira alternativa antes de tentar `Cliente.objects.get(usuario=user)`.
+
+**Arquivo:** `home/agent_consumer.py` — método `_inicializar_sessao`
+
+---
+
+#### 5. Fix: `SynchronousOnlyOperation` — `str(acesso)` em contexto async
+
+**Problema:** `_tool_execute_command` chamava `str(acesso)` que aciona `Acesso.__str__()` → `self.cliente.nome_empresa` → lazy load de FK em contexto async → Django bloqueia.
+
+**Correção:**
+- `_get_acesso` atualizado para `select_related('modelo', 'cliente')` — carrega o cliente junto
+- Substituído `str(acesso)` por `f"{acesso.tipo} - {acesso.host}"` em todos os pontos
+
+**Arquivo:** `home/agent_engine.py`
+
+---
+
+#### 6. Fix: `Funcao_equipamento` sem atributo `nome`
+
+**Problema:** Código usava `a.funcao.nome` mas o modelo `Funcao_equipamento` tem o campo `descricao`, não `nome`. Ocorria em dois lugares: `_build_system_prompt` e `_tool_list_hosts`.
+
+**Correção:** Substituídos todos os usos de `.nome` por `.descricao` no `agent_engine.py`.
+
+**Arquivo:** `home/agent_engine.py`
+
+---
+
+#### 7. Fix: Aprovação WhatsApp sempre usava fabricante `generico`
+
+**Problema:** O callback `aprovacao_wa` em `views.py` sempre chamava `_is_safe_command(comando, 'generico')` independente do equipamento real. Mikrotik RouterOS (`/interface print`, `ip address add`) nunca passava na verificação genérica.
+
+**Correção:** `aprovacao_wa` busca o modelo do host pelo `acesso_id` e usa o fabricante correto na verificação.
+
+**Arquivo:** `home/views.py` — função `aprovacao_wa`
+
+---
+
+#### 8. Novo: Sistema de permissões em 3 níveis para WhatsApp
+
+**Implementação:** Adicionado `OPERATIONAL_COMMANDS` dict por fabricante e função `_is_operational_command()`:
+
+| Nível | O que permite |
+|-------|--------------|
+| `leitura` | Apenas comandos read-only (`SAFE_COMMANDS`) |
+| `operacional` | Leitura + escrita não-destrutiva (add/remove/enable/disable de IPs, rotas, interfaces, filas) |
+| `admin` | Tudo exceto `BLOCKED_COMMANDS` (reboot/format/erase/factory reset) |
+
+**Arquivo:** `home/agent_engine.py` — `OPERATIONAL_COMMANDS`, `_is_operational_command`; `home/views.py` — `aprovacao_wa`
+
+---
+
+#### 9. Melhoria: Lista safe de comandos Mikrotik expandida
+
+**Problema:** Agent enviava `interface print` (sem `/`), mas a lista aceitava apenas `^/interface print`. Resultado: comandos RouterOS legítimos eram rejeitados.
+
+**Correção:** Lista Mikrotik expandida para aceitar comandos com e sem barra inicial (`^/?`), e ~20 novos comandos adicionados (`system resource print`, `ip route print`, `queue print`, `bridge print`, `ppp active print`, etc.).
+
+**Arquivo:** `home/agent_engine.py` — `SAFE_COMMANDS['mikrotik']`
+
+---
+
+#### 10. Melhoria: System prompt dinâmico por nível de permissão
+
+**Problema:** System prompt dizia "apenas comandos read-only no WhatsApp" para todos os grupos, fazendo o modelo recusar escritas mesmo em grupos `admin`.
+
+**Correção:** System prompt gerado dinamicamente com instrução específica por nível:
+- `admin` → "execute QUALQUER comando exceto reboot/format/erase/factory reset"
+- `operacional` → "execute leitura + configurações não-destrutivas"
+- `leitura` → "execute apenas read-only"
+
+**Arquivo:** `home/agent_engine.py` — `_build_system_prompt`
+
+---
+
+#### 11. Melhoria: System prompt inclui fabricante, modelo e função de cada host
+
+**Problema:** Hosts listados no prompt tinham apenas nome/IP/protocolo. O modelo não sabia o fabricante e usava comandos errados (ex: `show` em vez de `display` para Huawei).
+
+**Correção:** Cada host agora exibe `função=BRAS | modelo=HUAWEI NE8000 M4 | fabricante=huawei`. Adicionada seção de referência de sintaxe por fabricante.
+
+**Arquivo:** `home/agent_engine.py` — `_build_system_prompt`, função `_host_line`
+
+---
+
+#### 12. Melhoria: System prompt com instrução explícita para usar ferramentas
+
+**Adicionado:** Regra explícita "quando pedido para acessar host, use `execute_command` IMEDIATAMENTE — não responda com texto dizendo que não pode". Instrução para sempre incluir output bruto em bloco de código.
+
+**Arquivo:** `home/agent_engine.py` — `_build_system_prompt`
+
+---
+
+#### 13. Nova ferramenta: `get_terminal_output`
+
+**Funcionalidade:** Permite ao agente capturar autonomamente o conteúdo visível do terminal SSH/Telnet aberto no browser, sem necessidade de o operador clicar em "Colar output".
+
+**Fluxo:**
+1. Agente chama `get_terminal_output` quando detecta mensagens como "analisa esse log", "o que aparece no terminal"
+2. Consumer envia `{type: "request_terminal_output"}` ao browser via WebSocket
+3. JS lê o buffer xterm.js do terminal ativo via `terminalManager.terminals`
+4. Browser responde com `{type: "terminal_output_response", content: "..."}`
+5. Consumer resolve o Future e retorna o conteúdo ao agente
+
+**Arquivos:** `home/agent_engine.py` (tool definition + `_tool_get_terminal_output`), `home/agent_consumer.py` (`_solicitar_terminal_output`, handler `terminal_output_response`), `clientes/templates/terminal.html` (`_agentGetTerminalBuffer`, handler `request_terminal_output`)
+
+---
+
+#### 14. Fix: `_agentGetTerminalBuffer` sempre retornava vazio
+
+**Problema:** A função usava `window._termTabs || []` que nunca é populado. Os terminais ficam em `terminalManager.terminals` (Map).
+
+**Correção:** Reescrita para iterar `terminalManager.terminals`, priorizando o terminal ativo (`mgr.activeTerminal`).
+
+**Arquivo:** `clientes/templates/terminal.html`
+
+---
+
+#### 15. Fix: Sessão WhatsApp não atualizava ao trocar cliente do grupo
+
+**Problema:** Ao mudar o cliente vinculado a um grupo WhatsApp, a sessão antiga (com cliente anterior) continuava sendo reutilizada por até 2h (timeout), mostrando hosts do cliente errado.
+
+**Correção:** Filtro de busca de sessão agora inclui `cliente=grupo.cliente`. Ao criar nova sessão, sessões ativas do mesmo JID com cliente diferente são encerradas automaticamente.
+
+**Arquivo:** `home/views.py` — `_processar_wa_mensagem_async`
+
+---
+
+#### 16. Refatoração: Agent usa infraestrutura SSH da plataforma
+
+**Problema:** `_ssh_exec_sync` no agent usava paramiko básico sem suporte a algoritmos legados. Equipamentos Huawei (NE8000, OLTs) usam `diffie-hellman-group1-sha1` desabilitado por padrão no paramiko 4.x → erro de conexão silencioso.
+
+**Solução:** Criada função `platform_ssh_exec(acesso, comando)` em `clientes/consumers.py` que reutiliza:
+- Mesmos flags SSH da plataforma (`KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs` legados)
+- Detecção automática de proxy (IP privado → proxy paramiko direct-tcpip)
+- `pexpect` para conexões diretas (mesma autenticação interativa do terminal)
+- `screen-length 0 temporary` automático para equipamentos Huawei
+- Suporte a Huawei via VRP, Mikrotik RouterOS, Linux, Cisco IOS, ZTE
+
+`agent_engine.py` agora delega para `platform_ssh_exec` — sem reimplementação de lógica SSH.
+
+**Arquivos:** `clientes/consumers.py` (funções `platform_ssh_exec`, `_pexpect_exec`, `_paramiko_proxy_exec`), `home/agent_engine.py` (removido paramiko direto)
+
+---
+
+#### 17. Fix: Aba Monitoramento sumiu do painel de clientes
+
+**Problema:** O `{% include 'monitoramento/tab_monitoramento.html' %}` foi removido do `listar.html`. O menu ainda exibia o link "🖧 Monitoramento" mas o `<div id="tab-monitoramento">` não existia no DOM.
+
+**Correção:** Recolocado o include entre as abas Credenciais e Documentação.
+
+**Arquivo:** `clientes/templates/listar.html`
