@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Terminal</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+    <link rel="stylesheet" href="/static/css/xterm.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -44,7 +44,7 @@
         }
         .host-search input {
             width: 100%; background: #060c18; border: 1px solid rgba(0,245,255,.12);
-            color: rgba(0,245,255,.5); font-family: 'Share Tech Mono', monospace;
+            color: rgba(0,245,255,.5); font-family: 'Share Tech Mono',monospace;
             font-size: 10px; padding: 4px 7px; border-radius: 2px; outline: none;
         }
         .host-search input:focus { border-color: #00ff88; color: #e0e0e0; }
@@ -78,7 +78,7 @@
         .host-item.wbx-open { background: rgba(0,245,255,.04); }
         .btn-wbx {
             flex: 1; padding: 5px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+            font-family: 'Share Tech Mono',monospace; font-size: 10px; font-weight: 700;
             letter-spacing: .5px; transition: .15s; border: 1px solid;
         }
         .btn-wbx.ssh  { background: rgba(0,255,136,.08); border-color: #00ff88; color: #00ff88; }
@@ -113,7 +113,7 @@
             display: flex; align-items: center; gap: 12px;
             flex-shrink: 0; min-height: 50px;
         }
-        .terminal-title { font-size: 13px; font-weight: 700; color: #00f5ff; flex: 1; font-family: 'Share Tech Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .terminal-title { font-size: 13px; font-weight: 700; color: #00f5ff; flex: 1; font-family: 'Share Tech Mono',monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(0,245,255,.4); white-space: nowrap; }
         .terminal-status.connected { color: #00ff88; }
         .status-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,245,255,.3); flex-shrink: 0; animation: pulse 1s infinite; }
@@ -141,7 +141,7 @@
             background: rgba(4,8,22,.8); border: 1px solid rgba(0,245,255,.14); border-bottom: none;
             color: rgba(0,245,255,.4); padding: 6px 12px; cursor: pointer; font-size: 11px;
             border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 6px;
-            white-space: nowrap; transition: all 0.2s; font-family: 'Share Tech Mono', monospace;
+            white-space: nowrap; transition: all 0.2s; font-family: 'Share Tech Mono',monospace;
             user-select: none; -webkit-tap-highlight-color: transparent;
         }
         .terminal-tab:active { background: rgba(0,245,255,.06); }
@@ -161,7 +161,7 @@
         .xterm-screen { filter: drop-shadow(0 0 4px rgba(0,245,255,0.3)); }
         .xterm-char-measure-element {
             display: inline-block; position: absolute; visibility: hidden; left: -9999px;
-            font-family: 'Share Tech Mono', monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
+            font-family: 'Share Tech Mono',monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
         }
 
         /* ─── FOOTER ─── */
@@ -178,7 +178,7 @@
         .btn-terminal {
             background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.4);
             padding: 6px 10px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 11px;
+            font-family: 'Share Tech Mono',monospace; font-size: 11px;
             font-weight: 500; transition: 0.2s; text-transform: uppercase;
             white-space: nowrap; flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
@@ -218,7 +218,7 @@
             display: flex; flex-direction: column; align-items: center;
             justify-content: center; height: 100%; color: rgba(0,245,255,.3); font-size: 13px; gap: 12px;
         }
-        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'Share Tech Mono', monospace; padding: 0 20px; }
+        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'Share Tech Mono',monospace; padding: 0 20px; }
 
         /* ─── MENU MOBILE (drawer de ações) ─── */
         .mobile-menu-overlay {
@@ -243,7 +243,7 @@
         .mobile-menu-item {
             display: flex; align-items: center; gap: 14px;
             padding: 14px 22px; cursor: pointer; transition: background 0.15s;
-            font-family: 'Share Tech Mono', monospace; font-size: 13px; color: rgba(0,245,255,.5);
+            font-family: 'Share Tech Mono',monospace; font-size: 13px; color: rgba(0,245,255,.5);
             border-bottom: 1px solid rgba(0,245,255,.1);
             -webkit-tap-highlight-color: transparent;
         }
@@ -265,7 +265,7 @@
             display: flex; flex-direction: column; z-index: 9999;
             box-shadow: -5px 0 30px rgba(0,0,0,0.7);
             transition: right 0.3s ease, width 0.2s ease;
-            font-family: 'Share Tech Mono', monospace;
+            font-family: 'Share Tech Mono',monospace;
             min-width: 300px; max-width: 98vw;
         }
         .wiki-sidebar.aberto { right: 0; }
@@ -291,7 +291,7 @@
         .wiki-header-actions { display: flex; align-items: center; gap: 4px; }
         .wiki-width-indicator {
             font-size: 9px; color: #333; padding: 2px 6px; background: #02030a;
-            border: 1px solid rgba(0,245,255,.1); border-radius: 2px; font-family: 'Share Tech Mono', monospace;
+            border: 1px solid rgba(0,245,255,.1); border-radius: 2px; font-family: 'Share Tech Mono',monospace;
             white-space: nowrap; transition: color 0.2s;
         }
         body.wiki-resizing .wiki-width-indicator { color: #00ff88; border-color: #00ff88; }
@@ -307,13 +307,13 @@
         .btn-preset {
             background: transparent; border: 1px solid rgba(0,245,255,.1); color: rgba(0,245,255,.25);
             padding: 3px 7px; border-radius: 2px; cursor: pointer; font-size: 9px;
-            font-family: 'Share Tech Mono', monospace; transition: 0.15s; white-space: nowrap;
+            font-family: 'Share Tech Mono',monospace; transition: 0.15s; white-space: nowrap;
         }
         .btn-preset:hover { border-color: #00ff88; color: #00ff88; }
         .wiki-sidebar-search { padding: 12px 16px; background: #02030a; border-bottom: 1px solid rgba(0,245,255,.1); flex-shrink: 0; }
         .wiki-search-input {
             width: 100%; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff;
-            padding: 10px 13px; border-radius: 3px; font-family: 'Share Tech Mono', monospace;
+            padding: 10px 13px; border-radius: 3px; font-family: 'Share Tech Mono',monospace;
             font-size: 13px; outline: none; transition: border-color 0.2s;
             -webkit-appearance: none;
         }
@@ -337,7 +337,7 @@
             display: flex; align-items: center; gap: 8px; width: 100%;
             background: #02030a; border: none; border-bottom: 1px solid rgba(0,245,255,.1);
             color: #00f5ff; padding: 12px 16px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 12px; text-align: left; transition: background 0.15s;
+            font-family: 'Share Tech Mono',monospace; font-size: 12px; text-align: left; transition: background 0.15s;
         }
         .btn-voltar-wiki:hover { background: #141414; }
         .wiki-artigo-header { padding: 16px; border-bottom: 1px solid rgba(0,245,255,.1); background: #060c18; }
@@ -366,7 +366,7 @@
         .wiki-artigo-conteudo li { margin: 4px 0; color: #bbb; font-size: 12px; }
         .wiki-artigo-conteudo code {
             background: rgba(0,255,136,0.1); color: #00ff88; padding: 1px 5px;
-            border-radius: 2px; font-family: 'Share Tech Mono', monospace; font-size: 11px;
+            border-radius: 2px; font-family: 'Share Tech Mono',monospace; font-size: 11px;
         }
         .wiki-code-wrapper { background: #02030a; border: 1px solid rgba(0,245,255,.1); border-radius: 3px; overflow: hidden; margin: 12px 0; }
         .wiki-code-toolbar { background: #060c18; padding: 6px 10px; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; align-items: center; gap: 5px; }
@@ -374,14 +374,14 @@
         .wiki-code-lang-badge {
             background: rgba(255,170,0,0.15); color: #ffa500; font-size: 9px; font-weight: 800;
             padding: 2px 7px; border-radius: 2px; border: 1px solid rgba(255,170,0,0.25);
-            white-space: nowrap; flex-shrink: 0; font-family: 'Share Tech Mono', monospace;
+            white-space: nowrap; flex-shrink: 0; font-family: 'Share Tech Mono',monospace;
             text-transform: uppercase; letter-spacing: 0.5px;
         }
         .wiki-code-title-text { color: rgba(0,245,255,.4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-bloco {
             background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
             padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
-            font-family: 'Share Tech Mono', monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
+            font-family: 'Share Tech Mono',monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
             -webkit-tap-highlight-color: transparent;
         }
         .btn-bloco:hover { color: rgba(0,245,255,.5); border-color: rgba(0,245,255,.25); }
@@ -397,7 +397,7 @@
         }
         .wiki-bloco-edit-aviso.visivel { display: flex; }
         .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #02030a; border-left: 3px solid #00ff88; -webkit-overflow-scrolling: touch; }
-        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'Share Tech Mono', monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
+        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'Share Tech Mono',monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
         .wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
         .wiki-codigo-pre code .ln::before {
             content: counter(linhas); display: table-cell; width: 34px; min-width: 34px;
@@ -410,7 +410,7 @@
         .wiki-codigo-editor-wrap.visivel { display: block; }
         .wiki-codigo-editor {
             width: 100%; min-height: 80px; max-height: 420px; background: #02030a; color: #e8e8e8;
-            border: none; outline: none; resize: vertical; font-family: 'Share Tech Mono', monospace;
+            border: none; outline: none; resize: vertical; font-family: 'Share Tech Mono',monospace;
             font-size: 12px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
             scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
             -webkit-overflow-scrolling: touch;
@@ -428,13 +428,13 @@
         .btn-resetar {
             background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
             padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
-            font-family: 'Share Tech Mono', monospace; transition: 0.2s;
+            font-family: 'Share Tech Mono',monospace; transition: 0.2s;
         }
         .btn-resetar:hover { color: #ff5555; border-color: #ff5555; }
         .btn-enviar-grande {
             background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;
             padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
-            font-family: 'Share Tech Mono', monospace; font-weight: 600; transition: 0.2s;
+            font-family: 'Share Tech Mono',monospace; font-weight: 600; transition: 0.2s;
             display: flex; align-items: center; gap: 6px;
         }
         .btn-enviar-grande:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 12px rgba(0,255,136,0.28); }
@@ -457,19 +457,19 @@
         .wiki-vars-hint code { background: rgba(255,170,0,0.12); color: #ffa500; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
         .wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
         .wiki-var-row { display: flex; align-items: center; gap: 8px; }
-        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'Share Tech Mono', monospace; }
+        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'Share Tech Mono',monospace; }
         .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
-        .wiki-var-inp { flex: 1; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'Share Tech Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
+        .wiki-var-inp { flex: 1; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'Share Tech Mono',monospace; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
         .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
         .wiki-var-inp::placeholder { color: #3a3a3a; }
         .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
         .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(0,245,255,.1); flex-wrap: wrap; }
-        .btn-vars-limpar { background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3); padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'Share Tech Mono', monospace; transition: 0.2s; }
+        .btn-vars-limpar { background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3); padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'Share Tech Mono',monospace; transition: 0.2s; }
         .btn-vars-limpar:hover { color: #ff5555; border-color: #ff5555; }
         .wiki-vars-preview-wrap { display: none; }
         .wiki-vars-preview-wrap.visivel { display: block; }
         .wiki-vars-preview-label { font-size: 10px; color: rgba(0,245,255,.25); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        .wiki-vars-preview-pre { background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1); border-left: 3px solid rgba(0,255,136,0.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
+        .wiki-vars-preview-pre { background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1); border-left: 3px solid rgba(0,255,136,0.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'Share Tech Mono',monospace; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
         .wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: rgba(0,245,255,.25); text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid rgba(0,245,255,.1); }
         .wiki-bloco-extra { margin: 0 16px 14px; background: #02030a; border: 1px solid rgba(0,245,255,.1); border-radius: 3px; overflow: hidden; }
         .wiki-bloco-extra-header { background: #060c18; padding: 8px 12px; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -480,7 +480,7 @@
         .wiki-toast {
             position: fixed; bottom: 70px; right: 16px; background: #060c18;
             border: 1px solid #00ff88; color: #00ff88; padding: 8px 16px;
-            border-radius: 3px; font-size: 11px; font-family: 'Share Tech Mono', monospace;
+            border-radius: 3px; font-size: 11px; font-family: 'Share Tech Mono',monospace;
             z-index: 99999; opacity: 0; transform: translateY(8px);
             transition: opacity 0.2s, transform 0.2s; pointer-events: none;
         }
@@ -589,7 +589,7 @@
             color: #d0e8f0; align-self: flex-start;
             white-space: pre-wrap;
         }
-        .agent-msg.agent code { font-family: 'Share Tech Mono', monospace; font-size: 10px;
+        .agent-msg.agent code { font-family: 'Share Tech Mono',monospace; font-size: 10px;
             background: rgba(0,0,0,.4); padding: 1px 4px; border-radius: 3px; }
         .agent-msg.system {
             background: rgba(255,165,0,.04); border: 1px solid rgba(255,165,0,.12);
@@ -607,21 +607,21 @@
         }
         .agent-tool-call-header { color: #ffa500; font-size: 10px; margin-bottom: 4px; }
         .agent-tool-call-cmd {
-            font-family: 'Share Tech Mono', monospace; font-size: 11px;
+            font-family: 'Share Tech Mono',monospace; font-size: 11px;
             background: rgba(0,0,0,.4); padding: 4px 7px; border-radius: 3px;
             color: #00ff88; word-break: break-all;
         }
         .agent-tool-call-btns { display: flex; gap: 6px; margin-top: 7px; }
         .btn-agent-approve {
             flex: 1; padding: 4px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+            font-family: 'Share Tech Mono',monospace; font-size: 10px; font-weight: 700;
             border: 1px solid #00ff88; background: rgba(0,255,136,.08); color: #00ff88;
             transition: .15s; text-transform: uppercase;
         }
         .btn-agent-approve:hover { background: rgba(0,255,136,.2); }
         .btn-agent-reject {
             flex: 1; padding: 4px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+            font-family: 'Share Tech Mono',monospace; font-size: 10px; font-weight: 700;
             border: 1px solid #ff4444; background: rgba(255,68,68,.06); color: #ff4444;
             transition: .15s; text-transform: uppercase;
         }
@@ -633,21 +633,21 @@
         .agent-input-row { display: flex; gap: 5px; }
         .agent-input {
             flex: 1; background: #060c18; border: 1px solid rgba(0,245,255,.15);
-            color: #d0e8f0; font-family: 'Share Tech Mono', monospace;
+            color: #d0e8f0; font-family: 'Share Tech Mono',monospace;
             font-size: 11px; padding: 6px 8px; border-radius: 3px; outline: none; resize: none;
         }
         .agent-input:focus { border-color: #00f5ff; }
         .btn-agent-send {
             background: rgba(0,245,255,.08); border: 1px solid #00f5ff; color: #00f5ff;
             padding: 6px 10px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700;
+            font-family: 'Share Tech Mono',monospace; font-size: 11px; font-weight: 700;
             transition: .15s; white-space: nowrap;
         }
         .btn-agent-send:hover { background: rgba(0,245,255,.2); }
         .btn-agent-paste {
             background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.2); color: rgba(0,255,136,.6);
             padding: 4px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; font-size: 10px;
+            font-family: 'Share Tech Mono',monospace; font-size: 10px;
             transition: .15s;
         }
         .btn-agent-paste:hover { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,.1); }
@@ -895,10 +895,10 @@
 
     <div id="wikiToast" class="wiki-toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-canvas@0.7.0/lib/xterm-addon-canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.18.0/lib/xterm-addon-webgl.min.js"></script>
+    <script src="/static/js/xterm.min.js"></script>
+    <script src="/static/js/xterm-addon-fit.min.js"></script>
+    <script src="/static/js/xterm-addon-canvas.min.js"></script>
+    <script src="/static/js/xterm-addon-webgl.min.js"></script>
     <script>
 
     // ============================================================
@@ -1552,14 +1552,8 @@
                 content.appendChild(pane);
                 terminal.open(pane);
 
-                // Ativa renderer acelerado (WebGL > Canvas > DOM)
-                try {
-                    const webgl = new WebglAddon.WebglAddon();
-                    webgl.onContextLoss(() => webgl.dispose());
-                    terminal.loadAddon(webgl);
-                } catch(_) {
-                    try { terminal.loadAddon(new CanvasAddon.CanvasAddon()); } catch(__) {}
-                }
+                // Canvas renderer — acelerado via 2D API, sem context loss do WebGL
+                try { terminal.loadAddon(new CanvasAddon.CanvasAddon()); } catch(_) {}
 
                 const tObj = {
                     id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
@@ -2172,14 +2166,15 @@
                 return;
             }
 
-            // Coletar params
+            // Coletar params — strip {} do nome caso usuário tenha digitado "{PON}" em vez de "PON"
             const params = {};
             let faltando = [];
             (spScriptAtual.parametros || []).forEach(p => {
                 const el = document.getElementById(`sp-param-${p.nome}`);
                 const val = el ? el.value.trim() : '';
                 if (p.obrigatorio && !val) faltando.push(p.label || p.nome);
-                params[p.nome] = val;
+                const key = p.nome.replace(/^\{|\}$/g, '').toUpperCase();
+                params[key] = val;
             });
 
             if (faltando.length) {

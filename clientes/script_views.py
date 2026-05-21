@@ -499,8 +499,8 @@ def executar_script(request):
     except ScriptCRM.DoesNotExist:
         return JsonResponse({'error': 'Script não encontrado'}, status=404)
 
-    # Normaliza chaves dos parâmetros para maiúsculas
-    params_norm = {k.upper(): v for k, v in params.items()}
+    # Normaliza chaves: remove {} caso usuário tenha digitado "{PON}" em vez de "PON"
+    params_norm = {k.strip('{}').upper(): v for k, v in params.items()}
 
     # Captura user id para uso na thread (request não é thread-safe)
     user_id = request.user.id

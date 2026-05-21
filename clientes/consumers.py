@@ -17,6 +17,48 @@ from .models import Acesso, ProxyServer
 logger = logging.getLogger(__name__)
 
 
+# ── Pool de conexões SSH com proxies ─────────────────────────────────────────
+# Mantém conexões paramiko com proxies vivas para reutilizar sem re-handshake
+
+class _ProxyPool:
+    """Cache de conexões SSH ativas com servidores proxy."""
+    def __init__(self):
+        self._lock  = threading.Lock()
+        self._conns = {}   # key → paramiko.SSHClient
+
+    def _key(self, proxy) -> str:
+        return f"{proxy.usuario}@{proxy.host}:{proxy.porta}"
+
+    def get(self, proxy):
+        """Retorna conexão ativa existente ou None."""
+        key = self._key(proxy)
+        with self._lock:
+            client = self._conns.get(key)
+            if client is None:
+                return None
+            try:
+                t = client.get_transport()
+                if t and t.is_active():
+                    return client
+            except Exception:
+                pass
+            del self._conns[key]
+            return None
+
+    def put(self, proxy, client):
+        """Armazena conexão no pool."""
+        key = self._key(proxy)
+        with self._lock:
+            self._conns[key] = client
+
+    def remove(self, proxy):
+        key = self._key(proxy)
+        with self._lock:
+            self._conns.pop(key, None)
+
+_proxy_pool = _ProxyPool()
+
+
 class SSHConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
@@ -118,19 +160,38 @@ class SSHConsumer(WebsocketConsumer):
 
             logger.info(f"🔗 Protocolo: {protocol.upper()} | Huawei: {self.is_huawei}")
 
-            if self.is_private_ip(acesso.host):
-                # Verifica se VPN WireGuard ativa cobre este IP (sem proxy)
+            is_private = self.is_private_ip(acesso.host)
+            is_cgnat   = getattr(acesso, 'tipo', '') == 'CGNAT'
+
+            if is_private:
+                # IP privado: VPN WireGuard ou proxy
                 if self._vpn_cobre_ip(acesso.cliente, acesso.host):
                     self.send_json({'type': 'info', 'message': '🔒 Conectando via VPN WireGuard...'})
                     if protocol == 'ssh':
                         self.connect_ssh(acesso)
                     else:
                         self.connect_telnet(acesso)
-                elif protocol == 'ssh':
-                    self.connect_ssh_via_proxy(acesso)
                 else:
-                    self.connect_telnet_via_proxy(acesso)
+                    if protocol == 'ssh':
+                        self.connect_ssh_via_proxy(acesso)
+                    else:
+                        self.connect_telnet_via_proxy(acesso)
+            elif is_cgnat:
+                # IP público CGNAT: tenta direto primeiro, fallback para proxy
+                self.send_json({'type': 'info', 'message': '🔄 Tentando conexão direta...'})
+                try:
+                    if protocol == 'ssh':
+                        self.connect_ssh(acesso)
+                    else:
+                        self.connect_telnet(acesso)
+                except Exception:
+                    self.send_json({'type': 'info', 'message': '↩️ Direto falhou, tentando via proxy...'})
+                    if protocol == 'ssh':
+                        self.connect_ssh_via_proxy(acesso)
+                    else:
+                        self.connect_telnet_via_proxy(acesso)
             else:
+                # IP público normal: direto
                 if protocol == 'ssh':
                     self.connect_ssh(acesso)
                 else:
@@ -339,30 +400,67 @@ class SSHConsumer(WebsocketConsumer):
             logger.info(f"🔗 SSH via proxy (paramiko e2e): {proxy.nome}")
             self.send_json({'type': 'info', 'message': f'⚡ Conectando via proxy {proxy.nome}...'})
 
-            # 1. Conectar ao proxy
-            proxy_client = paramiko.SSHClient()
-            proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            proxy_client.connect(
-                hostname=proxy.host, port=int(proxy.porta),
-                username=proxy.usuario, password=proxy.senha,
-                timeout=10, look_for_keys=False, allow_agent=False,
-                banner_timeout=10,
-            )
+            # 1. Reutilizar conexão do pool ou criar nova
+            proxy_client = _proxy_pool.get(proxy)
+            if proxy_client:
+                logger.info(f"♻️ Proxy reutilizado do pool: {proxy.host}:{proxy.porta}")
+            else:
+                proxy_client = paramiko.SSHClient()
+                proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                proxy_client.connect(
+                    hostname=proxy.host, port=int(proxy.porta),
+                    username=proxy.usuario, password=proxy.senha,
+                    timeout=10, look_for_keys=False, allow_agent=False,
+                    banner_timeout=10,
+                )
+                # Desabilitar Nagle no TCP do proxy — reduz latência por tecla
+                t = proxy_client.get_transport()
+                if t and t.sock:
+                    try:
+                        t.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    except Exception:
+                        pass
+                _proxy_pool.put(proxy, proxy_client)
+                logger.info(f"✅ Proxy conectado (novo): {proxy.host}:{proxy.porta}")
             self._paramiko_client = proxy_client
-            logger.info(f"✅ Proxy conectado: {proxy.host}:{proxy.porta}")
 
             # 2. Abrir canal direct-tcpip para o destino
+            # Se o canal falhar (conexão do pool expirou), reconectar uma vez
             proxy_transport = proxy_client.get_transport()
-            dest_sock = proxy_transport.open_channel(
-                'direct-tcpip',
-                (acesso.host, int(acesso.porta)),
-                ('127.0.0.1', 0),
-                timeout=10,
-            )
+            try:
+                dest_sock = proxy_transport.open_channel(
+                    'direct-tcpip',
+                    (acesso.host, int(acesso.porta)),
+                    ('127.0.0.1', 0),
+                    timeout=10,
+                )
+            except Exception:
+                # Conexão do pool estava morta — criar nova
+                _proxy_pool.remove(proxy)
+                proxy_client = paramiko.SSHClient()
+                proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                proxy_client.connect(
+                    hostname=proxy.host, port=int(proxy.porta),
+                    username=proxy.usuario, password=proxy.senha,
+                    timeout=10, look_for_keys=False, allow_agent=False,
+                    banner_timeout=10,
+                )
+                _proxy_pool.put(proxy, proxy_client)
+                self._paramiko_client = proxy_client
+                proxy_transport = proxy_client.get_transport()
+                dest_sock = proxy_transport.open_channel(
+                    'direct-tcpip',
+                    (acesso.host, int(acesso.porta)),
+                    ('127.0.0.1', 0),
+                    timeout=10,
+                )
             logger.info(f"✅ Canal aberto → {acesso.host}:{acesso.porta}")
 
             # 3. Criar transporte SSH sobre o canal
-            dest_transport = paramiko.Transport(dest_sock)
+            dest_transport = paramiko.Transport(dest_sock,
+                                                default_window_size=2**23,
+                                                default_max_packet_size=2**15)
+            dest_transport.use_compression(False)
             dest_transport.start_client(timeout=10)
             self._paramiko_dest_transport = dest_transport
 
@@ -406,35 +504,34 @@ class SSHConsumer(WebsocketConsumer):
             self.limpar_recursos()
 
     def _read_paramiko_shell(self):
-        """Loop de leitura para conexão SSH via paramiko (proxy)."""
+        """Loop de leitura para conexão SSH via paramiko (proxy) — non-blocking, baixa latência."""
         shell = self._paramiko_shell
         buf   = bytearray()
         logger.info("📖 Thread paramiko shell iniciada")
         try:
+            shell.setblocking(False)
             while self.is_reading and shell and not shell.closed:
-                try:
-                    data = shell.recv(65536)
-                    if not data:
-                        break
-                    buf += data
-                    # Drena tudo que estiver disponível sem esperar
-                    while shell.recv_ready():
-                        more = shell.recv(65536)
-                        if more:
-                            buf += more
-                        else:
-                            break
-                    self.send_output(buf.decode('utf-8', errors='replace'))
-                    buf.clear()
-                except socket.timeout:
+                if not shell.recv_ready():
                     if buf:
                         self.send_output(buf.decode('utf-8', errors='replace'))
                         buf.clear()
+                    time.sleep(0.0005)   # 0.5ms idle — CPU mínimo, latência mínima
                     continue
-                except Exception as e:
-                    if self.is_reading:
-                        logger.info(f"🔌 Paramiko shell encerrado: {e}")
-                    break
+
+                # Drena tudo disponível no kernel buffer agora
+                while shell.recv_ready():
+                    try:
+                        chunk = shell.recv(65536)
+                    except Exception:
+                        chunk = b''
+                    if not chunk:
+                        break
+                    buf += chunk
+
+                if buf:
+                    self.send_output(buf.decode('utf-8', errors='replace'))
+                    buf.clear()
+
         except Exception as e:
             logger.error(f"❌ Erro thread paramiko: {e}")
         finally:
@@ -708,7 +805,7 @@ class SSHConsumer(WebsocketConsumer):
 
             while self.is_reading and self.ssh_process:
                 try:
-                    # Bloqueia no SO até dado chegar — sem spin, sem sleep Python
+                    # Bloqueia no SO até dado chegar — timeout 1ms evita spin
                     r, _, _ = select.select([fd], [], [], 0.001)
                     if not r:
                         if buf:
@@ -721,7 +818,7 @@ class SSHConsumer(WebsocketConsumer):
                         break
                     buf += data
 
-                    # Drain: lê tudo que já está no kernel buffer (sem esperar mais)
+                    # Drain: lê tudo que já está no kernel buffer sem esperar
                     while True:
                         r2, _, _ = select.select([fd], [], [], 0)
                         if not r2:
@@ -1458,18 +1555,38 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
     """Executa comando via paramiko através de um proxy SSH (direct-tcpip)."""
     import re as _re
 
-    proxy_client = paramiko.SSHClient()
-    proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    proxy_client.connect(
-        hostname=proxy.host, port=int(proxy.porta),
-        username=proxy.usuario, password=proxy.senha,
-        timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
-    )
+    proxy_client = _proxy_pool.get(proxy)
+    _pool_hit = proxy_client is not None
+    if not _pool_hit:
+        proxy_client = paramiko.SSHClient()
+        proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        proxy_client.connect(
+            hostname=proxy.host, port=int(proxy.porta),
+            username=proxy.usuario, password=proxy.senha,
+            timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
+        )
+        _proxy_pool.put(proxy, proxy_client)
     try:
         proxy_transport = proxy_client.get_transport()
-        dest_sock = proxy_transport.open_channel(
-            'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
-        )
+        try:
+            dest_sock = proxy_transport.open_channel(
+                'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
+            )
+        except Exception:
+            # Conexão do pool expirou — reconectar
+            _proxy_pool.remove(proxy)
+            proxy_client = paramiko.SSHClient()
+            proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            proxy_client.connect(
+                hostname=proxy.host, port=int(proxy.porta),
+                username=proxy.usuario, password=proxy.senha,
+                timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
+            )
+            _proxy_pool.put(proxy, proxy_client)
+            proxy_transport = proxy_client.get_transport()
+            dest_sock = proxy_transport.open_channel(
+                'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
+            )
         dest_transport = paramiko.Transport(dest_sock)
         dest_transport.start_client(timeout=12)
         dest_transport.auth_password(acesso.usuario, acesso.senha)
@@ -1522,10 +1639,7 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
             dest_transport.close()
         except Exception:
             pass
-        try:
-            proxy_client.close()
-        except Exception:
-            pass
+        # Não fechar proxy_client — está no pool para reutilização
 
 
 def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
@@ -1549,13 +1663,26 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
         except ValueError:
             return False
 
-    # Verificar se precisa de proxy (IP privado sem VPN)
-    proxy = None
+    # Roteamento: IP privado → proxy; CGNAT → tenta direto, fallback proxy; público → direto
     if _is_private(acesso.host):
         proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
-
-    if proxy:
-        return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+        if proxy:
+            return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+        # sem proxy configurado, tenta direto mesmo sendo privado
+        cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
+        return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+    elif getattr(acesso, 'tipo', '') == 'CGNAT':
+        # Tenta direto primeiro
+        try:
+            cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
+            return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+        except Exception:
+            pass
+        # Fallback via proxy
+        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        if proxy:
+            return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+        raise RuntimeError(f"CGNAT sem proxy disponível para {acesso.host}")
     else:
         cmd_line = (
             f"ssh {_SSH_FLAGS} "

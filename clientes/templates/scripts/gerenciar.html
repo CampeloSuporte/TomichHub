@@ -964,7 +964,7 @@ function coletarParams() {
     const params = [];
     document.querySelectorAll('.param-card').forEach(card => {
         const idx = card.id.replace('param-', '');
-        const nome = (document.getElementById(`pnome-${idx}`)?.value || '').trim().toUpperCase();
+        const nome = (document.getElementById(`pnome-${idx}`)?.value || '').trim().replace(/^\{|\}$/g, '').toUpperCase();
         if (!nome) return;
         params.push({
             nome:        nome,
@@ -1070,7 +1070,7 @@ function gerarPreview() {
     const vals     = {};
     params.forEach(p => {
         const el = document.getElementById(`prev-${p.nome}`);
-        vals[p.nome.toUpperCase()] = el ? el.value : (p.default || '');
+        vals[p.nome.replace(/^\{|\}$/g, '').toUpperCase()] = el ? el.value : (p.default || '');
     });
 
     // Preview especial para ZTE Auto-Provisionamento

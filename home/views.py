@@ -17,6 +17,10 @@ import logging
 import hashlib
 import hmac
 import asyncio
+import re as _re
+import base64
+import io
+import requests as _requests
 
 logger = logging.getLogger(__name__)
 
@@ -1965,22 +1969,26 @@ def agent_grupo_salvar(request, grupo_id):
     try:
         data = json.loads(request.body)
 
-        cliente_id = data.get('cliente_id')
-        grupo.cliente = Cliente.objects.get(id=cliente_id) if cliente_id else None
+        cliente_id    = data.get('cliente_id')
+        acesso_global = bool(data.get('acesso_global', False))
+        grupo.acesso_global   = acesso_global
+        grupo.cliente         = Cliente.objects.get(id=cliente_id) if cliente_id else None
         grupo.nivel_permissao = data.get('nivel_permissao', 'leitura')
-        grupo.ativo = bool(data.get('ativo', True))
-        grupo.save(update_fields=['cliente', 'nivel_permissao', 'ativo'])
+        grupo.ativo           = bool(data.get('ativo', True))
+        grupo.save(update_fields=['cliente', 'nivel_permissao', 'ativo', 'acesso_global'])
 
-        # Atualiza restrição de hosts
-        hosts_ids = data.get('hosts_ids', [])
-        if hosts_ids:
-            # Valida que todos pertencem ao cliente vinculado
-            hosts_validos = Acesso.objects.filter(id__in=hosts_ids)
-            if grupo.cliente:
-                hosts_validos = hosts_validos.filter(cliente=grupo.cliente)
-            grupo.hosts_permitidos.set(hosts_validos)
-        else:
+        # Atualiza restrição de hosts (grupos globais não têm restrição de hosts)
+        if acesso_global:
             grupo.hosts_permitidos.clear()
+        else:
+            hosts_ids = data.get('hosts_ids', [])
+            if hosts_ids:
+                hosts_validos = Acesso.objects.filter(id__in=hosts_ids)
+                if grupo.cliente:
+                    hosts_validos = hosts_validos.filter(cliente=grupo.cliente)
+                grupo.hosts_permitidos.set(hosts_validos)
+            else:
+                grupo.hosts_permitidos.clear()
 
         return JsonResponse({'ok': True, 'msg': f'Grupo "{grupo.nome}" salvo com sucesso.'})
     except Cliente.DoesNotExist:
@@ -2207,6 +2215,70 @@ def agent_wa_webhook(request):
     return JsonResponse({'ok': True})
 
 
+def _transcrever_audio_wa(evo_cfg, wa_data: dict, agent_config) -> str:
+    """
+    Baixa o áudio da Evolution API e transcreve via OpenAI Whisper.
+    Retorna a transcrição ou '' em caso de falha.
+    """
+    try:
+        import openai as openai_lib
+        openai_key = (agent_config.openai_api_key or '').strip()
+        if not openai_key:
+            logger.warning("⚠️ Audio WA: openai_api_key não configurado")
+            return ''
+
+        message = wa_data.get('message') or {}
+        audio_msg = (
+            message.get('audioMessage')
+            or message.get('pttMessage')
+            or message.get('voiceMessage')
+        )
+        if not audio_msg:
+            return ''
+
+        mimetype = audio_msg.get('mimetype', 'audio/ogg')
+        ext = 'ogg'
+        if 'mp4' in mimetype or 'mp4a' in mimetype:
+            ext = 'mp4'
+        elif 'mpeg' in mimetype or 'mp3' in mimetype:
+            ext = 'mp3'
+        elif 'webm' in mimetype:
+            ext = 'webm'
+
+        url_b64 = f"{evo_cfg.url.rstrip('/')}/chat/getBase64FromMediaMessage/{evo_cfg.instance_name}"
+        headers = {"apikey": evo_cfg.api_key, "Content-Type": "application/json"}
+        body    = {"message": wa_data, "convertToMp4": False}
+        logger.warning(f"🎙️ Transcrevendo áudio WA: {url_b64}")
+        resp = _requests.post(url_b64, json=body, headers=headers, timeout=30)
+        resp.raise_for_status()
+        resp_data = resp.json()
+        b64_data  = resp_data.get('base64') or resp_data.get('data') or ''
+        if not b64_data:
+            logger.warning(f"⚠️ Audio WA: sem base64 na resposta: {resp_data}")
+            return ''
+
+        audio_bytes = base64.b64decode(b64_data)
+        client = openai_lib.OpenAI(api_key=openai_key)
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = f'audio.{ext}'
+        transcript = client.audio.transcriptions.create(
+            model='whisper-1', file=audio_file, language='pt'
+        )
+        texto = (transcript.text or '').strip()
+        logger.warning(f"🎙️ Transcrição: {texto!r}")
+        return texto
+    except Exception as exc:
+        logger.warning(f"⚠️ Erro ao transcrever áudio WA: {exc}")
+        return ''
+
+
+# Apelidos que o Whisper usa para "noc" / "agente noc"
+_NOC_ALIASES = [
+    'noc', 'nokia', 'noque', 'nok', 'knock', 'nóc', 'nc',
+    'agente', 'agente noc', 'gente',
+]
+
+
 def _processar_wa_webhook(payload: dict):
     """
     Processa o payload da Evolution API.
@@ -2215,6 +2287,7 @@ def _processar_wa_webhook(payload: dict):
     import threading
 
     event = payload.get('event') or payload.get('type') or ''
+    logger.warning(f"📨 Webhook WA: event={event!r}")
     if 'message' not in event.lower():
         return  # Só nos interessa mensagens
 
@@ -2230,40 +2303,91 @@ def _processar_wa_webhook(payload: dict):
     sender_jid = data.get('participant') or jid_from  # remetente em grupos
 
     # Extrair texto
-    message = data.get('message') or {}
-    texto   = (
+    message    = data.get('message') or {}
+    texto      = (
         message.get('conversation')
         or (message.get('extendedTextMessage') or {}).get('text')
         or ''
     ).strip()
 
-    if not texto:
-        return
+    is_audio = bool(
+        message.get('audioMessage')
+        or message.get('pttMessage')
+        or message.get('voiceMessage')
+    )
 
-    # Verificar prefixo de invocação
-    config = AgentConfig.get()
+    config  = AgentConfig.get()
     prefixo = (config.prefixo_wa or '@noc').lower()
-    texto_lower = texto.lower()
-    if not texto_lower.startswith(prefixo):
-        return  # Mensagem não direcionada ao agent
+    logger.warning(f"📨 WA msg: jid={jid_from!r} | texto={texto[:60]!r} | is_audio={is_audio} | prefixo={prefixo!r}")
 
-    # Remover prefixo e trim
-    mensagem_agent = texto[len(prefixo):].strip()
-    if not mensagem_agent:
-        mensagem_agent = "Olá! Como posso ajudar?"
+    if is_audio:
+        # Verificar grupo vinculado antes de transcrever (evita trabalho desnecessário)
+        jid_lookup = jid_from if is_grupo else sender_jid
+        try:
+            grupo = WhatsAppGrupo.objects.select_related('cliente').get(
+                jid=jid_lookup, ativo=True
+            )
+        except WhatsAppGrupo.DoesNotExist:
+            logger.debug(f"Webhook WA (áudio): grupo {jid_lookup} não vinculado — ignorando")
+            return
+        if not grupo.cliente and not grupo.acesso_global:
+            return
 
-    # Verificar grupo vinculado
-    jid_lookup = jid_from if is_grupo else sender_jid
-    try:
-        grupo = WhatsAppGrupo.objects.select_related('cliente').get(
-            jid=jid_lookup, ativo=True
-        )
-    except WhatsAppGrupo.DoesNotExist:
-        logger.debug(f"Webhook WA: grupo {jid_lookup} não vinculado — ignorando")
-        return
+        # Transcrever
+        try:
+            evo_cfg = EvolutionAPIConfig.get()
+        except Exception:
+            evo_cfg = None
+        if not evo_cfg:
+            logger.warning("⚠️ Audio WA: sem EvolutionAPIConfig configurado")
+            return
 
-    if not grupo.cliente:
-        return
+        transcricao = _transcrever_audio_wa(evo_cfg, data, config)
+        if not transcricao:
+            return
+
+        # Checar prefixo na transcrição (suporta apelidos do Whisper)
+        trans_lower = transcricao.lower().strip()
+        # Remove interjeições iniciais comuns antes do prefixo
+        trans_lower = _re.sub(r'^(ah|oi|ei|olá|ola|e aí)[,\.\s]+', '', trans_lower)
+        mensagem_agent = None
+        for alias in _NOC_ALIASES:
+            if trans_lower.startswith(alias):
+                mensagem_agent = transcricao[len(alias):].strip()
+                # Remove pontuação inicial residual
+                mensagem_agent = _re.sub(r'^[,\.\s]+', '', mensagem_agent)
+                break
+        if mensagem_agent is None:
+            logger.debug(f"Áudio transcrito sem prefixo NOC: {transcricao!r}")
+            return
+        if not mensagem_agent:
+            mensagem_agent = "Olá! Como posso ajudar?"
+
+    else:
+        if not texto:
+            return
+
+        # Verificar prefixo de invocação
+        texto_lower = texto.lower()
+        if not texto_lower.startswith(prefixo):
+            return  # Mensagem não direcionada ao agent
+
+        # Remover prefixo e trim
+        mensagem_agent = texto[len(prefixo):].strip()
+        if not mensagem_agent:
+            mensagem_agent = "Olá! Como posso ajudar?"
+
+        # Verificar grupo vinculado
+        jid_lookup = jid_from if is_grupo else sender_jid
+        try:
+            grupo = WhatsAppGrupo.objects.select_related('cliente').get(
+                jid=jid_lookup, ativo=True
+            )
+        except WhatsAppGrupo.DoesNotExist:
+            logger.debug(f"Webhook WA: grupo {jid_lookup} não vinculado — ignorando")
+            return
+        if not grupo.cliente and not grupo.acesso_global:
+            return
 
     # Executar em thread separada para não bloquear
     t = threading.Thread(
@@ -2283,7 +2407,15 @@ def _processar_wa_mensagem_sync(grupo: 'WhatsAppGrupo', sender_jid: str, mensage
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_processar_wa_mensagem_async(grupo, sender_jid, mensagem))
     except Exception as exc:
-        logger.exception(f"Erro no processamento WA: {exc}")
+        import traceback
+        err = traceback.format_exc()
+        logger.warning(f"Erro no processamento WA: {exc}\n{err}")
+        # fallback: gravar em arquivo para não perder
+        try:
+            with open('/tmp/wa_agent_errors.log', 'a') as _f:
+                _f.write(f"[{__import__('datetime').datetime.now()}] {err}\n")
+        except Exception:
+            pass
     finally:
         try:
             loop.close()
@@ -2305,29 +2437,41 @@ async def _processar_wa_mensagem_async(grupo, sender_jid: str, mensagem: str):
     timeout_min = config.timeout_sessao_wa or 120
     desde = timezone.now() - timedelta(minutes=timeout_min)
 
-    sessao = await sync_to_async(
-        AgentSessao.objects.filter(
-            canal='whatsapp',
-            canal_id=grupo.jid,
-            cliente=grupo.cliente,   # garante que o cliente bate com o grupo atual
-            status='ativa',
-            ultima_atividade__gte=desde,
-        ).order_by('-ultima_atividade').first
-    )()
+    if grupo.acesso_global:
+        # Grupo global: sessão ancorада no grupo (cliente=None)
+        sessao = await sync_to_async(
+            AgentSessao.objects.filter(
+                canal='whatsapp',
+                canal_id=grupo.jid,
+                wa_grupo=grupo,
+                status='ativa',
+                ultima_atividade__gte=desde,
+            ).order_by('-ultima_atividade').first
+        )()
+    else:
+        sessao = await sync_to_async(
+            AgentSessao.objects.filter(
+                canal='whatsapp',
+                canal_id=grupo.jid,
+                cliente=grupo.cliente,
+                status='ativa',
+                ultima_atividade__gte=desde,
+            ).order_by('-ultima_atividade').first
+        )()
 
     if not sessao:
-        # Encerrar quaisquer sessões ativas deste JID com cliente diferente
+        # Encerrar sessões ativas deste JID que não sejam deste grupo/cliente
         await sync_to_async(
             AgentSessao.objects.filter(
                 canal='whatsapp',
                 canal_id=grupo.jid,
                 status='ativa',
-            ).exclude(cliente=grupo.cliente).update
+            ).exclude(wa_grupo=grupo).update
         )(status='encerrada')
         sessao = await sync_to_async(AgentSessao.objects.create)(
             canal='whatsapp',
             canal_id=grupo.jid,
-            cliente=grupo.cliente,
+            cliente=grupo.cliente,   # None para grupos globais (nullable)
             wa_grupo=grupo,
             status='ativa',
         )
@@ -2380,9 +2524,14 @@ async def _processar_wa_mensagem_async(grupo, sender_jid: str, mensagem: str):
     # Enviar resposta via Evolution API
     try:
         evo_config = await sync_to_async(EvolutionAPIConfig.get)()
+        texto_resp = resposta or (respostas_wa[-1] if respostas_wa else '')
+        logger.warning(f"[WA-SEND] jid={grupo.jid!r} texto_len={len(texto_resp) if texto_resp else 0} has_config={bool(evo_config.url and evo_config.api_key)}")
         if evo_config.url and evo_config.api_key:
-            texto_resp = resposta or (respostas_wa[-1] if respostas_wa else '')
             if texto_resp:
-                await _evolution_send(evo_config, grupo.jid, texto_resp)
+                result = await _evolution_send(evo_config, grupo.jid, texto_resp)
+                logger.warning(f"[WA-SEND] OK status={result.get('status','?') if isinstance(result,dict) else result}")
+            else:
+                logger.warning("[WA-SEND] texto_resp vazio")
     except Exception as exc:
-        logger.warning(f"Falha ao enviar resposta WA: {exc}")
+        import traceback
+        logger.warning(f"[WA-SEND] ERRO: {exc}\n{traceback.format_exc()}")

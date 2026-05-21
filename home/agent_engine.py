@@ -194,7 +194,7 @@ TOOLS_DEFINITION: list[dict] = [
     },
     {
         "name": "list_hosts",
-        "description": "Lista todos os hosts (acessos) disponíveis para o cliente desta sessão.",
+        "description": "Lista hosts disponíveis. Em modo global, filtre por cliente_nome para encontrar os hosts de um cliente específico.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -202,6 +202,10 @@ TOOLS_DEFINITION: list[dict] = [
                     "type": "string",
                     "description": "Filtrar por protocolo: SSH, TELNET, HTTP, etc. Omitir para todos.",
                     "enum": ["SSH", "TELNET", "HTTP", "HTTPS", "WINBOX", "FTP"],
+                },
+                "cliente_nome": {
+                    "type": "string",
+                    "description": "Nome (parcial) do cliente para filtrar hosts. Usar apenas em modo acesso global.",
                 },
             },
             "required": [],
@@ -319,7 +323,7 @@ TOOLS_OPENAI: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_hosts",
-            "description": "Lista todos os hosts (acessos) disponíveis para o cliente desta sessão.",
+            "description": "Lista hosts disponíveis. Em modo global, filtre por cliente_nome para encontrar os hosts de um cliente específico.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -327,6 +331,10 @@ TOOLS_OPENAI: list[dict] = [
                         "type": "string",
                         "description": "Filtrar por protocolo: SSH, TELNET, HTTP, etc. Omitir para todos.",
                         "enum": ["SSH", "TELNET", "HTTP", "HTTPS", "WINBOX", "FTP"],
+                    },
+                    "cliente_nome": {
+                        "type": "string",
+                        "description": "Nome (parcial) do cliente para filtrar hosts. Usar apenas em modo acesso global.",
                     },
                 },
                 "required": [],
@@ -479,13 +487,17 @@ class AgentNOCEngine:
         return self._config
 
     async def _get_acesso(self, acesso_id: int):
-        from clientes.models import Acesso, AgentSessao
+        from clientes.models import Acesso
         sessao = await self._get_sessao()
-        cliente_id = sessao.cliente_id
+        is_global = bool(sessao.wa_grupo_id and sessao.wa_grupo and sessao.wa_grupo.acesso_global)
         try:
+            if is_global:
+                return await sync_to_async(
+                    Acesso.objects.select_related('modelo', 'cliente').get
+                )(id=acesso_id)
             return await sync_to_async(
                 Acesso.objects.select_related('modelo', 'cliente').get
-            )(id=acesso_id, cliente_id=cliente_id)
+            )(id=acesso_id, cliente_id=sessao.cliente_id)
         except Exception:
             return None
 
@@ -504,18 +516,9 @@ class AgentNOCEngine:
         sessao = await self._get_sessao()
         config = await self._get_config()
 
-        cliente = sessao.cliente
-        cliente_nome = cliente.nome_empresa if cliente else '(desconhecido)'
-        cliente_cidade = getattr(cliente, 'cidade', '') or ''
-        cliente_estado = getattr(cliente, 'estado', '') or ''
+        is_global = bool(sessao.wa_grupo_id and sessao.wa_grupo and sessao.wa_grupo.acesso_global)
 
-        # Lista de hosts do cliente
-        from clientes.models import Acesso
-        acessos = await sync_to_async(list)(
-            Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao')
-        )
-
-        def _host_line(a) -> str:
+        def _host_line(a, incluir_cliente=False) -> str:
             fabricante = ''
             modelo_nome = ''
             if a.modelo:
@@ -528,8 +531,84 @@ class AgentNOCEngine:
             if fabricante:   parts.append(f'fabricante={fabricante}')
             return '  - ' + ' | '.join(parts)
 
-        hosts_lines = '\n'.join(_host_line(a) for a in acessos) or '  (nenhum host cadastrado)'
+        from clientes.models import Acesso, AgentKnowledge, AgentKnowledgeDoc
+        from django.db.models import Q as _Q
 
+        # ── Modo global: todos os clientes/hosts ──────────────────
+        if is_global:
+            from clientes.models import Cliente as _Cliente
+            from collections import defaultdict
+            todos_clientes = await sync_to_async(list)(
+                _Cliente.objects.all().order_by('nome_empresa')
+            )
+            todos_acessos = await sync_to_async(list)(
+                Acesso.objects.select_related('modelo', 'funcao', 'cliente').order_by('cliente__nome_empresa', 'id')
+            )
+            acessos_por_cliente = defaultdict(list)
+            for a in todos_acessos:
+                acessos_por_cliente[a.cliente_id].append(a)
+
+            hosts_parts = []
+            for c in todos_clientes:
+                acessos_c = acessos_por_cliente.get(c.id, [])
+                if not acessos_c:
+                    continue
+                hosts_parts.append(f"\n### Cliente: {c.nome_empresa}")
+                for a in acessos_c:
+                    hosts_parts.append(_host_line(a))
+            hosts_lines = '\n'.join(hosts_parts) or '  (nenhum host cadastrado)'
+
+            # KB global: artigos sem cliente específico
+            artigos_kb = await sync_to_async(list)(
+                AgentKnowledge.objects.filter(ativo=True, cliente__isnull=True)
+                .order_by('fabricante', 'titulo')[:50]
+            )
+            hosts_header    = "## Hosts disponíveis — TODOS OS CLIENTES DA PLATAFORMA"
+            hosts_descricao = "Hosts organizados por cliente. Use o ID do host ao executar comandos."
+            cliente_info    = "**Global NOC** (acesso a todos os clientes)"
+            restricao_linha = "- Nunca misture dados de clientes diferentes na mesma resposta"
+
+        # ── Modo normal: apenas cliente vinculado ─────────────────
+        else:
+            cliente = sessao.cliente
+            cliente_nome   = cliente.nome_empresa if cliente else '(desconhecido)'
+            cliente_cidade = getattr(cliente, 'cidade', '') or ''
+            cliente_estado = getattr(cliente, 'estado', '') or ''
+            acessos = await sync_to_async(list)(
+                Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao')
+            )
+            hosts_lines = '\n'.join(_host_line(a) for a in acessos) or '  (nenhum host cadastrado)'
+
+            fabricantes_hosts = set()
+            for a in acessos:
+                if a.modelo:
+                    fab = (getattr(a.modelo, 'fabricante', '') or '').lower().strip()
+                    if fab:
+                        fabricantes_hosts.add(fab)
+            artigos_kb = []
+            if fabricantes_hosts:
+                artigos_kb = await sync_to_async(list)(
+                    AgentKnowledge.objects.filter(ativo=True, fabricante__in=list(fabricantes_hosts))
+                    .filter(_Q(cliente__isnull=True) | _Q(cliente=cliente))
+                    .order_by('fabricante', 'titulo')[:30]
+                )
+
+            hosts_header    = "## Hosts disponíveis para este cliente (NUNCA acesse hosts de outros clientes)"
+            hosts_descricao = "Cada host contém: ID | nome/tipo | IP:porta | protocolo | função | modelo | fabricante"
+            cliente_info    = f"{cliente_nome} ({cliente_cidade}/{cliente_estado})"
+            restricao_linha = f"- Você NUNCA acessa hosts de outros clientes além de: **{cliente_nome}**"
+
+        # ── Base de conhecimento ──────────────────────────────────
+        kb_section = ''
+        if artigos_kb:
+            linhas_kb = []
+            for artigo in artigos_kb:
+                linhas_kb.append(f"\n### [{artigo.fabricante.upper()}] {artigo.titulo}")
+                if artigo.conteudo:
+                    linhas_kb.append(artigo.conteudo.strip())
+            kb_section = "\n\n## Base de conhecimento\nUse os artigos abaixo para comandos específicos de cada fabricante:\n" + '\n'.join(linhas_kb)
+
+        # ── Nível de permissão ────────────────────────────────────
         nivel_permissao = 'leitura'
         if self.canal == 'whatsapp' and sessao.wa_grupo:
             nivel_permissao = sessao.wa_grupo.nivel_permissao
@@ -554,12 +633,12 @@ class AgentNOCEngine:
 
 ## Contexto desta sessão
 - **Canal:** {'terminal web' if self.canal == 'terminal' else 'WhatsApp'}
-- **Cliente:** {cliente_nome} ({cliente_cidade}/{cliente_estado})
+- **Escopo:** {cliente_info}
 - **Nível de permissão:** {nivel_permissao} — {nivel_desc}
 - **Sessão ID:** {self.sessao_id}
 
-## Hosts disponíveis para este cliente (NUNCA acesse hosts de outros clientes)
-Cada host contém: ID | nome/tipo | IP:porta | protocolo | função | modelo | fabricante
+{hosts_header}
+{hosts_descricao}
 {hosts_lines}
 
 ## Como usar as informações do host
@@ -579,8 +658,8 @@ Se o host não tiver modelo/fabricante cadastrado, tente inferir pelo nome do ti
 ## Regras de execução
 {canal_instrucao}
 - Comandos SEMPRE proibidos: reboot, reload, reset, format, erase, factory reset, rm -rf
-- Você NUNCA acessa hosts de outros clientes além de: **{cliente_nome}**
-- Nunca revele senhas — você pode USAR os acessos mas não informar credenciais
+{restricao_linha}
+- Nunca revele senhas — você pode USAR os acessos mas não informar credenciais{kb_section}
 
 ## Comportamento — REGRA PRINCIPAL
 **Quando pedido para acessar host, executar comando ou verificar algo: use `execute_command` IMEDIATAMENTE.**
@@ -702,21 +781,42 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
             f"**E-mail:** {c.email}\n"
         )
 
-    async def _tool_list_hosts(self, protocolo: str | None = None) -> str:
+    async def _tool_list_hosts(self, protocolo: str | None = None,
+                               cliente_nome: str | None = None) -> str:
         from clientes.models import Acesso
         sessao = await self._get_sessao()
-        qs = Acesso.objects.filter(cliente=sessao.cliente).select_related('modelo', 'funcao')
-        if protocolo:
-            qs = qs.filter(protocolo__iexact=protocolo)
-        acessos = await sync_to_async(list)(qs)
-        if not acessos:
-            return "Nenhum host encontrado."
-        linhas = [
-            f"ID {a.id}: **{a.tipo}** — {a.host}:{a.porta} ({a.protocolo})"
-            + (f" | {a.modelo.nome}" if a.modelo else "")
-            + (f" | {a.funcao.descricao}" if a.funcao else "")
-            for a in acessos
-        ]
+        is_global = bool(sessao.wa_grupo_id and sessao.wa_grupo and sessao.wa_grupo.acesso_global)
+
+        if is_global:
+            qs = Acesso.objects.select_related('modelo', 'funcao', 'cliente').all()
+            if cliente_nome:
+                qs = qs.filter(cliente__nome_empresa__icontains=cliente_nome)
+            if protocolo:
+                qs = qs.filter(protocolo__iexact=protocolo)
+            acessos = await sync_to_async(list)(qs.order_by('cliente__nome_empresa', 'id'))
+            if not acessos:
+                sufixo = f" para cliente '{cliente_nome}'" if cliente_nome else ''
+                return f"Nenhum host encontrado{sufixo}."
+            linhas = [
+                f"[{a.cliente.nome_empresa if a.cliente else '?'}] "
+                f"ID {a.id}: **{a.tipo}** — {a.host}:{a.porta} ({a.protocolo})"
+                + (f" | {a.modelo.nome}" if a.modelo else "")
+                + (f" | {a.funcao.descricao}" if a.funcao else "")
+                for a in acessos
+            ]
+        else:
+            qs = Acesso.objects.filter(cliente=sessao.cliente).select_related('modelo', 'funcao')
+            if protocolo:
+                qs = qs.filter(protocolo__iexact=protocolo)
+            acessos = await sync_to_async(list)(qs)
+            if not acessos:
+                return "Nenhum host encontrado."
+            linhas = [
+                f"ID {a.id}: **{a.tipo}** — {a.host}:{a.porta} ({a.protocolo})"
+                + (f" | {a.modelo.nome}" if a.modelo else "")
+                + (f" | {a.funcao.descricao}" if a.funcao else "")
+                for a in acessos
+            ]
         return "Hosts disponíveis:\n" + "\n".join(f"- {l}" for l in linhas)
 
     async def _tool_search_knowledge(self, query: str, fabricante: str = '',
@@ -892,7 +992,10 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
         elif tool_name == 'get_client_info':
             return await self._tool_get_client_info()
         elif tool_name == 'list_hosts':
-            return await self._tool_list_hosts(tool_input.get('protocolo'))
+            return await self._tool_list_hosts(
+                tool_input.get('protocolo'),
+                tool_input.get('cliente_nome'),
+            )
         elif tool_name == 'search_knowledge':
             return await self._tool_search_knowledge(
                 tool_input['query'],

@@ -208,14 +208,16 @@
                         <div style="color:rgba(0,245,255,.4);font-size:.68rem;font-family:monospace">{{ g.jid }}</div>
                     </td>
                     <td>
-                        {% if g.cliente %}
+                        {% if g.acesso_global %}
+                            <span style="color:#ffb347;font-size:.75rem;font-weight:600;">🌐 Global</span>
+                        {% elif g.cliente %}
                             <span class="cliente-vinculado">{{ g.cliente.nome_empresa }}</span>
                         {% else %}
                             <span class="cliente-nao-vinculado">— não vinculado —</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if g.cliente %}
+                        {% if g.acesso_global or g.cliente %}
                             <span class="badge-nivel badge-{{ g.nivel_permissao }}">{{ g.get_nivel_permissao_display|truncatechars:12 }}</span>
                         {% else %}
                             <span class="badge-nivel badge-sem">—</span>
@@ -241,7 +243,7 @@
                     </td>
                     <td>
                         <div class="d-flex gap-1">
-                            <button class="btn-sm-icon" title="Editar vínculo" onclick="abrirModal({{ g.id }}, '{{ g.nome|escapejs }}', '{{ g.jid|escapejs }}', {{ g.cliente.id|default:'null' }}, '{{ g.nivel_permissao }}', {{ g.ativo|yesno:'true,false' }})">✎</button>
+                            <button class="btn-sm-icon" title="Editar vínculo" onclick="abrirModal({{ g.id }}, '{{ g.nome|escapejs }}', '{{ g.jid|escapejs }}', {{ g.cliente.id|default:'null' }}, '{{ g.nivel_permissao }}', {{ g.ativo|yesno:'true,false' }}, {{ g.acesso_global|yesno:'true,false' }})">✎</button>
                             <button class="btn-sm-icon" title="{{ g.ativo|yesno:'Desativar,Ativar' }}" style="color:{{ g.ativo|yesno:'var(--or),var(--gr)' }}" onclick="toggleAtivo({{ g.id }}, this)">{{ g.ativo|yesno:'⊘,●' }}</button>
                         </div>
                     </td>
@@ -278,8 +280,20 @@
 
             <input type="hidden" id="modal-grupo-id">
 
+            <!-- Acesso Global -->
+            <div class="mb-3" style="background:rgba(255,140,0,.07);border:1px solid rgba(255,140,0,.25);border-radius:6px;padding:10px 12px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+                    <input type="checkbox" id="modal-global" onchange="toggleGlobal(this)"
+                           style="accent-color:#ff8c00;width:16px;height:16px;flex-shrink:0">
+                    <span style="font-size:.82rem;font-weight:600;color:#ffb347;letter-spacing:.5px;">🌐 ACESSO GLOBAL — todos os clientes da plataforma</span>
+                </label>
+                <div style="font-size:.72rem;color:rgba(255,179,71,.7);margin-top:5px;margin-left:24px;">
+                    ⚠️ Use apenas em grupos NOC internos. O agent identificará o cliente pela mensagem.
+                </div>
+            </div>
+
             <!-- Cliente (search-select) -->
-            <div class="mb-3">
+            <div class="mb-3" id="secao-cliente">
                 <label class="ag-label">Cliente vinculado</label>
                 <input type="hidden" id="modal-cliente">
                 <div class="cs-wrap" id="cs-wrap">
@@ -471,12 +485,20 @@ async function toggleAtivo(id, btn) {
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────────
-function abrirModal(id, nome, jid, clienteId, nivel, ativo) {
+function toggleGlobal(cb) {
+    const isGlobal = cb.checked;
+    document.getElementById('secao-cliente').style.display = isGlobal ? 'none' : '';
+    document.getElementById('secao-hosts').style.display   = isGlobal ? 'none' : '';
+}
+
+function abrirModal(id, nome, jid, clienteId, nivel, ativo, global) {
     document.getElementById('modal-grupo-id').value = id;
     document.getElementById('modal-nome').textContent = nome;
     document.getElementById('modal-jid').textContent  = jid;
     document.getElementById('modal-nivel').value = nivel;
     document.getElementById('modal-ativo').checked = ativo;
+    document.getElementById('modal-global').checked = !!global;
+    toggleGlobal({checked: !!global});
 
     // Popula o search-select de cliente
     const clienteObj = clienteId ? CS_CLIENTES.find(c => c.id == clienteId) : null;
@@ -486,7 +508,7 @@ function abrirModal(id, nome, jid, clienteId, nivel, ativo) {
     csClose();
 
     document.getElementById('modalOverlay').classList.add('open');
-    carregarHosts(id);
+    if (!global) carregarHosts(id);
 }
 function fecharModal() {
     document.getElementById('modalOverlay').classList.remove('open');
@@ -549,7 +571,7 @@ async function salvarGrupo() {
         const r = await fetch(`{% url "agent_grupo_salvar" 0 %}`.replace('/0/', `/${id}/`), {
             method: 'POST',
             headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
-            body: JSON.stringify({cliente_id: clienteId || null, nivel_permissao: nivel, ativo, hosts_ids: hostsIds})
+            body: JSON.stringify({cliente_id: clienteId || null, nivel_permissao: nivel, ativo, hosts_ids: hostsIds, acesso_global: document.getElementById('modal-global').checked})
         });
         const d = await r.json();
         if (d.ok) {

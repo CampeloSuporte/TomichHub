@@ -1126,6 +1126,11 @@ class WhatsAppGrupo(models.Model):
         help_text='Grupo só poderá acessar hosts deste cliente'
     )
     nivel_permissao = models.CharField(max_length=20, choices=NIVEIS, default='leitura', verbose_name='Nível de permissão')
+    acesso_global   = models.BooleanField(
+        default=False,
+        verbose_name='Acesso Global',
+        help_text='Permite que este grupo acesse hosts de qualquer cliente da plataforma. Use apenas em grupos NOC internos.',
+    )
 
     # Restrição adicional de hosts (vazio = todos os hosts do cliente)
     hosts_permitidos = models.ManyToManyField(
@@ -1152,10 +1157,12 @@ class WhatsAppGrupo(models.Model):
     def pode_acessar(self, acesso):
         """
         Verifica se este grupo tem permissão para solicitar acesso a um Acesso específico.
-        Garante isolamento: grupo só acessa hosts do cliente vinculado.
+        Grupos globais acessam qualquer host. Grupos normais são isolados ao cliente vinculado.
         """
         if not self.ativo:
             return False
+        if self.acesso_global:
+            return True
         if not self.cliente:
             return False
         if acesso.cliente != self.cliente:
@@ -1167,6 +1174,8 @@ class WhatsAppGrupo(models.Model):
 
     def hosts_disponiveis(self):
         """Retorna os acessos que este grupo pode usar."""
+        if self.acesso_global:
+            return Acesso.objects.select_related('cliente', 'modelo', 'funcao').all()
         if not self.cliente:
             return Acesso.objects.none()
         hosts_restritos = self.hosts_permitidos.all()
