@@ -55,6 +55,22 @@
 
 .result-box { background:var(--bg3);border:1px solid rgba(0,245,255,.15);border-radius:6px;padding:.75rem;font-size:.78rem;color:#c8dde8;margin-top:.75rem;display:none; }
 .result-box.show { display:block; }
+
+/* Token Monitor */
+.tk-stat { background:var(--bg3);border:1px solid rgba(0,245,255,.12);border-radius:8px;padding:1rem;text-align:center;flex:1;min-width:130px; }
+.tk-stat-val { font-family:'Orbitron',sans-serif;font-size:1.3rem;color:var(--cy);line-height:1; }
+.tk-stat-lbl { font-size:.68rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:.3rem; }
+.tk-stat.green .tk-stat-val { color:var(--gr); }
+.tk-stat.orange .tk-stat-val { color:var(--or); }
+.tk-stat.purple .tk-stat-val { color:#c084fc; }
+.tk-bar-wrap { background:rgba(0,245,255,.06);border-radius:4px;height:6px;overflow:hidden;margin-top:4px; }
+.tk-bar { height:100%;border-radius:4px;transition:width .5s; }
+.tk-period-btn { background:var(--bg3);border:1px solid rgba(0,245,255,.15);color:var(--muted);padding:.25rem .65rem;border-radius:5px;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .15s; }
+.tk-period-btn.active,.tk-period-btn:hover { border-color:var(--cy);color:var(--cy);background:rgba(0,245,255,.08); }
+.tk-chart { display:flex;align-items:flex-end;gap:3px;height:60px;padding-top:4px; }
+.tk-bar-day { flex:1;background:rgba(0,245,255,.25);border-radius:2px 2px 0 0;min-height:2px;position:relative;cursor:default;transition:background .15s; }
+.tk-bar-day:hover { background:rgba(0,245,255,.5); }
+.tk-bar-day-out { position:absolute;bottom:0;left:0;right:0;background:rgba(0,255,136,.35);border-radius:2px 2px 0 0; }
 </style>
 
 <div class="cfg-page">
@@ -66,6 +82,54 @@
         </div>
         <div class="ms-auto">
             <a href="{% url 'agent_grupos' %}" class="btn-cy text-decoration-none">💬 Gerenciar Grupos WA</a>
+        </div>
+    </div>
+
+    <!-- ── Monitor de Tokens ── -->
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <span style="font-size:1.2rem">📊</span>
+            <span class="cfg-card-title">Consumo de Tokens</span>
+            <div class="ms-auto d-flex gap-1" id="tk-period-btns">
+                <button class="tk-period-btn" onclick="tkPeriodo('24h')">24h</button>
+                <button class="tk-period-btn active" onclick="tkPeriodo('7d')">7d</button>
+                <button class="tk-period-btn" onclick="tkPeriodo('30d')">30d</button>
+                <button class="tk-period-btn" onclick="tkPeriodo('all')">Tudo</button>
+            </div>
+        </div>
+        <div class="cfg-card-body">
+            <!-- Stats principais -->
+            <div class="d-flex flex-wrap gap-2 mb-3" id="tk-stats-row">
+                <div class="tk-stat" id="tk-s-total">
+                    <div class="tk-stat-val" id="tk-total">—</div>
+                    <div class="tk-stat-lbl">Total Tokens</div>
+                </div>
+                <div class="tk-stat" id="tk-s-input">
+                    <div class="tk-stat-val" id="tk-input">—</div>
+                    <div class="tk-stat-lbl">Entrada (prompt)</div>
+                </div>
+                <div class="tk-stat green">
+                    <div class="tk-stat-val" id="tk-output">—</div>
+                    <div class="tk-stat-lbl">Saída (resposta)</div>
+                </div>
+                <div class="tk-stat orange">
+                    <div class="tk-stat-val" id="tk-msgs">—</div>
+                    <div class="tk-stat-lbl">Respostas</div>
+                </div>
+                <div class="tk-stat purple">
+                    <div class="tk-stat-val" id="tk-custo">—</div>
+                    <div class="tk-stat-lbl">Custo estimado (R$)</div>
+                </div>
+            </div>
+            <!-- Barra proporção entrada/saída -->
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.3rem">Proporção entrada <span style="color:var(--cy)">■</span> / saída <span style="color:var(--gr)">■</span></div>
+            <div class="tk-bar-wrap" style="height:8px;margin-bottom:1rem">
+                <div class="tk-bar" id="tk-bar-prop" style="background:linear-gradient(90deg,rgba(0,245,255,.6) var(--inp-pct,50%),rgba(0,255,136,.5) var(--inp-pct,50%));width:100%"></div>
+            </div>
+            <!-- Gráfico diário -->
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">Últimos 14 dias <span style="color:var(--muted);font-size:.65rem">(azul=entrada, verde=saída)</span></div>
+            <div class="tk-chart" id="tk-chart"></div>
+            <div style="font-size:.65rem;color:var(--muted);margin-top:.3rem" id="tk-provedor-info">—</div>
         </div>
     </div>
 
@@ -502,5 +566,68 @@ function mostrarToast(msg, tipo = 'ok') {
     c.appendChild(el);
     setTimeout(() => el.remove(), 3500);
 }
+
+/* ── Token Monitor ── */
+let _tkPeriodoAtual = '7d';
+
+function tkFmt(n) {
+    if (n >= 1_000_000) return (n/1_000_000).toFixed(2)+'M';
+    if (n >= 1_000)     return (n/1_000).toFixed(1)+'K';
+    return String(n);
+}
+
+async function tkPeriodo(p) {
+    _tkPeriodoAtual = p;
+    document.querySelectorAll('.tk-period-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    await tkCarregar();
+}
+
+async function tkCarregar() {
+    try {
+        const r = await fetch(`{% url "agent_token_stats" %}?periodo=${_tkPeriodoAtual}`);
+        const d = await r.json();
+        if (!d.ok) return;
+
+        document.getElementById('tk-total').textContent  = tkFmt(d.total_tokens);
+        document.getElementById('tk-input').textContent  = tkFmt(d.tokens_input);
+        document.getElementById('tk-output').textContent = tkFmt(d.tokens_output);
+        document.getElementById('tk-msgs').textContent   = d.total_msgs;
+        document.getElementById('tk-custo').textContent  = 'R$ ' + d.custo_brl.toFixed(4);
+        document.getElementById('tk-custo').title = `USD: $${d.custo_usd.toFixed(4)} · Câmbio: R$ ${d.taxa_brl}`;
+
+        // Barra proporção
+        const total = d.total_tokens || 1;
+        const inpPct = Math.round((d.tokens_input / total) * 100);
+        document.getElementById('tk-bar-prop').style.setProperty('--inp-pct', inpPct + '%');
+
+        // Info provedor
+        const provedorNome = d.provedor === 'claude' ? '🧠 Claude (Anthropic)' : '🤖 ChatGPT (OpenAI)';
+        document.getElementById('tk-provedor-info').textContent =
+            `Provedor ativo: ${provedorNome} · Modelo: ${d.modelo}`;
+
+        // Gráfico diário
+        const chart = document.getElementById('tk-chart');
+        chart.innerHTML = '';
+        if (d.por_dia.length === 0) {
+            chart.innerHTML = '<span style="font-size:.72rem;color:var(--muted);align-self:center">Sem dados no período</span>';
+            return;
+        }
+        const maxTk = Math.max(...d.por_dia.map(x => (x.input||0)+(x.output||0)), 1);
+        d.por_dia.forEach(dia => {
+            const tot = (dia.input||0) + (dia.output||0);
+            const pct = Math.round((tot / maxTk) * 100);
+            const outPct = tot > 0 ? Math.round((dia.output/tot)*100) : 0;
+            const col = document.createElement('div');
+            col.className = 'tk-bar-day';
+            col.style.height = Math.max(pct, 2) + '%';
+            col.title = `${dia.dia}\nEntrada: ${tkFmt(dia.input)}\nSaída: ${tkFmt(dia.output)}\nMsgs: ${dia.msgs}`;
+            col.innerHTML = `<div class="tk-bar-day-out" style="height:${outPct}%"></div>`;
+            chart.appendChild(col);
+        });
+    } catch(e) { console.error('tkCarregar:', e); }
+}
+
+document.addEventListener('DOMContentLoaded', tkCarregar);
 </script>
 {% endblock %}

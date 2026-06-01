@@ -47,6 +47,7 @@ SAFE_COMMANDS: dict[str, list[str]] = {
     'mikrotik': [
         # Aceita tanto com "/" quanto sem (o modelo às vezes omite o prefixo)
         r'^/?interface\s+print', r'^/?interface\s+monitor',
+        r'^/?interface\s+print\s+where',  # /interface print where comment~"..."
         r'^/?ip\s+address\s+print', r'^/?ip\s+route\s+print',
         r'^/?ip\s+neighbor\s+print', r'^/?ip\s+firewall\s+',
         r'^/?ip\s+dns\s+print', r'^/?ip\s+service\s+print',
@@ -82,7 +83,9 @@ SAFE_COMMANDS: dict[str, list[str]] = {
 
 BLOCKED_COMMANDS: list[str] = [
     r'reboot', r'reload', r'reset', r'erase',
-    r'delete\s', r'no\s+interface', r'shutdown\s*$',
+    r'delete\s', r'no\s+interface',
+    # Bloqueia 'shutdown' standalone mas NÃO 'undo shutdown' / 'no shutdown'
+    r'(?<!undo )(?<!no )shutdown\s*$',
     r'rm\s+-rf', r'format\s+', r'factory',
 ]
 
@@ -92,6 +95,7 @@ OPERATIONAL_COMMANDS: dict[str, list[str]] = {
         r'^/?ip\s+address\s+(add|remove|enable|disable|set)\b',
         r'^/?ip\s+route\s+(add|remove|enable|disable|set)\b',
         r'^/?interface\s+(enable|disable|set|comment)\b',
+        r'^/?interface\s+(enable|disable)\s+\[find',  # /interface enable/disable [find ...]
         r'^/?interface\s+vlan\s+(add|remove|set)\b',
         r'^/?ip\s+firewall\s+(nat|filter|mangle)\s+(add|remove|disable|enable|set|move)\b',
         r'^/?queue\s+simple\s+(add|remove|set|enable|disable)\b',
@@ -106,8 +110,15 @@ OPERATIONAL_COMMANDS: dict[str, list[str]] = {
         r'^/?routing\s+ospf\b', r'^/?routing\s+bgp\b',
     ],
     'huawei': [
-        r'^interface\s+', r'^ip\s+address\s+', r'^undo\s+shutdown',
-        r'^display\s+', r'^commit$', r'^quit$',
+        r'^system-view$', r'^interface\s+', r'^ip\s+address\s+',
+        r'^undo\s+shutdown', r'^shutdown$',
+        r'^display\s+', r'^return$', r'^quit$', r'^save$', r'^y$',
+        r'^sysname\s+', r'^vlan\s+', r'^port\s+',
+        r'^bgp\s+\d+', r'^peer\s+[\d.]+\s+ignore',
+        r'^undo\s+peer\s+[\d.]+\s+ignore',
+        r'^peer\s+[\d.]+\s+route-policy\b',
+        r'^peer\s+[\d.]+\s+enable$',
+        r'^undo\s+peer\s+[\d.]+\s+enable$',
     ],
     'cisco': [
         r'^interface\s+', r'^ip\s+address\s+', r'^no\s+shutdown',
@@ -284,6 +295,22 @@ TOOLS_DEFINITION: list[dict] = [
             "required": [],
         },
     },
+    {
+        "name": "fetch_host_config",
+        "description": (
+            "Coleta a configuração completa de um host via SSH (display current-configuration ou equivalente) "
+            "e salva automaticamente no banco para uso futuro. Use quando o contexto de backup do host estiver "
+            "ausente ou desatualizado, ou quando precisar saber sobre interfaces, VLANs, BGP, rotas, etc. "
+            "Após executar, o contexto fica disponível no system prompt da próxima mensagem."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "acesso_id": {"type": "integer", "description": "ID do Acesso (host) alvo"},
+            },
+            "required": ["acesso_id"],
+        },
+    },
 ]
 
 
@@ -415,6 +442,23 @@ TOOLS_OPENAI: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_host_config",
+            "description": (
+                "Coleta a configuração completa de um host via SSH e salva no banco para uso futuro. "
+                "Use quando o contexto de backup do host estiver ausente ou desatualizado."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "acesso_id": {"type": "integer", "description": "ID do Acesso (host) alvo"},
+                },
+                "required": ["acesso_id"],
+            },
+        },
+    },
 ]
 
 
@@ -518,7 +562,31 @@ class AgentNOCEngine:
 
         is_global = bool(sessao.wa_grupo_id and sessao.wa_grupo and sessao.wa_grupo.acesso_global)
 
-        def _host_line(a, incluir_cliente=False) -> str:
+        import re as _re_agent
+
+        def _bgp_peers_compact(ctx: str) -> str:
+            """Extrai índice compacto de BGP peers: 'DESCRICAO=IP, ...' a partir do contexto."""
+            peers = []
+            seen_ips = set()
+            for line in ctx.splitlines():
+                # Formato Huawei VRP contexto_backup: "  Peer X.X.X.X ASY — DESC"
+                m = _re_agent.match(r'\s+Peer\s+([\d.:a-fA-F]+)\s+AS\d+\s+—\s+(.+)', line)
+                if m:
+                    ip, desc = m.group(1), m.group(2).strip()
+                    if ip not in seen_ips:
+                        peers.append(f'{desc}={ip}')
+                        seen_ips.add(ip)
+                    continue
+                # Formato Cisco/MikroTik contexto_backup: "  - DESCRICAO | IP | ASN"
+                m = _re_agent.match(r'\s+-\s+(.+?)\s+\|\s+([\d.]+)\s+\|', line)
+                if m:
+                    desc, ip = m.group(1).strip(), m.group(2)
+                    if ip not in seen_ips and desc:
+                        peers.append(f'{desc}={ip}')
+                        seen_ips.add(ip)
+            return ', '.join(peers[:20])
+
+        def _host_line(a, incluir_cliente=False, incluir_contexto=True) -> str:
             fabricante = ''
             modelo_nome = ''
             if a.modelo:
@@ -529,7 +597,29 @@ class AgentNOCEngine:
             if funcao_nome:  parts.append(f'função={funcao_nome}')
             if modelo_nome:  parts.append(f'modelo={modelo_nome}')
             if fabricante:   parts.append(f'fabricante={fabricante}')
-            return '  - ' + ' | '.join(parts)
+            linha = '  - ' + ' | '.join(parts)
+            if a.contexto_backup:
+                if incluir_contexto:
+                    # Contexto compacto: 1500 chars máx para não explodir o context window
+                    # BGP peers ficam no artigo [BGP] do cliente (não repetir aqui)
+                    ctx_raw = a.contexto_backup
+                    # Remove seção BGP do contexto (já está no artigo [BGP])
+                    for marker in ('BGP Peers:', 'Sessões BGP:', '## BGP', 'Peer '):
+                        idx_bgp = ctx_raw.find(marker)
+                        if idx_bgp > 200:
+                            ctx_raw = ctx_raw[:idx_bgp] + '\n      [BGP: ver artigo [BGP] do cliente]'
+                            break
+                    ctx = ctx_raw[:1500]
+                    if len(a.contexto_backup) > 1500:
+                        ctx += '\n      ... [use fetch_host_config para detalhes]'
+                    ctx_indent = '\n'.join('      ' + l for l in ctx.splitlines())
+                    linha += f'\n    [Configuração conhecida do backup]\n{ctx_indent}'
+                else:
+                    # Modo global: só índice compacto de BGP peers (descrição → IP)
+                    bgp_idx = _bgp_peers_compact(a.contexto_backup)
+                    if bgp_idx:
+                        linha += f'\n      BGP-peers: {bgp_idx}'
+            return linha
 
         from clientes.models import Acesso, AgentKnowledge, AgentKnowledgeDoc
         from django.db.models import Q as _Q
@@ -542,7 +632,11 @@ class AgentNOCEngine:
                 _Cliente.objects.all().order_by('nome_empresa')
             )
             todos_acessos = await sync_to_async(list)(
-                Acesso.objects.select_related('modelo', 'funcao', 'cliente').order_by('cliente__nome_empresa', 'id')
+                Acesso.objects.select_related('modelo', 'funcao', 'cliente').only(
+                    'id', 'tipo', 'host', 'porta', 'protocolo', 'contexto_backup',
+                    'cliente__nome_empresa', 'modelo__nome', 'modelo__fabricante',
+                    'funcao__descricao', 'cliente_id',
+                ).order_by('cliente__nome_empresa', 'id')
             )
             acessos_por_cliente = defaultdict(list)
             for a in todos_acessos:
@@ -555,7 +649,7 @@ class AgentNOCEngine:
                     continue
                 hosts_parts.append(f"\n### Cliente: {c.nome_empresa}")
                 for a in acessos_c:
-                    hosts_parts.append(_host_line(a))
+                    hosts_parts.append(_host_line(a, incluir_contexto=False))
             hosts_lines = '\n'.join(hosts_parts) or '  (nenhum host cadastrado)'
 
             # KB global: artigos sem cliente específico
@@ -575,7 +669,10 @@ class AgentNOCEngine:
             cliente_cidade = getattr(cliente, 'cidade', '') or ''
             cliente_estado = getattr(cliente, 'estado', '') or ''
             acessos = await sync_to_async(list)(
-                Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao')
+                Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao').only(
+                    'id', 'tipo', 'host', 'porta', 'protocolo', 'contexto_backup',
+                    'modelo__nome', 'modelo__fabricante', 'funcao__descricao',
+                )
             )
             hosts_lines = '\n'.join(_host_line(a) for a in acessos) or '  (nenhum host cadastrado)'
 
@@ -586,12 +683,27 @@ class AgentNOCEngine:
                     if fab:
                         fabricantes_hosts.add(fab)
             artigos_kb = []
+            # Artigos genéricos de fabricante (manuais, comandos, procedures)
             if fabricantes_hosts:
-                artigos_kb = await sync_to_async(list)(
+                artigos_fab = await sync_to_async(list)(
                     AgentKnowledge.objects.filter(ativo=True, fabricante__in=list(fabricantes_hosts))
                     .filter(_Q(cliente__isnull=True) | _Q(cliente=cliente))
-                    .order_by('fabricante', 'titulo')[:30]
+                    .order_by('fabricante', 'titulo')[:20]
                 )
+            else:
+                artigos_fab = []
+            # Artigos de snapshot do cliente (BGP, INFRA) — fabricante='generico', tags incluem 'snapshot' ou 'bgp'
+            if cliente:
+                artigos_snapshot = await sync_to_async(list)(
+                    AgentKnowledge.objects.filter(
+                        ativo=True, cliente=cliente,
+                    ).filter(
+                        _Q(tags__contains=['bgp']) | _Q(tags__contains=['snapshot'])
+                    ).order_by('titulo')
+                )
+            else:
+                artigos_snapshot = []
+            artigos_kb = artigos_fab + artigos_snapshot
 
             hosts_header    = "## Hosts disponíveis para este cliente (NUNCA acesse hosts de outros clientes)"
             hosts_descricao = "Cada host contém: ID | nome/tipo | IP:porta | protocolo | função | modelo | fabricante"
@@ -599,14 +711,43 @@ class AgentNOCEngine:
             restricao_linha = f"- Você NUNCA acessa hosts de outros clientes além de: **{cliente_nome}**"
 
         # ── Base de conhecimento ──────────────────────────────────
+        # Artigos [BGP]: injetar SOMENTE o índice compacto (DESCRICAO=IP) — não a tabela inteira
+        # Artigos [INFRA]: NÃO injetar (informação já está no contexto_backup dos hosts)
+        # Artigos de fabricante (manuais, comandos): injetar completo mas limitado
+        bgp_index_section = ''
         kb_section = ''
         if artigos_kb:
             linhas_kb = []
+            bgp_index_lines = []
             for artigo in artigos_kb:
-                linhas_kb.append(f"\n### [{artigo.fabricante.upper()}] {artigo.titulo}")
-                if artigo.conteudo:
-                    linhas_kb.append(artigo.conteudo.strip())
-            kb_section = "\n\n## Base de conhecimento\nUse os artigos abaixo para comandos específicos de cada fabricante:\n" + '\n'.join(linhas_kb)
+                if '[BGP]' in artigo.titulo and artigo.conteudo:
+                    # Extrair índice compacto da tabela markdown: | DESC | `IP` | ...
+                    for line in artigo.conteudo.splitlines():
+                        m = _re_agent.match(
+                            r'\|\s*([^|`\-][^|]+?)\s*\|\s*`([\d.]+)`\s*\|', line
+                        )
+                        if m:
+                            desc = m.group(1).strip()
+                            ip   = m.group(2)
+                            if desc.lower() not in ('descrição', '---'):
+                                bgp_index_lines.append(f'{desc}={ip}')
+                elif '[INFRA]' in artigo.titulo:
+                    continue  # não injetar — muito grande, redundante
+                else:
+                    # Artigo de fabricante (manual/procedure): injetar completo, máx 2000 chars
+                    linhas_kb.append(f"\n### [{artigo.fabricante.upper()}] {artigo.titulo}")
+                    if artigo.conteudo:
+                        linhas_kb.append(artigo.conteudo.strip()[:2000])
+
+            if bgp_index_lines:
+                bgp_index_section = (
+                    "\n\n## Índice BGP do cliente (Descrição=IP)\n"
+                    "> Use este índice para localizar o IP de um peer BGP pela descrição.\n"
+                    "> Para detalhes completos use search_knowledge('[BGP]').\n\n"
+                    + ', '.join(bgp_index_lines[:60])
+                )
+            if linhas_kb:
+                kb_section = "\n\n## Base de conhecimento\nUse os artigos abaixo para comandos específicos de cada fabricante:\n" + '\n'.join(linhas_kb)
 
         # ── Nível de permissão ────────────────────────────────────
         nivel_permissao = 'leitura'
@@ -655,11 +796,123 @@ Antes de executar qualquer comando em um host, identifique:
 
 Se o host não tiver modelo/fabricante cadastrado, tente inferir pelo nome do tipo ou pela resposta do equipamento.
 
+## Usando o contexto de backup [Configuração conhecida do backup]
+
+Cada host pode ter um bloco `[Configuração conhecida do backup]` com dados extraídos do último backup. **USE esse contexto para resolver perguntas sem precisar de comandos extras de descoberta.**
+
+### Consultar sessão BGP por descrição/nome
+
+**REGRA OBRIGATÓRIA**: Quando o usuário perguntar sobre uma sessão BGP pelo **nome/descrição** (ex: "wirelink", "IBGP DNO", "K2 LINK", "VIVO", "trânsito X"):
+
+1. **PRIMEIRO** — busque o IP do peer na base de conhecimento:
+   - Na seção `## Base de conhecimento` abaixo, procure o artigo `[BGP] <cliente>`.
+   - Nele há uma tabela `## Tabela Descrição → IP`. Encontre a linha onde a coluna **Descrição** contenha o nome informado (busca parcial/case-insensitive).
+   - A coluna **IP do Peer** é o valor que você precisa.
+   - Se não encontrar diretamente, use a ferramenta `search_knowledge` com a descrição como query.
+2. **DEPOIS** — com o IP em mãos, execute o comando **específico** para aquele peer:
+
+   **Verificar estado:**
+   - Huawei VRP → `display bgp peer <IP> verbose`
+   - MikroTik ROS6 → `/routing bgp peer print where remote-address=<IP>`
+   - MikroTik ROS7 → `/routing bgp session print where remote.address=<IP>/32`
+   - Cisco/Datacom → `show bgp neighbors <IP>`
+   - Juniper → `show bgp neighbor <IP>`
+
+   **Desativar peer BGP (peer ignore / shutdown):**
+   - Huawei VRP (modo padrão, prompt `[hostname]`) → `system-view\nbgp <AS_LOCAL>\npeer <IP> ignore\nreturn\nsave\ny`
+   - Huawei NE/VS (modo commit, prompt `[~hostname]` ou `[*hostname]`) → `system-view\nbgp <AS_LOCAL>\npeer <IP> ignore\ncommit\nreturn`
+     ⚠️ Como identificar: se o prompt tiver `~` ou `*` antes do nome (ex: `[~VS-BGP]`, `[*VS-BGP-bgp]`), é modo commit — obrigatório usar `commit` ANTES de `return`. Sem `commit` a mudança NÃO é aplicada.
+     ⚠️ NO HUAWEI: `peer ignore` é o comando correto. NUNCA use `peer shutdown` (comando Cisco — inválido no VRP).
+   - MikroTik ROS6 → `/routing bgp peer set [find remote-address=<IP>] disabled=yes`
+   - MikroTik ROS7 → `/routing bgp connection set [find remote.address=<IP>/32] disabled=yes`
+   - Cisco IOS → `neighbor <IP> shutdown` (dentro de `router bgp <AS>`)
+   - Datacom DmOS → `neighbor <IP> shutdown` (dentro de `router bgp <AS>`)
+
+   **Reativar peer BGP:**
+   - Huawei VRP (padrão) → `system-view\nbgp <AS_LOCAL>\nundo peer <IP> ignore\nreturn\nsave\ny`
+   - Huawei NE/VS (commit) → `system-view\nbgp <AS_LOCAL>\nundo peer <IP> ignore\ncommit\nreturn`
+   - MikroTik ROS6 → `/routing bgp peer set [find remote-address=<IP>] disabled=no`
+   - MikroTik ROS7 → `/routing bgp connection set [find remote.address=<IP>/32] disabled=no`
+   - Cisco IOS → `no neighbor <IP> shutdown` (dentro de `router bgp <AS>`)
+
+   **Como saber o AS local do Huawei:** olhe no `## Índice BGP` ou na coluna "AS Local" da tabela BGP. Se não souber, execute `display bgp routing-table` ou `display bgp peer` para ver `Local AS number`.
+
+   **OBRIGATÓRIO após desativar/reativar:** sempre execute `display bgp peer <IP> verbose` para confirmar que o estado mudou (Idle/Active para ignore, Established para reativado). Só informe sucesso ao usuário DEPOIS de confirmar o estado real.
+
+3. **NUNCA** execute o comando genérico que lista todos os peers (`display bgp peer`, `show bgp summary`) apenas para encontrar o IP de um peer específico — isso gasta tokens e tempo.
+4. Se a descrição não estiver na tabela, informe ao usuário qual é o peer mais parecido que encontrou.
+
+### Consultar interface por descrição
+Quando o usuário mencionar uma interface pela descrição (ex: "link para CGNAT", "uplink principal", "ALMAS P1", "energia"):
+1. No backup, encontre `desc="<DESCRIÇÃO>"` na seção de interfaces para obter o nome exato
+2. Se não houver backup, busque no equipamento diretamente (veja comandos abaixo por fabricante)
+3. Uma vez que encontrou o nome da interface, **memorize-o na sessão** — use esse nome nas próximas ações sem buscar novamente
+
+⚠️ **INTERFACE FÍSICA vs VIRTUAL — REGRA OBRIGATÓRIA**
+Quando o usuário pede informações sobre uma interface pela sua **descrição**, a resposta deve ser sobre a **interface física** que possui aquela descrição configurada — **NUNCA sobre uma Vlanif, Vlan-interface, BDI, IRB ou qualquer interface virtual derivada**.
+
+- **Correto:** `GigabitEthernet0/0/1` com `description CLIENTE-X` → responder sobre `GigabitEthernet0/0/1`
+- **Errado:** responder sobre `Vlanif100` só porque está associada ao mesmo segmento
+
+Interfaces virtuais (Vlanif, Loopback, Tunnel, BDI, IRB) têm seus próprios IPs de gerência — isso **não** é o que o usuário quer quando pergunta sobre o estado, counters ou status de uma interface por descrição.
+
+Se existir tanto uma interface física quanto uma virtual com relação ao mesmo ponto, mencione primeiro a **física** e indique a virtual apenas como informação complementar.
+
+#### Buscar interface por descrição — comandos por fabricante
+
+**MikroTik RouterOS:**
+- Descrições podem estar no campo `name` OU no campo `comment`
+- SEMPRE busque nos dois campos de uma vez num único `execute_command`:
+  `/interface print where comment~"<DESCRIÇÃO>"\n/interface print where name~"<DESCRIÇÃO>"`
+- Analise qual dos dois retornou resultado e use esse campo para ativar/desativar.
+- Para ativar/desativar use SEMPRE `/interface enable` e `/interface disable` (NÃO use `set disabled=no/yes`):
+  - Se achou por `comment` → ativar: `/interface enable [find comment~"<DESCRIÇÃO>"]`
+  - Se achou por `comment` → desativar: `/interface disable [find comment~"<DESCRIÇÃO>"]`
+  - Se achou por `name` → ativar: `/interface enable [find name~"<DESCRIÇÃO>"]`
+  - Se achou por `name` → desativar: `/interface disable [find name~"<DESCRIÇÃO>"]`
+- Se ambos retornarem vazio, informe que a interface não foi encontrada
+
+**Huawei VRP:**
+- Buscar por descrição: **SEMPRE** use `display interface description` (sem filtro) e identifique a interface no output retornado — NÃO use `| include` para busca por descrição, pois descrições com hífen (ex: `SW-HU-NDD-P2`) não casam com buscas com espaço (ex: "NDD P2"). O comando retorna uma tabela com Interface / PHY / Protocol / Description: leia todas as linhas e encontre a que contém a descrição solicitada, considerando que espaços na fala do usuário correspondem a hífens na config do equipamento.
+- Ativar: `system-view\ninterface <NOME>\nundo shutdown\nreturn`
+- Desativar: `system-view\ninterface <NOME>\nshutdown\nreturn`
+
+⚠️ **IMPORTANTE**: A descrição da interface (ex: "ALMAS P1") NÃO indica qual switch acessar.
+O switch alvo é definido pelo contexto da mensagem (ex: "switch Natividade", "switch ALMAS").
+Se o usuário disse "switch Natividade", acesse o switch de Natividade — mesmo que a interface tenha "ALMAS" na descrição.
+Se o switch alvo não estiver claro, pergunte antes de executar.
+
+⚠️ **MEMÓRIA DE SESSÃO**: Se você já identificou a interface em uma mensagem anterior desta sessão (ex: "encontrei sfp1 com comment energia"), use esse mesmo nome/resultado nas próximas ações — não repita a busca.
+
+### Consultar OSPF, MPLS, PPPoE, VRF
+Use as seções do backup para saber quais instâncias/processos existem antes de executar comandos de verificação.
+
+## Configuração em equipamentos Huawei (VRP)
+A sessão SSH inicia em **user-view** (`<hostname>`). Para configurar qualquer coisa, SEMPRE comece com `system-view`.
+Use um único `execute_command` com as linhas separadas por `\n`. NÃO use `commit` (não existe no VRP interativo).
+
+- Ativar porta:   `system-view\ninterface <NOME>\nundo shutdown\nreturn`
+- Desativar porta: `system-view\ninterface <NOME>\nshutdown\nreturn`
+- Salvar config:  `save\ny`
+
+Exemplos reais:
+- `system-view\ninterface XGigabitEthernet0/0/1\nundo shutdown\nreturn`
+- `system-view\ninterface GigabitEthernet0/0/1\nip address 10.0.0.1 255.255.255.0\nreturn`
+
 ## Regras de execução
 {canal_instrucao}
 - Comandos SEMPRE proibidos: reboot, reload, reset, format, erase, factory reset, rm -rf
 {restricao_linha}
-- Nunca revele senhas — você pode USAR os acessos mas não informar credenciais{kb_section}
+- Nunca revele senhas — você pode USAR os acessos mas não informar credenciais{bgp_index_section}{kb_section}
+
+## Aprendizado automático — fetch_host_config
+Quando um host **não tiver contexto de backup** ou o usuário perguntar sobre interfaces/VLANs/rotas e você não souber:
+1. Use `fetch_host_config` com o `acesso_id` do host
+2. A configuração completa será coletada via SSH e salva automaticamente
+3. Use as informações retornadas para responder imediatamente
+4. Nas próximas sessões, o contexto já estará disponível no system prompt
+
+Use `fetch_host_config` **antes** de `execute_command` quando o contexto estiver ausente e você precisar conhecer a configuração do equipamento.
 
 ## Comportamento — REGRA PRINCIPAL
 **Quando pedido para acessar host, executar comando ou verificar algo: use `execute_command` IMEDIATAMENTE.**
@@ -667,6 +920,7 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
 
 - Use `list_hosts` para localizar o ID correto pelo nome
 - Use `execute_command` com acesso_id e comando adequado ao equipamento
+- **Quando o backup tiver o mapeamento descrição→IP, use-o diretamente — não rode `display bgp peer` (todos) só para descobrir o IP**
 - **SEMPRE inclua o output bruto do terminal na resposta**, dentro de um bloco de código (``` ```). Nunca substitua o output por um resumo formatado — mostre o output real e depois adicione análise se necessário.
 - Responda em **português brasileiro**
 """
@@ -743,6 +997,89 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
         })
 
         return f"Output do comando `{comando}` em {acesso.host}:\n```\n{output[:3000]}\n```"
+
+    async def _tool_fetch_host_config(self, acesso_id: int) -> str:
+        """Coleta configuração completa do host via SSH e salva contexto_backup."""
+        acesso = await self._get_acesso(acesso_id)
+        if not acesso:
+            return f"❌ Host ID {acesso_id} não encontrado."
+        if acesso.protocolo != 'SSH':
+            return f"❌ fetch_host_config só suporta SSH (host usa {acesso.protocolo})."
+
+        fabricante = ''
+        if acesso.modelo:
+            fabricante = (getattr(acesso.modelo, 'fabricante', '') or '').lower()
+        is_huawei  = fabricante == 'huawei' or 'huawei' in (acesso.tipo or '').lower()
+        is_mikrotik = 'mikrotik' in fabricante or 'mikrotik' in (acesso.tipo or '').lower()
+
+        if is_huawei:
+            cmd_config = 'display current-configuration'
+            vendor     = 'huawei'
+        elif is_mikrotik:
+            cmd_config = '/export'
+            vendor     = 'mikrotik'
+        else:
+            cmd_config = 'show running-config'
+            vendor     = 'cisco'
+
+        await self.notify_cb({
+            "type": "tool_call", "tool": "fetch_host_config",
+            "command": cmd_config, "acesso_id": acesso_id,
+            "acesso_desc": f"{acesso.tipo} - {acesso.host}",
+            "requires_approval": False,
+        })
+
+        t0 = time.monotonic()
+        try:
+            content = await asyncio.get_event_loop().run_in_executor(
+                None, _ssh_exec_sync, acesso, cmd_config, 60,
+            )
+        except Exception as exc:
+            return f"❌ Erro ao coletar configuração de {acesso.host}: {exc}"
+
+        if not content or len(content) < 50:
+            return f"❌ Configuração vazia ou muito curta para {acesso.host}."
+
+        # Processa e salva contexto
+        try:
+            from clientes.ipam_views import _build_contexto_backup
+            from django.utils import timezone as _tz
+            from asgiref.sync import sync_to_async as _s2a
+
+            contexto = _build_contexto_backup(vendor, content)
+            if contexto:
+                await _s2a(type(acesso).objects.filter(pk=acesso.pk).update)(
+                    contexto_backup=contexto,
+                    contexto_backup_em=_tz.now(),
+                )
+                # Atualiza objeto local para o system prompt incluir na próxima msg
+                acesso.contexto_backup = contexto
+        except Exception as exc:
+            contexto = ''
+            logger.warning(f"fetch_host_config: erro ao salvar contexto: {exc}")
+
+        duracao_ms = int((time.monotonic() - t0) * 1000)
+        await self._registrar_log(
+            'tool_call', f"fetch_host_config: {acesso.tipo} ({vendor})",
+            tool_name='fetch_host_config',
+            tool_input={"acesso_id": acesso_id},
+            tool_output=(contexto or content)[:500],
+            duracao_ms=duracao_ms,
+        )
+
+        if contexto:
+            # Retorna o contexto processado para o agente usar imediatamente
+            return (
+                f"✅ Configuração coletada e salva para **{acesso.tipo}** ({acesso.host}).\n\n"
+                f"**Contexto disponível:**\n```\n{contexto[:4000]}\n```\n"
+                f"Este contexto foi salvo e estará disponível automaticamente nas próximas consultas."
+            )
+        else:
+            return (
+                f"✅ Configuração coletada para **{acesso.tipo}** ({acesso.host}) "
+                f"mas não foi possível processar o contexto.\n\n"
+                f"**Output bruto (primeiros 2000 chars):**\n```\n{content[:2000]}\n```"
+            )
 
     async def _telnet_exec(self, acesso, comando: str) -> str:
         """Execução Telnet simplificada via asyncio."""
@@ -1017,6 +1354,10 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
             return await self._tool_get_terminal_output(
                 int(tool_input.get('linhas', 200))
             )
+        elif tool_name == 'fetch_host_config':
+            return await self._tool_fetch_host_config(
+                int(tool_input['acesso_id'])
+            )
         else:
             return f"❌ Ferramenta desconhecida: {tool_name}"
 
@@ -1204,16 +1545,29 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
 # Evolution API helpers
 # ─────────────────────────────────────────────────────────────────
 
-async def _evolution_send(evo_config, jid: str, texto: str) -> dict:
-    """Envia mensagem de texto via Evolution API."""
+async def _evolution_send(evo_config, jid: str, texto: str, tentativas: int = 3) -> dict:
+    """Envia mensagem de texto via Evolution API com retry para falhas transitórias."""
     import httpx
+    import asyncio as _asyncio
     url = f"{evo_config.url.rstrip('/')}/message/sendText/{evo_config.instance_name}"
     headers = {"apikey": evo_config.api_key, "Content-Type": "application/json"}
     payload = {"number": jid, "text": texto}
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.post(url, json=payload, headers=headers)
-        resp.raise_for_status()
-        return resp.json()
+    ultimo_exc = None
+    for tentativa in range(1, tentativas + 1):
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                return resp.json()
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as exc:
+            ultimo_exc = exc
+            if tentativa < tentativas:
+                await _asyncio.sleep(2 * tentativa)  # backoff: 2s, 4s
+                continue
+            raise
+        except Exception:
+            raise
+    raise ultimo_exc
 
 
 def models_uso_increment():

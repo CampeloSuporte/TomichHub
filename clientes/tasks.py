@@ -14,9 +14,11 @@ from .views import realizar_backup, executar_validacao_rpki_irr
 from datetime import datetime
 import traceback
 import os
+import re
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+from django.db.models import Q
 from django.core.cache import cache
 
 logger = get_task_logger(__name__)
@@ -508,3 +510,1444 @@ def agendar_backups_pendentes_SEM_CELERY():
             'motivo': str(e),
             'traceback': traceback.format_exc()
         }
+
+
+@shared_task
+def analisar_backups_ipam():
+    """
+    Analisa os backups mais recentes de todos os clientes e documenta
+    automaticamente IPs, VLANs e sub-redes no IPAM nativo.
+    Executado a cada 3 dias via Celery Beat.
+    """
+    import ipaddress
+    from .models import Cliente, IPAMVlan, IPAMSubRede, IPAMEndereco
+    from .ipam_views import _detect_vendor, _parse_mikrotik, _parse_huawei, _parse_generic
+
+    total_clientes   = 0
+    total_processados = 0
+    total_vlans      = 0
+    total_subredes   = 0
+    total_ips        = 0
+    total_atualizados = 0
+
+    for cliente in Cliente.objects.all():
+        acessos = Acesso.objects.filter(cliente=cliente)
+        for acesso in acessos:
+            backup = (
+                BackupLog.objects
+                .filter(acesso=acesso, status='SUCESSO')
+                .exclude(arquivo_path='')
+                .order_by('-data_backup')
+                .first()
+            )
+            if not backup:
+                continue
+
+            caminho = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+            if not os.path.exists(caminho):
+                continue
+
+            try:
+                with open(caminho, 'r', encoding='utf-8', errors='replace') as fh:
+                    content = fh.read()
+            except Exception as e:
+                logger.warning(f'analisar_backups_ipam: acesso {acesso.id} erro ao ler: {e}')
+                continue
+
+            vendor = _detect_vendor(content)
+            if vendor == 'mikrotik':
+                parsed = _parse_mikrotik(content)
+            elif vendor == 'huawei':
+                parsed = _parse_huawei(content)
+            else:
+                parsed = _parse_generic(content)
+
+            if not parsed['ips']:
+                continue
+
+            total_processados += 1
+            host_label = f"{acesso.tipo} ({acesso.host})" if acesso.tipo else acesso.host
+
+            # Salvar contexto no Acesso para o Agent NOC
+            from .ipam_views import _build_contexto_backup
+            from django.utils import timezone as _tz
+            contexto = _build_contexto_backup(vendor, content)
+            if contexto:
+                acesso.contexto_backup = contexto
+                acesso.contexto_backup_em = _tz.now()
+                acesso.save(update_fields=['contexto_backup', 'contexto_backup_em'])
+
+            vlan_map = {}
+            for v in parsed['vlans']:
+                obj, created = IPAMVlan.objects.get_or_create(
+                    cliente=cliente, numero=v['numero'],
+                    defaults={'nome': v['nome']}
+                )
+                if created:
+                    total_vlans += 1
+                vlan_map[v['numero']] = obj
+
+            for ip_cidr, desc, vlan_num in parsed['ips']:
+                try:
+                    net       = ipaddress.ip_network(ip_cidr, strict=False)
+                    ip_host   = ip_cidr.split('/')[0]
+                    ipaddress.ip_address(ip_host)
+                    cidr_rede = str(net)
+                except Exception:
+                    continue
+
+                vlan_obj = None
+                if vlan_num is not None:
+                    if vlan_num in vlan_map:
+                        vlan_obj = vlan_map[vlan_num]
+                    else:
+                        obj, created = IPAMVlan.objects.get_or_create(
+                            cliente=cliente, numero=vlan_num,
+                            defaults={'nome': f'VLAN {vlan_num}'}
+                        )
+                        if created:
+                            total_vlans += 1
+                        vlan_map[vlan_num] = obj
+                        vlan_obj = obj
+
+                sub, sub_created = IPAMSubRede.objects.get_or_create(
+                    cliente=cliente, rede=cidr_rede,
+                    defaults={'vlan': vlan_obj, 'descricao': desc}
+                )
+                if sub_created:
+                    total_subredes += 1
+                elif vlan_obj and not sub.vlan:
+                    sub.vlan = vlan_obj
+                    sub.save(update_fields=['vlan'])
+
+                ip_obj, ip_created = IPAMEndereco.objects.get_or_create(
+                    cliente=cliente, ip=ip_host,
+                    defaults={
+                        'descricao': desc, 'hostname': host_label,
+                        'subrede': sub, 'acesso': acesso, 'status': 'ativo',
+                    }
+                )
+                if ip_created:
+                    total_ips += 1
+                else:
+                    changed = False
+                    if not ip_obj.hostname and host_label:
+                        ip_obj.hostname = host_label; changed = True
+                    if not ip_obj.descricao and desc:
+                        ip_obj.descricao = desc; changed = True
+                    if not ip_obj.subrede:
+                        ip_obj.subrede = sub; changed = True
+                    if not ip_obj.acesso:
+                        ip_obj.acesso = acesso; changed = True
+                    if changed:
+                        ip_obj.save()
+                        total_atualizados += 1
+
+        total_clientes += 1
+
+    logger.info(
+        f'analisar_backups_ipam: {total_clientes} clientes, '
+        f'{total_processados} equipamentos processados, '
+        f'{total_vlans} VLANs, {total_subredes} sub-redes, '
+        f'{total_ips} IPs novos, {total_atualizados} atualizados.'
+    )
+    return {
+        'clientes': total_clientes, 'processados': total_processados,
+        'vlans': total_vlans, 'subredes': total_subredes,
+        'ips_novos': total_ips, 'ips_atualizados': total_atualizados,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Habilitação automática de backup por modelo + protocolo
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@shared_task(bind=True)
+def rotina_backup_completa(self):
+    """
+    Pipeline completo executado diariamente às 01h:
+      1. Detecta modelo dos equipamentos via backup (janela de 3 dias)
+      2. Habilita backup_habilitado + backup_automatico + template correto
+         para todos os acessos SSH com modelo cadastrado
+    """
+    logger.info('rotina_backup_completa: iniciando pipeline')
+
+    # Passo 1 — detecção de modelo
+    r_modelo = detectar_modelos_via_backup()
+    logger.info(
+        f'  modelo: verificados={r_modelo["verificados"]} '
+        f'atualizados={r_modelo["atualizados"]} sem_match={r_modelo["sem_match"]}'
+    )
+
+    # Passo 2 — habilitação de backup
+    r_backup = habilitar_backups_automaticos()
+    logger.info(
+        f'  backup: habilitados={r_backup["habilitados"]} '
+        f'corrigidos={r_backup["corrigidos"]} sem_template={r_backup["sem_template"]}'
+    )
+
+    return {
+        'modelo_atualizados': r_modelo['atualizados'],
+        'backup_habilitados': r_backup['habilitados'],
+        'templates_corrigidos': r_backup['corrigidos'],
+    }
+
+def _selecionar_template(acesso, templates_cache):
+    """
+    Retorna o BackupTemplate adequado para o acesso com base no fabricante do modelo.
+
+    Regras especiais:
+      - ZTE, Parks           → template Cisco (IOS-like CLI)
+      - Huawei OLTs (MA5xxx) → template 'backup olt huawei'
+      - Huawei demais        → template 'Backup Huawei'
+      - Outros               → mapeamento por fabricante, fallback Genérico
+    """
+    if not acesso.modelo:
+        return None
+
+    fab  = (acesso.modelo.fabricante or '').upper().strip()
+    nome = (acesso.modelo.nome or '').upper().strip()
+
+    # ── Casos especiais ───────────────────────────────────────────────────────
+    # ZTE e Parks usam CLI similar ao Cisco
+    if fab in ('ZTE', 'ZTE CORPORATION') or 'PARKS' in fab or 'PARKS' in nome:
+        return templates_cache.get('CISCO')
+
+    # Huawei OLT (MA5600, MA5608, MA5800 …) tem template próprio
+    if fab == 'HUAWEI' and ('MA5' in nome or 'OLT' in nome):
+        return templates_cache.get('HUAWEI_OLT') or templates_cache.get('HUAWEI')
+
+    # ── Mapeamento padrão por fabricante ──────────────────────────────────────
+    mapa = {
+        'HUAWEI':    'HUAWEI',
+        'CISCO':     'CISCO',
+        'MIKROTIK':  'MIKROTIK',
+        'JUNIPER':   'JUNIPER',
+        'DATACOM':   'DATACOM',
+        'FIBERHOME': 'FIBERHOME',
+        'HILLSTONE': 'HILLSTONE',
+        'A10':       'A10',
+        'A10 NETWORKS': 'A10',
+        'INTELBRAS': 'CISCO',   # CLI compatível
+        'VSOL':      'CISCO',   # CLI compatível
+        'TP-LINK':   'CISCO',   # CLI compatível
+        'RAISECOM':  'CISCO',   # CLI compatível
+        'DELL':      'CISCO',   # CLI compatível
+        'EXTREME':   'EXTREME',
+        'HP':        'HP',
+    }
+    chave = mapa.get(fab)
+    if chave:
+        return templates_cache.get(chave)
+
+    return templates_cache.get('GENERICO')
+
+
+@shared_task(bind=True)
+def habilitar_backups_automaticos(self):
+    """
+    Para cada Acesso que:
+      - usa protocolo SSH
+      - tem modelo cadastrado
+      - ainda não tem backup_habilitado=True
+
+    Habilita backup_habilitado, backup_automatico e seleciona o template
+    correto conforme o fabricante do modelo.
+
+    Roda diariamente para capturar novos equipamentos.
+    """
+    from clientes.models import BackupTemplate
+
+    # ── Carrega templates em memória (evita N queries) ────────────────────────
+    templates_cache = {}
+    for t in BackupTemplate.objects.filter(ativo=True):
+        fab_key = (t.fabricante or '').upper().strip()
+        nome_key = (t.nome or '').upper().strip()
+
+        # Chaves primárias por fabricante
+        if fab_key not in templates_cache:
+            templates_cache[fab_key] = t
+
+        # Chave especial para OLT Huawei
+        if 'OLT' in nome_key and 'HUAWEI' in nome_key:
+            templates_cache['HUAWEI_OLT'] = t
+
+        # Chaves por nome para fabricantes que usam GENERICO no campo
+        if 'FIBERHOME' in nome_key:
+            templates_cache['FIBERHOME'] = t
+        if 'HILLSTONE' in nome_key:
+            templates_cache['HILLSTONE'] = t
+        if 'A10' in nome_key:
+            templates_cache['A10'] = t
+        if 'MIKROTIK' in nome_key:
+            templates_cache['MIKROTIK'] = t
+        if 'DATACOM' in nome_key:
+            templates_cache['DATACOM'] = t
+
+    logger.info(f'Templates disponíveis: {list(templates_cache.keys())}')
+
+    # ── Candidatos: SSH + modelo preenchido + não é VM nem hipervisor ─────────
+    candidatos = Acesso.objects.filter(
+        protocolo='SSH',
+        modelo__isnull=False,
+        backup_habilitado=False,
+    ).exclude(
+        funcao__descricao__icontains='vm'
+    ).exclude(
+        funcao__descricao__icontains='hipervisor'
+    ).exclude(
+        funcao__descricao__icontains='hypervisor'
+    ).select_related('modelo', 'funcao')
+
+    habilitados = 0
+    sem_template = 0
+
+    for acesso in candidatos:
+        template = _selecionar_template(acesso, templates_cache)
+        if not template:
+            sem_template += 1
+            logger.debug(
+                f'[backup-auto] Sem template para {acesso.tipo} '
+                f'(fabricante={acesso.modelo.fabricante})'
+            )
+            continue
+
+        Acesso.objects.filter(pk=acesso.pk).update(
+            backup_habilitado=True,
+            backup_automatico=True,
+            backup_template=template,
+        )
+        habilitados += 1
+        logger.info(
+            f'[backup-auto] {acesso.tipo} ({acesso.host}) '
+            f'→ template "{template.nome}" ({acesso.modelo.fabricante})'
+        )
+
+    # ── Também atualiza template de quem já tem backup mas template errado/nulo
+    sem_template_existentes = Acesso.objects.filter(
+        protocolo='SSH',
+        modelo__isnull=False,
+        backup_habilitado=True,
+        backup_template__isnull=True,
+    ).exclude(
+        funcao__descricao__icontains='vm'
+    ).exclude(
+        funcao__descricao__icontains='hipervisor'
+    ).exclude(
+        funcao__descricao__icontains='hypervisor'
+    ).select_related('modelo', 'funcao')
+
+    corrigidos = 0
+    for acesso in sem_template_existentes:
+        template = _selecionar_template(acesso, templates_cache)
+        if template:
+            Acesso.objects.filter(pk=acesso.pk).update(backup_template=template)
+            corrigidos += 1
+
+    # ── Remove backup de VMs e hipervisores que foram marcados incorretamente ──
+    indevisos = Acesso.objects.filter(
+        backup_habilitado=True,
+    ).filter(
+        Q(funcao__descricao__icontains='vm')
+        | Q(funcao__descricao__icontains='hipervisor')
+        | Q(funcao__descricao__icontains='hypervisor')
+    )
+
+    removidos = 0
+    for acesso in indevisos:
+        Acesso.objects.filter(pk=acesso.pk).update(
+            backup_habilitado=False,
+            backup_automatico=False,
+            backup_template=None,
+        )
+        removidos += 1
+        logger.info(
+            f'[backup-auto] backup REMOVIDO de {acesso.tipo} ({acesso.host}) '
+            f'— função: {acesso.funcao.descricao if acesso.funcao else "?"}'
+        )
+
+    logger.info(
+        f'habilitar_backups_automaticos: {habilitados} habilitados, '
+        f'{corrigidos} templates corrigidos, {sem_template} sem template, '
+        f'{removidos} backups removidos (VM/hipervisor).'
+    )
+    return {
+        'habilitados': habilitados,
+        'corrigidos': corrigidos,
+        'sem_template': sem_template,
+        'removidos': removidos,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Auto-detecção de modelo via conteúdo do backup
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _extrair_modelo_do_backup(conteudo):
+    """
+    Tenta extrair o model string do equipamento a partir do conteúdo do backup.
+    Suporta RouterOS, Cisco IOS/IOS-XE/IOS-XR, Huawei VRP, ZTE, Datacom DmOS, A10.
+    Retorna string com o nome do modelo ou None.
+    """
+    # ── MikroTik RouterOS ─────────────────────────────────────────────────────
+    m = re.search(r'^#\s+model\s*=\s*(.+)$', conteudo, re.MULTILINE)
+    if m:
+        return m.group(1).strip()
+
+    # ── Cisco IOS-XE: "Model Number        : ASR1001-X" ───────────────────────
+    m = re.search(r'Model [Nn]umber\s*[:\-]\s*(\S+)', conteudo)
+    if m:
+        return m.group(1).strip()
+
+    # ── Cisco IOS-XR: "cisco NCS5501 ()" ou "cisco ASR9006 ()" ──────────────
+    m = re.search(r'^cisco\s+([A-Za-z0-9\-]+)\s+\(', conteudo, re.MULTILINE)
+    if m:
+        return m.group(1).strip()
+
+    # ── Cisco IOS: "Cisco IOS Software ... cisco WS-C3750..." ─────────────────
+    m = re.search(r'^cisco\s+(\S+)\s+processor', conteudo, re.MULTILINE | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    # ── Huawei VRP – linha de versão: "Huawei NE9000 ... VRP" ────────────────
+    m = re.search(
+        r'HUAWEI\s+(NE\w+|CE\w+|MA\d+\w*|ATN\s*\w+|CX\w+|S\d+\w*)',
+        conteudo, re.IGNORECASE
+    )
+    if m:
+        return m.group(1).strip().replace(' ', '')
+
+    # ── Huawei – board info "NE40E-X8" ────────────────────────────────────────
+    m = re.search(
+        r'\b(NE\d+E?-?[A-Z0-9]+|CE\d+[A-Z0-9\-]+|MA\d+[A-Z0-9\-]+|ATN\d+[A-Z0-9\-]+)\b',
+        conteudo
+    )
+    if m:
+        return m.group(1).strip()
+
+    # ── ZTE ZXAN – "version ZXAN V2.0" ou "Platform: ZXA10 C650" ────────────
+    m = re.search(r'Platform\s*:\s*(ZXA10\s*\w+)', conteudo, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r'(C\d{3,4})\s+Version', conteudo)
+    if m:
+        return 'ZXA10 ' + m.group(1).strip()
+
+    # ── Datacom DmOS ──────────────────────────────────────────────────────────
+    m = re.search(r'DmOS.*?running on\s+(\S+)', conteudo, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    # ── A10 Networks ──────────────────────────────────────────────────────────
+    m = re.search(r'Thunder\s+([\w\-]+)\s', conteudo, re.IGNORECASE)
+    if m:
+        return 'A10 Thunder ' + m.group(1).strip()
+
+    return None
+
+
+def _normalizar(s):
+    """Remove espaços, hífens e deixa minúsculo para comparação."""
+    return re.sub(r'[\s\-_/]', '', s).lower()
+
+
+def _match_modelo_equipamento(model_str):
+    """
+    Tenta encontrar o Modelo_equipamento correspondente a model_str.
+    Estratégia:
+      1. Coincidência exata (case-insensitive) no campo nome
+      2. O model_str normalizado está contido no nome normalizado (ou vice-versa)
+         — apenas se a string mais curta tiver >= 5 chars para evitar falso-positivo
+    Retorna o objeto Modelo_equipamento ou None.
+    """
+    from modelo_equipamento.models import Modelo_equipamento
+
+    if not model_str or len(model_str) < 4:
+        return None
+
+    # 1. Exato
+    qs = Modelo_equipamento.objects.filter(nome__iexact=model_str)
+    if qs.exists():
+        return qs.first()
+
+    # 2. Containment normalizado
+    dev_norm = _normalizar(model_str)
+    if len(dev_norm) < 5:
+        return None
+
+    melhor = None
+    melhor_score = 0
+    for obj in Modelo_equipamento.objects.all():
+        nome_norm = _normalizar(obj.nome)
+        # A string mais curta deve estar contida na mais longa
+        if dev_norm in nome_norm:
+            score = len(dev_norm)
+        elif nome_norm in dev_norm:
+            score = len(nome_norm)
+        else:
+            continue
+        if score > melhor_score:
+            melhor_score = score
+            melhor = obj
+
+    return melhor
+
+
+@shared_task(bind=True)
+def detectar_modelos_via_backup(self):
+    """
+    Varre os Acessos que têm backup e tenta identificar o modelo do equipamento
+    lendo o conteúdo do arquivo de backup mais recente.
+
+    Regras de skip (não processa):
+      - modelo_auto_em preenchido E modelo já identificado  → nunca mais verifica
+      - modelo_auto_em preenchido há menos de 3 dias       → aguarda próximo ciclo
+
+    Roda a cada 3 dias via Celery Beat.
+    """
+    MEDIA_ROOT = getattr(settings, 'MEDIA_ROOT', '/opt/crm/media')
+    JANELA_DIAS = 3
+    agora = timezone.now()
+    limite = agora - timedelta(days=JANELA_DIAS)
+
+    total = verificados = atualizados = sem_backup = sem_match = 0
+
+    # Candidatos: acessos com backup habilitado
+    acessos = Acesso.objects.filter(backup_habilitado=True).select_related('modelo')
+
+    for acesso in acessos:
+        total += 1
+
+        # ── Skip: modelo já encontrado anteriormente ──────────────────────────
+        if acesso.modelo_auto_em and acesso.modelo_id:
+            continue
+
+        # ── Skip: tentativa recente sem resultado ─────────────────────────────
+        if acesso.modelo_auto_em and acesso.modelo_auto_em >= limite:
+            continue
+
+        # ── Pega o backup mais recente com arquivo ────────────────────────────
+        ultimo = (
+            BackupLog.objects
+            .filter(acesso=acesso, status='SUCESSO')
+            .exclude(arquivo_path='')
+            .exclude(arquivo_path__isnull=True)
+            .order_by('-data_backup')
+            .first()
+        )
+        if not ultimo:
+            sem_backup += 1
+            # Marca como tentado mesmo sem backup para não checar toda hora
+            Acesso.objects.filter(pk=acesso.pk).update(modelo_auto_em=agora)
+            continue
+
+        arquivo = os.path.join(MEDIA_ROOT, ultimo.arquivo_path)
+        if not os.path.exists(arquivo):
+            sem_backup += 1
+            Acesso.objects.filter(pk=acesso.pk).update(modelo_auto_em=agora)
+            continue
+
+        # ── Lê e extrai modelo ────────────────────────────────────────────────
+        try:
+            with open(arquivo, errors='replace') as f:
+                conteudo = f.read(8000)   # primeiros 8 KB são suficientes
+        except OSError:
+            continue
+
+        verificados += 1
+        model_str = _extrair_modelo_do_backup(conteudo)
+        modelo_obj = _match_modelo_equipamento(model_str) if model_str else None
+
+        if modelo_obj:
+            Acesso.objects.filter(pk=acesso.pk).update(
+                modelo=modelo_obj,
+                modelo_auto_em=agora,
+            )
+            atualizados += 1
+            logger.info(
+                f'[modelo-auto] {acesso.tipo} ({acesso.host}) → {modelo_obj.nome}'
+            )
+        else:
+            # Não encontrou: marca como tentado, vai re-tentar no próximo ciclo
+            Acesso.objects.filter(pk=acesso.pk).update(modelo_auto_em=agora)
+            sem_match += 1
+            if model_str:
+                logger.debug(
+                    f'[modelo-auto] {acesso.tipo}: extraiu "{model_str}" mas sem match no banco'
+                )
+
+    logger.info(
+        f'detectar_modelos_via_backup: {total} acessos, '
+        f'{verificados} verificados, {atualizados} atualizados, '
+        f'{sem_backup} sem backup, {sem_match} sem match.'
+    )
+    return {
+        'total': total, 'verificados': verificados,
+        'atualizados': atualizados, 'sem_backup': sem_backup,
+        'sem_match': sem_match,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Envio periódico de PDF com credenciais de todos os clientes
+# ─────────────────────────────────────────────────────────────────────────────
+
+DESTINATARIOS_SENHAS = [
+    'campelosuporte.ti@gmail.com',
+    'noc@tomich.com.br',
+    'danilo@tomich.com.br',
+]
+
+
+def _gerar_pdf_todos_acessos():
+    """
+    Gera um PDF com os acessos de todos os clientes ativos.
+    Retorna bytes do PDF.
+    """
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle,
+        Paragraph, Spacer, PageBreak,
+    )
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from io import BytesIO
+    from django.utils import timezone as tz
+    from clientes.models import Cliente, Acesso
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=landscape(A4),
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
+        topMargin=2*cm, bottomMargin=2*cm,
+    )
+
+    styles = getSampleStyleSheet()
+    cor_header  = colors.HexColor('#0d1829')
+    cor_accent  = colors.HexColor('#1d4ed8')
+    cor_par     = colors.HexColor('#f1f5f9')
+
+    style_titulo = ParagraphStyle('t', parent=styles['Title'],
+        fontSize=14, textColor=cor_header, spaceAfter=3)
+    style_sub = ParagraphStyle('s', parent=styles['Normal'],
+        fontSize=8, textColor=colors.HexColor('#64748b'), spaceAfter=10)
+    style_secao = ParagraphStyle('sec', parent=styles['Normal'],
+        fontSize=10, textColor=cor_accent, fontName='Helvetica-Bold',
+        spaceBefore=12, spaceAfter=4)
+    style_cell = ParagraphStyle('c', parent=styles['Normal'], fontSize=7, leading=9)
+    style_mono = ParagraphStyle('m', parent=styles['Normal'],
+        fontSize=7, leading=9, fontName='Courier')
+
+    elements = []
+    gerado_em = tz.localtime(tz.now()).strftime('%d/%m/%Y %H:%M')
+
+    elements.append(Paragraph('Relatório de Credenciais de Acesso — Todos os Clientes', style_titulo))
+    elements.append(Paragraph(f'Gerado em: {gerado_em} &nbsp;|&nbsp; Documento confidencial', style_sub))
+    elements.append(Spacer(1, 0.3*cm))
+
+    clientes = Cliente.objects.prefetch_related('acessos__funcao', 'acessos__modelo').order_by('nome_empresa')
+
+    for cliente in clientes:
+        acessos = cliente.acessos.select_related('funcao', 'modelo').order_by('tipo')
+        if not acessos.exists():
+            continue
+
+        elements.append(Paragraph(
+            f'{cliente.nome_empresa} &nbsp;&nbsp; CNPJ: {cliente.cnpj or "—"}',
+            style_secao
+        ))
+
+        header = ['Descrição', 'Host', 'Proto', 'Porta', 'Usuário', 'Senha', 'Senha Root', 'Função']
+        data = [header]
+
+        for ac in acessos:
+            data.append([
+                Paragraph(ac.tipo or '—', style_cell),
+                Paragraph(ac.host or '—', style_mono),
+                Paragraph(ac.protocolo or '—', style_cell),
+                Paragraph(str(ac.porta) if ac.porta else '—', style_cell),
+                Paragraph(ac.usuario or '—', style_mono),
+                Paragraph(ac.senha or '—', style_mono),
+                Paragraph(ac.senha_adm or '—', style_mono),
+                Paragraph(ac.funcao.descricao if ac.funcao else '—', style_cell),
+            ])
+
+        col_widths = [4.0*cm, 4.0*cm, 1.5*cm, 1.3*cm, 3.2*cm, 3.5*cm, 3.5*cm, 3.0*cm]
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, 0), cor_accent),
+            ('TEXTCOLOR',     (0, 0), (-1, 0), colors.white),
+            ('FONTNAME',      (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE',      (0, 0), (-1, 0), 7),
+            ('ALIGN',         (0, 0), (-1, 0), 'CENTER'),
+            ('TOPPADDING',    (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 4),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID',          (0, 0), (-1, -1), 0.3, colors.HexColor('#e2e8f0')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, cor_par]),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 0.4*cm))
+
+    doc.build(elements)
+    buf.seek(0)
+    return buf.read()
+
+
+@shared_task(bind=True)
+def enviar_pdf_credenciais(self):
+    """
+    Gera PDF com todos os acessos e envia para os destinatários configurados.
+    Agendado a cada 2 dias.
+    """
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email.mime.text import MIMEText
+    from email import encoders
+    from django.utils import timezone as tz
+
+    logger.info('enviar_pdf_credenciais: iniciando geração do PDF')
+
+    try:
+        pdf_bytes = _gerar_pdf_todos_acessos()
+    except Exception as e:
+        logger.error(f'enviar_pdf_credenciais: erro ao gerar PDF — {e}')
+        raise
+
+    # Configuração SMTP
+    from clientes.models import ConfiguracaoSistema
+    from django.conf import settings as djsettings
+
+    smtp_cfg   = ConfiguracaoSistema.get()
+    smtp_host  = smtp_cfg.smtp_host or getattr(djsettings, 'EMAIL_HOST', '')
+    smtp_port  = int(smtp_cfg.smtp_port or getattr(djsettings, 'EMAIL_PORT', 587))
+    smtp_user  = smtp_cfg.smtp_user or getattr(djsettings, 'EMAIL_HOST_USER', '')
+    smtp_pass  = smtp_cfg.smtp_pass or getattr(djsettings, 'EMAIL_HOST_PASSWORD', '')
+    remetente  = smtp_cfg.smtp_from or smtp_user
+    use_tls    = smtp_cfg.smtp_use_tls
+
+    if not smtp_host or not smtp_user:
+        logger.error('enviar_pdf_credenciais: SMTP não configurado, abortando.')
+        return {'erro': 'SMTP não configurado'}
+
+    data_str   = tz.localtime(tz.now()).strftime('%d/%m/%Y')
+    nome_arq   = f'credenciais_{tz.localtime(tz.now()).strftime("%Y%m%d")}.pdf'
+    assunto    = f'[CRM] Relatório de Credenciais — {data_str}'
+    corpo      = (
+        f'Segue em anexo o relatório de credenciais de acesso gerado em {data_str}.\n\n'
+        'Este e-mail é gerado automaticamente a cada 2 dias pelo sistema CRM.\n'
+        'Documento confidencial — não repasse este arquivo.'
+    )
+
+    erros = []
+    for destinatario in DESTINATARIOS_SENHAS:
+        try:
+            msg = MIMEMultipart()
+            msg['Subject'] = assunto
+            msg['From']    = remetente
+            msg['To']      = destinatario
+
+            msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
+
+            part = MIMEBase('application', 'pdf')
+            part.set_payload(pdf_bytes)
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{nome_arq}"')
+            msg.attach(part)
+
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+                server.ehlo()
+                if use_tls:
+                    server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(remetente, [destinatario], msg.as_string())
+
+            logger.info(f'enviar_pdf_credenciais: enviado para {destinatario}')
+        except Exception as e:
+            erros.append(f'{destinatario}: {e}')
+            logger.error(f'enviar_pdf_credenciais: falha ao enviar para {destinatario} — {e}')
+
+    return {
+        'enviados': len(DESTINATARIOS_SENHAS) - len(erros),
+        'erros': erros,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TROCAR SENHAS EM MASSA
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _gerar_senha_aleatoria(tamanho=16):
+    """Gera senha aleatória segura."""
+    import secrets
+    import string
+    chars = string.ascii_letters + string.digits + '!@#$%&*'
+    return ''.join(secrets.choice(chars) for _ in range(tamanho))
+
+
+def _detectar_vendor(acesso):
+    """
+    Retorna string identificando o vendor do equipamento.
+    Prioridade: função (vm/linux) > fabricante do modelo > conteúdo do backup.
+    """
+    funcao_desc = (acesso.funcao.descricao or '').lower() if acesso.funcao else ''
+
+    if any(k in funcao_desc for k in ('vm', 'virtual', 'kvm', 'vps', 'linux', 'servidor')):
+        return 'linux'
+
+    fab = ''
+    if acesso.modelo and acesso.modelo.fabricante:
+        fab = acesso.modelo.fabricante.lower()
+
+    if 'mikrotik' in fab:
+        return 'mikrotik'
+    if 'huawei' in fab:
+        return 'huawei'
+    if 'cisco' in fab:
+        return 'cisco'
+    if 'juniper' in fab:
+        return 'juniper'
+    if 'datacom' in fab:
+        return 'datacom'
+    if 'zte' in fab or 'parks' in fab:
+        return 'cisco'
+    if 'intelbras' in fab or 'vsol' in fab or 'tp-link' in fab or 'raisecom' in fab or 'dell' in fab:
+        return 'cisco'
+    if 'fiberhome' in fab or 'hillstone' in fab or 'a10' in fab:
+        return 'cisco'
+    if 'extreme' in fab or 'hp' in fab:
+        return 'cisco'
+
+    # Tenta ler backup para identificar
+    try:
+        import glob as _glob
+        backup_dir = os.path.join(settings.MEDIA_ROOT, 'backups', str(acesso.cliente_id), str(acesso.id))
+        arquivos = sorted(_glob.glob(os.path.join(backup_dir, '*.txt')), key=os.path.getmtime, reverse=True)
+        if arquivos:
+            with open(arquivos[0], 'r', errors='replace') as f:
+                conteudo = f.read(4000).lower()
+            if 'routeros' in conteudo or 'mikrotik' in conteudo:
+                return 'mikrotik'
+            if 'huawei' in conteudo or 'vrp' in conteudo:
+                return 'huawei'
+            if 'cisco ios' in conteudo or 'ios-xe' in conteudo:
+                return 'cisco'
+            if 'junos' in conteudo or 'juniper' in conteudo:
+                return 'juniper'
+            if 'linux' in conteudo or 'ubuntu' in conteudo or 'debian' in conteudo:
+                return 'linux'
+    except Exception:
+        pass
+
+    return 'desconhecido'
+
+
+def _ssh_ler_saida(channel, espera=3.0):
+    """Lê output disponível de um canal SSH interativo."""
+    import time, select
+    data = ''
+    deadline = time.time() + espera
+    while time.time() < deadline:
+        try:
+            r, _, _ = select.select([channel], [], [], 0.3)
+            if r:
+                chunk = channel.recv(32768).decode('utf-8', errors='replace')
+                if chunk:
+                    data += chunk
+                else:
+                    break
+            elif data:
+                break
+        except Exception:
+            break
+    return data
+
+
+def _criar_usuario_mikrotik(client, usuario, senha):
+    """MikroTik: cria usuário via exec_command (sem PTY)."""
+    cmd = f'/user add name={usuario} password="{senha}" group=full'
+    stdin, stdout, stderr = client.exec_command(cmd, timeout=30, get_pty=False)
+    out = stdout.read().decode('utf-8', errors='replace').strip()
+    err = stderr.read().decode('utf-8', errors='replace').strip()
+    if 'failure' in err.lower() or 'error' in err.lower():
+        raise Exception(f'Erro MikroTik: {err}')
+    return True
+
+
+def _remover_usuario_mikrotik(client, usuario):
+    """MikroTik: remove usuário via exec_command."""
+    cmd = f'/user remove [find name={usuario}]'
+    stdin, stdout, stderr = client.exec_command(cmd, timeout=30, get_pty=False)
+    err = stderr.read().decode('utf-8', errors='replace').strip()
+    if 'failure' in err.lower() or 'error' in err.lower():
+        raise Exception(f'Erro MikroTik ao remover: {err}')
+    return True
+
+
+def _criar_usuario_cisco(client, usuario, senha):
+    """Cisco IOS/XE (e compatíveis): cria usuário via invoke_shell."""
+    import time
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(30)
+    time.sleep(3)
+    _ssh_ler_saida(channel, 3)
+
+    cmds = [
+        'configure terminal',
+        f'username {usuario} privilege 15 secret {senha}',
+        'end',
+        'write memory',
+        'exit',
+    ]
+    for cmd in cmds:
+        channel.send(cmd + '\n')
+        time.sleep(1.5)
+        _ssh_ler_saida(channel, 2)
+
+    try:
+        channel.close()
+    except Exception:
+        pass
+    return True
+
+
+def _remover_usuario_cisco(client, usuario):
+    """Cisco IOS/XE: remove usuário via invoke_shell."""
+    import time
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(30)
+    time.sleep(3)
+    _ssh_ler_saida(channel, 3)
+
+    cmds = [
+        'configure terminal',
+        f'no username {usuario}',
+        'end',
+        'write memory',
+        'exit',
+    ]
+    for cmd in cmds:
+        channel.send(cmd + '\n')
+        time.sleep(1.5)
+        _ssh_ler_saida(channel, 2)
+
+    try:
+        channel.close()
+    except Exception:
+        pass
+    return True
+
+
+def _criar_usuario_huawei(client, usuario, senha):
+    """Huawei VRP: cria usuário via invoke_shell."""
+    import time
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(30)
+    time.sleep(3)
+    _ssh_ler_saida(channel, 3)
+
+    cmds = [
+        'system-view',
+        'aaa',
+        f'local-user {usuario} password irreversible-cipher {senha}',
+        f'local-user {usuario} privilege level 15',
+        f'local-user {usuario} service-type ssh terminal',
+        'quit',
+        'quit',
+        'save',
+        'y',
+    ]
+    for cmd in cmds:
+        channel.send(cmd + '\n')
+        time.sleep(1.5)
+        _ssh_ler_saida(channel, 2)
+
+    try:
+        channel.close()
+    except Exception:
+        pass
+    return True
+
+
+def _remover_usuario_huawei(client, usuario):
+    """Huawei VRP: remove usuário."""
+    import time
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(30)
+    time.sleep(3)
+    _ssh_ler_saida(channel, 3)
+
+    cmds = [
+        'system-view',
+        'aaa',
+        f'undo local-user {usuario}',
+        'y',
+        'quit',
+        'quit',
+        'save',
+        'y',
+    ]
+    for cmd in cmds:
+        channel.send(cmd + '\n')
+        time.sleep(1.5)
+        _ssh_ler_saida(channel, 2)
+
+    try:
+        channel.close()
+    except Exception:
+        pass
+    return True
+
+
+def _criar_usuario_linux(client, usuario, senha):
+    """
+    Linux (Debian/Ubuntu): cria usuário com sudo via exec_command.
+    Tenta primeiro useradd (universal), depois adduser (Debian/Ubuntu).
+    """
+    # Usar aspas simples na senha para evitar expansão do shell
+    senha_escaped = senha.replace("'", "'\\''")
+    cmd = (
+        f"useradd -m -s /bin/bash {usuario} 2>&1 || true; "
+        f"echo '{usuario}:{senha_escaped}' | chpasswd 2>&1; "
+        f"usermod -aG sudo {usuario} 2>&1 || usermod -aG wheel {usuario} 2>&1 || true"
+    )
+    stdin, stdout, stderr = client.exec_command(cmd, timeout=30, get_pty=False)
+    out = stdout.read().decode('utf-8', errors='replace').strip()
+    err = stderr.read().decode('utf-8', errors='replace').strip()
+    combined = (out + ' ' + err).lower()
+    # useradd retorna 9 se usuário já existe — não é erro crítico
+    if 'chpasswd' in combined and 'error' in combined:
+        raise Exception(f'Erro ao definir senha Linux: {out} {err}')
+    return True
+
+
+def _remover_usuario_linux(client, usuario):
+    """Linux: remove usuário e seu diretório home."""
+    cmd = f'userdel -r {usuario} 2>&1 || true'
+    stdin, stdout, stderr = client.exec_command(cmd, timeout=30, get_pty=False)
+    stdout.read()
+    return True
+
+
+def _criar_usuario_datacom(client, usuario, senha):
+    """Datacom: sintaxe similar ao Cisco."""
+    import time
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(30)
+    time.sleep(3)
+    _ssh_ler_saida(channel, 3)
+
+    cmds = [
+        'configure terminal',
+        f'username {usuario} privilege 15 password {senha}',
+        'end',
+        'write',
+        'exit',
+    ]
+    for cmd in cmds:
+        channel.send(cmd + '\n')
+        time.sleep(1.5)
+        _ssh_ler_saida(channel, 2)
+
+    try:
+        channel.close()
+    except Exception:
+        pass
+    return True
+
+
+def _remover_usuario_datacom(client, usuario):
+    """Datacom: remove usuário."""
+    import time
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(30)
+    time.sleep(3)
+    _ssh_ler_saida(channel, 3)
+
+    cmds = [
+        'configure terminal',
+        f'no username {usuario}',
+        'end',
+        'write',
+        'exit',
+    ]
+    for cmd in cmds:
+        channel.send(cmd + '\n')
+        time.sleep(1.5)
+        _ssh_ler_saida(channel, 2)
+
+    try:
+        channel.close()
+    except Exception:
+        pass
+    return True
+
+
+def _conectar_ssh_acesso(acesso):
+    """
+    Abre conexão Paramiko para o acesso, criando túnel SSH se necessário.
+    Retorna (client, ssh_tunnel_or_None).
+    """
+    import paramiko
+    from .views import is_private_ip, vpn_cobre_ip, criar_ssh_tunnel
+    from .models import ProxyServer
+
+    host_conexao = acesso.host
+    porta_conexao = int(acesso.porta) if acesso.porta else 22
+    ssh_tunnel = None
+
+    if is_private_ip(acesso.host):
+        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        if proxy:
+            ssh_tunnel = criar_ssh_tunnel(
+                {'host': proxy.host, 'porta': proxy.porta,
+                 'usuario': proxy.usuario, 'senha': proxy.senha},
+                acesso.host, porta_conexao
+            )
+            host_conexao = ssh_tunnel['local_host']
+            porta_conexao = ssh_tunnel['local_port']
+            import time
+            time.sleep(1)
+        elif not vpn_cobre_ip(acesso.cliente, acesso.host):
+            raise Exception('IP privado sem proxy SSH ativo nem VPN cobrindo o host.')
+
+    kex_algorithms = [
+        'diffie-hellman-group14-sha256',
+        'diffie-hellman-group14-sha1',
+        'diffie-hellman-group-exchange-sha256',
+        'diffie-hellman-group16-sha512',
+        'ecdh-sha2-nistp256',
+        'ecdh-sha2-nistp384',
+        'ecdh-sha2-nistp521',
+        'curve25519-sha256',
+        'curve25519-sha256@libssh.org',
+    ]
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(
+        hostname=host_conexao,
+        port=porta_conexao,
+        username=acesso.usuario,
+        password=acesso.senha,
+        timeout=20,
+        look_for_keys=False,
+        allow_agent=False,
+        disabled_algorithms={'kex': []},
+    )
+    # Reordenar KEX para evitar timeout em equipamentos lentos
+    try:
+        trans = client.get_transport()
+        trans.get_security_options().kex = [
+            k for k in kex_algorithms if k in trans.get_security_options().kex
+        ] or trans.get_security_options().kex
+    except Exception:
+        pass
+
+    return client, ssh_tunnel
+
+
+def _fechar_ssh(client, ssh_tunnel):
+    """Fecha client SSH e tunnel se houver."""
+    try:
+        client.close()
+    except Exception:
+        pass
+    if ssh_tunnel:
+        try:
+            ssh_tunnel['ssh_client'].close()
+        except Exception:
+            pass
+        try:
+            ssh_tunnel['server_socket'].close()
+        except Exception:
+            pass
+
+
+@shared_task(bind=True)
+def executar_troca_senhas_massa(self, job_id, acesso_ids=None):
+    """
+    Acessa cada host SSH do cliente via Paramiko e cria um novo usuário
+    com a senha definida no job. Atualiza as credenciais no banco.
+    """
+    import time
+    from .models import TrocaSenhaJob, TrocaSenhaAcesso
+
+    try:
+        job = TrocaSenhaJob.objects.select_related('cliente').get(pk=job_id)
+    except TrocaSenhaJob.DoesNotExist:
+        logger.error(f'executar_troca_senhas_massa: job {job_id} não encontrado')
+        return
+
+    job.status = 'EM_ANDAMENTO'
+    job.save(update_fields=['status'])
+
+    qs = Acesso.objects.filter(protocolo='SSH').select_related('modelo', 'funcao', 'cliente')
+    if acesso_ids:
+        qs = qs.filter(pk__in=acesso_ids)
+    else:
+        qs = qs.filter(cliente=job.cliente)
+    acessos = list(qs)
+
+    job.total_acessos = len(acessos)
+    job.save(update_fields=['total_acessos'])
+
+    sucesso = 0
+    erro = 0
+
+    for acesso in acessos:
+        item = TrocaSenhaAcesso.objects.create(
+            job=job,
+            acesso=acesso,
+            usuario_antigo=acesso.usuario,
+            senha_antiga=acesso.senha,
+        )
+
+        t_inicio = time.time()
+        client = None
+        ssh_tunnel = None
+
+        try:
+            vendor = _detectar_vendor(acesso)
+            logger.info(f'troca_senhas job={job_id} acesso={acesso.id} vendor={vendor}')
+
+            client, ssh_tunnel = _conectar_ssh_acesso(acesso)
+
+            if vendor == 'mikrotik':
+                _criar_usuario_mikrotik(client, job.novo_usuario, job.nova_senha)
+            elif vendor == 'huawei':
+                _criar_usuario_huawei(client, job.novo_usuario, job.nova_senha)
+            elif vendor == 'datacom':
+                _criar_usuario_datacom(client, job.novo_usuario, job.nova_senha)
+            elif vendor == 'linux':
+                _criar_usuario_linux(client, job.novo_usuario, job.nova_senha)
+                # Para VMs, tenta também como ubuntu (adduser) — se useradd falhou
+            else:
+                # cisco (padrão) — cobre ZTE, Parks, Intelbras, etc.
+                _criar_usuario_cisco(client, job.novo_usuario, job.nova_senha)
+
+            # Atualiza credenciais no acesso
+            Acesso.objects.filter(pk=acesso.pk).update(
+                usuario=job.novo_usuario,
+                senha=job.nova_senha,
+            )
+
+            item.status = 'SUCESSO'
+            item.mensagem = f'Vendor: {vendor}. Usuário "{job.novo_usuario}" criado com sucesso.'
+            sucesso += 1
+
+        except Exception as exc:
+            item.status = 'ERRO'
+            item.mensagem = str(exc)
+            erro += 1
+            logger.error(f'troca_senhas job={job_id} acesso={acesso.id} erro: {exc}')
+
+        finally:
+            if client:
+                _fechar_ssh(client, ssh_tunnel)
+            item.executado_em = timezone.now()
+            item.duracao_segundos = round(time.time() - t_inicio, 2)
+            item.save(update_fields=['status', 'mensagem', 'executado_em', 'duracao_segundos'])
+
+    job.status = 'CONCLUIDO'
+    job.total_sucesso = sucesso
+    job.total_erro = erro
+    job.concluido_em = timezone.now()
+    job.save(update_fields=['status', 'total_sucesso', 'total_erro', 'concluido_em'])
+
+    logger.info(f'troca_senhas job={job_id} concluído: {sucesso} ok, {erro} erros')
+    return {'job_id': job_id, 'sucesso': sucesso, 'erro': erro}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Snapshot de conhecimento NOC — artigos automáticos por cliente
+# ─────────────────────────────────────────────────────────────────────────────
+
+@shared_task
+def gerar_snapshots_conhecimento():
+    """
+    Lê o backup mais recente de cada acesso SSH de cada cliente,
+    extrai IPs / BGP / VLANs e grava/atualiza um artigo na base
+    de conhecimento do Agent NOC por cliente.
+    Gera também artigo BGP dedicado com tabela descrição→IP.
+    Executado a cada 4 dias via Celery Beat.
+    """
+    from .backup_parser import parse_backup, formatar_artigo, formatar_artigo_bgp
+    from .models import Cliente, AgentKnowledge
+    from django.utils import timezone as _tz
+
+    MEDIA_ROOT = getattr(settings, 'MEDIA_ROOT', '/opt/crm/media')
+    agora_str  = _tz.localtime(_tz.now()).strftime('%d/%m/%Y %H:%M')
+
+    total_clientes  = 0
+    total_artigos   = 0
+    total_equip     = 0
+
+    for cliente in Cliente.objects.all():
+        acessos = Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao')
+        hosts_info = []
+
+        for acesso in acessos:
+            backup = (
+                BackupLog.objects
+                .filter(acesso=acesso, status='SUCESSO')
+                .exclude(arquivo_path='')
+                .exclude(arquivo_path__isnull=True)
+                .order_by('-data_backup')
+                .first()
+            )
+            if not backup:
+                continue
+
+            caminho = os.path.join(MEDIA_ROOT, backup.arquivo_path)
+            if not os.path.exists(caminho):
+                continue
+
+            try:
+                with open(caminho, 'r', encoding='utf-8', errors='replace') as fh:
+                    conteudo = fh.read()
+            except OSError as e:
+                logger.warning(f'gerar_snapshots_conhecimento: acesso {acesso.id} leitura: {e}')
+                continue
+
+            nome_equip = acesso.tipo or acesso.host or f'acesso-{acesso.id}'
+            try:
+                parsed = parse_backup(conteudo, nome_equip)
+            except Exception as e:
+                logger.warning(f'gerar_snapshots_conhecimento: parse acesso {acesso.id}: {e}')
+                parsed = {'ips': [], 'bgp': [], 'vlans': [], 'modelo': '', 'as_local': '', 'vendor': 'desconhecido'}
+
+            modelo = parsed.get('modelo', '')
+            if not modelo and acesso.modelo:
+                modelo = acesso.modelo.nome or ''
+
+            hosts_info.append({
+                'nome':     nome_equip,
+                'host':     acesso.host or '',
+                'porta':    acesso.porta or 22,
+                'vendor':   parsed.get('vendor', 'desconhecido'),
+                'modelo':   modelo,
+                'ips':      parsed.get('ips', []),
+                'bgp':      parsed.get('bgp', []),
+                'vlans':    parsed.get('vlans', []),
+                'ospf':     parsed.get('ospf', []),
+                'vsi':      parsed.get('vsi', []),
+                'l2vc':     parsed.get('l2vc', []),
+                'as_local': parsed.get('as_local', ''),
+            })
+            total_equip += 1
+
+        if not hosts_info:
+            total_clientes += 1
+            continue
+
+        nome_empresa = cliente.nome_empresa or f'Cliente {cliente.id}'
+        titulo       = f'[INFRA] {nome_empresa} — Snapshot Automático'
+        conteudo_md  = formatar_artigo(nome_empresa, hosts_info, agora_str)
+
+        AgentKnowledge.objects.update_or_create(
+            cliente=cliente,
+            titulo=titulo,
+            defaults={
+                'conteudo':   conteudo_md,
+                'categoria':  'topologia',
+                'fabricante': 'generico',
+                'tags':       ['snapshot', 'auto-gerado', 'infraestrutura'],
+                'ativo':      True,
+            },
+        )
+        total_artigos += 1
+
+        # Artigo BGP dedicado — tabela descrição→IP para o agent
+        bgp_md = formatar_artigo_bgp(nome_empresa, hosts_info, agora_str)
+        if bgp_md:
+            titulo_bgp = f'[BGP] {nome_empresa} — Sessões e Peers'
+            AgentKnowledge.objects.update_or_create(
+                cliente=cliente,
+                titulo=titulo_bgp,
+                defaults={
+                    'conteudo':   bgp_md,
+                    'categoria':  'topologia',
+                    'fabricante': 'generico',
+                    'tags':       ['bgp', 'peers', 'snapshot', 'auto-gerado'],
+                    'ativo':      True,
+                },
+            )
+
+        total_clientes += 1
+
+    logger.info(
+        f'gerar_snapshots_conhecimento: {total_clientes} clientes, '
+        f'{total_equip} equipamentos processados, {total_artigos} artigos atualizados.'
+    )
+    return {
+        'clientes':   total_clientes,
+        'equipamentos': total_equip,
+        'artigos':    total_artigos,
+    }
+
+
+@shared_task(bind=True)
+def remover_usuarios_antigos_task(self, job_id):
+    """
+    Para cada item SUCESSO do job, acessa o host com as NOVAS credenciais
+    e remove o usuário antigo.
+    """
+    import time
+    from .models import TrocaSenhaJob, TrocaSenhaAcesso
+
+    try:
+        job = TrocaSenhaJob.objects.select_related('cliente').get(pk=job_id)
+    except TrocaSenhaJob.DoesNotExist:
+        return
+
+    itens = TrocaSenhaAcesso.objects.filter(
+        job=job, status='SUCESSO', usuario_removido=False
+    ).select_related('acesso__modelo', 'acesso__funcao', 'acesso__cliente')
+
+    for item in itens:
+        acesso = item.acesso
+        if not acesso:
+            continue
+
+        client = None
+        ssh_tunnel = None
+        t_inicio = time.time()
+
+        try:
+            vendor = _detectar_vendor(acesso)
+
+            # Conecta com as NOVAS credenciais (já atualizadas no banco)
+            client, ssh_tunnel = _conectar_ssh_acesso(acesso)
+
+            if vendor == 'mikrotik':
+                _remover_usuario_mikrotik(client, item.usuario_antigo)
+            elif vendor == 'huawei':
+                _remover_usuario_huawei(client, item.usuario_antigo)
+            elif vendor == 'datacom':
+                _remover_usuario_datacom(client, item.usuario_antigo)
+            elif vendor == 'linux':
+                _remover_usuario_linux(client, item.usuario_antigo)
+            else:
+                _remover_usuario_cisco(client, item.usuario_antigo)
+
+            item.usuario_removido = True
+            item.mensagem += f' | Usuário antigo "{item.usuario_antigo}" removido.'
+            item.save(update_fields=['usuario_removido', 'mensagem'])
+            logger.info(f'remover_antigos job={job_id} acesso={acesso.id} ok')
+
+        except Exception as exc:
+            item.mensagem += f' | Falha ao remover "{item.usuario_antigo}": {exc}'
+            item.save(update_fields=['mensagem'])
+            logger.error(f'remover_antigos job={job_id} acesso={acesso.id} erro: {exc}')
+
+        finally:
+            if client:
+                _fechar_ssh(client, ssh_tunnel)
+
+    return {'job_id': job_id, 'processados': itens.count()}

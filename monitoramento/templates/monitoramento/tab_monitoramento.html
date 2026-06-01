@@ -714,17 +714,27 @@ const GRAPH = (() => {
   // ── Persistência ──────────────────────────────────────────
   function _storageKey() { return 'grph_charts_v2_' + (window.CLIENTE_ID || 'default'); }
 
+  function _payload() {
+    return charts.map(c => ({
+      id: c.id, hostid: c.hostid, hostname: c.hostname,
+      titulo: c.titulo || '', ifaceName: c.ifaceName,
+      inId: c.inId, outId: c.outId, hours: c.hours || 1,
+    }));
+  }
+
   function _salvarStorage() {
+    const data = _payload();
+    // Cache local
     try {
-      localStorage.setItem(_storageKey(), JSON.stringify(
-        charts.map(c => ({
-          id: c.id, hostid: c.hostid, hostname: c.hostname,
-          titulo: c.titulo || '', ifaceName: c.ifaceName,
-          inId: c.inId, outId: c.outId, hours: c.hours || 1,
-        }))
-      ));
+      localStorage.setItem(_storageKey(), JSON.stringify(data));
       localStorage.setItem(_storageKey() + '_nid', String(nextChartId));
     } catch(e) { console.warn('[GRAPH] storage write:', e); }
+    // Persiste no backend (para todos os usuários do cliente)
+    fetch('/monitoramento/dash/salvar/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf() },
+      body: JSON.stringify({ cliente_id: clienteId, charts: data }),
+    }).catch(e => console.warn('[GRAPH] backend save:', e));
   }
 
   function _carregarStorage() {
@@ -744,14 +754,36 @@ const GRAPH = (() => {
   // ─────────────────────────────────────────────────────────
   // INIT
   // ─────────────────────────────────────────────────────────
-  function init() {
+  async function init() {
     // Destruir instâncias Chart.js antigas antes de re-renderizar
     charts.forEach(c => {
       if (c._interval)     { clearInterval(c._interval); c._interval = null; }
       if (c.chartInstance) { c.chartInstance.destroy();  c.chartInstance = null; }
     });
     clienteId = window.CLIENTE_ID || null;
-    _carregarStorage();
+
+    // Carrega do backend (compartilhado entre usuários do mesmo cliente)
+    try {
+      const resp = await fetch('/monitoramento/dash/carregar/?id=' + clienteId);
+      const data = await resp.json();
+      if (data.charts && Array.isArray(data.charts) && data.charts.length) {
+        charts = data.charts.map(c => ({
+          ...c, titulo: c.titulo || '', hours: c.hours || 1,
+          chartInstance: null, fsChartInstance: null, _interval: null, _fsSync: false,
+        }));
+        nextChartId = Math.max(...charts.map(c => c.id), 0) + 1;
+        // Atualiza cache local
+        try { localStorage.setItem(_storageKey(), JSON.stringify(data.charts)); } catch(e) {}
+      } else {
+        // Backend vazio — tenta migrar do localStorage (primeira vez)
+        _carregarStorage();
+        if (charts.length) _salvarStorage(); // migra para o backend
+      }
+    } catch(e) {
+      console.warn('[GRAPH] backend load failed, usando localStorage:', e);
+      _carregarStorage();
+    }
+
     _renderGrid();
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && _fullscreenId !== null) fecharFullscreen();

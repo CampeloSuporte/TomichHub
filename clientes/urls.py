@@ -124,7 +124,8 @@ urlpatterns = [
     path('ipam/subredes/<int:subrede_id>/dividir/',        ipam.ipam_subrede_dividir,        name='ipam_subrede_dividir'),
     path('<int:cliente_id>/ipam/subredes/',              ipam.ipam_subredes_listar, name='ipam_subredes_listar'),
     path('<int:cliente_id>/ipam/subredes/salvar/',       ipam.ipam_subrede_salvar,  name='ipam_subrede_salvar'),
-    path('ipam/subredes/<int:subrede_id>/deletar/',      ipam.ipam_subrede_deletar, name='ipam_subrede_deletar'),
+    path('ipam/subredes/<int:subrede_id>/deletar/',      ipam.ipam_subrede_deletar,   name='ipam_subrede_deletar'),
+    path('ipam/subredes/<int:subrede_id>/pool-cheia/',   ipam.ipam_subrede_pool_cheia, name='ipam_subrede_pool_cheia'),
     path('ipam/subredes/<int:subrede_id>/ips/',          ipam.ipam_subrede_ips,     name='ipam_subrede_ips'),
     path('<int:cliente_id>/ipam/ips/',                   ipam.ipam_ips_listar,      name='ipam_ips_listar'),
     path('<int:cliente_id>/ipam/ips/salvar/',            ipam.ipam_ip_salvar,       name='ipam_ip_salvar'),
@@ -133,6 +134,7 @@ urlpatterns = [
     path('<int:cliente_id>/ipam/vpns/salvar/',           ipam.ipam_vpn_salvar,      name='ipam_vpn_salvar'),
     path('ipam/vpns/<int:vpn_id>/deletar/',              ipam.ipam_vpn_deletar,     name='ipam_vpn_deletar'),
     path('<int:cliente_id>/ipam/importar/',              ipam.ipam_importar,        name='ipam_importar'),
+    path('<int:cliente_id>/ipam/analisar-backups/',      ipam.ipam_analisar_backups, name='ipam_analisar_backups'),
 
     # ── OpenVPN ──────────────────────────────────────────────────────────
     path('<int:cliente_id>/openvpn/listar/',          views.openvpn_listar,      name='openvpn_listar'),
@@ -169,11 +171,19 @@ urlpatterns = [
     path('firmware/link/<int:comp_id>/revogar/',            fw.firmware_revogar_link,     name='firmware_revogar_link'),
 
     # ── Editor de Topologia de Rede ──────────────────────────────────────
+    path('<int:cliente_id>/senhas/pdf/',        views.exportar_senhas_pdf, name='exportar_senhas_pdf'),
     path('<int:cliente_id>/topologia/editor/', views.topologia_editor, name='topologia_editor'),
     path('<int:cliente_id>/topologia/drawio/', views.topologia_drawio, name='topologia_drawio'),
     path('<int:cliente_id>/topologia/dados/', views.topologia_dados, name='topologia_dados'),
     path('<int:cliente_id>/topologia/salvar/', views.topologia_salvar, name='topologia_salvar'),
     path('<int:cliente_id>/topologia/hosts/', views.topologia_hosts, name='topologia_hosts'),
+
+    # ── Trocar Senhas em Massa ───────────────────────────────────────────────
+    path('trocar-senhas/hosts/', views.trocar_senha_massa_listar_hosts, name='trocar_senha_massa_listar_hosts'),
+    path('trocar-senhas/',                              views.trocar_senha_massa,           name='trocar_senha_massa'),
+    path('trocar-senhas/iniciar/',                      views.trocar_senha_massa_iniciar,   name='trocar_senha_massa_iniciar'),
+    path('trocar-senhas/<int:job_id>/status/',          views.trocar_senha_massa_status,    name='trocar_senha_massa_status'),
+    path('trocar-senhas/<int:job_id>/remover-antigos/', views.trocar_senha_remover_antigos, name='trocar_senha_remover_antigos'),
 
     # ── Scripts de Automação ─────────────────────────────────────────────────
     path('scripts/',                                sv.listar_scripts,      name='listar_scripts'),

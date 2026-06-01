@@ -99,6 +99,7 @@ def listar_clientes(request):
     # ✅ NOVO: Adicionar flag de tipo de usuário ao contexto
     is_cliente = False
     is_admin = request.user.is_staff or request.user.is_superuser
+    is_superuser = request.user.is_superuser
     try:
         if not is_admin and Cliente.objects.get(usuario=request.user).id == cliente.id:
             is_cliente = True
@@ -130,6 +131,7 @@ def listar_clientes(request):
         'proxies': proxies,
         'is_cliente': is_cliente,
         'is_admin': is_admin,
+        'is_superuser': is_superuser,
         'destinos_padrao': DESTINOS_PADRAO,
         'acessos_com_erro_backup': acessos_com_erro_backup,
     })
@@ -371,7 +373,7 @@ def buscar_acesso(request, acesso_id):
             'porta': acesso.porta,
             'usuario': acesso.usuario,
             'senha': acesso.senha,
-            'senha_adm': acesso.senha_adm or '',
+            'senha_adm': (acesso.senha_adm or '') if (request.user.is_staff or request.user.is_superuser) else '',
             'vlan': acesso.vlan or '',
             'winbox': acesso.winbox or '',
             'funcao_id': acesso.funcao.id if acesso.funcao and hasattr(acesso.funcao, 'id') else '',
@@ -1515,19 +1517,10 @@ def realizar_backup(acesso, usuario=None):
         duracao = time.time() - inicio
 
         if ultimo:
+            from django.utils import timezone as _tz
             print(f"\n🔁 Conteúdo idêntico ao backup {ultimo.id} — nada a salvar.")
-            BackupLog.objects.create(
-                acesso=acesso,
-                cliente=acesso.cliente,
-                template=acesso.backup_template,
-                arquivo_path='',
-                tamanho_bytes=0,
-                hash_conteudo=hash_novo,
-                status='SEM_MUDANCAS',
-                mensagem=f'Configuracao sem alteracoes desde o backup de {ultimo.data_backup.strftime("%d/%m/%Y %H:%M")}',
-                executado_por=usuario,
-                duracao_segundos=duracao,
-            )
+            ultimo.ultima_verificacao = _tz.now()
+            ultimo.save(update_fields=['ultima_verificacao'])
             return {
                 'sucesso': True,
                 'sem_mudancas': True,
@@ -2756,7 +2749,9 @@ def listar_backups_cliente(request):
 
     for backup in backups:
         if not backup.arquivo_path:
-            # SEM_MUDANCAS — sem arquivo, manter registro
+            # sem arquivo — só mantém se não for SEM_MUDANCAS legado
+            if backup.status == 'SEM_MUDANCAS':
+                continue  # registros legados SEM_MUDANCAS ignorados
             backups_validos.append(backup)
             continue
         arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
@@ -2789,11 +2784,118 @@ def listar_backups_cliente(request):
             'arquivo_path': backup.arquivo_path,
             'tem_arquivo': bool(backup.arquivo_path),
             'hash': backup.hash_conteudo or '',
+            'ultima_verificacao': backup.ultima_verificacao.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S') if backup.ultima_verificacao else None,
         } for backup in backups_validos]
     })
 
 
 @login_required(login_url='login')
+@login_required
+def exportar_senhas_pdf(request, cliente_id):
+    """Gera PDF com todos os acessos e credenciais do cliente. Apenas superusuários.
+    ?root=1  inclui Senha Root; ?root=0 (padrão) omite."""
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden('Acesso negado.')
+
+    incluir_root = request.GET.get('root', '0') == '1'
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao', 'modelo').order_by('tipo')
+
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from io import BytesIO
+    from django.utils import timezone as tz
+
+    buf = BytesIO()
+    pagesize = landscape(A4) if incluir_root else A4
+    doc = SimpleDocTemplate(
+        buf, pagesize=pagesize,
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
+        topMargin=2*cm, bottomMargin=2*cm,
+    )
+
+    styles = getSampleStyleSheet()
+    cor_accent    = colors.HexColor('#1d4ed8')
+    cor_linha_par = colors.HexColor('#f1f5f9')
+
+    style_titulo = ParagraphStyle('titulo', parent=styles['Title'],
+        fontSize=16, textColor=colors.HexColor('#0d1829'), spaceAfter=4)
+    style_sub = ParagraphStyle('sub', parent=styles['Normal'],
+        fontSize=9, textColor=colors.HexColor('#64748b'), spaceAfter=12)
+    style_cell = ParagraphStyle('cell', parent=styles['Normal'], fontSize=8, leading=10)
+    style_mono = ParagraphStyle('mono', parent=styles['Normal'],
+        fontSize=8, leading=10, fontName='Courier')
+
+    elements = []
+
+    # Cabeçalho
+    tipo_export = 'Com Senha Root' if incluir_root else 'Sem Senha Root'
+    elements.append(Paragraph('Credenciais de Acesso', style_titulo))
+    elements.append(Paragraph(
+        f'{cliente.nome_empresa} &nbsp;|&nbsp; CNPJ: {cliente.cnpj or "—"} &nbsp;|&nbsp; '
+        f'Gerado em: {tz.localtime(tz.now()).strftime("%d/%m/%Y %H:%M")} &nbsp;|&nbsp; {tipo_export}',
+        style_sub
+    ))
+    elements.append(Spacer(1, 0.3*cm))
+
+    if incluir_root:
+        header     = ['Descrição', 'Host', 'Proto', 'Porta', 'Usuário', 'Senha', 'Senha Root', 'Função']
+        col_widths = [4.0*cm, 4.0*cm, 1.5*cm, 1.3*cm, 3.2*cm, 3.5*cm, 3.5*cm, 3.0*cm]
+    else:
+        header     = ['Descrição', 'Host', 'Proto', 'Porta', 'Usuário', 'Senha', 'Função']
+        col_widths = [4.5*cm, 4.5*cm, 1.6*cm, 1.4*cm, 3.5*cm, 3.5*cm, 3.5*cm]
+
+    data = [header]
+    for ac in acessos:
+        row = [
+            Paragraph(ac.tipo or '—', style_cell),
+            Paragraph(ac.host or '—', style_mono),
+            Paragraph(ac.protocolo or '—', style_cell),
+            Paragraph(str(ac.porta) if ac.porta else '—', style_cell),
+            Paragraph(ac.usuario or '—', style_mono),
+            Paragraph(ac.senha or '—', style_mono),
+        ]
+        if incluir_root:
+            row.append(Paragraph(ac.senha_adm or '—', style_mono))
+        row.append(Paragraph(ac.funcao.descricao if ac.funcao else '—', style_cell))
+        data.append(row)
+
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), cor_accent),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), colors.white),
+        ('FONTNAME',      (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE',      (0, 0), (-1, 0), 8),
+        ('ALIGN',         (0, 0), (-1, 0), 'CENTER'),
+        ('TOPPADDING',    (0, 0), (-1, 0), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('FONTNAME',      (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE',      (0, 1), (-1, -1), 8),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING',    (0, 1), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 5),
+        ('GRID',          (0, 0), (-1, -1), 0.4, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, cor_linha_par]),
+    ]))
+    elements.append(table)
+
+    doc.build(elements)
+    buf.seek(0)
+
+    sufixo = '_com_root' if incluir_root else '_sem_root'
+    nome_arquivo = f"senhas_{cliente.nome_empresa.replace(' ', '_')[:35]}{sufixo}.pdf"
+    response = HttpResponse(buf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+    return response
+
+
 def download_backup(request, backup_id):
     """Download de backup"""
     try:
@@ -5070,6 +5172,8 @@ def topologia_hosts(request, cliente_id):
         tipo_lower = (a.tipo or '').lower()
         tipo = 'host'
         mapa = [
+            (['cgnat','cg-nat','carrier grade nat'], 'cgnat'),
+            (['bras','bng','broadband network'], 'router'),
             (['router','roteador','core','border','borda'], 'router'),
             (['switch l3','sw-l3','camada 3'], 'switch_l3'),
             (['switch','sw-','catalyst','nexus'], 'switch_l2'),
@@ -5079,6 +5183,7 @@ def topologia_hosts(request, cliente_id):
             (['onu','ont'], 'onu'),
             (['server','servidor','zabbix','grafana','proxmox'], 'server'),
             (['firewall','utm','fortigate','pfsense','sophos'], 'firewall'),
+            (['vm','virtual machine','virtualizado','kvm','qemu','vmware','vps'], 'vm'),
             (['cpe','modem'], 'cpe'),
         ]
         for keywords, dev_tipo in mapa:
@@ -6192,3 +6297,240 @@ def irr_verificar_resposta(request, cliente_id):
         return JsonResponse({'ok': False, 'erro': f'Falha IMAP: {str(e)}'}, status=500)
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': f'Erro ao verificar resposta: {str(e)}'}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TROCAR SENHAS EM MASSA
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def trocar_senha_massa(request):
+    """Página principal da ferramenta Trocar Senhas em Massa."""
+    if not request.user.is_superuser:
+        return HttpResponseForbidden('Acesso restrito a administradores.')
+
+    from .models import TrocaSenhaJob, TrocaSenhaAcesso, Cliente as ClienteModel
+    from django.db.models import Count, Sum, Max, Q
+    import secrets, string
+
+    clientes = ClienteModel.objects.all().order_by('nome_empresa')
+
+    # ── Stats globais ─────────────────────────────────────────────────────────
+    total_jobs      = TrocaSenhaJob.objects.count()
+    total_sucesso   = TrocaSenhaJob.objects.aggregate(s=Sum('total_sucesso'))['s'] or 0
+    total_erro      = TrocaSenhaJob.objects.aggregate(s=Sum('total_erro'))['s'] or 0
+    total_removidos = TrocaSenhaAcesso.objects.filter(usuario_removido=True).count()
+    clientes_c_jobs = TrocaSenhaJob.objects.values('cliente_id').distinct().count()
+    taxa_sucesso    = round(total_sucesso / (total_sucesso + total_erro) * 100) if (total_sucesso + total_erro) > 0 else 0
+
+    # ── Por cliente (últimos jobs) ────────────────────────────────────────────
+    ids_com_jobs = set(TrocaSenhaJob.objects.values_list('cliente_id', flat=True).distinct())
+
+    clientes_painel      = []   # processados
+    clientes_sem_painel  = []   # não processados
+    for c in ClienteModel.objects.prefetch_related('troca_senha_jobs').order_by('nome_empresa'):
+        if c.id in ids_com_jobs:
+            ultimo_job = c.troca_senha_jobs.first()
+            clientes_painel.append({
+                'cliente':    c,
+                'ultimo_job': ultimo_job,
+                'total_jobs': c.troca_senha_jobs.count(),
+            })
+        else:
+            total_ssh = Acesso.objects.filter(cliente=c, protocolo='SSH').count()
+            clientes_sem_painel.append({
+                'cliente':   c,
+                'total_ssh': total_ssh,
+            })
+
+    clientes_s_jobs = len(clientes_sem_painel)
+
+    # ── Jobs recentes (todos os clientes) ────────────────────────────────────
+    jobs_recentes = TrocaSenhaJob.objects.select_related('cliente', 'criado_por').prefetch_related('itens')[:15]
+
+    # ── Cliente selecionado ───────────────────────────────────────────────────
+    cliente_id = request.GET.get('cliente_id')
+    cliente_selecionado = None
+    jobs_cliente = []
+    if cliente_id:
+        try:
+            cliente_selecionado = ClienteModel.objects.get(pk=cliente_id)
+            jobs_cliente = TrocaSenhaJob.objects.filter(
+                cliente=cliente_selecionado
+            ).prefetch_related('itens')[:20]
+        except ClienteModel.DoesNotExist:
+            pass
+
+    chars = string.ascii_letters + string.digits + '!@#$%&*'
+    senha_sugerida = ''.join(secrets.choice(chars) for _ in range(16))
+
+    return render(request, 'troca_senha_massa.html', {
+        'clientes':           clientes,
+        'cliente_selecionado': cliente_selecionado,
+        'jobs':               jobs_cliente,
+        'senha_sugerida':     senha_sugerida,
+        'is_admin':           True,
+        'is_superuser':       True,
+        # dashboard
+        'total_jobs':         total_jobs,
+        'total_sucesso':      total_sucesso,
+        'total_erro':         total_erro,
+        'clientes_s_jobs':    clientes_s_jobs,
+        'clientes_sem_painel': clientes_sem_painel,
+        'total_removidos':    total_removidos,
+        'clientes_c_jobs':    clientes_c_jobs,
+        'taxa_sucesso':       taxa_sucesso,
+        'clientes_painel':    clientes_painel,
+        'jobs_recentes':      jobs_recentes,
+    })
+
+
+@login_required
+@require_http_methods(['GET'])
+def trocar_senha_massa_listar_hosts(request):
+    """Retorna JSON com todos os acessos SSH do cliente + vendor detectado."""
+    if not request.user.is_superuser:
+        return JsonResponse({'erro': 'Acesso restrito.'}, status=403)
+
+    from .models import Cliente as ClienteModel
+    from .tasks import _detectar_vendor
+
+    cliente_id = request.GET.get('cliente_id')
+    if not cliente_id:
+        return JsonResponse({'erro': 'cliente_id obrigatório.'}, status=400)
+
+    try:
+        cliente = ClienteModel.objects.get(pk=cliente_id)
+    except ClienteModel.DoesNotExist:
+        return JsonResponse({'erro': 'Cliente não encontrado.'}, status=404)
+
+    acessos = Acesso.objects.filter(
+        cliente=cliente, protocolo='SSH'
+    ).select_related('modelo', 'funcao').order_by('tipo', 'host')
+
+    hosts = []
+    for a in acessos:
+        try:
+            vendor = _detectar_vendor(a)
+        except Exception:
+            vendor = 'desconhecido'
+        hosts.append({
+            'id':        a.id,
+            'tipo':      a.tipo,
+            'host':      a.host,
+            'porta':     a.porta,
+            'usuario':   a.usuario,
+            'vendor':    vendor,
+            'fabricante': (a.modelo.fabricante if a.modelo else '') or '',
+            'funcao':    (a.funcao.descricao if a.funcao else '') or '',
+        })
+
+    return JsonResponse({'hosts': hosts, 'total': len(hosts)})
+
+
+@login_required
+@require_http_methods(['POST'])
+def trocar_senha_massa_iniciar(request):
+    """Inicia um job de troca de senhas em massa para um cliente."""
+    if not request.user.is_superuser:
+        return JsonResponse({'erro': 'Acesso restrito a administradores.'}, status=403)
+
+    from .models import TrocaSenhaJob, Cliente as ClienteModel
+    from .tasks import executar_troca_senhas_massa
+
+    cliente_id   = request.POST.get('cliente_id')
+    novo_usuario = request.POST.get('novo_usuario', '').strip()
+    nova_senha   = request.POST.get('nova_senha', '').strip()
+    acesso_ids   = [int(x) for x in request.POST.getlist('acesso_ids[]') if x.isdigit()]
+
+    if not cliente_id or not novo_usuario or not nova_senha:
+        return JsonResponse({'erro': 'Preencha todos os campos.'}, status=400)
+
+    try:
+        cliente = ClienteModel.objects.get(pk=cliente_id)
+    except ClienteModel.DoesNotExist:
+        return JsonResponse({'erro': 'Cliente não encontrado.'}, status=404)
+
+    if acesso_ids:
+        # Valida que os IDs pertencem ao cliente
+        validos = list(
+            Acesso.objects.filter(pk__in=acesso_ids, cliente=cliente, protocolo='SSH')
+            .values_list('pk', flat=True)
+        )
+        if not validos:
+            return JsonResponse({'erro': 'Nenhum host SSH válido selecionado.'}, status=400)
+        acesso_ids = validos
+    else:
+        acesso_ids = None  # task vai pegar todos
+
+    job = TrocaSenhaJob.objects.create(
+        cliente=cliente,
+        criado_por=request.user,
+        novo_usuario=novo_usuario,
+        nova_senha=nova_senha,
+    )
+
+    executar_troca_senhas_massa.delay(job.id, acesso_ids=acesso_ids)
+
+    return JsonResponse({'ok': True, 'job_id': job.id})
+
+
+@login_required
+def trocar_senha_massa_status(request, job_id):
+    """Retorna JSON com o status atual de um job."""
+    if not request.user.is_superuser:
+        return JsonResponse({'erro': 'Acesso restrito.'}, status=403)
+
+    from .models import TrocaSenhaJob
+
+    try:
+        job = TrocaSenhaJob.objects.prefetch_related('itens__acesso').get(pk=job_id)
+    except TrocaSenhaJob.DoesNotExist:
+        return JsonResponse({'erro': 'Job não encontrado.'}, status=404)
+
+    itens = []
+    for item in job.itens.all():
+        itens.append({
+            'id':               item.id,
+            'acesso_tipo':      item.acesso.tipo if item.acesso else '(removido)',
+            'acesso_host':      item.acesso.host if item.acesso else '',
+            'status':           item.status,
+            'mensagem':         item.mensagem,
+            'usuario_antigo':   item.usuario_antigo,
+            'usuario_removido': item.usuario_removido,
+            'duracao':          item.duracao_segundos,
+        })
+
+    return JsonResponse({
+        'job_id':         job.id,
+        'status':         job.status,
+        'novo_usuario':   job.novo_usuario,
+        'total_acessos':  job.total_acessos,
+        'total_sucesso':  job.total_sucesso,
+        'total_erro':     job.total_erro,
+        'criado_em':      job.criado_em.strftime('%d/%m/%Y %H:%M'),
+        'concluido_em':   job.concluido_em.strftime('%d/%m/%Y %H:%M') if job.concluido_em else None,
+        'itens':          itens,
+    })
+
+
+@login_required
+@require_http_methods(['POST'])
+def trocar_senha_remover_antigos(request, job_id):
+    """Dispara a task de remoção dos usuários antigos para um job concluído."""
+    if not request.user.is_superuser:
+        return JsonResponse({'erro': 'Acesso restrito.'}, status=403)
+
+    from .models import TrocaSenhaJob
+    from .tasks import remover_usuarios_antigos_task
+
+    try:
+        job = TrocaSenhaJob.objects.get(pk=job_id)
+    except TrocaSenhaJob.DoesNotExist:
+        return JsonResponse({'erro': 'Job não encontrado.'}, status=404)
+
+    if job.status != 'CONCLUIDO':
+        return JsonResponse({'erro': 'Job ainda não concluído.'}, status=400)
+
+    remover_usuarios_antigos_task.delay(job_id)
+    return JsonResponse({'ok': True, 'mensagem': 'Remoção dos usuários antigos iniciada.'})

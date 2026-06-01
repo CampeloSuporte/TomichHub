@@ -103,17 +103,29 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha</label>
-                            <input type="password" name="senha" placeholder="••••••••" required>
+                            <div class="input-senha-wrap">
+                                <input type="text" name="senha" id="novo_senha" placeholder="••••••••" required autocomplete="new-password">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha')" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
+                    {% if is_admin %}
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha Admin</label>
-                            <input type="password" name="senha_adm" placeholder="••••••••">
+                            <div class="input-senha-wrap">
+                                <input type="text" name="senha_adm" id="novo_senha_adm" placeholder="••••••••" autocomplete="new-password">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha_adm')" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Vlan gerencia</label>
@@ -291,17 +303,29 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha</label>
-                            <input type="password" name="senha" id="dup1_senha" required>
+                            <div class="input-senha-wrap">
+                                <input type="text" name="senha" id="dup1_senha" required autocomplete="new-password">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha')" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
+                    {% if is_admin %}
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha Admin</label>
-                            <input type="password" name="senha_adm" id="dup1_senha_adm">
+                            <div class="input-senha-wrap">
+                                <input type="text" name="senha_adm" id="dup1_senha_adm" autocomplete="new-password">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha_adm')" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Vlan gerencia</label>
@@ -482,17 +506,29 @@
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha</label>
-                            <input type="password" name="senha" id="dup_senha" required>
+                            <div class="input-senha-wrap">
+                                <input type="text" name="senha" id="dup_senha" required autocomplete="new-password">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha')" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
+                    {% if is_admin %}
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Senha Admin</label>
-                            <input type="password" name="senha_adm" id="dup_senha_adm">
+                            <div class="input-senha-wrap">
+                                <input type="text" name="senha_adm" id="dup_senha_adm" autocomplete="new-password">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha_adm')" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
                     <div class="col-md-6">
                         <div class="form-group-modal">
                             <label><span class="label-prefix">//</span> Vlan gerencia</label>
@@ -1326,6 +1362,37 @@
 </div>
 
 
+<style>
+.input-senha-wrap {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.input-senha-wrap input {
+    flex: 1;
+    min-width: 0;
+}
+.btn-gerar-senha {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    background: #0d1829;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    font-size: .8rem;
+}
+.btn-gerar-senha:hover {
+    background: #1e293b;
+    border-color: #00ff88;
+    color: #00ff88;
+}
+</style>
 <script>
 
 // ============================================
@@ -2022,5 +2089,26 @@ function _acessoAjaxSubmit(formId, fecharFn) {
 _acessoAjaxSubmit('formCadastrarAcesso', fecharModalAcesso);
 _acessoAjaxSubmit('formEditarAcesso',    fecharModalEditarAcesso);
 _acessoAjaxSubmit('formDuplicarAcesso',  fecharModalDuplicarAcesso);
+
+function _gerarSenha(inputId) {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+    let senha = '';
+    const arr = new Uint32Array(16);
+    crypto.getRandomValues(arr);
+    arr.forEach(v => { senha += chars[v % chars.length]; });
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.value = senha;
+    el.type = 'text';
+    el.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    const btn = el.parentElement.querySelector('.btn-gerar-senha');
+    if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.style.color = '#00ff88';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
+    }
+}
 
 </script>

@@ -60,9 +60,23 @@ class Acesso(models.Model):
         verbose_name="Template de Backup"
     )
     backup_automatico = models.BooleanField(
-        default=False, 
+        default=False,
         verbose_name="Backup Automático",
         help_text="Executar backup automaticamente via agendamento"
+    )
+    contexto_backup = models.TextField(
+        blank=True, default='',
+        verbose_name='Contexto do Backup (Agent NOC)',
+        help_text='Resumo de interfaces, IPs e VLANs extraído do último backup — usado pelo Agent NOC'
+    )
+    contexto_backup_em = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name='Contexto atualizado em'
+    )
+    modelo_auto_em = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name='Modelo auto-detectado em',
+        help_text='Última vez que a task tentou detectar o modelo via backup'
     )
 
     def __str__(self):
@@ -287,6 +301,12 @@ class VPNWireGuard(models.Model):
     redes_privadas      = models.TextField(blank=True, help_text='Uma rede por linha, ex: 192.168.1.0/24')
     ativo               = models.BooleanField(default=True)
     peer_no_servidor    = models.BooleanField(default=False, help_text='Peer adicionado ao wg0')
+    # Interface isolada: cada cliente tem sua própria interface wg com routing table dedicada
+    interface_nome      = models.CharField(max_length=20, blank=True, default='wg0',
+                          help_text='Interface WireGuard (ex: wg1, wg2). wg0=legado compartilhado')
+    servidor_ip_local   = models.CharField(max_length=45, blank=True, default='',
+                          help_text='IP do servidor nesta interface (ex: 10.201.0.1). '
+                                    'Usado como source-bind para routing isolado.')
     criado_em           = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -358,6 +378,7 @@ class BackupLog(models.Model):
     executado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     data_backup = models.DateTimeField(auto_now_add=True)
     duracao_segundos = models.FloatField(default=0)
+    ultima_verificacao = models.DateTimeField(null=True, blank=True, verbose_name='Última verificação sem mudanças')
     
     class Meta:
         verbose_name = 'Log de Backup'
@@ -541,6 +562,7 @@ class IPAMSubRede(models.Model):
     descricao    = models.TextField(blank=True)
     local        = models.CharField(max_length=150, blank=True)
     status       = models.CharField(max_length=15, choices=STATUS, default='ativo')
+    pool_cheia   = models.BooleanField(default=False)
     criado_em    = models.DateTimeField(auto_now_add=True)
     atualizado_em= models.DateTimeField(auto_now=True)
 
@@ -574,7 +596,7 @@ class IPAMEndereco(models.Model):
 
     cliente     = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_ips')
     subrede     = models.ForeignKey(IPAMSubRede, null=True, blank=True,
-                                    on_delete=models.SET_NULL, related_name='ips')
+                                    on_delete=models.CASCADE, related_name='ips')
     ip          = models.CharField(max_length=45)
     tipo        = models.CharField(max_length=15, choices=TIPO,   default='fixo')
     status      = models.CharField(max_length=15, choices=STATUS, default='ativo')
@@ -1367,3 +1389,58 @@ class AgentLog(models.Model):
 
     def __str__(self):
         return f'[{self.tipo}] sessão {self.sessao_id} — {self.criado_em:%H:%M:%S}'
+
+
+class TrocaSenhaJob(models.Model):
+    """Job de troca de senhas em massa para todos os acessos SSH de um cliente."""
+    STATUS_CHOICES = [
+        ('PENDENTE',     'Pendente'),
+        ('EM_ANDAMENTO', 'Em Andamento'),
+        ('CONCLUIDO',    'Concluído'),
+        ('ERRO',         'Erro'),
+    ]
+    cliente       = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='troca_senha_jobs')
+    criado_por    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='troca_senha_jobs')
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    novo_usuario  = models.CharField(max_length=50)
+    nova_senha    = models.CharField(max_length=100)
+    criado_em     = models.DateTimeField(auto_now_add=True)
+    concluido_em  = models.DateTimeField(null=True, blank=True)
+    total_acessos = models.IntegerField(default=0)
+    total_sucesso = models.IntegerField(default=0)
+    total_erro    = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name        = 'Job Troca de Senha'
+        verbose_name_plural = 'Jobs Troca de Senha'
+        ordering            = ['-criado_em']
+
+    def __str__(self):
+        return f'Job #{self.id} — {self.cliente.nome_empresa} ({self.status})'
+
+
+class TrocaSenhaAcesso(models.Model):
+    """Resultado por acesso de um TrocaSenhaJob."""
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('SUCESSO',  'Sucesso'),
+        ('ERRO',     'Erro'),
+    ]
+    job              = models.ForeignKey('TrocaSenhaJob', on_delete=models.CASCADE, related_name='itens')
+    acesso           = models.ForeignKey('Acesso', on_delete=models.SET_NULL, null=True, related_name='troca_senha_historico')
+    status           = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDENTE')
+    mensagem         = models.TextField(blank=True)
+    usuario_antigo   = models.CharField(max_length=50, blank=True)
+    senha_antiga     = models.CharField(max_length=100, blank=True)
+    executado_em     = models.DateTimeField(null=True, blank=True)
+    duracao_segundos = models.FloatField(null=True, blank=True)
+    usuario_removido = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name        = 'Troca de Senha — Acesso'
+        verbose_name_plural = 'Trocas de Senha — Acessos'
+        ordering            = ['id']
+
+    def __str__(self):
+        acesso_str = str(self.acesso) if self.acesso else '(removido)'
+        return f'TrocaSenha #{self.id} — {acesso_str} ({self.status})'

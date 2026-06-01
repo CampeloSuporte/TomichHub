@@ -1,6 +1,7 @@
 import os
 from celery import Celery
 from celery.schedules import crontab
+from datetime import timedelta
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm.settings')
 
@@ -29,6 +30,26 @@ app.conf.beat_schedule = {
     'validar-rpki-irr-agendado': {
         'task': 'clientes.tasks.validar_blocos_rpki_irr_agendado',
         'schedule': crontab(hour=4, minute=0),
+    },
+    'analisar-backups-ipam': {
+        'task': 'clientes.tasks.analisar_backups_ipam',
+        'schedule': timedelta(days=3),
+    },
+    'detectar-modelos-via-backup': {
+        'task': 'clientes.tasks.detectar_modelos_via_backup',
+        'schedule': timedelta(days=3),
+    },
+    'rotina-backup-completa': {
+        'task': 'clientes.tasks.rotina_backup_completa',
+        'schedule': crontab(hour=1, minute=0),
+    },
+    'enviar-pdf-credenciais': {
+        'task': 'clientes.tasks.enviar_pdf_credenciais',
+        'schedule': timedelta(days=2),
+    },
+    'gerar-snapshots-conhecimento': {
+        'task': 'clientes.tasks.gerar_snapshots_conhecimento',
+        'schedule': timedelta(days=4),
     },
 }
 

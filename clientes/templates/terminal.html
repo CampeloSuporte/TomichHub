@@ -1407,7 +1407,7 @@
         const id = terminalManager.activeTerminal;
         const tObj = terminalManager.terminals.get(id); if (!tObj) return;
         if (tObj.socket) { try { tObj.socket.close(); } catch(e) {} tObj.socket = null; }
-        tObj.connected = false; tObj.wsRetries = 0;
+        tObj.connected = false; tObj.wsRetries = 0; tObj.hadSshError = false;
         const tab = document.getElementById(`tab-${id}`);
         if (tab) { const d = tab.querySelector('.terminal-tab-status'); if (d) d.classList.remove('connected'); }
         tObj.terminal.clear();
@@ -1512,7 +1512,7 @@
                 // Tamanho de fonte menor no mobile para melhor aproveitamento da tela
                 const fontSizeMobile = window.innerWidth < 400 ? 10 : window.innerWidth < 640 ? 11 : 15;
                 const terminal = new Terminal({
-                    cursorBlink: true,
+                    cursorBlink: false,
                     fontSize: fontSizeMobile,
                     fontFamily: "'Share Tech Mono','Courier New',monospace",
                     fontWeight: 400, fontWeightBold: 600, lineHeight: 1.2, letterSpacing: 0,
@@ -1557,7 +1557,7 @@
 
                 const tObj = {
                     id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
-                    socket: null, connected: false, wsRetries: 0
+                    socket: null, connected: false, wsRetries: 0, hadSshError: false
                 };
                 this.terminals.set(terminalId, tObj);
                 this.criarAba(terminalId, acessoData);
@@ -1680,13 +1680,16 @@
                         writeToTerminal(tObj.terminal, data.data);
                     } else if (data.type === 'error') {
                         tObj.connected = false;
+                        tObj.hadSshError = true;   // não reconectar automaticamente após erro SSH
                         tObj.terminal.writeln('\x1b[1;31m✕ ERRO: ' + data.message + '\x1b[0m\n');
                     }
                 };
                 tObj.socket.onerror = () => tObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
                 tObj.socket.onclose = () => {
                     tObj.connected = false;
-                    if (tObj.wsRetries < this.maxRetries) {
+                    // Não reconectar se houve erro SSH explícito (ex: senha errada,
+                    // timeout, host inativo) — evita loop de tentativas repetidas.
+                    if (!tObj.hadSshError && tObj.wsRetries < this.maxRetries) {
                         tObj.wsRetries++;
                         setTimeout(() => this.conectarWebSocket(terminalId), this.retryDelay);
                     }

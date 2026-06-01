@@ -85,6 +85,27 @@ class MonitorNode(models.Model):
         return f"{self.label} ({self.get_tipo_display()})"
 
 
+class MonitorDashConfig(models.Model):
+    """
+    Configuração dos gráficos do dashboard de monitoramento — uma por cliente.
+    Persiste no banco para que qualquer usuário com acesso ao cliente veja os mesmos gráficos.
+    """
+    cliente = models.OneToOneField(
+        'clientes.Cliente',
+        on_delete=models.CASCADE,
+        related_name='monitor_dash_config',
+    )
+    dados = models.JSONField(default=list, blank=True, help_text='Lista de charts configurados')
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Config Dashboard Monitor'
+        verbose_name_plural = 'Configs Dashboard Monitor'
+
+    def __str__(self):
+        return f"Dashboard — {self.cliente.nome_empresa}"
+
+
 class MonitorLink(models.Model):
     """
     Enlace entre dois MonitorNode.

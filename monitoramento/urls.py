@@ -32,4 +32,8 @@ urlpatterns = [
     path('status/',             views.status_topologia,        name='status'),
     path('zabbix/history/', views.historico_item_zabbix, name='zbx_history'),
     path('zabbix/itens/', views.listar_itens_zabbix, name='listar_itens_zabbix'),
+
+    # ── Dashboard de gráficos (persistência por cliente) ─────
+    path('dash/carregar/', views.carregar_dash_config, name='dash_carregar'),
+    path('dash/salvar/',   views.salvar_dash_config,   name='dash_salvar'),
 ]

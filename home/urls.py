@@ -24,11 +24,14 @@ urlpatterns = [
     path('ferramentas/geo/<int:correcao_id>/resposta/', views.geo_verificar_resposta, name='geo_verificar_resposta'),
     path('ferramentas/geo/<int:correcao_id>/aplicacao/', views.geo_verificar_aplicacao, name='geo_verificar_aplicacao'),
     path('ferramentas/geo/<int:correcao_id>/confirmar-maxmind/', views.geo_confirmar_maxmind, name='geo_confirmar_maxmind'),
+    # Arquivo público Geofeed RFC 8805 (sem login — referenciado no WHOIS/Registro.br)
+    path('ferramentas/geo/geofeed.csv', views.geo_geofeed_csv, name='geo_geofeed_csv'),
     # Download público de firmware via token (sem login)
     path('ferramentas/firmware/dl/<str:token>/<path:nome_arquivo>', firmware_download, name='firmware_download'),
 
     # ── Agent NOC Tomich ──────────────────────────────────────────────────────
     path('agent/config/',                               views.agent_config,                  name='agent_config'),
+    path('agent/config/token-stats/',                   views.agent_token_stats,              name='agent_token_stats'),
     path('agent/config/testar-claude/',                 views.agent_testar_claude,            name='agent_testar_claude'),
     path('agent/config/testar-openai/',                 views.agent_testar_openai,            name='agent_testar_openai'),
     path('agent/config/testar-evolution/',              views.agent_testar_evolution,         name='agent_testar_evolution'),

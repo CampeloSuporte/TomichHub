@@ -1,0 +1,1187 @@
+{% extends "base.html" %}
+{% block title %}Trocar Senhas em Massa{% endblock %}
+{% block content %}
+
+<style>
+/* ─── Custom select (dark-theme safe) ─────────────────────────── */
+.tsm-select {
+  appearance: none;
+  background-color: #1a1f2e;
+  color: #e0e6f0;
+  border: 1px solid rgba(0,217,255,.25);
+  border-radius: 8px;
+  padding: 9px 36px 9px 14px;
+  font-size: .875rem;
+  width: 100%;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300d9ff' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: border-color .2s;
+}
+.tsm-select:focus { outline: none; border-color:#00d9ff; box-shadow:0 0 0 3px rgba(0,217,255,.12); }
+.tsm-select option { background:#1a1f2e; color:#e0e6f0; }
+
+/* ─── KPI cards ───────────────────────────────────────────────── */
+.kpi-card {
+  background: linear-gradient(135deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.02) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform .15s, border-color .15s;
+}
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  border-radius:12px 12px 0 0;
+}
+.kpi-card.kpi-cyan::before  { background: linear-gradient(90deg,#00d9ff,#00a8cc); }
+.kpi-card.kpi-green::before { background: linear-gradient(90deg,#00c864,#00a050); }
+.kpi-card.kpi-red::before   { background: linear-gradient(90deg,#ff6b6b,#cc4444); }
+.kpi-card.kpi-orange::before{ background: linear-gradient(90deg,#ffaa00,#cc8800); }
+.kpi-card.kpi-purple::before{ background: linear-gradient(90deg,#b060ff,#8040cc); }
+.kpi-card.kpi-teal::before  { background: linear-gradient(90deg,#00e5cc,#00b8a0); }
+.kpi-val { font-size: 2rem; font-weight: 700; line-height: 1; }
+.kpi-label { font-size: .75rem; color: #7a8599; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.kpi-icon { position:absolute; right:16px; top:50%; transform:translateY(-50%); font-size:2rem; opacity:.12; }
+
+/* ─── Taxa gauge bar ──────────────────────────────────────────── */
+.taxa-bar {
+  height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,.08);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.taxa-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg,#ff6b6b,#ffaa00,#00c864);
+  transition: width 1s ease;
+}
+
+/* ─── Cliente grid cards ──────────────────────────────────────── */
+.cli-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: border-color .15s, background .15s;
+  cursor: pointer;
+}
+.cli-card:hover { background: rgba(0,217,255,.05); border-color: rgba(0,217,255,.3); }
+.cli-card.cli-ok  { border-left: 3px solid #00c864; }
+.cli-card.cli-err { border-left: 3px solid #ff6b6b; }
+.cli-card.cli-run { border-left: 3px solid #00d9ff; }
+
+/* ─── Timeline ────────────────────────────────────────────────── */
+.timeline { position:relative; padding-left:28px; }
+.timeline::before { content:''; position:absolute; left:9px; top:0; bottom:0; width:2px; background:rgba(255,255,255,.07); }
+.tl-item { position:relative; margin-bottom:14px; }
+.tl-dot {
+  position:absolute; left:-23px; top:4px;
+  width:10px; height:10px; border-radius:50%;
+  border:2px solid;
+}
+.tl-dot.ok    { background:#00c864; border-color:#00c864; box-shadow:0 0 6px rgba(0,200,100,.5); }
+.tl-dot.err   { background:#ff6b6b; border-color:#ff6b6b; box-shadow:0 0 6px rgba(255,100,100,.5); }
+.tl-dot.run   { background:#00d9ff; border-color:#00d9ff; box-shadow:0 0 6px rgba(0,217,255,.5); animation:pulse-dot 1.2s infinite; }
+.tl-dot.pend  { background:transparent; border-color:#888; }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+/* ─── Job card ────────────────────────────────────────────────── */
+.job-row {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  transition: background .15s;
+}
+.job-row:hover { background: rgba(255,255,255,.04); }
+
+/* ─── Progress bar ────────────────────────────────────────────── */
+.pbar { height:4px; border-radius:2px; background:rgba(255,255,255,.08); overflow:hidden; }
+.pbar-fill { height:100%; background:linear-gradient(90deg,#00d9ff,#00c864); transition:width .6s; }
+
+/* ─── Inline tab nav ──────────────────────────────────────────── */
+.tsm-tabs { display:flex; gap:6px; margin-bottom:20px; }
+.tsm-tab {
+  padding:7px 16px; border-radius:6px; font-size:.82rem; cursor:pointer;
+  border:1px solid rgba(255,255,255,.1); color:#7a8599;
+  transition:all .15s; background:transparent;
+}
+.tsm-tab:hover { color:#e0e6f0; border-color:rgba(255,255,255,.2); }
+.tsm-tab.active { background:rgba(0,217,255,.12); color:#00d9ff; border-color:rgba(0,217,255,.3); }
+
+/* ─── Detail table ────────────────────────────────────────────── */
+.det-table { width:100%; font-size:.77rem; border-collapse:collapse; }
+.det-table th { color:#7a8599; text-transform:uppercase; font-size:.7rem; letter-spacing:.04em; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.07); text-align:left; }
+.det-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.04); color:#c8d0de; vertical-align:middle; }
+.det-table tr:last-child td { border-bottom:none; }
+.det-table tr:hover td { background:rgba(255,255,255,.03); }
+
+/* ─── Input group ─────────────────────────────────────────────── */
+.tsm-input {
+  background:#1a1f2e; color:#e0e6f0;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:7px; padding:8px 12px;
+  font-size:.875rem; width:100%;
+  transition:border-color .2s;
+}
+.tsm-input:focus { outline:none; border-color:#00d9ff; box-shadow:0 0 0 3px rgba(0,217,255,.1); }
+.tsm-input::placeholder { color:#4a5570; }
+</style>
+
+<div class="container-fluid py-4" style="max-width:1180px;">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <div style="width:48px;height:48px;border-radius:12px;
+                background:linear-gradient(135deg,rgba(255,60,60,.2),rgba(180,0,80,.15));
+                border:1px solid rgba(255,100,100,.2);
+                display:flex;align-items:center;justify-content:center;font-size:22px;">
+      🔑
+    </div>
+    <div>
+      <h4 class="mb-0" style="color:#ff8080;font-weight:600;">Trocar Senhas em Massa</h4>
+      <small style="color:#7a8599;">SSH automation — cria novo usuário em todos os hosts do cliente</small>
+    </div>
+    <div class="ms-auto d-flex gap-2">
+      <button class="tsm-tab active" onclick="showTab('dash')" id="tabBtnDash">
+        <i class="fas fa-chart-bar me-1"></i>Dashboard
+      </button>
+      <button class="tsm-tab" onclick="showTab('executar')" id="tabBtnExec">
+        <i class="fas fa-play-circle me-1"></i>Executar
+      </button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       TAB: DASHBOARD
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="tabDash">
+
+    <!-- ── Grandes cartões de clientes (clicáveis) ────────────────────────── -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="kpi-card kpi-cyan" id="kpiProcessados"
+             onclick="filtrarPainel('processados')"
+             style="cursor:pointer;padding:20px 24px;border:2px solid rgba(0,217,255,.25);">
+          <i class="fas fa-check-double kpi-icon" style="font-size:3rem;"></i>
+          <div style="display:flex;align-items:flex-end;gap:10px;">
+            <div class="kpi-val" style="color:#00d9ff;font-size:2.8rem;">{{ clientes_c_jobs }}</div>
+            <div style="margin-bottom:4px;color:#7a8599;font-size:.85rem;">
+              de {{ clientes|length }} clientes
+            </div>
+          </div>
+          <div class="kpi-label" style="font-size:.82rem;letter-spacing:.06em;">
+            Clientes Processados
+          </div>
+          <div style="margin-top:8px;">
+            <div style="height:3px;border-radius:2px;background:rgba(255,255,255,.07);">
+              <div style="height:100%;border-radius:2px;background:#00d9ff;
+                          width:{% widthratio clientes_c_jobs clientes|length 100 %}%;
+                          transition:width 1s;"></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:.72rem;color:#00d9ff;opacity:.7;">
+            <i class="fas fa-mouse-pointer me-1"></i>Clique para ver a lista
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="kpi-card kpi-orange" id="kpiPendentes"
+             onclick="filtrarPainel('pendentes')"
+             style="cursor:pointer;padding:20px 24px;border:2px solid rgba(255,170,0,.2);">
+          <i class="fas fa-hourglass-half kpi-icon" style="font-size:3rem;"></i>
+          <div style="display:flex;align-items:flex-end;gap:10px;">
+            <div class="kpi-val" style="color:#ffaa00;font-size:2.8rem;">{{ clientes_s_jobs }}</div>
+            <div style="margin-bottom:4px;color:#7a8599;font-size:.85rem;">
+              de {{ clientes|length }} clientes
+            </div>
+          </div>
+          <div class="kpi-label" style="font-size:.82rem;letter-spacing:.06em;">
+            Clientes Pendentes
+          </div>
+          <div style="margin-top:8px;">
+            <div style="height:3px;border-radius:2px;background:rgba(255,255,255,.07);">
+              <div style="height:100%;border-radius:2px;background:#ffaa00;
+                          width:{% widthratio clientes_s_jobs clientes|length 100 %}%;
+                          transition:width 1s;"></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:.72rem;color:#ffaa00;opacity:.7;">
+            <i class="fas fa-mouse-pointer me-1"></i>Clique para ver a lista
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Row (stats) -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md">
+        <div class="kpi-card kpi-purple">
+          <i class="fas fa-tasks kpi-icon"></i>
+          <div class="kpi-val" style="color:#b060ff;">{{ total_jobs }}</div>
+          <div class="kpi-label">Jobs Executados</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="kpi-card kpi-green">
+          <i class="fas fa-check-circle kpi-icon"></i>
+          <div class="kpi-val" style="color:#00c864;">{{ total_sucesso }}</div>
+          <div class="kpi-label">Hosts Atualizados</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="kpi-card kpi-red">
+          <i class="fas fa-times-circle kpi-icon"></i>
+          <div class="kpi-val" style="color:#ff6b6b;">{{ total_erro }}</div>
+          <div class="kpi-label">Com Erro</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="kpi-card kpi-orange" style="border-top-color:#ffaa00;">
+          <i class="fas fa-user-slash kpi-icon"></i>
+          <div class="kpi-val" style="color:#ffaa00;">{{ total_removidos }}</div>
+          <div class="kpi-label">Usuários Removidos</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="kpi-card kpi-teal">
+          <i class="fas fa-percentage kpi-icon"></i>
+          <div class="kpi-val" style="color:#00e5cc;">{{ taxa_sucesso }}%</div>
+          <div class="kpi-label">Taxa de Sucesso</div>
+          <div class="taxa-bar"><div class="taxa-fill" style="width:{{ taxa_sucesso }}%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+
+      <!-- ── Painel de clientes (tabulado) ──────────────────────────────── -->
+      <div class="col-lg-7" id="painelClientes">
+        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;">
+
+          <!-- Tab interna -->
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div style="display:flex;gap:6px;">
+              <button id="tabCliProcBtn" onclick="switchCliTab('processados')"
+                      style="padding:5px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;
+                             background:rgba(0,217,255,.15);color:#00d9ff;
+                             border:1px solid rgba(0,217,255,.35);font-weight:500;">
+                <i class="fas fa-check-double me-1"></i>Processados
+                <span style="margin-left:4px;background:rgba(0,217,255,.2);border-radius:10px;padding:1px 7px;font-size:.72rem;">{{ clientes_c_jobs }}</span>
+              </button>
+              <button id="tabCliPendBtn" onclick="switchCliTab('pendentes')"
+                      style="padding:5px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;
+                             background:transparent;color:#7a8599;
+                             border:1px solid rgba(255,255,255,.1);">
+                <i class="fas fa-hourglass-half me-1"></i>Pendentes
+                <span style="margin-left:4px;background:rgba(255,170,0,.15);color:#ffaa00;border-radius:10px;padding:1px 7px;font-size:.72rem;">{{ clientes_s_jobs }}</span>
+              </button>
+            </div>
+            <span id="painelCliLabel" style="color:#7a8599;font-size:.76rem;">
+              {{ clientes_c_jobs }} de {{ clientes|length }} clientes
+            </span>
+          </div>
+
+          <!-- Lista processados -->
+          <div id="listaProcessados">
+          {% if clientes_painel %}
+          <div style="max-height:400px;overflow-y:auto;padding-right:4px;">
+            {% for cp in clientes_painel %}
+            {% with j=cp.ultimo_job %}
+            <div class="cli-card mb-2
+              {% if j.status == 'CONCLUIDO' and j.total_erro == 0 %}cli-ok
+              {% elif j.status == 'CONCLUIDO' and j.total_erro > 0 %}cli-err
+              {% elif j.status == 'EM_ANDAMENTO' %}cli-run
+              {% else %}cli-err{% endif %}"
+              onclick="selecionarClienteDash({{ cp.cliente.id }})">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width:34px;height:34px;border-radius:8px;font-size:13px;font-weight:700;
+                              display:flex;align-items:center;justify-content:center;
+                              background:rgba(0,217,255,.1);color:#00d9ff;flex-shrink:0;">
+                    {{ cp.cliente.nome_empresa|slice:":2"|upper }}
+                  </div>
+                  <div>
+                    <div style="color:#e0e6f0;font-size:.87rem;font-weight:500;">{{ cp.cliente.nome_empresa }}</div>
+                    <div style="color:#7a8599;font-size:.73rem;">
+                      {{ cp.total_jobs }} job{{ cp.total_jobs|pluralize:"s" }} &middot;
+                      último: {{ j.criado_em|date:"d/m/Y H:i" }}
+                    </div>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="d-flex gap-2 align-items-center justify-content-end">
+                    {% if j.total_sucesso %}<span style="color:#00c864;font-size:.78rem;"><i class="fas fa-check me-1" style="font-size:.6rem;"></i>{{ j.total_sucesso }}</span>{% endif %}
+                    {% if j.total_erro %}<span style="color:#ff6b6b;font-size:.78rem;"><i class="fas fa-times me-1" style="font-size:.6rem;"></i>{{ j.total_erro }}</span>{% endif %}
+                    <span style="font-size:.65rem;padding:2px 8px;border-radius:4px;
+                      {% if j.status == 'CONCLUIDO' %}background:rgba(0,200,100,.12);color:#00c864;
+                      {% elif j.status == 'EM_ANDAMENTO' %}background:rgba(0,217,255,.12);color:#00d9ff;
+                      {% else %}background:rgba(255,100,100,.12);color:#ff6b6b;{% endif %}">
+                      {% if j.status == 'CONCLUIDO' %}✓ Concluído
+                      {% elif j.status == 'EM_ANDAMENTO' %}● Executando
+                      {% else %}✗ Erro{% endif %}
+                    </span>
+                    <i class="fas fa-arrow-right" style="color:#4a5570;font-size:.65rem;"></i>
+                  </div>
+                  {% if j.total_acessos %}
+                  <div class="pbar mt-1" style="width:110px;margin-left:auto;">
+                    {% with pct=j.total_sucesso|add:j.total_erro %}
+                    <div class="pbar-fill" style="width:{% widthratio pct j.total_acessos 100 %}%;"></div>
+                    {% endwith %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% if j.novo_usuario %}
+              <div style="margin-top:5px;font-size:.71rem;color:#7a8599;">
+                <i class="fas fa-user-plus me-1" style="color:#b060ff;font-size:.65rem;"></i>
+                <span style="font-family:monospace;color:#b060ff;">{{ j.novo_usuario }}</span>
+              </div>
+              {% endif %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:36px 0;color:#4a5570;">
+            <i class="fas fa-inbox" style="font-size:2.2rem;margin-bottom:10px;display:block;opacity:.3;"></i>
+            <div style="font-size:.88rem;">Nenhum job executado ainda.</div>
+            <div style="font-size:.78rem;margin-top:4px;">Vá para <strong style="color:#00d9ff;">Executar</strong> para começar.</div>
+          </div>
+          {% endif %}
+          </div><!-- /listaProcessados -->
+
+          <!-- Lista pendentes -->
+          <div id="listaPendentes" style="display:none;">
+          {% if clientes_sem_painel %}
+          <div style="max-height:400px;overflow-y:auto;padding-right:4px;">
+            {% for cp in clientes_sem_painel %}
+            <div class="cli-card mb-2"
+                 style="border-left:3px solid rgba(255,170,0,.5);cursor:pointer;"
+                 onclick="selecionarClienteDash({{ cp.cliente.id }})">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width:34px;height:34px;border-radius:8px;font-size:13px;font-weight:700;
+                              display:flex;align-items:center;justify-content:center;
+                              background:rgba(255,170,0,.08);color:#ffaa00;flex-shrink:0;">
+                    {{ cp.cliente.nome_empresa|slice:":2"|upper }}
+                  </div>
+                  <div>
+                    <div style="color:#e0e6f0;font-size:.87rem;font-weight:500;">{{ cp.cliente.nome_empresa }}</div>
+                    <div style="color:#7a8599;font-size:.73rem;">
+                      {% if cp.total_ssh %}
+                        <i class="fas fa-terminal me-1" style="font-size:.6rem;color:#ffaa00;"></i>
+                        {{ cp.total_ssh }} host{{ cp.total_ssh|pluralize:"s" }} SSH disponíve{{ cp.total_ssh|pluralize:"l,is" }}
+                      {% else %}
+                        <span style="color:#4a5570;">Sem hosts SSH cadastrados</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size:.68rem;padding:2px 9px;border-radius:4px;
+                               background:rgba(255,170,0,.1);color:#ffaa00;border:1px solid rgba(255,170,0,.2);">
+                    Pendente
+                  </span>
+                  <i class="fas fa-play-circle" style="color:#ffaa00;font-size:.9rem;" title="Executar agora"></i>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:36px 0;color:#4a5570;">
+            <i class="fas fa-check-circle" style="font-size:2.2rem;margin-bottom:10px;display:block;color:#00c864;opacity:.5;"></i>
+            <div style="font-size:.88rem;color:#00c864;">Todos os clientes já foram processados!</div>
+          </div>
+          {% endif %}
+          </div><!-- /listaPendentes -->
+
+        </div>
+      </div>
+
+      <!-- ── Timeline de atividade recente ──────────────────────────────── -->
+      <div class="col-lg-5">
+        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;height:100%;">
+          <h6 style="color:#c8d0de;font-weight:600;margin-bottom:18px;">
+            <i class="fas fa-history me-2" style="color:#b060ff;"></i>Atividade Recente
+          </h6>
+
+          {% if jobs_recentes %}
+          <div class="timeline" style="max-height:420px;overflow-y:auto;padding-right:4px;">
+            {% for job in jobs_recentes %}
+            <div class="tl-item">
+              <div class="tl-dot
+                {% if job.status == 'CONCLUIDO' and job.total_erro == 0 %}ok
+                {% elif job.status == 'CONCLUIDO' and job.total_erro > 0 %}err
+                {% elif job.status == 'EM_ANDAMENTO' %}run
+                {% else %}pend{% endif %}">
+              </div>
+              <div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);
+                          border-radius:8px;padding:10px 12px;margin-left:4px;">
+                <div class="d-flex align-items-start justify-content-between">
+                  <div>
+                    <div style="color:#e0e6f0;font-size:.83rem;font-weight:500;">{{ job.cliente.nome_empresa }}</div>
+                    <div style="color:#7a8599;font-size:.73rem;">
+                      {% if job.criado_por %}por {{ job.criado_por.get_full_name|default:job.criado_por.username }}{% endif %}
+                      &middot; {{ job.criado_em|date:"d/m H:i" }}
+                    </div>
+                  </div>
+                  <span style="font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:4px;
+                    {% if job.status == 'CONCLUIDO' %}background:rgba(0,200,100,.12);color:#00c864;
+                    {% elif job.status == 'EM_ANDAMENTO' %}background:rgba(0,217,255,.12);color:#00d9ff;
+                    {% else %}background:rgba(255,100,100,.12);color:#ff6b6b;{% endif %}">
+                    {% if job.status == 'CONCLUIDO' %}✓ OK
+                    {% elif job.status == 'EM_ANDAMENTO' %}● Live
+                    {% else %}✗ Erro{% endif %}
+                  </span>
+                </div>
+                {% if job.total_acessos %}
+                <div style="margin-top:6px;display:flex;gap:12px;font-size:.72rem;">
+                  <span style="color:#00c864;"><i class="fas fa-check me-1"></i>{{ job.total_sucesso }}</span>
+                  {% if job.total_erro %}<span style="color:#ff6b6b;"><i class="fas fa-times me-1"></i>{{ job.total_erro }}</span>{% endif %}
+                  <span style="color:#7a8599;"><i class="fas fa-server me-1"></i>{{ job.total_acessos }} hosts</span>
+                  <span style="color:#b060ff;font-family:monospace;">{{ job.novo_usuario }}</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="text-align:center;padding:40px 0;color:#4a5570;">
+            <i class="fas fa-clock" style="font-size:2rem;opacity:.3;display:block;margin-bottom:10px;"></i>
+            <div style="font-size:.85rem;">Sem atividade registrada.</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div><!-- /row -->
+  </div><!-- /#tabDash -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       TAB: EXECUTAR
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="tabExecutar" style="display:none;">
+
+    <!-- Seleção de cliente (custom select) -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;margin-bottom:20px;">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="fas fa-building" style="color:#00d9ff;"></i>
+        <h6 style="color:#c8d0de;margin:0;font-weight:600;">Selecionar Cliente</h6>
+      </div>
+      <form method="get" id="formSelectCliente">
+        <input type="hidden" name="tab" value="executar">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-7">
+            <select name="cliente_id" class="tsm-select" onchange="this.form.submit()">
+              <option value="">── Selecione um cliente ──</option>
+              {% for c in clientes %}
+              <option value="{{ c.id }}"
+                {% if cliente_selecionado and cliente_selecionado.id == c.id %}selected{% endif %}>
+                {{ c.nome_empresa }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if cliente_selecionado %}
+          <div class="col-md-5">
+            <div style="background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.2);border-radius:8px;padding:8px 14px;font-size:.82rem;color:#00d9ff;">
+              <i class="fas fa-info-circle me-1"></i>
+              Cliente selecionado: <strong>{{ cliente_selecionado.nome_empresa }}</strong>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    {% if cliente_selecionado %}
+
+    <!-- ── Seleção de hosts ─────────────────────────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;margin-bottom:20px;">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-server" style="color:#00d9ff;"></i>
+          <h6 style="color:#c8d0de;margin:0;font-weight:600;">Selecionar Hosts — {{ cliente_selecionado.nome_empresa }}</h6>
+        </div>
+        <span id="contadorHosts" style="font-size:.78rem;color:#7a8599;font-style:italic;">Carregando hosts…</span>
+      </div>
+
+      <!-- Toolbar de filtro / ações -->
+      <div id="hostsToolbar" style="display:none;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <span style="font-size:.73rem;color:#7a8599;margin-right:4px;">Vendor:</span>
+        <button id="filtroTodos" onclick="filtrarHostsVendor('')"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(0,217,255,.4);background:rgba(0,217,255,.15);color:#00d9ff;">
+          Todos
+        </button>
+        <button onclick="filtrarHostsVendor('mikrotik')" data-vbtn="mikrotik"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(255,107,107,.3);background:transparent;color:#ff6b6b;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem;"></i>MikroTik
+        </button>
+        <button onclick="filtrarHostsVendor('huawei')" data-vbtn="huawei"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(255,68,136,.3);background:transparent;color:#ff4488;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem;"></i>Huawei
+        </button>
+        <button onclick="filtrarHostsVendor('cisco')" data-vbtn="cisco"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(30,143,255,.3);background:transparent;color:#1e8fff;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem;"></i>Cisco/IOS
+        </button>
+        <button onclick="filtrarHostsVendor('linux')" data-vbtn="linux"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(0,200,100,.3);background:transparent;color:#00c864;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem;"></i>Linux/VM
+        </button>
+        <button onclick="filtrarHostsVendor('datacom')" data-vbtn="datacom"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(255,170,0,.3);background:transparent;color:#ffaa00;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem;"></i>Datacom
+        </button>
+        <button onclick="filtrarHostsVendor('huawei')" data-vbtn="huawei"
+          style="display:none"></button><!-- placeholder para outros vendors adicionados dinamicamente -->
+        <span style="width:1px;height:18px;background:rgba(255,255,255,.1);margin:0 4px;"></span>
+        <button onclick="selecionarTodosHosts(true)"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(255,255,255,.15);background:transparent;color:#c8d0de;">
+          <i class="fas fa-check-square me-1"></i>Todos
+        </button>
+        <button onclick="selecionarTodosHosts(false)"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(255,255,255,.15);background:transparent;color:#c8d0de;">
+          <i class="far fa-square me-1"></i>Nenhum
+        </button>
+        <button onclick="inverterSelecaoHosts()"
+          style="padding:3px 10px;border-radius:5px;font-size:.73rem;cursor:pointer;
+                 border:1px solid rgba(255,255,255,.15);background:transparent;color:#c8d0de;">
+          <i class="fas fa-exchange-alt me-1"></i>Inverter
+        </button>
+      </div>
+
+      <!-- Loading spinner -->
+      <div id="hostsLoading" style="text-align:center;padding:30px;color:#4a5570;">
+        <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;margin-bottom:8px;display:block;"></i>
+        <div style="font-size:.83rem;">Detectando vendors…</div>
+      </div>
+
+      <!-- Sem hosts -->
+      <div id="hostsSemHosts" style="display:none;text-align:center;padding:24px;color:#4a5570;">
+        <i class="fas fa-exclamation-circle" style="font-size:1.5rem;margin-bottom:8px;display:block;color:#ffaa00;opacity:.5;"></i>
+        <div style="font-size:.85rem;">Nenhum acesso SSH cadastrado para este cliente.</div>
+      </div>
+
+      <!-- Tabela de hosts -->
+      <div id="hostsTabela" style="display:none;overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,.06);">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+          <thead>
+            <tr style="background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07);">
+              <th style="padding:8px 12px;text-align:center;width:40px;">
+                <input type="checkbox" id="cbTodosHosts" onchange="toggleTodosHosts(this)"
+                       style="width:15px;height:15px;cursor:pointer;accent-color:#00d9ff;">
+              </th>
+              <th style="padding:8px 12px;text-align:left;color:#7a8599;font-weight:600;letter-spacing:.03em;">Equipamento / Tipo</th>
+              <th style="padding:8px 12px;text-align:left;color:#7a8599;font-weight:600;letter-spacing:.03em;">Host : Porta</th>
+              <th style="padding:8px 12px;text-align:left;color:#7a8599;font-weight:600;letter-spacing:.03em;">Usuário Atual</th>
+              <th style="padding:8px 12px;text-align:left;color:#7a8599;font-weight:600;letter-spacing:.03em;">Vendor</th>
+              <th style="padding:8px 12px;text-align:left;color:#7a8599;font-weight:600;letter-spacing:.03em;">Função</th>
+            </tr>
+          </thead>
+          <tbody id="hostsTbody">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Seleção counter (abaixo da tabela) -->
+      <div id="selecaoInfo" style="display:none;margin-top:10px;padding:8px 14px;border-radius:7px;
+                background:rgba(0,217,255,.07);border:1px solid rgba(0,217,255,.15);
+                font-size:.8rem;color:#00d9ff;">
+        <i class="fas fa-check-circle me-2"></i>
+        <span id="selecaoTexto">0 hosts selecionados</span>
+      </div>
+    </div>
+
+    <!-- ── Formulário novo job ─────────────────────────────────────────────── -->
+    <div id="painelNovoJob" style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;margin-bottom:20px;">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="fas fa-play-circle" style="color:#ff6b6b;"></i>
+        <h6 style="color:#c8d0de;margin:0;font-weight:600;">Novo Job — {{ cliente_selecionado.nome_empresa }}</h6>
+      </div>
+
+      <div id="avisoJob" style="background:rgba(255,170,0,.07);border:1px solid rgba(255,170,0,.2);border-radius:8px;
+                  padding:10px 14px;font-size:.82rem;color:#ffaa00;margin-bottom:16px;">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Atenção:</strong> Selecione os hosts acima e defina as novas credenciais.
+        As credenciais antigas ficam salvas para remoção posterior.
+      </div>
+
+      <form id="formNovoJob">
+        {% csrf_token %}
+        <input type="hidden" name="cliente_id" value="{{ cliente_selecionado.id }}">
+        <div id="hostsHiddenInputs"></div><!-- preenchido pelo JS com acesso_ids[] -->
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label style="color:#7a8599;font-size:.78rem;display:block;margin-bottom:5px;">
+              <i class="fas fa-user me-1"></i> Novo Usuário
+            </label>
+            <input type="text" name="novo_usuario" id="novo_usuario" class="tsm-input"
+                   placeholder="ex: noc_admin" required autocomplete="off">
+          </div>
+          <div class="col-md-5">
+            <label style="color:#7a8599;font-size:.78rem;display:block;margin-bottom:5px;">
+              <i class="fas fa-lock me-1"></i> Nova Senha
+            </label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" name="nova_senha" id="nova_senha" class="tsm-input"
+                     value="{{ senha_sugerida }}" required autocomplete="new-password"
+                     style="font-family:monospace;letter-spacing:.04em;">
+              <button type="button" onclick="_gerarSenhaMassa()"
+                      style="flex-shrink:0;padding:8px 12px;border-radius:7px;border:1px solid rgba(0,217,255,.3);
+                             background:rgba(0,217,255,.1);color:#00d9ff;cursor:pointer;"
+                      title="Gerar senha aleatória">
+                <i class="fas fa-dice"></i>
+              </button>
+              <button type="button" onclick="_copiarSenha()" id="btnCopiar"
+                      style="flex-shrink:0;padding:8px 12px;border-radius:7px;border:1px solid rgba(0,200,100,.3);
+                             background:rgba(0,200,100,.08);color:#00c864;cursor:pointer;"
+                      title="Copiar senha">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" id="btnIniciarJob"
+                    style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,100,100,.4);
+                           background:rgba(255,60,60,.15);color:#ff8080;font-size:.875rem;cursor:pointer;
+                           font-weight:500;transition:all .15s;">
+              <i class="fas fa-rocket me-2"></i>Iniciar Job
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Histórico de jobs do cliente ──────────────────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;">
+      <h6 style="color:#c8d0de;font-weight:600;margin-bottom:16px;">
+        <i class="fas fa-history me-2" style="color:#ffaa00;"></i>Histórico — {{ cliente_selecionado.nome_empresa }}
+      </h6>
+
+      {% if jobs %}
+      {% for job in jobs %}
+      <div class="job-row" id="jobCard{{ job.id }}">
+        <!-- Header do job -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-3">
+            <span id="jobBadge{{ job.id }}" style="font-size:.72rem;font-weight:600;padding:3px 10px;border-radius:5px;
+              {% if job.status == 'CONCLUIDO' %}background:rgba(0,200,100,.15);color:#00c864;
+              {% elif job.status == 'EM_ANDAMENTO' %}background:rgba(0,217,255,.15);color:#00d9ff;
+              {% elif job.status == 'ERRO' %}background:rgba(255,100,100,.15);color:#ff6b6b;
+              {% else %}background:rgba(150,150,150,.15);color:#aaa;{% endif %}">
+              {{ job.get_status_display }}
+            </span>
+            <div>
+              <span style="color:#e0e6f0;font-size:.87rem;">
+                Job <span style="color:#7a8599;">#{{ job.id }}</span>
+                &nbsp;·&nbsp;
+                <span style="font-family:monospace;color:#b060ff;">{{ job.novo_usuario }}</span>
+              </span>
+              <div id="jobResumo{{ job.id }}" style="font-size:.75rem;color:#7a8599;margin-top:1px;">
+                {% if job.total_acessos %}
+                  <span style="color:#00c864;">✓ {{ job.total_sucesso }}</span>
+                  {% if job.total_erro %} &nbsp;<span style="color:#ff6b6b;">✗ {{ job.total_erro }}</span>{% endif %}
+                  &nbsp;de {{ job.total_acessos }} hosts
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span style="color:#4a5570;font-size:.75rem;">{{ job.criado_em|date:"d/m/Y H:i" }}</span>
+            {% if job.status == 'CONCLUIDO' %}
+            <button onclick="removerAntigos({{ job.id }})"
+                    style="padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;
+                           border:1px solid rgba(255,170,0,.3);background:rgba(255,170,0,.1);color:#ffaa00;">
+              <i class="fas fa-user-slash me-1"></i>Remover Antigos
+            </button>
+            {% endif %}
+            <button onclick="toggleDetalhes({{ job.id }})" id="btnDet{{ job.id }}"
+                    style="padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;
+                           border:1px solid rgba(255,255,255,.1);background:transparent;color:#7a8599;">
+              <i class="fas fa-list-ul me-1"></i>Detalhes
+            </button>
+            {% if job.status == 'EM_ANDAMENTO' or job.status == 'PENDENTE' %}
+            <button onclick="atualizarJob({{ job.id }})"
+                    style="padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;
+                           border:1px solid rgba(0,217,255,.3);background:rgba(0,217,255,.08);color:#00d9ff;">
+              <i class="fas fa-sync-alt me-1"></i>Atualizar
+            </button>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div id="jobProgress{{ job.id }}" class="pbar mt-2" {% if job.status != 'EM_ANDAMENTO' %}style="display:none;"{% endif %}>
+          {% if job.total_acessos %}
+          <div class="pbar-fill" id="jobBar{{ job.id }}"
+               style="width:{% widthratio job.total_sucesso|add:job.total_erro job.total_acessos 100 %}%;"></div>
+          {% else %}
+          <div class="pbar-fill" id="jobBar{{ job.id }}" style="width:0%;"></div>
+          {% endif %}
+        </div>
+
+        <!-- Tabela de itens (colapsável) -->
+        <div id="jobDetalhes{{ job.id }}" style="display:none;margin-top:12px;">
+          <div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,.06);">
+            <table class="det-table">
+              <thead>
+                <tr>
+                  <th>Host</th>
+                  <th>Equipamento</th>
+                  <th>Vendor</th>
+                  <th>Status</th>
+                  <th>Usuário Antigo</th>
+                  <th>Removido</th>
+                  <th>Duração</th>
+                  <th>Mensagem</th>
+                </tr>
+              </thead>
+              <tbody id="jobTbody{{ job.id }}">
+                {% for item in job.itens.all %}
+                <tr>
+                  <td style="font-family:monospace;color:#00d9ff;">{{ item.acesso.host|default:"—" }}</td>
+                  <td>{{ item.acesso.tipo|default:"(removido)" }}</td>
+                  <td><span id="vendorBadge_s_{{ item.id }}">—</span></td>
+                  <td>
+                    {% if item.status == 'SUCESSO' %}
+                      <span style="color:#00c864;font-weight:600;">✓</span>
+                    {% elif item.status == 'ERRO' %}
+                      <span style="color:#ff6b6b;font-weight:600;">✗</span>
+                    {% else %}
+                      <span style="color:#888;">•</span>
+                    {% endif %}
+                  </td>
+                  <td style="font-family:monospace;color:#b060ff;">{{ item.usuario_antigo }}</td>
+                  <td>
+                    {% if item.usuario_removido %}
+                      <span style="color:#00c864;font-size:.75rem;">✓ Removido</span>
+                    {% else %}
+                      <span style="color:#4a5570;font-size:.75rem;">—</span>
+                    {% endif %}
+                  </td>
+                  <td style="color:#7a8599;">
+                    {% if item.duracao_segundos %}{{ item.duracao_segundos|floatformat:1 }}s{% else %}—{% endif %}
+                  </td>
+                  <td style="max-width:280px;word-break:break-word;font-size:.72rem;color:#9aa3b5;">
+                    {{ item.mensagem|truncatechars:100 }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% else %}
+      <div style="text-align:center;padding:32px;color:#4a5570;">
+        <i class="fas fa-folder-open" style="font-size:2rem;opacity:.3;display:block;margin-bottom:10px;"></i>
+        <div style="font-size:.88rem;">Nenhum job executado para este cliente ainda.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% else %}
+    <!-- Nenhum cliente selecionado -->
+    <div style="text-align:center;padding:60px 20px;color:#4a5570;">
+      <i class="fas fa-hand-pointer" style="font-size:3rem;opacity:.25;display:block;margin-bottom:16px;"></i>
+      <div style="font-size:1rem;color:#7a8599;">Selecione um cliente acima para iniciar um job.</div>
+    </div>
+    {% endif %}
+
+  </div><!-- /#tabExecutar -->
+</div><!-- /container -->
+
+<script>
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+const CLIENTE_ID = '{{ cliente_selecionado.id|default:"" }}';
+
+// ─── Vendor config ───────────────────────────────────────────────────────────
+const VENDOR_CFG = {
+  mikrotik:    { label: 'MikroTik',   color: '#ff6b6b', bg: 'rgba(255,107,107,.12)' },
+  huawei:      { label: 'Huawei VRP', color: '#ff4488', bg: 'rgba(255,68,136,.12)'  },
+  cisco:       { label: 'Cisco/IOS',  color: '#1e8fff', bg: 'rgba(30,143,255,.12)'  },
+  linux:       { label: 'Linux/VM',   color: '#00c864', bg: 'rgba(0,200,100,.12)'   },
+  datacom:     { label: 'Datacom',    color: '#ffaa00', bg: 'rgba(255,170,0,.12)'   },
+  juniper:     { label: 'Juniper',    color: '#84c441', bg: 'rgba(132,196,65,.12)'  },
+  desconhecido:{ label: '?',          color: '#7a8599', bg: 'rgba(122,133,153,.12)' },
+};
+function vendorBadge(v) {
+  const c = VENDOR_CFG[v] || VENDOR_CFG.desconhecido;
+  return `<span style="font-size:.68rem;font-weight:600;padding:2px 7px;border-radius:4px;
+    background:${c.bg};color:${c.color};">${c.label}</span>`;
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+    document.getElementById('tabDash').style.display     = tab === 'dash'     ? '' : 'none';
+    document.getElementById('tabExecutar').style.display = tab === 'executar' ? '' : 'none';
+    document.getElementById('tabBtnDash').classList.toggle('active',  tab === 'dash');
+    document.getElementById('tabBtnExec').classList.toggle('active',  tab === 'executar');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tab = new URLSearchParams(location.search).get('tab');
+    {% if cliente_selecionado %}
+    showTab('executar');
+    carregarHosts({{ cliente_selecionado.id }});
+    {% else %}
+    if (tab === 'executar') showTab('executar');
+    {% endif %}
+
+    document.querySelectorAll('[id^="jobCard"]').forEach(card => {
+        const id = card.id.replace('jobCard','');
+        const badge = document.getElementById('jobBadge' + id);
+        if (badge && (badge.textContent.includes('Andamento') || badge.textContent.includes('Pendente'))) {
+            setTimeout(() => atualizarJob(parseInt(id)), 3000);
+        }
+    });
+});
+
+// ─── Filtrar painel ao clicar nos KPIs grandes ───────────────────────────────
+function filtrarPainel(qual) {
+    switchCliTab(qual);
+    const p = document.getElementById('painelClientes');
+    if (p) p.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function switchCliTab(qual) {
+    const isProc = qual === 'processados';
+    document.getElementById('listaProcessados').style.display = isProc ? '' : 'none';
+    document.getElementById('listaPendentes').style.display   = isProc ? 'none' : '';
+
+    const btnProc = document.getElementById('tabCliProcBtn');
+    const btnPend = document.getElementById('tabCliPendBtn');
+    const label   = document.getElementById('painelCliLabel');
+
+    btnProc.style.background  = isProc ? 'rgba(0,217,255,.15)'  : 'transparent';
+    btnProc.style.color       = isProc ? '#00d9ff'              : '#7a8599';
+    btnProc.style.borderColor = isProc ? 'rgba(0,217,255,.35)'  : 'rgba(255,255,255,.1)';
+
+    btnPend.style.background  = isProc ? 'transparent'              : 'rgba(255,170,0,.15)';
+    btnPend.style.color       = isProc ? '#7a8599'                  : '#ffaa00';
+    btnPend.style.borderColor = isProc ? 'rgba(255,255,255,.1)'     : 'rgba(255,170,0,.35)';
+
+    const kpiProc = document.getElementById('kpiProcessados');
+    const kpiPend = document.getElementById('kpiPendentes');
+    if (kpiProc) kpiProc.style.boxShadow = isProc ? '0 0 0 2px rgba(0,217,255,.5)' : '';
+    if (kpiPend) kpiPend.style.boxShadow = isProc ? '' : '0 0 0 2px rgba(255,170,0,.5)';
+
+    if (label) {
+        label.textContent = isProc
+            ? '{{ clientes_c_jobs }} de {{ clientes|length }} clientes'
+            : '{{ clientes_s_jobs }} de {{ clientes|length }} clientes';
+    }
+}
+
+function selecionarClienteDash(clienteId) {
+    const url = new URL(location.href);
+    url.searchParams.set('cliente_id', clienteId);
+    url.searchParams.set('tab', 'executar');
+    location.href = url.toString();
+}
+
+// ─── Gerar/copiar senha ───────────────────────────────────────────────────────
+function _gerarSenhaMassa() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    document.getElementById('nova_senha').value = Array.from(arr).map(b => chars[b % chars.length]).join('');
+}
+
+function _copiarSenha() {
+    const val = document.getElementById('nova_senha').value;
+    navigator.clipboard.writeText(val).catch(() => {
+        const el = document.getElementById('nova_senha'); el.select(); document.execCommand('copy');
+    });
+    const btn = document.getElementById('btnCopiar');
+    btn.innerHTML = '<i class="fas fa-check"></i>'; btn.style.color = '#00c864';
+    setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; btn.style.color = ''; }, 1500);
+}
+
+// ─── Carregar hosts via AJAX ──────────────────────────────────────────────────
+let _hostsData = [];
+let _filtroVendorAtual = '';
+
+async function carregarHosts(clienteId) {
+    document.getElementById('hostsLoading').style.display = '';
+    document.getElementById('hostsTabela').style.display  = 'none';
+    document.getElementById('hostsSemHosts').style.display= 'none';
+    document.getElementById('hostsToolbar').style.display = 'none';
+    document.getElementById('selecaoInfo').style.display  = 'none';
+    document.getElementById('contadorHosts').textContent  = 'Carregando hosts…';
+
+    try {
+        const resp = await fetch(`/clientes/trocar-senhas/hosts/?cliente_id=${clienteId}`);
+        const data = await resp.json();
+        _hostsData = data.hosts || [];
+    } catch(e) {
+        _hostsData = [];
+    }
+
+    document.getElementById('hostsLoading').style.display = 'none';
+
+    if (_hostsData.length === 0) {
+        document.getElementById('hostsSemHosts').style.display = '';
+        document.getElementById('contadorHosts').textContent = 'Nenhum host SSH';
+        return;
+    }
+
+    _renderizarTabela();
+    document.getElementById('hostsTabela').style.display  = '';
+    document.getElementById('hostsToolbar').style.display = 'flex';
+    selecionarTodosHosts(true);
+    atualizarContadorSelecao();
+}
+
+function _renderizarTabela() {
+    const tbody = document.getElementById('hostsTbody');
+    tbody.innerHTML = _hostsData.map(h => {
+        const cfg = VENDOR_CFG[h.vendor] || VENDOR_CFG.desconhecido;
+        return `<tr data-vendor="${h.vendor}" data-id="${h.id}"
+                    style="border-bottom:1px solid rgba(255,255,255,.04);
+                           transition:background .1s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.025)'"
+                    onmouseout="this.style.background=''">
+          <td style="padding:8px 12px;text-align:center;">
+            <input type="checkbox" class="host-cb" value="${h.id}"
+                   onchange="atualizarContadorSelecao()"
+                   style="width:15px;height:15px;cursor:pointer;accent-color:#00d9ff;">
+          </td>
+          <td style="padding:8px 12px;color:#e0e6f0;font-weight:500;">${_esc(h.tipo)}</td>
+          <td style="padding:8px 12px;font-family:monospace;color:#00d9ff;">${_esc(h.host)}:<span style="color:#7a8599;">${h.porta||22}</span></td>
+          <td style="padding:8px 12px;font-family:monospace;color:#b060ff;font-size:.8rem;">${_esc(h.usuario)}</td>
+          <td style="padding:8px 12px;">${vendorBadge(h.vendor)}</td>
+          <td style="padding:8px 12px;color:#7a8599;font-size:.78rem;">${_esc(h.funcao)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('contadorHosts').textContent = `${_hostsData.length} hosts SSH`;
+}
+
+function _esc(s) {
+    if (!s) return '—';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Filtrar por vendor ───────────────────────────────────────────────────────
+function filtrarHostsVendor(vendor) {
+    _filtroVendorAtual = vendor;
+    document.querySelectorAll('#hostsTbody tr').forEach(tr => {
+        tr.style.display = (!vendor || tr.dataset.vendor === vendor) ? '' : 'none';
+    });
+    // Atualiza botões ativos
+    document.querySelectorAll('[id="filtroTodos"],[data-vbtn]').forEach(btn => {
+        const isActive = btn.id === 'filtroTodos' ? !vendor : btn.dataset.vbtn === vendor;
+        const v = btn.dataset.vbtn;
+        const cfg = VENDOR_CFG[v] || null;
+        if (isActive) {
+            btn.style.background = cfg ? cfg.bg : 'rgba(0,217,255,.15)';
+            btn.style.color      = cfg ? cfg.color : '#00d9ff';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color      = cfg ? cfg.color : '#7a8599';
+        }
+    });
+    atualizarContadorSelecao();
+}
+
+// ─── Seleção ──────────────────────────────────────────────────────────────────
+function selecionarTodosHosts(marcar) {
+    document.querySelectorAll('#hostsTbody tr').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const cb = tr.querySelector('.host-cb');
+        if (cb) cb.checked = marcar;
+    });
+    const cbTodos = document.getElementById('cbTodosHosts');
+    if (cbTodos) cbTodos.checked = marcar;
+    atualizarContadorSelecao();
+}
+
+function inverterSelecaoHosts() {
+    document.querySelectorAll('#hostsTbody tr').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const cb = tr.querySelector('.host-cb');
+        if (cb) cb.checked = !cb.checked;
+    });
+    atualizarContadorSelecao();
+}
+
+function toggleTodosHosts(cb) {
+    selecionarTodosHosts(cb.checked);
+}
+
+function atualizarContadorSelecao() {
+    const total    = document.querySelectorAll('.host-cb').length;
+    const checked  = document.querySelectorAll('.host-cb:checked').length;
+    const info     = document.getElementById('selecaoInfo');
+    const texto    = document.getElementById('selecaoTexto');
+    const avisoJob = document.getElementById('avisoJob');
+
+    if (texto) texto.textContent = `${checked} de ${total} hosts selecionados`;
+    if (info)  info.style.display = total > 0 ? '' : 'none';
+
+    if (avisoJob) {
+        if (checked === 0) {
+            avisoJob.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>' +
+              '<strong>Selecione pelo menos um host</strong> na tabela acima para iniciar o job.';
+            avisoJob.style.borderColor = 'rgba(255,100,100,.25)';
+            avisoJob.style.background  = 'rgba(255,100,100,.07)';
+            avisoJob.style.color       = '#ff8080';
+        } else {
+            avisoJob.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>' +
+              `<strong>Atenção:</strong> ${checked} host${checked>1?'s':''} ser${checked>1?'ão':'á'} processado${checked>1?'s':''}. ` +
+              'As credenciais antigas ficam salvas para remoção posterior.';
+            avisoJob.style.borderColor = 'rgba(255,170,0,.2)';
+            avisoJob.style.background  = 'rgba(255,170,0,.07)';
+            avisoJob.style.color       = '#ffaa00';
+        }
+    }
+}
+
+// ─── Submit form ──────────────────────────────────────────────────────────────
+document.getElementById('formNovoJob')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    // Coleta IDs selecionados
+    const selecionados = Array.from(document.querySelectorAll('.host-cb:checked')).map(cb => cb.value);
+    if (selecionados.length === 0) {
+        alert('Selecione pelo menos um host na tabela acima.');
+        return;
+    }
+
+    const btn = document.getElementById('btnIniciarJob');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Iniciando…';
+
+    // Injeta os acesso_ids no form
+    const container = document.getElementById('hostsHiddenInputs');
+    container.innerHTML = selecionados.map(id =>
+        `<input type="hidden" name="acesso_ids[]" value="${id}">`
+    ).join('');
+
+    try {
+        const resp = await fetch("{% url 'trocar_senha_massa_iniciar' %}", {
+            method: 'POST', body: new FormData(this),
+            headers: {'X-CSRFToken': CSRF},
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            window.location.reload();
+        } else {
+            alert('Erro: ' + (data.erro || 'Desconhecido'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Job';
+        }
+    } catch (err) {
+        alert('Erro de comunicação: ' + err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Job';
+    }
+});
+
+// ─── Toggle detalhes ──────────────────────────────────────────────────────────
+function toggleDetalhes(jobId) {
+    const el = document.getElementById('jobDetalhes' + jobId);
+    if (!el) return;
+    const visible = el.style.display !== 'none';
+    el.style.display = visible ? 'none' : '';
+    const btn = document.getElementById('btnDet' + jobId);
+    if (btn) {
+        btn.style.color     = visible ? '#7a8599' : '#00d9ff';
+        btn.style.borderColor = visible ? 'rgba(255,255,255,.1)' : 'rgba(0,217,255,.3)';
+    }
+}
+
+// ─── Atualizar job ────────────────────────────────────────────────────────────
+async function atualizarJob(jobId) {
+    try {
+        const resp = await fetch(`/clientes/trocar-senhas/${jobId}/status/`);
+        const data = await resp.json();
+        if (data.error) return;
+
+        const badge = document.getElementById('jobBadge' + jobId);
+        if (badge) {
+            const m = {
+                CONCLUIDO:    ['rgba(0,200,100,.15)',    '#00c864', 'Concluído'],
+                EM_ANDAMENTO: ['rgba(0,217,255,.15)',    '#00d9ff', 'Em Andamento'],
+                ERRO:         ['rgba(255,100,100,.15)',  '#ff6b6b', 'Erro'],
+                PENDENTE:     ['rgba(150,150,150,.15)',  '#aaa',    'Pendente'],
+            };
+            const [bg, col, lbl] = m[data.status] || m.PENDENTE;
+            badge.style.background = bg; badge.style.color = col;
+            badge.textContent = lbl;
+        }
+
+        const resumo = document.getElementById('jobResumo' + jobId);
+        if (resumo && data.total_acessos) {
+            resumo.innerHTML = `<span style="color:#00c864;">✓ ${data.total_sucesso}</span>` +
+                (data.total_erro ? ` &nbsp;<span style="color:#ff6b6b;">✗ ${data.total_erro}</span>` : '') +
+                ` &nbsp;de ${data.total_acessos} hosts`;
+        }
+
+        const bar = document.getElementById('jobBar' + jobId);
+        if (bar && data.total_acessos > 0) {
+            bar.style.width = Math.round(((data.total_sucesso + data.total_erro) / data.total_acessos) * 100) + '%';
+        }
+        const prog = document.getElementById('jobProgress' + jobId);
+        if (prog) prog.style.display = data.status === 'EM_ANDAMENTO' ? '' : 'none';
+
+        const tbody  = document.getElementById('jobTbody' + jobId);
+        const detDiv = document.getElementById('jobDetalhes' + jobId);
+        if (tbody && detDiv && detDiv.style.display !== 'none') {
+            tbody.innerHTML = data.itens.map(it => `
+            <tr>
+              <td style="font-family:monospace;color:#00d9ff;">${it.acesso_host || '—'}</td>
+              <td>${it.acesso_tipo}</td>
+              <td>${vendorBadge(it.vendor || 'desconhecido')}</td>
+              <td>${it.status==='SUCESSO'?'<span style="color:#00c864;font-weight:600;">✓</span>':it.status==='ERRO'?'<span style="color:#ff6b6b;font-weight:600;">✗</span>':'<span style="color:#888;">•</span>'}</td>
+              <td style="font-family:monospace;color:#b060ff;">${it.usuario_antigo}</td>
+              <td>${it.usuario_removido?'<span style="color:#00c864;font-size:.75rem;">✓ Removido</span>':'<span style="color:#4a5570;font-size:.75rem;">—</span>'}</td>
+              <td style="color:#7a8599;">${it.duracao ? it.duracao.toFixed(1)+'s' : '—'}</td>
+              <td style="max-width:280px;word-break:break-word;font-size:.72rem;color:#9aa3b5;">${(it.mensagem||'').substring(0,100)}</td>
+            </tr>`).join('');
+        }
+
+        if (data.status === 'EM_ANDAMENTO' || data.status === 'PENDENTE') {
+            setTimeout(() => atualizarJob(jobId), 4000);
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ─── Remover antigos ──────────────────────────────────────────────────────────
+async function removerAntigos(jobId) {
+    if (!confirm('Confirma a remoção dos usuários antigos em todos os hosts concluídos com sucesso?\n\nEsta ação é irreversível.')) return;
+    try {
+        const resp = await fetch(`/clientes/trocar-senhas/${jobId}/remover-antigos/`, {
+            method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            alert('✓ Remoção iniciada em background. Atualize a página em alguns instantes.');
+        } else {
+            alert('Erro: ' + (data.erro || 'Desconhecido'));
+        }
+    } catch(e) { alert('Erro: ' + e); }
+}
+</script>
+{% endblock %}

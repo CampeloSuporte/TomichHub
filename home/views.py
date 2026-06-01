@@ -663,9 +663,12 @@ def geo_consulta(request):
     """Página principal da ferramenta de geolocalização de IPs/prefixos."""
     from clientes.models import ConfiguracaoSistema
     cfg = ConfiguracaoSistema.get()
+    from django.urls import reverse
+    geofeed_url = request.build_absolute_uri(reverse('geo_geofeed_csv'))
     return render(request, 'geo_consulta.html', {
         'prefixo_inicial': request.GET.get('prefixo', ''),
         'cfg': cfg,
+        'geofeed_url': geofeed_url,
     })
 
 
@@ -1151,6 +1154,51 @@ def geo_atualizar(request):
         'portais':  portais,
         'mensagem': f'Geofeed gerado. {len(enviados)} submissao(oes) realizada(s).',
     })
+
+
+# ── Geofeed público RFC 8805 ─────────────────────────────────────────────────
+
+def geo_geofeed_csv(request):
+    """Arquivo público Geofeed RFC 8805 — sem autenticação (referenciado no WHOIS)."""
+    from clientes.models import CorrecaoGeoIP
+    from django.http import HttpResponse
+    from datetime import date
+
+    hoje = date.today().isoformat()
+    base_url = request.build_absolute_uri('/').rstrip('/')
+
+    linhas = [
+        f'# Geofeed RFC 8805',
+        f'# Gerado em: {hoje}',
+        f'# {base_url}',
+        '# Prefix,Country,Region,City,Postal-Code',
+        '',
+    ]
+
+    seen = set()
+    for reg in CorrecaoGeoIP.objects.order_by('prefixo', '-data_envio'):
+        if reg.prefixo in seen:
+            continue
+        seen.add(reg.prefixo)
+
+        regiao_iso = ''
+        if reg.pais and reg.regiao:
+            r = reg.regiao.strip()
+            if len(r) <= 3 and '-' not in r:
+                regiao_iso = f'{reg.pais}-{r.upper()}'
+            elif r.upper().startswith(reg.pais.upper() + '-'):
+                regiao_iso = r.upper()
+            else:
+                regiao_iso = r
+
+        linhas.append(f'{reg.prefixo},{reg.pais},{regiao_iso},{reg.cidade},')
+
+    content = '\n'.join(linhas) + '\n'
+    resp = HttpResponse(content, content_type='text/csv; charset=utf-8')
+    resp['Content-Disposition'] = 'inline; filename="geofeed.csv"'
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp['X-Content-Type-Options'] = 'nosniff'
+    return resp
 
 
 # ── Histórico de correções ────────────────────────────────────────────────────
@@ -1795,6 +1843,102 @@ def agent_config(request):
 
 @login_required(login_url='login')
 @admin_required
+def agent_token_stats(request):
+    """Retorna estatísticas de uso de tokens por provedor e período."""
+    from django.utils import timezone
+    periodo = request.GET.get('periodo', '7d')
+
+    agora = timezone.now()
+    if periodo == '24h':
+        desde = agora - timedelta(hours=24)
+    elif periodo == '30d':
+        desde = agora - timedelta(days=30)
+    elif periodo == 'all':
+        desde = None
+    else:  # 7d default
+        desde = agora - timedelta(days=7)
+
+    cfg = AgentConfig.get()
+    qs = AgentLog.objects.filter(tipo='agent_msg')
+    if desde:
+        qs = qs.filter(criado_em__gte=desde)
+
+    totais = qs.aggregate(
+        total_input=Sum('tokens_input'),
+        total_output=Sum('tokens_output'),
+        total_msgs=Count('id'),
+    )
+    tin  = totais['total_input']  or 0
+    tout = totais['total_output'] or 0
+    msgs = totais['total_msgs']   or 0
+
+    # Custo estimado (preços aproximados por 1M tokens)
+    provedor = cfg.provedor_ia
+    if provedor == 'claude':
+        modelo = cfg.claude_model
+        # Preços claude-sonnet-4-6: $3/$15 por 1M
+        if 'opus' in modelo:
+            custo_in, custo_out = 15.0, 75.0
+        elif 'haiku' in modelo:
+            custo_in, custo_out = 0.80, 4.0
+        else:  # sonnet
+            custo_in, custo_out = 3.0, 15.0
+    else:
+        modelo = cfg.openai_model
+        # Preços gpt-4o: $2.50/$10 por 1M
+        if 'mini' in modelo:
+            custo_in, custo_out = 0.15, 0.60
+        elif 'turbo' in modelo:
+            custo_in, custo_out = 10.0, 30.0
+        else:  # gpt-4o
+            custo_in, custo_out = 2.50, 10.0
+
+    custo_usd = (tin * custo_in + tout * custo_out) / 1_000_000
+
+    # Cotação USD→BRL via AwesomeAPI (fallback para taxa fixa)
+    taxa_brl = 5.85
+    try:
+        import urllib.request, json as _json
+        with urllib.request.urlopen('https://economia.awesomeapi.com.br/json/last/USD-BRL', timeout=3) as resp:
+            taxa_brl = float(_json.loads(resp.read())['USDBRL']['bid'])
+    except Exception:
+        pass
+
+    custo_brl = custo_usd * taxa_brl
+
+    # Histórico diário (últimos 14 dias para o gráfico)
+    desde_graf = agora - timedelta(days=13)
+    from django.db.models.functions import TruncDate
+    por_dia = (
+        AgentLog.objects
+        .filter(tipo='agent_msg', criado_em__gte=desde_graf)
+        .annotate(dia=TruncDate('criado_em'))
+        .values('dia')
+        .annotate(inp=Sum('tokens_input'), out=Sum('tokens_output'), msgs=Count('id'))
+        .order_by('dia')
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'periodo': periodo,
+        'provedor': provedor,
+        'modelo': modelo,
+        'tokens_input':  tin,
+        'tokens_output': tout,
+        'total_tokens':  tin + tout,
+        'total_msgs':    msgs,
+        'custo_usd':     round(custo_usd, 4),
+        'custo_brl':     round(custo_brl, 4),
+        'taxa_brl':      round(taxa_brl, 2),
+        'por_dia': [
+            {'dia': str(r['dia']), 'input': r['inp'] or 0, 'output': r['out'] or 0, 'msgs': r['msgs']}
+            for r in por_dia
+        ],
+    })
+
+
+@login_required(login_url='login')
+@admin_required
 @require_http_methods(['POST'])
 def agent_testar_claude(request):
     """Testa a conexão com a API Claude enviando uma mensagem simples."""
@@ -1908,7 +2052,7 @@ def agent_sync_grupos(request):
                 f'{cfg.url}{path}',
                 headers={'apikey': cfg.api_key},
             )
-            with urllib.request.urlopen(req, timeout=15, context=ctx) as r:
+            with urllib.request.urlopen(req, timeout=60, context=ctx) as r:
                 return json.loads(r.read())
 
         # Busca grupos
@@ -2261,8 +2405,18 @@ def _transcrever_audio_wa(evo_cfg, wa_data: dict, agent_config) -> str:
         client = openai_lib.OpenAI(api_key=openai_key)
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = f'audio.{ext}'
+        # Prompt de contexto: nomes próprios e termos de rede ajudam o Whisper
+        # a não fragmentar palavras como "Natividade", "Almas", "switch", etc.
+        whisper_prompt = (
+            "NOC, switch, roteador, interface, porta, VLAN, BGP, OSPF, uplink, "
+            "Natividade, Almas, Ponte Alta, SVA, NDD, OLT, ONT, fibra, "
+            "ativar, desativar, shutdown, undo shutdown, display, ping, "
+            "XGigabitEthernet, GigabitEthernet, Ethernet, loopback, "
+            "acesso, cliente, prefixo, IP, rota, tráfego."
+        )
         transcript = client.audio.transcriptions.create(
-            model='whisper-1', file=audio_file, language='pt'
+            model='whisper-1', file=audio_file, language='pt',
+            prompt=whisper_prompt,
         )
         texto = (transcript.text or '').strip()
         logger.warning(f"🎙️ Transcrição: {texto!r}")
@@ -2274,8 +2428,9 @@ def _transcrever_audio_wa(evo_cfg, wa_data: dict, agent_config) -> str:
 
 # Apelidos que o Whisper usa para "noc" / "agente noc"
 _NOC_ALIASES = [
-    'noc', 'nokia', 'noque', 'nok', 'knock', 'nóc', 'nc',
+    '@noc', 'noc', 'nokia', 'noque', 'nok', 'knock', 'nóc', 'nc',
     'agente', 'agente noc', 'gente',
+    'arroba noc', 'at noc', 'a noc', 'você noc', 'voce noc',
 ]
 
 
@@ -2358,7 +2513,7 @@ def _processar_wa_webhook(payload: dict):
                 mensagem_agent = _re.sub(r'^[,\.\s]+', '', mensagem_agent)
                 break
         if mensagem_agent is None:
-            logger.debug(f"Áudio transcrito sem prefixo NOC: {transcricao!r}")
+            logger.warning(f"🎙️ Áudio transcrito sem prefixo NOC: {transcricao!r}")
             return
         if not mensagem_agent:
             mensagem_agent = "Olá! Como posso ajudar?"
@@ -2367,13 +2522,38 @@ def _processar_wa_webhook(payload: dict):
         if not texto:
             return
 
-        # Verificar prefixo de invocação
+        # Prefixos válidos: @noc (configurado) + @<número do bot> (menção WA)
         texto_lower = texto.lower()
-        if not texto_lower.startswith(prefixo):
+        numero_bot  = (config.wa_noc_numero or '').strip().lstrip('+').replace(' ', '')
+        prefixos_validos = [prefixo]
+        if numero_bot:
+            prefixos_validos.append(f'@{numero_bot}')
+
+        match_prefixo = None
+        for p in prefixos_validos:
+            if texto_lower.startswith(p):
+                match_prefixo = p
+                break
+
+        # Fallback: menção via contextInfo (WhatsApp nativo envia JID em mentionedJid)
+        if match_prefixo is None and numero_bot:
+            ctx = (
+                (message.get('extendedTextMessage') or {}).get('contextInfo')
+                or message.get('contextInfo')
+                or {}
+            )
+            mentioned = ctx.get('mentionedJid') or []
+            if f'{numero_bot}@s.whatsapp.net' in mentioned:
+                # Remove a menção do início do texto se presente
+                match_prefixo = next(
+                    (p for p in prefixos_validos if texto_lower.startswith(p)), ''
+                )
+
+        if match_prefixo is None:
             return  # Mensagem não direcionada ao agent
 
-        # Remover prefixo e trim
-        mensagem_agent = texto[len(prefixo):].strip()
+        logger.warning(f"📨 WA prefixo match={match_prefixo!r}")
+        mensagem_agent = texto[len(match_prefixo):].strip()
         if not mensagem_agent:
             mensagem_agent = "Olá! Como posso ajudar?"
 

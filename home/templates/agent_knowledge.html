@@ -119,13 +119,17 @@
               <td class="text-muted small">{{ artigo.cliente.nome_empresa|default:"Global" }}</td>
               <td class="text-center"><span class="badge bg-dark border border-secondary">{{ artigo.uso_count }}</span></td>
               <td class="text-muted small">{{ artigo.atualizado_em|date:"d/m/y H:i" }}</td>
-              <td class="text-center">
-                <button class="btn btn-outline-info btn-sm py-0 px-1 me-1" title="Editar" onclick="editarArtigo({{ artigo.id }})">
-                  <i class="bi bi-pencil-fill" style="font-size:.75rem"></i>
+              <td class="text-center" style="white-space:nowrap">
+                <button class="btn btn-info btn-sm me-1"
+                        style="min-width:32px;min-height:28px;padding:3px 8px;font-size:.85rem"
+                        title="Editar" onclick="editarArtigo({{ artigo.id }})">
+                  <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Deletar"
+                <button class="btn btn-danger btn-sm"
+                        style="min-width:32px;min-height:28px;padding:3px 8px;font-size:.85rem"
+                        title="Deletar"
                         onclick="confirmarDeletar({{ artigo.id }}, '{{ artigo.titulo|escapejs }}', 'artigo')">
-                  <i class="bi bi-trash-fill" style="font-size:.75rem"></i>
+                  <i class="fas fa-trash"></i>
                 </button>
               </td>
             </tr>

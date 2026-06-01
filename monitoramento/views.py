@@ -15,7 +15,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
-from .models import MonitorLink, MonitorNode, MonitorTopology, ZabbixConfig
+from .models import MonitorDashConfig, MonitorLink, MonitorNode, MonitorTopology, ZabbixConfig
 from . import services
 
 # Import do ProxyServer do app clientes
@@ -655,3 +655,37 @@ def listar_itens_zabbix(request):
         return JsonResponse({'error': str(e)}, status=500)
     finally:
         _fechar_tunel(tunel)
+
+# ──────────────────────────────────────────────────────────────
+# DASHBOARD DE GRÁFICOS — persistência no banco por cliente
+# ──────────────────────────────────────────────────────────────
+
+@login_required
+@require_http_methods(['GET'])
+def carregar_dash_config(request):
+    cliente_id = request.GET.get('id') or request.GET.get('cliente_id')
+    if not _pode_acessar_cliente(request, cliente_id):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        cfg = MonitorDashConfig.objects.get(cliente_id=cliente_id)
+        return JsonResponse({'charts': cfg.dados})
+    except MonitorDashConfig.DoesNotExist:
+        return JsonResponse({'charts': []})
+
+
+@login_required
+@require_http_methods(['POST'])
+def salvar_dash_config(request):
+    try:
+        body = json.loads(request.body)
+        cliente_id = body.get('cliente_id')
+        charts = body.get('charts', [])
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    if not _pode_acessar_cliente(request, cliente_id):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    MonitorDashConfig.objects.update_or_create(
+        cliente_id=cliente_id,
+        defaults={'dados': charts},
+    )
+    return JsonResponse({'success': True})

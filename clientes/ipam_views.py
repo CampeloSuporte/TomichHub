@@ -6,6 +6,8 @@ import io
 import ipaddress
 import json
 import logging
+import os
+import re
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
@@ -444,6 +446,12 @@ def ipam_subredes_listar(request, cliente_id):
         total = s.total_hosts()
         used  = s.usados()
         pct   = round(used / total * 100, 1) if total else 0
+        # Hostnames distintos dos IPs nesta sub-rede (apenas os preenchidos)
+        hostnames = list(
+            s.ips.exclude(hostname='')
+             .values_list('hostname', flat=True)
+             .distinct()[:5]
+        )
         data.append({
             'id': s.id, 'rede': s.rede, 'gateway': s.gateway,
             'descricao': s.descricao, 'local': s.local, 'status': s.status,
@@ -452,6 +460,8 @@ def ipam_subredes_listar(request, cliente_id):
             'vlan_id':    s.vlan_id,
             'vlan':       str(s.vlan) if s.vlan else '',
             'total_hosts': total, 'usados': used, 'utilizacao_pct': pct,
+            'pool_cheia': s.pool_cheia,
+            'hostnames':  hostnames,
         })
     data.sort(key=lambda x: (ipaddress.ip_network(x['rede'], strict=False).version,
                               ipaddress.ip_network(x['rede'], strict=False)))
@@ -493,6 +503,16 @@ def ipam_subrede_deletar(request, subrede_id):
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
     obj.delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def ipam_subrede_pool_cheia(request, subrede_id):
+    """Alterna o flag pool_cheia da sub-rede."""
+    obj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    obj.pool_cheia = not obj.pool_cheia
+    obj.save(update_fields=['pool_cheia'])
+    return JsonResponse({'ok': True, 'pool_cheia': obj.pool_cheia})
 
 
 @login_required
@@ -838,3 +858,1099 @@ def _importar_ips(cliente, reader, headers):
             erros.append(f'Linha {i}: {e}')
 
     return criados, erros
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Análise automática de backups → documentação IPAM
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _detect_vendor(content):
+    """Detecta o fabricante pelo conteúdo do backup."""
+    if '/ip address add' in content or '/interface vlan add' in content:
+        return 'mikrotik'
+    if 'vlan-type dot1q' in content or (
+        re.search(r'^interface \S', content, re.MULTILINE) and
+        re.search(r'^\s+ip address \d', content, re.MULTILINE)
+    ):
+        return 'huawei'
+    return 'generic'
+
+
+def _parse_mikrotik(content):
+    """
+    Parseia backup MikroTik.
+    Extrai VLANs de  /interface vlan add ... vlan-id=NN name="..."
+    Extrai IPs de    /ip address add address=X/XX comment="DESC" interface="..."
+    """
+    vlans = {}
+    ips   = []
+
+    for m in re.finditer(r'/interface vlan add\b[^\n]+', content, re.IGNORECASE):
+        line = m.group(0)
+        vid  = re.search(r'vlan-id=(\d+)', line)
+        if not vid:
+            continue
+        vlan_id = int(vid.group(1))
+        nm = re.search(r'name="([^"]+)"', line)
+        nome = nm.group(1) if nm else f'VLAN {vlan_id}'
+        vlans.setdefault(vlan_id, nome)
+
+    for m in re.finditer(r'/ip address add\b[^\n]+', content, re.IGNORECASE):
+        line    = m.group(0)
+        ip_m    = re.search(r'\baddress=([\d./]+)', line)
+        if not ip_m:
+            continue
+        ip_cidr = ip_m.group(1)
+        cm      = re.search(r'comment="([^"]+)"', line)
+        desc    = cm.group(1) if cm else ''
+        ifm     = re.search(r'interface="([^"]+)"', line)
+        iface   = ifm.group(1) if ifm else ''
+        vlan_num = None
+        vm = re.search(r'[Vv][Ll][Aa][Nn][-_]?(\d+)', iface)
+        if vm:
+            vlan_num = int(vm.group(1))
+        ips.append((ip_cidr, desc, vlan_num))
+
+    return {
+        'vlans': [{'numero': n, 'nome': v} for n, v in vlans.items()],
+        'ips': ips,
+    }
+
+
+def _parse_huawei(content):
+    """
+    Parseia backup Huawei VRP.
+    Blocos de interface: description, ip address X.X.X.X MASK, vlan-type dot1q NN
+    """
+    vlans = {}
+    ips   = []
+
+    blocks = re.split(r'\n(?=interface )', content)
+
+    for block in blocks:
+        lines = block.splitlines()
+        if not lines or not lines[0].startswith('interface'):
+            continue
+
+        iface_name = lines[0][len('interface'):].strip()
+        desc       = ''
+        ip_cidr    = None
+        vlan_num   = None
+
+        for line in lines[1:]:
+            ls = line.strip()
+            if not ls or ls == '#':
+                continue
+            if ls.startswith('interface '):
+                break
+
+            m = re.match(r'description\s+(.+)', ls, re.IGNORECASE)
+            if m:
+                desc = m.group(1).strip()
+
+            m = re.match(r'ip address\s+([\d.]+)\s+([\d.]+)', ls, re.IGNORECASE)
+            if m:
+                try:
+                    net     = ipaddress.ip_network(f'{m.group(1)}/{m.group(2)}', strict=False)
+                    ip_cidr = f'{m.group(1)}/{net.prefixlen}'
+                except Exception:
+                    pass
+
+            m = re.match(r'vlan-type dot1q\s+(\d+)', ls, re.IGNORECASE)
+            if m:
+                vlan_num = int(m.group(1))
+                vlans.setdefault(vlan_num, f'VLAN {vlan_num}')
+
+        if ip_cidr:
+            ips.append((ip_cidr, desc or iface_name, vlan_num))
+
+    return {
+        'vlans': [{'numero': n, 'nome': v} for n, v in vlans.items()],
+        'ips': ips,
+    }
+
+
+def _parse_generic(content):
+    """
+    Parser genérico (Parks, Cisco IOS, etc.).
+    Procura blocos interface com ip address X/XX ou ip address X M.
+    """
+    vlans = {}
+    ips   = []
+
+    blocks = re.split(r'\n(?=interface\s)', content, flags=re.IGNORECASE)
+
+    for block in blocks:
+        lines = block.splitlines()
+        if not lines:
+            continue
+        first = lines[0].strip()
+        if not re.match(r'interface\s+\S', first, re.IGNORECASE):
+            continue
+
+        iface_name = re.sub(r'^interface\s+', '', first, flags=re.IGNORECASE).strip()
+        desc       = ''
+        ip_cidr    = None
+        vlan_num   = None
+
+        for line in lines[1:]:
+            ls = line.strip()
+            if not ls or ls in ('!', '#'):
+                break
+
+            m = re.match(r'description\s+(.+)', ls, re.IGNORECASE)
+            if m:
+                desc = m.group(1).strip()
+
+            m = re.match(r'ip(?:v4)? address\s+([\d]+\.[\d]+\.[\d]+\.[\d]+/\d+)', ls, re.IGNORECASE)
+            if m:
+                ip_cidr = m.group(1)
+
+            if not ip_cidr:
+                m = re.match(r'ip(?:v4)? address\s+([\d.]+)\s+([\d.]+)', ls, re.IGNORECASE)
+                if m:
+                    try:
+                        net     = ipaddress.ip_network(f'{m.group(1)}/{m.group(2)}', strict=False)
+                        ip_cidr = f'{m.group(1)}/{net.prefixlen}'
+                    except Exception:
+                        pass
+
+            m = re.search(r'dot1[qQ]\s+(\d+)', ls)
+            if m:
+                vlan_num = int(m.group(1))
+                vlans.setdefault(vlan_num, f'VLAN {vlan_num}')
+
+        if ip_cidr:
+            ips.append((ip_cidr, desc or iface_name, vlan_num))
+
+    return {
+        'vlans': [{'numero': n, 'nome': v} for n, v in vlans.items()],
+        'ips': ips,
+    }
+
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Contexto rico para o Agent NOC — interfaces + todos os protocolos
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _full_parse_huawei(content):
+    hostname = ''
+    m = re.search(r'^sysname\s+(\S+)', content, re.MULTILINE)
+    if m:
+        hostname = m.group(1)
+    interfaces = []
+    for block in re.split(r'\n(?=interface )', content):
+        lines = block.splitlines()
+        if not lines or not lines[0].startswith('interface'):
+            continue
+        nome = lines[0][len('interface'):].strip()
+        desc = ip_cidr = vlan = None
+        shutdown = False
+        for line in lines[1:]:
+            ls = line.strip()
+            if not ls or ls == '#' or ls.startswith('interface '):
+                break
+            if re.match(r'description\s+', ls, re.I):
+                desc = ls.split(None, 1)[1].strip()
+            m2 = re.match(r'ip address\s+([\d.]+)\s+([\d.]+)', ls, re.I)
+            if m2:
+                try:
+                    net = ipaddress.ip_network(f'{m2.group(1)}/{m2.group(2)}', strict=False)
+                    ip_cidr = f'{m2.group(1)}/{net.prefixlen}'
+                except Exception:
+                    pass
+            m2 = re.match(r'vlan-type dot1q\s+(\d+)', ls, re.I)
+            if m2:
+                vlan = int(m2.group(1))
+            if ls == 'shutdown':
+                shutdown = True
+        interfaces.append({'nome': nome, 'desc': desc or '', 'ip': ip_cidr,
+                           'vlan': vlan, 'shutdown': shutdown})
+    rotas = []
+    for m2 in re.finditer(r'ip route-static\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)', content, re.I):
+        try:
+            net = ipaddress.ip_network(f'{m2.group(1)}/{m2.group(2)}', strict=False)
+            rotas.append(f'{net} via {m2.group(3)}')
+        except Exception:
+            pass
+    return {'hostname': hostname, 'interfaces': interfaces, 'rotas': rotas}
+
+
+def _full_parse_mikrotik(content):
+    hostname = ''
+    m = re.search(r'/system identity set name="?([^"\n]+)"?', content, re.I)
+    if m:
+        hostname = m.group(1).strip()
+    iface_map = {}
+    for pattern in [r'/interface ethernet\b[^\n]+', r'/interface vlan add\b[^\n]+',
+                    r'/interface bridge add\b[^\n]+', r'/interface bonding add\b[^\n]+']:
+        for m2 in re.finditer(pattern, content, re.I):
+            line = m2.group(0)
+            nm = re.search(r'name="([^"]+)"', line)
+            cm = re.search(r'comment="([^"]+)"', line)
+            vid = re.search(r'vlan-id=(\d+)', line)
+            if nm:
+                iface_map[nm.group(1)] = {'desc': cm.group(1) if cm else '',
+                                           'vlan': int(vid.group(1)) if vid else None}
+    ip_map = {}
+    for m2 in re.finditer(r'/ip address add\b[^\n]+', content, re.I):
+        line = m2.group(0)
+        addr_m = re.search(r'\baddress=([\d./]+)', line)
+        if_m   = re.search(r'interface="([^"]+)"', line)
+        cm     = re.search(r'comment="([^"]+)"', line)
+        if addr_m and if_m:
+            ip_map.setdefault(if_m.group(1), []).append(
+                (addr_m.group(1), cm.group(1) if cm else ''))
+    interfaces = []
+    for nome in sorted(set(iface_map) | set(ip_map)):
+        info = iface_map.get(nome, {'desc': '', 'vlan': None})
+        for ip_cidr, ip_desc in ip_map.get(nome, [(None, '')]):
+            interfaces.append({'nome': nome, 'desc': ip_desc or info['desc'],
+                               'ip': ip_cidr, 'vlan': info['vlan'], 'shutdown': False})
+    rotas = []
+    for m2 in re.finditer(r'/ip route add\b[^\n]+dst-address=([\d./]+)[^\n]+gateway=([\d.]+)', content, re.I):
+        rotas.append(f'{m2.group(1)} via {m2.group(2)}')
+    return {'hostname': hostname, 'interfaces': interfaces, 'rotas': list(dict.fromkeys(rotas))}
+
+
+def _full_parse_generic(content):
+    hostname = ''
+    m = re.search(r'^hostname\s+(\S+)', content, re.MULTILINE | re.I)
+    if m:
+        hostname = m.group(1)
+    interfaces = []
+    for block in re.split(r'\n(?=interface\s)', content, flags=re.I):
+        lines = block.splitlines()
+        if not lines or not re.match(r'interface\s+\S', lines[0].strip(), re.I):
+            continue
+        nome = re.sub(r'^interface\s+', '', lines[0].strip(), flags=re.I).strip()
+        desc = ip_cidr = vlan = None
+        shutdown = False
+        for line in lines[1:]:
+            ls = line.strip()
+            if not ls or ls in ('!', '#'):
+                break
+            if re.match(r'description\s+', ls, re.I):
+                desc = ls.split(None, 1)[1].strip()
+            m2 = re.match(r'ip(?:v4)? address\s+([\d.]+/\d+)', ls, re.I)
+            if m2:
+                ip_cidr = m2.group(1)
+            if not ip_cidr:
+                m2 = re.match(r'ip(?:v4)? address\s+([\d.]+)\s+([\d.]+)', ls, re.I)
+                if m2:
+                    try:
+                        net = ipaddress.ip_network(f'{m2.group(1)}/{m2.group(2)}', strict=False)
+                        ip_cidr = f'{m2.group(1)}/{net.prefixlen}'
+                    except Exception:
+                        pass
+            m2 = re.search(r'dot1[qQ]\s+(\d+)', ls)
+            if m2:
+                vlan = int(m2.group(1))
+            if re.match(r'shutdown', ls, re.I):
+                shutdown = True
+        interfaces.append({'nome': nome, 'desc': desc or '', 'ip': ip_cidr,
+                           'vlan': vlan, 'shutdown': shutdown})
+    rotas = []
+    for m2 in re.finditer(r'ip route\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)', content, re.I):
+        try:
+            net = ipaddress.ip_network(f'{m2.group(1)}/{m2.group(2)}', strict=False)
+            rotas.append(f'{net} via {m2.group(3)}')
+        except Exception:
+            pass
+    return {'hostname': hostname, 'interfaces': interfaces, 'rotas': rotas}
+
+def _proto_mikrotik(content):
+    """Extrai resumo de todos os protocolos de um backup MikroTik."""
+    proto = {}
+
+    # ── BGP ──────────────────────────────────────────────────────────────────
+    bgp_instance = re.search(r'/routing bgp instance[^\n]*\bas=(\d+)', content, re.I)
+    if not bgp_instance:
+        bgp_instance = re.search(r'/routing bgp template[^\n]*\bas=(\d+)', content, re.I)
+    bgp_asn = bgp_instance.group(1) if bgp_instance else None
+
+    bgp_peers = []
+    for m in re.finditer(r'/routing bgp peer add\b[^\n]+', content, re.I):
+        line = m.group(0)
+        addr = re.search(r'remote-address=([\d.:a-fA-F/]+)', line)
+        asn  = re.search(r'remote-as=(\d+)', line)
+        name = re.search(r'name="([^"]+)"', line)
+        if addr:
+            bgp_peers.append({
+                'ip': addr.group(1),
+                'as': asn.group(1) if asn else '?',
+                'desc': name.group(1) if name else '',
+            })
+    bgp_nets = re.findall(r'/routing bgp network add[^\n]*network=([\d./]+)', content, re.I)
+
+    if bgp_asn or bgp_peers:
+        proto['bgp'] = {'asn_local': bgp_asn, 'peers': bgp_peers, 'redes': bgp_nets}
+
+    # ── OSPF ─────────────────────────────────────────────────────────────────
+    ospf_inst = re.findall(r'/routing ospf instance add[^\n]+', content, re.I)
+    ospf_areas = re.findall(r'/routing ospf area add[^\n]+', content, re.I)
+    ospf_ifaces = re.findall(r'/routing ospf interface add[^\n]+', content, re.I)
+    if ospf_inst:
+        router_ids = [re.search(r'router-id=([\d.]+)', l) for l in ospf_inst]
+        proto['ospf'] = {
+            'router_ids': [m.group(1) for m in router_ids if m],
+            'areas': len(ospf_areas),
+            'interfaces': len(ospf_ifaces),
+        }
+
+    # ── PPPoE / PPP ───────────────────────────────────────────────────────────
+    pppoe_servers = re.findall(r'/interface pppoe-server server[^\n]*interface=([\S]+)', content, re.I)
+    ppp_profiles = []
+    for m in re.finditer(r'/ppp profile add\b[^\n]+', content, re.I):
+        line = m.group(0)
+        nm   = re.search(r'name=(\S+)', line)
+        rl   = re.search(r'rate-limit=([\S]+)', line)
+        la   = re.search(r'local-address=([\S]+)', line)
+        ra   = re.search(r'remote-address=([\S]+)', line)
+        if nm:
+            ppp_profiles.append({
+                'nome': nm.group(1).strip('"'),
+                'rate_limit': rl.group(1) if rl else '',
+                'local': la.group(1) if la else '',
+                'pool': ra.group(1) if ra else '',
+            })
+    ip_pools = []
+    for m in re.finditer(r'/ip pool add\b[^\n]+', content, re.I):
+        line = m.group(0)
+        nm   = re.search(r'name=([\S]+)', line)
+        rng  = re.search(r'ranges=([\S]+)', line)
+        if nm:
+            ip_pools.append({'nome': nm.group(1).strip('"'),
+                             'ranges': rng.group(1) if rng else ''})
+    if pppoe_servers or ppp_profiles:
+        proto['pppoe'] = {
+            'servidores': pppoe_servers,
+            'perfis': ppp_profiles,
+            'pools': ip_pools,
+        }
+
+    # ── DHCP ─────────────────────────────────────────────────────────────────
+    dhcp_servers = []
+    for m in re.finditer(r'/ip dhcp-server add\b[^\n]+', content, re.I):
+        line = m.group(0)
+        nm   = re.search(r'name=([\S]+)', line)
+        ifc  = re.search(r'interface=([\S]+)', line)
+        pool = re.search(r'address-pool=([\S]+)', line)
+        if nm:
+            dhcp_servers.append({
+                'nome': nm.group(1).strip('"'),
+                'interface': ifc.group(1).strip('"') if ifc else '',
+                'pool': pool.group(1).strip('"') if pool else '',
+            })
+    if dhcp_servers:
+        proto['dhcp'] = {'servidores': dhcp_servers, 'pools': ip_pools}
+
+    # ── Firewall ──────────────────────────────────────────────────────────────
+    fw_filter = len(re.findall(r'/ip firewall filter add\b', content, re.I))
+    fw_nat    = len(re.findall(r'/ip firewall nat add\b', content, re.I))
+    fw_mangle = len(re.findall(r'/ip firewall mangle add\b', content, re.I))
+    nat_rules = []
+    for m in re.finditer(r'/ip firewall nat add\b[^\n]+', content, re.I):
+        line   = m.group(0)
+        action = re.search(r'action=(\S+)', line)
+        chain  = re.search(r'chain=(\S+)', line)
+        src    = re.search(r'src-address=([\S]+)', line)
+        to     = re.search(r'to-addresses=([\S]+)', line)
+        comment = re.search(r'comment="([^"]+)"', line)
+        if action:
+            nat_rules.append({
+                'action': action.group(1),
+                'chain': chain.group(1) if chain else '',
+                'src': src.group(1) if src else '',
+                'to': to.group(1) if to else '',
+                'comment': comment.group(1) if comment else '',
+            })
+    if fw_filter or fw_nat:
+        proto['firewall'] = {
+            'filter_rules': fw_filter,
+            'nat_rules': fw_nat,
+            'mangle_rules': fw_mangle,
+            'nat_detalhes': nat_rules[:10],
+        }
+
+    # ── Queue / QoS ───────────────────────────────────────────────────────────
+    q_tree   = len(re.findall(r'/queue tree add\b', content, re.I))
+    q_simple = len(re.findall(r'/queue simple add\b', content, re.I))
+    if q_tree or q_simple:
+        proto['qos'] = {'queue_tree': q_tree, 'queue_simple': q_simple}
+
+    # ── MPLS ─────────────────────────────────────────────────────────────────
+    if '/mpls' in content.lower():
+        ldp_ifaces = re.findall(r'/mpls ldp interface add[^\n]*interface=([\S]+)', content, re.I)
+        proto['mpls'] = {'ldp_interfaces': [i.strip('"') for i in ldp_ifaces]}
+
+    # ── L2TP / OpenVPN / SSTP ────────────────────────────────────────────────
+    vpn = {}
+    if re.search(r'/interface l2tp-server server set[^\n]*enabled=yes', content, re.I):
+        vpn['l2tp'] = 'ativo'
+    if re.search(r'/interface ovpn-server server add[^\n]*disabled=no', content, re.I):
+        ovpn_ports = re.findall(r'/interface ovpn-server server add[^\n]*port=(\d+)', content, re.I)
+        vpn['openvpn'] = f"portas: {', '.join(ovpn_ports)}" if ovpn_ports else 'ativo'
+    if re.search(r'/interface sstp-server server set[^\n]*enabled=yes', content, re.I):
+        vpn['sstp'] = 'ativo'
+    if vpn:
+        proto['vpn_servers'] = vpn
+
+    # ── SNMP ─────────────────────────────────────────────────────────────────
+    if '/snmp set' in content.lower():
+        snmp_comm = re.findall(r'/snmp community set[^\n]*name=([\S]+)', content, re.I)
+        proto['snmp'] = {'communities': [c.strip('"') for c in snmp_comm]}
+
+    # ── Hotspot ───────────────────────────────────────────────────────────────
+    if '/ip hotspot add' in content.lower():
+        hs_ifaces = re.findall(r'/ip hotspot add[^\n]*interface=([\S]+)', content, re.I)
+        proto['hotspot'] = {'interfaces': [i.strip('"') for i in hs_ifaces]}
+
+    return proto
+
+
+def _proto_huawei(content):
+    """Extrai resumo de todos os protocolos de um backup Huawei VRP."""
+    proto = {}
+
+    # ── BGP ──────────────────────────────────────────────────────────────────
+    bgp_m = re.search(r'^\s*bgp\s+(\d+)', content, re.MULTILINE)
+    if bgp_m:
+        asn = bgp_m.group(1)
+        idx = bgp_m.start()
+        bloco = content[idx:idx+30000]  # aumentado para capturar todos os peers
+        peers = []
+        seen_ips = set()
+        for m in re.finditer(r'peer\s+([\d.:a-fA-F]+)\s+as-number\s+(\d+)', bloco, re.I):
+            ip_p, asn_p = m.group(1), m.group(2)
+            if ip_p in seen_ips:
+                continue
+            seen_ips.add(ip_p)
+            desc_m = re.search(
+                rf'peer\s+{re.escape(ip_p)}\s+description\s+(.+)', bloco, re.I)
+            peers.append({
+                'ip': ip_p, 'as': asn_p,
+                'desc': desc_m.group(1).strip() if desc_m else '',
+            })
+        nets = re.findall(r'network\s+([\d.:/a-fA-F]+)', bloco, re.I)
+        proto['bgp'] = {'asn_local': asn, 'peers': peers, 'redes': nets[:20]}
+
+    # ── OSPF ─────────────────────────────────────────────────────────────────
+    ospf_m = re.search(r'^\s*ospf\s+(\d+)', content, re.MULTILINE)
+    if ospf_m:
+        idx   = ospf_m.start()
+        bloco = content[idx:idx+2000]
+        rid_m = re.search(r'router-id\s+([\d.]+)', bloco, re.I)
+        areas = re.findall(r'area\s+([\d.]+)', bloco, re.I)
+        proto['ospf'] = {
+            'instancia': ospf_m.group(1),
+            'router_id': rid_m.group(1) if rid_m else '',
+            'areas': list(dict.fromkeys(areas)),
+        }
+
+    # ── MPLS / LDP ───────────────────────────────────────────────────────────
+    mpls_lsr = re.search(r'mpls lsr-id\s+([\d.]+)', content, re.I)
+    if mpls_lsr:
+        ldp_ifaces = re.findall(r'mpls ldp\s*\n.*?interface\s+(\S+)', content, re.I | re.DOTALL)
+        proto['mpls'] = {
+            'lsr_id': mpls_lsr.group(1),
+            'ldp_interfaces': ldp_ifaces[:10],
+        }
+
+    # ── VRF ──────────────────────────────────────────────────────────────────
+    vrfs = re.findall(r'ip vpn-instance\s+(\S+)', content, re.I)
+    if vrfs:
+        proto['vrf'] = list(dict.fromkeys(vrfs))
+
+    # ── BAS / PPPoE / AAA ────────────────────────────────────────────────────
+    domains = re.findall(r'^domain\s+(\S+)', content, re.MULTILINE | re.I)
+    aaa_schemes = re.findall(r'radius-server\s+template\s+(\S+)', content, re.I)
+    if domains:
+        proto['bas_aaa'] = {
+            'domains': domains[:15],
+            'radius_templates': list(dict.fromkeys(aaa_schemes))[:5],
+        }
+
+    # ── IP Pools (BRAS) ───────────────────────────────────────────────────────
+    pools = []
+    for m in re.finditer(r'ip pool\s+(\S+)[^\n]*\n((?:[ \t]+[^\n]+\n)*)', content, re.I):
+        nome  = m.group(1)
+        corpo = m.group(2)
+        secs  = re.findall(r'section\s+\d+\s+([\d.]+)\s+([\d.]+)', corpo)
+        pools.append({'nome': nome, 'ranges': [f'{s[0]}-{s[1]}' for s in secs]})
+    if pools:
+        proto['ip_pools'] = pools[:10]
+
+    # ── Route-Policy ─────────────────────────────────────────────────────────
+    policies = list(dict.fromkeys(re.findall(r'^route-policy\s+(\S+)', content, re.MULTILINE)))
+    if policies:
+        proto['route_policies'] = policies[:20]
+
+    # ── SNMP ─────────────────────────────────────────────────────────────────
+    snmp_comm = re.findall(r'snmp-agent community\s+\S+\s+(\S+)', content, re.I)
+    snmp_trap = re.findall(r'snmp-agent trap enable\s+(.+)', content, re.I)
+    if snmp_comm:
+        proto['snmp'] = {'communities': snmp_comm[:5]}
+
+    # ── NTP ──────────────────────────────────────────────────────────────────
+    ntp_servers = re.findall(r'ntp-service unicast-server\s+([\d.]+)', content, re.I)
+    if ntp_servers:
+        proto['ntp'] = ntp_servers
+
+    # ── GPON / OLT ───────────────────────────────────────────────────────────
+    if 'gpon' in content.lower():
+        gpon_profiles = list(dict.fromkeys(
+            re.findall(r'gpon profile\s+\S+\s+(\S+)', content, re.I)
+        ))
+        gpon_onus = len(re.findall(r'^\s*onu\s+\d+', content, re.MULTILINE))
+        proto['gpon'] = {'profiles': gpon_profiles[:10], 'total_onus': gpon_onus}
+
+    return proto
+
+
+def _proto_generic(content):
+    """Extrai protocolos de backup genérico (Cisco IOS, Parks, Datacom, etc.)."""
+    proto = {}
+
+    # ── BGP ──────────────────────────────────────────────────────────────────
+    bgp_m = re.search(r'^router bgp\s+(\d+)', content, re.MULTILINE | re.I)
+    if bgp_m:
+        idx   = bgp_m.start()
+        bloco = content[idx:idx+3000]
+        peers = re.findall(r'neighbor\s+([\d.]+)\s+remote-as\s+(\d+)', bloco, re.I)
+        nets  = re.findall(r'network\s+([\d./]+)', bloco, re.I)
+        proto['bgp'] = {
+            'asn_local': bgp_m.group(1),
+            'peers': [{'ip': p[0], 'as': p[1], 'desc': ''} for p in peers],
+            'redes': nets[:20],
+        }
+
+    # ── OSPF ─────────────────────────────────────────────────────────────────
+    ospf_m = re.search(r'^router ospf\s+(\d+)', content, re.MULTILINE | re.I)
+    if ospf_m:
+        idx   = ospf_m.start()
+        bloco = content[idx:idx+1000]
+        rid_m = re.search(r'router-id\s+([\d.]+)', bloco, re.I)
+        nets  = re.findall(r'network\s+([\d.]+)\s+([\d.]+)\s+area\s+([\d.]+)', bloco, re.I)
+        proto['ospf'] = {
+            'instancia': ospf_m.group(1),
+            'router_id': rid_m.group(1) if rid_m else '',
+            'networks': [f'{n[0]}/{n[1]} area {n[2]}' for n in nets],
+        }
+
+    # ── VRF ──────────────────────────────────────────────────────────────────
+    vrfs = re.findall(r'^ip vrf\s+(\S+)', content, re.MULTILINE | re.I)
+    if vrfs:
+        proto['vrf'] = vrfs
+
+    # ── GPON / OLT genérico ───────────────────────────────────────────────────
+    if 'gpon' in content.lower():
+        gpon_profiles = list(dict.fromkeys(
+            re.findall(r'gpon profile\s+\S+\s+(\S+)', content, re.I)
+        ))
+        vlans_gpon = list(dict.fromkeys(re.findall(r'vlan\s+(\d+)\s+service', content, re.I)))
+        gpon_onus = len(re.findall(r'serial-number\s+[A-Z0-9]{4,}', content))
+        proto['gpon'] = {
+            'profiles': gpon_profiles[:10],
+            'vlans_servico': vlans_gpon[:20],
+            'total_onus': gpon_onus,
+        }
+
+    # ── SNMP ─────────────────────────────────────────────────────────────────
+    snmp_comm = re.findall(r'snmp(?:-server)?\s+community\s+(\S+)', content, re.I)
+    if snmp_comm:
+        proto['snmp'] = {'communities': list(dict.fromkeys(snmp_comm))[:5]}
+
+    # ── AAA ──────────────────────────────────────────────────────────────────
+    radius = re.findall(r'radius-server\s+host\s+([\d.]+)', content, re.I)
+    if radius:
+        proto['radius'] = list(dict.fromkeys(radius))
+
+    # ── VLANs (OLT style) ────────────────────────────────────────────────────
+    vlans_db = re.findall(r'vlan\s+([\d,\-]+)', content[:3000], re.I)
+    if vlans_db:
+        proto['vlans_configuradas'] = vlans_db[:5]
+
+    return proto
+
+
+def _cmds_interface(vendor, iface_nome):
+    n = iface_nome
+    if vendor == 'huawei':
+        return [f'display interface {n}', f'display ip interface {n}']
+    if vendor == 'mikrotik':
+        return [f'/interface print where name="{n}"',
+                f'/ip address print where interface="{n}"']
+    return [f'show interface {n}']
+
+
+def _cmds_proto(vendor):
+    """Retorna comandos de verificação por protocolo para cada fabricante."""
+    if vendor == 'mikrotik':
+        return {
+            'bgp':      ['/routing bgp peer print', '/routing bgp advertisements print peer=<PEER>'],
+            'ospf':     ['/routing ospf neighbor print', '/routing ospf route print'],
+            'pppoe':    ['/ppp active print', '/interface pppoe-server print'],
+            'dhcp':     ['/ip dhcp-server lease print', '/ip dhcp-server print'],
+            'firewall': ['/ip firewall filter print', '/ip firewall nat print', '/ip firewall mangle print'],
+            'qos':      ['/queue tree print', '/queue simple print'],
+            'mpls':     ['/mpls forwarding-table print', '/mpls ldp neighbor print'],
+            'vpn':      ['/interface l2tp-server print', '/ppp active print where service=l2tp'],
+            'snmp':     ['/snmp print', '/snmp community print'],
+            'hotspot':  ['/ip hotspot active print', '/ip hotspot host print'],
+            'rotas':    ['/ip route print', '/ip route print where active=yes'],
+        }
+    if vendor == 'huawei':
+        return {
+            'bgp':       ['display bgp peer', 'display bgp routing-table', 'display bgp peer verbose'],
+            'ospf':      ['display ospf peer', 'display ospf routing', 'display ospf lsdb'],
+            'mpls':      ['display mpls ldp session', 'display mpls forwarding-table', 'display mpls lsp'],
+            'vrf':       ['display ip vpn-instance', 'display ip routing-table vpn-instance <VRF>'],
+            'bas_aaa':   ['display access-user', 'display domain', 'display radius-server'],
+            'ip_pools':  ['display ip pool name <POOL>', 'display ip pool'],
+            'gpon':      ['display ont info summary <SLOT> <PON>', 'display ont alarm-state all'],
+            'snmp':      ['display snmp-agent community', 'display snmp-agent trap enable'],
+            'ntp':       ['display ntp-service status', 'display ntp-service sessions'],
+            'rotas':     ['display ip routing-table', 'display ip routing-table statistics'],
+        }
+    # generic/cisco/parks/datacom
+    return {
+        'bgp':   ['show bgp summary', 'show bgp neighbors', 'show bgp'],
+        'ospf':  ['show ip ospf neighbor', 'show ip ospf database', 'show ip ospf'],
+        'vrf':   ['show ip vrf', 'show ip route vrf <VRF>'],
+        'snmp':  ['show snmp community', 'show snmp'],
+        'gpon':  ['show gpon onu state', 'show gpon onu detail-info <SLOT> <PON> <ID>'],
+        'rotas': ['show ip route', 'show ip route summary'],
+    }
+
+
+def _build_contexto_backup(vendor, content):
+    """
+    Gera contexto completo para o Agent NOC:
+    hostname, todas interfaces + IPs, VLANs, e resumo de TODOS os protocolos
+    configurados com os comandos exatos para inspecioná-los.
+    """
+    if vendor == 'huawei':
+        iface_data = _full_parse_huawei(content)
+        proto_data = _proto_huawei(content)
+    elif vendor == 'mikrotik':
+        iface_data = _full_parse_mikrotik(content)
+        proto_data = _proto_mikrotik(content)
+    else:
+        iface_data = _full_parse_generic(content)
+        proto_data = _proto_generic(content)
+
+    cmds = _cmds_proto(vendor)
+    ifaces   = iface_data['interfaces']
+    hostname = iface_data.get('hostname', '')
+    rotas    = iface_data.get('rotas', [])
+
+    com_ip = [i for i in ifaces if i['ip']]
+    sem_ip = [i for i in ifaces if not i['ip'] and not i['shutdown']]
+
+    linhas = []
+    header = f'Fabricante: {vendor}'
+    if hostname:
+        header += f' | Hostname: {hostname}'
+    linhas.append(header)
+
+    # ── Protocolos (primeiro — nunca truncado) ────────────────────────────────
+    if proto_data:
+        linhas.append('\nProtocolos configurados:')
+
+    if 'bgp' in proto_data:
+        b = proto_data['bgp']
+        linhas.append(f"\nBGP (ASN local: {b.get('asn_local','?')}):")
+        linhas.append(f"  Mapeamento de sessões (descrição → IP → comando de verificação):")
+        for p in b.get('peers', []):
+            label = p['desc'] if p['desc'] else p['ip']
+            desc_txt = f" — {p['desc']}" if p['desc'] else ''
+            linhas.append(f"  Peer {p['ip']} AS{p['as']}{desc_txt}")
+            # Comando específico por peer para checar status da sessão
+            if vendor == 'huawei':
+                linhas.append(f"    → display bgp peer {p['ip']}  [verificar: {label}]")
+            elif vendor == 'mikrotik':
+                if p['desc']:
+                    linhas.append(f"    → /routing bgp peer print where name=\"{p['desc']}\"  [por descrição]")
+                linhas.append(f"    → /routing bgp peer print where remote-address={p['ip']}  [por IP]")
+            else:
+                linhas.append(f"    → show bgp neighbors {p['ip']}  [verificar: {label}]")
+        if b.get('redes'):
+            linhas.append(f"  Redes anunciadas: {', '.join(b['redes'][:8])}")
+        if 'bgp' in cmds:
+            for c in cmds['bgp'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'ospf' in proto_data:
+        o = proto_data['ospf']
+        rid_list = o.get('router_ids', []); rid = o.get('router_id') or (rid_list[0] if rid_list else '')
+        areas = o.get('areas', [])
+        areas_str = ', '.join(areas) if isinstance(areas, list) else str(areas)
+        linhas.append(f"\nOSPF (instância {o.get('instancia','1')} | router-id: {rid} | áreas: {areas_str}):")
+        if 'ospf' in cmds:
+            for c in cmds['ospf'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'mpls' in proto_data:
+        m = proto_data['mpls']
+        lsr = m.get('lsr_id', '')
+        linhas.append(f"\nMPLS/LDP (LSR-ID: {lsr}):")
+        if m.get('ldp_interfaces'):
+            linhas.append(f"  Interfaces LDP: {', '.join(m['ldp_interfaces'][:5])}")
+        if 'mpls' in cmds:
+            for c in cmds['mpls'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'vrf' in proto_data:
+        vrfs = proto_data['vrf']
+        linhas.append(f"\nVRF ({len(vrfs)} instâncias): {', '.join(vrfs[:10])}")
+        if 'vrf' in cmds:
+            linhas.append(f"  → {cmds['vrf'][0]}")
+
+    if 'pppoe' in proto_data:
+        p = proto_data['pppoe']
+        serv = p.get('servidores', [])
+        linhas.append(f"\nPPPoE/PPP:")
+        if serv:
+            linhas.append(f"  Servidores nas interfaces: {', '.join(serv)}")
+        for pf in p.get('perfis', []):
+            rl = f" rate-limit={pf['rate_limit']}" if pf['rate_limit'] else ''
+            pool = f" pool={pf['pool']}" if pf['pool'] else ''
+            linhas.append(f"  Perfil: {pf['nome']}{rl}{pool}")
+        for pool in p.get('pools', []):
+            linhas.append(f"  Pool: {pool['nome']} ranges={pool['ranges']}")
+        if 'pppoe' in cmds:
+            for c in cmds['pppoe'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'bas_aaa' in proto_data:
+        b = proto_data['bas_aaa']
+        doms = b.get('domains', [])
+        linhas.append(f"\nBAS/AAA ({len(doms)} domínios): {', '.join(doms[:8])}")
+        if b.get('radius_templates'):
+            linhas.append(f"  Radius templates: {', '.join(b['radius_templates'])}")
+        if 'bas_aaa' in cmds:
+            for c in cmds['bas_aaa'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'ip_pools' in proto_data:
+        linhas.append(f"\nIP Pools (BRAS):")
+        for pool in proto_data['ip_pools'][:5]:
+            rng = ', '.join(pool.get('ranges', [])[:3])
+            linhas.append(f"  {pool['nome']}: {rng}")
+        if 'ip_pools' in cmds:
+            linhas.append(f"  → {cmds['ip_pools'][0]}")
+
+    if 'dhcp' in proto_data:
+        d = proto_data['dhcp']
+        linhas.append(f"\nDHCP ({len(d.get('servidores',[]))} servidores):")
+        for s in d.get('servidores', []):
+            linhas.append(f"  {s['nome']} — interface={s['interface']} pool={s['pool']}")
+        if 'dhcp' in cmds:
+            for c in cmds['dhcp'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'firewall' in proto_data:
+        fw = proto_data['firewall']
+        linhas.append(f"\nFirewall: {fw['filter_rules']} filter | {fw['nat_rules']} NAT | {fw.get('mangle_rules',0)} mangle")
+        for nr in fw.get('nat_detalhes', [])[:5]:
+            cmt = f" [{nr['comment']}]" if nr['comment'] else ''
+            src = f" src={nr['src']}" if nr['src'] else ''
+            to  = f" to={nr['to']}" if nr['to'] else ''
+            linhas.append(f"  NAT {nr['chain']} {nr['action']}{src}{to}{cmt}")
+        if 'firewall' in cmds:
+            for c in cmds['firewall'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'qos' in proto_data:
+        q = proto_data['qos']
+        linhas.append(f"\nQoS: {q.get('queue_tree',0)} queue-tree | {q.get('queue_simple',0)} queue-simple")
+        if 'qos' in cmds:
+            linhas.append(f"  → {cmds['qos'][0]}")
+
+    if 'gpon' in proto_data:
+        g = proto_data['gpon']
+        linhas.append(f"\nGPON ({g.get('total_onus',0)} ONUs):")
+        if g.get('profiles'):
+            linhas.append(f"  Profiles: {', '.join(g['profiles'][:8])}")
+        if g.get('vlans_servico'):
+            linhas.append(f"  VLANs de serviço: {', '.join(g['vlans_servico'][:15])}")
+        if 'gpon' in cmds:
+            for c in cmds['gpon'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'vpn_servers' in proto_data:
+        v = proto_data['vpn_servers']
+        linhas.append(f"\nVPN Servers: {', '.join(f'{k}={v2}' for k,v2 in v.items())}")
+        if 'vpn' in cmds:
+            for c in cmds['vpn'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'snmp' in proto_data:
+        s = proto_data['snmp']
+        linhas.append(f"\nSNMP communities: {', '.join(s.get('communities',[]))}")
+
+    if 'hotspot' in proto_data:
+        h = proto_data['hotspot']
+        linhas.append(f"\nHotspot interfaces: {', '.join(h.get('interfaces',[]))}")
+        if 'hotspot' in cmds:
+            for c in cmds['hotspot'][:2]:
+                linhas.append(f'  → {c}')
+
+    if 'route_policies' in proto_data:
+        rp = proto_data['route_policies']
+        linhas.append(f"\nRoute-Policies ({len(rp)}): {', '.join(rp[:10])}")
+
+    if 'ntp' in proto_data:
+        linhas.append(f"\nNTP servers: {', '.join(proto_data['ntp'][:3])}")
+
+    # ── Interfaces com IP (após protocolos) ───────────────────────────────────
+    if com_ip:
+        linhas.append('\nInterfaces com endereço IP:')
+        for i in com_ip:
+            l = f"  {i['nome']}  IP={i['ip']}"
+            if i['vlan']:
+                l += f"  VLAN={i['vlan']}"
+            if i['desc']:
+                l += f'  desc="{i["desc"]}"'
+            linhas.append(l)
+            for c in _cmds_interface(vendor, i['nome']):
+                linhas.append(f'    → {c}')
+
+    # ── Interfaces sem IP ─────────────────────────────────────────────────────
+    if sem_ip:
+        nomes = ', '.join(
+            (f"{i['nome']}({i['desc']})" if i['desc'] else i['nome'])
+            for i in sem_ip[:25]
+        )
+        if len(sem_ip) > 25:
+            nomes += f' ...+{len(sem_ip)-25} mais'
+        linhas.append(f'\nDemais interfaces (sem IP): {nomes}')
+
+    # ── Rotas ─────────────────────────────────────────────────────────────────
+    if rotas:
+        linhas.append('\nRotas estáticas:')
+        for r in rotas[:10]:
+            linhas.append(f'  {r}')
+        if len(rotas) > 10:
+            linhas.append(f'  ...+{len(rotas)-10} rotas')
+        if 'rotas' in cmds:
+            linhas.append(f'  → Verificar: {cmds["rotas"][0]}')
+
+    if not com_ip and not sem_ip and not proto_data:
+        return ''
+
+    return '\n'.join(linhas)
+
+
+
+@login_required
+@require_http_methods(['POST'])
+def ipam_analisar_backups(request, cliente_id):
+    """
+    Analisa os backups mais recentes dos acessos do cliente e auto-documenta
+    IPs, descrições de interface e VLANs no IPAM nativo.
+    """
+    from django.conf import settings
+    from .models import BackupLog
+
+    c       = _cliente(request, cliente_id)
+    acessos = Acesso.objects.filter(cliente=c)
+
+    criados_vlans    = 0
+    criados_subredes = 0
+    criados_ips      = 0
+    atualizados_ips  = 0
+    processados      = 0
+    erros            = []
+
+    for acesso in acessos:
+        # Label do equipamento para preencher o hostname do IP
+        host_label = f"{acesso.tipo} ({acesso.host})" if acesso.tipo else acesso.host
+
+        backup = (
+            BackupLog.objects
+            .filter(acesso=acesso, status='SUCESSO')
+            .exclude(arquivo_path='')
+            .order_by('-data_backup')
+            .first()
+        )
+        if not backup:
+            continue
+
+        caminho = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+        if not os.path.exists(caminho):
+            erros.append(f'Acesso {acesso.id} ({acesso.host}): arquivo não encontrado')
+            continue
+
+        try:
+            with open(caminho, 'r', encoding='utf-8', errors='replace') as fh:
+                content = fh.read()
+        except Exception as e:
+            erros.append(f'Acesso {acesso.id}: erro ao ler arquivo: {e}')
+            continue
+
+        vendor = _detect_vendor(content)
+        if vendor == 'mikrotik':
+            parsed = _parse_mikrotik(content)
+        elif vendor == 'huawei':
+            parsed = _parse_huawei(content)
+        else:
+            parsed = _parse_generic(content)
+
+        if not parsed['ips']:
+            continue
+
+        processados += 1
+
+        # Salvar contexto no Acesso para o Agent NOC
+        contexto = _build_contexto_backup(vendor, content)
+        if contexto:
+            from django.utils import timezone as _tz
+            acesso.contexto_backup = contexto
+            acesso.contexto_backup_em = _tz.now()
+            acesso.save(update_fields=['contexto_backup', 'contexto_backup_em'])
+
+        # Criar/atualizar VLANs
+        vlan_map = {}
+        for v in parsed['vlans']:
+            obj, created = IPAMVlan.objects.get_or_create(
+                cliente=c, numero=v['numero'],
+                defaults={'nome': v['nome']}
+            )
+            if created:
+                criados_vlans += 1
+            vlan_map[v['numero']] = obj
+
+        # Criar/atualizar SubRedes e IPs
+        prefixo_cache = {}  # cidr_/24 → IPAMPrefixo
+
+        def _get_or_create_prefixo_pai(net):
+            """Retorna (IPAMPrefixo, created) para a rede /24 pai do endereço.
+            Também garante que exista um IPAMSubRede correspondente ao bloco /24."""
+            # Para IPv4: agrupa em /24. Para IPv6: agrupa em /48.
+            if isinstance(net, ipaddress.IPv6Network):
+                preflen = min(net.prefixlen, 48)
+            else:
+                preflen = min(net.prefixlen, 24)
+            # Superrede pai com prefixlen mínimo
+            pai_net = net.supernet(new_prefix=preflen) if net.prefixlen > preflen else net
+            cidr_pai = str(pai_net)
+            if cidr_pai in prefixo_cache:
+                return prefixo_cache[cidr_pai], False
+            obj, created = IPAMPrefixo.objects.get_or_create(
+                cliente=c, prefixo=cidr_pai,
+                defaults={'tipo': 'container', 'descricao': f'Bloco {cidr_pai} (auto)'}
+            )
+            prefixo_cache[cidr_pai] = obj
+            # Garante que o bloco /24 também apareça como IPAMSubRede
+            sub_pai, sub_criada = IPAMSubRede.objects.get_or_create(
+                cliente=c, rede=cidr_pai,
+                defaults={
+                    'prefixo': obj,
+                    'descricao': f'Bloco {cidr_pai} (auto)',
+                    'status': 'reservado',
+                }
+            )
+            if sub_criada:
+                nonlocal criados_subredes
+                criados_subredes += 1
+            elif not sub_pai.prefixo:
+                sub_pai.prefixo = obj
+                sub_pai.save(update_fields=['prefixo'])
+            return obj, created
+
+        for ip_cidr, desc, vlan_num in parsed['ips']:
+            try:
+                net     = ipaddress.ip_network(ip_cidr, strict=False)
+                ip_host = ip_cidr.split('/')[0]
+                ipaddress.ip_address(ip_host)
+                cidr_rede = str(net)
+            except Exception:
+                erros.append(f'Acesso {acesso.id}: CIDR inválido "{ip_cidr}"')
+                continue
+
+            # Resolver VLAN
+            vlan_obj = None
+            if vlan_num is not None:
+                if vlan_num in vlan_map:
+                    vlan_obj = vlan_map[vlan_num]
+                else:
+                    obj, created = IPAMVlan.objects.get_or_create(
+                        cliente=c, numero=vlan_num,
+                        defaults={'nome': f'VLAN {vlan_num}'}
+                    )
+                    if created:
+                        criados_vlans += 1
+                    vlan_map[vlan_num] = obj
+                    vlan_obj = obj
+
+            # Prefixo pai /24 (agrupador)
+            prefixo_pai, _ = _get_or_create_prefixo_pai(net)
+
+            # Sub-rede com CIDR real (ex: /30), vinculada ao prefixo pai
+            sub, sub_created = IPAMSubRede.objects.get_or_create(
+                cliente=c, rede=cidr_rede,
+                defaults={
+                    'vlan': vlan_obj,
+                    'descricao': desc,
+                    'prefixo': prefixo_pai,
+                }
+            )
+            if sub_created:
+                criados_subredes += 1
+            else:
+                fields = []
+                if vlan_obj and not sub.vlan:
+                    sub.vlan = vlan_obj
+                    fields.append('vlan')
+                if not sub.prefixo:
+                    sub.prefixo = prefixo_pai
+                    fields.append('prefixo')
+                if fields:
+                    sub.save(update_fields=fields)
+
+            # IP
+            ip_obj, ip_created = IPAMEndereco.objects.get_or_create(
+                cliente=c, ip=ip_host,
+                defaults={
+                    'descricao': desc,
+                    'hostname': host_label,
+                    'subrede': sub,
+                    'acesso': acesso,
+                    'status': 'ativo',
+                }
+            )
+            if ip_created:
+                criados_ips += 1
+            else:
+                changed = False
+                if not ip_obj.descricao and desc:
+                    ip_obj.descricao = desc
+                    changed = True
+                if not ip_obj.hostname and host_label:
+                    ip_obj.hostname = host_label
+                    changed = True
+                if not ip_obj.subrede:
+                    ip_obj.subrede = sub
+                    changed = True
+                if not ip_obj.acesso:
+                    ip_obj.acesso = acesso
+                    changed = True
+                if changed:
+                    ip_obj.save()
+                    atualizados_ips += 1
+
+    return JsonResponse({
+        'ok': True,
+        'processados': processados,
+        'criados_vlans': criados_vlans,
+        'criados_subredes': criados_subredes,
+        'criados_ips': criados_ips,
+        'atualizados_ips': atualizados_ips,
+        'erros': erros[:20],
+        'total_erros': len(erros),
+    })

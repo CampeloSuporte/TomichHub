@@ -45,7 +45,23 @@
       "Bash(curl -s \"https://www.maxmind.com/en/geoip-location-correction\")",
       "Read(//<form/,/<\\\\/**)",
       "Bash(curl -s \"https://static.maxmind.com/a8dc73075924d04bfe43/js/pages/geoip-correction.js\")",
-      "Bash(journalctl -u gunicorn.service -n 50 --no-pager)"
+      "Bash(journalctl -u gunicorn.service -n 50 --no-pager)",
+      "Bash(journalctl -u daphne --no-pager --since \"2026-05-28 20:42:00\")",
+      "Bash(journalctl -u daphne --no-pager --since \"2026-05-28 20:41:50\" --until \"2026-05-28 20:42:40\")",
+      "Bash(journalctl -u daphne --no-pager --since \"2026-05-28 20:42:00\" --until \"2026-05-28 20:42:26\")",
+      "Bash(journalctl -u daphne --no-pager --since \"2026-05-28 20:47:00\")",
+      "Bash(journalctl -u daphne --no-pager -n 50)",
+      "Bash(python3 -c \"import paramiko; import inspect; print\\(inspect.getsource\\(paramiko.Channel.get_pty\\)\\)\")",
+      "Bash(/opt/crm/venv/bin/python -c \"import paramiko; import inspect; src = inspect.getsource\\(paramiko.Channel.get_pty\\); print\\(src\\)\")",
+      "Bash(journalctl -u daphne --no-pager -n 30)",
+      "Bash(/opt/crm/venv/bin/python -c ' *)",
+      "Bash(journalctl -u daphne --no-pager -n 40)",
+      "Bash(journalctl -u daphne --no-pager -n 60)",
+      "Bash(journalctl -u gunicorn --no-pager --since \"2026-05-28 21:36:00\" --until \"2026-05-28 21:40:00\")",
+      "Bash(journalctl -u gunicorn --no-pager --since \"2026-05-28 21:49:00\" --until \"2026-05-28 21:52:00\")",
+      "Bash(which ssh *)",
+      "Read(//usr/bin/**)",
+      "Bash(systemctl show *)"
     ],
     "additionalDirectories": [
       "/etc/nginx/sites-enabled"

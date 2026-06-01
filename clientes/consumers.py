@@ -11,6 +11,7 @@ import ssl
 import struct
 import socket
 import paramiko
+from paramiko.message import Message
 from channels.generic.websocket import WebsocketConsumer
 from .models import Acesso, ProxyServer
 
@@ -59,6 +60,78 @@ class _ProxyPool:
 _proxy_pool = _ProxyPool()
 
 
+def _wg_peer_ativo(interface_nome: str) -> bool:
+    """
+    Retorna True se a interface WireGuard tem ao menos um peer com
+    handshake recente (< 3 minutos). Usado para detectar se o cliente
+    já migrou para a interface isolada antes de usar source-bind routing.
+    """
+    import subprocess, time
+    try:
+        r = subprocess.run(
+            ['wg', 'show', interface_nome, 'latest-handshakes'],
+            capture_output=True, text=True, timeout=2
+        )
+        if r.returncode != 0:
+            return False
+        agora = time.time()
+        for linha in r.stdout.strip().splitlines():
+            partes = linha.split()
+            if len(partes) >= 2:
+                ts = int(partes[1])
+                if ts > 0 and (agora - ts) < 180:
+                    return True
+        return False
+    except Exception:
+        return False
+
+
+def _pty_req_with_modes(shell, term='vt100', width=80, height=24):
+    """
+    Envia pty-req com POSIX terminal modes completos.
+    Paramiko padrão envia modes vazio (bytes()) — alguns SSH servers embarcados
+    (Parks, ZTE) crasham ao processar um pty-req sem modes.
+    RFC 4254 §8: cada mode é opcode(1B) + value(4B), terminado com TTY_OP_END(0).
+    """
+    # RFC 4254 §8 opcodes
+    TTY_OP_END   = 0
+    ECHO         = 53
+    ICRNL        = 36   # map CR → NL on input
+    ONLCR        = 72   # map NL → CR+NL on output
+    ISIG         = 50   # enable signals (INTR, QUIT)
+    ICANON       = 51   # canonical input processing
+    CS8          = 91   # 8-bit characters
+    TTY_OP_ISPEED = 128
+    TTY_OP_OSPEED = 129
+
+    modes = (
+        struct.pack('>BL', ECHO,          1)     +
+        struct.pack('>BL', ICRNL,         1)     +
+        struct.pack('>BL', ONLCR,         1)     +
+        struct.pack('>BL', ISIG,          1)     +
+        struct.pack('>BL', ICANON,        1)     +
+        struct.pack('>BL', CS8,           1)     +
+        struct.pack('>BL', TTY_OP_ISPEED, 38400) +
+        struct.pack('>BL', TTY_OP_OSPEED, 38400) +
+        struct.pack('B',   TTY_OP_END)
+    )
+
+    m = Message()
+    m.add_byte(bytes([98]))          # MSG_CHANNEL_REQUEST = 98
+    m.add_int(shell.remote_chanid)
+    m.add_string('pty-req')
+    m.add_boolean(True)              # want_reply
+    m.add_string(term)
+    m.add_int(width)
+    m.add_int(height)
+    m.add_int(0)                     # width_pixels
+    m.add_int(0)                     # height_pixels
+    m.add_string(modes)
+    shell._event_pending()
+    shell.transport._send_user_message(m)
+    shell._wait_for_event()
+
+
 class SSHConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
@@ -73,9 +146,10 @@ class SSHConsumer(WebsocketConsumer):
             except:
                 pass
 
+        # Fechar recursos exclusivos desta conexão (shell e transporte para o destino)
         for attr in ('ssh_process', 'telnet_client', 'tunnel_process',
                      '_paramiko_shell', '_paramiko_dest_transport',
-                     '_paramiko_client', '_tunnel_server'):
+                     '_tunnel_server'):
             obj = getattr(self, attr, None)
             if obj:
                 try:
@@ -84,10 +158,15 @@ class SSHConsumer(WebsocketConsumer):
                     pass
             setattr(self, attr, None)
 
+        # _paramiko_client é o SSHClient do pool compartilhado — NÃO fechar,
+        # apenas liberar a referência para não derrubar outros terminais ativos.
+        self._paramiko_client = None
+
         self.protocol         = None
         self.read_thread      = None
         self.is_reading       = False
         self.is_huawei        = False
+        self.is_parks         = False
         self.acessoId         = None
 
     def disconnect(self, close_code):
@@ -126,7 +205,11 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f"Erro: {str(e)}")
 
     def _vpn_cobre_ip(self, cliente, host):
-        """Verifica se existe VPN WireGuard com peer configurado que cobre o IP do host."""
+        """
+        Verifica se existe VPN WireGuard com peer configurado que cobre o IP do host.
+        Retorna o objeto VPNWireGuard (com servidor_ip_local) ou None.
+        Compatível com código legado que compara com True via `if _vpn_cobre_ip(...)`.
+        """
         try:
             import ipaddress as _ipa
             from .models import VPNWireGuard
@@ -138,13 +221,13 @@ class SSHConsumer(WebsocketConsumer):
                 for rede_str in vpn.redes_lista():
                     try:
                         if host_ip in _ipa.ip_network(rede_str, strict=False):
-                            logger.info(f"✅ VPN WG cobre {host} via {vpn.nome}")
-                            return True
+                            logger.info(f"✅ VPN WG cobre {host} via {vpn.nome} (if={vpn.interface_nome} src={vpn.servidor_ip_local})")
+                            return vpn   # objeto truthy — compatível com `if vpn:`
                     except ValueError:
                         pass
         except Exception as e:
             logger.warning(f"⚠️ Erro ao verificar VPN: {e}")
-        return False
+        return None
 
     def conectar_acesso(self, acesso_id):
         try:
@@ -153,10 +236,14 @@ class SSHConsumer(WebsocketConsumer):
             protocol      = self.detect_protocol(acesso.porta)
             self.protocol = protocol
 
-            self.is_huawei = (
-                acesso.equipamento and 'huawei' in acesso.equipamento.lower()
-                if hasattr(acesso, 'equipamento') else False
-            )
+            _fab = ''
+            if acesso.modelo and acesso.modelo.fabricante:
+                _fab = acesso.modelo.fabricante.lower()
+            elif acesso.tipo:
+                _fab = acesso.tipo.lower()
+            self.is_huawei = 'huawei' in _fab
+            # is_parks é refinado pelo banner SSH em connect_ssh_via_proxy/_connect_ssh_paramiko_direct
+            self.is_parks  = any(k in _fab for k in ('parks', 'zte'))
 
             logger.info(f"🔗 Protocolo: {protocol.upper()} | Huawei: {self.is_huawei}")
 
@@ -165,15 +252,32 @@ class SSHConsumer(WebsocketConsumer):
 
             if is_private:
                 # IP privado: VPN WireGuard ou proxy
-                if self._vpn_cobre_ip(acesso.cliente, acesso.host):
-                    self.send_json({'type': 'info', 'message': '🔒 Conectando via VPN WireGuard...'})
+                vpn = self._vpn_cobre_ip(acesso.cliente, acesso.host)
+                if vpn:
+                    # Usa source bind da interface isolada SOMENTE se ela tiver
+                    # handshake ativo (cliente já migrou). Caso contrário, usa
+                    # wg0 via rota default (legado) sem source bind.
+                    iface = vpn.interface_nome or 'wg0'
+                    isolada_ativa = (
+                        iface not in ('wg0', '') and
+                        vpn.servidor_ip_local and
+                        _wg_peer_ativo(iface)
+                    )
+                    src_ip = vpn.servidor_ip_local if isolada_ativa else None
+                    modo = f'{iface} isolada' if isolada_ativa else 'wg0 legado'
+                    self.send_json({'type': 'info', 'message': f'🔒 Conectando via VPN WireGuard ({modo})...'})
                     if protocol == 'ssh':
-                        self.connect_ssh(acesso)
+                        self.connect_ssh(acesso, source_ip=src_ip)
                     else:
                         self.connect_telnet(acesso)
                 else:
                     if protocol == 'ssh':
-                        self.connect_ssh_via_proxy(acesso)
+                        # Parks OLTs: Paramiko invoke_shell não é compatível
+                        # (firmware crasha). Usar pexpect + ssh ProxyCommand.
+                        if self.is_parks:
+                            self.connect_ssh_parks_proxy(acesso)
+                        else:
+                            self.connect_ssh_via_proxy(acesso)
                     else:
                         self.connect_telnet_via_proxy(acesso)
             elif is_cgnat:
@@ -354,12 +458,12 @@ class SSHConsumer(WebsocketConsumer):
     # SSH direto
     # =========================================================
 
-    def connect_ssh(self, acesso):
+    def connect_ssh(self, acesso, source_ip=None):
         try:
-            logger.info(f"🔗 SSH: {acesso.host}:{acesso.porta}")
+            logger.info(f"🔗 SSH: {acesso.host}:{acesso.porta} src={source_ip}")
 
-            terminal_type = "vt100" if self.is_huawei else "xterm-256color"
-            ssh_cmd       = self._build_ssh_cmd(acesso.usuario, acesso.host, acesso.porta)
+            terminal_type = "xterm-256color"
+            ssh_cmd       = self._build_ssh_cmd(acesso.usuario, acesso.host, acesso.porta, source_ip=source_ip)
 
             env        = os.environ.copy()
             env['TERM'] = terminal_type
@@ -386,8 +490,126 @@ class SSHConsumer(WebsocketConsumer):
             self.read_thread.start()
 
         except Exception as e:
-            logger.error(f"❌ SSH: {str(e)}")
-            self.send_error(f'Erro SSH: {str(e)}')
+            err_msg = str(e)
+            # Broken pipe / EOF after password = OpenSSH incompatível com o
+            # firmware do equipamento (ex: ZTE SSH-2.0-ZTE_SSH.1.0).
+            # Paramiko usa sua própria implementação do protocolo e funciona
+            # mesmo quando o OpenSSH do sistema falha nesses casos.
+            _fallback_triggers = (
+                'encerrou conexão após envio de senha',
+                'Broken pipe',
+                'broken pipe',
+            )
+            if any(t in err_msg for t in _fallback_triggers):
+                logger.warning(f"⚠️ pexpect falhou ({err_msg}). Tentando Paramiko direto...")
+                # Garante que o processo pexpect (OpenSSH) está morto e o TCP fechado
+                # antes de tentar nova conexão — alguns equipamentos (ex: ZTE) limitam
+                # sessões concorrentes por usuário.
+                try:
+                    if self.ssh_process:
+                        self.ssh_process.close(force=True)
+                        self.ssh_process = None
+                except Exception:
+                    pass
+                time.sleep(1.5)   # aguarda ZTE liberar a sessão anterior
+                try:
+                    self._connect_ssh_paramiko_direct(acesso)
+                    return
+                except Exception as e2:
+                    logger.error(f"❌ SSH Paramiko direto também falhou: {e2}")
+                    self.send_error(f'Erro SSH: {err_msg} (Paramiko fallback: {e2})')
+                    return
+            logger.error(f"❌ SSH: {err_msg}")
+            self.send_error(f'Erro SSH: {err_msg}')
+
+    def _connect_ssh_paramiko_direct(self, acesso):
+        """
+        Conexão SSH direta usando Paramiko.Transport (sem pexpect / OpenSSH binário).
+        Usado como fallback quando o OpenSSH do sistema é incompatível com o
+        firmware do equipamento (ex: ZTE SSH-2.0-ZTE_SSH.1.0 — Broken pipe).
+
+        Usa Transport diretamente (como connect_ssh_via_proxy) para ter controle
+        total sobre a negociação de algoritmos e autenticação.
+        """
+        tempo_inicio = time.time()
+        logger.info(f"🔗 [PARAMIKO DIRECT] {acesso.host}:{acesso.porta}")
+
+        # 1. Abrir socket TCP direto para o equipamento
+        sock = socket.create_connection((acesso.host, int(acesso.porta)), timeout=15)
+        try:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except Exception:
+            pass
+
+        # 2. Criar transporte Paramiko sobre o socket
+        transport = paramiko.Transport(sock,
+                                       default_window_size=2**23,
+                                       default_max_packet_size=2**15)
+        transport.use_compression(False)
+
+        # Priorizar KEX leve (group14 = 2048-bit DH) sobre group16 (4096-bit).
+        # ZTE OLTs têm timeout de KEX curto — group16-sha512 demora 2-5s no
+        # CPU embarcado e a conexão cai antes da auth (PuTTY usa group14 e ok).
+        # group16/group18 ficam por último para compatibilidade com outros vendors.
+        transport._preferred_kex = (
+            'diffie-hellman-group14-sha256',
+            'diffie-hellman-group14-sha1',
+            'diffie-hellman-group1-sha1',
+            'curve25519-sha256',
+            'curve25519-sha256@libssh.org',
+            'ecdh-sha2-nistp256',
+            'ecdh-sha2-nistp384',
+            'ecdh-sha2-nistp521',
+            'diffie-hellman-group-exchange-sha256',
+            'diffie-hellman-group-exchange-sha1',
+            'diffie-hellman-group16-sha512',
+            'diffie-hellman-group18-sha512',
+        )
+
+        transport.start_client(timeout=15)
+        self._paramiko_dest_transport = transport
+
+        # Detectar vendor pelo banner SSH
+        remote_ver = (transport.remote_version or '').lower()
+        if 'openssh' in remote_ver:
+            self.is_parks = False
+        elif any(k in remote_ver for k in ('parks', 'zte')):
+            self.is_parks = True
+        if 'huawei' in remote_ver:
+            self.is_huawei = True
+            self.is_parks  = False
+
+        # 3. Autenticar com senha
+        try:
+            transport.auth_password(acesso.usuario, acesso.senha)
+        except paramiko.AuthenticationException:
+            raise Exception("Senha incorreta ou acesso negado no equipamento")
+        if not transport.is_authenticated():
+            raise Exception("Autenticação Paramiko falhou")
+
+        # 4. Abrir shell interativo
+        terminal_type = "vt100" if (self.is_parks and not self.is_huawei) else "xterm-256color"
+        shell = transport.open_session()
+        shell.get_pty(term=terminal_type, width=220, height=50)
+        shell.invoke_shell()
+        self._paramiko_shell = shell
+
+        if self.is_huawei:
+            time.sleep(0.5)
+            shell.send("screen-length 0 temporary\r")
+
+        tempo_total = time.time() - tempo_inicio
+        self.send_json({
+            'type': 'connected',
+            'message': (
+                f'✓ Conectado SSH a {acesso.host}:{acesso.porta} ({tempo_total:.1f}s)'
+                + (" [HUAWEI]" if self.is_huawei else "")
+            )
+        })
+
+        self.is_reading  = True
+        self.read_thread = threading.Thread(target=self._read_paramiko_shell, daemon=True)
+        self.read_thread.start()
 
     # =========================================================
     # SSH via proxy — paramiko end-to-end (sem pexpect, sem socket local)
@@ -411,7 +633,7 @@ class SSHConsumer(WebsocketConsumer):
                     hostname=proxy.host, port=int(proxy.porta),
                     username=proxy.usuario, password=proxy.senha,
                     timeout=10, look_for_keys=False, allow_agent=False,
-                    banner_timeout=10,
+                    banner_timeout=10, compress=False,
                 )
                 # Desabilitar Nagle no TCP do proxy — reduz latência por tecla
                 t = proxy_client.get_transport()
@@ -443,8 +665,14 @@ class SSHConsumer(WebsocketConsumer):
                     hostname=proxy.host, port=int(proxy.porta),
                     username=proxy.usuario, password=proxy.senha,
                     timeout=10, look_for_keys=False, allow_agent=False,
-                    banner_timeout=10,
+                    banner_timeout=10, compress=False,
                 )
+                t2 = proxy_client.get_transport()
+                if t2 and t2.sock:
+                    try:
+                        t2.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    except Exception:
+                        pass
                 _proxy_pool.put(proxy, proxy_client)
                 self._paramiko_client = proxy_client
                 proxy_transport = proxy_client.get_transport()
@@ -464,6 +692,18 @@ class SSHConsumer(WebsocketConsumer):
             dest_transport.start_client(timeout=10)
             self._paramiko_dest_transport = dest_transport
 
+            # Detectar vendor pelo banner SSH
+            # OpenSSH (qualquer versão) suporta xterm-256color — não sobrescrever
+            # Parks e ZTE usam SSH server embarcado que crasha com xterm-256color
+            remote_ver = (dest_transport.remote_version or '').lower()
+            if 'openssh' in remote_ver:
+                self.is_parks = False   # OpenSSH funciona com qualquer terminal
+            elif any(k in remote_ver for k in ('parks', 'zte')):
+                self.is_parks = True
+            if 'huawei' in remote_ver:
+                self.is_huawei = True
+                self.is_parks  = False
+
             # 4. Autenticar no equipamento
             try:
                 dest_transport.auth_password(acesso.usuario, acesso.senha)
@@ -473,11 +713,19 @@ class SSHConsumer(WebsocketConsumer):
                 raise Exception("Autenticação falhou no equipamento")
 
             # 5. Abrir shell interativo
+            # Parks (SSH-2.0-Parks): Paramiko envia pty-req com terminal modes vazio
+            # → SSH server embarcado crasha. Enviamos modes POSIX completos via helper.
+            if self.is_parks and not self.is_huawei:
+                pty_term, pty_w, pty_h = "vt100", 80, 24
+            else:
+                pty_term, pty_w, pty_h = "xterm-256color", 220, 50
+            logger.info(f"🖥️ PTY: term={pty_term!r} size={pty_w}x{pty_h} is_parks={self.is_parks} remote_ver={remote_ver!r}")
             shell = dest_transport.open_session()
-            terminal_type = "vt100" if self.is_huawei else "xterm-256color"
-            shell.get_pty(term=terminal_type, width=220, height=50)
+            if self.is_parks and not self.is_huawei:
+                _pty_req_with_modes(shell, term=pty_term, width=pty_w, height=pty_h)
+            else:
+                shell.get_pty(term=pty_term, width=pty_w, height=pty_h)
             shell.invoke_shell()
-            shell.settimeout(0.005)
             self._paramiko_shell = shell
 
             if self.is_huawei:
@@ -503,39 +751,192 @@ class SSHConsumer(WebsocketConsumer):
             self.send_error(f'Erro SSH via proxy: {str(e)}')
             self.limpar_recursos()
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # Parks OLT: pexpect + ProxyCommand (Paramiko invoke_shell não é compatível)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def connect_ssh_parks_proxy(self, acesso):
+        """
+        Conecta a OLTs Parks via pexpect usando o binário ssh do sistema com ProxyCommand.
+        Paramiko invoke_shell crasha o firmware Parks — o ssh real negocia corretamente.
+        """
+        tempo_inicio = time.time()
+        try:
+            proxy = self.get_active_proxy(acesso.cliente)
+            logger.info(f"🔗 SSH Parks via pexpect+proxy: {proxy.nome}")
+            self.send_json({'type': 'info', 'message': f'⚡ Conectando Parks via proxy {proxy.nome}...'})
+
+            porta = int(acesso.porta) if acesso.porta else 22
+
+            # ProxyCommand: ssh -W host:port proxy
+            proxy_cmd = (
+                f"ssh -o StrictHostKeyChecking=no "
+                f"-o UserKnownHostsFile=/dev/null "
+                f"-o IdentitiesOnly=yes "
+                f"-o PubkeyAuthentication=no "
+                f"-o PreferredAuthentications=password "
+                f"-o LogLevel=ERROR "
+                f"-p {proxy.porta} {proxy.usuario}@{proxy.host} "
+                f"-W {acesso.host}:{porta}"
+            )
+            ssh_cmd = (
+                f"ssh -o StrictHostKeyChecking=no "
+                f"-o UserKnownHostsFile=/dev/null "
+                f"-o IdentitiesOnly=yes "
+                f"-o PubkeyAuthentication=no "
+                f"-o PreferredAuthentications=password "
+                f"-o ConnectTimeout=15 "
+                f"-o ServerAliveInterval=15 "
+                f"-o ServerAliveCountMax=3 "
+                f"-o LogLevel=ERROR "
+                f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+                f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
+                f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
+                f"-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
+                f"-o MACs=+hmac-sha1,hmac-sha2-256,hmac-sha2-512 "
+                f"-o ProxyCommand='{proxy_cmd}' "
+                f"-p {porta} {acesso.usuario}@{acesso.host}"
+            )
+
+            logger.info(f"🖥️ Parks pexpect cmd: ...@{acesso.host}:{porta}")
+            proc = pexpect.spawn(ssh_cmd, timeout=30, encoding=None, maxread=65536)
+            proc.setwinsize(50, 220)
+
+            # Autenticar no proxy (se pedir senha do proxy)
+            idx = proc.expect([
+                b'password:', b'Password:',              # senha proxy ou OLT
+                rb'[#>$\]]\s*$',                         # prompt direto (raro)
+                b'Are you sure', b'yes/no',              # host key
+                pexpect.TIMEOUT, pexpect.EOF,
+            ], timeout=20)
+
+            if idx in (3, 4):
+                proc.sendline(b'yes')
+                idx = proc.expect([b'password:', b'Password:', pexpect.TIMEOUT, pexpect.EOF], timeout=10)
+
+            if idx in (5, 6):
+                raise Exception('Timeout ou EOF na autenticação do proxy/OLT')
+
+            # Pode precisar de senha do proxy E do OLT
+            # Primeira senha (proxy ou OLT)
+            proc.sendline(proxy.senha.encode())
+            idx2 = proc.expect([
+                b'password:', b'Password:',  # segunda senha (OLT)
+                rb'[#>$\]]\s*$',             # prompt OLT
+                pexpect.TIMEOUT, pexpect.EOF,
+            ], timeout=15)
+
+            if idx2 in (0, 1):
+                # Segunda senha = OLT
+                proc.sendline(acesso.senha.encode())
+                proc.expect([rb'[#>$\]]\s*$', pexpect.TIMEOUT], timeout=15)
+            elif idx2 in (3, 4):
+                raise Exception('Timeout ao aguardar prompt do OLT Parks')
+
+            self.ssh_process = proc
+
+            tempo_total = time.time() - tempo_inicio
+            self.send_json({
+                'type': 'connected',
+                'message': f'✓ SSH a {acesso.host}:{porta} via {proxy.nome} [Parks] ({tempo_total:.1f}s)',
+            })
+
+            self.is_reading  = True
+            self.read_thread = threading.Thread(target=self._read_pexpect_shell, daemon=True)
+            self.read_thread.start()
+
+        except Exception as e:
+            tempo_total = time.time() - tempo_inicio
+            logger.error(f"❌ SSH Parks via proxy falhou em {tempo_total:.1f}s: {e}")
+            self.send_error(f'Erro SSH Parks via proxy: {str(e)}')
+            self.limpar_recursos()
+
+    def _read_pexpect_shell(self):
+        """Loop de leitura para sessão pexpect (Parks)."""
+        proc = self.ssh_process
+        logger.info("📖 Thread pexpect (Parks) iniciada")
+        try:
+            while self.is_reading and proc and proc.isalive():
+                try:
+                    chunk = proc.read_nonblocking(size=65536, timeout=0.1)
+                    if chunk:
+                        self.send_output(chunk.decode('utf-8', errors='replace'))
+                except pexpect.TIMEOUT:
+                    continue
+                except (pexpect.EOF, OSError):
+                    break
+        except Exception as e:
+            logger.error(f"❌ Erro thread pexpect Parks: {e}")
+        finally:
+            logger.info("🛑 Thread pexpect (Parks) finalizada")
+            self.is_reading = False
+
     def _read_paramiko_shell(self):
-        """Loop de leitura para conexão SSH via paramiko (proxy) — non-blocking, baixa latência."""
+        """Loop de leitura para conexão SSH via paramiko (proxy) — latência mínima via select."""
         shell = self._paramiko_shell
-        buf   = bytearray()
+        _bytes_recebidos = 0
         logger.info("📖 Thread paramiko shell iniciada")
         try:
-            shell.setblocking(False)
             while self.is_reading and shell and not shell.closed:
-                if not shell.recv_ready():
-                    if buf:
-                        self.send_output(buf.decode('utf-8', errors='replace'))
-                        buf.clear()
-                    time.sleep(0.0005)   # 0.5ms idle — CPU mínimo, latência mínima
+                try:
+                    r, _, _ = select.select([shell], [], [], 0.1)
+                except Exception:
+                    break
+                if not r:
                     continue
 
-                # Drena tudo disponível no kernel buffer agora
+                # Lê o primeiro chunk
+                try:
+                    chunk = shell.recv(65536)
+                except Exception:
+                    chunk = b''
+                if not chunk:
+                    break
+
+                buf = bytearray(chunk)
+
+                # Drain imediato do que já está no buffer
                 while shell.recv_ready():
                     try:
-                        chunk = shell.recv(65536)
+                        more = shell.recv(65536)
+                        if more:
+                            buf += more
+                        else:
+                            break
                     except Exception:
-                        chunk = b''
-                    if not chunk:
                         break
-                    buf += chunk
 
-                if buf:
-                    self.send_output(buf.decode('utf-8', errors='replace'))
-                    buf.clear()
+                # Coalescimento apenas para buffers pequenos (tab completion).
+                # Respostas de tab completion são sempre pequenas (< 512 bytes).
+                # Streaming de output (display current-config etc.) produz chunks
+                # grandes — enviados imediatamente sem espera extra.
+                if len(buf) < 512:
+                    coalesce = 0.008 if self.is_huawei else 0.003
+                    try:
+                        r2, _, _ = select.select([shell], [], [], coalesce)
+                        if r2:
+                            while shell.recv_ready():
+                                try:
+                                    more = shell.recv(65536)
+                                    if more:
+                                        buf += more
+                                    else:
+                                        break
+                                except Exception:
+                                    break
+                    except Exception:
+                        pass
+
+                _bytes_recebidos += len(buf)
+                texto = buf.decode('utf-8', errors='replace')
+                if _bytes_recebidos <= 2048:
+                    logger.info(f"📥 Shell recv [{_bytes_recebidos}b]: {repr(texto[:200])}")
+                self.send_output(texto)
 
         except Exception as e:
             logger.error(f"❌ Erro thread paramiko: {e}")
         finally:
-            logger.info("🛑 Thread paramiko shell finalizada")
+            logger.info(f"🛑 Thread paramiko shell finalizada (total={_bytes_recebidos}b)")
             self.is_reading = False
 
     # =========================================================
@@ -573,9 +974,11 @@ class SSHConsumer(WebsocketConsumer):
     # Helpers de conexão
     # =========================================================
 
-    def _build_ssh_cmd(self, usuario, host, porta):
+    def _build_ssh_cmd(self, usuario, host, porta, source_ip=None):
+        bind = f"-b {source_ip} " if source_ip else ""
         return (
-            f"ssh -o StrictHostKeyChecking=no "
+            f"ssh {bind}"
+            f"-o StrictHostKeyChecking=no "
             f"-o UserKnownHostsFile=/dev/null "
             f"-o IdentitiesOnly=yes "
             f"-o PubkeyAuthentication=no "
@@ -585,7 +988,7 @@ class SSHConsumer(WebsocketConsumer):
             f"-o ServerAliveCountMax=3 "
             f"-o LogLevel=ERROR "
             f"-o NumberOfPasswordPrompts=3 "
-            f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+            f"-o KexAlgorithms=diffie-hellman-group14-sha256,diffie-hellman-group14-sha1,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group1-sha1 "
             f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
             f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
             f"-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
@@ -805,18 +1208,16 @@ class SSHConsumer(WebsocketConsumer):
 
             while self.is_reading and self.ssh_process:
                 try:
-                    # Bloqueia no SO até dado chegar — timeout 1ms evita spin
-                    r, _, _ = select.select([fd], [], [], 0.001)
+                    # Bloqueia no SO até dado chegar — timeout 100ms só para checar is_reading
+                    r, _, _ = select.select([fd], [], [], 0.1)
                     if not r:
-                        if buf:
-                            self.send_output(buf.decode('utf-8', errors='replace'))
-                            buf.clear()
                         continue
 
                     data = os.read(fd, 65536)
                     if not data:
                         break
-                    buf += data
+
+                    buf = bytearray(data)
 
                     # Drain: lê tudo que já está no kernel buffer sem esperar
                     while True:
@@ -830,7 +1231,6 @@ class SSHConsumer(WebsocketConsumer):
                             break
 
                     self.send_output(buf.decode('utf-8', errors='replace'))
-                    buf.clear()
 
                 except OSError as e:
                     # EIO (errno 5) = processo filho morreu; EBADF = fd fechado
@@ -1528,17 +1928,35 @@ def _pexpect_exec(cmd_line: str, senha: str, comando: str,
             proc.sendline(b'screen-length 0 temporary')
             proc.expect(_PROMPT_RE, timeout=8)
 
-        # Executar comando
-        proc.sendline(comando.encode())
-        proc.expect(_PROMPT_RE, timeout=timeout)
+        # Padrões de prompt esperados — inclui [Y/N] e [Y(yes)/N(no)/C(cancel)] para Huawei NE/VS
+        _PROMPT_OR_CONFIRM = [
+            _PROMPT_RE,
+            rb'\[Y/N\]', rb'\[y/n\]',
+            rb'\[Y\(yes\)/N\(no\)', rb'\[y\(yes\)/n\(no\)',  # Huawei NE commit-based
+            rb'continue\?',
+            pexpect.TIMEOUT, pexpect.EOF,
+        ]
 
-        # Capturar output entre o eco do comando e o próximo prompt
-        raw = proc.before or b''
-        lines = raw.decode('utf-8', errors='replace').splitlines()
-        # Remove a primeira linha (eco do comando) e linhas em branco no início/fim
-        if lines and comando in lines[0]:
-            lines = lines[1:]
-        return '\n'.join(lines).strip()
+        # Suporte multi-linha: envia cada linha separadamente
+        linhas_cmd = [l.strip() for l in comando.split('\n') if l.strip()]
+        all_output = []
+        for linha in linhas_cmd:
+            proc.sendline(linha.encode())
+            idx = proc.expect(_PROMPT_OR_CONFIRM, timeout=timeout)
+            raw = proc.before or b''
+            chunk = raw.decode('utf-8', errors='replace').splitlines()
+            if chunk and linha in chunk[0]:
+                chunk = chunk[1:]
+            all_output.extend(chunk)
+            # Confirmação Y/N (qualquer variante) — responde automaticamente com y
+            if idx in (1, 2, 3, 4, 5):
+                proc.sendline(b'y')
+                proc.expect(_PROMPT_RE, timeout=10)
+                extra = (proc.before or b'').decode('utf-8', errors='replace').splitlines()
+                all_output.extend(extra)
+            elif idx in (6, 7):
+                break  # timeout/EOF — sai do loop
+        return '\n'.join(all_output).strip()
     finally:
         try:
             proc.sendline(b'quit')
@@ -1594,12 +2012,15 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
             raise Exception('Autenticação falhou no equipamento destino')
 
         shell = dest_transport.open_session()
-        shell.get_pty(term='vt100' if is_huawei else 'xterm-256color', width=220, height=50)
+        shell.get_pty(term='xterm-256color', width=220, height=50)
         shell.invoke_shell()
         shell.settimeout(0.1)
         time.sleep(0.5)
 
-        def _read_until_prompt(sh, wait=8.0) -> bytes:
+        _CONFIRM_RE = _re.compile(rb'\[Y/N\]|\[y/n\]|\[Y\(yes\)|\[y\(yes\)|continue\?', _re.IGNORECASE)
+
+        def _read_until_prompt(sh, wait=8.0) -> tuple:
+            """Lê até encontrar prompt ou confirmação Y/N. Retorna (bytes, is_confirm)."""
             buf = bytearray()
             deadline = time.time() + wait
             while time.time() < deadline:
@@ -1609,10 +2030,12 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
                         break
                     buf.extend(chunk)
                     if _re.search(_PROMPT_RE, bytes(buf)):
-                        break
+                        return bytes(buf), False
+                    if _CONFIRM_RE.search(bytes(buf)):
+                        return bytes(buf), True
                 except Exception:
                     time.sleep(0.05)
-            return bytes(buf)
+            return bytes(buf), False
 
         _read_until_prompt(shell, 6)  # consumir banner inicial
 
@@ -1620,16 +2043,24 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
             shell.send(b'screen-length 0 temporary\r')
             _read_until_prompt(shell, 5)
 
-        shell.send(comando.encode() + b'\r')
-        raw = _read_until_prompt(shell, timeout)
-
-        lines = raw.decode('utf-8', errors='replace').splitlines()
-        if lines and comando in lines[0]:
-            lines = lines[1:]
-        # Remove últimas linhas que são só prompt
-        while lines and _re.search(r'[>#\$\]]\s*$', lines[-1]):
-            lines.pop()
-        return '\n'.join(lines).strip()
+        # Suporte multi-linha: envia cada linha separadamente
+        linhas_cmd = [l.strip() for l in comando.split('\n') if l.strip()]
+        all_output = []
+        for linha in linhas_cmd:
+            shell.send(linha.encode() + b'\r')
+            raw, is_confirm = _read_until_prompt(shell, timeout)
+            # Confirmação Y/N — responde automaticamente com y
+            if is_confirm:
+                shell.send(b'y\r')
+                extra, _ = _read_until_prompt(shell, 10)
+                raw = raw + extra
+            chunk = raw.decode('utf-8', errors='replace').splitlines()
+            if chunk and linha.lower() in chunk[0].lower():
+                chunk = chunk[1:]
+            while chunk and _re.search(r'[>#\$\]]\s*$', chunk[-1]):
+                chunk.pop()
+            all_output.extend(chunk)
+        return '\n'.join(all_output).strip()
     finally:
         try:
             shell.close()
@@ -1663,12 +2094,42 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
         except ValueError:
             return False
 
-    # Roteamento: IP privado → proxy; CGNAT → tenta direto, fallback proxy; público → direto
+    # Roteamento: IP privado → VPN isolada (source bind) ou proxy; público → direto
     if _is_private(acesso.host):
+        # Verifica VPN isolada por interface primeiro
+        from .models import VPNWireGuard
+        vpn = None
+        try:
+            host_ip = _ip.ip_address(acesso.host)
+            for v in VPNWireGuard.objects.filter(cliente=acesso.cliente, ativo=True, peer_no_servidor=True):
+                for r in v.redes_lista():
+                    try:
+                        if host_ip in _ip.ip_network(r, strict=False):
+                            vpn = v
+                            break
+                    except ValueError:
+                        pass
+                if vpn:
+                    break
+        except Exception:
+            pass
+
+        iface = vpn.interface_nome if vpn else 'wg0'
+        isolada_ativa = (
+            vpn and vpn.servidor_ip_local and
+            iface not in ('wg0', '') and
+            _wg_peer_ativo(iface)
+        )
+        if isolada_ativa:
+            # Interface isolada com handshake ativo: source bind para routing table correto
+            src = vpn.servidor_ip_local
+            cmd_line = f"ssh -b {src} {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
+            return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+
         proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
         if proxy:
             return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
-        # sem proxy configurado, tenta direto mesmo sendo privado
+        # sem proxy/VPN, tenta direto
         cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
         return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
     elif getattr(acesso, 'tipo', '') == 'CGNAT':

@@ -85,6 +85,8 @@ body.embed-mode #btn-fechar{display:none!important}
 .btn-cancel{flex:1;padding:8px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:.85rem}
 /* Link IP labels */
 .link-ip{font-size:9px;fill:#8b949e;text-anchor:middle;font-family:'Courier New',monospace;pointer-events:none}
+/* Link interface labels (lado A/B) */
+.link-iface{font-size:8px;text-anchor:middle;font-family:'Courier New',monospace;pointer-events:none;font-weight:600;opacity:.9}
 /* Text box node */
 .text-box-node .node-body{fill:transparent!important;stroke-dasharray:5,3}
 .text-box-node .node-ring{display:none}
@@ -93,6 +95,11 @@ body.embed-mode #btn-fechar{display:none!important}
 /* Toast */
 #toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#161b22;border:1px solid var(--green);color:var(--green);padding:8px 20px;border-radius:20px;font-size:.82rem;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.show{opacity:1}
+/* Waypoint handles */
+.wp-handle{pointer-events:all}
+.wp-pt{cursor:move}
+.wp-mid{cursor:crosshair;opacity:.7;transition:opacity .15s}
+.wp-mid:hover{opacity:1;r:7}
 /* Scrollbar */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
 </style>
@@ -176,7 +183,7 @@ body.embed-mode #btn-fechar{display:none!important}
     document.body.classList.add('embed-mode');
   }
 </script>
-<script src="/static/js/topo_engine.js?v=6"></script>
-<script src="/static/js/topo_main.js?v=6"></script>
+<script src="/static/js/topo_engine.js?v=10"></script>
+<script src="/static/js/topo_main.js?v=10"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link href="{% static 'css/style.css' %}?v=modal2026" rel="stylesheet">
+    <link href="{% static 'css/style.css' %}?v=modal2026f" rel="stylesheet">
     
 </head>
 <body>
@@ -91,6 +91,12 @@
                         <li><a class="dropdown-item" href="{% url 'relatorio_backups' %}">
                             <i class="fas fa-database me-2" style="color:#00f5ff"></i>Relatório de Backups
                         </a></li>
+                        {% if request.user.is_superuser %}
+                        <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1);"></li>
+                        <li><a class="dropdown-item" href="{% url 'trocar_senha_massa' %}">
+                            <i class="fas fa-key me-2" style="color:#ff6b6b"></i>Trocar Senhas em Massa
+                        </a></li>
+                        {% endif %}
                         <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1);"></li>
                         <li><a class="dropdown-item" href="{% url 'backup_config' %}">
                             <i class="fas fa-cogs me-2" style="color:#888"></i>Config. Backup
