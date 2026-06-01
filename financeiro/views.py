@@ -516,6 +516,7 @@ def api_criar_consultoria(request):
         quantidade_meses = int(request.POST.get('quantidade_meses', 1))
         periodicidade = request.POST.get('periodicidade', 'MENSAL')
         data_inicio_str = request.POST.get('data_inicio')
+        privada = request.POST.get('privada') == 'on' or request.POST.get('privada') == 'true'
 
         if not cliente_id or not descricao or not valor_unitario or not data_inicio_str:
             return JsonResponse({'sucesso': False, 'erro': 'Preencha todos os campos obrigatórios'}, status=400)
@@ -529,7 +530,8 @@ def api_criar_consultoria(request):
             valor_unitario=valor_unitario,
             quantidade_meses=quantidade_meses,
             periodicidade=periodicidade,
-            data_inicio=data_inicio
+            data_inicio=data_inicio,
+            privada=privada
         )
 
         faturas_geradas = gerar_faturas_consultoria(consultoria)
@@ -740,6 +742,7 @@ def api_criar_aluguel_ipv4(request):
         data_inicio_str = request.POST.get('data_inicio')
         bloco_id = request.POST.get('bloco_ip')
         quantidade_meses = int(request.POST.get('quantidade_meses', 1))
+        privada = request.POST.get('privada') == 'on' or request.POST.get('privada') == 'true'
 
         if not cliente_id or not bloco_descricao or not valor_mensal or not data_inicio_str:
             return JsonResponse({'sucesso': False, 'erro': 'Preencha todos os campos obrigatórios'}, status=400)
@@ -758,6 +761,7 @@ def api_criar_aluguel_ipv4(request):
             quantidade_ips=quantidade_ips,
             valor_mensal=valor_mensal,
             data_inicio=data_inicio,
+            privada=privada
         )
 
         faturas_geradas = gerar_faturas_aluguel_ipv4(aluguel, quantidade_meses)
@@ -1130,6 +1134,7 @@ def api_criar_venda_equipamento(request):
         valor_total = float(request.POST.get('valor_total'))
         quantidade_parcelas = int(request.POST.get('quantidade_parcelas', 1))
         data_inicio_str = request.POST.get('data_inicio')
+        privada = request.POST.get('privada') == 'on' or request.POST.get('privada') == 'true'
 
         if not cliente_id or not descricao or not valor_total or not data_inicio_str:
             return JsonResponse({'sucesso': False, 'erro': 'Preencha todos os campos obrigatórios'}, status=400)
@@ -1143,7 +1148,8 @@ def api_criar_venda_equipamento(request):
             descricao=descricao,
             valor_total=valor_total,
             quantidade_parcelas=quantidade_parcelas,
-            data_inicio=data_inicio
+            data_inicio=data_inicio,
+            privada=privada
         )
 
         faturas_geradas = gerar_faturas_venda_equipamento(venda)

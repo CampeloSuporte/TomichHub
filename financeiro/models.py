@@ -69,28 +69,31 @@ class Consultoria(models.Model):
         ('ANUAL', 'Anual'),
         ('UNICA', 'Única'),
     ]
-    
+
     STATUS_CHOICES = [
         ('ATIVO', 'Ativo'),
         ('PAUSADO', 'Pausado'),
         ('CANCELADO', 'Cancelado'),
         ('ENCERRADO', 'Encerrado'),
     ]
-    
+
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='consultorias')
     descricao = models.CharField(max_length=255, help_text="Ex: Consultoria de Redes")
     valor_unitario = models.DecimalField(max_digits=10, decimal_places=2)
     quantidade_meses = models.IntegerField(default=1, help_text="Duração em meses")
     periodicidade = models.CharField(max_length=20, choices=PERIODICIDADE_CHOICES, default='MENSAL')
-    
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ATIVO')
     data_inicio = models.DateField()
     data_fim = models.DateField(blank=True, null=True)
-    
+
     # Quitação
     quitado = models.BooleanField(default=False)
     data_quitacao = models.DateField(blank=True, null=True)
-    
+
+    # Privacidade
+    privada = models.BooleanField(default=False, help_text='Marcar como privada para mostrar apenas para staff')
+
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
     
@@ -129,23 +132,26 @@ class AluguelIPv4(models.Model):
         ('PAUSADO', 'Pausado'),
         ('CANCELADO', 'Cancelado'),
     ]
-    
+
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='alugueis_ipv4')
     bloco_ip = models.ForeignKey(BlocoIP, on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     bloco_descricao = models.CharField(max_length=100, help_text="Ex: 200.100.50.0/24")
     quantidade_ips = models.IntegerField(help_text="Quantidade de IPs no bloco")
-    
+
     valor_mensal = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ATIVO')
-    
+
     data_inicio = models.DateField()
     data_fim = models.DateField(blank=True, null=True)
-    
+
     # Quitação
     quitado = models.BooleanField(default=False)
     data_quitacao = models.DateField(blank=True, null=True)
-    
+
+    # Privacidade
+    privada = models.BooleanField(default=False, help_text='Marcar como privada para mostrar apenas para staff')
+
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
     
@@ -478,20 +484,23 @@ class VendaEquipamento(models.Model):
         ('CANCELADO', 'Cancelado'),
         ('ENCERRADO', 'Encerrado'),
     ]
-    
+
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='vendas_equipamentos')
     descricao = models.CharField(max_length=255, help_text="Nome do equipamento")
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, help_text="Valor total da venda")
     quantidade_parcelas = models.IntegerField(default=1, help_text="Número de parcelas")
-    
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ATIVO')
     data_inicio = models.DateField()
     data_fim = models.DateField(blank=True, null=True)
-    
+
     # Quitação
     quitado = models.BooleanField(default=False)
     data_quitacao = models.DateField(blank=True, null=True)
-    
+
+    # Privacidade
+    privada = models.BooleanField(default=False, help_text='Marcar como privada para mostrar apenas para staff')
+
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
     

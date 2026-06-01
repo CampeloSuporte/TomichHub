@@ -48,4 +48,11 @@ urlpatterns = [
     path('api/pagamento/<int:pagamento_id>/deletar/', views.api_deletar_pagamento, name='api_deletar_pagamento'),
     path('api/clientes-pagaram-vencidos/', views.api_clientes_pagaram_vencidos, name='api_clientes_pagaram_vencidos'),
 
+    # ===== APIS: DESPESAS =====
+    path('api/despesa/criar/',                    views.api_criar_despesa,   name='api_criar_despesa'),
+    path('api/despesa/listar/',                   views.api_listar_despesas, name='api_listar_despesas'),
+    path('api/despesa/<int:despesa_id>/editar/',  views.api_editar_despesa,  name='api_editar_despesa'),
+    path('api/despesa/<int:despesa_id>/pagar/',   views.api_pagar_despesa,   name='api_pagar_despesa'),
+    path('api/despesa/<int:despesa_id>/deletar/', views.api_deletar_despesa, name='api_deletar_despesa'),
+    path('api/despesas/dashboard/',               views.api_despesas_dashboard, name='api_despesas_dashboard'),
 ]
