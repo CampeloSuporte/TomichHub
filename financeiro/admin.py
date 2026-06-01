@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     ConfiguracaoFinanceira, Consultoria, AluguelIPv4, Fatura,
-    Boleto, Pagamento, RelatorioFinanceiro,VendaEquipamento
+    Boleto, Pagamento, RelatorioFinanceiro, VendaEquipamento, Despesa
 )
 
 
@@ -188,4 +188,18 @@ class VendaEquipamentoAdmin(admin.ModelAdmin):
         ('Quitação', {
             'fields': ('quitado', 'data_quitacao')
         }),
+    )
+
+@admin.register(Despesa)
+class DespesaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'valor', 'categoria', 'recorrencia', 'data_vencimento', 'status', 'privada', 'criado_em')
+    list_filter  = ('status', 'categoria', 'recorrencia', 'privada', 'data_vencimento')
+    search_fields = ('nome', 'descricao')
+    readonly_fields = ('criado_em', 'atualizado_em', 'criado_por')
+    fieldsets = (
+        ('Identificação', {'fields': ('nome', 'descricao', 'categoria', 'recorrencia')}),
+        ('Valores e Datas', {'fields': ('valor', 'data_vencimento')}),
+        ('Status', {'fields': ('status', 'data_pagamento', 'observacoes')}),
+        ('Privacidade', {'fields': ('privada',)}),
+        ('Auditoria', {'fields': ('criado_por', 'criado_em', 'atualizado_em'), 'classes': ('collapse',)}),
     )

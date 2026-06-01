@@ -508,3 +508,76 @@ class VendaEquipamento(models.Model):
     def get_valor_total(self):
         """Retorna valor total"""
         return self.valor_total
+
+
+class Despesa(models.Model):
+    """Despesas operacionais da empresa com controle de vencimento."""
+
+    CATEGORIA_CHOICES = [
+        ('INFRAESTRUTURA', 'Infraestrutura'),
+        ('PESSOAL',        'Pessoal'),
+        ('SERVICOS',       'Serviços'),
+        ('ADMINISTRATIVO', 'Administrativo'),
+        ('FISCAL',         'Fiscal / Tributário'),
+        ('OUTROS',         'Outros'),
+    ]
+    RECORRENCIA_CHOICES = [
+        ('UNICA',       'Única'),
+        ('MENSAL',      'Mensal'),
+        ('BIMESTRAL',   'Bimestral'),
+        ('TRIMESTRAL',  'Trimestral'),
+        ('SEMESTRAL',   'Semestral'),
+        ('ANUAL',       'Anual'),
+    ]
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('PAGO',     'Pago'),
+    ]
+
+    nome            = models.CharField(max_length=255)
+    descricao       = models.TextField(blank=True)
+    valor           = models.DecimalField(max_digits=12, decimal_places=2)
+    categoria       = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default='OUTROS')
+    recorrencia          = models.CharField(max_length=20, choices=RECORRENCIA_CHOICES, default='UNICA')
+    meses_recorrencia    = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='Total de meses/ocorrências da recorrência. Vazio = indefinido.'
+    )
+    ocorrencia_atual     = models.PositiveIntegerField(default=1, help_text='Número da ocorrência atual')
+    data_vencimento      = models.DateField()
+    status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    data_pagamento  = models.DateField(null=True, blank=True)
+    observacoes     = models.TextField(blank=True)
+    privada         = models.BooleanField(
+        default=False,
+        help_text='Marcar como privada para mostrar apenas ao criador'
+    )
+    criado_por      = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='despesas_criadas'
+    )
+    criado_em       = models.DateTimeField(auto_now_add=True)
+    atualizado_em   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Despesa'
+        verbose_name_plural = 'Despesas'
+        ordering            = ['data_vencimento']
+
+    def __str__(self):
+        return f'{self.nome} — {self.data_vencimento}'
+
+    @property
+    def status_efetivo(self):
+        if self.status == 'PAGO':
+            return 'PAGO'
+        today = timezone.localdate()
+        if self.data_vencimento < today:
+            return 'VENCIDO'
+        if self.data_vencimento == today:
+            return 'VENCE_HOJE'
+        return 'PENDENTE'
+
+    @property
+    def dias_para_vencer(self):
+        return (self.data_vencimento - timezone.localdate()).days

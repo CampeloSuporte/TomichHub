@@ -1809,6 +1809,7 @@ def api_criar_despesa(request):
         recorrencia = data.get('recorrencia', 'UNICA')
         meses_raw = data.get('meses_recorrencia', None)
         meses_recorrencia = int(meses_raw) if meses_raw and str(meses_raw).isdigit() and recorrencia != 'UNICA' else None
+        privada = data.get('privada', False)
 
         d = Despesa.objects.create(
             nome=nome,
@@ -1820,6 +1821,7 @@ def api_criar_despesa(request):
             ocorrencia_atual=1,
             data_vencimento=vencimento,
             observacoes=data.get('observacoes', '').strip(),
+            privada=privada,
             criado_por=request.user,
         )
         return JsonResponse({'sucesso': True, 'id': d.id, 'msg': 'Despesa cadastrada.'})
@@ -1837,7 +1839,12 @@ def api_listar_despesas(request):
         mes   = request.GET.get('mes', '')
         ano   = request.GET.get('ano', '')
 
-        qs = Despesa.objects.all()
+        # Filtrar despesas: mostrar públicas ou privadas do usuário logado
+        from django.db.models import Q
+        qs = Despesa.objects.filter(
+            Q(privada=False) | Q(privada=True, criado_por=request.user)
+        )
+
         if status_filtro == 'PAGO':
             qs = qs.filter(status='PAGO')
         elif status_filtro == 'PENDENTE':
@@ -1863,6 +1870,7 @@ def api_listar_despesas(request):
                 'recorrencia_label': d.get_recorrencia_display(),
                 'meses_recorrencia': d.meses_recorrencia,
                 'ocorrencia_atual': d.ocorrencia_atual,
+                'privada': d.privada,
                 'recorrencia_info': (
                     f'{d.ocorrencia_atual}/{d.meses_recorrencia}' if d.meses_recorrencia else
                     (d.get_recorrencia_display() if d.recorrencia != 'UNICA' else '')
@@ -1915,6 +1923,8 @@ def api_editar_despesa(request, despesa_id):
             d.meses_recorrencia = int(mr) if mr and str(mr).isdigit() else None
         if 'observacoes' in data:
             d.observacoes = data['observacoes'].strip()
+        if 'privada' in data:
+            d.privada = data['privada']
         d.save()
 
         # Recorrência: gera próxima ocorrência se pago e ainda há ciclos restantes
