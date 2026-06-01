@@ -22,7 +22,7 @@ from django.core.files.base import ContentFile
 import datetime as dt
 
 from clientes.models import Cliente, BlocoIP
-from .models import Consultoria, AluguelIPv4, Fatura, ConfiguracaoFinanceira, Pagamento
+from .models import Consultoria, AluguelIPv4, Fatura, ConfiguracaoFinanceira, Pagamento, Despesa
 from .decorators import acesso_financeiro_restrito
 from django.db import transaction
 from django.db.models.functions import Substr, Cast
@@ -1782,5 +1782,291 @@ def api_proximas_vencer(request):
 
         return JsonResponse({'sucesso': True, 'faturas': resultado, 'total': len(resultado)})
 
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DESPESAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_criar_despesa(request):
+    try:
+        data = json.loads(request.body)
+        nome = data.get('nome', '').strip()
+        if not nome:
+            return JsonResponse({'sucesso': False, 'erro': 'Nome é obrigatório'})
+        vencimento = data.get('data_vencimento', '')
+        if not vencimento:
+            return JsonResponse({'sucesso': False, 'erro': 'Data de vencimento é obrigatória'})
+        try:
+            valor = float(str(data.get('valor', 0)).replace(',', '.'))
+        except (ValueError, TypeError):
+            return JsonResponse({'sucesso': False, 'erro': 'Valor inválido'})
+
+        recorrencia = data.get('recorrencia', 'UNICA')
+        meses_raw = data.get('meses_recorrencia', None)
+        meses_recorrencia = int(meses_raw) if meses_raw and str(meses_raw).isdigit() and recorrencia != 'UNICA' else None
+
+        d = Despesa.objects.create(
+            nome=nome,
+            descricao=data.get('descricao', '').strip(),
+            valor=valor,
+            categoria=data.get('categoria', 'OUTROS'),
+            recorrencia=recorrencia,
+            meses_recorrencia=meses_recorrencia,
+            ocorrencia_atual=1,
+            data_vencimento=vencimento,
+            observacoes=data.get('observacoes', '').strip(),
+            criado_por=request.user,
+        )
+        return JsonResponse({'sucesso': True, 'id': d.id, 'msg': 'Despesa cadastrada.'})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['GET'])
+def api_listar_despesas(request):
+    try:
+        hoje = timezone.localdate()
+        status_filtro = request.GET.get('status', '')
+        mes   = request.GET.get('mes', '')
+        ano   = request.GET.get('ano', '')
+
+        qs = Despesa.objects.all()
+        if status_filtro == 'PAGO':
+            qs = qs.filter(status='PAGO')
+        elif status_filtro == 'PENDENTE':
+            qs = qs.filter(status='PENDENTE', data_vencimento__gte=hoje)
+        elif status_filtro == 'VENCIDO':
+            qs = qs.filter(status='PENDENTE', data_vencimento__lt=hoje)
+        if mes and ano:
+            qs = qs.filter(data_vencimento__month=int(mes), data_vencimento__year=int(ano))
+        elif ano:
+            qs = qs.filter(data_vencimento__year=int(ano))
+
+        def _item(d):
+            dias = (d.data_vencimento - hoje).days
+            se = d.status_efetivo
+            return {
+                'id': d.id,
+                'nome': d.nome,
+                'descricao': d.descricao,
+                'valor': float(d.valor),
+                'categoria': d.categoria,
+                'categoria_label': d.get_categoria_display(),
+                'recorrencia': d.recorrencia,
+                'recorrencia_label': d.get_recorrencia_display(),
+                'meses_recorrencia': d.meses_recorrencia,
+                'ocorrencia_atual': d.ocorrencia_atual,
+                'recorrencia_info': (
+                    f'{d.ocorrencia_atual}/{d.meses_recorrencia}' if d.meses_recorrencia else
+                    (d.get_recorrencia_display() if d.recorrencia != 'UNICA' else '')
+                ),
+                'data_vencimento': d.data_vencimento.strftime('%Y-%m-%d'),
+                'data_vencimento_fmt': d.data_vencimento.strftime('%d/%m/%Y'),
+                'status': d.status,
+                'status_efetivo': se,
+                'dias_para_vencer': dias,
+                'data_pagamento': d.data_pagamento.strftime('%d/%m/%Y') if d.data_pagamento else None,
+                'observacoes': d.observacoes,
+            }
+
+        return JsonResponse({'sucesso': True, 'despesas': [_item(d) for d in qs]})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_editar_despesa(request, despesa_id):
+    try:
+        d = get_object_or_404(Despesa, id=despesa_id)
+        data = json.loads(request.body)
+
+        nome = data.get('nome', '').strip()
+        if nome:
+            d.nome = nome
+        if 'descricao' in data:
+            d.descricao = data['descricao'].strip()
+        if 'valor' in data:
+            d.valor = float(str(data['valor']).replace(',', '.'))
+        if 'categoria' in data:
+            d.categoria = data['categoria']
+        if 'recorrencia' in data:
+            d.recorrencia = data['recorrencia']
+        if 'data_vencimento' in data:
+            d.data_vencimento = data['data_vencimento']
+        if 'status' in data:
+            d.status = data['status']
+            if data['status'] == 'PAGO' and not d.data_pagamento:
+                d.data_pagamento = timezone.localdate()
+            elif data['status'] == 'PENDENTE':
+                d.data_pagamento = None
+        if 'data_pagamento' in data and data['data_pagamento']:
+            d.data_pagamento = data['data_pagamento']
+        if 'meses_recorrencia' in data:
+            mr = data['meses_recorrencia']
+            d.meses_recorrencia = int(mr) if mr and str(mr).isdigit() else None
+        if 'observacoes' in data:
+            d.observacoes = data['observacoes'].strip()
+        d.save()
+
+        # Recorrência: gera próxima ocorrência se pago e ainda há ciclos restantes
+        proxima = None
+        if d.status == 'PAGO' and d.recorrencia != 'UNICA':
+            prox_num = d.ocorrencia_atual + 1
+            # Verifica se ainda há ocorrências (meses_recorrencia=None = indefinido)
+            if d.meses_recorrencia is None or prox_num <= d.meses_recorrencia:
+                mapa = {'MENSAL':1,'BIMESTRAL':2,'TRIMESTRAL':3,'SEMESTRAL':6,'ANUAL':12}
+                intervalo = mapa.get(d.recorrencia, 0)
+                if intervalo:
+                    prox_venc = d.data_vencimento + relativedelta(months=intervalo)
+                    existe = Despesa.objects.filter(
+                        nome=d.nome, data_vencimento=prox_venc, status='PENDENTE'
+                    ).exists()
+                    if not existe:
+                        Despesa.objects.create(
+                            nome=d.nome, descricao=d.descricao, valor=d.valor,
+                            categoria=d.categoria, recorrencia=d.recorrencia,
+                            meses_recorrencia=d.meses_recorrencia,
+                            ocorrencia_atual=prox_num,
+                            data_vencimento=prox_venc,
+                            criado_por=d.criado_por,
+                            observacoes=d.observacoes,
+                        )
+                        proxima = prox_venc.strftime('%d/%m/%Y')
+
+        return JsonResponse({'sucesso': True, 'msg': 'Despesa atualizada.', 'proxima_gerada': proxima})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_pagar_despesa(request, despesa_id):
+    """Marca despesa como paga com um clique e gera próxima recorrência se aplicável."""
+    try:
+        d = get_object_or_404(Despesa, id=despesa_id)
+        if d.status == 'PAGO':
+            return JsonResponse({'sucesso': False, 'erro': 'Despesa já está paga.'})
+
+        d.status = 'PAGO'
+        d.data_pagamento = timezone.localdate()
+        d.save()
+
+        proxima = None
+        proxima_num = None
+        if d.recorrencia != 'UNICA':
+            prox_num = d.ocorrencia_atual + 1
+            if d.meses_recorrencia is None or prox_num <= d.meses_recorrencia:
+                mapa = {'MENSAL':1,'BIMESTRAL':2,'TRIMESTRAL':3,'SEMESTRAL':6,'ANUAL':12}
+                intervalo = mapa.get(d.recorrencia, 0)
+                if intervalo:
+                    prox_venc = d.data_vencimento + relativedelta(months=intervalo)
+                    existe = Despesa.objects.filter(
+                        nome=d.nome, data_vencimento=prox_venc, status='PENDENTE'
+                    ).exists()
+                    if not existe:
+                        Despesa.objects.create(
+                            nome=d.nome, descricao=d.descricao, valor=d.valor,
+                            categoria=d.categoria, recorrencia=d.recorrencia,
+                            meses_recorrencia=d.meses_recorrencia,
+                            ocorrencia_atual=prox_num,
+                            data_vencimento=prox_venc,
+                            criado_por=d.criado_por,
+                            observacoes=d.observacoes,
+                        )
+                        proxima = prox_venc.strftime('%d/%m/%Y')
+                        proxima_num = prox_num
+            else:
+                proxima = 'encerrada'
+
+        msg = f'✓ "{d.nome}" marcada como paga!'
+        if proxima and proxima != 'encerrada':
+            msg += f' Próxima ({proxima_num}) em {proxima}.'
+        elif proxima == 'encerrada':
+            msg += ' Recorrência encerrada.'
+
+        return JsonResponse({'sucesso': True, 'msg': msg, 'proxima_gerada': proxima, 'proxima_num': proxima_num})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['DELETE'])
+def api_deletar_despesa(request, despesa_id):
+    try:
+        d = get_object_or_404(Despesa, id=despesa_id)
+        nome = d.nome
+        d.delete()
+        return JsonResponse({'sucesso': True, 'msg': f'Despesa "{nome}" deletada.'})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(['GET'])
+def api_despesas_dashboard(request):
+    """
+    Retorna despesas relevantes para o dashboard:
+    - vencidas (PENDENTE + data_vencimento < hoje)
+    - vencendo hoje
+    - próximas (próximos 30 dias)
+    - total mensal (mês atual)
+    """
+    try:
+        hoje = timezone.localdate()
+        fim_mes = hoje.replace(day=1) + relativedelta(months=1) - timedelta(days=1)
+
+        def _s(d):
+            dias = (d.data_vencimento - hoje).days
+            return {
+                'id': d.id,
+                'nome': d.nome,
+                'valor': float(d.valor),
+                'categoria': d.get_categoria_display(),
+                'data_vencimento_fmt': d.data_vencimento.strftime('%d/%m/%Y'),
+                'dias': dias,
+                'recorrencia': d.get_recorrencia_display(),
+            }
+
+        vencidas   = list(Despesa.objects.filter(status='PENDENTE', data_vencimento__lt=hoje).order_by('data_vencimento'))
+        hoje_list  = list(Despesa.objects.filter(status='PENDENTE', data_vencimento=hoje))
+        proximas   = list(Despesa.objects.filter(
+            status='PENDENTE',
+            data_vencimento__gt=hoje,
+            data_vencimento__lte=hoje + timedelta(days=30),
+        ).order_by('data_vencimento'))
+
+        total_mes_pendente = Despesa.objects.filter(
+            status='PENDENTE',
+            data_vencimento__year=hoje.year,
+            data_vencimento__month=hoje.month,
+        ).aggregate(t=Sum('valor'))['t'] or 0
+
+        total_mes_pago = Despesa.objects.filter(
+            status='PAGO',
+            data_pagamento__year=hoje.year,
+            data_pagamento__month=hoje.month,
+        ).aggregate(t=Sum('valor'))['t'] or 0
+
+        return JsonResponse({
+            'sucesso': True,
+            'vencidas':  [_s(d) for d in vencidas],
+            'hoje':      [_s(d) for d in hoje_list],
+            'proximas':  [_s(d) for d in proximas],
+            'total_mes_pendente': float(total_mes_pendente),
+            'total_mes_pago':     float(total_mes_pago),
+            'count_vencidas':     len(vencidas),
+            'count_hoje':         len(hoje_list),
+        })
     except Exception as e:
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
