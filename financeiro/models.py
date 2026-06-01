@@ -211,7 +211,11 @@ class Fatura(models.Model):
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='RASCUNHO')
     observacoes = models.TextField(blank=True, null=True)
-    
+    privada = models.BooleanField(
+        default=False,
+        help_text='Marcar como privada para mostrar apenas para staff'
+    )
+
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
     

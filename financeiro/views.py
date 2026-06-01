@@ -367,6 +367,11 @@ def api_pesquisar_clientes(request):
 def api_visualizar_fatura(request, fatura_id):
     try:
         fatura = Fatura.objects.get(id=fatura_id)
+
+        # Verificar privacidade: staff vê tudo, usuários veem apenas públicas
+        if fatura.privada and not request.user.is_staff:
+            return JsonResponse({'sucesso': False, 'erro': 'Acesso negado'}, status=403)
+
         pagamentos = Pagamento.objects.filter(fatura=fatura)
         total_pago = pagamentos.aggregate(Sum('valor'))['valor__sum'] or 0
         hoje = date.today()
@@ -951,6 +956,7 @@ def api_criar_fatura(request):
         cliente_id = request.POST.get('cliente_id')
         tipo = request.POST.get('tipo')
         data_vencimento_str = request.POST.get('data_vencimento')
+        privada = request.POST.get('privada') == 'on' or request.POST.get('privada') == 'true'
 
         if not cliente_id or not tipo or not data_vencimento_str:
             return JsonResponse({'sucesso': False, 'erro': 'Preencha todos os campos obrigatórios'}, status=400)
@@ -963,7 +969,8 @@ def api_criar_fatura(request):
             numero_fatura=gerar_numero_fatura_unico(),
             tipo=tipo,
             data_vencimento=data_vencimento,
-            status='ABERTA'
+            status='ABERTA',
+            privada=privada
         )
 
         return JsonResponse({
@@ -1035,7 +1042,14 @@ def api_listar_faturas(request):
             return JsonResponse({'sucesso': False, 'erro': 'cliente_id obrigatório'}, status=400)
 
         cliente = get_object_or_404(Cliente, id=cliente_id)
-        faturas = Fatura.objects.filter(cliente=cliente).order_by('-data_emissao')
+
+        # Filtrar faturas: mostrar públicas ou privadas se o usuário é staff
+        from django.db.models import Q
+        if request.user.is_staff:
+            faturas = Fatura.objects.filter(cliente=cliente).order_by('-data_emissao')
+        else:
+            faturas = Fatura.objects.filter(cliente=cliente, privada=False).order_by('-data_emissao')
+
         hoje = date.today()
 
         html = ''
@@ -1077,9 +1091,11 @@ def api_listar_faturas(request):
                         <i class="fas fa-trash"></i>
                     </button>'''
 
+            privada_icon = f' <i class="fas fa-lock" style="color:#b060ff;font-size:.7rem;margin-left:.3rem;" title="Privada"></i>' if f.privada else ''
+
             html += f'''
             <tr id="row-fatura-{f.id}">
-                <td><strong>{f.numero_fatura}</strong></td>
+                <td><strong>{f.numero_fatura}{privada_icon}</strong></td>
                 <td><small class="badge bg-secondary">{tipo_label}</small></td>
                 <td><strong>R$ {float(f.valor_total):.2f}</strong></td>
                 <td>{f.data_vencimento.strftime('%d/%m/%Y')}{dias_str}</td>

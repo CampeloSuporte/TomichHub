@@ -74,11 +74,11 @@ class AluguelIPv4Admin(admin.ModelAdmin):
 
 @admin.register(Fatura)
 class FaturaAdmin(admin.ModelAdmin):
-    list_display = ('numero_fatura', 'cliente', 'tipo', 'valor_total', 'status', 'data_vencimento')
-    list_filter = ('status', 'tipo', 'data_emissao')
+    list_display = ('numero_fatura', 'cliente', 'tipo', 'valor_total', 'status', 'data_vencimento', 'privada')
+    list_filter = ('status', 'tipo', 'privada', 'data_emissao')
     search_fields = ('numero_fatura', 'cliente__nome_empresa')
     readonly_fields = ('numero_fatura', 'uuid', 'data_criacao', 'data_atualizacao')
-    
+
     fieldsets = (
         ('Informações Gerais', {
             'fields': ('numero_fatura', 'uuid', 'cliente', 'tipo', 'status')
@@ -92,6 +92,9 @@ class FaturaAdmin(admin.ModelAdmin):
         ('Datas', {
             'fields': ('data_emissao', 'data_vencimento', 'data_pagamento')
         }),
+        ('Privacidade', {
+            'fields': ('privada',)
+        }),
         ('Observações', {
             'fields': ('observacoes',),
             'classes': ('collapse',)
@@ -101,7 +104,7 @@ class FaturaAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     filter_horizontal = ('consultorias', 'alugueis_ipv4')
 
 
