@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='alugueipv4',
+            model_name='aluguelipv4',
             name='privada',
             field=models.BooleanField(default=False, help_text='Marcar como privada para mostrar apenas para staff'),
         ),
