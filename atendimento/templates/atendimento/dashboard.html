@@ -1,0 +1,145 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+/* Card uniforme — igual ao .card da plataforma original */
+.stat-card {
+    background: var(--dark-800);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    transition: border-color 0.15s;
+}
+.stat-card:hover {
+    border-color: var(--dark-500);
+}
+
+.stat-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.stat-label i { font-size: 20px; opacity: 0.5; }
+
+.stat-value {
+    font-size: 40px; font-weight: 700;
+    line-height: 1; margin-bottom: 8px;
+}
+.stat-desc { font-size: 12px; color: var(--muted); }
+
+/* Seção Conversas Recentes */
+.recent-card {
+    background: var(--dark-800);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.recent-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.recent-header h3 { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.recent-header h3 i { color: var(--muted); font-size: 13px; }
+.recent-header a { font-size: 12px; color: var(--brand-600); text-decoration: none; font-weight: 600; }
+.recent-header a:hover { color: var(--brand-500); }
+
+.recent-row {
+    display: flex; align-items: center; padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    text-decoration: none; color: inherit; transition: background 0.15s;
+}
+.recent-row:last-child { border-bottom: none; }
+.recent-row:hover { background: rgba(255,255,255,0.025); }
+.recent-row-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.recent-row-client { font-size: 12px; color: var(--muted); }
+{% endblock %}
+
+{% block main_content %}
+<div style="flex:1; overflow-y:auto; padding:28px 28px 20px;">
+
+    <!-- Cabeçalho -->
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px;">
+        <div>
+            <h2 style="font-size:22px; font-weight:700; color:var(--text); margin-bottom:4px; letter-spacing:-0.02em;">Dashboard</h2>
+            <p style="font-size:13px; color:var(--muted);">Visão geral do atendimento</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <a href="{% url 'atendimento:inbox' %}" class="btn-cyber" style="font-size:12px;">
+                <i class="fas fa-inbox"></i> Caixa de Entrada
+            </a>
+            {% if request.user.is_staff %}
+            <a href="{% url 'atendimento:settings_connections' %}" class="btn-cyber secondary" style="font-size:12px;">
+                <i class="fas fa-cog"></i> Config
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Grid de Stats 3×2 -->
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;">
+
+        <div class="stat-card">
+            <div class="stat-label">Total <i class="fas fa-comments" style="color:#60a5fa;"></i></div>
+            <div class="stat-value" style="color:#60a5fa;">{{ stats.total_conversations }}</div>
+            <div class="stat-desc">Conversas em todo período</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Abertos <i class="fas fa-lock-open" style="color:#34d399;"></i></div>
+            <div class="stat-value" style="color:#34d399;">{{ stats.open_conversations }}</div>
+            <div class="stat-desc">Aguardando resposta</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Pendentes <i class="fas fa-hourglass-end" style="color:var(--brand-500);"></i></div>
+            <div class="stat-value" style="color:var(--brand-500);">{{ stats.pending_conversations }}</div>
+            <div class="stat-desc">Aguardando cliente</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Resolvidos <i class="fas fa-check-circle" style="color:#4ade80;"></i></div>
+            <div class="stat-value" style="color:#4ade80;">{{ stats.resolved_conversations }}</div>
+            <div class="stat-desc">Problemas solucionados</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Agentes <i class="fas fa-users" style="color:#a78bfa;"></i></div>
+            <div class="stat-value" style="color:#a78bfa;">{{ stats.online_agents }}</div>
+            <div class="stat-desc">Atendentes online</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Conexões <i class="fab fa-whatsapp" style="color:var(--wa);"></i></div>
+            <div class="stat-value" style="color:var(--wa);">{{ stats.active_connections }}</div>
+            <div class="stat-desc">Evolution API ativas</div>
+        </div>
+
+    </div>
+
+    <!-- Conversas Recentes -->
+    <div class="recent-card">
+        <div class="recent-header">
+            <h3><i class="fas fa-history"></i> Conversas Recentes</h3>
+            <a href="{% url 'atendimento:historico' %}">Ver todas →</a>
+        </div>
+        {% for conv in recent_conversations %}
+        <a href="{% url 'atendimento:conversation_detail' conv.id %}" class="recent-row">
+            <div style="flex:1;">
+                <div class="recent-row-name">{{ conv.group.name|default:conv.conversation_id }}</div>
+                <div class="recent-row-client">{{ conv.cliente.nome_empresa|default:"Sem cliente" }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <span class="status-badge status-{{ conv.status }}">{{ conv.get_status_display }}</span>
+                <span style="font-size:11px; color:var(--muted);">{{ conv.last_message_at|date:"H:i" }}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div style="padding:32px; text-align:center; color:var(--muted); font-size:13px;">
+            <i class="fas fa-comments" style="font-size:32px; opacity:0.15; display:block; margin-bottom:10px;"></i>
+            Nenhuma conversa ainda
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

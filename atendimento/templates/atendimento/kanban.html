@@ -1,0 +1,785 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+/* ── Layout ── */
+.kb-wrap { display:flex; flex-direction:column; height:100%; overflow:hidden; background:var(--content-bg); }
+
+/* ── Toolbar ── */
+.kb-toolbar {
+    padding:14px 20px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px; flex-shrink:0;
+    background:var(--nav-bg);
+}
+.kb-toolbar-title { font-size:15px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
+.kb-toolbar-title i { color:var(--brand-600); font-size:14px; }
+.kb-tabs { display:flex; gap:4px; flex:1; overflow-x:auto; padding-bottom:2px; }
+.kb-tabs::-webkit-scrollbar { height:3px; }
+.kb-tab {
+    display:flex; align-items:center; gap:6px;
+    padding:5px 12px; border-radius:6px; font-size:12px; font-weight:500;
+    cursor:pointer; border:1px solid transparent; background:none;
+    color:var(--muted); font-family:'Inter',sans-serif; transition:all .15s;
+    white-space:nowrap; flex-shrink:0;
+}
+.kb-tab:hover { color:var(--text); background:var(--panel-hover); border-color:var(--border); }
+.kb-tab.active { background:var(--active-bg); border-color:var(--brand-600); color:var(--brand-600); font-weight:600; }
+.kb-tab-del {
+    display:none; width:14px; height:14px; align-items:center; justify-content:center;
+    border-radius:3px; font-size:9px; color:var(--muted); cursor:pointer; margin-left:2px;
+}
+.kb-tab:hover .kb-tab-del { display:flex; }
+.kb-tab-del:hover { color:var(--danger); background:rgba(248,81,73,0.1); }
+
+/* ── Board body ── */
+.kb-body {
+    flex:1; overflow-x:auto; overflow-y:hidden;
+    padding:16px 20px;
+    display:flex; gap:14px; align-items:flex-start;
+}
+
+/* ── Empty / Loading states ── */
+.kb-state {
+    flex:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    color:var(--muted); gap:12px; padding:40px;
+}
+.kb-state i { font-size:40px; opacity:.2; }
+.kb-state p { font-size:13px; }
+
+/* ── Column ── */
+.kb-col {
+    background:var(--dark-900);
+    border:1px solid var(--border);
+    border-radius:8px;
+    width:272px; flex-shrink:0;
+    display:flex; flex-direction:column;
+    max-height:100%;
+    transition:border-color .15s;
+}
+.kb-col.drop-target { border-color:var(--brand-600); background:rgba(56,139,253,0.03); }
+
+.kb-col-head {
+    padding:10px 12px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:8px;
+    flex-shrink:0;
+}
+.kb-col-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.kb-col-name { flex:1; font-size:12px; font-weight:600; color:var(--text); }
+.kb-col-count {
+    font-size:10px; color:var(--muted);
+    background:var(--dark-700); padding:1px 6px; border-radius:8px;
+    min-width:18px; text-align:center;
+}
+.kb-col-actions { display:flex; gap:2px; opacity:0; transition:opacity .15s; }
+.kb-col:hover .kb-col-actions { opacity:1; }
+.kb-col-btn {
+    width:22px; height:22px; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; cursor:pointer;
+    color:var(--muted); font-size:10px; transition:all .15s;
+}
+.kb-col-btn:hover { color:var(--text); background:var(--dark-700); }
+.kb-col-btn.danger:hover { color:var(--danger); background:rgba(248,81,73,0.08); }
+
+/* ── Cards area ── */
+.kb-cards {
+    flex:1; overflow-y:auto; padding:8px;
+    display:flex; flex-direction:column; gap:6px;
+    min-height:48px;
+}
+.kb-cards::-webkit-scrollbar { width:3px; }
+
+/* ── Card ── */
+.kb-card {
+    background:var(--dark-800);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px 12px;
+    cursor:pointer;
+    transition:border-color .15s, transform .1s;
+    position:relative;
+    user-select:none;
+}
+.kb-card:hover { border-color:var(--dark-500); }
+.kb-card.dragging { opacity:.4; transform:scale(0.98); }
+.kb-card.drag-over { border-color:var(--brand-600); }
+
+.kb-card-title {
+    font-size:12px; font-weight:600; color:var(--text);
+    margin-bottom:6px; line-height:1.4;
+    word-break:break-word;
+}
+.kb-card-desc {
+    font-size:11px; color:var(--muted); margin-bottom:8px;
+    line-height:1.4; overflow:hidden;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+}
+.kb-card-footer {
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+.kb-card-badge {
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:10px; padding:2px 6px; border-radius:4px;
+    background:var(--dark-700); color:var(--muted);
+}
+.kb-card-badge.due-ok { color:#3fb950; }
+.kb-card-badge.due-soon { color:#d29922; background:rgba(210,153,34,0.08); }
+.kb-card-badge.due-over { color:var(--danger); background:rgba(248,81,73,0.08); }
+.kb-card-conv { color:var(--brand-600); }
+.kb-card-actions {
+    position:absolute; top:6px; right:6px;
+    display:none; gap:2px;
+}
+.kb-card:hover .kb-card-actions { display:flex; }
+.kb-card-action {
+    width:20px; height:20px; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--dark-700); border:none; cursor:pointer;
+    color:var(--muted); font-size:9px; transition:all .15s;
+}
+.kb-card-action:hover { color:var(--text); }
+.kb-card-action.danger:hover { color:var(--danger); background:rgba(248,81,73,0.1); }
+
+/* ── Add card button ── */
+.kb-add-card-btn {
+    margin:0 8px 8px; padding:6px;
+    background:none; border:1px dashed var(--border);
+    border-radius:5px; color:var(--muted); font-size:11px;
+    cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s;
+    width:calc(100% - 16px); text-align:left;
+    display:flex; align-items:center; gap:6px;
+}
+.kb-add-card-btn:hover { border-color:var(--brand-600); color:var(--brand-600); }
+
+/* ── Add column button ── */
+.kb-add-col {
+    background:var(--dark-900);
+    border:1px dashed var(--border);
+    border-radius:8px; width:220px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; min-height:60px;
+    color:var(--muted); font-size:12px; gap:6px;
+    transition:all .15s;
+}
+.kb-add-col:hover { border-color:var(--brand-600); color:var(--brand-600); }
+
+/* ── Modals ── */
+.kb-modal-bg {
+    display:none; position:fixed; inset:0; z-index:1000;
+    background:rgba(0,0,0,.6); backdrop-filter:blur(2px);
+    align-items:center; justify-content:center;
+}
+.kb-modal-bg.open { display:flex; }
+.kb-modal {
+    background:var(--dark-800); border:1px solid var(--border);
+    border-radius:10px; width:90%; max-width:440px;
+    box-shadow:0 12px 32px rgba(0,0,0,.5);
+    animation:modalIn .15s ease;
+    max-height:90vh; display:flex; flex-direction:column;
+}
+@keyframes modalIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+.kb-modal-head {
+    padding:16px 20px 14px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+}
+.kb-modal-head h3 { font-size:14px; font-weight:700; color:var(--text); margin:0; }
+.kb-modal-close {
+    width:24px; height:24px; border-radius:5px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; cursor:pointer;
+    color:var(--muted); font-size:13px; transition:all .15s;
+}
+.kb-modal-close:hover { color:var(--text); background:var(--dark-700); }
+.kb-modal-body { padding:18px 20px; overflow-y:auto; flex:1; }
+.kb-modal-foot {
+    padding:14px 20px;
+    border-top:1px solid var(--border);
+    display:flex; gap:8px; flex-shrink:0;
+}
+.kb-field { margin-bottom:14px; }
+.kb-field:last-child { margin-bottom:0; }
+.kb-field label {
+    display:block; font-size:10px; font-weight:700;
+    color:var(--muted); text-transform:uppercase; letter-spacing:.6px;
+    margin-bottom:5px;
+}
+.kb-input {
+    width:100%; padding:8px 11px;
+    background:var(--dark-700); border:1px solid var(--border);
+    border-radius:6px; color:var(--text); font-size:13px;
+    font-family:'Inter',sans-serif; box-sizing:border-box; outline:none;
+    transition:border-color .15s;
+}
+.kb-input:focus { border-color:var(--brand-600); }
+.kb-input::placeholder { color:var(--muted); }
+textarea.kb-input { resize:vertical; min-height:72px; line-height:1.5; }
+select.kb-input { background:var(--dark-700); cursor:pointer; }
+
+/* ── Toast ── */
+.kb-toast-wrap { position:fixed; bottom:20px; right:20px; z-index:2000; display:flex; flex-direction:column; gap:6px; }
+.kb-toast {
+    padding:10px 14px; border-radius:7px; font-size:12px; font-weight:500;
+    background:var(--dark-800); border:1px solid var(--border);
+    color:var(--text); box-shadow:0 4px 12px rgba(0,0,0,.4);
+    animation:toastIn .2s ease; pointer-events:none;
+    display:flex; align-items:center; gap:8px;
+}
+.kb-toast.error { border-color:rgba(248,81,73,.4); color:var(--danger); }
+.kb-toast.success { border-color:rgba(63,185,80,.4); color:var(--success); }
+@keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+{% endblock %}
+
+{% block main_content %}
+<div class="kb-wrap" id="kbWrap">
+
+    <!-- Toolbar -->
+    <div class="kb-toolbar">
+        <div class="kb-toolbar-title"><i class="fas fa-columns"></i> Kanban</div>
+        <div class="kb-tabs" id="kbTabs"></div>
+        <button class="btn-cyber" onclick="kbOpenBoardModal()">
+            <i class="fas fa-plus"></i> Novo Quadro
+        </button>
+    </div>
+
+    <!-- Board body -->
+    <div class="kb-body" id="kbBody">
+        <div class="kb-state" id="kbLoading">
+            <i class="fas fa-spinner fa-spin" style="opacity:.4;font-size:28px;"></i>
+            <p>Carregando quadros...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="kb-toast-wrap" id="kbToasts"></div>
+
+<!-- Modal: Quadro -->
+<div class="kb-modal-bg" id="kbBoardModal">
+    <div class="kb-modal">
+        <div class="kb-modal-head">
+            <h3 id="kbBoardModalTitle">Novo Quadro</h3>
+            <button class="kb-modal-close" onclick="kbCloseModal('kbBoardModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="kb-modal-body">
+            <div class="kb-field">
+                <label>Nome *</label>
+                <input type="text" class="kb-input" id="kbBoardName" placeholder="Ex: Pipeline de Vendas" maxlength="200">
+            </div>
+        </div>
+        <div class="kb-modal-foot">
+            <button class="btn-cyber" style="flex:1;" onclick="kbSaveBoard()"><i class="fas fa-check"></i> Salvar</button>
+            <button class="btn-cyber secondary" onclick="kbCloseModal('kbBoardModal')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Coluna -->
+<div class="kb-modal-bg" id="kbColModal">
+    <div class="kb-modal">
+        <div class="kb-modal-head">
+            <h3 id="kbColModalTitle">Nova Coluna</h3>
+            <button class="kb-modal-close" onclick="kbCloseModal('kbColModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="kb-modal-body">
+            <div class="kb-field">
+                <label>Nome *</label>
+                <input type="text" class="kb-input" id="kbColName" placeholder="Ex: A Fazer" maxlength="200">
+            </div>
+            <div class="kb-field">
+                <label>Cor</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="kbColColor" value="#388bfd"
+                        style="width:40px;height:36px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;padding:2px;">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <div onclick="document.getElementById('kbColColor').value='#388bfd';" style="width:20px;height:20px;border-radius:50%;background:#388bfd;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    <div onclick="document.getElementById('kbColColor').value='#3fb950';" style="width:20px;height:20px;border-radius:50%;background:#3fb950;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    <div onclick="document.getElementById('kbColColor').value='#d29922';" style="width:20px;height:20px;border-radius:50%;background:#d29922;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    <div onclick="document.getElementById('kbColColor').value='#f85149';" style="width:20px;height:20px;border-radius:50%;background:#f85149;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    <div onclick="document.getElementById('kbColColor').value='#8957e5';" style="width:20px;height:20px;border-radius:50%;background:#8957e5;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    <div onclick="document.getElementById('kbColColor').value='#3bc9db';" style="width:20px;height:20px;border-radius:50%;background:#3bc9db;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    <div onclick="document.getElementById('kbColColor').value='#e36209';" style="width:20px;height:20px;border-radius:50%;background:#e36209;cursor:pointer;border:2px solid transparent;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='transparent'"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="kb-modal-foot">
+            <button class="btn-cyber" style="flex:1;" onclick="kbSaveCol()"><i class="fas fa-check"></i> Salvar</button>
+            <button class="btn-cyber secondary" onclick="kbCloseModal('kbColModal')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Card -->
+<div class="kb-modal-bg" id="kbCardModal">
+    <div class="kb-modal" style="max-width:480px;">
+        <div class="kb-modal-head">
+            <h3 id="kbCardModalTitle">Novo Card</h3>
+            <button class="kb-modal-close" onclick="kbCloseModal('kbCardModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="kb-modal-body">
+            <input type="hidden" id="kbCardId">
+            <div class="kb-field">
+                <label>Título *</label>
+                <input type="text" class="kb-input" id="kbCardTitle" placeholder="Título do card" maxlength="500">
+            </div>
+            <div class="kb-field">
+                <label>Descrição</label>
+                <textarea class="kb-input" id="kbCardDesc" placeholder="Detalhes, links, observações..." rows="3"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="kb-field" style="margin-bottom:0;">
+                    <label>Responsável</label>
+                    <select class="kb-input" id="kbCardAssignee">
+                        <option value="">— Sem responsável —</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="kb-field" style="margin-bottom:0;">
+                    <label>Vencimento</label>
+                    <input type="datetime-local" class="kb-input" id="kbCardDue">
+                </div>
+            </div>
+        </div>
+        <div class="kb-modal-foot">
+            <button class="btn-cyber" style="flex:1;" onclick="kbSaveCard()"><i class="fas fa-check"></i> Salvar</button>
+            <button class="btn-cyber secondary" onclick="kbCloseModal('kbCardModal')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    const CSRF = '{{ csrf_token }}';
+    let boards = [];
+    let activeBoardId = null;
+    let editBoardId = null;
+    let editColId = null;
+    let editCardId = null;
+    let activeColForCard = null;
+    let dragCardId = null;
+    let dragSourceColId = null;
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    function toast(msg, type) {
+        var wrap = document.getElementById('kbToasts');
+        if (!wrap) return;
+        var t = document.createElement('div');
+        t.className = 'kb-toast ' + (type || '');
+        var icon = type === 'error' ? 'fa-times-circle' : 'fa-check-circle';
+        t.innerHTML = '<i class="fas ' + icon + '"></i> ' + msg;
+        wrap.appendChild(t);
+        setTimeout(function() {
+            t.style.opacity = '0';
+            t.style.transition = 'opacity .3s';
+            setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+        }, 3000);
+    }
+
+    async function api(url, opts) {
+        var defaults = { credentials: 'same-origin', headers: { 'X-CSRFToken': CSRF } };
+        if (opts && opts.json) {
+            defaults.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(opts.json);
+            delete opts.json;
+        }
+        var r = await fetch(url, Object.assign(defaults, opts || {}));
+        if (!r.ok) {
+            var err;
+            try { err = (await r.json()).error; } catch(e) { err = 'Erro ' + r.status; }
+            throw new Error(err || 'Falha na requisição');
+        }
+        return r.status === 204 ? null : r.json();
+    }
+
+    function kbOpenModal(id) { document.getElementById(id).classList.add('open'); }
+    function kbCloseModal(id) { document.getElementById(id).classList.remove('open'); }
+    window.kbCloseModal = kbCloseModal;
+
+    // ── Load & Render ────────────────────────────────────────
+
+    async function loadBoards() {
+        try {
+            var data = await api('/atendimento/api/kanban/boards/');
+            boards = data.boards || [];
+            renderTabs();
+            if (boards.length > 0) {
+                // Mantém o quadro ativo ou usa o primeiro
+                var target = activeBoardId && boards.find(function(b){ return b.id === activeBoardId; });
+                showBoard(target ? target.id : boards[0].id);
+            } else {
+                renderEmptyBoards();
+            }
+        } catch(e) {
+            document.getElementById('kbBody').innerHTML =
+                '<div class="kb-state"><i class="fas fa-exclamation-circle"></i>' +
+                '<p>Erro ao carregar: ' + e.message + '</p>' +
+                '<button class="btn-cyber" onclick="loadBoards()" style="margin-top:8px;"><i class="fas fa-redo"></i> Tentar novamente</button>' +
+                '</div>';
+        }
+    }
+
+    function renderTabs() {
+        var tabs = document.getElementById('kbTabs');
+        if (!tabs) return;
+        tabs.innerHTML = boards.map(function(b) {
+            var active = b.id === activeBoardId ? 'active' : '';
+            return '<button class="kb-tab ' + active + '" onclick="showBoard(\'' + b.id + '\')">' +
+                '<span>' + escHtml(b.name) + '</span>' +
+                '<span class="kb-tab-del" onclick="event.stopPropagation();deleteBoardConfirm(\'' + b.id + '\',\'' + escHtml(b.name) + '\')" title="Excluir quadro">' +
+                '<i class="fas fa-times"></i></span>' +
+                '</button>';
+        }).join('');
+    }
+
+    function renderEmptyBoards() {
+        document.getElementById('kbBody').innerHTML =
+            '<div class="kb-state">' +
+            '<i class="fas fa-columns"></i>' +
+            '<p>Nenhum quadro criado ainda.</p>' +
+            '<button class="btn-cyber" onclick="kbOpenBoardModal()" style="margin-top:4px;"><i class="fas fa-plus"></i> Criar primeiro quadro</button>' +
+            '</div>';
+    }
+
+    function showBoard(boardId) {
+        activeBoardId = boardId;
+        renderTabs();
+        var board = boards.find(function(b){ return b.id === boardId; });
+        if (!board) return;
+
+        var body = document.getElementById('kbBody');
+        body.innerHTML = '';
+
+        if (board.columns.length === 0) {
+            var emptyDiv = document.createElement('div');
+            emptyDiv.className = 'kb-state';
+            emptyDiv.style.cssText = 'flex:0 0 auto;min-width:260px;';
+            emptyDiv.innerHTML =
+                '<i class="fas fa-table-columns" style="font-size:32px;opacity:.15;"></i>' +
+                '<p>Quadro vazio. Adicione sua primeira coluna.</p>';
+            body.appendChild(emptyDiv);
+        }
+
+        board.columns.forEach(function(col) { body.appendChild(buildColEl(col)); });
+
+        // Botão nova coluna
+        var addColBtn = document.createElement('div');
+        addColBtn.className = 'kb-add-col';
+        addColBtn.innerHTML = '<i class="fas fa-plus"></i> Nova Coluna';
+        addColBtn.onclick = function() { kbOpenColModal(null); };
+        body.appendChild(addColBtn);
+    }
+
+    function buildColEl(col) {
+        var colEl = document.createElement('div');
+        colEl.className = 'kb-col';
+        colEl.dataset.colId = col.id;
+
+        colEl.innerHTML =
+            '<div class="kb-col-head">' +
+                '<span class="kb-col-dot" style="background:' + col.color + ';"></span>' +
+                '<span class="kb-col-name">' + escHtml(col.name) + '</span>' +
+                '<span class="kb-col-count">' + col.cards.length + '</span>' +
+                '<div class="kb-col-actions">' +
+                    '<button class="kb-col-btn" onclick="kbOpenColModal(\'' + col.id + '\')" title="Editar coluna"><i class="fas fa-pencil-alt"></i></button>' +
+                    '<button class="kb-col-btn danger" onclick="kbDeleteCol(\'' + col.id + '\')" title="Excluir coluna"><i class="fas fa-trash"></i></button>' +
+                '</div>' +
+            '</div>' +
+            '<div class="kb-cards" id="kbc-' + col.id + '" ' +
+                'ondragover="kbDragOver(event,\'' + col.id + '\')" ' +
+                'ondragleave="kbDragLeave(event)" ' +
+                'ondrop="kbDrop(event,\'' + col.id + '\')">' +
+                col.cards.map(function(c){ return buildCardHtml(c); }).join('') +
+            '</div>' +
+            '<button class="kb-add-card-btn" onclick="kbOpenCardModal(\'' + col.id + '\',null)">' +
+                '<i class="fas fa-plus" style="font-size:10px;"></i> Adicionar card' +
+            '</button>';
+
+        return colEl;
+    }
+
+    function buildCardHtml(card) {
+        var due = '';
+        if (card.due_date) {
+            var d = new Date(card.due_date);
+            var now = new Date();
+            var diff = d - now;
+            var cls = diff < 0 ? 'due-over' : diff < 86400000 ? 'due-soon' : 'due-ok';
+            var lbl = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+            due = '<span class="kb-card-badge ' + cls + '"><i class="fas fa-calendar" style="font-size:9px;"></i> ' + lbl + '</span>';
+        }
+        var assignee = card.assignee_name
+            ? '<span class="kb-card-badge"><i class="fas fa-user" style="font-size:9px;"></i> ' + escHtml(card.assignee_name) + '</span>'
+            : '';
+        var conv = card.conversation_id
+            ? '<a class="kb-card-badge kb-card-conv" href="/atendimento/conversation/' + card.conversation_id + '/" onclick="event.stopPropagation();" target="_blank"><i class="fas fa-comments" style="font-size:9px;"></i> Conversa</a>'
+            : '';
+        var desc = card.description
+            ? '<div class="kb-card-desc">' + escHtml(card.description) + '</div>'
+            : '';
+
+        return '<div class="kb-card" id="kbcard-' + card.id + '" draggable="true" ' +
+            'ondragstart="kbDragStart(event,\'' + card.id + '\')" ' +
+            'ondragend="kbDragEnd(event)" ' +
+            'onclick="kbOpenCardModal(\'' + card.column_id + '\',\'' + card.id + '\')">' +
+            '<div class="kb-card-actions">' +
+                '<button class="kb-card-action danger" onclick="event.stopPropagation();kbDeleteCard(\'' + card.id + '\')" title="Excluir"><i class="fas fa-trash"></i></button>' +
+            '</div>' +
+            '<div class="kb-card-title">' + escHtml(card.title) + '</div>' +
+            desc +
+            '<div class="kb-card-footer">' + due + assignee + conv + '</div>' +
+            '</div>';
+    }
+
+    function escHtml(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Board CRUD ───────────────────────────────────────────
+
+    window.kbOpenBoardModal = function() {
+        editBoardId = null;
+        document.getElementById('kbBoardName').value = '';
+        document.getElementById('kbBoardModalTitle').textContent = 'Novo Quadro';
+        kbOpenModal('kbBoardModal');
+        setTimeout(function(){ document.getElementById('kbBoardName').focus(); }, 80);
+    };
+
+    window.kbSaveBoard = async function() {
+        var name = document.getElementById('kbBoardName').value.trim();
+        if (!name) { document.getElementById('kbBoardName').focus(); return; }
+        try {
+            if (editBoardId) {
+                await api('/atendimento/api/kanban/boards/' + editBoardId + '/', { method:'PUT', json:{ name } });
+                toast('Quadro renomeado', 'success');
+            } else {
+                await api('/atendimento/api/kanban/boards/', { method:'POST', json:{ name } });
+                toast('Quadro criado', 'success');
+            }
+            kbCloseModal('kbBoardModal');
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    window.deleteBoardConfirm = async function(boardId, name) {
+        if (!confirm('Excluir o quadro "' + name + '" e todos seus dados?')) return;
+        try {
+            await api('/atendimento/api/kanban/boards/' + boardId + '/', { method:'DELETE' });
+            if (activeBoardId === boardId) activeBoardId = null;
+            toast('Quadro excluído');
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    window.showBoard = showBoard;
+
+    // ── Column CRUD ──────────────────────────────────────────
+
+    window.kbOpenColModal = function(colId) {
+        editColId = colId;
+        var col = colId ? findCol(colId) : null;
+        document.getElementById('kbColModalTitle').textContent = colId ? 'Editar Coluna' : 'Nova Coluna';
+        document.getElementById('kbColName').value = col ? col.name : '';
+        document.getElementById('kbColColor').value = col ? col.color : '#388bfd';
+        kbOpenModal('kbColModal');
+        setTimeout(function(){ document.getElementById('kbColName').focus(); }, 80);
+    };
+
+    window.kbSaveCol = async function() {
+        var name = document.getElementById('kbColName').value.trim();
+        var color = document.getElementById('kbColColor').value;
+        if (!name) { document.getElementById('kbColName').focus(); return; }
+        try {
+            if (editColId) {
+                await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + editColId + '/', {
+                    method:'PUT', json:{ name, color }
+                });
+                toast('Coluna atualizada', 'success');
+            } else {
+                await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/', {
+                    method:'POST', json:{ name, color }
+                });
+                toast('Coluna criada', 'success');
+            }
+            kbCloseModal('kbColModal');
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    window.kbDeleteCol = async function(colId) {
+        var col = findCol(colId);
+        var cardCount = col ? col.cards.length : 0;
+        var msg = 'Excluir coluna' + (cardCount ? ' e os ' + cardCount + ' card(s) dentro dela' : '') + '?';
+        if (!confirm(msg)) return;
+        try {
+            await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + colId + '/', { method:'DELETE' });
+            toast('Coluna excluída');
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    // ── Card CRUD ────────────────────────────────────────────
+
+    window.kbOpenCardModal = function(colId, cardId) {
+        activeColForCard = colId;
+        editCardId = cardId;
+        var card = cardId ? findCard(cardId) : null;
+        document.getElementById('kbCardModalTitle').textContent = cardId ? 'Editar Card' : 'Novo Card';
+        document.getElementById('kbCardId').value = cardId || '';
+        document.getElementById('kbCardTitle').value = card ? card.title : '';
+        document.getElementById('kbCardDesc').value = card ? (card.description || '') : '';
+        document.getElementById('kbCardAssignee').value = card && card.assignee_id ? card.assignee_id : '';
+        document.getElementById('kbCardDue').value = card && card.due_date
+            ? card.due_date.slice(0, 16)
+            : '';
+        kbOpenModal('kbCardModal');
+        setTimeout(function(){ document.getElementById('kbCardTitle').focus(); }, 80);
+    };
+
+    window.kbSaveCard = async function() {
+        var title = document.getElementById('kbCardTitle').value.trim();
+        if (!title) { document.getElementById('kbCardTitle').focus(); return; }
+        var payload = {
+            title: title,
+            description: document.getElementById('kbCardDesc').value,
+            assignee_id: document.getElementById('kbCardAssignee').value || null,
+            due_date: document.getElementById('kbCardDue').value || null,
+        };
+        try {
+            if (editCardId) {
+                await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + activeColForCard + '/cards/' + editCardId + '/', {
+                    method:'PUT', json: payload
+                });
+                toast('Card atualizado', 'success');
+            } else {
+                await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + activeColForCard + '/cards/', {
+                    method:'POST', json: payload
+                });
+                toast('Card criado', 'success');
+            }
+            kbCloseModal('kbCardModal');
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    window.kbDeleteCard = async function(cardId) {
+        var card = findCard(cardId);
+        if (!confirm('Excluir "' + (card ? card.title : 'este card') + '"?')) return;
+        var col = findCardCol(cardId);
+        try {
+            await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + (col ? col.id : activeColForCard) + '/cards/' + cardId + '/', { method:'DELETE' });
+            toast('Card excluído');
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    // ── Drag & Drop ──────────────────────────────────────────
+
+    window.kbDragStart = function(e, cardId) {
+        dragCardId = cardId;
+        var col = findCardCol(cardId);
+        dragSourceColId = col ? col.id : null;
+        e.dataTransfer.effectAllowed = 'move';
+        var el = document.getElementById('kbcard-' + cardId);
+        if (el) setTimeout(function(){ el.classList.add('dragging'); }, 0);
+    };
+
+    window.kbDragEnd = function(e) {
+        var el = document.getElementById('kbcard-' + dragCardId);
+        if (el) el.classList.remove('dragging');
+        document.querySelectorAll('.kb-col.drop-target').forEach(function(c){ c.classList.remove('drop-target'); });
+    };
+
+    window.kbDragOver = function(e, colId) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        var colEl = document.querySelector('.kb-col[data-col-id="' + colId + '"]');
+        if (colEl) colEl.classList.add('drop-target');
+    };
+
+    window.kbDragLeave = function(e) {
+        var colEl = e.currentTarget.closest('.kb-col');
+        if (colEl) colEl.classList.remove('drop-target');
+    };
+
+    window.kbDrop = async function(e, colId) {
+        e.preventDefault();
+        document.querySelectorAll('.kb-col.drop-target').forEach(function(c){ c.classList.remove('drop-target'); });
+        if (!dragCardId || colId === dragSourceColId) return;
+        try {
+            await api('/atendimento/api/kanban/cards/' + dragCardId + '/move/', {
+                method:'POST', json:{ column_id: colId, position: 0 }
+            });
+            await loadBoards();
+        } catch(e) { toast(e.message, 'error'); }
+    };
+
+    // ── Finders ──────────────────────────────────────────────
+
+    function findCol(colId) {
+        var board = boards.find(function(b){ return b.id === activeBoardId; });
+        if (!board) return null;
+        return board.columns.find(function(c){ return c.id === colId; }) || null;
+    }
+
+    function findCard(cardId) {
+        var board = boards.find(function(b){ return b.id === activeBoardId; });
+        if (!board) return null;
+        for (var i = 0; i < board.columns.length; i++) {
+            var card = board.columns[i].cards.find(function(c){ return c.id === cardId; });
+            if (card) return card;
+        }
+        return null;
+    }
+
+    function findCardCol(cardId) {
+        var board = boards.find(function(b){ return b.id === activeBoardId; });
+        if (!board) return null;
+        for (var i = 0; i < board.columns.length; i++) {
+            if (board.columns[i].cards.find(function(c){ return c.id === cardId; })) {
+                return board.columns[i];
+            }
+        }
+        return null;
+    }
+
+    // ── Keyboard shortcuts ───────────────────────────────────
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            ['kbBoardModal','kbColModal','kbCardModal'].forEach(function(id){
+                document.getElementById(id).classList.remove('open');
+            });
+        }
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            var openModal = document.querySelector('.kb-modal-bg.open');
+            if (openModal) {
+                var id = openModal.id;
+                if (id === 'kbBoardModal') window.kbSaveBoard();
+                else if (id === 'kbColModal') window.kbSaveCol();
+                else if (id === 'kbCardModal') window.kbSaveCard();
+            }
+        }
+    });
+
+    // Click fora do modal para fechar
+    document.querySelectorAll('.kb-modal-bg').forEach(function(bg) {
+        bg.addEventListener('click', function(e) {
+            if (e.target === bg) bg.classList.remove('open');
+        });
+    });
+
+    // ── Boot ─────────────────────────────────────────────────
+    loadBoards();
+
+})();
+</script>
+{% endblock %}

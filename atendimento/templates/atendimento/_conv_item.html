@@ -1,0 +1,33 @@
+<a href="{% url 'atendimento:conversation_detail' conv.id %}"
+   class="conv-item {% if active_conversation and active_conversation.id == conv.id %}active{% endif %} {% if conv.status == 'new' %}unread{% endif %}"
+   data-conv-name="{{ conv.group.name|lower }}" data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}">
+    <div class="conv-avatar"
+         style="background: {% if conv.status == 'new' %}linear-gradient(135deg,#f59e0b,#d97706){% elif conv.status == 'pending' %}linear-gradient(135deg,#e91e8c,#9333ea){% elif conv.status == 'resolved' %}linear-gradient(135deg,#22c55e,#16a34a){% else %}linear-gradient(135deg,#0ea5e9,#6366f1){% endif %};">
+        {{ conv.group.name|first|upper }}
+        {% if conv.status == 'new' %}
+        <span class="conv-status-dot" style="background: var(--online);"></span>
+        {% elif conv.status == 'open' %}
+        <span class="conv-status-dot" style="background: #0ea5e9;"></span>
+        {% endif %}
+    </div>
+    <div class="conv-meta">
+        <div class="conv-meta-top">
+            <span class="conv-name">{{ conv.group.name|default:conv.conversation_id }}</span>
+            <span class="conv-time">{{ conv.last_message_at|date:"H:i" }}</span>
+        </div>
+        <div class="conv-preview">{{ conv.cliente.nome_empresa|default:"Sem cliente" }}</div>
+        {% with tags=conv.tags.all %}{% if tags %}
+        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+            {% for tag in tags %}
+            <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:500;background:{{ tag.color }}18;border:1px solid {{ tag.color }}40;color:{{ tag.color }};">
+                <span style="width:5px;height:5px;border-radius:50%;background:{{ tag.color }};flex-shrink:0;display:inline-block;"></span>
+                {{ tag.name }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}{% endwith %}
+    </div>
+    <div class="conv-side">
+        <i class="fab fa-whatsapp conv-wa"></i>
+    </div>
+</a>

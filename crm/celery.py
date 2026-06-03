@@ -51,6 +51,14 @@ app.conf.beat_schedule = {
         'task': 'clientes.tasks.gerar_snapshots_conhecimento',
         'schedule': timedelta(days=4),
     },
+    'notificar-chamados-abertos': {
+        'task': 'atendimento.tasks.notificar_chamados_abertos',
+        'schedule': timedelta(minutes=10),
+    },
+    'alerta-diario-atendimento': {
+        'task': 'atendimento.tasks.enviar_alerta_diario',
+        'schedule': crontab(minute='0,5'),  # testa a cada 5min dentro da hora configurada
+    },
 }
 
 app.conf.timezone = 'America/Sao_Paulo'

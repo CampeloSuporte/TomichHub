@@ -1,0 +1,1988 @@
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponseForbidden
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q, Count, F
+from django.utils import timezone
+from django.core.paginator import Paginator
+import json
+import logging
+
+def _is_staff(user):
+    return user.is_active and user.is_staff
+
+def staff_required(view_func):
+    """Permite acesso apenas a administradores e funcionários (is_staff).
+    Redireciona clientes e usuários comuns para a página inicial."""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f'/login/?next={request.path}')
+        if not request.user.is_staff:
+            return redirect('quadro_geral')
+        return view_func(request, *args, **kwargs)
+    from functools import wraps
+    return wraps(view_func)(wrapper)
+
+# Alias para retrocompatibilidade com views de admin
+def admin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_staff:
+            return HttpResponseForbidden("Acesso restrito a administradores")
+        return view_func(request, *args, **kwargs)
+    return login_required(wrapper)
+
+from .models import (
+    WhatsAppConnection, ContactGroup, Conversation, Message,
+    ConversationActivity, AgentStatus, ChatbotConfig
+)
+from .services import EvolutionAPIClient, ConversationService
+from clientes.models import Cliente
+
+logger = logging.getLogger(__name__)
+
+
+def _base_ctx(request):
+    """Contexto comum a todas as views do atendimento (sidebar + badges)."""
+    active = Conversation.objects.filter(
+        status__in=['new', 'open', 'pending']
+    ).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags')
+
+    open_q = active.filter(assigned_to__isnull=True, status__in=['new', 'open'])
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    return {
+        'base_tpl': 'atendimento/base_partial.html' if is_ajax else 'atendimento/base.html',
+        'sidebar_conversations': active.order_by('-last_message_at')[:30],
+        'unattended_count': open_q.count(),
+        'open_count': open_q.count(),
+        'mine_count': active.filter(assigned_to=request.user).count(),
+        'ongoing_count': active.count(),
+    }
+
+
+# ============ PÁGINAS PRINCIPAIS ============
+
+@staff_required
+def dashboard(request):
+    """Dashboard principal do atendimento"""
+    # Estatísticas
+    stats = {
+        'total_conversations': Conversation.objects.count(),
+        'open_conversations': Conversation.objects.filter(status__in=['new', 'open']).count(),
+        'pending_conversations': Conversation.objects.filter(status='pending').count(),
+        'resolved_conversations': Conversation.objects.filter(status='resolved').count(),
+        'total_messages': Message.objects.count(),
+        'online_agents': AgentStatus.objects.filter(status='online').count(),
+        'active_connections': WhatsAppConnection.objects.filter(is_active=True).count(),
+    }
+
+    # Conversas recentes
+    recent_conversations = Conversation.objects.select_related(
+        'group', 'cliente', 'assigned_to'
+    ).order_by('-last_message_at')[:10]
+
+    # Conversas por status
+    conversations_by_status = Conversation.objects.values('status').annotate(count=Count('id'))
+
+    context = {
+        **_base_ctx(request),
+        'stats': stats,
+        'recent_conversations': recent_conversations,
+        'conversations_by_status': list(conversations_by_status),
+    }
+    return render(request, 'atendimento/dashboard.html', context)
+
+
+@staff_required
+def inbox(request):
+    """Caixa de entrada de conversas — carrega as 3 abas de uma vez para troca instantânea."""
+    active_tab = request.GET.get('tab', 'open')
+    search = request.GET.get('search', '')
+
+    base_qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags')
+
+    if search:
+        base_qs = base_qs.filter(
+            Q(group__name__icontains=search) |
+            Q(cliente__nome_empresa__icontains=search) |
+            Q(conversation_id__icontains=search)
+        )
+
+    mine_qs    = base_qs.filter(assigned_to=request.user, status__in=['new', 'open', 'pending']).order_by('-last_message_at')
+    open_qs    = base_qs.filter(assigned_to__isnull=True, status__in=['new', 'open']).order_by('-last_message_at')
+    ongoing_qs = base_qs.filter(status__in=['new', 'open', 'pending']).order_by('-last_message_at')
+
+    context = {
+        **_base_ctx(request),
+        'mine_conversations':    mine_qs,
+        'open_conversations':    open_qs,
+        'ongoing_conversations': ongoing_qs,
+        'active_tab': active_tab,
+        'search': search,
+    }
+    resp = render(request, 'atendimento/inbox.html', context)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
+
+
+@staff_required
+def conversation_detail(request, conversation_id):
+    """Detalhes de uma conversa"""
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+
+    # Atribui conversa ao agente se não estiver atribuída
+    if not conversation.assigned_to and request.method == 'POST':
+        if request.POST.get('action') == 'assign':
+            conversation.assigned_to = request.user
+            conversation.status = 'open'
+            conversation.save()
+            ConversationActivity.objects.create(
+                conversation=conversation,
+                actor=request.user,
+                action='assigned',
+                new_value=request.user.get_full_name()
+            )
+
+    # Mensagens
+    messages = conversation.messages.all().order_by('created_at')
+
+    # Atualiza status de leitura
+    Message.objects.filter(conversation=conversation, is_read=False).update(is_read=True)
+
+    # Determina em qual aba do sidebar esta conversa aparece
+    if conversation.assigned_to == request.user:
+        sidebar_active_tab = 'mine'
+    elif conversation.assigned_to is None and conversation.status in ['new', 'open']:
+        sidebar_active_tab = 'open'
+    else:
+        sidebar_active_tab = 'ongoing'
+
+    # Filtra as conversas do sidebar de acordo com a aba ativa
+    _qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').filter(
+        status__in=['new', 'open', 'pending']
+    )
+    if sidebar_active_tab == 'mine':
+        _sidebar_convs = _qs.filter(assigned_to=request.user)
+    elif sidebar_active_tab == 'open':
+        _sidebar_convs = _qs.filter(assigned_to__isnull=True, status__in=['new', 'open'])
+    else:
+        _sidebar_convs = _qs
+    _sidebar_convs = _sidebar_convs.order_by('-last_message_at')[:30]
+
+    context = {
+        **_base_ctx(request),
+        'conversation': conversation,
+        'messages': messages,
+        'group': conversation.group,
+        'cliente': conversation.cliente,
+        'activity': conversation.activity.all().order_by('-created_at')[:10],
+        'active_conversation': conversation,
+        'sidebar_active_tab': sidebar_active_tab,
+        'sidebar_conversations': _sidebar_convs,
+    }
+
+    return render(request, 'atendimento/conversation_detail.html', context)
+
+
+# ============ CONFIGURAÇÕES ============
+
+@admin_required
+def settings_connections(request):
+    """Gerenciar conexões WhatsApp"""
+    connections = WhatsAppConnection.objects.all()
+
+    context = {
+        **_base_ctx(request),
+        'connections': connections,
+        'total_groups': ContactGroup.objects.count(),
+    }
+    return render(request, 'atendimento/settings_connections.html', context)
+
+
+@admin_required
+def settings_groups(request):
+    """Gerenciar grupos sincronizados"""
+    connection_id = request.GET.get('connection')
+    search = request.GET.get('search', '')
+
+    groups = ContactGroup.objects.select_related('connection', 'cliente')
+
+    if connection_id:
+        groups = groups.filter(connection_id=connection_id)
+
+    if search:
+        groups = groups.filter(
+            Q(name__icontains=search) |
+            Q(cliente__nome_empresa__icontains=search)
+        )
+
+    context = {
+        **_base_ctx(request),
+        'groups': groups,
+        'connections': WhatsAppConnection.objects.all(),
+        'clientes': Cliente.objects.all().order_by('nome_empresa'),
+    }
+    return render(request, 'atendimento/settings_groups.html', context)
+
+
+# ============ APIs ============
+
+@admin_required
+@require_http_methods(["POST"])
+def api_create_connection(request):
+    """Cria nova conexão WhatsApp"""
+    try:
+        data = json.loads(request.body)
+
+        connection = WhatsAppConnection.objects.create(
+            name=data.get('name'),
+            evolution_url=data.get('evolution_url'),
+            api_key=data.get('api_key'),
+            instance_name=data.get('instance_name'),
+            business_phone=data.get('business_phone', '')
+        )
+
+        return JsonResponse({
+            'success': True,
+            'connection_id': str(connection.id),
+            'message': 'Conexão criada com sucesso'
+        })
+    except Exception as e:
+        logger.error(f"Erro ao criar conexão: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@admin_required
+@require_http_methods(["POST"])
+def api_test_connection(request, connection_id):
+    """Testa conexão WhatsApp"""
+    try:
+        connection = get_object_or_404(WhatsAppConnection, id=connection_id)
+        client = EvolutionAPIClient(connection)
+
+        success, message = client.test_connection()
+
+        return JsonResponse({
+            'success': success,
+            'message': message
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@admin_required
+@require_http_methods(["POST"])
+def api_configure_webhook(request, connection_id):
+    """Configura webhook na Evolution API para uma conexão"""
+    try:
+        connection = get_object_or_404(WhatsAppConnection, id=connection_id)
+        data = json.loads(request.body) if request.body else {}
+        webhook_url = data.get('webhookUrl', '').strip()
+
+        if not webhook_url:
+            # Monta URL padrão do webhook desta conexão
+            host = request.build_absolute_uri('/')[:-1]
+            webhook_url = f"{host}/atendimento/webhook/evolution/"
+
+        client = EvolutionAPIClient(connection)
+        success, message = client.configure_webhook(webhook_url)
+
+        if success:
+            connection.webhook_configured = True
+            connection.save(update_fields=['webhook_configured'])
+
+        return JsonResponse({'success': success, 'message': message, 'webhook_url': webhook_url})
+    except Exception as e:
+        logger.error(f"Erro ao configurar webhook: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@admin_required
+@require_http_methods(["POST"])
+def api_sync_groups(request, connection_id):
+    """Sincroniza grupos de uma conexão específica."""
+    try:
+        connection = get_object_or_404(WhatsAppConnection, id=connection_id)
+        result = ConversationService.sync_groups(connection)
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"Erro ao sincronizar: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_sync_all_connections(request):
+    """Sincroniza grupos/contatos de todas as conexões ativas."""
+    connections = WhatsAppConnection.objects.filter(is_active=True)
+    if not connections.exists():
+        return JsonResponse({'success': False, 'message': 'Nenhuma conexão ativa encontrada.'})
+
+    total_new = total_updated = 0
+    errors = []
+    for conn in connections:
+        try:
+            result = ConversationService.sync_groups(conn)
+            total_new     += result.get('created', 0)
+            total_updated += result.get('updated', 0)
+        except Exception as e:
+            errors.append(f"{conn.name}: {str(e)}")
+            logger.error(f"Erro ao sincronizar {conn.name}: {e}")
+
+    return JsonResponse({
+        'success': True,
+        'message': f'{total_new} novos, {total_updated} atualizados' + (f' — {len(errors)} erro(s)' if errors else ''),
+        'created': total_new,
+        'updated': total_updated,
+        'errors': errors,
+    })
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_send_message(request, conversation_id):
+    """Envia mensagem em uma conversa"""
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        data = json.loads(request.body)
+        message_text = data.get('message', '').strip()
+
+        if not message_text:
+            return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
+
+        # Auto-atribuição: se a conversa não tem atendente, atribui ao agente que respondeu
+        newly_assigned = False
+        if not conversation.assigned_to:
+            conversation.assigned_to = request.user
+            conversation.save(update_fields=['assigned_to'])
+            ConversationActivity.objects.create(
+                conversation=conversation,
+                actor=request.user,
+                action='assigned',
+                new_value=request.user.get_full_name() or request.user.username,
+            )
+            newly_assigned = True
+
+        # Envia mensagem
+        success, result = ConversationService.send_message(
+            conversation,
+            message_text,
+            request.user
+        )
+
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message_id': result,
+                'newly_assigned': newly_assigned,
+            })
+        else:
+            return JsonResponse({'success': False, 'error': result}, status=400)
+
+    except Exception as e:
+        logger.error(f"Erro ao enviar mensagem: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_send_media(request, conversation_id):
+    """Envia mídia (imagem, documento, áudio) em uma conversa"""
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        data = json.loads(request.body)
+
+        media_base64 = data.get('mediaBase64', '').strip()
+        media_type   = data.get('mediaType', 'document')   # image | audio | document | video
+        file_name    = data.get('fileName', 'arquivo')
+        caption      = data.get('caption', '').strip()
+
+        if not media_base64:
+            return JsonResponse({'success': False, 'error': 'Base64 vazio'}, status=400)
+
+        from .services import EvolutionAPIClient
+        client = EvolutionAPIClient(conversation.group.connection)
+
+        if media_type == 'audio':
+            ok = client.send_audio(conversation.group.jid, media_base64)
+        else:
+            ok = client.send_media(
+                conversation.group.jid,
+                mediatype=media_type,
+                media_b64=media_base64,
+                filename=file_name,
+                caption=caption,
+            )
+
+        if not ok:
+            return JsonResponse({'success': False, 'error': 'Falha ao enviar mídia'}, status=400)
+
+        # Salva o arquivo de mídia em disco e obtém URL real
+        import mimetypes as _mt, time as _t
+        from .services import _save_media_file
+        detected_mime, _ = _mt.guess_type(file_name)
+        if not detected_mime:
+            detected_mime = {
+                'image': 'image/jpeg',
+                'audio': 'audio/ogg',
+                'video': 'video/mp4',
+                'document': 'application/octet-stream',
+            }.get(media_type, 'application/octet-stream')
+
+        attachment_url = None
+        try:
+            attachment_url = _save_media_file(media_base64, detected_mime)
+        except Exception as _save_err:
+            logger.warning("Salvar midia falhou: %s", _save_err)
+
+        # Conteudo: legenda > nome do arquivo (doc) > label do tipo
+        if caption:
+            content = caption
+        elif media_type == 'document':
+            content = file_name
+        else:
+            type_labels = {'image': 'Imagem', 'audio': 'Áudio', 'document': 'Documento', 'video': 'Vídeo'}
+            content = type_labels.get(media_type, media_type)
+
+        display_name = ConversationService.get_agent_display_name(request.user)
+        msg = Message.objects.create(
+            conversation=conversation,
+            sender_type='agent',
+            sender=request.user,
+            sender_name=display_name,
+            message_type=media_type,
+            content=content,
+            external_id=f"local_media_{_t.time()}",
+            attachment_url=attachment_url,
+        )
+        conversation.last_message_at = __import__('datetime').datetime.now()
+        if conversation.status == 'new':
+            conversation.status = 'open'
+        conversation.save(update_fields=['last_message_at', 'status'])
+
+        return JsonResponse({'success': True, 'message_id': str(msg.id), 'content': content})
+
+    except Exception as e:
+        logger.error(f"Erro ao enviar mídia: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_update_conversation(request, conversation_id):
+    """Atualiza informações da conversa"""
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        data = json.loads(request.body)
+
+        # Atualiza status
+        if 'status' in data:
+            old_status = conversation.status
+            conversation.status = data['status']
+            if data['status'] in ['resolved', 'closed']:
+                conversation.closed_at = timezone.now()
+            if 'resolution' in data and data['resolution']:
+                conversation.resolution = data['resolution'].strip()
+            conversation.save()
+
+            ConversationActivity.objects.create(
+                conversation=conversation,
+                actor=request.user,
+                action='status_changed',
+                old_value=old_status,
+                new_value=data['status']
+            )
+
+        # Atualiza atribuição
+        if 'assigned_to' in data:
+            from django.contrib.auth.models import User
+            agent = User.objects.get(id=data['assigned_to']) if data['assigned_to'] else None
+            conversation.assigned_to = agent
+            conversation.save()
+
+            ConversationActivity.objects.create(
+                conversation=conversation,
+                actor=request.user,
+                action='assigned',
+                new_value=agent.get_full_name() if agent else 'Desatribuído'
+            )
+
+        # Atualiza priority
+        if 'priority' in data:
+            conversation.priority = data['priority']
+            conversation.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Conversa atualizada'
+        })
+    except Exception as e:
+        logger.error(f"Erro ao atualizar conversa: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_link_group(request, group_id):
+    """Vincula grupo a cliente"""
+    try:
+        group = get_object_or_404(ContactGroup, id=group_id)
+        data = json.loads(request.body)
+        cliente_id = data.get('cliente_id')
+
+        if cliente_id:
+            cliente = Cliente.objects.get(id=cliente_id)
+            group.cliente = cliente
+            group.save()
+
+            return JsonResponse({'success': True})
+        else:
+            group.cliente = None
+            group.save()
+            return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Erro ao vincular grupo: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+# ============ WEBHOOK ============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def webhook_evolution(request):
+    """Webhook para receber mensagens da Evolution API"""
+    try:
+        data = json.loads(request.body)
+        logger.info(f"Webhook recebido: {data}")
+
+        result = ConversationService.process_webhook(data)
+
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"Erro no webhook: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+# ============ NEW IMPORTS (appended) ============
+from django.contrib.auth.models import User
+from .models import (
+    Company, Category, Tag, QuickMessage, ChatFlow,
+    KanbanBoard, KanbanColumn, KanbanCard,
+    UserGroupPermission, SystemSetting,
+)
+
+
+# ============ CONFIGURAÇÕES (ADMIN) ============
+
+@admin_required
+def configuracoes(request):
+    """Página de configurações avançadas"""
+    if request.method == 'POST':
+        pass  # handled by api_settings
+    groups = ContactGroup.objects.select_related('connection').order_by('name')
+    users = User.objects.filter(is_active=True).order_by('first_name', 'username')
+    context = {
+        **_base_ctx(request),
+        'tags': Tag.objects.all(),
+        'categories': Category.objects.all(),
+        'quick_messages': QuickMessage.objects.all(),
+        'groups': groups,
+        'users': users,
+        'ai_key': SystemSetting.get('ai_api_key', ''),
+        'ai_model': SystemSetting.get('ai_model', 'claude-sonnet-4-6'),
+        'ai_prompt': SystemSetting.get('ai_system_prompt', ''),
+        'daily_alert_enabled': SystemSetting.get('daily_alert_enabled', 'false'),
+        'daily_alert_time': SystemSetting.get('daily_alert_time', '08:00'),
+        'daily_alert_group': SystemSetting.get('daily_alert_group', ''),
+        'notif_abertos_enabled': SystemSetting.get('notif_abertos_enabled', 'false'),
+        'notif_abertos_group_id': SystemSetting.get('notif_abertos_group_id', ''),
+    }
+    return render(request, 'atendimento/configuracoes.html', context)
+
+
+# ─── Tags ───
+
+@staff_required
+
+@login_required
+@require_http_methods(["POST", "DELETE"])
+def api_conversation_tags(request, conversation_id, tag_id=None):
+    """Adiciona (POST) ou remove (DELETE) uma tag de uma conversa."""
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            tag_id = data.get('tag_id')
+            if not tag_id:
+                return JsonResponse({'error': 'tag_id obrigatorio'}, status=400)
+            tag = get_object_or_404(Tag, id=tag_id)
+            conversation.tags.add(tag)
+            return JsonResponse({'success': True, 'tag': {'id': str(tag.id), 'name': tag.name, 'color': tag.color}})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        if not tag_id:
+            return JsonResponse({'error': 'tag_id obrigatorio'}, status=400)
+        tag = get_object_or_404(Tag, id=tag_id)
+        conversation.tags.remove(tag)
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+def api_tags_list(request):
+    if request.method == 'GET':
+        tags = list(Tag.objects.values('id', 'name', 'color'))
+        return JsonResponse({'tags': tags})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            tag = Tag.objects.create(name=data['name'], color=data.get('color', '#3B82F6'))
+            return JsonResponse({'id': str(tag.id), 'name': tag.name, 'color': tag.color})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@staff_required
+def api_tag_detail(request, tag_id):
+    tag = get_object_or_404(Tag, id=tag_id)
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            tag.name = data.get('name', tag.name)
+            tag.color = data.get('color', tag.color)
+            tag.save()
+            return JsonResponse({'id': str(tag.id), 'name': tag.name, 'color': tag.color})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        tag.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ─── Categories ───
+
+@staff_required
+def api_categories_list(request):
+    if request.method == 'GET':
+        cats = list(Category.objects.values('id', 'name', 'color'))
+        return JsonResponse({'categories': cats})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            cat = Category.objects.create(name=data['name'], color=data.get('color', '#7c3aed'))
+            return JsonResponse({'id': str(cat.id), 'name': cat.name, 'color': cat.color})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@staff_required
+def api_category_detail(request, category_id):
+    cat = get_object_or_404(Category, id=category_id)
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            cat.name = data.get('name', cat.name)
+            cat.color = data.get('color', cat.color)
+            cat.save()
+            return JsonResponse({'id': str(cat.id), 'name': cat.name, 'color': cat.color})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        cat.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ─── Quick Messages ───
+
+@staff_required
+def api_quick_messages_list(request):
+    if request.method == 'GET':
+        msgs = list(QuickMessage.objects.values('id', 'title', 'body'))
+        return JsonResponse({'quick_messages': msgs})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            msg = QuickMessage.objects.create(title=data['title'], body=data['body'])
+            return JsonResponse({'id': str(msg.id), 'title': msg.title, 'body': msg.body})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@staff_required
+def api_quick_message_detail(request, msg_id):
+    msg = get_object_or_404(QuickMessage, id=msg_id)
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            msg.title = data.get('title', msg.title)
+            msg.body = data.get('body', msg.body)
+            msg.save()
+            return JsonResponse({'id': str(msg.id), 'title': msg.title, 'body': msg.body})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        msg.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ─── Settings ───
+
+@admin_required
+def api_settings(request):
+    if request.method == 'GET':
+        keys = ['ai_api_key', 'ai_model', 'ai_system_prompt',
+                'daily_alert_enabled', 'daily_alert_time', 'daily_alert_group']
+        data = {}
+        for k in keys:
+            data[k] = SystemSetting.get(k, '')
+        # Mask secret
+        if data.get('ai_api_key'):
+            data['ai_api_key_masked'] = '•' * 20
+        return JsonResponse(data)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            secret_keys = {'ai_api_key'}
+            for k, v in data.items():
+                if k.startswith('_'):
+                    continue
+                SystemSetting.set(k, v, is_secret=(k in secret_keys))
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ─── Permissions ───
+
+@admin_required
+def api_permissions(request):
+    if request.method == 'GET':
+        users = User.objects.filter(is_active=True).prefetch_related('group_permissions')
+        groups = ContactGroup.objects.select_related('connection').order_by('name')
+        result = []
+        for u in users:
+            permitted_ids = set(
+                str(p.group_id) for p in u.group_permissions.all()
+            )
+            result.append({
+                'user_id': u.id,
+                'username': u.username,
+                'full_name': u.get_full_name() or u.username,
+                'is_staff': u.is_staff,
+                'permitted_group_ids': list(permitted_ids),
+            })
+        groups_data = [
+            {'id': g.id, 'name': g.name, 'connection': g.connection.name}
+            for g in groups
+        ]
+        return JsonResponse({'users': result, 'groups': groups_data})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user = get_object_or_404(User, id=data['user_id'])
+            group = get_object_or_404(ContactGroup, id=data['group_id'])
+            perm, created = UserGroupPermission.objects.get_or_create(user=user, group=group)
+            if not created:
+                perm.delete()
+                return JsonResponse({'action': 'removed'})
+            return JsonResponse({'action': 'added'})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ============ EMPRESAS ============
+
+@staff_required
+def empresas(request):
+    from clientes.models import Cliente as CRMCliente
+    search = request.GET.get('search', '').strip()
+
+    qs = CRMCliente.objects.annotate(
+        group_count=Count('contactgroup', distinct=True),
+        conv_count=Count('conversation', distinct=True),
+    ).order_by('nome_empresa')
+
+    if search:
+        qs = qs.filter(
+            Q(nome_empresa__icontains=search) |
+            Q(cnpj__icontains=search) |
+            Q(email__icontains=search)
+        )
+
+    context = {
+        **_base_ctx(request),
+        'clientes': qs,
+        'total': qs.count(),
+        'search': search,
+    }
+    return render(request, 'atendimento/empresas.html', context)
+
+
+@staff_required
+def api_empresas_list(request):
+    if request.method == 'GET':
+        companies = list(Company.objects.annotate(
+            group_count=Count('groups')
+        ).values('id', 'name', 'cnpj', 'email', 'phone', 'notes', 'group_count'))
+        return JsonResponse({'companies': [
+            {**c, 'id': str(c['id'])} for c in companies
+        ]})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            company = Company.objects.create(
+                name=data['name'],
+                cnpj=data.get('cnpj', ''),
+                email=data.get('email', ''),
+                phone=data.get('phone', ''),
+                notes=data.get('notes', ''),
+            )
+            return JsonResponse({
+                'id': str(company.id), 'name': company.name,
+                'cnpj': company.cnpj, 'email': company.email,
+                'phone': company.phone,
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@staff_required
+def api_empresa_detail(request, empresa_id):
+    company = get_object_or_404(Company, id=empresa_id)
+    if request.method == 'GET':
+        return JsonResponse({
+            'id': str(company.id), 'name': company.name,
+            'cnpj': company.cnpj or '', 'email': company.email or '',
+            'phone': company.phone or '', 'notes': company.notes or '',
+        })
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            company.name = data.get('name', company.name)
+            company.cnpj = data.get('cnpj', company.cnpj)
+            company.email = data.get('email', company.email)
+            company.phone = data.get('phone', company.phone)
+            company.notes = data.get('notes', company.notes)
+            company.save()
+            return JsonResponse({'success': True, 'name': company.name})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        company.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ============ KANBAN ============
+
+@staff_required
+@login_required
+def kanban(request):
+    boards = KanbanBoard.objects.all()
+    users = User.objects.filter(is_active=True)
+    context = {
+        **_base_ctx(request),
+        'boards': boards,
+        'users': users,
+    }
+    return render(request, 'atendimento/kanban.html', context)
+
+
+@login_required
+def api_kanban_boards(request):
+    if request.method == 'GET':
+        boards = []
+        for b in KanbanBoard.objects.prefetch_related('columns__cards'):
+            columns = []
+            for col in b.columns.all():
+                cards = []
+                for card in col.cards.all():
+                    cards.append({
+                        'id': str(card.id),
+                        'column_id': str(col.id),
+                        'title': card.title,
+                        'description': card.description or '',
+                        'position': card.position,
+                        'conversation_id': str(card.conversation_id) if card.conversation_id else None,
+                        'assignee_id': card.assignee_id,
+                        'assignee_name': card.assignee.get_full_name() if card.assignee else None,
+                        'due_date': card.due_date.isoformat() if card.due_date else None,
+                    })
+                columns.append({
+                    'id': str(col.id),
+                    'name': col.name,
+                    'position': col.position,
+                    'color': col.color,
+                    'cards': cards,
+                })
+            boards.append({'id': str(b.id), 'name': b.name, 'columns': columns})
+        return JsonResponse({'boards': boards})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            board = KanbanBoard.objects.create(name=data['name'])
+            return JsonResponse({'id': str(board.id), 'name': board.name})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def api_kanban_board_detail(request, board_id):
+    board = get_object_or_404(KanbanBoard, id=board_id)
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            board.name = data.get('name', board.name)
+            board.save()
+            return JsonResponse({'success': True, 'name': board.name})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        board.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def api_kanban_columns(request, board_id):
+    board = get_object_or_404(KanbanBoard, id=board_id)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            last_pos = KanbanColumn.objects.filter(board=board).count()
+            col = KanbanColumn.objects.create(
+                board=board,
+                name=data['name'],
+                position=last_pos,
+                color=data.get('color', '#7c3aed'),
+            )
+            return JsonResponse({'id': str(col.id), 'name': col.name, 'color': col.color, 'position': col.position})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def api_kanban_column_detail(request, board_id, column_id):
+    col = get_object_or_404(KanbanColumn, id=column_id, board_id=board_id)
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            col.name = data.get('name', col.name)
+            col.color = data.get('color', col.color)
+            col.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        col.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def api_kanban_cards(request, board_id, column_id):
+    col = get_object_or_404(KanbanColumn, id=column_id, board_id=board_id)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            last_pos = KanbanCard.objects.filter(column=col).count()
+            assignee = None
+            if data.get('assignee_id'):
+                assignee = User.objects.filter(id=data['assignee_id']).first()
+            due_date = None
+            if data.get('due_date'):
+                from django.utils.dateparse import parse_datetime, parse_date
+                due_date = parse_datetime(data['due_date']) or parse_date(data['due_date'])
+            card = KanbanCard.objects.create(
+                column=col,
+                title=data['title'],
+                description=data.get('description', ''),
+                position=last_pos,
+                assignee=assignee,
+                due_date=due_date,
+            )
+            return JsonResponse({'id': str(card.id), 'title': card.title})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def api_kanban_card_detail(request, board_id, column_id, card_id):
+    card = get_object_or_404(KanbanCard, id=card_id, column_id=column_id, column__board_id=board_id)
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            card.title = data.get('title', card.title)
+            card.description = data.get('description', card.description)
+            if 'assignee_id' in data:
+                card.assignee = User.objects.filter(id=data['assignee_id']).first() if data['assignee_id'] else None
+            if 'due_date' in data:
+                card.due_date = data['due_date'] or None
+            card.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        card.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_kanban_move_card(request, card_id):
+    card = get_object_or_404(KanbanCard, id=card_id)
+    try:
+        data = json.loads(request.body)
+        new_col = get_object_or_404(KanbanColumn, id=data['column_id'])
+        card.column = new_col
+        card.position = data.get('position', 0)
+        card.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# ============ AUTO ATENDIMENTO ============
+
+@staff_required
+def auto_atendimento(request):
+    flows = ChatFlow.objects.all()
+    groups = ContactGroup.objects.select_related('connection').order_by('name')
+    context = {
+        **_base_ctx(request),
+        'flows': flows,
+        'groups': groups,
+    }
+    return render(request, 'atendimento/auto_atendimento.html', context)
+
+
+@staff_required
+def api_chat_flows_list(request):
+    if request.method == 'GET':
+        flows = []
+        for f in ChatFlow.objects.all():
+            flows.append({
+                'id': str(f.id), 'name': f.name, 'active': f.active,
+                'group_ids': f.group_ids or [],
+                'greeting_message': f.greeting_message,
+                'subject_question': f.subject_question,
+                'category_question': f.category_question,
+                'categories': f.categories or [],
+                'completion_message': f.completion_message or '',
+            })
+        return JsonResponse({'flows': flows})
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            flow = ChatFlow.objects.create(
+                name=data['name'],
+                greeting_message=data.get('greeting_message', ''),
+                subject_question=data.get('subject_question', 'Qual é o assunto?'),
+                category_question=data.get('category_question', 'Qual categoria?'),
+                categories=data.get('categories', []),
+                group_ids=data.get('group_ids', []),
+                completion_message=data.get('completion_message', ''),
+                active=data.get('active', False),
+            )
+            return JsonResponse({'id': str(flow.id), 'name': flow.name})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@staff_required
+def api_chat_flow_detail(request, flow_id):
+    flow = get_object_or_404(ChatFlow, id=flow_id)
+    if request.method == 'GET':
+        return JsonResponse({
+            'id': str(flow.id), 'name': flow.name, 'active': flow.active,
+            'group_ids': flow.group_ids or [],
+            'greeting_message': flow.greeting_message,
+            'subject_question': flow.subject_question,
+            'category_question': flow.category_question,
+            'categories': flow.categories or [],
+            'completion_message': flow.completion_message or '',
+        })
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            flow.name = data.get('name', flow.name)
+            flow.greeting_message = data.get('greeting_message', flow.greeting_message)
+            flow.subject_question = data.get('subject_question', flow.subject_question)
+            flow.category_question = data.get('category_question', flow.category_question)
+            flow.categories = data.get('categories', flow.categories)
+            flow.group_ids = data.get('group_ids', flow.group_ids)
+            flow.completion_message = data.get('completion_message', flow.completion_message)
+            flow.active = data.get('active', flow.active)
+            flow.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    if request.method == 'DELETE':
+        flow.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# ============ RELATÓRIOS ============
+
+@staff_required
+def relatorio_pdf(request):
+    """Gera PDF do relatório de atendimentos por empresa, mês e ano."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
+                                    Paragraph, Spacer, HRFlowable, KeepTogether)
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from django.http import HttpResponse
+    from clientes.models import Cliente as CRMCliente
+    import io, datetime as _dt
+
+    cliente_id = request.GET.get('cliente_id', '').strip()
+    mes        = request.GET.get('mes', '').strip()
+    ano        = request.GET.get('ano', '').strip()
+
+    if not cliente_id:
+        return HttpResponse('Selecione uma empresa para gerar o relatório.', status=400)
+
+    cliente = get_object_or_404(CRMCliente, id=cliente_id)
+
+    qs = Conversation.objects.filter(
+        Q(cliente=cliente) | Q(group__cliente=cliente),
+        status__in=['resolved', 'closed'],
+        closed_at__isnull=False,
+    ).select_related('group', 'assigned_to', 'category').order_by('closed_at')
+
+    if ano:
+        qs = qs.filter(closed_at__year=int(ano))
+    if mes:
+        qs = qs.filter(closed_at__month=int(mes))
+
+    MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+             'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    if mes and ano:
+        periodo = f'{MESES[int(mes)]} de {ano}'
+    elif ano:
+        periodo = f'Ano {ano}'
+    elif mes:
+        periodo = MESES[int(mes)]
+    else:
+        periodo = 'Todos os períodos'
+
+    def fmt_duracao(segundos):
+        if segundos is None or segundos < 0:
+            return '—'
+        h = int(segundos // 3600)
+        m = int((segundos % 3600) // 60)
+        if h > 0:
+            return f'{h}h {m:02d}min'
+        return f'{m}min'
+
+    # Pré-calcula duração de cada conversa
+    conversas = []
+    total_seg = 0
+    for conv in qs:
+        duracao_seg = None
+        if conv.closed_at and conv.created_at:
+            duracao_seg = (conv.closed_at - conv.created_at).total_seconds()
+            total_seg += duracao_seg
+
+        resolucao = conv.resolution or ''
+        if not resolucao:
+            act = conv.activity.filter(
+                action='status_changed',
+                new_value__in=['resolved', 'closed']
+            ).order_by('-created_at').first()
+            if act:
+                resolucao = act.new_value  # ex: "resolved"
+        resolucao = resolucao or '—'
+
+        conversas.append({
+            'conv': conv,
+            'duracao_seg': duracao_seg,
+            'resolucao': resolucao,
+        })
+
+    # ── Monta PDF ────────────────────────────────────────────────
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2.2*cm, bottomMargin=2*cm)
+
+    C_DARK   = colors.HexColor('#04060e')
+    C_CYAN   = colors.HexColor('#00c8d8')
+    C_CYAN2  = colors.HexColor('#00f5ff')
+    C_GREY   = colors.HexColor('#555555')
+    C_LGREY  = colors.HexColor('#f5f5f5')
+    C_WHITE  = colors.white
+    C_BORDER = colors.HexColor('#d0d0d0')
+
+    st = getSampleStyleSheet()
+    def ps(name, **kw):
+        return ParagraphStyle(name, parent=st['Normal'], **kw)
+
+    title_s  = ps('tt', fontSize=17, textColor=C_DARK, fontName='Helvetica-Bold',
+                  spaceAfter=2, alignment=TA_LEFT)
+    sub_s    = ps('ss', fontSize=10, textColor=C_GREY, spaceAfter=2, alignment=TA_LEFT)
+    head_s   = ps('hs', fontSize=8, fontName='Helvetica-Bold',
+                  textColor=C_WHITE, leading=11)
+    cell_s   = ps('cs', fontSize=8, textColor=C_DARK, leading=11)
+    cell_sm  = ps('csm', fontSize=7, textColor=C_GREY, leading=10)
+    right_s  = ps('rs', fontSize=9, textColor=C_DARK, alignment=TA_RIGHT)
+    footer_s = ps('fs', fontSize=7, textColor=C_GREY, alignment=TA_CENTER)
+    summ_s   = ps('su', fontSize=10, fontName='Helvetica-Bold', textColor=C_DARK)
+    summ_v   = ps('sv', fontSize=14, fontName='Helvetica-Bold', textColor=C_CYAN)
+
+    story = []
+
+    # ── Cabeçalho do documento ───────────────────────────────────
+    hdr_data = [[
+        Paragraph('<b>TOMICH HUB</b>', ps('bh', fontSize=13, fontName='Helvetica-Bold',
+                                          textColor=C_CYAN2)),
+        Paragraph('Relatório de Atendimentos', ps('rh', fontSize=11, textColor=C_DARK,
+                                                   alignment=TA_RIGHT)),
+    ]]
+    hdr_tbl = Table(hdr_data, colWidths=[9*cm, 8.27*cm])
+    hdr_tbl.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+    ]))
+    story.append(hdr_tbl)
+    story.append(HRFlowable(width='100%', thickness=1.5, color=C_CYAN, spaceAfter=10))
+
+    # ── Dados da empresa ─────────────────────────────────────────
+    story.append(Paragraph(f'<b>{cliente.nome_empresa}</b>', title_s))
+    story.append(Paragraph(f'CNPJ: {cliente.cnpj or "—"}   |   Período: {periodo}', sub_s))
+    story.append(Spacer(1, 0.4*cm))
+
+    # ── Cards de resumo ──────────────────────────────────────────
+    total_chamados = len(conversas)
+    total_horas    = fmt_duracao(total_seg)
+
+    summ_data = [
+        [
+            [Paragraph('Total de Chamados', summ_s), Paragraph(str(total_chamados), summ_v)],
+            [Paragraph('Horas Gastas', summ_s), Paragraph(total_horas, summ_v)],
+            [Paragraph('Período', summ_s), Paragraph(periodo, ps('pv', fontSize=12,
+                        fontName='Helvetica-Bold', textColor=C_CYAN))],
+        ]
+    ]
+    summ_tbl = Table(summ_data, colWidths=[5.76*cm, 5.76*cm, 5.76*cm])
+    summ_tbl.setStyle(TableStyle([
+        ('BOX',          (0,0), (-1,-1), 0.5, C_CYAN),
+        ('INNERGRID',    (0,0), (-1,-1), 0.5, C_BORDER),
+        ('BACKGROUND',   (0,0), (-1,-1), colors.HexColor('#f0fffe')),
+        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING',   (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 10),
+        ('LEFTPADDING',  (0,0), (-1,-1), 12),
+    ]))
+    story.append(summ_tbl)
+    story.append(Spacer(1, 0.5*cm))
+
+    # ── Tabela de chamados ───────────────────────────────────────
+    if not conversas:
+        story.append(Paragraph(
+            'Nenhum chamado resolvido/encerrado encontrado para o período.',
+            ps('em', fontSize=10, textColor=C_GREY, alignment=TA_CENTER)
+        ))
+    else:
+        story.append(Paragraph('Detalhamento dos Chamados',
+                               ps('sec', fontSize=11, fontName='Helvetica-Bold',
+                                  textColor=C_DARK, spaceAfter=8)))
+
+        header_row = [
+            Paragraph('#', head_s),
+            Paragraph('Grupo / Título', head_s),
+            Paragraph('Atendente', head_s),
+            Paragraph('Abertura', head_s),
+            Paragraph('Fechamento', head_s),
+            Paragraph('Duração', head_s),
+            Paragraph('Resolução', head_s),
+        ]
+
+        rows = [header_row]
+        alt = False
+        for item in conversas:
+            conv = item['conv']
+            alt  = not alt
+            titulo  = conv.title or conv.group.name or f'#{conv.conversation_id}'
+            agente  = conv.assigned_to.get_full_name() if conv.assigned_to else '—'
+            abertura = conv.created_at.strftime('%d/%m/%Y\n%H:%M') if conv.created_at else '—'
+            fechado  = conv.closed_at.strftime('%d/%m/%Y\n%H:%M') if conv.closed_at else '—'
+            dur      = fmt_duracao(item['duracao_seg'])
+            res      = item['resolucao'][:60]
+
+            bg = C_LGREY if alt else C_WHITE
+            rows.append([
+                Paragraph(f'#{conv.conversation_id}', cell_sm),
+                Paragraph(titulo[:55], cell_s),
+                Paragraph(agente[:22], cell_sm),
+                Paragraph(abertura, cell_sm),
+                Paragraph(fechado, cell_sm),
+                Paragraph(f'<b>{dur}</b>', ps('dur', fontSize=8, fontName='Helvetica-Bold',
+                                              textColor=C_CYAN)),
+                Paragraph(res, cell_sm),
+            ])
+
+        col_widths = [1.4*cm, 4.2*cm, 2.8*cm, 2.3*cm, 2.3*cm, 1.8*cm, 2.47*cm]
+        tbl = Table(rows, colWidths=col_widths, repeatRows=1)
+
+        row_bgs = [('BACKGROUND', (0, i+1), (-1, i+1),
+                    C_LGREY if (i % 2 == 0) else C_WHITE)
+                   for i in range(len(conversas))]
+        tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,0), C_DARK),
+            ('TEXTCOLOR',     (0,0), (-1,0), C_WHITE),
+            ('GRID',          (0,0), (-1,-1), 0.3, C_BORDER),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+            ('TOPPADDING',    (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+            ('LEFTPADDING',   (0,0), (-1,-1), 4),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 4),
+        ] + row_bgs))
+        story.append(tbl)
+
+        # Linha de total
+        story.append(Spacer(1, 0.3*cm))
+        total_row = Table([[
+            Paragraph(f'Total: <b>{total_chamados} chamados</b>', right_s),
+            Paragraph(f'Total horas: <b>{total_horas}</b>',
+                      ps('th', fontSize=10, fontName='Helvetica-Bold', textColor=C_CYAN,
+                         alignment=TA_RIGHT)),
+        ]], colWidths=[9*cm, 8.27*cm])
+        total_row.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'RIGHT'),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+        ]))
+        story.append(total_row)
+
+    # ── Rodapé ───────────────────────────────────────────────────
+    story.append(Spacer(1, 0.8*cm))
+    story.append(HRFlowable(width='100%', thickness=0.5, color=C_BORDER, spaceAfter=6))
+    story.append(Paragraph(
+        f'Documento gerado em {_dt.datetime.now().strftime("%d/%m/%Y às %H:%M")} '
+        f'por {request.user.get_full_name() or request.user.username} — Tomich Hub',
+        footer_s
+    ))
+
+    doc.build(story)
+    buf.seek(0)
+
+    safe_name = cliente.nome_empresa.replace(' ', '_').replace('/', '-')[:30]
+    filename = f'relatorio_{safe_name}_{periodo.replace(" ","_")}.pdf'
+    resp = HttpResponse(buf, content_type='application/pdf')
+    resp['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return resp
+
+
+@staff_required
+def relatorios(request):
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    qs = Conversation.objects.all()
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+
+    total = qs.count()
+    open_count = qs.filter(status__in=['new', 'open']).count()
+    pending = qs.filter(status='pending').count()
+    resolved = qs.filter(status__in=['resolved', 'closed']).count()
+
+    # Avg resolution time (hours)
+    from django.db.models import Avg, ExpressionWrapper, DurationField
+    resolved_qs = qs.filter(status__in=['resolved', 'closed'], closed_at__isnull=False)
+    avg_duration = None
+    for conv in resolved_qs.only('created_at', 'closed_at')[:500]:
+        pass  # simple approach below
+
+    # Category breakdown
+    by_category = list(
+        qs.values('category__name', 'category__color')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    total_for_pct = total or 1
+
+    recent_resolved = Conversation.objects.filter(
+        status__in=['resolved', 'closed']
+    ).select_related('group', 'cliente', 'assigned_to', 'category').order_by('-closed_at')[:20]
+
+    from django.db.models.functions import ExtractYear
+    import datetime as _dt
+
+    anos_disponiveis = list(
+        Conversation.objects.filter(closed_at__isnull=False)
+        .annotate(ano=ExtractYear('closed_at'))
+        .values_list('ano', flat=True)
+        .distinct()
+        .order_by('-ano')
+    ) or [_dt.date.today().year]
+
+    # Todos os clientes cadastrados no CRM — para o seletor do PDF
+    from clientes.models import Cliente as CRMCliente
+    clientes_disponiveis = CRMCliente.objects.all().order_by('nome_empresa')
+
+    context = {
+        **_base_ctx(request),
+        'stats': {
+            'total': total,
+            'open': open_count,
+            'pending': pending,
+            'resolved': resolved,
+        },
+        'by_category': by_category,
+        'total_for_pct': total_for_pct,
+        'recent_resolved': recent_resolved,
+        'date_from': date_from,
+        'date_to': date_to,
+        'anos_disponiveis': anos_disponiveis,
+        'ano_atual': _dt.date.today().year,
+        'clientes_disponiveis': clientes_disponiveis,
+    }
+    return render(request, 'atendimento/relatorios.html', context)
+
+
+# ============ HISTÓRICO ============
+
+@staff_required
+def historico(request):
+    status_filter = request.GET.get('status', '')
+    search = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to', 'category').order_by('-created_at')
+
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if search:
+        qs = qs.filter(
+            Q(group__name__icontains=search) |
+            Q(cliente__nome_empresa__icontains=search) |
+            Q(conversation_id__icontains=search)
+        )
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+
+    paginator = Paginator(qs, 50)
+    page = request.GET.get('page', 1)
+    conversations = paginator.get_page(page)
+
+    context = {
+        **_base_ctx(request),
+        'conversations': conversations,
+        'status_filter': status_filter,
+        'search': search,
+        'date_from': date_from,
+        'date_to': date_to,
+        'total': qs.count(),
+        'status_choices': Conversation.STATUS_CHOICES,
+    }
+    return render(request, 'atendimento/historico.html', context)
+
+
+# ============ GRUPOS (nova view) ============
+
+@staff_required
+def grupos(request):
+    connection_id = request.GET.get('connection', '')
+    search = request.GET.get('search', '')
+
+    groups = ContactGroup.objects.select_related('connection', 'company', 'cliente').order_by('name')
+    if connection_id:
+        groups = groups.filter(connection_id=connection_id)
+    if search:
+        groups = groups.filter(Q(name__icontains=search) | Q(jid__icontains=search))
+
+    from clientes.models import Cliente as CRMCliente
+    context = {
+        **_base_ctx(request),
+        'groups': groups,
+        'connections': WhatsAppConnection.objects.all(),
+        'companies': Company.objects.all().order_by('name'),
+        'clientes': CRMCliente.objects.all().order_by('nome_empresa'),
+        'connection_filter': connection_id,
+        'search': search,
+    }
+    return render(request, 'atendimento/grupos.html', context)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_group_toggle_ai(request, group_id):
+    group = get_object_or_404(ContactGroup, id=group_id)
+    try:
+        group.ai_enabled = not group.ai_enabled
+        group.save()
+        return JsonResponse({'success': True, 'ai_enabled': group.ai_enabled})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_group_set_company(request, group_id):
+    group = get_object_or_404(ContactGroup, id=group_id)
+    try:
+        data = json.loads(request.body)
+        company_id = data.get('company_id')
+        if company_id:
+            group.company = get_object_or_404(Company, id=company_id)
+        else:
+            group.company = None
+        group.save()
+        return JsonResponse({'success': True, 'company_name': group.company.name if group.company else None})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_conversation_messages(request, conversation_id):
+    """Retorna mensagens novas de uma conversa (polling fallback do WebSocket)."""
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+    after_id = int(request.GET.get('after', 0))
+
+    msgs = Message.objects.filter(
+        conversation=conversation,
+        id__gt=after_id,
+    ).order_by('id').select_related('sender')[:30]
+
+    data = []
+    for m in msgs:
+        data.append({
+            'id': m.id,
+            'content': m.content,
+            'sender_type': m.sender_type,
+            'sender_name': m.sender_name or (m.sender.first_name if m.sender else 'Agente'),
+            'created_at': timezone.localtime(m.created_at).strftime('%H:%M'),
+            'message_type': m.message_type,
+            'attachment_url': m.attachment_url or '',
+        })
+    return JsonResponse({'messages': data})
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_auto_vincular(request):
+    """
+    Auto-vincula grupos a clientes com base em similaridade de nome.
+
+    Algoritmo:
+    1. Extrai a parte APÓS o separador " - " do nome do grupo como "hint" do cliente
+       Ex: "TOMICH TEC - VILLAGGIONET" → hint = "VILLAGGIONET"
+    2. Calcula score de match entre o hint e o nome de cada cliente:
+       - 10 pts: nome da empresa está contido no hint (ou vice-versa) após normalização
+       -  3 pts: interseção de palavras-chave
+       -  1 pt:  substring parcial de palavras
+    3. Víncula ao cliente com maior score (mínimo 1)
+
+    Query param: force=1 → re-processa também grupos já vinculados
+    """
+    import re, unicodedata
+    from clientes.models import Cliente as CRMCliente
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        body = {}
+    force = body.get('force', False)
+
+    STOPWORDS = {
+        'LTDA','ME','EIRELI','SA','EPP','SRL','COMERCIO','EMPRESA','SOCIEDADE',
+        'DE','DA','DO','DOS','DAS','E','EM','COM','AO','OS','AS',
+        'NETWORKS','SOLUTIONS','SOLUTION','SERVICOS','TELECOMUNICACOES',
+    }
+
+    def normalize(s):
+        """Remove acentos e caracteres especiais, retorna maiúsculas sem espaços."""
+        s = unicodedata.normalize('NFD', s)
+        s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+        return re.sub(r'[^A-Z0-9]', '', s.upper())
+
+    def keywords(name):
+        parts = re.split(r'[\s\-\/\.\,&]+', name.upper())
+        return {normalize(p) for p in parts if len(p) >= 3 and p.upper() not in STOPWORDS}
+
+    def client_hint(group_name):
+        """Parte do nome do grupo que identifica o cliente (após o último ' - ')."""
+        parts = re.split(r'\s*[-–]\s*', group_name, maxsplit=10)
+        if len(parts) > 1:
+            return parts[-1].strip()   # Ex: "TOMICH TEC - VILLAGGIONET" → "VILLAGGIONET"
+        return group_name
+
+    def score(cliente_name, group_name):
+        hint      = client_hint(group_name)
+        hint_norm = normalize(hint)
+        cli_norm  = normalize(cliente_name)
+
+        # Nível 1: match direto (nome da empresa contido no hint ou vice-versa)
+        if cli_norm and hint_norm:
+            if cli_norm in hint_norm or hint_norm in cli_norm:
+                # Bônus proporcional ao tamanho da palavra correspondida
+                return 10 + min(len(cli_norm), len(hint_norm))
+
+        # Nível 2: interseção de palavras-chave entre hint e nome do cliente
+        kw_hint = keywords(hint)
+        kw_cli  = keywords(cliente_name)
+        exact   = kw_hint & kw_cli
+        if exact:
+            return 3 * len(exact)
+
+        # Nível 3: substring de palavras-chave
+        sub_score = 0
+        for wa in kw_cli:
+            for wb in kw_hint:
+                if len(wa) >= 4 and len(wb) >= 4 and (wa in wb or wb in wa):
+                    sub_score += 1
+        return sub_score
+
+    clientes = list(CRMCliente.objects.all())
+
+    if force:
+        groups = list(ContactGroup.objects.all().select_related('connection', 'cliente'))
+    else:
+        groups = list(ContactGroup.objects.filter(cliente__isnull=True).select_related('connection'))
+
+    linked = []
+    for grupo in groups:
+        best_cliente = None
+        best_score   = 0
+        best_match   = []
+
+        for cliente in clientes:
+            s = score(cliente.nome_empresa, grupo.name)
+            if s > best_score:
+                best_score   = s
+                best_cliente = cliente
+                # Identifica palavras do match para log
+                hint     = client_hint(grupo.name)
+                kw_h     = keywords(hint)
+                kw_c     = keywords(cliente.nome_empresa)
+                best_match = sorted(kw_h & kw_c) or [normalize(hint)[:20]]
+
+        if best_cliente and best_score >= 1:
+            # Só salva se mudou
+            if grupo.cliente_id != best_cliente.id:
+                grupo.cliente = best_cliente
+                grupo.save(update_fields=['cliente'])
+                linked.append({
+                    'group_id': grupo.id,
+                    'group_name': grupo.name,
+                    'cliente_id': best_cliente.id,
+                    'cliente_name': best_cliente.nome_empresa,
+                    'score': best_score,
+                    'match_words': best_match,
+                })
+
+    return JsonResponse({
+        'success': True,
+        'count': len(linked),
+        'linked': linked,
+    })
+
+
+@staff_required
+def api_cliente_grupos(request, cliente_id):
+    """Lista e atualiza grupos vinculados a um cliente do CRM"""
+    from clientes.models import Cliente as CRMCliente
+    cliente = get_object_or_404(CRMCliente, id=cliente_id)
+
+    if request.method == 'GET':
+        all_groups = ContactGroup.objects.select_related('connection', 'cliente').order_by('connection__name', 'name')
+        data = []
+        for g in all_groups:
+            linked_to_this = (g.cliente_id == cliente_id)
+            linked_to_other = (g.cliente_id is not None and g.cliente_id != cliente_id)
+            data.append({
+                'id': g.id,
+                'name': g.name,
+                'jid': g.jid,
+                'connection': g.connection.name if g.connection else '—',
+                'linked': linked_to_this,
+                'linked_to_other': linked_to_other,
+                'linked_to_name': g.cliente.nome_empresa if linked_to_other else None,
+            })
+        return JsonResponse({
+            'cliente_name': cliente.nome_empresa,
+            'groups': data,
+        })
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            group_ids = [int(i) for i in data.get('group_ids', [])]
+
+            # Remove vínculo dos grupos atualmente ligados a este cliente
+            ContactGroup.objects.filter(cliente_id=cliente_id).update(cliente=None)
+
+            # Vincula os grupos selecionados
+            if group_ids:
+                ContactGroup.objects.filter(id__in=group_ids).update(cliente=cliente)
+
+            return JsonResponse({
+                'success': True,
+                'linked': len(group_ids),
+                'message': f'{len(group_ids)} grupo(s) vinculado(s) a {cliente.nome_empresa}',
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_conversation_hosts(request, conversation_id):
+    """Retorna os hosts (Acesso) do cliente vinculado à conversa.
+
+    Usa o cliente atual do grupo (vínculo vivo) como fonte primária, com
+    fallback para conversation.cliente caso o grupo não tenha cliente.
+    """
+    from clientes.models import Acesso
+    conversation = get_object_or_404(
+        Conversation.objects.select_related('group__cliente', 'cliente'),
+        id=conversation_id,
+    )
+    # Vínculo vivo: grupo → cliente (reflete edições recentes do usuário)
+    cliente = (
+        conversation.group.cliente
+        if conversation.group and conversation.group.cliente
+        else conversation.cliente
+    )
+    if not cliente:
+        return JsonResponse({'hosts': [], 'cliente': None})
+
+    acessos = Acesso.objects.filter(
+        cliente=cliente
+    ).select_related('funcao', 'modelo').order_by('funcao__descricao', 'tipo')
+
+    hosts = []
+    for a in acessos:
+        proto = (a.protocolo or '').upper()
+        if proto in ('HTTP', 'HTTPS'):
+            porta_web = a.porta or (443 if proto == 'HTTPS' else 80)
+            scheme = proto.lower()
+            action_url = f'/clientes/acessos/{a.id}/web/{porta_web}/{scheme}/'
+            action_label = 'Web'
+            action_icon = 'fa-globe'
+        elif proto == 'WINBOX' or getattr(a, 'winbox', None):
+            action_url = f'/clientes/winbox/{a.id}/'
+            action_label = 'Winbox'
+            action_icon = 'fa-terminal'
+        else:
+            action_url = f'/clientes/terminal/?acesso={a.id}'
+            action_label = 'Terminal'
+            action_icon = 'fa-terminal'
+
+        hosts.append({
+            'id': a.id,
+            'tipo': a.tipo,
+            'host': a.host,
+            'host_ipv6': a.host_ipv6 or '',
+            'porta': a.porta,
+            'protocolo': proto,
+            'funcao': a.funcao.descricao if a.funcao else '',
+            'modelo': a.modelo.nome if a.modelo else '',
+            'action_url': action_url,
+            'action_label': action_label,
+            'action_icon': action_icon,
+            'ping_url': f'/clientes/acessos/ping/{a.id}/',
+        })
+
+    return JsonResponse({
+        'hosts': hosts,
+        'cliente': {
+            'id': cliente.id,
+            'nome': cliente.nome_empresa,
+        },
+    })
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_test_notif_abertos(request):
+    """Envia uma notificação de teste de chamado aberto."""
+    from .tasks import _get_notif_client_and_jid
+    client, jid = _get_notif_client_and_jid()
+    if not client:
+        return JsonResponse({'success': False, 'error': 'Grupo de notificação não configurado.'})
+    texto = (
+        "🔔 *[TESTE] Novo chamado em aberto!*\n\n"
+        "🏢 Empresa: *Empresa Exemplo*\n"
+        "📱 Grupo: Grupo Teste\n\n"
+        "Esta é uma mensagem de teste do sistema de notificações."
+    )
+    ok = client.send_text(jid, texto, everyone=True)
+    return JsonResponse({'success': ok, 'error': '' if ok else 'Falha ao enviar. Verifique a conexão.'})
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_test_alerta_diario(request):
+    """Envia o alerta diário agora (ignora horário configurado)."""
+    from .tasks import _run_alerta_diario_agora
+    result = _run_alerta_diario_agora()
+    return JsonResponse(result)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_agents_list(request):
+    """Retorna atendentes ativos para o modal de transferência."""
+    from django.contrib.auth.models import User as AuthUser
+    agents = AuthUser.objects.filter(is_active=True, is_staff=True).exclude(id=request.user.id).order_by('first_name', 'username')
+    data = []
+    for u in agents:
+        try:
+            display = u.agent_status.get_display_name()
+            status  = u.agent_status.status
+        except Exception:
+            display = u.get_full_name() or u.username
+            status  = 'offline'
+        data.append({
+            'id':      u.id,
+            'name':    display,
+            'role':    'Supervisor' if u.is_staff else 'Agente',
+            'status':  status,
+            'initials': (u.first_name[:1] + (u.last_name[:1] if u.last_name else '')).upper() or u.username[:2].upper(),
+        })
+    return JsonResponse({'agents': data})
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_groups_json(request):
+    """Lista grupos/contatos para o modal Iniciar Conversa."""
+    q = request.GET.get('q', '').strip()
+    qs = ContactGroup.objects.select_related('connection', 'cliente').order_by('name')
+    if q:
+        qs = qs.filter(Q(name__icontains=q) | Q(connection__name__icontains=q))
+    qs = qs[:60]
+    return JsonResponse({'groups': [{
+        'id': g.id,
+        'name': g.name,
+        'connection': g.connection.name if g.connection else '—',
+        'cliente': g.cliente.nome_empresa if g.cliente else None,
+    } for g in qs]})
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_start_conversation_by_group(request):
+    """Abre ou cria uma conversa para um grupo."""
+    try:
+        data = json.loads(request.body)
+        group_id = data.get('group_id')
+        if not group_id:
+            return JsonResponse({'success': False, 'error': 'group_id obrigatório'}, status=400)
+
+        group = get_object_or_404(ContactGroup, id=group_id)
+
+        existing = Conversation.objects.filter(
+            group=group,
+            status__in=['new', 'open', 'pending']
+        ).order_by('-last_message_at').first()
+
+        if existing:
+            return JsonResponse({
+                'success': True,
+                'url': f'/atendimento/conversation/{existing.id}/',
+                'created': False,
+            })
+
+        import uuid as _uuid
+        conv = Conversation.objects.create(
+            group=group,
+            conversation_id=str(_uuid.uuid4())[:8].upper(),
+            status='open',
+            assigned_to=request.user,
+            cliente=group.cliente,
+        )
+        ConversationActivity.objects.create(
+            conversation=conv,
+            actor=request.user,
+            action='status_changed',
+            old_value='',
+            new_value='open',
+        )
+        return JsonResponse({
+            'success': True,
+            'url': f'/atendimento/conversation/{conv.id}/',
+            'created': True,
+        })
+    except Exception as e:
+        logger.error(f"Erro ao iniciar conversa: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+def api_display_name(request):
+    """Retorna ou atualiza o nome de exibição do usuário logado"""
+    profile, _ = AgentStatus.objects.get_or_create(
+        user=request.user,
+        defaults={'status': 'offline', 'display_name': ''}
+    )
+    if request.method == 'GET':
+        return JsonResponse({
+            'display_name': profile.display_name,
+            'fallback': request.user.get_full_name() or request.user.username,
+            'effective': profile.get_display_name(),
+        })
+    try:
+        data = json.loads(request.body)
+        name = data.get('display_name', '').strip()
+        profile.display_name = name
+        profile.save(update_fields=['display_name'])
+        return JsonResponse({
+            'success': True,
+            'display_name': name,
+            'effective': profile.get_display_name(),
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)

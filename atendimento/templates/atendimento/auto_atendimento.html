@@ -1,0 +1,256 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+.flow-list { display:flex; flex-direction:column; gap:10px; }
+.flow-item { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:16px; display:flex; align-items:center; gap:16px; transition:border-color .15s; }
+.flow-item:hover { border-color:var(--brand-600); }
+.flow-active-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.flow-info { flex:1; min-width:0; }
+.flow-name { font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; }
+.flow-meta { font-size:12px; color:var(--muted); }
+.toggle-switch { position:relative; display:inline-block; width:40px; height:22px; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; cursor:pointer; top:0;left:0;right:0;bottom:0; background:rgba(255,255,255,.1); border-radius:22px; transition:.3s; }
+.toggle-slider:before { position:absolute; content:""; height:16px; width:16px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.3s; }
+input:checked + .toggle-slider { background:var(--active); }
+input:checked + .toggle-slider:before { transform:translateX(18px); }
+.modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,.75); z-index:1000; align-items:center; justify-content:center; }
+.modal-box { background:var(--dark-800); border:1px solid var(--border); border-radius:10px; padding:28px; width:90%; max-width:560px; max-height:90vh; overflow-y:auto; }
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.modal-header h2 { font-size:16px; font-weight:700; color:var(--text); margin:0; }
+.modal-close { background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:0; line-height:1; }
+.modal-close:hover { color:var(--text); }
+.form-field { margin-bottom:14px; }
+.form-field label { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+.form-field label i { font-size:10px; }
+.form-hint { font-size:11px; color:var(--muted); margin-top:4px; opacity:.75; }
+.form-input { width:100%; padding:8px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; box-sizing:border-box; }
+.form-input:focus { outline:none; border-color:var(--active); }
+.group-check-list { max-height:180px; overflow-y:auto; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:6px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+.group-check-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); padding:4px 6px; border-radius:4px; cursor:pointer; }
+.group-check-item:hover { background:rgba(255,255,255,.04); }
+.group-check-item input { accent-color:var(--active); }
+.cat-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; min-height:0; }
+.cat-chip { display:inline-flex; align-items:center; background:rgba(233,30,140,.12); color:var(--active); padding:3px 10px; border-radius:4px; font-size:12px; font-weight:600; }
+.group-search { margin-bottom:8px; }
+{% endblock %}
+
+{% block main_content %}
+<div class="atendimento-header">
+    <div class="header-title">
+        <i class="fas fa-robot" style="color:var(--active);font-size:24px;"></i>
+        <div>
+            <h2>Auto Atendimento</h2>
+            <small>{{ flows|length }} fluxo(s) configurado(s)</small>
+        </div>
+    </div>
+    <div class="header-actions">
+        <button class="btn-cyber" onclick="openFlowModal()"><i class="fas fa-plus"></i> Novo Fluxo</button>
+    </div>
+</div>
+
+<div class="atendimento-content">
+    {% if flows %}
+    <div class="flow-list">
+        {% for flow in flows %}
+        <div class="flow-item" id="flow-{{ flow.id }}">
+            <span class="flow-active-dot" style="background:{% if flow.active %}#22c55e{% else %}#475569{% endif %};"></span>
+            <div class="flow-info">
+                <div class="flow-name">{{ flow.name }}</div>
+                <div class="flow-meta">
+                    {{ flow.group_ids|length }} grupo(s) vinculado(s)
+                    {% if flow.categories %}· {{ flow.categories|length }} categoria(s){% endif %}
+                    {% if flow.active %}&nbsp;·&nbsp;<span style="color:#22c55e;">Ativo</span>{% else %}&nbsp;·&nbsp;<span style="color:#475569;">Inativo</span>{% endif %}
+                </div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" {% if flow.active %}checked{% endif %} onchange="toggleFlow('{{ flow.id }}', this.checked)">
+                <span class="toggle-slider"></span>
+            </label>
+            <button class="btn-cyber secondary" style="padding:6px 12px;font-size:11px;" onclick="editFlow('{{ flow.id }}')"><i class="fas fa-edit"></i></button>
+            <button class="btn-cyber" style="padding:6px 12px;font-size:11px;border-color:#ef4444;color:#ef4444;" onclick="deleteFlow('{{ flow.id }}')"><i class="fas fa-trash"></i></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+        <i class="fas fa-robot" style="font-size:48px;opacity:.15;display:block;margin-bottom:14px;"></i>
+        <p style="font-size:14px;">Nenhum fluxo de auto atendimento configurado.</p>
+        <button class="btn-cyber" onclick="openFlowModal()" style="margin-top:16px;"><i class="fas fa-plus"></i> Criar Primeiro Fluxo</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Fluxo -->
+<div class="modal-overlay" id="flowModal" onclick="closeModalIfBg(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 id="flowModalTitle">Novo Fluxo</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <input type="hidden" id="flowEditId">
+
+        <div class="form-field">
+            <label>Nome do Fluxo *</label>
+            <input type="text" class="form-input" id="flowName" placeholder="Ex: Primeiro atendimento">
+        </div>
+
+        <div class="form-field">
+            <label><i class="fas fa-comment-dots"></i> Mensagem de Saudação</label>
+            <textarea class="form-input" id="flowGreeting" rows="3" placeholder="Olá! Bem-vindo ao nosso suporte. Para abrirmos seu chamado, precisamos de algumas informações." style="resize:vertical;"></textarea>
+        </div>
+
+        <div class="form-field">
+            <label><i class="fas fa-question-circle"></i> Pergunta de Assunto</label>
+            <textarea class="form-input" id="flowSubject" rows="2" style="resize:vertical;">Qual é o assunto do seu chamado? (descreva brevemente o problema)</textarea>
+            <div class="form-hint">O usuário responderá livremente. A resposta vira o assunto do chamado.</div>
+        </div>
+
+        <div class="form-field">
+            <label><i class="fas fa-list"></i> Pergunta de Categoria</label>
+            <textarea class="form-input" id="flowCatQ" rows="2" style="resize:vertical;">Qual categoria melhor descreve o seu problema?</textarea>
+        </div>
+
+        <div class="form-field">
+            <label><i class="fas fa-list"></i> Categorias (separadas por vírgula) *</label>
+            <input type="text" class="form-input" id="flowCategorias" placeholder="Redes, Servidores, Monitoramento" oninput="renderCatChips()">
+            <div class="form-hint" id="catHint">O bot numerará automaticamente: 1 - Redes, 2 - Servidores...</div>
+            <div class="cat-chips" id="catChips"></div>
+        </div>
+
+        <div class="form-field">
+            <label><i class="fas fa-check-circle"></i> Mensagem de Conclusão</label>
+            <textarea class="form-input" id="flowCompletion" rows="2" placeholder="Seu chamado foi aberto com sucesso! Em breve um atendente irá te auxiliar." style="resize:vertical;"></textarea>
+        </div>
+
+        <div class="form-field">
+            <label><i class="fas fa-users"></i> Grupos que usarão este fluxo</label>
+            <input type="text" class="form-input group-search" id="groupSearch" placeholder="Buscar grupo..." oninput="filterGroups()" style="margin-bottom:8px;">
+            <div class="group-check-list" id="groupCheckList">
+                {% for group in groups %}
+                <label class="group-check-item" data-name="{{ group.name|lower }}">
+                    <input type="checkbox" value="{{ group.id }}" class="flow-group-chk">
+                    <span>{{ group.name }}</span>
+                    <span style="color:#475569;font-size:10px;margin-left:auto;">({{ group.connection.name }})</span>
+                </label>
+                {% empty %}
+                <span style="color:var(--muted);font-size:12px;padding:4px;">Nenhum grupo disponível</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-field" style="display:flex;align-items:center;gap:10px;">
+            <label style="margin:0;text-transform:none;font-size:13px;">Ativo</label>
+            <label class="toggle-switch"><input type="checkbox" id="flowActive"><span class="toggle-slider"></span></label>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;">
+            <button class="btn-cyber" style="flex:1;" onclick="saveFlow()"><i class="fas fa-save"></i> Salvar</button>
+            <button class="btn-cyber secondary" style="flex:1;" onclick="closeModal()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function closeModal() { document.getElementById('flowModal').style.display='none'; }
+function closeModalIfBg(e) { if(e.target===e.currentTarget) closeModal(); }
+
+function renderCatChips() {
+    const val = document.getElementById('flowCategorias').value;
+    const cats = val.split(',').map(c => c.trim()).filter(c => c);
+    const hint = cats.length
+        ? 'O bot numerará automaticamente: ' + cats.slice(0,3).map((c,i) => `${i+1} - ${c}`).join(', ') + (cats.length > 3 ? '...' : '')
+        : 'O bot numerará automaticamente: 1 - Redes, 2 - Servidores...';
+    document.getElementById('catHint').textContent = hint;
+    document.getElementById('catChips').innerHTML = cats.map((c, i) =>
+        `<span class="cat-chip">${i+1}. ${c}</span>`
+    ).join('');
+}
+
+function filterGroups() {
+    const q = document.getElementById('groupSearch').value.toLowerCase();
+    document.querySelectorAll('.group-check-item[data-name]').forEach(el => {
+        el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+    });
+}
+
+function openFlowModal() {
+    document.getElementById('flowEditId').value = '';
+    document.getElementById('flowName').value = '';
+    document.getElementById('flowGreeting').value = '';
+    document.getElementById('flowSubject').value = 'Qual é o assunto do seu chamado? (descreva brevemente o problema)';
+    document.getElementById('flowCatQ').value = 'Qual categoria melhor descreve o seu problema?';
+    document.getElementById('flowCategorias').value = '';
+    document.getElementById('flowCompletion').value = '';
+    document.getElementById('flowActive').checked = false;
+    document.getElementById('groupSearch').value = '';
+    document.querySelectorAll('.flow-group-chk').forEach(c => c.checked = false);
+    document.querySelectorAll('.group-check-item[data-name]').forEach(el => el.style.display = '');
+    renderCatChips();
+    document.getElementById('flowModalTitle').textContent = 'Novo Fluxo';
+    document.getElementById('flowModal').style.display = 'flex';
+}
+
+async function editFlow(id) {
+    const r = await fetch(`/atendimento/api/chat-flows/${id}/`);
+    const d = await r.json();
+    document.getElementById('flowEditId').value = d.id;
+    document.getElementById('flowName').value = d.name;
+    document.getElementById('flowGreeting').value = d.greeting_message || '';
+    document.getElementById('flowSubject').value = d.subject_question || '';
+    document.getElementById('flowCatQ').value = d.category_question || '';
+    document.getElementById('flowCategorias').value = (d.categories || []).join(', ');
+    document.getElementById('flowCompletion').value = d.completion_message || '';
+    document.getElementById('flowActive').checked = d.active;
+    document.getElementById('groupSearch').value = '';
+    document.querySelectorAll('.group-check-item[data-name]').forEach(el => el.style.display = '');
+    document.querySelectorAll('.flow-group-chk').forEach(c => {
+        c.checked = (d.group_ids || []).map(String).includes(c.value);
+    });
+    renderCatChips();
+    document.getElementById('flowModalTitle').textContent = 'Editar Fluxo';
+    document.getElementById('flowModal').style.display = 'flex';
+}
+
+async function saveFlow() {
+    const id = document.getElementById('flowEditId').value;
+    const catVal = document.getElementById('flowCategorias').value;
+    const cats = catVal.split(',').map(c => c.trim()).filter(c => c);
+    const groupIds = [...document.querySelectorAll('.flow-group-chk:checked')].map(c => c.value);
+    const payload = {
+        name: document.getElementById('flowName').value.trim(),
+        greeting_message: document.getElementById('flowGreeting').value,
+        subject_question: document.getElementById('flowSubject').value,
+        category_question: document.getElementById('flowCatQ').value,
+        categories: cats,
+        completion_message: document.getElementById('flowCompletion').value,
+        active: document.getElementById('flowActive').checked,
+        group_ids: groupIds,
+    };
+    if (!payload.name) return alert('Nome é obrigatório');
+    const url = id ? `/atendimento/api/chat-flows/${id}/` : '/atendimento/api/chat-flows/';
+    const method = id ? 'PUT' : 'POST';
+    const r = await fetch(url, {
+        method, headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify(payload)
+    });
+    if (r.ok) { location.reload(); }
+    else { const d = await r.json(); alert('Erro: ' + (d.error || 'desconhecido')); }
+}
+
+async function toggleFlow(id, active) {
+    await fetch(`/atendimento/api/chat-flows/${id}/`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({active})
+    });
+}
+
+async function deleteFlow(id) {
+    if (!confirm('Remover este fluxo?')) return;
+    const r = await fetch(`/atendimento/api/chat-flows/${id}/`, { method: 'DELETE', headers: {'X-CSRFToken': CSRF} });
+    if (r.ok) { document.getElementById('flow-' + id)?.remove(); }
+}
+</script>
+{% endblock %}

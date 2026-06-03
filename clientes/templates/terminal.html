@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Terminal</title>
     <link rel="stylesheet" href="/static/css/xterm.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100%; height: 100%; }
         body {
-            background: #02030a; color: #d0e8f0;
-            font-family: 'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace;
+            background: #0d1117; color: #e6edf3;
+            font-family: 'Inter', 'JetBrains Mono', 'Courier New', monospace;
             font-weight: 400; font-size: 13px; line-height: 1.2;
             overflow: hidden; height: 100vh; width: 100vw;
             -webkit-font-smoothing: antialiased;
@@ -26,148 +26,149 @@
         .host-sidebar {
             display: flex; flex-direction: column;
             width: 220px; min-width: 220px; max-width: 220px;
-            background: #02030a; border-right: 1px solid rgba(0,245,255,.12);
+            background: #161b22; border-right: 1px solid #30363d;
             transition: width .2s, min-width .2s, max-width .2s;
             overflow: hidden; flex-shrink: 0;
         }
         .host-sidebar.collapsed { width: 0; min-width: 0; max-width: 0; }
         .host-sidebar-header {
-            padding: 8px 10px; border-bottom: 1px solid rgba(0,245,255,.1);
+            padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.06);
             display: flex; align-items: center; gap: 6px; flex-shrink: 0;
         }
         .host-sidebar-title {
-            font-size: 10px; font-weight: 700; color: #00f5ff;
-            text-transform: uppercase; letter-spacing: 1.2px; flex: 1;
+            font-size: 10px; font-weight: 600; color: #7d8590;
+            text-transform: uppercase; letter-spacing: 1px; flex: 1;
+            font-family: 'Inter',sans-serif;
         }
         .host-search {
-            padding: 6px 8px; border-bottom: 1px solid rgba(0,245,255,.1); flex-shrink: 0;
+            padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0;
         }
         .host-search input {
-            width: 100%; background: #060c18; border: 1px solid rgba(0,245,255,.12);
-            color: rgba(0,245,255,.5); font-family: 'Share Tech Mono',monospace;
+            width: 100%; background: #161b22; border: 1px solid rgba(255,255,255,.07);
+            color: #30363d; font-family: 'Inter',sans-serif;
             font-size: 10px; padding: 4px 7px; border-radius: 2px; outline: none;
         }
-        .host-search input:focus { border-color: #00ff88; color: #e0e0e0; }
-        .host-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(0,245,255,.15) transparent; }
+        .host-search input:focus { border-color: #3fb950; color: #e6edf3; }
+        .host-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(88,166,255,.12) transparent; }
         .host-list::-webkit-scrollbar { width: 3px; }
-        .host-list::-webkit-scrollbar-thumb { background: rgba(0,245,255,.15); border-radius: 2px; }
+        .host-list::-webkit-scrollbar-thumb { background: rgba(88,166,255,.12); border-radius: 2px; }
         .host-group-label {
-            padding: 6px 10px 3px; font-size: 9px; color: rgba(0,245,255,.25);
+            padding: 6px 10px 3px; font-size: 9px; color: rgba(88,166,255,.18);
             text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
         }
         .host-item {
-            padding: 6px 10px; cursor: pointer; border-bottom: 1px solid rgba(0,245,255,.06);
+            padding: 6px 10px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.04);
             display: flex; align-items: center; gap: 6px;
             transition: background .15s;
         }
-        .host-item:hover { background: rgba(0,255,136,.06); }
-        .host-item:active { background: rgba(0,255,136,.12); }
-        .host-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,245,255,.15); flex-shrink: 0; }
+        .host-item:hover { background: rgba(63,185,80,.04); }
+        .host-item:active { background: rgba(63,185,80,.08); }
+        .host-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(88,166,255,.12); flex-shrink: 0; }
         .host-info { flex: 1; min-width: 0; }
-        .host-name { font-size: 11px; color: #d0e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .host-addr { font-size: 9px; color: rgba(0,245,255,.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-        .host-proto { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(0,255,136,.1); color: #00ff88; flex-shrink: 0; }
+        .host-name { font-size: 12px; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Inter',sans-serif; font-weight: 500; }
+        .host-addr { font-size: 9px; color: rgba(255,255,255,.06); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .host-proto { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(63,185,80,.07); color: #3fb950; flex-shrink: 0; }
         .host-proto.telnet { background: rgba(255,165,0,.1); color: #ffa500; }
-        .host-badge-wbx { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(0,245,255,.1); color: #00f5ff; flex-shrink: 0; }
+        .host-badge-wbx { font-size: 8px; padding: 1px 4px; border-radius: 2px; background: rgba(255,255,255,.06); color: #58a6ff; flex-shrink: 0; }
         /* Expand row for winbox hosts */
         .host-wbx-expand {
             display: none; gap: 6px; padding: 5px 10px 7px 22px;
-            background: rgba(0,245,255,.03); border-bottom: 1px solid rgba(0,245,255,.06);
+            background: rgba(255,255,255,.02); border-bottom: 1px solid rgba(255,255,255,.04);
         }
         .host-wbx-expand.aberto { display: flex; }
-        .host-item.wbx-open { background: rgba(0,245,255,.04); }
+        .host-item.wbx-open { background: rgba(255,255,255,.03); }
         .btn-wbx {
             flex: 1; padding: 5px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 10px; font-weight: 700;
+            font-family: 'Inter',sans-serif; font-size: 10px; font-weight: 700;
             letter-spacing: .5px; transition: .15s; border: 1px solid;
         }
-        .btn-wbx.ssh  { background: rgba(0,255,136,.08); border-color: #00ff88; color: #00ff88; }
-        .btn-wbx.ssh:hover  { background: rgba(0,255,136,.18); }
-        .btn-wbx.wbx  { background: rgba(0,245,255,.08); border-color: #00f5ff; color: #00f5ff; }
-        .btn-wbx.wbx:hover  { background: rgba(0,245,255,.18); }
-        .host-sidebar-empty { padding: 20px 10px; text-align: center; color: rgba(0,245,255,.2); font-size: 10px; line-height: 1.8; }
+        .btn-wbx.ssh  { background: rgba(63,185,80,.05); border-color: #3fb950; color: #3fb950; }
+        .btn-wbx.ssh:hover  { background: rgba(63,185,80,.12); }
+        .btn-wbx.wbx  { background: rgba(255,255,255,.05); border-color: #58a6ff; color: #58a6ff; }
+        .btn-wbx.wbx:hover  { background: rgba(88,166,255,.18); }
+        .host-sidebar-empty { padding: 20px 10px; text-align: center; color: rgba(88,166,255,.15); font-size: 10px; line-height: 1.8; }
         .btn-sidebar-toggle {
-            background: transparent; border: none; color: rgba(0,245,255,.3); cursor: pointer;
+            background: transparent; border: none; color: rgba(255,255,255,.06); cursor: pointer;
             font-size: 14px; padding: 2px 4px; flex-shrink: 0; transition: color .15s;
         }
-        .btn-sidebar-toggle:hover { color: #00ff88; }
+        .btn-sidebar-toggle:hover { color: #3fb950; }
         /* Aba de reabrir sidebar quando colapsada */
         .host-sidebar-tab {
             position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-            background: #02030a; border: 1px solid rgba(0,245,255,.12); border-left: none;
-            color: rgba(0,245,255,.3); font-size: 9px; writing-mode: vertical-rl;
+            background: #0d1117; border: 1px solid rgba(255,255,255,.07); border-left: none;
+            color: rgba(255,255,255,.06); font-size: 9px; writing-mode: vertical-rl;
             padding: 8px 4px; cursor: pointer; border-radius: 0 3px 3px 0;
             transition: color .15s, border-color .15s; z-index: 10;
             display: none;
         }
-        .host-sidebar-tab:hover { color: #00ff88; border-color: #00ff88; }
+        .host-sidebar-tab:hover { color: #3fb950; border-color: #3fb950; }
         .host-sidebar-tab.visivel { display: block; }
         /* Área central (tabs + terminal + footer) */
         .terminal-main { display: flex; flex-direction: column; flex: 1; min-width: 0; position: relative; }
 
         /* ─── HEADER ─── */
         .terminal-header {
-            background: rgba(2, 3, 10, 0.95);
-            border-bottom: 1px solid rgba(0,245,255,.35);
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
             padding: 10px 14px;
             display: flex; align-items: center; gap: 12px;
             flex-shrink: 0; min-height: 50px;
         }
-        .terminal-title { font-size: 13px; font-weight: 700; color: #00f5ff; flex: 1; font-family: 'Share Tech Mono',monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(0,245,255,.4); white-space: nowrap; }
-        .terminal-status.connected { color: #00ff88; }
-        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,245,255,.3); flex-shrink: 0; animation: pulse 1s infinite; }
-        .status-dot.connected { background: #00ff88; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .terminal-title { font-size: 13px; font-weight: 600; color: #e6edf3; flex: 1; font-family: 'Inter',sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #7d8590; white-space: nowrap; }
+        .terminal-status.connected { color: #3fb950; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.06); flex-shrink: 0; }
+        .status-dot.connected { background: #3fb950; }
+        
 
         /* Botão menu mobile no header */
         .btn-mobile-menu {
             display: none;
-            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.4);
+            background: transparent; border: 1px solid rgba(255,255,255,.08); color: #7d8590;
             width: 34px; height: 34px; border-radius: 4px; cursor: pointer;
             font-size: 16px; align-items: center; justify-content: center;
             flex-shrink: 0; transition: 0.2s;
         }
-        .btn-mobile-menu:hover, .btn-mobile-menu:active { border-color: #00ff88; color: #00ff88; }
+        .btn-mobile-menu:hover, .btn-mobile-menu:active { border-color: #3fb950; color: #3fb950; }
 
         /* ─── TABS ─── */
         .terminal-tabs {
-            display: flex; background: #02030a; border-bottom: 1px solid rgba(0,245,255,.1);
+            display: flex; background: #0d1117; border-bottom: 1px solid #30363d;
             overflow-x: auto; gap: 4px; padding: 6px 8px; min-height: 38px; flex-shrink: 0;
             -webkit-overflow-scrolling: touch; scrollbar-width: none;
         }
         .terminal-tabs::-webkit-scrollbar { display: none; }
         .terminal-tab {
-            background: rgba(4,8,22,.8); border: 1px solid rgba(0,245,255,.14); border-bottom: none;
-            color: rgba(0,245,255,.4); padding: 6px 12px; cursor: pointer; font-size: 11px;
+            background: rgba(4,8,22,.8); border: 1px solid rgba(255,255,255,.08); border-bottom: none;
+            color: #7d8590; padding: 6px 12px; cursor: pointer; font-size: 11px;
             border-radius: 4px 4px 0 0; display: flex; align-items: center; gap: 6px;
-            white-space: nowrap; transition: all 0.2s; font-family: 'Share Tech Mono',monospace;
+            white-space: nowrap; transition: all 0.2s; font-family: 'Inter',sans-serif;
             user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        .terminal-tab:active { background: rgba(0,245,255,.06); }
-        .terminal-tab.active { background: #02030a; border: 1px solid #00ff88; border-bottom: 1px solid #0a0a0a; color: #00ff88; }
+        .terminal-tab:active { background: rgba(255,255,255,.04); }
+        .terminal-tab.active { background: #0d1117; border: 1px solid #30363d; border-bottom: 1px solid #0d1117; color: #58a6ff; font-weight: 600; }
         .terminal-tab-close { cursor: pointer; opacity: 0.6; transition: 0.2s; padding: 2px 4px; /* área de toque maior */ }
         .terminal-tab-close:hover { color: #ff4444; opacity: 1; }
-        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,245,255,.3); flex-shrink: 0; }
-        .terminal-tab-status.connected { background: #00ff88; }
+        .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.06); flex-shrink: 0; }
+        .terminal-tab-status.connected { background: #3fb950; }
 
         /* ─── CONTEÚDO ─── */
-        .terminal-content { flex: 1; overflow: hidden; background: #02030a; display: flex; flex-direction: column; position: relative; min-height: 0; }
+        .terminal-content { flex: 1; overflow: hidden; background: #0d1117; display: flex; flex-direction: column; position: relative; min-height: 0; }
         .terminal-pane { width: 100%; height: 100%; display: none; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
         .terminal-pane.active { display: flex; }
         .xterm { flex: 1; overflow: hidden; width: 100%; height: 100%; position: relative; min-height: 0; min-width: 0; }
         .xterm-screen { width: 100%; height: 100%; }
-        .xterm-viewport { background-color: #02030a; }
-        .xterm-screen { filter: drop-shadow(0 0 4px rgba(0,245,255,0.3)); }
+        .xterm-viewport { background-color: #0d1117; }
+        .xterm-screen { }
         .xterm-char-measure-element {
             display: inline-block; position: absolute; visibility: hidden; left: -9999px;
-            font-family: 'Share Tech Mono',monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
+            font-family: 'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace; font-weight: 400; font-size: 13px; line-height: 1.2;
         }
 
         /* ─── FOOTER ─── */
         .terminal-footer {
-            background: rgba(2, 3, 10, 0.8);
-            border-top: 1px solid rgba(0,245,255,.1);
+            background: #161b22;
+            border-top: 1px solid #30363d;
             padding: 8px 12px;
             display: flex; gap: 6px;
             overflow-x: auto; flex-shrink: 0;
@@ -176,33 +177,33 @@
         }
         .terminal-footer::-webkit-scrollbar { display: none; }
         .btn-terminal {
-            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.4);
+            background: transparent; border: 1px solid rgba(255,255,255,.08); color: #7d8590;
             padding: 6px 10px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 11px;
+            font-family: 'Inter',sans-serif; font-size: 11px;
             font-weight: 500; transition: 0.2s; text-transform: uppercase;
             white-space: nowrap; flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-terminal:hover { border-color: #00ff88; color: #00ff88; }
-        .btn-terminal:active { background: rgba(0,255,136,0.08); border-color: #00ff88; color: #00ff88; }
-        .btn-terminal.btn-wiki { border-color: #00f5ff; color: #00f5ff; }
-        .btn-terminal.btn-wiki:hover, .btn-terminal.btn-wiki:active { background: rgba(0,245,255,0.1); }
+        .btn-terminal:hover { border-color: #58a6ff; color: #58a6ff; }
+        .btn-terminal:active { background: rgba(63,185,80,0.08); border-color: #3fb950; color: #3fb950; }
+        .btn-terminal.btn-wiki { border-color: #30363d; color: #7d8590; }
+        .btn-terminal.btn-wiki:hover, .btn-terminal.btn-wiki:active { background: rgba(88,166,255,0.1); }
         .btn-terminal.btn-scripts { border-color: #ffa500; color: #ffa500; }
         .btn-terminal.btn-scripts:hover, .btn-terminal.btn-scripts:active { background: rgba(255,165,0,0.1); }
-        .btn-terminal.btn-cores-off { border-color: rgba(0,245,255,.25); color: rgba(0,245,255,.25); }
+        .btn-terminal.btn-cores-off { border-color: rgba(88,166,255,.18); color: rgba(88,166,255,.18); }
 
         /* ─── BOTÃO TECLADO MOBILE ─── */
         .btn-mobile-keyboard {
             display: none;
             position: fixed; bottom: 58px; right: 14px;
-            background: rgba(0,255,136,0.12); border: 1px solid rgba(0,245,255,.35);
-            color: #00ff88; width: 48px; height: 48px;
+            background: rgba(63,185,80,0.12); border: 1px solid #30363d;
+            color: #3fb950; width: 48px; height: 48px;
             border-radius: 50%; cursor: pointer; font-size: 22px;
             align-items: center; justify-content: center;
-            z-index: 9000; box-shadow: 0 0 18px rgba(0,255,136,0.25);
+            z-index: 9000; 
             transition: 0.2s; -webkit-tap-highlight-color: transparent;
         }
-        .btn-mobile-keyboard:active { transform: scale(0.93); background: rgba(0,255,136,0.22); }
+        .btn-mobile-keyboard:active { transform: scale(0.93); background: rgba(63,185,80,0.22); }
 
         /* Input escondido que captura teclado virtual no iOS/Android */
         #mobileKeyboardInput {
@@ -216,9 +217,9 @@
         /* ─── ESTADO VAZIO ─── */
         .terminal-empty {
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; height: 100%; color: rgba(0,245,255,.3); font-size: 13px; gap: 12px;
+            justify-content: center; height: 100%; color: rgba(255,255,255,.06); font-size: 13px; gap: 12px;
         }
-        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'Share Tech Mono',monospace; padding: 0 20px; }
+        .terminal-empty-text { text-align: center; line-height: 1.7; font-family: 'Inter',sans-serif; padding: 0 20px; }
 
         /* ─── MENU MOBILE (drawer de ações) ─── */
         .mobile-menu-overlay {
@@ -229,7 +230,7 @@
         .mobile-menu-overlay.aberto { display: block; }
         .mobile-menu-drawer {
             position: fixed; bottom: 0; left: 0; right: 0;
-            background: #060c18; border-top: 1px solid rgba(0,245,255,.35);
+            background: #161b22; border-top: 1px solid #30363d;
             border-radius: 14px 14px 0 0;
             padding: 8px 0 env(safe-area-inset-bottom, 12px);
             transform: translateY(100%); transition: transform 0.28s ease;
@@ -237,35 +238,35 @@
         }
         .mobile-menu-drawer.aberto { transform: translateY(0); }
         .mobile-menu-handle {
-            width: 36px; height: 4px; background: #333; border-radius: 2px;
+            width: 36px; height: 4px; background: #30363d; border-radius: 2px;
             margin: 8px auto 14px; cursor: grab;
         }
         .mobile-menu-item {
             display: flex; align-items: center; gap: 14px;
             padding: 14px 22px; cursor: pointer; transition: background 0.15s;
-            font-family: 'Share Tech Mono',monospace; font-size: 13px; color: rgba(0,245,255,.5);
-            border-bottom: 1px solid rgba(0,245,255,.1);
+            font-family: 'Inter',sans-serif; font-size: 13px; color: #30363d;
+            border-bottom: 1px solid rgba(255,255,255,.06);
             -webkit-tap-highlight-color: transparent;
         }
-        .mobile-menu-item:active { background: rgba(0,255,136,0.05); }
+        .mobile-menu-item:active { background: rgba(63,185,80,0.05); }
         .mobile-menu-item:last-child { border-bottom: none; }
         .mobile-menu-item span:first-child { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
-        .mobile-menu-item.item-wiki { color: #00f5ff; }
+        .mobile-menu-item.item-wiki { color: #58a6ff; }
         .mobile-menu-item.item-danger { color: #ff5555; }
-        .mobile-menu-separator { height: 6px; background: #02030a; margin: 4px 0; }
+        .mobile-menu-separator { height: 6px; background: #0d1117; margin: 4px 0; }
 
         .debug-panel { display: none !important; }
-        .btn-terminal.reconnecting { border-color: #ffa500; color: #ffa500; animation: pulseOrange 1s infinite; }
-        @keyframes pulseOrange { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .btn-terminal.reconnecting { border-color: #ffa500; color: #ffa500; }
+        
 
         /* ─── WIKI SIDEBAR ─── */
         .wiki-sidebar {
             position: fixed; top: 0; right: -9999px; width: 480px; height: 100vh;
-            background: #060c18; border-left: 1px solid rgba(0,245,255,.35);
+            background: #161b22; border-left: 1px solid #30363d;
             display: flex; flex-direction: column; z-index: 9999;
-            box-shadow: -5px 0 30px rgba(0,0,0,0.7);
+            box-shadow: -4px 0 16px rgba(0,0,0,.4);
             transition: right 0.3s ease, width 0.2s ease;
-            font-family: 'Share Tech Mono',monospace;
+            font-family: 'Inter',sans-serif;
             min-width: 300px; max-width: 98vw;
         }
         .wiki-sidebar.aberto { right: 0; }
@@ -274,78 +275,78 @@
             position: absolute; top: 0; left: -4px; width: 8px; height: 100%;
             cursor: ew-resize; z-index: 10000; background: transparent; transition: background 0.2s;
         }
-        .wiki-resize-handle:hover, .wiki-resize-handle.arrastando { background: rgba(0,255,136,0.25); }
+        .wiki-resize-handle:hover, .wiki-resize-handle.arrastando { background: rgba(63,185,80,0.25); }
         .wiki-resize-handle::after {
             content: ''; position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); width: 2px; height: 40px;
-            background: rgba(0,255,136,0.4); border-radius: 2px; opacity: 0; transition: opacity 0.2s;
+            background: rgba(63,185,80,.3); border-radius: 2px; opacity: 0; transition: opacity 0.2s;
         }
         .wiki-resize-handle:hover::after, .wiki-resize-handle.arrastando::after { opacity: 1; }
         body.wiki-resizing { cursor: ew-resize !important; user-select: none !important; }
         body.wiki-resizing * { cursor: ew-resize !important; }
         .wiki-sidebar-header {
-            background: #02030a; padding: 10px 14px; border-bottom: 1px solid rgba(0,245,255,.35);
+            background: #0d1117; padding: 10px 14px; border-bottom: 1px solid #30363d;
             display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 8px;
         }
-        .wiki-sidebar-header h3 { margin: 0; color: #00f5ff; font-size: 15px; font-weight: 700; letter-spacing: 1px; flex: 1; }
+        .wiki-sidebar-header h3 { margin: 0; color: #e6edf3; font-size: 14px; font-weight: 600; flex: 1; font-family: 'Inter',sans-serif; }
         .wiki-header-actions { display: flex; align-items: center; gap: 4px; }
         .wiki-width-indicator {
-            font-size: 9px; color: #333; padding: 2px 6px; background: #02030a;
-            border: 1px solid rgba(0,245,255,.1); border-radius: 2px; font-family: 'Share Tech Mono',monospace;
+            font-size: 9px; color: #30363d; padding: 2px 6px; background: #0d1117;
+            border: 1px solid rgba(255,255,255,.06); border-radius: 2px; font-family: 'Inter',sans-serif;
             white-space: nowrap; transition: color 0.2s;
         }
-        body.wiki-resizing .wiki-width-indicator { color: #00ff88; border-color: #00ff88; }
+        body.wiki-resizing .wiki-width-indicator { color: #3fb950; border-color: #3fb950; }
         .btn-wiki-action {
-            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
+            background: transparent; border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.06);
             width: 32px; height: 32px; border-radius: 3px; cursor: pointer; font-size: 13px;
             display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; line-height: 1;
         }
-        .btn-wiki-action:hover { border-color: #00ff88; color: #00ff88; }
-        .btn-wiki-action.maximizar:hover { border-color: #00f5ff; color: #00f5ff; }
+        .btn-wiki-action:hover { border-color: #3fb950; color: #3fb950; }
+        .btn-wiki-action.maximizar:hover { border-color: #58a6ff; color: #58a6ff; }
         .btn-wiki-action.fechar:hover { border-color: #ff4444; color: #ff4444; }
         .wiki-size-presets { display: flex; gap: 3px; align-items: center; }
         .btn-preset {
-            background: transparent; border: 1px solid rgba(0,245,255,.1); color: rgba(0,245,255,.25);
+            background: transparent; border: 1px solid rgba(255,255,255,.06); color: rgba(88,166,255,.18);
             padding: 3px 7px; border-radius: 2px; cursor: pointer; font-size: 9px;
-            font-family: 'Share Tech Mono',monospace; transition: 0.15s; white-space: nowrap;
+            font-family: 'Inter',sans-serif; transition: 0.15s; white-space: nowrap;
         }
-        .btn-preset:hover { border-color: #00ff88; color: #00ff88; }
-        .wiki-sidebar-search { padding: 12px 16px; background: #02030a; border-bottom: 1px solid rgba(0,245,255,.1); flex-shrink: 0; }
+        .btn-preset:hover { border-color: #3fb950; color: #3fb950; }
+        .wiki-sidebar-search { padding: 12px 16px; background: #0d1117; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
         .wiki-search-input {
-            width: 100%; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff;
-            padding: 10px 13px; border-radius: 3px; font-family: 'Share Tech Mono',monospace;
+            width: 100%; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); color: #fff;
+            padding: 10px 13px; border-radius: 3px; font-family: 'Inter',sans-serif;
             font-size: 13px; outline: none; transition: border-color 0.2s;
             -webkit-appearance: none;
         }
-        .wiki-search-input:focus { border-color: #00ff88; }
-        .wiki-search-input::placeholder { color: rgba(0,245,255,.25); }
-        .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #333 transparent; -webkit-overflow-scrolling: touch; }
+        .wiki-search-input:focus { border-color: #3fb950; }
+        .wiki-search-input::placeholder { color: rgba(88,166,255,.18); }
+        .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #30363d transparent; -webkit-overflow-scrolling: touch; }
         .wiki-sidebar-results::-webkit-scrollbar { width: 4px; }
-        .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-        .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid rgba(0,245,255,.1); cursor: pointer; transition: background 0.15s; }
-        .wiki-result-item:active { background: rgba(0,255,136,0.04); }
-        .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: rgba(0,245,255,.3); }
-        .wiki-result-categoria { color: #00f5ff; font-size: 10px; }
+        .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+        .wiki-result-item { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.06); cursor: pointer; transition: background 0.15s; }
+        .wiki-result-item:active { background: rgba(63,185,80,0.04); }
+        .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: rgba(255,255,255,.06); }
+        .wiki-result-categoria { color: #58a6ff; font-size: 10px; }
         .wiki-favorito { color: #ffd700; margin-left: auto; font-size: 10px; }
-        .wiki-result-titulo { color: #00ff88; font-size: 13px; margin: 0 0 6px 0; font-weight: 600; }
-        .wiki-result-descricao { color: rgba(0,245,255,.4); font-size: 11px; margin: 0 0 8px 0; line-height: 1.5; }
+        .wiki-result-titulo { color: #3fb950; font-size: 13px; margin: 0 0 6px 0; font-weight: 600; }
+        .wiki-result-descricao { color: #7d8590; font-size: 11px; margin: 0 0 8px 0; line-height: 1.5; }
         .wiki-result-footer { display: flex; gap: 6px; }
-        .wiki-fabricante { background: rgba(0,245,255,0.12); color: #00f5ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
-        .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: rgba(0,245,255,.3); font-size: 12px; }
-        .wiki-artigo-view { color: #d0e8f0; font-size: 12px; line-height: 1.6; }
+        .wiki-fabricante { background: rgba(88,166,255,0.12); color: #58a6ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: rgba(255,255,255,.06); font-size: 12px; }
+        .wiki-artigo-view { color: #e6edf3; font-size: 12px; line-height: 1.6; }
         .btn-voltar-wiki {
             display: flex; align-items: center; gap: 8px; width: 100%;
-            background: #02030a; border: none; border-bottom: 1px solid rgba(0,245,255,.1);
-            color: #00f5ff; padding: 12px 16px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 12px; text-align: left; transition: background 0.15s;
+            background: #0d1117; border: none; border-bottom: 1px solid rgba(255,255,255,.06);
+            color: #58a6ff; padding: 12px 16px; cursor: pointer;
+            font-family: 'Inter',sans-serif; font-size: 12px; text-align: left; transition: background 0.15s;
         }
-        .btn-voltar-wiki:hover { background: #141414; }
-        .wiki-artigo-header { padding: 16px; border-bottom: 1px solid rgba(0,245,255,.1); background: #060c18; }
+        .btn-voltar-wiki:hover { background: #21262d; }
+        .wiki-artigo-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,.06); background: #161b22; }
         .wiki-artigo-header h2 { color: #fff; font-size: 15px; margin: 0 0 10px 0; font-weight: 700; line-height: 1.4; }
         .wiki-artigo-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-        .wiki-artigo-meta span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: rgba(0,245,255,.4); }
-        .badge-cat { background: rgba(0,245,255,0.12); color: #00f5ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
-        .badge-fab { background: rgba(0,255,136,0.12); color: #00ff88; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .wiki-artigo-meta span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #7d8590; }
+        .badge-cat { background: rgba(88,166,255,0.12); color: #58a6ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+        .badge-fab { background: rgba(63,185,80,0.12); color: #3fb950; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
         .wiki-artigo-conteudo { padding: 16px; }
         .wiki-artigo-conteudo h2, .wiki-artigo-conteudo h3, .wiki-artigo-conteudo h4 {
             display: flex; align-items: stretch; margin: 20px 0 12px 0;
@@ -353,134 +354,134 @@
         }
         .wiki-artigo-conteudo h2::before, .wiki-artigo-conteudo h3::before, .wiki-artigo-conteudo h4::before {
             content: '\201C'; display: inline-flex; align-items: center; justify-content: center;
-            min-width: 30px; width: 30px; background: rgba(0,80,200,0.35); color: #00f5ff;
+            min-width: 30px; width: 30px; background: rgba(0,80,200,0.35); color: #58a6ff;
             font-size: 18px; font-weight: 900; border-radius: 2px 0 0 2px; flex-shrink: 0;
         }
         .wiki-titulo-texto {
             flex: 1; display: flex; align-items: center; padding: 0 12px;
-            background: rgba(0,20,80,0.2); color: #00f5ff; border-bottom: 2px solid #00f5ff;
+            background: rgba(0,20,80,0.2); color: #58a6ff; border-bottom: 2px solid #58a6ff;
             text-transform: uppercase; min-height: 30px;
         }
-        .wiki-artigo-conteudo p { margin: 8px 0; color: #bbb; font-size: 12px; }
+        .wiki-artigo-conteudo p { margin: 8px 0; color: #e6edf3; font-size: 12px; }
         .wiki-artigo-conteudo ul, .wiki-artigo-conteudo ol { padding-left: 18px; margin: 8px 0; }
-        .wiki-artigo-conteudo li { margin: 4px 0; color: #bbb; font-size: 12px; }
+        .wiki-artigo-conteudo li { margin: 4px 0; color: #e6edf3; font-size: 12px; }
         .wiki-artigo-conteudo code {
-            background: rgba(0,255,136,0.1); color: #00ff88; padding: 1px 5px;
-            border-radius: 2px; font-family: 'Share Tech Mono',monospace; font-size: 11px;
+            background: rgba(63,185,80,0.1); color: #3fb950; padding: 1px 5px;
+            border-radius: 2px; font-family: 'Inter',sans-serif; font-size: 11px;
         }
-        .wiki-code-wrapper { background: #02030a; border: 1px solid rgba(0,245,255,.1); border-radius: 3px; overflow: hidden; margin: 12px 0; }
-        .wiki-code-toolbar { background: #060c18; padding: 6px 10px; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; align-items: center; gap: 5px; }
+        .wiki-code-wrapper { background: #0d1117; border: 1px solid rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; margin: 12px 0; }
+        .wiki-code-toolbar { background: #161b22; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 5px; }
         .wiki-code-toolbar-title { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
         .wiki-code-lang-badge {
             background: rgba(255,170,0,0.15); color: #ffa500; font-size: 9px; font-weight: 800;
             padding: 2px 7px; border-radius: 2px; border: 1px solid rgba(255,170,0,0.25);
-            white-space: nowrap; flex-shrink: 0; font-family: 'Share Tech Mono',monospace;
+            white-space: nowrap; flex-shrink: 0; font-family: 'Inter',sans-serif;
             text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .wiki-code-title-text { color: rgba(0,245,255,.4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wiki-code-title-text { color: #7d8590; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-bloco {
-            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
+            background: transparent; border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.06);
             padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
-            font-family: 'Share Tech Mono',monospace; transition: 0.2s; white-space: nowrap; line-height: 1.5;
+            font-family: 'Inter',sans-serif; transition: 0.2s; white-space: nowrap; line-height: 1.5;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-bloco:hover { color: rgba(0,245,255,.5); border-color: rgba(0,245,255,.25); }
+        .btn-bloco:hover { color: #30363d; border-color: rgba(88,166,255,.18); }
         .btn-bloco.btn-editar:hover  { color: #ffa500; border-color: #ffa500; }
         .btn-bloco.btn-editar.ativo  { color: #ffa500; border-color: #ffa500; background: rgba(255,165,0,0.08); }
-        .btn-bloco.btn-copiar:hover  { color: #00f5ff; border-color: #00f5ff; }
-        .btn-bloco.btn-copiar.copiado { color: #00ff88; border-color: #00ff88; }
-        .btn-bloco.btn-enviar { color: #00ff88; border-color: #00ff88; background: rgba(0,255,136,0.07); font-weight: 600; }
-        .btn-bloco.btn-enviar:hover { background: rgba(0,255,136,0.16); box-shadow: 0 0 8px rgba(0,255,136,0.2); }
+        .btn-bloco.btn-copiar:hover  { color: #58a6ff; border-color: #58a6ff; }
+        .btn-bloco.btn-copiar.copiado { color: #3fb950; border-color: #3fb950; }
+        .btn-bloco.btn-enviar { color: #3fb950; border-color: #3fb950; background: rgba(63,185,80,0.07); font-weight: 600; }
+        .btn-bloco.btn-enviar:hover { background: rgba(63,185,80,0.16);  }
         .wiki-bloco-edit-aviso {
             display: none; padding: 6px 12px; background: rgba(255,165,0,0.05);
             border-bottom: 1px solid rgba(255,165,0,0.15); color: #cc8800; font-size: 10px; align-items: center; gap: 6px;
         }
         .wiki-bloco-edit-aviso.visivel { display: flex; }
-        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #02030a; border-left: 3px solid #00ff88; -webkit-overflow-scrolling: touch; }
-        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'Share Tech Mono',monospace; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
+        .wiki-codigo-pre { margin: 0; overflow-x: auto; background: #0d1117; border-left: 3px solid #3fb950; -webkit-overflow-scrolling: touch; }
+        .wiki-codigo-pre code { display: table; width: 100%; counter-reset: linhas; font-family: 'Inter',sans-serif; font-size: 11px; line-height: 1.6; color: #e6edf3; }
         .wiki-codigo-pre code .ln { display: table-row; counter-increment: linhas; }
         .wiki-codigo-pre code .ln::before {
             content: counter(linhas); display: table-cell; width: 34px; min-width: 34px;
-            text-align: right; padding: 0 10px 0 6px; color: #3a3a3a;
-            border-right: 1px solid #1e1e1e; user-select: none; font-size: 10px; vertical-align: top; padding-top: 1px;
+            text-align: right; padding: 0 10px 0 6px; color: #484f58;
+            border-right: 1px solid #21262d; user-select: none; font-size: 10px; vertical-align: top; padding-top: 1px;
         }
         .wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
         .wiki-codigo-pre code .ln .lc .wiki-var-highlight { background: rgba(255,170,0,0.18); color: #ffaa00; border-radius: 2px; padding: 0 2px; border-bottom: 1px dashed #ffa500; }
-        .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #02030a; }
+        .wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0d1117; }
         .wiki-codigo-editor-wrap.visivel { display: block; }
         .wiki-codigo-editor {
-            width: 100%; min-height: 80px; max-height: 420px; background: #02030a; color: #e8e8e8;
-            border: none; outline: none; resize: vertical; font-family: 'Share Tech Mono',monospace;
+            width: 100%; min-height: 80px; max-height: 420px; background: #0d1117; color: #e6edf3;
+            border: none; outline: none; resize: vertical; font-family: 'Inter',sans-serif;
             font-size: 12px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
-            scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
+            scrollbar-width: thin; scrollbar-color: #30363d transparent; caret-color: #ffa500;
             -webkit-overflow-scrolling: touch;
         }
         .wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
-        .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-        .wiki-codigo-editor:focus { background: #02030a; }
+        .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+        .wiki-codigo-editor:focus { background: #0d1117; }
         .wiki-bloco-footer {
-            display: none; padding: 8px 12px; background: #060c18; border-top: 1px solid rgba(0,245,255,.1);
+            display: none; padding: 8px 12px; background: #161b22; border-top: 1px solid rgba(255,255,255,.06);
             align-items: center; justify-content: space-between; gap: 8px;
         }
         .wiki-bloco-footer.visivel { display: flex; }
-        .wiki-bloco-footer-info { color: #3a3a3a; font-size: 10px; }
+        .wiki-bloco-footer-info { color: #484f58; font-size: 10px; }
         .wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
         .btn-resetar {
-            background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3);
+            background: transparent; border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.06);
             padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
-            font-family: 'Share Tech Mono',monospace; transition: 0.2s;
+            font-family: 'Inter',sans-serif; transition: 0.2s;
         }
         .btn-resetar:hover { color: #ff5555; border-color: #ff5555; }
         .btn-enviar-grande {
-            background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88;
+            background: rgba(63,185,80,0.1); border: 1px solid #3fb950; color: #3fb950;
             padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
-            font-family: 'Share Tech Mono',monospace; font-weight: 600; transition: 0.2s;
+            font-family: 'Inter',sans-serif; font-weight: 600; transition: 0.2s;
             display: flex; align-items: center; gap: 6px;
         }
-        .btn-enviar-grande:hover { background: rgba(0,255,136,0.2); box-shadow: 0 0 12px rgba(0,255,136,0.28); }
+        .btn-enviar-grande:hover { background: rgba(63,185,80,0.2);  }
         .btn-enviar-grande.enviado { animation: flashGreen 0.5s ease; }
         @keyframes flashGreen {
-            0%   { box-shadow: 0 0 0   rgba(0,255,136,0); }
-            40%  { box-shadow: 0 0 20px rgba(0,255,136,0.55); }
-            100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
+            0%   { opacity: 1; }
+            40%  { opacity: 0.6; }
+            100% { opacity: 1; }
         }
         .wiki-vars-panel { background: rgba(255,170,0,0.03); border-top: 1px solid rgba(255,170,0,0.12); overflow: hidden; transition: max-height 0.3s ease; }
         .wiki-vars-toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; background: rgba(255,170,0,0.05); border-bottom: 1px solid rgba(255,170,0,0.08); transition: background 0.15s; }
         .wiki-vars-toggle:hover { background: rgba(255,170,0,0.09); }
         .wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #ffa500; text-transform: uppercase; letter-spacing: 0.8px; }
         .wiki-vars-badge { background: rgba(255,170,0,0.2); color: #ffa500; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
-        .wiki-vars-toggle-arrow { color: rgba(0,245,255,.3); font-size: 11px; transition: transform 0.25s; user-select: none; }
+        .wiki-vars-toggle-arrow { color: rgba(255,255,255,.06); font-size: 11px; transition: transform 0.25s; user-select: none; }
         .wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
         .wiki-vars-body { padding: 10px 12px; display: none; flex-direction: column; gap: 8px; }
         .wiki-vars-body.visivel { display: flex; }
-        .wiki-vars-hint { font-size: 10px; color: rgba(0,245,255,.3); padding: 4px 0; border-bottom: 1px solid rgba(0,245,255,.1); margin-bottom: 2px; line-height: 1.5; }
+        .wiki-vars-hint { font-size: 10px; color: rgba(255,255,255,.06); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); margin-bottom: 2px; line-height: 1.5; }
         .wiki-vars-hint code { background: rgba(255,170,0,0.12); color: #ffa500; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
         .wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
         .wiki-var-row { display: flex; align-items: center; gap: 8px; }
-        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'Share Tech Mono',monospace; }
-        .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
-        .wiki-var-inp { flex: 1; background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.14); color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'Share Tech Mono',monospace; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
-        .wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
-        .wiki-var-inp::placeholder { color: #3a3a3a; }
-        .wiki-var-inp.preenchido { border-color: rgba(0,255,136,0.35); color: #00ff88; }
-        .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(0,245,255,.1); flex-wrap: wrap; }
-        .btn-vars-limpar { background: transparent; border: 1px solid rgba(0,245,255,.14); color: rgba(0,245,255,.3); padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'Share Tech Mono',monospace; transition: 0.2s; }
+        .wiki-var-label { background: rgba(255,170,0,0.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,0.2); font-family: 'Inter',sans-serif; }
+        .wiki-var-arrow { color: #30363d; font-size: 12px; flex-shrink: 0; }
+        .wiki-var-inp { flex: 1; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); color: #fff; padding: 6px 10px; border-radius: 2px; font-family: 'Inter',sans-serif; font-size: 12px; outline: none; transition: border-color 0.15s, background 0.15s; min-width: 0; -webkit-appearance: none; }
+        .wiki-var-inp:focus { border-color: #ffa500; background: #21262d; }
+        .wiki-var-inp::placeholder { color: #484f58; }
+        .wiki-var-inp.preenchido { border-color: rgba(63,185,80,0.35); color: #3fb950; }
+        .wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.06); flex-wrap: wrap; }
+        .btn-vars-limpar { background: transparent; border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.06); padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: 'Inter',sans-serif; transition: 0.2s; }
         .btn-vars-limpar:hover { color: #ff5555; border-color: #ff5555; }
         .wiki-vars-preview-wrap { display: none; }
         .wiki-vars-preview-wrap.visivel { display: block; }
-        .wiki-vars-preview-label { font-size: 10px; color: rgba(0,245,255,.25); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        .wiki-vars-preview-pre { background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1); border-left: 3px solid rgba(0,255,136,0.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'Share Tech Mono',monospace; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
-        .wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: rgba(0,245,255,.25); text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid rgba(0,245,255,.1); }
-        .wiki-bloco-extra { margin: 0 16px 14px; background: #02030a; border: 1px solid rgba(0,245,255,.1); border-radius: 3px; overflow: hidden; }
-        .wiki-bloco-extra-header { background: #060c18; padding: 8px 12px; border-bottom: 1px solid rgba(0,245,255,.1); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .wiki-bloco-extra-header strong { color: #00f5ff; font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
+        .wiki-vars-preview-label { font-size: 10px; color: rgba(88,166,255,.18); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .wiki-vars-preview-pre { background: rgba(63,185,80,0.04); border: 1px solid rgba(63,185,80,0.1); border-left: 3px solid rgba(63,185,80,.3); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: 'Inter',sans-serif; font-size: 10px; color: #3fb950; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
+        .wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: rgba(88,166,255,.18); text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid rgba(255,255,255,.06); }
+        .wiki-bloco-extra { margin: 0 16px 14px; background: #0d1117; border: 1px solid rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+        .wiki-bloco-extra-header { background: #161b22; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .wiki-bloco-extra-header strong { color: #58a6ff; font-size: 11px; font-weight: 600; flex: 1; min-width: 0; }
         .wiki-bloco-acoes { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
-        .wiki-bloco-lang { font-size: 9px; color: rgba(0,245,255,.25); background: #02030a; padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(0,245,255,.1); }
-        .wiki-bloco-descricao { padding: 8px 12px; color: rgba(0,245,255,.35); font-size: 11px; border-bottom: 1px solid rgba(0,245,255,.1); margin: 0; }
+        .wiki-bloco-lang { font-size: 9px; color: rgba(88,166,255,.18); background: #0d1117; padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); }
+        .wiki-bloco-descricao { padding: 8px 12px; color: #30363d; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,.06); margin: 0; }
         .wiki-toast {
-            position: fixed; bottom: 70px; right: 16px; background: #060c18;
-            border: 1px solid #00ff88; color: #00ff88; padding: 8px 16px;
-            border-radius: 3px; font-size: 11px; font-family: 'Share Tech Mono',monospace;
+            position: fixed; bottom: 70px; right: 16px; background: #161b22;
+            border: 1px solid #3fb950; color: #3fb950; padding: 8px 16px;
+            border-radius: 3px; font-size: 11px; font-family: 'Inter',sans-serif;
             z-index: 99999; opacity: 0; transform: translateY(8px);
             transition: opacity 0.2s, transform 0.2s; pointer-events: none;
         }
@@ -511,7 +512,7 @@
             .btn-mobile-keyboard { display: flex; }
 
             /* Wiki: tela cheia no mobile */
-            .wiki-sidebar { width: 100vw !important; min-width: unset; border-left: none; border-top: 1px solid rgba(0,245,255,.35); }
+            .wiki-sidebar { width: 100vw !important; min-width: unset; border-left: none; border-top: 1px solid #30363d; }
             .wiki-resize-handle { display: none; }
             .wiki-size-presets { display: none; }
             .wiki-width-indicator { display: none; }
@@ -553,7 +554,7 @@
         .agent-sidebar {
             display: flex; flex-direction: column;
             width: 0; min-width: 0; max-width: 0;
-            background: #030510; border-left: 1px solid rgba(0,245,255,.12);
+            background: #161b22; border-left: 1px solid #30363d;
             transition: width .25s, min-width .25s, max-width .25s;
             overflow: hidden; flex-shrink: 0;
         }
@@ -561,35 +562,35 @@
             width: 360px; min-width: 280px; max-width: 360px;
         }
         .agent-sidebar-header {
-            padding: 8px 10px; border-bottom: 1px solid rgba(0,245,255,.12);
+            padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.07);
             display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-            background: rgba(0,245,255,.03);
+            background: rgba(255,255,255,.02);
         }
         .agent-sidebar-title {
-            font-size: 11px; font-weight: 700; color: #00f5ff;
+            font-size: 11px; font-weight: 700; color: #58a6ff;
             text-transform: uppercase; letter-spacing: 1px; flex: 1;
         }
         .agent-msgs {
             flex: 1; overflow-y: auto; padding: 8px; display: flex;
             flex-direction: column; gap: 8px;
-            scrollbar-width: thin; scrollbar-color: rgba(0,245,255,.15) transparent;
+            scrollbar-width: thin; scrollbar-color: rgba(88,166,255,.12) transparent;
         }
         .agent-msgs::-webkit-scrollbar { width: 3px; }
-        .agent-msgs::-webkit-scrollbar-thumb { background: rgba(0,245,255,.15); border-radius: 2px; }
+        .agent-msgs::-webkit-scrollbar-thumb { background: rgba(88,166,255,.12); border-radius: 2px; }
         .agent-msg {
             font-size: 11px; line-height: 1.5; padding: 7px 9px;
             border-radius: 6px; max-width: 100%; word-break: break-word;
         }
         .agent-msg.user {
-            background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.15);
-            color: #c0f0d0; align-self: flex-end; text-align: right;
+            background: rgba(63,185,80,.04); border: 1px solid rgba(63,185,80,.1);
+            color: #d2f8d2; align-self: flex-end; text-align: right;
         }
         .agent-msg.agent {
-            background: rgba(0,245,255,.05); border: 1px solid rgba(0,245,255,.12);
-            color: #d0e8f0; align-self: flex-start;
+            background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+            color: #e6edf3; align-self: flex-start;
             white-space: pre-wrap;
         }
-        .agent-msg.agent code { font-family: 'Share Tech Mono',monospace; font-size: 10px;
+        .agent-msg.agent code { font-family: 'Inter',sans-serif; font-size: 10px;
             background: rgba(0,0,0,.4); padding: 1px 4px; border-radius: 3px; }
         .agent-msg.system {
             background: rgba(255,165,0,.04); border: 1px solid rgba(255,165,0,.12);
@@ -597,61 +598,61 @@
             text-align: center; font-style: italic;
         }
         .agent-msg.thinking {
-            background: transparent; border: none; color: rgba(0,245,255,.3);
-            font-size: 10px; align-self: center; animation: blink 1s infinite;
+            background: transparent; border: none; color: rgba(255,255,255,.06);
+            font-size: 10px; align-self: center;
         }
-        @keyframes blink { 0%,100%{opacity:.3} 50%{opacity:.8} }
+        
         .agent-tool-call {
             background: rgba(255,165,0,.05); border: 1px solid rgba(255,165,0,.2);
             border-radius: 6px; padding: 7px 9px; font-size: 11px;
         }
         .agent-tool-call-header { color: #ffa500; font-size: 10px; margin-bottom: 4px; }
         .agent-tool-call-cmd {
-            font-family: 'Share Tech Mono',monospace; font-size: 11px;
+            font-family: 'Inter',sans-serif; font-size: 11px;
             background: rgba(0,0,0,.4); padding: 4px 7px; border-radius: 3px;
-            color: #00ff88; word-break: break-all;
+            color: #3fb950; word-break: break-all;
         }
         .agent-tool-call-btns { display: flex; gap: 6px; margin-top: 7px; }
         .btn-agent-approve {
             flex: 1; padding: 4px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 10px; font-weight: 700;
-            border: 1px solid #00ff88; background: rgba(0,255,136,.08); color: #00ff88;
+            font-family: 'Inter',sans-serif; font-size: 10px; font-weight: 700;
+            border: 1px solid #3fb950; background: rgba(63,185,80,.05); color: #3fb950;
             transition: .15s; text-transform: uppercase;
         }
-        .btn-agent-approve:hover { background: rgba(0,255,136,.2); }
+        .btn-agent-approve:hover { background: rgba(63,185,80,.15); }
         .btn-agent-reject {
             flex: 1; padding: 4px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 10px; font-weight: 700;
+            font-family: 'Inter',sans-serif; font-size: 10px; font-weight: 700;
             border: 1px solid #ff4444; background: rgba(255,68,68,.06); color: #ff4444;
             transition: .15s; text-transform: uppercase;
         }
         .btn-agent-reject:hover { background: rgba(255,68,68,.15); }
         .agent-input-area {
-            border-top: 1px solid rgba(0,245,255,.12); padding: 8px; flex-shrink: 0;
+            border-top: 1px solid rgba(255,255,255,.07); padding: 8px; flex-shrink: 0;
             display: flex; flex-direction: column; gap: 5px;
         }
         .agent-input-row { display: flex; gap: 5px; }
         .agent-input {
-            flex: 1; background: #060c18; border: 1px solid rgba(0,245,255,.15);
-            color: #d0e8f0; font-family: 'Share Tech Mono',monospace;
+            flex: 1; background: #161b22; border: 1px solid rgba(88,166,255,.12);
+            color: #e6edf3; font-family: 'Inter',sans-serif;
             font-size: 11px; padding: 6px 8px; border-radius: 3px; outline: none; resize: none;
         }
-        .agent-input:focus { border-color: #00f5ff; }
+        .agent-input:focus { border-color: #58a6ff; }
         .btn-agent-send {
-            background: rgba(0,245,255,.08); border: 1px solid #00f5ff; color: #00f5ff;
+            background: rgba(255,255,255,.05); border: 1px solid #58a6ff; color: #58a6ff;
             padding: 6px 10px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 11px; font-weight: 700;
+            font-family: 'Inter',sans-serif; font-size: 11px; font-weight: 700;
             transition: .15s; white-space: nowrap;
         }
-        .btn-agent-send:hover { background: rgba(0,245,255,.2); }
+        .btn-agent-send:hover { background: rgba(88,166,255,.15); }
         .btn-agent-paste {
-            background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.2); color: rgba(0,255,136,.6);
+            background: rgba(63,185,80,.04); border: 1px solid rgba(63,185,80,.15); color: rgba(63,185,80,.6);
             padding: 4px 8px; border-radius: 3px; cursor: pointer;
-            font-family: 'Share Tech Mono',monospace; font-size: 10px;
+            font-family: 'Inter',sans-serif; font-size: 10px;
             transition: .15s;
         }
-        .btn-agent-paste:hover { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,.1); }
-        .agent-tokens { font-size: 9px; color: rgba(0,245,255,.2); text-align: right; }
+        .btn-agent-paste:hover { border-color: #3fb950; color: #3fb950; background: rgba(63,185,80,.07); }
+        .agent-tokens { font-size: 9px; color: rgba(88,166,255,.15); text-align: right; }
         .btn-terminal.btn-agent { border-color: #aa00ff; color: #cc66ff; }
         .btn-terminal.btn-agent:hover, .btn-terminal.btn-agent.ativo { background: rgba(170,0,255,.1); border-color: #cc66ff; color: #cc66ff; }
     </style>
@@ -722,7 +723,7 @@
                             <div style="font-size:32px;opacity:.4;">⌨</div>
                             <div class="terminal-empty-text">
                                 <p>Nenhum terminal conectado</p>
-                                <p style="font-size:11px;color:rgba(0,245,255,.25);margin-top:6px;">Selecione um host na lista lateral</p>
+                                <p style="font-size:11px;color:rgba(88,166,255,.18);margin-top:6px;">Selecione um host na lista lateral</p>
                             </div>
                         </div>
                     </div>
@@ -795,38 +796,38 @@
     <!-- ── Scripts Panel ── -->
     <div id="scriptsPainel" style="
         position:fixed; top:0; right:-560px; width:540px; height:100vh;
-        background:#060c18; border-left:2px solid #ffa500;
+        background:#161b22; border-left:2px solid #ffa500;
         display:flex; flex-direction:column; z-index:9998;
-        box-shadow:-5px 0 30px rgba(0,0,0,.8);
+        box-shadow: -4px 0 16px rgba(0,0,0,.4);
         transition:right .3s ease;
-        font-family:'Share Tech Mono',monospace;
+        font-family:'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace;
     ">
         <!-- Header -->
-        <div style="background:#02030a;padding:10px 14px;border-bottom:2px solid #ffa500;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <div style="background:#0d1117;padding:10px 14px;border-bottom:2px solid #ffa500;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
             <span style="color:#ffa500;font-size:14px;font-weight:700;letter-spacing:1px;">⚡ Scripts de Automação</span>
             <div style="display:flex;gap:6px;align-items:center;">
-                <span id="spAcesoLabel" style="font-size:10px;color:rgba(0,245,255,.3);"></span>
-                <button onclick="fecharPainelScripts()" style="background:transparent;border:1px solid rgba(0,245,255,.14);color:rgba(0,245,255,.3);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:inherit;font-size:12px;">✕</button>
+                <span id="spAcesoLabel" style="font-size:10px;color:rgba(255,255,255,.06);"></span>
+                <button onclick="fecharPainelScripts()" style="background:transparent;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.06);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:inherit;font-size:12px;">✕</button>
             </div>
         </div>
         <!-- Tabs -->
-        <div style="display:flex;border-bottom:1px solid rgba(0,245,255,.1);background:#02030a;flex-shrink:0;">
+        <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.06);background:#0d1117;flex-shrink:0;">
             <div id="sp-tab-exec" class="sp-tab sp-tab-ativo" onclick="spTab('exec')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:#ffa500;border-bottom:2px solid #ffa500;">Executar</div>
-            <div id="sp-tab-hist" class="sp-tab" onclick="spTab('hist')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(0,245,255,.3);border-bottom:2px solid transparent;">Histórico</div>
-            <div id="sp-tab-output" class="sp-tab" onclick="spTab('output')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(0,245,255,.3);border-bottom:2px solid transparent;">Output</div>
+            <div id="sp-tab-hist" class="sp-tab" onclick="spTab('hist')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Histórico</div>
+            <div id="sp-tab-output" class="sp-tab" onclick="spTab('output')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Output</div>
         </div>
 
         <!-- Tab: Executar -->
         <div id="sp-pane-exec" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;">
             <div>
-                <label style="font-size:10px;color:rgba(0,245,255,.35);display:block;margin-bottom:5px;">EQUIPAMENTO ALVO</label>
-                <select id="spAcesoSelect" onchange="spSelecionarAceso(this.value)" style="width:100%;background:#02030a;border:1px solid #ffa500;border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;">
+                <label style="font-size:10px;color:#30363d;display:block;margin-bottom:5px;">EQUIPAMENTO ALVO</label>
+                <select id="spAcesoSelect" onchange="spSelecionarAceso(this.value)" style="width:100%;background:#0d1117;border:1px solid #ffa500;border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;">
                     <option value="">— Selecione o equipamento —</option>
                 </select>
             </div>
             <div>
-                <label style="font-size:10px;color:rgba(0,245,255,.35);display:block;margin-bottom:5px;">FABRICANTE</label>
-                <select id="spFabricante" onchange="spFiltrarScripts()" style="width:100%;background:#02030a;border:1px solid rgba(0,245,255,.14);border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;">
+                <label style="font-size:10px;color:#30363d;display:block;margin-bottom:5px;">FABRICANTE</label>
+                <select id="spFabricante" onchange="spFiltrarScripts()" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;">
                     <option value="">Todos</option>
                     <option value="zte">ZTE</option>
                     <option value="huawei">Huawei</option>
@@ -838,32 +839,32 @@
                 </select>
             </div>
             <div>
-                <label style="font-size:10px;color:rgba(0,245,255,.35);display:block;margin-bottom:5px;">SCRIPT</label>
-                <select id="spScriptSelect" onchange="spCarregarScript()" style="width:100%;background:#02030a;border:1px solid rgba(0,245,255,.14);border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;">
+                <label style="font-size:10px;color:#30363d;display:block;margin-bottom:5px;">SCRIPT</label>
+                <select id="spScriptSelect" onchange="spCarregarScript()" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;">
                     <option value="">— Selecione um script —</option>
                 </select>
             </div>
-            <div id="spDescBox" style="font-size:11px;color:rgba(0,245,255,.4);padding:6px 8px;background:#02030a;border-radius:4px;border:1px solid rgba(0,245,255,.08);display:none;"></div>
+            <div id="spDescBox" style="font-size:11px;color:#7d8590;padding:6px 8px;background:#0d1117;border-radius:4px;border:1px solid rgba(255,255,255,.05);display:none;"></div>
             <div id="spParamsBox" style="display:flex;flex-direction:column;gap:8px;"></div>
             <div style="display:flex;gap:8px;margin-top:4px;">
                 <button id="spBtnExecutar" onclick="spExecutar()" style="flex:1;padding:9px;background:rgba(255,165,0,.15);border:1px solid #ffa500;color:#ffa500;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:background .2s;" onmouseover="this.style.background='rgba(255,165,0,.25)'" onmouseout="this.style.background='rgba(255,165,0,.15)'">
                     ▶ Executar Script
                 </button>
-                <a href="/clientes/scripts/gerenciar/" target="_blank" style="padding:9px 12px;background:transparent;border:1px solid #333;color:rgba(0,245,255,.3);border-radius:4px;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:none;display:flex;align-items:center;">⚙</a>
+                <a href="/clientes/scripts/gerenciar/" target="_blank" style="padding:9px 12px;background:transparent;border:1px solid #30363d;color:rgba(255,255,255,.06);border-radius:4px;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:none;display:flex;align-items:center;">⚙</a>
             </div>
         </div>
 
         <!-- Tab: Histórico -->
         <div id="sp-pane-hist" style="flex:1;overflow-y:auto;padding:14px;display:none;">
-            <div id="spHistContent" style="font-size:11px;color:rgba(0,245,255,.25);text-align:center;padding:30px 0;">
+            <div id="spHistContent" style="font-size:11px;color:rgba(88,166,255,.18);text-align:center;padding:30px 0;">
                 Selecione um equipamento para ver o histórico.
             </div>
         </div>
 
         <!-- Tab: Output -->
         <div id="sp-pane-output" style="flex:1;overflow-y:auto;padding:14px;display:none;">
-            <div id="spOutputBox" style="font-size:11px;font-family:'Share Tech Mono',monospace;line-height:1.6;white-space:pre-wrap;"></div>
-            <div id="spOutputEmpty" style="color:rgba(0,245,255,.25);text-align:center;padding:30px 0;font-size:12px;">Nenhum output ainda.</div>
+            <div id="spOutputBox" style="font-size:11px;font-family:'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace;line-height:1.6;white-space:pre-wrap;"></div>
+            <div id="spOutputEmpty" style="color:rgba(88,166,255,.18);text-align:center;padding:30px 0;font-size:12px;">Nenhum output ainda.</div>
         </div>
     </div>
 
@@ -1199,7 +1200,7 @@
                         ${artigo.modelo ? `<span class="badge-cat">${esc(artigo.modelo)}</span>` : ''}
                     </div>
                     ${tagsHtml}
-                    <div style="color:rgba(0,245,255,.25);font-size:10px;margin-top:8px;">🕐 ${esc(artigo.data_atualizacao)}</div>
+                    <div style="color:rgba(88,166,255,.18);font-size:10px;margin-top:8px;">🕐 ${esc(artigo.data_atualizacao)}</div>
                 </div>
                 <div class="wiki-artigo-conteudo">${bodyHtml}</div>
                 ${blocosHtml}
@@ -1411,8 +1412,8 @@
         const tab = document.getElementById(`tab-${id}`);
         if (tab) { const d = tab.querySelector('.terminal-tab-status'); if (d) d.classList.remove('connected'); }
         tObj.terminal.clear();
-        tObj.terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
-        tObj.terminal.writeln('\x1b[1;33m▶ Reconectando a ' + tObj.acesso.host + ':' + tObj.acesso.porta + '...\x1b[0m\n');
+        tObj.terminal.writeln('\x1b[36m▶ CONEXA Terminal SSH\x1b[0m');
+        tObj.terminal.writeln('\x1b[33m▶ Reconectando a ' + tObj.acesso.host + ':' + tObj.acesso.porta + '...\x1b[0m\n');
         setTimeout(() => terminalManager.conectarWebSocket(id), 500);
     }
 
@@ -1427,9 +1428,9 @@
     // COLORIZAÇÃO
     // ============================================================
     const COLORS = {
-        RESET:'\x1b[0m', IPV4:'\x1b[1;94m', IPV6:'\x1b[1;94m', PROTOCOL:'\x1b[36m',
-        ESTABLISHED:'\x1b[92m', IDLE:'\x1b[93m', ACTIVE:'\x1b[91m', EXSTART:'\x1b[93m',
-        DOWN:'\x1b[31m', UP:'\x1b[92m', BFD:'\x1b[95m',
+        RESET:'\x1b[0m', IPV4:'\x1b[34m', IPV6:'\x1b[34m', PROTOCOL:'\x1b[36m',
+        ESTABLISHED:'\x1b[32m', IDLE:'\x1b[33m', ACTIVE:'\x1b[31m', EXSTART:'\x1b[33m',
+        DOWN:'\x1b[31m', UP:'\x1b[32m', BFD:'\x1b[35m',
     };
 
     let colorizeEnabled = true;
@@ -1514,11 +1515,11 @@
                 const terminal = new Terminal({
                     cursorBlink: false,
                     fontSize: fontSizeMobile,
-                    fontFamily: "'Share Tech Mono','Courier New',monospace",
-                    fontWeight: 400, fontWeightBold: 600, lineHeight: 1.2, letterSpacing: 0,
-                    theme: { background:'#02030a', foreground:'#00f5ff', cursor:'#00f5ff', cursorAccent:'#02030a',
-                             selectionBackground:'rgba(0,245,255,0.25)',
-                             black:'#02030a', white:'#d0e8f0', brightBlack:'#2a3a4a', brightWhite:'#ffffff' },
+                    fontFamily: "'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace",
+                    fontWeight: 400, fontWeightBold: 500, lineHeight: 1.2, letterSpacing: 0,
+                    theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff', selectionBackground: 'rgba(88,166,255,0.25)', black: '#21262d', red: '#f85149', green: '#3fb950', yellow: '#d29922', blue: '#388bfd', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4', brightBlack: '#484f58', brightRed: '#ff7b72', brightGreen: '#56d364', brightYellow: '#e3b341', brightBlue: '#79c0ff', brightMagenta: '#d2a8ff', brightCyan: '#56d4dd', brightWhite: '#f0f6fc',
+                             selectionBackground:'rgba(88,166,255,0.25)',
+                             black:'#0d1117', white:'#e6edf3', brightBlack:'#2a3a4a', brightWhite:'#ffffff' },
                     scrollback: 5000, rows: 24, cols: 120,
                     allowTransparency: true, windowsMode: false, convertEol: true,
                     // No mobile evita seleção indesejada por touch
@@ -1563,8 +1564,8 @@
                 this.criarAba(terminalId, acessoData);
                 this.ativarTerminal(terminalId);
 
-                terminal.writeln('\x1b[1;36m▶ CONEXA Terminal SSH\x1b[0m');
-                terminal.writeln('\x1b[1;36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
+                terminal.writeln('\x1b[36m▶ CONEXA Terminal SSH\x1b[0m');
+                terminal.writeln('\x1b[36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
 
                 terminal.onData(input => {
                     if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
@@ -1659,7 +1660,7 @@
                 tObj.socket = new WebSocket(wsUrl);
                 tObj.socket.binaryType = 'arraybuffer';
                 tObj.socket.onopen = () => {
-                    tObj.terminal.writeln('\x1b[1;32m▶ WebSocket conectado\x1b[0m\n');
+                    tObj.terminal.writeln('\x1b[32m▶ WebSocket conectado\x1b[0m\n');
                     tObj.wsRetries = 0;
                     tObj.socket.send(JSON.stringify({ action: 'connect', acesso_id: tObj.acesso.id }));
                 };
@@ -1675,16 +1676,16 @@
                         tObj.connected = true;
                         const tab = document.getElementById(`tab-${terminalId}`);
                         if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
-                        tObj.terminal.writeln('\x1b[1;32m✓ ' + data.message + '\x1b[0m\n');
+                        tObj.terminal.writeln('\x1b[32m✓ ' + data.message + '\x1b[0m\n');
                     } else if (data.type === 'output' && data.data) {
                         writeToTerminal(tObj.terminal, data.data);
                     } else if (data.type === 'error') {
                         tObj.connected = false;
                         tObj.hadSshError = true;   // não reconectar automaticamente após erro SSH
-                        tObj.terminal.writeln('\x1b[1;31m✕ ERRO: ' + data.message + '\x1b[0m\n');
+                        tObj.terminal.writeln('\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\n');
                     }
                 };
-                tObj.socket.onerror = () => tObj.terminal.writeln('\x1b[1;31m✕ Erro na conexão\x1b[0m\n');
+                tObj.socket.onerror = () => tObj.terminal.writeln('\x1b[31m✕ Erro na conexão\x1b[0m\n');
                 tObj.socket.onclose = () => {
                     tObj.connected = false;
                     // Não reconectar se houve erro SSH explícito (ex: senha errada,
@@ -2124,7 +2125,7 @@
                 div.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
 
                 let inputHtml = '';
-                const commonStyle = 'width:100%;background:#02030a;border:1px solid rgba(0,245,255,.14);border-radius:4px;color:#d0e8f0;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;';
+                const commonStyle = 'width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;';
 
                 if (p.tipo === 'select' && p.opcoes) {
                     const opts = p.opcoes.split(',').map(o => {
@@ -2140,11 +2141,11 @@
                     inputHtml = `<input type="text" id="sp-param-${p.nome}" value="${_escHtml(p.default||'')}" placeholder="${_escHtml(p.ajuda||p.nome)}" style="${commonStyle}">`;
                 }
 
-                const labelHtml = `<label style="font-size:10px;color:rgba(0,245,255,.4);">${_escHtml(p.label||p.nome)}${p.obrigatorio ? ' <span style="color:#ff5555">*</span>':''}</label>`;
+                const labelHtml = `<label style="font-size:10px;color:#7d8590;">${_escHtml(p.label||p.nome)}${p.obrigatorio ? ' <span style="color:#ff5555">*</span>':''}</label>`;
                 div.innerHTML = labelHtml + inputHtml;
                 if (p.ajuda) {
                     const hint = document.createElement('div');
-                    hint.style.cssText = 'font-size:10px;color:rgba(0,245,255,.25);';
+                    hint.style.cssText = 'font-size:10px;color:rgba(88,166,255,.18);';
                     hint.textContent = p.ajuda;
                     div.appendChild(hint);
                 }
@@ -2255,18 +2256,18 @@
         function _renderEvento(ev, append) {
             const tipo = ev.tipo;
             if (tipo === 'info') {
-                append(`<span style="color:rgba(0,245,255,.3)">ℹ ${_escHtml(ev.msg)}</span>\n`);
+                append(`<span style="color:rgba(255,255,255,.06)">ℹ ${_escHtml(ev.msg)}</span>\n`);
             } else if (tipo === 'cmd') {
                 const prog = ev.total > 0 ? ` [${ev.idx}/${ev.total}]` : '';
                 append(`\n<span style="color:#ffa500;font-weight:700">▶ ${_escHtml(ev.cmd)}${prog}</span>\n`);
             } else if (tipo === 'output') {
-                append(`<span style="color:#00ff88">${_escHtml(ev.output)}</span>\n`);
+                append(`<span style="color:#3fb950">${_escHtml(ev.output)}</span>\n`);
             } else if (tipo === 'erro_cmd') {
                 append(`<span style="color:#ff5555">✗ Erro no comando '${_escHtml(ev.cmd)}': ${_escHtml(ev.erro)}</span>\n`);
             } else if (tipo === 'erro') {
                 append(`\n<span style="color:#ff5555;font-weight:700">✗ ERRO: ${_escHtml(ev.erro)}</span>\n`);
             } else if (tipo === 'fim') {
-                const color = ev.status === 'sucesso' ? '#00ff88' : ev.status === 'parcial' ? '#ffa500' : '#ff5555';
+                const color = ev.status === 'sucesso' ? '#3fb950' : ev.status === 'parcial' ? '#ffa500' : '#ff5555';
                 append(`\n<span style="color:${color};font-weight:700">━━ Concluído: ${_escHtml(ev.status)} ━━</span>\n`);
             }
         }
@@ -2284,19 +2285,19 @@
                 const hist = data.historico || [];
 
                 if (hist.length === 0) {
-                    container.innerHTML = '<div style="color:rgba(0,245,255,.25);text-align:center;padding:20px">Nenhuma execução registrada para este equipamento.</div>';
+                    container.innerHTML = '<div style="color:rgba(88,166,255,.18);text-align:center;padding:20px">Nenhuma execução registrada para este equipamento.</div>';
                     return;
                 }
 
-                const statusColor = {sucesso:'#00ff88', erro:'#ff5555', parcial:'#ffa500', executando:'#00f5ff'};
+                const statusColor = {sucesso:'#3fb950', erro:'#ff5555', parcial:'#ffa500', executando:'#58a6ff'};
                 let html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-                html += '<tr style="border-bottom:1px solid rgba(0,245,255,.15);"><th style="text-align:left;padding:6px 8px;color:rgba(0,245,255,.25);font-size:10px;">Script</th><th style="text-align:left;padding:6px 8px;color:rgba(0,245,255,.25);font-size:10px;">Status</th><th style="text-align:left;padding:6px 8px;color:rgba(0,245,255,.25);font-size:10px;">Início</th></tr>';
+                html += '<tr style="border-bottom:1px solid rgba(88,166,255,.12);"><th style="text-align:left;padding:6px 8px;color:rgba(88,166,255,.18);font-size:10px;">Script</th><th style="text-align:left;padding:6px 8px;color:rgba(88,166,255,.18);font-size:10px;">Status</th><th style="text-align:left;padding:6px 8px;color:rgba(88,166,255,.18);font-size:10px;">Início</th></tr>';
                 hist.forEach(h => {
-                    const cor = statusColor[h.status] || 'rgba(0,245,255,.3)';
-                    html += `<tr style="border-bottom:1px solid rgba(0,245,255,.06);">
-                        <td style="padding:7px 8px;color:rgba(0,245,255,.5);">${_escHtml(h.script)}</td>
+                    const cor = statusColor[h.status] || 'rgba(255,255,255,.06)';
+                    html += `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+                        <td style="padding:7px 8px;color:#30363d;">${_escHtml(h.script)}</td>
                         <td style="padding:7px 8px;"><span style="color:${cor}">● ${_escHtml(h.status)}</span></td>
-                        <td style="padding:7px 8px;color:rgba(0,245,255,.3);">${_escHtml(h.iniciado_em)}</td>
+                        <td style="padding:7px 8px;color:rgba(255,255,255,.06);">${_escHtml(h.iniciado_em)}</td>
                     </tr>`;
                 });
                 html += '</table>';
@@ -2355,7 +2356,7 @@
             _agentWs = new WebSocket(url);
 
             _agentWs.onopen = () => {
-                _agentSetStatus('Conectado', '#00ff88');
+                _agentSetStatus('Conectado', '#3fb950');
             };
 
             _agentWs.onmessage = (e) => {
@@ -2519,7 +2520,7 @@
             if (!_agentWs) return;
             _agentWs.send(JSON.stringify({type: 'approve', tool_call_key: key}));
             const el = document.getElementById(`approval-${key}`);
-            if (el) el.innerHTML = '<span style="color:#00ff88;font-size:11px">✓ Aprovado</span>';
+            if (el) el.innerHTML = '<span style="color:#3fb950;font-size:11px">✓ Aprovado</span>';
             _agentAddMsg('thinking', 'Executando comando...');
         };
 

@@ -61,7 +61,9 @@
       "Bash(journalctl -u gunicorn --no-pager --since \"2026-05-28 21:49:00\" --until \"2026-05-28 21:52:00\")",
       "Bash(which ssh *)",
       "Read(//usr/bin/**)",
-      "Bash(systemctl show *)"
+      "Bash(systemctl show *)",
+      "Bash(pip list *)",
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\('/opt/crm/atendimento/views.py'\\); print\\('OK'\\)\")"
     ],
     "additionalDirectories": [
       "/etc/nginx/sites-enabled"

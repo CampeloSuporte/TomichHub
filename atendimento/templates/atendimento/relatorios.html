@@ -1,0 +1,173 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+.stat-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:18px 16px; text-align:center; }
+.stat-value { font-size:28px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.stat-card.highlight { border-color:rgba(233,30,140,.3); }
+.stat-card.highlight .stat-value { color:var(--active); }
+.section-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.bar-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.bar-label { width:160px; font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-shrink:0; }
+.bar-track { flex:1; background:rgba(255,255,255,0.06); border-radius:4px; height:14px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; transition:width .5s ease; }
+.bar-count { width:36px; text-align:right; font-size:12px; font-weight:600; color:var(--text); flex-shrink:0; }
+.hist-table { width:100%; border-collapse:collapse; font-size:12px; }
+.hist-table th { text-align:left; padding:8px 10px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); }
+.hist-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text); }
+.hist-table tr:hover td { background:rgba(255,255,255,0.02); }
+.filter-bar { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.filter-input { padding:7px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; }
+.filter-input:focus { outline:none; border-color:var(--active); }
+{% endblock %}
+
+{% block main_content %}
+<div class="atendimento-header">
+    <div class="header-title">
+        <i class="fas fa-chart-bar" style="color:var(--active);font-size:24px;"></i>
+        <div>
+            <h2>Relatórios</h2>
+            <small>Análise de atendimentos</small>
+        </div>
+    </div>
+</div>
+
+<div class="atendimento-content">
+    <!-- Filtro de data + PDF -->
+    <form method="get" class="filter-bar">
+        <span style="font-size:12px;color:var(--muted);">Período:</span>
+        <input type="date" name="date_from" class="filter-input" value="{{ date_from }}" placeholder="De">
+        <input type="date" name="date_to" class="filter-input" value="{{ date_to }}" placeholder="Até">
+        <button type="submit" class="btn-cyber" style="padding:7px 14px;"><i class="fas fa-filter"></i> Filtrar</button>
+        {% if date_from or date_to %}
+        <a href="{% url 'atendimento:relatorios' %}" class="btn-cyber secondary" style="padding:7px 14px;"><i class="fas fa-times"></i> Limpar</a>
+        {% endif %}
+    </form>
+
+    <!-- Geração de PDF por empresa / mês / ano -->
+    <div style="background:var(--dark-800);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <i class="fas fa-file-pdf" style="color:#ef4444;font-size:18px;"></i>
+            <div>
+                <div style="font-size:13px;font-weight:700;color:var(--text);">Exportar Relatório de Atendimentos — PDF</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:1px;">Chamados resolvidos com título, horas gastas e motivo de fechamento por empresa</div>
+            </div>
+        </div>
+        <form method="get" action="{% url 'atendimento:relatorio_pdf' %}" target="_blank" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;">
+                <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Empresa *</label>
+                <select name="cliente_id" class="filter-input" required style="width:100%;">
+                    <option value="">— Selecione a empresa —</option>
+                    {% for c in clientes_disponiveis %}
+                    <option value="{{ c.id }}">{{ c.nome_empresa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Mês</label>
+                <select name="mes" class="filter-input" style="width:auto;">
+                    <option value="">Todos</option>
+                    <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                    <option value="3">Março</option><option value="4">Abril</option>
+                    <option value="5">Maio</option><option value="6">Junho</option>
+                    <option value="7">Julho</option><option value="8">Agosto</option>
+                    <option value="9">Setembro</option><option value="10">Outubro</option>
+                    <option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Ano</label>
+                <select name="ano" class="filter-input" style="width:auto;">
+                    <option value="">Todos</option>
+                    {% for y in anos_disponiveis %}
+                    <option value="{{ y }}" {% if y == ano_atual %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-cyber" style="padding:9px 18px;align-self:flex-end;">
+                <i class="fas fa-download"></i> Gerar PDF
+            </button>
+        </form>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#0ea5e9;">{{ stats.open }}</div>
+            <div class="stat-label">Abertos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:var(--active);">{{ stats.pending }}</div>
+            <div class="stat-label">Aguardando</div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-value">{{ stats.resolved }}</div>
+            <div class="stat-label">Resolvidos</div>
+        </div>
+        {% if stats.total %}
+        <div class="stat-card">
+            <div class="stat-value" style="font-size:22px;">{{ stats.resolved|floatformat:0 }}%{% comment %}{% endcomment %}
+                {% widthratio stats.resolved stats.total 100 %}%
+            </div>
+            <div class="stat-label">Taxa Resolução</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Por categoria -->
+    {% if by_category %}
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px;">
+        <div class="section-title"><i class="fas fa-folder" style="color:var(--active);"></i> Por Categoria</div>
+        {% for cat in by_category %}
+        <div class="bar-row">
+            <span class="bar-label" title="{{ cat.category__name|default:'Sem Categoria' }}">{{ cat.category__name|default:"Sem Categoria" }}</span>
+            <div class="bar-track">
+                <div class="bar-fill" style="width:{% widthratio cat.count total_for_pct 100 %}%;background:{{ cat.category__color|default:'#7c3aed' }};"></div>
+            </div>
+            <span class="bar-count">{{ cat.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Tabela de resolvidos recentes -->
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <div class="section-title" style="margin:0;"><i class="fas fa-check-circle" style="color:#22c55e;"></i> Resolvidos Recentes</div>
+        </div>
+        {% if recent_resolved %}
+        <div style="overflow-x:auto;">
+            <table class="hist-table">
+                <thead>
+                    <tr>
+                        <th>Protocolo</th>
+                        <th>Grupo</th>
+                        <th>Categoria</th>
+                        <th>Agente</th>
+                        <th>Resolvido em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conv in recent_resolved %}
+                    <tr>
+                        <td><a href="{% url 'atendimento:conversation_detail' conv.id %}" style="color:var(--active);">#{{ conv.conversation_id }}</a></td>
+                        <td>{{ conv.group.name|truncatechars:30 }}</td>
+                        <td>{% if conv.category %}<span style="background:rgba(124,58,237,.15);color:#a78bfa;padding:2px 7px;border-radius:4px;font-size:10px;">{{ conv.category.name }}</span>{% else %}<span style="color:var(--muted);">—</span>{% endif %}</td>
+                        <td>{{ conv.assigned_to.get_full_name|default:"—" }}</td>
+                        <td>{{ conv.closed_at|date:"d/m/Y H:i"|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">Nenhum atendimento resolvido no período selecionado.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

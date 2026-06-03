@@ -1,0 +1,1842 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atendimento - Tomich Hub</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --dark-950:    #0d1117;
+    --dark-900:    #161b22;
+    --dark-800:    #1c2128;
+    --dark-700:    #21262d;
+    --dark-600:    #30363d;
+    --dark-500:    #3d444d;
+    --brand-500:   #79c0ff;
+    --brand-600:   #58a6ff;
+    --brand-700:   #388bfd;
+    --accent-400:  #3fb950;
+    --accent-500:  #2ea043;
+
+    --nav-bg:      var(--dark-900);
+    --panel-bg:    var(--dark-900);
+    --content-bg:  var(--dark-950);
+    --border:      var(--dark-600);
+    --border-cyan: rgba(88,166,255,0.15);
+    --border-cyan-bright: rgba(88,166,255,0.3);
+    --active:      var(--brand-600);
+    --active-end:  var(--brand-700);
+    --active-bg:   rgba(56,139,253,0.1);
+    --text:        #e6edf3;
+    --muted:       #7d8590;
+    --online:      #d29922;
+    --wa:          #3fb950;
+    --success:     #3fb950;
+    --danger:      #f85149;
+    --panel-hover: rgba(255,255,255,0.02);
+
+    --primary:        var(--brand-600);
+    --secondary:      var(--accent-400);
+    --text-primary:   var(--text);
+    --text-secondary: var(--muted);
+    --border-glow:    rgba(88,166,255,0.15);
+    --card-bg:        var(--dark-800);
+    --dark-bg:        var(--dark-950);
+}
+
+body {
+    background: var(--dark-950);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-layout {
+    display: grid;
+    grid-template-columns: 0px 360px 1fr;
+    grid-template-rows: 100vh;
+    height: 100vh;
+    transition: grid-template-columns 0.22s ease;
+}
+.nav-sidebar {
+    transition: opacity 0.18s ease;
+    overflow: hidden;
+    opacity: 0;
+}
+/* Garante que todos os filhos diretos do grid respeitam a altura */
+.app-layout > * { min-height: 0; overflow: hidden; }
+
+/* ─── NAV SIDEBAR ───────────────────────────── */
+.nav-sidebar {
+    background: var(--nav-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* ─── NAV BRAND ─────────────────────────── */
+.nav-brand {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--dark-600);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.nav-brand-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-brand-avatar {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: rgba(0,245,255,0.07);
+    border: 1px solid rgba(0,245,255,0.22);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.nav-brand-avatar img {
+    width: 20px; height: 20px;
+    object-fit: contain;
+
+}
+
+.nav-brand-info { flex: 1; min-width: 0; }
+.nav-brand-info h4 {
+    font-size: 12px; font-weight: 700; color: var(--brand-500);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.2; letter-spacing: 0.3px;
+}
+.nav-brand-info span {
+    font-size: 9px; color: var(--muted); letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 5px; margin-top: 2px;
+}
+.nav-brand-status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent-400);
+    box-shadow: 0 0 6px var(--accent-400);
+    flex-shrink: 0;
+}
+
+.nav-brand-actions {
+    display: flex; align-items: center; gap: 4px;
+}
+
+.nav-icon-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); cursor: pointer; font-size: 13px;
+    transition: all 0.15s; text-decoration: none; position: relative;
+    border: 1px solid transparent;
+}
+.nav-icon-btn:hover {
+    background: var(--panel-hover);
+    border-color: var(--border);
+    color: var(--text);
+}
+.nav-icon-btn .nav-notif-badge {
+    position: absolute; top: -2px; right: -2px;
+    background: #ff3b4e; color: #fff;
+    font-size: 8px; font-weight: 700;
+    min-width: 15px; height: 15px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px;
+    border: 1px solid var(--dark-900);
+}
+
+
+/* ─── NAV MENU ──────────────────────────── */
+.nav-menu {
+    flex: 1; overflow-y: auto; padding: 10px 10px;
+    display: flex; flex-direction: column; gap: 1px;
+}
+
+.nav-section-label {
+    font-size: 9px; font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 1.2px; text-transform: uppercase;
+    padding: 10px 8px 4px;
+}
+.nav-section-label:first-child { padding-top: 4px; }
+
+.nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 8px;
+    text-decoration: none; color: rgba(160,180,200,0.7);
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s ease; cursor: pointer;
+    border: 1px solid transparent; background: none; width: 100%; text-align: left;
+    min-height: 38px;
+}
+
+.nav-item:hover {
+    background: var(--panel-hover);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.nav-item.active {
+    background: rgba(0,200,216,0.1);
+    color: var(--brand-500);
+    font-weight: 600;
+    border-color: rgba(0,245,255,0.2);
+    box-shadow: inset 3px 0 0 var(--brand-600);
+    padding-left: 8px;
+}
+.nav-item.active .nav-item-icon { color: var(--brand-500); }
+.nav-item.active .nav-item-arrow {
+    margin-left: auto;
+    font-size: 10px;
+    opacity: 0.6;
+    color: var(--brand-500);
+}
+.nav-item:not(.active) .nav-item-arrow { display: none; }
+
+.nav-item-icon {
+    width: 16px; text-align: center; font-size: 13px; flex-shrink: 0;
+    color: rgba(0,245,255,0.35);
+    transition: color 0.15s;
+}
+.nav-item:hover .nav-item-icon { color: rgba(0,245,255,0.65); }
+
+.nav-badge {
+    margin-left: auto;
+    background: rgba(0,245,255,0.12); color: var(--brand-500);
+    font-size: 9px; font-weight: 700;
+    min-width: 18px; height: 18px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+    border: 1px solid rgba(88,166,255,0.25);
+}
+
+/* ─── NAV BOTTOM ────────────────────────── */
+.nav-bottom {
+    padding: 10px;
+    border-top: 1px solid var(--dark-600);
+    display: flex; flex-direction: column; gap: 3px;
+}
+
+.unattended-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 7px;
+    background: rgba(210,153,34,0.08);
+    border: 1px solid rgba(210,153,34,0.2);
+    color: #d29922; font-size: 11px; font-weight: 500;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.15s; margin-bottom: 3px;
+}
+.unattended-pill:hover { background: rgba(234,179,8,0.13); }
+.unattended-pill i { font-size: 11px; animation: ring 1.5s ease infinite; flex-shrink: 0; }
+
+@keyframes ring {
+    0%,100% { transform: rotate(0deg); }
+    15%      { transform: rotate(15deg); }
+    30%      { transform: rotate(-12deg); }
+    45%      { transform: rotate(10deg); }
+    60%      { transform: rotate(-8deg); }
+}
+
+/* ─── USER SECTION ──────────────────────── */
+.user-section { display: flex; flex-direction: column; gap: 0; }
+
+.user-profile {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px;
+    background: var(--panel-hover);
+    border: 1px solid var(--border);
+    margin-bottom: 3px; cursor: default;
+}
+
+.user-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--active-bg);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--brand-600); flex-shrink: 0;
+}
+
+.user-info { flex: 1; min-width: 0; }
+.user-info h5 {
+    font-size: 12px; font-weight: 600; color: #c0d8e8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-info span { font-size: 10px; color: rgba(0,245,255,0.35); }
+
+.user-actions {
+    display: flex; gap: 2px;
+}
+.user-action-btn {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(0,245,255,0.3); font-size: 11px;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+    border: 1px solid transparent;
+}
+.user-action-btn:hover {
+    background: var(--panel-hover);
+    border-color: var(--border);
+    color: var(--muted);
+}
+.user-action-btn.danger { color: rgba(248,113,113,0.4); }
+.user-action-btn.danger:hover {
+    background: rgba(248,113,113,0.08);
+    border-color: rgba(248,113,113,0.2);
+    color: #f87171;
+}
+
+.user-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 7px;
+    font-size: 12px; color: rgba(160,180,200,0.6);
+    text-decoration: none; transition: all 0.15s; cursor: pointer;
+    border: 1px solid transparent;
+}
+.user-link:hover {
+    background: var(--panel-hover);
+    border-color: var(--border);
+    color: var(--text);
+}
+.user-link i { width: 14px; text-align: center; font-size: 11px; color: rgba(0,245,255,0.35); }
+.user-link.danger { color: rgba(248,113,113,0.55); }
+.user-link.danger i { color: rgba(248,113,113,0.4); }
+.user-link.danger:hover {
+    background: rgba(248,113,113,0.06);
+    border-color: rgba(248,113,113,0.15);
+    color: #fca5a5;
+}
+
+.nav-collapse {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; font-size: 11px; color: rgba(0,245,255,0.2);
+    cursor: pointer; border-radius: 7px; transition: all 0.15s;
+    text-decoration: none; margin-top: 2px;
+    border: 1px solid transparent;
+    background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif;
+}
+.nav-collapse:hover {
+    background: var(--panel-hover);
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+/* Tab para reabrir sidebar quando colapsada */
+.nav-sidebar-reopen {
+    display: flex;
+    position: fixed;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: var(--dark-900);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 6px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 11px;
+    transition: color 0.15s, border-color 0.15s;
+    box-shadow: 3px 0 8px rgba(0,0,0,0.3);
+}
+.nav-sidebar-reopen:hover {
+    color: var(--brand-600);
+    border-color: var(--brand-600);
+}
+.nav-sidebar-reopen i { font-size: 12px; }
+
+/* ─── CONV PANEL ────────────────────────────── */
+.conv-panel {
+    background: var(--dark-900);
+    border-right: 1px solid var(--dark-600);
+    display: flex; flex-direction: column; overflow: hidden;
+}
+
+.conv-panel-header {
+    padding: 16px 16px 0;
+    border-bottom: 1px solid var(--dark-600);
+    flex-shrink: 0;
+}
+
+.conv-panel-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.conv-panel-top h3 { font-size: 16px; font-weight: 700; color: var(--text); }
+
+.conv-panel-icons { display: flex; align-items: center; gap: 8px; }
+.conv-panel-icons i { font-size: 14px; color: var(--muted); cursor: pointer; transition: color 0.15s; }
+.conv-panel-icons i:hover { color: var(--text); }
+
+.btn-new-conv {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 6px;
+    background: rgba(0,245,255,0.08);
+    border: 1px solid rgba(0,245,255,0.25);
+    color: var(--brand-500); cursor: pointer;
+    font-size: 11px; font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-new-conv:hover {
+    background: var(--active-bg);
+    border-color: var(--brand-600);
+}
+
+.conv-search {
+    background: var(--dark-800);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; transition: border-color 0.15s;
+}
+.conv-search:focus-within {
+    border-color: var(--brand-600);
+    box-shadow: 0 0 0 2px rgba(56,139,253,0.08);
+}
+.conv-search i { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.conv-search input {
+    background: none; border: none; outline: none;
+    color: var(--text); font-size: 13px; width: 100%;
+    font-family: 'Inter', sans-serif;
+}
+.conv-search input::placeholder { color: var(--muted); }
+
+.conv-tabs { display: flex; }
+
+.conv-tab {
+    padding: 8px 12px; font-size: 12px; font-weight: 500;
+    color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    border-top: none; border-left: none; border-right: none;
+    background: none; outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s; text-decoration: none;
+    display: flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+}
+.conv-tab:hover { color: var(--text); }
+.conv-tab.active { color: var(--brand-600); border-bottom-color: var(--brand-600); }
+
+.conv-tab-badge {
+    background: rgba(0,245,255,0.12); color: var(--brand-500);
+    font-size: 10px; font-weight: 700;
+    min-width: 17px; height: 17px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center; padding: 0 4px;
+    border: 1px solid rgba(88,166,255,0.25);
+}
+
+.conv-select-all {
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--muted);
+    border-bottom: 1px solid var(--dark-600); flex-shrink: 0;
+}
+.conv-select-all input[type=checkbox] { accent-color: var(--brand-600); }
+
+.conv-list { flex: 1; overflow-y: auto; }
+
+.conv-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--dark-600);
+    cursor: pointer; transition: background 0.15s;
+    text-decoration: none; color: inherit;
+    position: relative;
+}
+.conv-item:hover { background: var(--dark-700); }
+.conv-item.active {
+    background: rgba(56,139,253,0.06);
+    border-left: 3px solid var(--brand-600);
+    padding-left: 13px;
+}
+.conv-item.unread { border-left: 3px solid var(--brand-600); padding-left: 13px; }
+
+.conv-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #fff;
+    flex-shrink: 0; position: relative;
+}
+
+.conv-status-dot {
+    position: absolute; bottom: 1px; right: 1px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--panel-bg);
+}
+
+.conv-meta { flex: 1; min-width: 0; }
+
+.conv-meta-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 3px;
+}
+
+.conv-name {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 190px;
+}
+
+.conv-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+
+.conv-preview {
+    font-size: 12px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.conv-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+.conv-wa { color: var(--wa); font-size: 13px; }
+
+.conv-empty {
+    padding: 48px 20px; text-align: center; color: var(--muted);
+}
+.conv-empty i { font-size: 36px; opacity: 0.25; display: block; margin-bottom: 10px; }
+.conv-empty p { font-size: 13px; }
+
+/* ─── MAIN CONTENT ──────────────────────────── */
+.main-content {
+    background: var(--dark-950);
+    display: flex; flex-direction: column;
+    overflow: hidden; min-height: 0;
+    position: relative;
+}
+
+.main-placeholder {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--muted); gap: 12px;
+}
+.main-placeholder i { font-size: 52px; opacity: 0.15; }
+.main-placeholder p { font-size: 14px; font-weight: 500; }
+
+/* ─── SCROLLBAR ─────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(0,245,255,0.4), rgba(0,255,136,0.4));
+    border-radius: 2px;
+}
+
+/* ─── BACKWARD COMPAT (settings/conexões pages) ─── */
+.atendimento-header {
+    background: var(--dark-900);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+}
+.header-title { display: flex; align-items: center; gap: 12px; }
+.header-title h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; }
+.header-title small { font-size: 12px; color: var(--muted); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Botão primário — cyan */
+.btn-cyber {
+    padding: 7px 14px;
+    background: var(--active-bg);
+    border: 1px solid rgba(88,166,255,0.35);
+    color: var(--brand-600);
+    border-radius: 6px; cursor: pointer; font-weight: 600;
+    font-size: 11px; text-decoration: none; display: inline-flex;
+    align-items: center; gap: 6px; transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase; letter-spacing: 0.8px;
+}
+.btn-cyber:hover {
+    background: var(--active-bg);
+    border-color: var(--brand-600);
+    color: var(--brand-600);
+}
+
+/* Botão secundário — borda verde */
+.btn-cyber.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+.btn-cyber.secondary:hover {
+    border-color: var(--accent-400);
+    color: var(--accent-400);
+}
+
+/* Inputs */
+.input-field, input[class~="input"] {
+    width: 100%; padding: 8px 12px;
+    background: rgba(4,6,14,0.8);
+    border: 1px solid rgba(0,245,255,0.15);
+    border-radius: 6px; color: var(--text);
+    font-size: 12px; font-family: 'Inter', sans-serif;
+    outline: none; transition: all 0.15s;
+}
+.input-field:focus {
+    border-color: var(--brand-600);
+    box-shadow: 0 0 0 2px rgba(56,139,253,0.08);
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 9px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.status-new     { background:rgba(245,196,0,.12); color:#f5c400; border:1px solid rgba(245,196,0,.25); }
+.status-open    { background:rgba(0,245,255,.10);  color:var(--brand-500); border:1px solid rgba(0,245,255,.2); }
+.status-pending { background:rgba(255,100,0,.12);  color:#ff9944; border:1px solid rgba(255,100,0,.25); }
+.status-resolved{ background:rgba(0,255,136,.12);  color:var(--accent-400); border:1px solid rgba(0,255,136,.25); }
+.status-closed  { background:rgba(100,116,139,.12); color:#94a3b8; border:1px solid rgba(100,116,139,.2); }
+
+.atendimento-content { flex: 1; overflow-y: auto; padding: 20px; }
+
+/* ── Toast de nova mensagem ── */
+.msg-toast-container {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 9998;
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+}
+.msg-toast {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(4,4,18,0.97);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--brand-600);
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 260px; max-width: 340px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    animation: toastIn 0.18s ease;
+    pointer-events: all;
+    cursor: pointer;
+    transition: opacity 0.25s;
+}
+.msg-toast.dismissing { opacity: 0; }
+@keyframes toastIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+.msg-toast-icon {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--brand-700);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.msg-toast-body { flex: 1; min-width: 0; }
+.msg-toast-title {
+    font-size: 12px; font-weight: 700; color: #f0c0d8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+.msg-toast-text {
+    font-size: 11px; color: rgba(255,255,255,0.45);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.msg-toast-close {
+    color: rgba(255,255,255,0.25); font-size: 12px;
+    flex-shrink: 0; margin-top: 1px; padding: 2px;
+    line-height: 1;
+}
+.msg-toast:hover { border-color: var(--brand-600); }
+
+/* ── Pulsação verde no item da conversa ── */
+@keyframes convPulse {
+    0%,100% {
+        box-shadow: inset 4px 0 0 var(--brand-600);
+        background: rgba(56,139,253,0.08);
+    }
+    50% {
+        box-shadow: inset 4px 0 0 rgba(56,139,253,0.4);
+        background: rgba(56,139,253,0.02);
+    }
+}
+.conv-item.conv-pulsing {
+    animation: convPulse 0.9s ease-in-out infinite !important;
+    border-left: none !important;
+    padding-left: 16px !important;
+}
+
+/* Notification popup */
+.notif-popup {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--dark-800); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px;
+    max-width: 400px; width: 92%;
+    z-index: 9999;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes popIn {
+    from { transform: translate(-50%,-50%) scale(0.8); opacity: 0; }
+    to   { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+}
+
+.notif-popup-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.notif-popup-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--active-bg);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand-600); font-size: 18px; flex-shrink: 0;
+}
+.notif-popup-title {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    letter-spacing: 1px; text-transform: uppercase;
+}
+.notif-popup-close {
+    margin-left: auto; cursor: pointer;
+    color: var(--muted); font-size: 14px; flex-shrink: 0;
+}
+.notif-popup-close:hover { color: var(--text); }
+.notif-popup-body { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+.notif-popup-link {
+    font-size: 12px; color: var(--muted); margin-top: 4px;
+}
+.notif-popup-progress {
+    margin-top: 14px; height: 2px; background: var(--brand-500);
+    border-radius: 2px; transform-origin: left;
+    animation: shrinkBar 60s linear forwards;
+}
+@keyframes shrinkBar { from { width: 100%; } to { width: 0%; } }
+
+/* ─── Chat (carregado via AJAX — CSS sempre presente) ────────── */
+/* ── Layout ── */
+.chat-layout { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.chat-main { display:grid; grid-template-rows:auto 1fr auto; min-height:0; overflow:hidden; background:var(--dark-950); flex:1; }
+
+/* ── Header ── */
+.chat-header { background:var(--dark-900); border-bottom:1px solid var(--border); padding:12px 18px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.chat-header-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#e91e8c,#9333ea); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+.chat-header-info { flex:1; min-width:0; }
+.chat-header-name { font-size:14px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.chat-header-sub { display:flex; align-items:center; gap:6px; margin-top:2px; flex-wrap:wrap; }
+.chat-header-jid { font-size:11px; color:var(--muted); font-family:'Inter',sans-serif; }
+.chat-header-sep { color:var(--muted); font-size:11px; }
+.chat-status-online { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--accent-400); }
+.chat-status-dot { width:6px; height:6px; border-radius:50%; background:var(--accent-400); display:inline-block; }
+.chat-header-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+
+/* ── Mensagens ── */
+.chat-messages {
+    overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:4px; min-height:0;
+    background-color: #0d1117;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+.day-divider { display:flex; align-items:center; gap:10px; margin:12px 0 8px; }
+.day-divider::before,.day-divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.06); }
+.day-divider span { font-size:10px; color:var(--muted); white-space:nowrap; padding:3px 10px; background:var(--dark-800); border:1px solid rgba(255,255,255,0.06); border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; }
+.msg { display:flex; animation:msgIn 0.2s ease; margin-bottom:4px; }
+.msg.customer { justify-content:flex-start; }
+.msg.agent { justify-content:flex-end; }
+.msg.internal { justify-content:center; }
+.msg.system { justify-content:center; }
+@keyframes msgIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.msg-block { max-width:68%; display:flex; flex-direction:column; gap:3px; }
+.msg.agent .msg-block { align-items:flex-end; }
+.msg.internal .msg-block { align-items:center; max-width:85%; }
+.internal-block { align-items:flex-start!important; }
+.msg-sender-name { font-size:11px; font-weight:700; color:var(--brand-500); padding:0 2px; }
+.msg-sender-name.agent-name { color:var(--accent-400); text-align:right; }
+.msg-bubble { background:rgba(20,28,46,0.9); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:9px 13px; font-size:13px; line-height:1.55; word-break:break-word; color:var(--text); }
+.msg.agent .msg-bubble { background:rgba(0,200,216,0.1); border-color:rgba(0,245,255,0.15); border-radius:6px; }
+.msg.internal .msg-bubble { background:rgba(245,196,0,0.06); border-color:rgba(245,196,0,0.2); color:#fbbf24; font-style:italic; font-size:12px; }
+.msg-time { font-size:10px; color:rgba(255,255,255,0.3); padding:0 2px; }
+.msg-system-text { font-size:11px; color:var(--muted); background:rgba(255,255,255,0.04); border-radius:20px; padding:3px 12px; }
+
+/* ── Área de input ── */
+.chat-input-area { background:var(--dark-900); border-top:1px solid var(--border); flex-shrink:0; }
+
+/* Tabs de modo */
+.chat-mode-tabs { display:flex; gap:6px; padding:10px 14px 0; }
+.chat-mode-tab { display:flex; align-items:center; gap:5px; padding:5px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:var(--muted); font-size:11px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.15s; }
+.chat-mode-tab:hover { border-color:rgba(255,255,255,0.2); color:var(--text); }
+.chat-mode-tab.active { background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2); }
+.chat-mode-tabs + .chat-input-area.mode-internal .chat-mode-tab#tabInt { background:rgba(245,196,0,0.1); border-color:rgba(245,196,0,0.3); color:#f5c400; }
+
+/* Linha de input */
+.chat-input-row { display:flex; align-items:flex-end; gap:6px; padding:8px 14px; }
+.chat-icon-btn { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.4); font-size:15px; transition:all 0.15s; flex-shrink:0; }
+.chat-icon-btn:hover { color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.06); }
+.chat-icon-btn.active-btn { color:var(--brand-500); background:rgba(0,245,255,0.08); }
+.chat-icon-btn.active-recording { color:#ff3b4e; }
+.chat-textarea { flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px 12px; color:var(--text); font-size:13px; resize:none; max-height:140px; min-height:36px; font-family:'Inter',sans-serif; line-height:1.5; transition:border-color 0.15s; outline:none; }
+.chat-textarea:focus { border-color:rgba(88,166,255,0.4); }
+.chat-textarea::placeholder { color:rgba(255,255,255,0.25); }
+.chat-send { width:34px; height:34px; flex-shrink:0; background:rgba(56,139,253,0.1); border:1px solid rgba(56,139,253,0.25); border-radius:8px; color:var(--brand-600); cursor:pointer; font-size:14px; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
+.chat-send:hover { background:rgba(56,139,253,0.18); }
+
+/* Status bar */
+.chat-status-bar { display:flex; justify-content:space-between; align-items:center; padding:4px 14px 8px; font-size:10px; color:rgba(255,255,255,0.25); }
+.chat-status-dot-green { width:6px; height:6px; border-radius:50%; background:#22c55e; display:inline-block; margin-right:5px; }
+
+/* Preview de mídia */
+.media-preview { display:none; align-items:center; gap:10px; margin:8px 14px 0; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px 12px; }
+.media-preview.visible { display:flex; }
+.media-preview-thumb { width:42px; height:42px; border-radius:6px; background:var(--dark-700); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+.media-preview-thumb img { width:100%;height:100%;object-fit:cover; }
+.media-preview-name { font-size:12px; color:var(--text); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.media-preview-type { font-size:10px; color:var(--muted); }
+.media-caption-input { width:100%; padding:5px 8px; margin-top:6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:5px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; outline:none; }
+.media-caption-input:focus { border-color:rgba(0,245,255,0.3); }
+.media-caption-input::placeholder { color:var(--muted); }
+
+/* Gravação */
+.recording-bar { display:none; align-items:center; gap:10px; margin:8px 14px 0; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:8px; padding:8px 12px; }
+.recording-bar.visible { display:flex; }
+.rec-dot { width:8px; height:8px; border-radius:50%; background:#ef4444; animation:pulse 1s infinite; flex-shrink:0; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.rec-time { font-size:12px; color:#f87171; font-family:'Inter',sans-serif; flex:1; }
+
+/* Menu de anexo */
+.attach-menu { display:none; flex-direction:column; position:absolute; bottom:calc(100% + 8px); left:14px; background:var(--dark-800); border:1px solid var(--border); border-radius:8px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.6); z-index:200; min-width:160px; backdrop-filter:blur(12px); }
+.attach-option { display:flex; align-items:center; gap:10px; padding:10px 16px; background:none; border:none; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; cursor:pointer; text-align:left; width:100%; transition:background 0.12s; border-bottom:1px solid rgba(255,255,255,0.04); }
+.attach-option:last-child { border-bottom:none; }
+.attach-option:hover { background:rgba(255,255,255,0.05); }
+.chat-input-area { position:relative; }
+
+/* Status e Status dropdown */
+.status-dropdown { position:relative; display:inline-block; }
+.status-dropdown-btn { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; background:var(--dark-800); border:1px solid var(--border); border-radius:6px; color:var(--muted); cursor:pointer; font-size:10px; font-weight:700; transition:all 0.15s; font-family:'Inter',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+.status-dropdown-btn:hover { border-color:var(--brand-600); color:var(--text); }
+.status-dropdown-btn.s-open { border-color:var(--brand-600); color:var(--brand-600); background:var(--active-bg); }
+.status-dropdown-btn.s-pending { border-color:#ff9944; color:#ff9944; background:rgba(255,100,0,0.07); }
+.status-dropdown-btn.s-resolved { border-color:var(--accent-400); color:var(--accent-400); background:rgba(0,255,136,0.07); }
+.status-dropdown-btn.s-closed { border-color:#64748b; color:#94a3b8; }
+.status-dropdown-btn.s-new { border-color:#f5c400; color:#f5c400; }
+.status-dropdown-btn i.chevron { font-size:9px; opacity:0.6; transition:transform 0.2s; }
+.status-dropdown.open .status-dropdown-btn i.chevron { transform:rotate(180deg); }
+.status-menu { display:none; position:absolute; top:calc(100% + 4px); right:0; min-width:170px; background:var(--dark-800); border:1px solid var(--border); border-radius:6px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.7); z-index:500; backdrop-filter:blur(12px); }
+.status-dropdown.open .status-menu { display:block; }
+.status-menu-item { display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; font-size:10px; font-weight:700; transition:background 0.12s; border-bottom:1px solid rgba(0,245,255,0.05); background:none; border-left:none; border-right:none; border-top:none; width:100%; text-align:left; font-family:'Inter',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+.status-menu-item:last-child { border-bottom:none; }
+.status-menu-item:hover { background:var(--panel-hover); }
+.status-menu-item .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+</style>
+<style>
+{% block extra_css %}{% endblock %}
+</style>
+</head>
+<body>
+<div class="app-layout">
+
+    <!-- ─── NAV SIDEBAR ─── -->
+    <nav class="nav-sidebar">
+        <div class="nav-brand">
+            <div class="nav-brand-top">
+                <div class="nav-brand-avatar">
+                    <img src="{% static 'favicon-16x16.png' %}" alt="logo">
+                </div>
+                <div class="nav-brand-info">
+                    <h4>Atendimento</h4>
+                    <span>
+                        <span class="nav-brand-status-dot"></span>
+                        CRM WhatsApp
+                    </span>
+                </div>
+            </div>
+            <div class="nav-brand-actions">
+                <span class="nav-icon-btn" title="Notificações">
+                    <i class="fas fa-bell"></i>
+                    {% if unattended_count %}<span class="nav-notif-badge">{{ unattended_count }}</span>{% endif %}
+                </span>
+                <span class="nav-icon-btn" id="syncAllBtn" title="Sincronizar grupos e contatos" onclick="syncAllContacts(this)">
+                    <i class="fas fa-sync-alt"></i>
+                </span>
+                <a href="{% url 'quadro_geral' %}" class="nav-icon-btn" title="Voltar ao CRM">
+                    <i class="fas fa-th-large"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-menu">
+            <div class="nav-section-label">Principal</div>
+
+            <a href="{% url 'atendimento:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt nav-item-icon"></i>
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <a href="{% url 'atendimento:inbox' %}" class="nav-item {% if request.resolver_match.url_name == 'inbox' or request.resolver_match.url_name == 'conversation_detail' %}active{% endif %}">
+                <i class="fas fa-inbox nav-item-icon"></i>
+                <span style="flex:1;">Caixa de Entrada</span>
+                {% if open_count %}<span class="nav-badge">{{ open_count }}</span>{% endif %}
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <div class="nav-section-label">Gestão</div>
+
+            <a href="{% url 'atendimento:grupos' %}" class="nav-item {% if request.resolver_match.url_name == 'grupos' %}active{% endif %}">
+                <i class="fas fa-users nav-item-icon"></i>
+                <span>Grupos / Contatos</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <a href="{% url 'atendimento:empresas' %}" class="nav-item {% if request.resolver_match.url_name == 'empresas' %}active{% endif %}">
+                <i class="fas fa-building nav-item-icon"></i>
+                <span>Empresas</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <a href="{% url 'atendimento:kanban' %}" class="nav-item {% if request.resolver_match.url_name == 'kanban' %}active{% endif %}">
+                <i class="fas fa-columns nav-item-icon"></i>
+                <span>Kanban</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <div class="nav-section-label">Análise</div>
+
+            <a href="{% url 'atendimento:historico' %}" class="nav-item {% if request.resolver_match.url_name == 'historico' %}active{% endif %}">
+                <i class="fas fa-history nav-item-icon"></i>
+                <span>Histórico</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <a href="{% url 'atendimento:relatorios' %}" class="nav-item {% if request.resolver_match.url_name == 'relatorios' %}active{% endif %}">
+                <i class="fas fa-chart-bar nav-item-icon"></i>
+                <span>Relatórios</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <div class="nav-section-label">Automação</div>
+
+            <a href="{% url 'atendimento:auto_atendimento' %}" class="nav-item {% if request.resolver_match.url_name == 'auto_atendimento' %}active{% endif %}">
+                <i class="fas fa-robot nav-item-icon"></i>
+                <span>Auto Atendimento</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            {% if request.user.is_staff %}
+            <div class="nav-section-label">Sistema</div>
+            <a href="{% url 'atendimento:settings_connections' %}" class="nav-item {% if request.resolver_match.url_name == 'settings_connections' or request.resolver_match.url_name == 'settings_groups' %}active{% endif %}">
+                <i class="fas fa-plug nav-item-icon"></i>
+                <span>Conexões WhatsApp</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+            <a href="{% url 'atendimento:settings_configuracoes' %}" class="nav-item {% if request.resolver_match.url_name == 'settings_configuracoes' %}active{% endif %}">
+                <i class="fas fa-sliders-h nav-item-icon"></i>
+                <span>Configurações</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="nav-bottom">
+            {% if unattended_count %}
+            <a href="{% url 'atendimento:inbox' %}?tab=open" class="unattended-pill">
+                <i class="fas fa-bell"></i>
+                {{ unattended_count }} chamado(s) sem atendente
+            </a>
+            {% endif %}
+
+            <div class="user-section">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        {{ request.user.first_name|first|upper }}{% if request.user.last_name %}{{ request.user.last_name|first|upper }}{% endif %}
+                    </div>
+                    <div class="user-info">
+                        <h5>{{ request.user.get_full_name|default:request.user.username }}</h5>
+                        <span>{% if request.user.is_superuser %}Administrador{% elif request.user.is_staff %}Supervisor{% else %}Agente{% endif %}</span>
+                    </div>
+                    <div class="user-actions">
+                        <a href="#" class="user-action-btn" onclick="openDisplayNameModal(event)" title="Nome de Exibição">
+                            <i class="fas fa-signature"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <button class="nav-collapse" onclick="toggleAtendimentoSidebar()" id="navCollapseBtn">
+                <i class="fas fa-chevron-left" id="navCollapseIcon"></i>
+                <span>Recolher menu</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Tab para reabrir sidebar quando colapsada -->
+    <button class="nav-sidebar-reopen" id="navSidebarReopen" onclick="toggleAtendimentoSidebar()" title="Abrir menu">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+
+    <!-- ─── CONV PANEL ─── -->
+    <div class="conv-panel">
+        {% block conv_panel %}
+        <div class="conv-panel-header">
+            <div class="conv-panel-top">
+                <h3>Conversas</h3>
+                <div class="conv-panel-icons">
+                    <i class="fas fa-filter" title="Filtrar"></i>
+                    <i class="fas fa-sync-alt" title="Atualizar" onclick="location.reload()"></i>
+                    <button class="btn-new-conv" onclick="openStartConvModal()" title="Iniciar Conversa">
+                        <i class="fas fa-plus"></i> Iniciar
+                    </button>
+                </div>
+            </div>
+            <div class="conv-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="convSearch" placeholder="Buscar atendimento..." autocomplete="off">
+            </div>
+            <div class="conv-tabs">
+                <a href="{% url 'atendimento:inbox' %}?tab=mine" class="conv-tab">
+                    Assumidos
+                    {% if mine_count %}<span class="conv-tab-badge">{{ mine_count }}</span>{% endif %}
+                </a>
+                <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab active">
+                    Abertos
+                    {% if open_count %}<span class="conv-tab-badge">{{ open_count }}</span>{% endif %}
+                </a>
+                <a href="{% url 'atendimento:inbox' %}?tab=ongoing" class="conv-tab">
+                    Em Andamento
+                </a>
+            </div>
+        </div>
+        <div class="conv-select-all">
+            <input type="checkbox" id="selectAll"> <label for="selectAll">Selecionar todos</label>
+        </div>
+        <div class="conv-list" id="convList">
+            {% for conv in sidebar_conversations %}
+            {% include 'atendimento/_conv_item.html' %}
+            {% empty %}
+            <div class="conv-empty">
+                <i class="fas fa-comments"></i>
+                <p>Nenhuma conversa ainda</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endblock %}
+    </div>
+
+    <!-- ─── MAIN CONTENT ─── -->
+    <div class="main-content">
+        {% block main_content %}
+        {% block atendimento_content %}
+        <div class="main-placeholder">
+            <i class="fas fa-comments"></i>
+            <p>Selecione um chamado</p>
+        </div>
+        {% endblock %}
+        {% endblock %}
+    </div>
+
+</div>
+
+<!-- Container de toasts de nova mensagem -->
+<div class="msg-toast-container" id="msgToastContainer"></div>
+
+<!-- Notificação de chamados sem atendente -->
+{% if unattended_count %}
+<div class="notif-popup" id="notifPopup" style="display:none;">
+    <div class="notif-popup-header">
+        <div class="notif-popup-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <span class="notif-popup-title">Atenção</span>
+        <i class="notif-popup-close fas fa-times" onclick="closeNotif()"></i>
+    </div>
+    <div class="notif-popup-body">
+        {{ unattended_count }} chamado{{ unattended_count|pluralize }} sem atendimento há mais de 1 minuto
+    </div>
+    <div class="notif-popup-link">Acesse a Caixa de Entrada para assumir os chamados pendentes.</div>
+    <div class="notif-popup-progress"></div>
+</div>
+{% endif %}
+
+<script>
+function closeNotif() {
+    document.getElementById('notifPopup').style.display = 'none';
+}
+
+{% if unattended_count %}
+setTimeout(function() {
+    document.getElementById('notifPopup').style.display = 'block';
+    setTimeout(closeNotif, 62000);
+}, 60000);
+{% endif %}
+
+/* ── Sons de notificação ── */
+var _audioCtx = null;
+function _getAudioCtx() {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return _audioCtx;
+}
+
+/* Som suave — nova mensagem em conversa existente */
+window.playSoundMessage = function() {
+    try {
+        var ctx = _getAudioCtx();
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(740, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.22, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.28);
+    } catch(e) {}
+};
+
+/* Som duplo mais urgente — novo chamado em aberto */
+window.playSoundTicket = function() {
+    try {
+        var ctx = _getAudioCtx();
+        [0, 0.18].forEach(function(d) {
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(900, ctx.currentTime + d);
+            osc.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + d + 0.13);
+            gain.gain.setValueAtTime(0.28, ctx.currentTime + d);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 0.16);
+            osc.start(ctx.currentTime + d);
+            osc.stop(ctx.currentTime + d + 0.18);
+        });
+    } catch(e) {}
+};
+
+/* Desbloqueia o AudioContext no primeiro clique do usuário */
+document.addEventListener('click', function() {
+    try { if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume(); } catch(e) {}
+}, { once: false });
+
+/* ── Notificações do navegador + toasts + pulsação (WebSocket do inbox) ── */
+(function() {
+    var notifWs = null, notifDelay = 3000;
+    var currentUserId = {{ request.user.id }};
+
+    /* Solicita permissão de notificação ao carregar */
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    function showBrowserNotif(title, body) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+            var n = new Notification(title, {
+                body: body,
+                icon: '/static/favicon-16x16.png',
+                badge: '/static/favicon-16x16.png',
+                tag: 'atendimento-msg',
+                renotify: true,
+            });
+            n.onclick = function() { window.focus(); n.close(); };
+            setTimeout(function(){ n.close(); }, 8000);
+        } catch(e) {}
+    }
+
+    function showToast(groupName, msgText, convId, initials) {
+        var container = document.getElementById('msgToastContainer');
+        if (!container) return;
+
+        var toast = document.createElement('div');
+        toast.className = 'msg-toast';
+
+        var safeGroup = groupName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var safeMsg   = (msgText || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if (safeMsg.length > 80) safeMsg = safeMsg.slice(0, 77) + '…';
+
+        toast.innerHTML =
+            '<div class="msg-toast-icon">' + (initials || '?') + '</div>' +
+            '<div class="msg-toast-body">' +
+              '<div class="msg-toast-title">' + safeGroup + '</div>' +
+              '<div class="msg-toast-text">' + (safeMsg || '<em>Nova mensagem</em>') + '</div>' +
+            '</div>' +
+            '<span class="msg-toast-close" onclick="event.stopPropagation();dismissToast(this.parentNode)">&#x2715;</span>';
+
+        /* Navega para a conversa ao clicar no toast */
+        var convUrl = '/atendimento/conversation/' + convId + '/';
+        toast.addEventListener('click', function() {
+            dismissToast(toast);
+            if (typeof loadPage === 'function') {
+                loadPage(convUrl, true);
+            } else {
+                window.location.href = convUrl;
+            }
+        });
+
+        container.appendChild(toast);
+
+        /* Auto-dismiss após 5s */
+        var timer = setTimeout(function(){ dismissToast(toast); }, 5000);
+        toast._dismissTimer = timer;
+    }
+
+    window.dismissToast = function(toast) {
+        if (!toast || toast._dismissed) return;
+        toast._dismissed = true;
+        clearTimeout(toast._dismissTimer);
+        toast.classList.add('dismissing');
+        setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 320);
+    };
+
+    function pulseConvItem(convId) {
+        /* Encontra o item da conversa no sidebar pelo href */
+        var selector = 'a.conv-item[href*="' + convId + '"]';
+        var item = document.querySelector(selector);
+        if (!item) return;
+
+        item.classList.add('conv-pulsing');
+
+        /* Para de pulsar quando o usuário clicar na conversa */
+        function stopPulse() {
+            item.classList.remove('conv-pulsing');
+            item.removeEventListener('click', stopPulse);
+        }
+        item.addEventListener('click', stopPulse);
+    }
+
+    function connectNotifWS() {
+        var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        try {
+            notifWs = new WebSocket(proto + '://' + location.host + '/ws/atendimento/inbox/');
+            notifWs.onopen = function(){ notifDelay = 3000; };
+            notifWs.onmessage = function(e) {
+                try {
+                    var p = JSON.parse(e.data);
+                    if (p.type !== 'new_message' || !p.message || !p.conversation) return;
+
+                    var conv = p.conversation;
+                    var msg  = p.message;
+
+                    if (msg.sender_type === 'agent') return;
+
+                    var groupName  = conv.group_name || 'Grupo';
+                    var msgContent = msg.content || '';
+                    var assignedTo = conv.assigned_to_id;
+                    var convId     = conv.id;
+
+                    var shouldNotify = !assignedTo || assignedTo === currentUserId;
+                    if (!shouldNotify) return;
+
+                    var titlePrefix = assignedTo === currentUserId ? '💬 ' : '🔔 ';
+                    var initials = groupName.substring(0, 2).toUpperCase();
+
+                    /* 1. Som */
+                    var isUnassigned = !assignedTo;
+                    if (isUnassigned && typeof playSoundTicket === 'function') playSoundTicket();
+                    else if (typeof playSoundMessage === 'function') playSoundMessage();
+
+                    /* 2. Notificação do navegador */
+                    showBrowserNotif(titlePrefix + groupName, msgContent);
+
+                    /* 3. Toast na página */
+                    showToast(groupName, msgContent, convId, initials);
+
+                    /* 4. Pisca a conversa no sidebar */
+                    pulseConvItem(convId);
+
+                    /* 5. Atualiza badge do nav "Caixa de Entrada" */
+                    var badge = document.querySelector('.nav-item[href*="inbox"] .nav-badge');
+                    if (badge) {
+                        var n = (parseInt(badge.textContent) || 0) + 1;
+                        badge.textContent = n;
+                    }
+                } catch(err) {}
+            };
+            notifWs.onclose = function() {
+                setTimeout(function() {
+                    notifDelay = Math.min(notifDelay * 1.5, 60000);
+                    connectNotifWS();
+                }, notifDelay);
+            };
+            notifWs.onerror = function() { notifWs.close(); };
+        } catch(err) {}
+    }
+
+    connectNotifWS();
+})();
+
+const convSearchInput = document.getElementById('convSearch');
+if (convSearchInput) {
+    convSearchInput.addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#convList .conv-item').forEach(function(el) {
+            const t = el.textContent.toLowerCase();
+            el.style.display = t.includes(q) ? '' : 'none';
+        });
+    });
+}
+</script>
+
+<!-- ── Modal Nome de Exibição ─────────────────────────────────── -->
+<div id="displayNameModal" style="
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);
+    align-items:center; justify-content:center;
+">
+    <div style="
+        background:var(--dark-800); border:1px solid var(--border);
+        border-radius:8px; padding:0; width:360px; max-width:92vw;
+        box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    ">
+        <div style="padding:20px 22px 16px; border-bottom:1px solid rgba(0,245,255,0.08); display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <h3 style="font-size:13px;font-weight:700;color:var(--brand-600);margin:0;letter-spacing:0.3px;text-transform:uppercase;">Nome de Exibição</h3>
+                <p style="font-size:11px;color:rgba(0,245,255,0.38);margin:4px 0 0;font-family:'Inter',sans-serif;">Aparece antes das suas mensagens no WhatsApp</p>
+            </div>
+            <button onclick="closeDisplayNameModal()" style="background:none;border:none;color:rgba(0,245,255,0.35);cursor:pointer;font-size:16px;padding:4px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="padding:20px 22px;">
+            <!-- Preview -->
+            <div style="background:rgba(4,6,14,0.8);border:1px solid rgba(0,245,255,0.1);border-radius:6px;padding:14px 16px;margin-bottom:16px;">
+                <div style="font-size:10px;color:rgba(0,245,255,0.38);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-family:'Inter',sans-serif;">Prévia no WhatsApp</div>
+                <div style="font-size:13px;color:#d0e8f0;line-height:1.6;font-family:'Inter',sans-serif;">
+                    <strong id="previewName" style="color:var(--brand-600);">Lucas Campelo</strong><br>
+                    Olá, tudo bem?
+                </div>
+            </div>
+
+            <!-- Campo -->
+            <label style="display:block;font-size:10px;font-weight:700;color:rgba(0,245,255,0.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;font-family:'Inter',sans-serif;">
+                Seu nome de exibição
+            </label>
+            <input
+                type="text"
+                id="displayNameInput"
+                maxlength="60"
+                placeholder="Ex: Lucas Campelo"
+                style="
+                    width:100%; padding:10px 14px;
+                    background:rgba(4,6,14,0.8);
+                    border:1px solid rgba(0,245,255,0.15);
+                    border-radius:6px; color:#d0e8f0;
+                    font-size:13px; font-family:'Inter',sans-serif;
+                    outline:none; transition:all 0.15s; box-sizing:border-box;
+                "
+                oninput="document.getElementById('previewName').textContent = this.value || '{{ request.user.get_full_name|default:request.user.username }}';"
+                onfocus="this.style.borderColor='rgba(0,245,255,0.45)';this.style.boxShadow='0 0 0 2px rgba(0,245,255,0.08)'"
+                onblur="this.style.borderColor='rgba(0,245,255,0.15)';this.style.boxShadow='none'"
+            >
+            <p style="font-size:11px;color:rgba(0,245,255,0.35);margin:6px 0 0;font-family:'Inter',sans-serif;">
+                Deixe em branco para usar: <span style="color:#d0e8f0;">{{ request.user.get_full_name|default:request.user.username }}</span>
+            </p>
+
+            <!-- Botões -->
+            <div style="display:flex;gap:8px;margin-top:18px;">
+                <button onclick="closeDisplayNameModal()" style="
+                    flex:1;padding:9px;background:rgba(9,14,26,0.8);
+                    border:1px solid rgba(0,245,255,0.15);border-radius:6px;
+                    color:rgba(0,245,255,0.45);font-size:11px;cursor:pointer;
+                    font-family:'Inter',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;
+                ">Cancelar</button>
+                <button onclick="saveDisplayName()" id="saveDisplayNameBtn" style="
+                    flex:1;padding:9px;
+                    background:rgba(0,245,255,0.1);
+                    border:1px solid rgba(0,245,255,0.35);border-radius:6px;
+                    color:var(--brand-600);font-size:11px;font-weight:700;cursor:pointer;
+                    font-family:'Inter',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;
+                    box-shadow:0 0 10px rgba(0,245,255,0.12);
+                ">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openDisplayNameModal(e) {
+    if (e) e.preventDefault();
+    const modal = document.getElementById('displayNameModal');
+    modal.style.display = 'flex';
+    // Carrega nome atual via API
+    fetch('{% url "atendimento:api_display_name" %}')
+        .then(r => r.json())
+        .then(d => {
+            const input = document.getElementById('displayNameInput');
+            input.value = d.display_name || '';
+            document.getElementById('previewName').textContent = d.effective || '{{ request.user.get_full_name|default:request.user.username }}';
+            input.focus();
+        })
+        .catch(() => {});
+}
+
+function closeDisplayNameModal() {
+    document.getElementById('displayNameModal').style.display = 'none';
+}
+
+function saveDisplayName() {
+    const btn = document.getElementById('saveDisplayNameBtn');
+    const name = document.getElementById('displayNameInput').value.trim();
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    fetch('{% url "atendimento:api_display_name" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ display_name: name })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            // Atualiza o nome exibido na sidebar
+            const userNameEl = document.querySelector('.user-info h5');
+            if (userNameEl) userNameEl.textContent = d.effective;
+            closeDisplayNameModal();
+        } else {
+            alert('Erro: ' + (d.error || 'Falha ao salvar'));
+        }
+    })
+    .catch(() => alert('Erro ao conectar'))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Salvar'; });
+}
+
+// Fecha o modal ao clicar fora
+document.getElementById('displayNameModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDisplayNameModal();
+});
+
+// Salva com Enter
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDisplayNameModal();
+    if (e.key === 'Enter' && document.getElementById('displayNameModal').style.display === 'flex') {
+        saveDisplayName();
+    }
+});
+</script>
+
+<!-- ── Sincronização de Contatos ──────────────────────────────── -->
+<script>
+function syncAllContacts(btn) {
+    if (btn.dataset.syncing) return;
+    btn.dataset.syncing = '1';
+    var icon = btn.querySelector('i');
+    icon.className = 'fas fa-spinner fa-spin';
+    btn.title = 'Sincronizando...';
+
+    fetch('{% url "atendimento:api_sync_all" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        credentials: 'same-origin'
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        icon.className = d.success ? 'fas fa-check' : 'fas fa-times';
+        btn.title = d.message || (d.success ? 'Sincronizado!' : 'Erro');
+        btn.style.color = d.success ? 'var(--accent-400)' : 'var(--danger)';
+        setTimeout(function(){
+            icon.className = 'fas fa-sync-alt';
+            btn.title = 'Sincronizar grupos e contatos';
+            btn.style.color = '';
+            delete btn.dataset.syncing;
+        }, 3000);
+    })
+    .catch(function(){
+        icon.className = 'fas fa-times';
+        btn.style.color = 'var(--danger)';
+        btn.title = 'Erro de conexão';
+        setTimeout(function(){
+            icon.className = 'fas fa-sync-alt';
+            btn.title = 'Sincronizar grupos e contatos';
+            btn.style.color = '';
+            delete btn.dataset.syncing;
+        }, 3000);
+    });
+}
+</script>
+
+<!-- ── Sidebar Toggle ──────────────────────────────────────────── -->
+<script>
+function toggleAtendimentoSidebar() {
+    var layout  = document.querySelector('.app-layout');
+    var sidebar = document.querySelector('.nav-sidebar');
+    var tab     = document.getElementById('navSidebarReopen');
+    var icon    = document.getElementById('navCollapseIcon');
+
+    var collapsed = layout.getAttribute('data-nav') === 'collapsed';
+
+    if (collapsed) {
+        layout.style.gridTemplateColumns = '220px 360px 1fr';
+        layout.setAttribute('data-nav', 'open');
+        sidebar.style.opacity = '1';
+        sidebar.style.pointerEvents = 'auto';
+        if (tab)  tab.style.display  = 'none';
+        if (icon) icon.className = 'fas fa-chevron-left';
+        localStorage.setItem('atendimento_nav', 'open');
+    } else {
+        layout.style.gridTemplateColumns = '0px 360px 1fr';
+        layout.setAttribute('data-nav', 'collapsed');
+        sidebar.style.opacity = '0';
+        sidebar.style.pointerEvents = 'none';
+        if (tab)  tab.style.display  = 'flex';
+        if (icon) icon.className = 'fas fa-chevron-right';
+        localStorage.setItem('atendimento_nav', 'collapsed');
+    }
+}
+
+/* Sempre inicia colapsado ao entrar no atendimento */
+(function() {
+    var layout  = document.querySelector('.app-layout');
+    var sidebar = document.querySelector('.nav-sidebar');
+    var tab     = document.getElementById('navSidebarReopen');
+    var icon    = document.getElementById('navCollapseIcon');
+    if (!layout) return;
+    layout.style.gridTemplateColumns = '0px 360px 1fr';
+    layout.setAttribute('data-nav', 'collapsed');
+    if (sidebar) { sidebar.style.opacity = '0'; sidebar.style.pointerEvents = 'none'; }
+    if (tab)  tab.style.display  = 'flex';
+    if (icon) icon.className = 'fas fa-chevron-right';
+    localStorage.setItem('atendimento_nav', 'collapsed');
+})();
+</script>
+
+<!-- ── Modal: Iniciar Conversa ──────────────────────────────────── -->
+<div id="startConvModal" style="
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,0.78); backdrop-filter:blur(5px);
+    align-items:center; justify-content:center;
+" onclick="if(event.target===this)closeStartConvModal()">
+    <div style="
+        background:var(--dark-800); border:1px solid var(--border);
+        border-radius:10px; width:440px; max-width:94vw; overflow:hidden;
+        box-shadow:0 12px 32px rgba(0,0,0,0.5);
+    ">
+        <!-- Header -->
+        <div style="padding:16px 20px 14px; border-bottom:1px solid rgba(0,245,255,0.08); display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <h3 style="margin:0;font-size:13px;font-weight:700;color:var(--brand-600);letter-spacing:0.3px;text-transform:uppercase;">
+                    <i class="fas fa-plus-circle" style="margin-right:8px;"></i>Iniciar Conversa
+                </h3>
+                <p style="margin:3px 0 0;font-size:11px;color:var(--muted);">Selecione um grupo ou contato para iniciar</p>
+            </div>
+            <button onclick="closeStartConvModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <!-- Search -->
+        <div style="padding:12px 16px 8px;">
+            <div style="display:flex;align-items:center;gap:8px;background:var(--dark-700);border:1px solid var(--border);border-radius:7px;padding:8px 12px;transition:border-color .15s;" id="startConvSearchWrap">
+                <i class="fas fa-search" style="font-size:12px;color:var(--muted);flex-shrink:0;"></i>
+                <input type="text" id="startConvSearch" placeholder="Buscar grupo ou contato..."
+                    autocomplete="off"
+                    style="background:none;border:none;outline:none;color:var(--text);font-size:13px;width:100%;font-family:'Inter',sans-serif;"
+                    oninput="filterStartConv(this.value)"
+                    onfocus="document.getElementById('startConvSearchWrap').style.borderColor='rgba(0,245,255,0.4)'"
+                    onblur="document.getElementById('startConvSearchWrap').style.borderColor='rgba(0,245,255,0.15)'">
+            </div>
+        </div>
+        <!-- List -->
+        <div id="startConvList" style="max-height:300px;overflow-y:auto;padding:4px 8px 12px;">
+            <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">
+                <i class="fas fa-spinner fa-spin" style="font-size:18px;color:var(--brand-500);display:block;margin-bottom:8px;"></i>
+                Carregando grupos...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var _startConvGroups = [];
+
+function openStartConvModal() {
+    var modal = document.getElementById('startConvModal');
+    modal.style.display = 'flex';
+    document.getElementById('startConvSearch').value = '';
+    loadStartConvGroups('');
+    setTimeout(function(){ document.getElementById('startConvSearch').focus(); }, 80);
+}
+
+function closeStartConvModal() {
+    document.getElementById('startConvModal').style.display = 'none';
+}
+
+function loadStartConvGroups(q) {
+    fetch('/atendimento/api/groups/search/?q=' + encodeURIComponent(q), {
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        credentials: 'same-origin'
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        _startConvGroups = d.groups || [];
+        renderStartConvList(_startConvGroups);
+    })
+    .catch(function(){
+        document.getElementById('startConvList').innerHTML =
+            '<div style="text-align:center;padding:20px;color:var(--danger);font-size:12px;">Erro ao carregar grupos</div>';
+    });
+}
+
+function filterStartConv(q) {
+    var lower = q.toLowerCase();
+    var filtered = _startConvGroups.filter(function(g){
+        return g.name.toLowerCase().includes(lower) ||
+               g.connection.toLowerCase().includes(lower) ||
+               (g.cliente && g.cliente.toLowerCase().includes(lower));
+    });
+    renderStartConvList(filtered);
+    if (q.length >= 2 && filtered.length < 10) {
+        loadStartConvGroups(q);
+    }
+}
+
+function renderStartConvList(groups) {
+    var list = document.getElementById('startConvList');
+    if (!groups.length) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;"><i class="fas fa-inbox" style="font-size:20px;opacity:.2;display:block;margin-bottom:8px;"></i>Nenhum grupo encontrado</div>';
+        return;
+    }
+    var html = '';
+    groups.forEach(function(g) {
+        var initials = g.name.substring(0,2).toUpperCase();
+        var clienteText = g.cliente ? '<span style="color:var(--accent-400);font-size:10px;"><i class="fas fa-building" style="font-size:9px;margin-right:2px;"></i>' + g.cliente + '</span>' : '';
+        html += '<div class="start-conv-item" onclick="doStartConv(' + g.id + ', this)" data-group-id="' + g.id + '" style="' +
+            'display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;' +
+            'cursor:pointer;transition:background .12s;border:1px solid transparent;' +
+            'margin-bottom:2px;"' +
+            ' onmouseover="this.style.background=\'rgba(0,245,255,0.05)\';this.style.borderColor=\'rgba(0,245,255,0.1)\'"' +
+            ' onmouseout="this.style.background=\'\';this.style.borderColor=\'transparent\'">' +
+            '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#6366f1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">' + initials + '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + g.name + '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-top:2px;">' +
+            '<span style="font-size:10px;color:var(--muted);"><i class="fab fa-whatsapp" style="color:var(--wa);margin-right:2px;"></i>' + g.connection + '</span>' +
+            (g.cliente ? '<span style="color:rgba(0,245,255,0.3);">·</span>' + clienteText : '') +
+            '</div></div>' +
+            '<i class="fas fa-chevron-right" style="font-size:10px;color:rgba(0,245,255,0.2);flex-shrink:0;"></i>' +
+            '</div>';
+    });
+    list.innerHTML = html;
+}
+
+function doStartConv(groupId, el) {
+    el.style.opacity = '0.5';
+    el.style.pointerEvents = 'none';
+    el.querySelector('i.fa-chevron-right').className = 'fas fa-spinner fa-spin';
+
+    fetch('/atendimento/api/conversation/start/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ group_id: groupId })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.success) {
+            closeStartConvModal();
+            var url = new URL(d.url, window.location.href);
+            var path = url.pathname + url.search;
+            if (typeof loadPage === 'function') {
+                loadPage(path, true);
+            } else {
+                window.location.href = d.url;
+            }
+        } else {
+            alert('Erro: ' + (d.error || 'Falha ao iniciar conversa'));
+            el.style.opacity = '';
+            el.style.pointerEvents = '';
+        }
+    })
+    .catch(function(){
+        alert('Erro de conexão');
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('startConvModal').style.display === 'flex') {
+        closeStartConvModal();
+    }
+});
+</script>
+
+{% block extra_scripts %}{% endblock %}
+
+<script>
+/* ── SPA: navegação AJAX universal para o Atendimento ─────────── */
+(function() {
+    var convPanel   = document.querySelector('.conv-panel');
+    var mainContent = document.querySelector('.main-content');
+
+    /* Só intercepta links dentro do módulo /atendimento/ */
+    function isAtendimentoUrl(absHref) {
+        try {
+            var url = new URL(absHref, window.location.href);
+            /* mesmo host, path dentro de /atendimento/, fora de /api/ */
+            return url.host === location.host &&
+                   url.pathname.indexOf('/atendimento/') !== -1 &&
+                   url.pathname.indexOf('/atendimento/api/') === -1;
+        } catch(e) { return false; }
+    }
+
+    /* Executa os <script> de um container recém-atualizado */
+    function execScripts(container) {
+        container.querySelectorAll('script').forEach(function(old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            document.body.appendChild(s);
+            document.body.removeChild(s);
+        });
+    }
+
+    /* Destaca o nav-item correto na sidebar */
+    function updateActiveNav(href) {
+        document.querySelectorAll('.nav-item[href]').forEach(function(el) {
+            var elHref = el.getAttribute('href');
+            var isActive = elHref && href.startsWith(elHref) && elHref !== '#' && elHref !== '/';
+            el.classList.toggle('active', isActive);
+        });
+    }
+
+    /* Extrai o parâmetro "tab" de um elemento .conv-tab */
+    function tabParam(el) {
+        try {
+            return new URL(el.href, window.location.href).searchParams.get('tab') || 'open';
+        } catch(e) { return 'open'; }
+    }
+
+    /* Carrega uma URL via AJAX e atualiza conv-panel + main-content */
+    function loadPage(href, push) {
+        /* Seleção otimista: marca o item da conversa como ativo imediatamente */
+        var convLink = document.querySelector('.conv-item[href="' + href + '"]');
+        if (!convLink) {
+            var basePath = href.split('?')[0].replace(/\/+$/, '');
+            var seg = basePath.split('/').filter(Boolean).pop();
+            if (seg) convLink = document.querySelector('.conv-item[href*="/' + seg + '/"]');
+        }
+        if (convLink) {
+            document.querySelectorAll('.conv-item').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            convLink.classList.add('active');
+            convLink.classList.remove('unread', 'conv-pulsing');
+        }
+
+        /* Fade out rápido */
+        mainContent.style.transition = 'opacity 0.08s ease';
+        mainContent.style.opacity = '0';
+
+        fetch(href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        })
+        .then(function(r) {
+            if (!r.ok) throw new Error(r.status);
+            return r.text();
+        })
+        .then(function(html) {
+            var doc = (new DOMParser()).parseFromString(html, 'text/html');
+
+            /* 1. CSS específico da página */
+            var newStyle = doc.querySelector('style._ajax-style');
+            if (newStyle && newStyle.textContent.trim()) {
+                var styleEl = document.querySelector('style._ajax-style');
+                if (!styleEl) {
+                    styleEl = document.createElement('style');
+                    styleEl.className = '_ajax-style';
+                    document.head.appendChild(styleEl);
+                }
+                styleEl.textContent = newStyle.textContent;
+            }
+
+            /* 2. Conv-panel — só atualiza se a resposta tiver conteúdo */
+            var newCP = doc.querySelector('[data-target="conv-panel"]');
+            if (newCP && newCP.innerHTML.trim()) {
+                convPanel.innerHTML = newCP.innerHTML;
+                execScripts(convPanel);
+                var srvActive = convPanel.querySelector('.conv-tab.active');
+                if (!srvActive) {
+                    var stored = sessionStorage.getItem('spaActiveTab');
+                    if (stored) {
+                        convPanel.querySelectorAll('.conv-tab').forEach(function(tab) {
+                            tab.classList.toggle('active', tabParam(tab) === stored);
+                        });
+                    }
+                }
+            }
+
+            /* 3. Main-content */
+            var newMC = doc.querySelector('[data-target="main-content"]');
+            if (newMC) {
+                mainContent.innerHTML = newMC.innerHTML;
+                execScripts(mainContent);
+            }
+
+            /* 4. Scripts extras (extra_scripts block) */
+            var newES = doc.querySelector('[data-target="extra-scripts"]');
+            if (newES) execScripts(newES);
+
+            if (push) history.pushState({ href: href }, '', href);
+            updateActiveNav(href);
+
+            /* Fade in */
+            mainContent.style.opacity = '1';
+        })
+        .catch(function() {
+            mainContent.style.opacity = '1';
+            mainContent.innerHTML =
+                '<div style="display:flex;align-items:center;justify-content:center;height:100%;">' +
+                '<div style="text-align:center;color:var(--danger);">' +
+                '<i class="fas fa-exclamation-circle" style="font-size:32px;opacity:.5;display:block;margin-bottom:10px;"></i>' +
+                '<p style="font-size:13px;">Erro ao carregar. <a href="' + href + '" style="color:var(--brand-600);">Clique para recarregar</a></p></div></div>';
+        });
+    }
+
+    /* Intercepta todos os cliques em links internos do atendimento */
+    document.addEventListener('click', function(e) {
+        /* Guarda aba ativa quando usuário clica em uma aba */
+        var tabLink = e.target.closest('.conv-tab');
+        if (tabLink) {
+            try {
+                var tu = new URL(tabLink.href, window.location.href);
+                _activeTab = tu.searchParams.get('tab') || 'open';
+                sessionStorage.setItem('spaActiveTab', _activeTab);
+            } catch(err) {}
+        }
+
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        /* link.href resolve URLs relativas (?tab=mine → /atendimento/inbox/?tab=mine) */
+        var absHref = link.href;
+        if (!isAtendimentoUrl(absHref)) return;
+        if (link.target === '_blank' || link.hasAttribute('download')) return;
+
+        e.preventDefault();
+        /* Extrai só path + query para comparar com location atual */
+        var url = new URL(absHref);
+        var path = url.pathname + url.search;
+        if (path === location.pathname + location.search) return; /* já está na página */
+        loadPage(path, true);
+    });
+
+    /* Botão voltar / avançar do browser */
+    window.addEventListener('popstate', function(e) {
+        var href = (e.state && e.state.href) || location.href;
+        if (isAtendimentoUrl(href)) {
+            var url = new URL(href, window.location.href);
+            loadPage(url.pathname + url.search, false);
+        } else {
+            location.reload();
+        }
+    });
+
+    /* Persiste estado inicial para o popstate funcionar */
+    history.replaceState({ href: location.href }, '', location.href);
+    updateActiveNav(location.pathname);
+})();
+</script>
+</body>
+</html>

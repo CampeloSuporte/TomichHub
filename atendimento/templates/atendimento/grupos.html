@@ -1,0 +1,251 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+.grp-filter { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.grp-input { padding:7px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; }
+.grp-input:focus { outline:none; border-color:var(--active); }
+.grp-select { padding:7px 12px; background:#161d30; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; }
+.grp-conn-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px; overflow-x:auto; }
+.grp-conn-tab { padding:8px 16px; font-size:12px; font-weight:500; color:var(--muted); text-decoration:none; border-bottom:2px solid transparent; white-space:nowrap; transition:all .15s; }
+.grp-conn-tab:hover { color:var(--text); }
+.grp-conn-tab.active { color:var(--active); border-bottom-color:var(--active); }
+.grp-table { width:100%; border-collapse:collapse; font-size:12px; }
+.grp-table th { text-align:left; padding:10px 12px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); background:rgba(255,255,255,0.02); white-space:nowrap; }
+.grp-table td { padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text); vertical-align:middle; }
+.grp-table tr:hover td { background:rgba(255,255,255,0.02); }
+.grp-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+.toggle-switch { position:relative; display:inline-block; width:36px; height:20px; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; cursor:pointer; top:0;left:0;right:0;bottom:0; background:rgba(255,255,255,.1); border-radius:20px; transition:.3s; }
+.toggle-slider:before { position:absolute; content:""; height:14px; width:14px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.3s; }
+input:checked + .toggle-slider { background:var(--active); }
+input:checked + .toggle-slider:before { transform:translateX(16px); }
+.modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,.75); z-index:1000; align-items:center; justify-content:center; }
+.modal-box { background:#1a1d35; border:1px solid var(--border); border-radius:10px; padding:28px; width:90%; max-width:400px; }
+.modal-box h2 { font-size:16px; font-weight:700; color:var(--text); margin-bottom:18px; }
+.form-field { margin-bottom:14px; }
+.form-field label { display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+.form-select { width:100%; padding:8px 12px; background:#161d30; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; box-sizing:border-box; }
+{% endblock %}
+
+{% block main_content %}
+<div class="atendimento-header">
+    <div class="header-title">
+        <i class="fas fa-users" style="color:var(--active);font-size:24px;"></i>
+        <div>
+            <h2>Grupos / Contatos</h2>
+            <small>{{ groups|length }} grupo(s)</small>
+        </div>
+    </div>
+</div>
+
+<div class="atendimento-content">
+    <!-- Filtro por conexão -->
+    <div class="grp-conn-tabs">
+        <a href="{% url 'atendimento:grupos' %}{% if search %}?search={{ search }}{% endif %}" class="grp-conn-tab {% if not connection_filter %}active{% endif %}">
+            Todas Conexões
+        </a>
+        {% for conn in connections %}
+        <a href="{% url 'atendimento:grupos' %}?connection={{ conn.id }}{% if search %}&search={{ search }}{% endif %}" class="grp-conn-tab {% if connection_filter == conn.id|stringformat:"s" %}active{% endif %}">
+            {{ conn.name }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Busca -->
+    <form method="get" class="grp-filter">
+        {% if connection_filter %}<input type="hidden" name="connection" value="{{ connection_filter }}">{% endif %}
+        <input type="text" name="search" class="grp-input" value="{{ search }}" placeholder="Buscar grupo ou JID..." style="min-width:240px;">
+        <button type="submit" class="btn-cyber" style="padding:7px 14px;"><i class="fas fa-search"></i></button>
+        {% if search %}<a href="{% url 'atendimento:grupos' %}{% if connection_filter %}?connection={{ connection_filter }}{% endif %}" class="btn-cyber secondary" style="padding:7px 12px;"><i class="fas fa-times"></i></a>{% endif %}
+    </form>
+
+    <!-- Tabela de grupos -->
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        {% if groups %}
+        <div style="overflow-x:auto;">
+            <table class="grp-table">
+                <thead>
+                    <tr>
+                        <th style="width:44px;"></th>
+                        <th>Nome</th>
+                        <th>JID</th>
+                        <th>Conexão</th>
+                        <th>Membros</th>
+                        <th>Empresa</th>
+                        <th>Cliente CRM</th>
+                        <th>IA</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in groups %}
+                    <tr id="grp-row-{{ group.id }}">
+                        <td>
+                            {% if group.profile_picture %}
+                            <img src="{{ group.profile_picture }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                            {% else %}
+                            <div class="grp-avatar" style="background:linear-gradient(135deg,var(--active),#7c3aed);">
+                                {{ group.name|first|upper }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight:600;">{{ group.name|truncatechars:40 }}</td>
+                        <td style="color:var(--muted);font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ group.jid }}">{{ group.jid|truncatechars:30 }}</td>
+                        <td style="color:var(--muted);">{{ group.connection.name }}</td>
+                        <td style="color:var(--muted);">{{ group.members_count }}</td>
+                        <td>
+                            {% if group.company %}
+                            <span style="background:rgba(14,165,233,.12);color:#0ea5e9;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">{{ group.company.name|truncatechars:20 }}</span>
+                            {% else %}
+                            <span style="color:var(--muted);font-size:12px;">—</span>
+                            {% endif %}
+                            <button class="btn-cyber secondary" style="padding:3px 7px;font-size:10px;margin-left:4px;" onclick="openCompanyModal({{ group.id }}, '{{ group.company.id|default:'' }}')"><i class="fas fa-link"></i></button>
+                        </td>
+                        <td>
+                            {% if group.cliente %}
+                            <span style="background:rgba(34,197,94,.12);color:#22c55e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">{{ group.cliente.nome_empresa|truncatechars:20 }}</span>
+                            {% else %}
+                            <span style="color:var(--muted);font-size:12px;">—</span>
+                            {% endif %}
+                            <button class="btn-cyber secondary" style="padding:3px 7px;font-size:10px;margin-left:4px;" onclick="openClienteModal({{ group.id }}, '{{ group.cliente.id|default:'' }}')"><i class="fas fa-link"></i></button>
+                        </td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" {% if group.ai_enabled %}checked{% endif %} onchange="toggleAI({{ group.id }}, this)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            {% if group.blocked %}
+                            <span style="background:rgba(239,68,68,.1);color:#ef4444;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">BLOQUEADO</span>
+                            {% else %}
+                            <span style="background:rgba(34,197,94,.1);color:#22c55e;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">ATIVO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'atendimento:inbox' %}?group={{ group.id }}" class="btn-cyber secondary" style="padding:4px 8px;font-size:10px;"><i class="fas fa-comments"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:40px;text-align:center;color:var(--muted);">
+            <i class="fas fa-users" style="font-size:36px;opacity:.15;display:block;margin-bottom:10px;"></i>
+            <p style="font-size:13px;">Nenhum grupo encontrado.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Vincular Empresa -->
+<div class="modal-overlay" id="companyModal" onclick="closeModalIfBg(event)">
+    <div class="modal-box">
+        <h2>Vincular Empresa</h2>
+        <input type="hidden" id="modalGroupId">
+        <div class="form-field">
+            <label>Empresa</label>
+            <select class="form-select" id="modalCompanySelect">
+                <option value="">-- Sem empresa --</option>
+                {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button class="btn-cyber" style="flex:1;" onclick="saveCompanyLink()"><i class="fas fa-save"></i> Vincular</button>
+            <button class="btn-cyber secondary" style="flex:1;" onclick="closeModal()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Vincular Cliente CRM -->
+<div class="modal-overlay" id="clienteModal" onclick="closeClienteModalIfBg(event)">
+    <div class="modal-box">
+        <h2><i class="fas fa-user-tie" style="color:var(--active);margin-right:8px;"></i>Vincular Cliente CRM</h2>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">O cliente CRM fornece os hosts/acessos exibidos no chat.</p>
+        <input type="hidden" id="clienteModalGroupId">
+        <div class="form-field">
+            <label>Buscar cliente</label>
+            <input type="text" class="form-select" id="clienteSearch" placeholder="Digite para filtrar..." oninput="filterClientes()" style="margin-bottom:8px;">
+            <select class="form-select" id="modalClienteSelect" size="8" style="height:180px;">
+                <option value="">-- Sem cliente --</option>
+                {% for c in clientes %}
+                <option value="{{ c.id }}">{{ c.nome_empresa }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+            <button class="btn-cyber" style="flex:1;" onclick="saveClienteLink()"><i class="fas fa-save"></i> Vincular</button>
+            <button class="btn-cyber secondary" style="flex:1;" onclick="document.getElementById('clienteModal').style.display='none'">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function closeModal() { document.getElementById('companyModal').style.display='none'; }
+function closeModalIfBg(e) { if(e.target===e.currentTarget) closeModal(); }
+
+async function toggleAI(groupId, checkbox) {
+    const r = await fetch(`/atendimento/api/groups/${groupId}/toggle-ai/`, {
+        method:'POST', headers:{'X-CSRFToken':CSRF}
+    });
+    if(!r.ok) {
+        checkbox.checked = !checkbox.checked;
+        alert('Erro ao alterar IA');
+    }
+}
+
+function openCompanyModal(groupId, currentCompanyId) {
+    document.getElementById('modalGroupId').value = groupId;
+    document.getElementById('modalCompanySelect').value = currentCompanyId || '';
+    document.getElementById('companyModal').style.display='flex';
+}
+
+function openClienteModal(groupId, currentClienteId) {
+    document.getElementById('clienteModalGroupId').value = groupId;
+    document.getElementById('clienteSearch').value = '';
+    filterClientes();
+    const sel = document.getElementById('modalClienteSelect');
+    sel.value = currentClienteId || '';
+    document.getElementById('clienteModal').style.display = 'flex';
+}
+
+function closeClienteModalIfBg(e) { if(e.target===e.currentTarget) e.target.style.display='none'; }
+
+function filterClientes() {
+    const q = document.getElementById('clienteSearch').value.toLowerCase();
+    const opts = document.getElementById('modalClienteSelect').options;
+    for (let i = 1; i < opts.length; i++) {
+        opts[i].style.display = opts[i].text.toLowerCase().includes(q) ? '' : 'none';
+    }
+}
+
+async function saveClienteLink() {
+    const groupId = document.getElementById('clienteModalGroupId').value;
+    const clienteId = document.getElementById('modalClienteSelect').value;
+    const r = await fetch(`/atendimento/api/group/${groupId}/link/`, {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({cliente_id: clienteId || null})
+    });
+    if (r.ok) { location.reload(); }
+    else { alert('Erro ao vincular cliente'); }
+}
+
+async function saveCompanyLink() {
+    const groupId = document.getElementById('modalGroupId').value;
+    const companyId = document.getElementById('modalCompanySelect').value;
+    const r = await fetch(`/atendimento/api/groups/${groupId}/set-company/`, {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+        body:JSON.stringify({company_id: companyId || null})
+    });
+    if(r.ok) { location.reload(); }
+    else { alert('Erro ao vincular empresa'); }
+}
+</script>
+{% endblock %}

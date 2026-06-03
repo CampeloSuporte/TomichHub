@@ -1,8 +1,13 @@
 from django.urls import re_path
 from . import consumers
 from home.agent_consumer import AgentNOCConsumer
+from atendimento.consumers import ConversationConsumer, InboxConsumer
 
 websocket_urlpatterns = [
+    # Atendimento — tempo real
+    re_path(r'ws/atendimento/conversa/(?P<conversation_id>[0-9a-f-]+)/$', ConversationConsumer.as_asgi()),
+    re_path(r'ws/atendimento/inbox/$', InboxConsumer.as_asgi()),
+
     re_path(r'ws/ssh/$', consumers.SSHConsumer.as_asgi()),
     re_path(r'ws/winbox/$', consumers.WinboxConsumer.as_asgi()),
     re_path(r'ws/vnc/(?P<acesso_id>\d+)/$', consumers.WinboxVNCConsumer.as_asgi()),

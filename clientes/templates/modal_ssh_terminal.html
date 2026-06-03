@@ -34,20 +34,20 @@
 }
 
 .modal-ssh {
-    background: #02030a;
-    border: 1px solid rgba(0,245,255,.35);
+    background: #0d1117;
+    border: 1px solid #30363d;
     border-radius: 4px;
     width: 95%;
     max-width: 1200px;
     height: 85vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 40px rgba(0,245,255,.12), 0 0 80px rgba(0,0,0,.8);
+    box-shadow: 0 16px 48px rgba(0,0,0,.6);
 }
 
 .ssh-header {
     padding: 12px 18px;
-    border-bottom: 1px solid rgba(0,245,255,.35);
+    border-bottom: 1px solid #30363d;
     background: rgba(2,3,10,.95);
     display: flex;
     justify-content: space-between;
@@ -56,17 +56,16 @@
 
 .ssh-title {
     margin: 0;
-    color: #00f5ff;
-    font-family: 'Share Tech Mono', monospace;
+    color: #e6edf3;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 .btn-close {
     background: transparent;
-    border: 1px solid rgba(0,245,255,.2);
-    color: rgba(0,245,255,.4);
+    border: 1px solid rgba(255,255,255,.06);
+    color: #7d8590;
     width: 30px; height: 30px;
     border-radius: 3px;
     cursor: pointer;
@@ -75,13 +74,13 @@
 }
 
 .btn-close:hover {
-    border-color: #ff5555;
-    color: #ff5555;
+    border-color: #f85149;
+    color: #f85149;
 }
 
 .ssh-body {
     flex: 1;
-    background: #02030a;
+    background: #0d1117;
     overflow: hidden;
 }
 
@@ -92,33 +91,33 @@
 
 .ssh-footer {
     padding: 8px 16px;
-    border-top: 1px solid rgba(0,245,255,.1);
+    border-top: 1px solid rgba(255,255,255,.06);
     background: rgba(2,3,10,.8);
     display: flex;
     gap: 8px;
     align-items: center;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter',sans-serif;
     font-size: 11px;
     flex-wrap: wrap;
 }
 
 .status {
-    color: rgba(0,245,255,.35);
+    color: #30363d;
     flex: 1;
 }
 
 .status.connected {
-    color: #00ff88;
+    color: #3fb950;
 }
 
 .btn-ssh {
     background: transparent;
-    border: 1px solid rgba(0,245,255,.14);
-    color: rgba(0,245,255,.4);
+    border: 1px solid rgba(255,255,255,.08);
+    color: #7d8590;
     padding: 5px 10px;
     border-radius: 3px;
     cursor: pointer;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter',sans-serif;
     font-size: 11px;
     transition: 0.2s;
     text-transform: uppercase;
@@ -126,8 +125,8 @@
 }
 
 .btn-ssh:hover {
-    border-color: #00ff88;
-    color: #00ff88;
+    border-color: #58a6ff;
+    color: #58a6ff;
 }
 
 .btn-ssh-scripts {
@@ -145,28 +144,28 @@
     position: fixed;
     top: 0; right: -540px;
     width: 520px; height: 100vh;
-    background: #060c18;
-    border-left: 2px solid #ffa500;
+    background: #1c2128;
+    border-left: 1px solid #30363d;
     display: flex; flex-direction: column;
     z-index: 10001;
-    box-shadow: -5px 0 30px rgba(0,0,0,.8);
+    box-shadow: -4px 0 16px rgba(0,0,0,.4);
     transition: right .3s ease;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter',sans-serif;
 }
 #spInlinePainel.aberto { right: 0; }
 .spi-header {
-    background: #02030a; padding: 10px 14px;
+    background: #0d1117; padding: 10px 14px;
     border-bottom: 2px solid #ffa500;
     display: flex; justify-content: space-between; align-items: center;
     flex-shrink: 0;
 }
 .spi-tabs {
-    display: flex; border-bottom: 1px solid rgba(0,245,255,.1);
-    background: #02030a; flex-shrink: 0;
+    display: flex; border-bottom: 1px solid rgba(255,255,255,.06);
+    background: #0d1117; flex-shrink: 0;
 }
 .spi-tab {
     padding: 9px 16px; cursor: pointer; font-size: 11px;
-    color: rgba(0,245,255,.3); border-bottom: 2px solid transparent; transition: .15s;
+    color: rgba(255,255,255,.35); border-bottom: 2px solid transparent; transition: .15s;
 }
 .spi-tab.ativo { color: #ffa500; border-bottom-color: #ffa500; }
 .spi-pane {
@@ -174,9 +173,9 @@
     display: flex; flex-direction: column; gap: 12px;
 }
 .spi-pane.hidden { display: none; }
-.spi-label { font-size: 10px; color: rgba(0,245,255,.35); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+.spi-label { font-size: 10px; color: #30363d; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
 .spi-select, .spi-input {
-    width: 100%; background: #02030a; border: 1px solid rgba(0,245,255,.14);
+    width: 100%; background: #0d1117; border: 1px solid rgba(255,255,255,.08);
     border-radius: 4px; color: #d0e8f0; font-family: inherit;
     font-size: 12px; padding: 6px 8px; outline: none;
 }
@@ -190,17 +189,17 @@
 .spi-btn-exec:hover { background: rgba(255,165,0,.28); }
 .spi-output-line { font-size: 11px; line-height: 1.6; white-space: pre-wrap; }
 .spi-cmd   { color: #ffa500; }
-.spi-out   { color: #00ff88; }
-.spi-info  { color: #00f5ff; }
+.spi-out   { color: #3fb950; }
+.spi-info  { color: #58a6ff; }
 .spi-erro  { color: #ff5555; }
 
 .xterm {
-    font-family: 'Share Tech Mono', monospace !important;
+    font-family: 'Inter',sans-serif;
     font-size: 13px !important;
 }
 
 .xterm-viewport {
-    background: #02030a !important;
+    background: #0d1117 !important;
 }
 </style>
 
@@ -209,16 +208,16 @@
 let terminalData = null;
 
 function colorirOutput(texto) {
-    texto = texto.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g, '\x1b[1;33m$1\x1b[0m');
-    texto = texto.replace(/\bUP\b/gi, '\x1b[1;32m$&\x1b[0m');
-    texto = texto.replace(/\bDOWN\b/gi, '\x1b[1;31m$&\x1b[0m');
-    texto = texto.replace(/\b(eth\d+|ge-\d+\/\d+\/\d+|fa\d+|gi\d+|lo\d+|ether\d+|wlan\d+|FastEthernet|GigabitEthernet|Loopback|Serial|Port\d+)\b/gi, '\x1b[1;36m$&\x1b[0m');
-    texto = texto.replace(/\bESTABLISHED\b/gi, '\x1b[1;36m$&\x1b[0m');
-    texto = texto.replace(/\bOSPF\b/gi, '\x1b[1;35m$&\x1b[0m');
+    texto = texto.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g, '\x1b[33m$1\x1b[0m');
+    texto = texto.replace(/\bUP\b/gi, '\x1b[32m$&\x1b[0m');
+    texto = texto.replace(/\bDOWN\b/gi, '\x1b[31m$&\x1b[0m');
+    texto = texto.replace(/\b(eth\d+|ge-\d+\/\d+\/\d+|fa\d+|gi\d+|lo\d+|ether\d+|wlan\d+|FastEthernet|GigabitEthernet|Loopback|Serial|Port\d+)\b/gi, '\x1b[36m$&\x1b[0m');
+    texto = texto.replace(/\bESTABLISHED\b/gi, '\x1b[36m$&\x1b[0m');
+    texto = texto.replace(/\bOSPF\b/gi, '\x1b[35m$&\x1b[0m');
     texto = texto.replace(/\bBGP\b/gi, '\x1b[38;5;208m$&\x1b[0m');
-    texto = texto.replace(/-\d+\.?\d*/g, '\x1b[1;31m$&\x1b[0m');
-    texto = texto.replace(/\bRx\b/gi, '\x1b[1;34m$&\x1b[0m');
-    texto = texto.replace(/\bTx\b/gi, '\x1b[1;32m$&\x1b[0m');
+    texto = texto.replace(/-\d+\.?\d*/g, '\x1b[31m$&\x1b[0m');
+    texto = texto.replace(/\bRx\b/gi, '\x1b[34m$&\x1b[0m');
+    texto = texto.replace(/\bTx\b/gi, '\x1b[32m$&\x1b[0m');
     return texto;
 }
 
@@ -274,8 +273,8 @@ function abrirTerminalSSH(id, host, porta, tipo) {
     const term = new Terminal({
         cursorBlink: true,
         fontSize: 13,
-        fontFamily: "'Share Tech Mono','Courier New',monospace",
-        theme: { background: '#02030a', foreground: '#d0e8f0', cursor: '#00f5ff', cursorAccent: '#02030a' },
+        fontFamily: "'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace",
+        theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff', selectionBackground: 'rgba(88,166,255,0.25)', black: '#21262d', red: '#f85149', green: '#3fb950', yellow: '#d29922', blue: '#388bfd', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4', brightBlack: '#484f58', brightRed: '#ff7b72', brightGreen: '#56d364', brightYellow: '#e3b341', brightBlue: '#79c0ff', brightMagenta: '#d2a8ff', brightCyan: '#56d4dd', brightWhite: '#f0f6fc' },
         scrollback: 5000,
         rightClickSelectsWord: false,
     });
@@ -328,7 +327,7 @@ function conectar() {
         if (data.type === 'connected') {
             terminalData.connected = true;
             terminalData.isHuawei = data.message && data.message.includes('[HUAWEI]');
-            terminalData.terminal.writeln('\x1b[1;36m' + data.message + '\x1b[0m\n');
+            terminalData.terminal.writeln('\x1b[36m' + data.message + '\x1b[0m\n');
             atualizarStatus();
             
         } else if (data.type === 'output' && data.data) {
@@ -337,7 +336,7 @@ function conectar() {
             
         } else if (data.type === 'error') {
             terminalData.connected = false;
-            terminalData.terminal.writeln('\x1b[1;31mERRO: ' + data.message + '\x1b[0m');
+            terminalData.terminal.writeln('\x1b[31mERRO: ' + data.message + '\x1b[0m');
             atualizarStatus();
         }
     };
@@ -446,8 +445,8 @@ document.addEventListener('keydown', (e) => {
     <div class="spi-header">
         <span style="color:#ffa500;font-size:13px;font-weight:700;letter-spacing:1px;">⚡ Scripts de Automação</span>
         <div style="display:flex;gap:8px;align-items:center;">
-            <span id="spInlineEquip" style="font-size:10px;color:rgba(0,245,255,.3);"></span>
-            <button onclick="spInlineFechar()" style="background:transparent;border:1px solid rgba(0,245,255,.14);color:rgba(0,245,255,.3);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:inherit;font-size:12px;">✕</button>
+            <span id="spInlineEquip" style="font-size:10px;color:rgba(255,255,255,.35);"></span>
+            <button onclick="spInlineFechar()" style="background:transparent;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.35);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:inherit;font-size:12px;">✕</button>
         </div>
     </div>
     <div class="spi-tabs">
@@ -476,22 +475,22 @@ document.addEventListener('keydown', (e) => {
                 <option value="">— Selecione um script —</option>
             </select>
         </div>
-        <div id="spiDescBox" style="display:none;font-size:11px;color:rgba(0,245,255,.4);padding:6px 8px;background:#02030a;border-radius:4px;border:1px solid rgba(0,245,255,.08);"></div>
+        <div id="spiDescBox" style="display:none;font-size:11px;color:#7d8590;padding:6px 8px;background:#0d1117;border-radius:4px;border:1px solid rgba(88,166,255,.08);"></div>
         <div id="spiParamsBox" style="display:flex;flex-direction:column;gap:8px;"></div>
         <div style="display:flex;gap:8px;margin-top:4px;">
             <button class="spi-btn-exec" onclick="spiExecutar()">▶ Executar Script</button>
             <a href="/clientes/scripts/gerenciar/" target="_blank"
-               style="padding:9px 12px;background:transparent;border:1px solid rgba(0,245,255,.14);color:rgba(0,245,255,.3);border-radius:4px;font-family:inherit;font-size:12px;text-decoration:none;display:flex;align-items:center;">⚙</a>
+               style="padding:9px 12px;background:transparent;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.35);border-radius:4px;font-family:inherit;font-size:12px;text-decoration:none;display:flex;align-items:center;">⚙</a>
         </div>
     </div>
     <!-- Aba Output -->
     <div class="spi-pane hidden" id="spip-output">
-        <div id="spiOutputBox" style="font-size:11px;font-family:'Share Tech Mono',monospace;line-height:1.6;"></div>
-        <div id="spiOutputEmpty" style="color:rgba(0,245,255,.25);text-align:center;padding:30px 0;font-size:12px;">Nenhum output ainda.</div>
+        <div id="spiOutputBox" style="font-size:11px;font-family:'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace;line-height:1.6;"></div>
+        <div id="spiOutputEmpty" style="color:#30363d;text-align:center;padding:30px 0;font-size:12px;">Nenhum output ainda.</div>
     </div>
     <!-- Aba Histórico -->
     <div class="spi-pane hidden" id="spip-hist">
-        <div id="spiHistBox" style="font-size:11px;color:rgba(0,245,255,.25);text-align:center;padding:30px 0;">Abra um equipamento para ver o histórico.</div>
+        <div id="spiHistBox" style="font-size:11px;color:#30363d;text-align:center;padding:30px 0;">Abra um equipamento para ver o histórico.</div>
     </div>
 </div>
 
@@ -590,7 +589,7 @@ document.addEventListener('keydown', (e) => {
                 inp = '<input type="'+t+'" id="spi-p-'+_esc(p.nome)+'" value="'+_esc(p.default||'')+'" placeholder="'+_esc(p.ajuda||p.nome)+'" '+st+'>';
             }
             w.innerHTML = lbl + inp;
-            if (p.ajuda && p.tipo !== 'select') { const h=document.createElement('div'); h.style.cssText='font-size:10px;color:rgba(0,245,255,.25);'; h.textContent=p.ajuda; w.appendChild(h); }
+            if (p.ajuda && p.tipo !== 'select') { const h=document.createElement('div'); h.style.cssText='font-size:10px;color:#30363d;'; h.textContent=p.ajuda; w.appendChild(h); }
             box.appendChild(w);
         });
     }
@@ -675,13 +674,13 @@ document.addEventListener('keydown', (e) => {
             const d = await r.json();
             if (!d.historico || !d.historico.length) { box.textContent = 'Nenhuma execução registrada.'; return; }
             box.innerHTML = d.historico.map(h =>
-                '<div style="padding:8px 0;border-bottom:1px solid rgba(0,245,255,.06);">' +
+                '<div style="padding:8px 0;border-bottom:1px solid rgba(88,166,255,.06);">' +
                 '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">' +
                 '<span style="color:#d0e8f0;font-size:11px;">' + _esc(h.script) + '</span>' +
                 '<span style="font-size:10px;padding:1px 6px;border-radius:10px;background:' +
-                (h.status==='sucesso'?'rgba(0,255,136,.15)':h.status==='erro'?'rgba(255,85,85,.15)':'rgba(255,165,0,.15)') +
-                ';color:' + (h.status==='sucesso'?'#00ff88':h.status==='erro'?'#ff5555':'#ffa500') + '">' + _esc(h.status) + '</span></div>' +
-                '<div style="font-size:10px;color:rgba(0,245,255,.25);">' + _esc(h.iniciado_em) + ' — ' + _esc(h.usuario) + '</div></div>'
+                (h.status==='sucesso'?'rgba(63,185,80,.15)':h.status==='erro'?'rgba(255,85,85,.15)':'rgba(255,165,0,.15)') +
+                ';color:' + (h.status==='sucesso'?'#3fb950':h.status==='erro'?'#ff5555':'#ffa500') + '">' + _esc(h.status) + '</span></div>' +
+                '<div style="font-size:10px;color:#30363d;">' + _esc(h.iniciado_em) + ' — ' + _esc(h.usuario) + '</div></div>'
             ).join('');
         } catch(e) { box.textContent = 'Erro ao carregar histórico.'; }
     }

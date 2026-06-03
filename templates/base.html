@@ -15,7 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="{% static 'css/style.css' %}?v=modal2026f" rel="stylesheet">
-    
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
@@ -123,6 +123,14 @@
                         </a></li>
                     </ul>
                 </div>
+                {% endif %}
+
+                <!-- Atendimento — somente para administradores e funcionários -->
+                {% if request.user.is_staff %}
+                <a href="{% url 'atendimento:dashboard' %}" class="btn btn-sm"
+                    style="color:#b060ff;border-color:rgba(176,96,255,.3);background:rgba(176,96,255,.06);">
+                    <i class="fas fa-headset me-1"></i> Atendimento
+                </a>
                 {% endif %}
             </div>
 

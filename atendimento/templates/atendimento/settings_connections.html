@@ -1,0 +1,198 @@
+{% extends base_tpl %}
+{% load static %}
+
+{% block atendimento_content %}
+<div class="atendimento-header">
+    <div class="header-title">
+        <img src="{% static 'favicon-16x16.png' %}" alt="logo" style="width:28px;height:28px;object-fit:contain;">
+        <div>
+            <h2>Conexões WhatsApp</h2>
+            <small>Configure suas instâncias Evolution API</small>
+        </div>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'atendimento:settings_configuracoes' %}" class="btn-cyber secondary" style="font-size:11px;">
+            <i class="fas fa-sliders-h"></i> Configurações Avançadas
+        </a>
+        <button class="btn-cyber" onclick="openNewConnectionModal()">
+            <i class="fas fa-plus"></i> Nova Conexão
+        </button>
+    </div>
+</div>
+
+<div class="atendimento-content">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
+        {% for connection in connections %}
+        <div style="background: var(--card-bg); border: 2px solid var(--border-glow); border-radius: 8px; padding: 20px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <h3 style="color: var(--primary); margin: 0 0 5px 0; font-size: 16px;">{{ connection.name }}</h3>
+                    <p style="color: var(--text-secondary); margin: 0; font-size: 12px;">{{ connection.instance_name }}</p>
+                </div>
+                <span style="background: {% if connection.is_active %}rgba(0, 255, 65, 0.1); color: var(--success){% else %}rgba(160, 160, 192, 0.1); color: var(--text-secondary){% endif %}; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600;">
+                    {% if connection.is_active %}ATIVA{% else %}INATIVA{% endif %}
+                </span>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glow); border-radius: 4px; padding: 10px; margin-bottom: 15px; font-size: 12px; color: var(--text-secondary); word-break: break-all;">
+                {{ connection.evolution_url }}
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button class="btn-cyber" style="flex: 1; padding: 8px; font-size: 11px;" onclick="testConnection('{{ connection.id }}')">
+                    <i class="fas fa-plug"></i> Testar
+                </button>
+                <button class="btn-cyber secondary" style="flex: 1; padding: 8px; font-size: 11px;" onclick="syncGroups('{{ connection.id }}')">
+                    <i class="fas fa-sync"></i> Sincronizar
+                </button>
+            </div>
+
+            {% if connection.webhook_configured %}
+            <div style="background: rgba(0, 255, 65, 0.1); border: 1px solid var(--success); color: var(--success); padding: 10px; border-radius: 4px; font-size: 11px; text-align: center;">
+                <i class="fas fa-check-circle"></i> Webhook Configurado
+            </div>
+            {% else %}
+            <button class="btn-cyber" style="width: 100%; padding: 8px; font-size: 11px; background: transparent; border-color: #ff0056; color: #ff0056;" onclick="configWebhook('{{ connection.id }}')">
+                <i class="fas fa-exclamation-circle"></i> Configurar Webhook
+            </button>
+            {% endif %}
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-glow); font-size: 11px; color: var(--text-secondary);">
+                Sincronizado: {{ connection.last_sync|date:"d/m/Y H:i"|default:"Nunca" }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not connections %}
+    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+        <img src="{% static 'favicon-16x16.png' %}" alt="logo" style="width:48px;height:48px;object-fit:contain;opacity:0.2;display:block;margin-bottom:15px;margin-left:auto;margin-right:auto;filter:grayscale(1);">
+        <p>Nenhuma conexão configurada</p>
+        <button class="btn-cyber" onclick="openNewConnectionModal()" style="margin-top: 15px;">
+            <i class="fas fa-plus"></i> Criar Primeira Conexão
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Nova Conexão -->
+<div id="newConnectionModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); border: 2px solid var(--border-glow); border-radius: 8px; padding: 30px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h2 style="color: var(--primary); margin: 0 0 20px 0;">Nova Conexão WhatsApp</h2>
+
+        <form id="connectionForm">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; color: var(--text-primary); margin-bottom: 5px; font-weight: 600; font-size: 12px;">Nome da Instância *</label>
+                <input type="text" name="name" placeholder="WhatsApp Principal" required style="width: 100%; padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glow); border-radius: 4px; color: var(--text-primary); box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; color: var(--text-primary); margin-bottom: 5px; font-weight: 600; font-size: 12px;">URL da Evolution API *</label>
+                <input type="url" name="evolution_url" placeholder="https://evolution.api.com" required style="width: 100%; padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glow); border-radius: 4px; color: var(--text-primary); box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; color: var(--text-primary); margin-bottom: 5px; font-weight: 600; font-size: 12px;">API Key *</label>
+                <input type="password" name="api_key" placeholder="sua-api-key-aqui" required style="width: 100%; padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glow); border-radius: 4px; color: var(--text-primary); box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: var(--text-primary); margin-bottom: 5px; font-weight: 600; font-size: 12px;">Nome da Instância no Evolution *</label>
+                <input type="text" name="instance_name" placeholder="minha-instancia" required style="width: 100%; padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glow); border-radius: 4px; color: var(--text-primary); box-sizing: border-box;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-cyber" style="flex: 1;">Criar</button>
+                <button type="button" class="btn-cyber secondary" style="flex: 1;" onclick="closeModal('newConnectionModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openNewConnectionModal() {
+        document.getElementById('newConnectionModal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    document.getElementById('connectionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+
+        try {
+            const response = await fetch('{% url "atendimento:api_create_connection" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('Erro ao criar conexão');
+            console.error(error);
+        }
+    });
+
+    function testConnection(connectionId) {
+        fetch(`/atendimento/api/connection/${connectionId}/test/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message || 'Conexão OK!');
+        });
+    }
+
+    function syncGroups(connectionId) {
+        const btn = event.target.closest('button');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+
+        fetch(`/atendimento/api/connection/${connectionId}/sync/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✓ ${data.message}`);
+                location.reload();
+            } else {
+                alert(`✗ Erro: ${data.message}`);
+            }
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync"></i> Sincronizar';
+        });
+    }
+
+    function configWebhook(connectionId) {
+        fetch(`/atendimento/api/connection/${connectionId}/webhook/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message || 'Webhook configurado!');
+            location.reload();
+        });
+    }
+
+    document.getElementById('newConnectionModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal('newConnectionModal');
+        }
+    });
+</script>
+{% endblock %}

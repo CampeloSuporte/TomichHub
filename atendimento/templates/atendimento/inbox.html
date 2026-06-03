@@ -1,0 +1,142 @@
+{% extends base_tpl %}
+
+{% block conv_panel %}
+<div class="conv-panel-header">
+    <div class="conv-panel-top">
+        <h3>Conversas</h3>
+        <div class="conv-panel-icons">
+            <i class="fas fa-filter" title="Filtrar"></i>
+            <i class="fas fa-sync-alt" title="Atualizar" onclick="location.reload()"></i>
+            <button class="btn-new-conv" onclick="openStartConvModal()" title="Iniciar Conversa">
+                <i class="fas fa-plus"></i> Iniciar
+            </button>
+        </div>
+    </div>
+    <div class="conv-search">
+        <i class="fas fa-search"></i>
+        <input type="text" id="convSearch" placeholder="Buscar atendimento..." autocomplete="off">
+    </div>
+    <div class="conv-tabs">
+        <button class="conv-tab {% if active_tab == 'mine' %}active{% endif %}" onclick="switchInboxTab('mine', this)">
+            Assumidos
+            <span class="conv-tab-badge" id="badge-mine" {% if not mine_conversations %}style="display:none"{% endif %}>{{ mine_conversations|length }}</span>
+        </button>
+        <button class="conv-tab {% if active_tab == 'open' or not active_tab %}active{% endif %}" onclick="switchInboxTab('open', this)">
+            Abertos
+            <span class="conv-tab-badge" id="badge-open" {% if not open_conversations %}style="display:none"{% endif %}>{{ open_conversations|length }}</span>
+        </button>
+        <button class="conv-tab {% if active_tab == 'ongoing' %}active{% endif %}" onclick="switchInboxTab('ongoing', this)">
+            Em Andamento
+        </button>
+    </div>
+</div>
+<div class="conv-select-all">
+    <input type="checkbox" id="selectAll"> <label for="selectAll">Selecionar todos</label>
+</div>
+
+{% comment %}── Três listas pré-renderizadas, troca é client-side ──{% endcomment %}
+
+{% with convs=mine_conversations tab_id="tab-mine" empty_msg="Nenhuma conversa assumida" %}
+<div id="tab-mine" class="conv-list inbox-tab-list" {% if active_tab != 'mine' %}style="display:none"{% endif %}>
+    {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
+    <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
+    {% endfor %}
+</div>
+{% endwith %}
+
+{% with convs=open_conversations tab_id="tab-open" empty_msg="Nenhuma conversa em aberto" %}
+<div id="tab-open" class="conv-list inbox-tab-list" {% if active_tab == 'mine' or active_tab == 'ongoing' %}style="display:none"{% endif %}>
+    {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
+    <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
+    {% endfor %}
+</div>
+{% endwith %}
+
+{% with convs=ongoing_conversations tab_id="tab-ongoing" empty_msg="Nenhuma conversa em andamento" %}
+<div id="tab-ongoing" class="conv-list inbox-tab-list" {% if active_tab != 'ongoing' %}style="display:none"{% endif %}>
+    {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
+    <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
+    {% endfor %}
+</div>
+{% endwith %}
+
+<script>
+var _activeInboxTab = '{{ active_tab|default:"open" }}';
+
+function switchInboxTab(tab, btn) {
+    /* Esconde todas as listas */
+    document.querySelectorAll('.inbox-tab-list').forEach(function(el) { el.style.display = 'none'; });
+    /* Mostra a selecionada */
+    var list = document.getElementById('tab-' + tab);
+    if (list) list.style.display = '';
+    /* Atualiza botões */
+    document.querySelectorAll('.conv-tab').forEach(function(el) { el.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    _activeInboxTab = tab;
+    /* Atualiza URL sem recarregar */
+    history.replaceState({}, '', '?tab=' + tab);
+    /* Filtra pelo search atual */
+    var q = (document.getElementById('convSearch') || {}).value || '';
+    if (q) filterConvSearch(q);
+}
+
+function filterConvSearch(q) {
+    var lower = q.toLowerCase();
+    var list = document.getElementById('tab-' + _activeInboxTab);
+    if (!list) return;
+    list.querySelectorAll('.conv-item').forEach(function(el) {
+        var txt = (el.dataset.convName || '') + (el.dataset.convClient || '');
+        el.style.display = txt.includes(lower) ? '' : 'none';
+    });
+}
+
+document.getElementById('convSearch').addEventListener('input', function() {
+    filterConvSearch(this.value);
+});
+
+/* WebSocket — atualiza itens na lista ativa em tempo real */
+(function() {
+    var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    var ws, delay = 2000;
+
+    function connect() {
+        ws = new WebSocket(proto + '://' + location.host + '/ws/atendimento/inbox/');
+
+        ws.onmessage = function(e) {
+            try {
+                var payload = JSON.parse(e.data);
+                if (payload.type !== 'new_message' || !payload.conversation) return;
+                var conv   = payload.conversation;
+                var convId = conv.id;
+
+                /* Atualiza em TODAS as listas */
+                document.querySelectorAll('[href*="' + convId + '"]').forEach(function(el) {
+                    var preview = el.querySelector('.conv-preview');
+                    var time    = el.querySelector('.conv-time');
+                    if (preview && payload.message) preview.textContent = (payload.message.content || '').slice(0, 50);
+                    if (time)    time.textContent    = conv.last_message_at;
+                    /* Move para o topo na lista onde está */
+                    var parent = el.parentNode;
+                    if (parent) parent.insertBefore(el, parent.firstChild);
+                    el.classList.add('unread');
+                });
+            } catch(err) {}
+        };
+
+        ws.onclose = function() {
+            setTimeout(function() { delay = Math.min(delay * 1.5, 30000); connect(); }, delay);
+        };
+        ws.onerror = function() { ws.close(); };
+    }
+
+    connect();
+})();
+</script>
+{% endblock %}
+
+{% block main_content %}
+<div class="main-placeholder">
+    <i class="fas fa-headset"></i>
+    <p>Selecione um chamado</p>
+</div>
+{% endblock %}

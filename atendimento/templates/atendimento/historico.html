@@ -1,0 +1,123 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+.hist-filter { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+.hist-input { padding:7px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; }
+.hist-input:focus { outline:none; border-color:var(--active); }
+.hist-select { padding:7px 12px; background:#161d30; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; }
+.hist-table { width:100%; border-collapse:collapse; font-size:12px; }
+.hist-table th { text-align:left; padding:10px 12px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); background:rgba(255,255,255,0.02); white-space:nowrap; }
+.hist-table td { padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text); vertical-align:middle; }
+.hist-table tr:hover td { background:rgba(255,255,255,0.02); }
+.pag-bar { display:flex; align-items:center; justify-content:space-between; margin-top:16px; font-size:12px; color:var(--muted); }
+.pag-links { display:flex; gap:6px; }
+.pag-link { padding:5px 10px; border:1px solid var(--border); border-radius:4px; color:var(--muted); text-decoration:none; font-size:12px; transition:all .15s; }
+.pag-link:hover { border-color:var(--active); color:var(--active); }
+.pag-link.active { background:var(--active); border-color:var(--active); color:#fff; }
+{% endblock %}
+
+{% block main_content %}
+<div class="atendimento-header">
+    <div class="header-title">
+        <i class="fas fa-history" style="color:var(--active);font-size:24px;"></i>
+        <div>
+            <h2>Histórico de Atendimentos</h2>
+            <small>{{ total }} conversa(s) encontrada(s)</small>
+        </div>
+    </div>
+</div>
+
+<div class="atendimento-content">
+    <!-- Filtros -->
+    <form method="get" class="hist-filter">
+        <input type="text" name="search" class="hist-input" value="{{ search }}" placeholder="Buscar protocolo, grupo, cliente..." style="min-width:220px;">
+        <select name="status" class="hist-select">
+            <option value="">Todos os status</option>
+            {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <input type="date" name="date_from" class="hist-input" value="{{ date_from }}" placeholder="De">
+        <input type="date" name="date_to" class="hist-input" value="{{ date_to }}" placeholder="Até">
+        <button type="submit" class="btn-cyber" style="padding:7px 14px;"><i class="fas fa-search"></i> Buscar</button>
+        {% if search or status_filter or date_from or date_to %}
+        <a href="{% url 'atendimento:historico' %}" class="btn-cyber secondary" style="padding:7px 14px;"><i class="fas fa-times"></i> Limpar</a>
+        {% endif %}
+    </form>
+
+    <!-- Tabela -->
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        {% if conversations %}
+        <div style="overflow-x:auto;">
+            <table class="hist-table">
+                <thead>
+                    <tr>
+                        <th>Protocolo</th>
+                        <th>Grupo</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                        <th>Categoria</th>
+                        <th>Agente</th>
+                        <th>Criado em</th>
+                        <th>Última msg</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conv in conversations %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'atendimento:conversation_detail' conv.id %}" style="color:var(--active);font-weight:600;">#{{ conv.conversation_id }}</a>
+                        </td>
+                        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ conv.group.name }}">{{ conv.group.name }}</td>
+                        <td style="color:var(--muted);">{{ conv.cliente.nome_empresa|default:"—"|truncatechars:25 }}</td>
+                        <td>
+                            <span class="status-badge status-{{ conv.status }}">{{ conv.get_status_display }}</span>
+                        </td>
+                        <td>
+                            {% if conv.category %}
+                            <span style="background:rgba(124,58,237,.15);color:#a78bfa;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">{{ conv.category.name }}</span>
+                            {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+                        </td>
+                        <td style="color:var(--muted);">{{ conv.assigned_to.get_full_name|default:"—"|truncatechars:20 }}</td>
+                        <td style="color:var(--muted);white-space:nowrap;">{{ conv.created_at|date:"d/m/Y H:i" }}</td>
+                        <td style="color:var(--muted);white-space:nowrap;">{{ conv.last_message_at|date:"d/m/Y H:i"|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if conversations.has_other_pages %}
+        <div class="pag-bar" style="padding:12px 16px;">
+            <span>Página {{ conversations.number }} de {{ conversations.paginator.num_pages }}</span>
+            <div class="pag-links">
+                {% if conversations.has_previous %}
+                <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ conversations.previous_page_number }}" class="pag-link">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                {% endif %}
+                {% for num in conversations.paginator.page_range %}
+                    {% if conversations.number == num %}
+                    <span class="pag-link active">{{ num }}</span>
+                    {% elif num >= conversations.number|add:"-3" and num <= conversations.number|add:"3" %}
+                    <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ num }}" class="pag-link">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if conversations.has_next %}
+                <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}page={{ conversations.next_page_number }}" class="pag-link">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div style="padding:40px;text-align:center;color:var(--muted);">
+            <i class="fas fa-search" style="font-size:36px;opacity:.15;display:block;margin-bottom:10px;"></i>
+            <p style="font-size:13px;">Nenhuma conversa encontrada para os filtros aplicados.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
