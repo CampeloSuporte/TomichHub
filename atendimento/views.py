@@ -34,7 +34,8 @@ def admin_required(view_func):
 
 from .models import (
     WhatsAppConnection, ContactGroup, Conversation, Message,
-    ConversationActivity, AgentStatus, ChatbotConfig
+    ConversationActivity, AgentStatus, ChatbotConfig,
+    Task, TaskConversation, AttendantContact,
 )
 from .services import EvolutionAPIClient, ConversationService
 from clientes.models import Cliente
@@ -53,7 +54,7 @@ def _base_ctx(request):
 
     return {
         'base_tpl': 'atendimento/base_partial.html' if is_ajax else 'atendimento/base.html',
-        'sidebar_conversations': active.order_by('-last_message_at')[:30],
+        'sidebar_conversations': open_q.order_by('-last_message_at')[:30],
         'unattended_count': open_q.count(),
         'open_count': open_q.count(),
         'mine_count': active.filter(assigned_to=request.user).count(),
@@ -112,12 +113,14 @@ def inbox(request):
     mine_qs    = base_qs.filter(assigned_to=request.user, status__in=['new', 'open', 'pending']).order_by('-last_message_at')
     open_qs    = base_qs.filter(assigned_to__isnull=True, status__in=['new', 'open']).order_by('-last_message_at')
     ongoing_qs = base_qs.filter(status__in=['new', 'open', 'pending']).order_by('-last_message_at')
+    task_qs    = base_qs.filter(is_task_conv=True, status__in=['new', 'open', 'pending']).order_by('-last_message_at')
 
     context = {
         **_base_ctx(request),
         'mine_conversations':    mine_qs,
         'open_conversations':    open_qs,
         'ongoing_conversations': ongoing_qs,
+        'task_conversations':    task_qs,
         'active_tab': active_tab,
         'search': search,
     }
@@ -146,7 +149,7 @@ def conversation_detail(request, conversation_id):
             )
 
     # Mensagens
-    messages = conversation.messages.all().order_by('created_at')
+    messages = conversation.messages.select_related('sender').order_by('created_at')
 
     # Atualiza status de leitura
     Message.objects.filter(conversation=conversation, is_read=False).update(is_read=True)
@@ -160,7 +163,7 @@ def conversation_detail(request, conversation_id):
         sidebar_active_tab = 'ongoing'
 
     # Filtra as conversas do sidebar de acordo com a aba ativa
-    _qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').filter(
+    _qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').filter(
         status__in=['new', 'open', 'pending']
     )
     if sidebar_active_tab == 'mine':
@@ -170,6 +173,13 @@ def conversation_detail(request, conversation_id):
     else:
         _sidebar_convs = _qs
     _sidebar_convs = _sidebar_convs.order_by('-last_message_at')[:30]
+
+    # Tarefas vinculadas a esta conversa
+    from django.contrib.auth.models import User as AuthUser
+    conv_tasks = list(Task.objects.filter(
+        task_conversations__conversation=conversation
+    ).select_related('assigned_to').order_by('-created_at'))
+    agents_list = AuthUser.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username')
 
     context = {
         **_base_ctx(request),
@@ -181,6 +191,8 @@ def conversation_detail(request, conversation_id):
         'active_conversation': conversation,
         'sidebar_active_tab': sidebar_active_tab,
         'sidebar_conversations': _sidebar_convs,
+        'conv_tasks': conv_tasks,
+        'agents_list': agents_list,
     }
 
     return render(request, 'atendimento/conversation_detail.html', context)
@@ -507,6 +519,15 @@ def api_update_conversation(request, conversation_id):
                 new_value=data['status']
             )
 
+            # Envia mensagem de encerramento ao resolver/fechar
+            if data['status'] in ['resolved', 'closed']:
+                closing_msg = SystemSetting.get('msg_encerramento', '').strip()
+                if closing_msg:
+                    try:
+                        ConversationService.send_message(conversation, closing_msg, request.user)
+                    except Exception as _e:
+                        logger.warning(f"Falha ao enviar msg de encerramento: {_e}")
+
         # Atualiza atribuição
         if 'assigned_to' in data:
             from django.contrib.auth.models import User
@@ -600,10 +621,36 @@ from .models import (
 @admin_required
 def configuracoes(request):
     """Página de configurações avançadas"""
-    if request.method == 'POST':
-        pass  # handled by api_settings
-    groups = ContactGroup.objects.select_related('connection').order_by('name')
-    users = User.objects.filter(is_active=True).order_by('first_name', 'username')
+    from atendimento.models import UserGroupPermission
+    import json as _json
+
+    groups = list(ContactGroup.objects.select_related('connection').order_by('name'))
+    users  = list(User.objects.filter(is_active=True).order_by('first_name', 'username'))
+
+    # Busca todas as permissões em UMA query e monta o mapa {user_id: [group_id, ...]}
+    perm_rows = UserGroupPermission.objects.filter(
+        user__in=users
+    ).values_list('user_id', 'group_id')
+    perm_map = {}
+    for uid, gid in perm_rows:
+        perm_map.setdefault(uid, set()).add(gid)
+    # Serializa como JSON para o template (sets não são serializáveis diretamente)
+    perm_map_json = _json.dumps({str(k): list(v) for k, v in perm_map.items()})
+
+    # Coleta settings em uma única query
+    setting_keys = ['ai_api_key','ai_model','ai_system_prompt',
+                    'daily_alert_enabled','daily_alert_time','daily_alert_group',
+                    'notif_abertos_enabled','notif_abertos_group_id','msg_encerramento',
+                    'reminder_morning_time','reminder_noon_time']
+    settings_qs = {s.key: s.value for s in SystemSetting.objects.filter(key__in=setting_keys)}
+
+    connections = list(WhatsAppConnection.objects.filter(is_active=True).order_by('name'))
+    _ac_map = {ac.user_id: ac for ac in AttendantContact.objects.select_related('connection').all()}
+    # Attach contact to each user object for easy template access (no leading underscore — Django blocks those)
+    for u in users:
+        u.attendant_contact = _ac_map.get(u.id)
+    attendant_contacts = _ac_map
+
     context = {
         **_base_ctx(request),
         'tags': Tag.objects.all(),
@@ -611,14 +658,20 @@ def configuracoes(request):
         'quick_messages': QuickMessage.objects.all(),
         'groups': groups,
         'users': users,
-        'ai_key': SystemSetting.get('ai_api_key', ''),
-        'ai_model': SystemSetting.get('ai_model', 'claude-sonnet-4-6'),
-        'ai_prompt': SystemSetting.get('ai_system_prompt', ''),
-        'daily_alert_enabled': SystemSetting.get('daily_alert_enabled', 'false'),
-        'daily_alert_time': SystemSetting.get('daily_alert_time', '08:00'),
-        'daily_alert_group': SystemSetting.get('daily_alert_group', ''),
-        'notif_abertos_enabled': SystemSetting.get('notif_abertos_enabled', 'false'),
-        'notif_abertos_group_id': SystemSetting.get('notif_abertos_group_id', ''),
+        'connections': connections,
+        'attendant_contacts': attendant_contacts,
+        'perm_map_json': perm_map_json,
+        'ai_key': settings_qs.get('ai_api_key', ''),
+        'ai_model': settings_qs.get('ai_model', 'claude-sonnet-4-6'),
+        'ai_prompt': settings_qs.get('ai_system_prompt', ''),
+        'daily_alert_enabled': settings_qs.get('daily_alert_enabled', 'false'),
+        'daily_alert_time': settings_qs.get('daily_alert_time', '08:00'),
+        'daily_alert_group': settings_qs.get('daily_alert_group', ''),
+        'notif_abertos_enabled': settings_qs.get('notif_abertos_enabled', 'false'),
+        'notif_abertos_group_id': settings_qs.get('notif_abertos_group_id', ''),
+        'msg_encerramento': settings_qs.get('msg_encerramento', ''),
+        'reminder_morning_time': settings_qs.get('reminder_morning_time', '08:00'),
+        'reminder_noon_time': settings_qs.get('reminder_noon_time', '12:00'),
     }
     return render(request, 'atendimento/configuracoes.html', context)
 
@@ -1191,6 +1244,7 @@ def relatorio_pdf(request):
         closed_at__isnull=False,
     ).select_related('group', 'assigned_to', 'category').order_by('closed_at')
 
+
     if ano:
         qs = qs.filter(closed_at__year=int(ano))
     if mes:
@@ -1329,41 +1383,51 @@ def relatorio_pdf(request):
                                ps('sec', fontSize=11, fontName='Helvetica-Bold',
                                   textColor=C_DARK, spaceAfter=8)))
 
+        # Colunas: # | Grupo | Assunto | Categoria | Atendente | Abertura | Fechamento | Duração
         header_row = [
             Paragraph('#', head_s),
-            Paragraph('Grupo / Título', head_s),
+            Paragraph('Grupo', head_s),
+            Paragraph('Assunto', head_s),
+            Paragraph('Categoria', head_s),
             Paragraph('Atendente', head_s),
             Paragraph('Abertura', head_s),
             Paragraph('Fechamento', head_s),
             Paragraph('Duração', head_s),
-            Paragraph('Resolução', head_s),
         ]
+
+        C_CAT = colors.HexColor('#7c3aed')
 
         rows = [header_row]
         alt = False
         for item in conversas:
-            conv = item['conv']
-            alt  = not alt
-            titulo  = conv.title or conv.group.name or f'#{conv.conversation_id}'
+            conv    = item['conv']
+            alt     = not alt
+            grupo   = conv.group.name or f'#{conv.conversation_id}'
+            assunto = (conv.subject or conv.title or '—')[:80]
+            cat_name = conv.category.name if conv.category else '—'
+            cat_color = colors.HexColor(conv.category.color) if conv.category else C_GREY
             agente  = conv.assigned_to.get_full_name() if conv.assigned_to else '—'
             abertura = conv.created_at.strftime('%d/%m/%Y\n%H:%M') if conv.created_at else '—'
             fechado  = conv.closed_at.strftime('%d/%m/%Y\n%H:%M') if conv.closed_at else '—'
             dur      = fmt_duracao(item['duracao_seg'])
-            res      = item['resolucao'][:60]
 
             bg = C_LGREY if alt else C_WHITE
             rows.append([
                 Paragraph(f'#{conv.conversation_id}', cell_sm),
-                Paragraph(titulo[:55], cell_s),
-                Paragraph(agente[:22], cell_sm),
+                Paragraph(grupo[:35], cell_s),
+                Paragraph(assunto, ps('assunto', fontSize=7, textColor=C_DARK,
+                                      leading=10, wordWrap='LTR')),
+                Paragraph(cat_name[:22], ps('cat', fontSize=7, fontName='Helvetica-Bold',
+                                            textColor=cat_color, leading=10)),
+                Paragraph(agente[:20], cell_sm),
                 Paragraph(abertura, cell_sm),
                 Paragraph(fechado, cell_sm),
                 Paragraph(f'<b>{dur}</b>', ps('dur', fontSize=8, fontName='Helvetica-Bold',
                                               textColor=C_CYAN)),
-                Paragraph(res, cell_sm),
             ])
 
-        col_widths = [1.4*cm, 4.2*cm, 2.8*cm, 2.3*cm, 2.3*cm, 1.8*cm, 2.47*cm]
+        # A4 útil = 17.27cm (21 - 2 - 2)
+        col_widths = [1.3*cm, 3.3*cm, 4.0*cm, 2.2*cm, 2.4*cm, 1.9*cm, 1.9*cm, 1.77*cm]
         tbl = Table(rows, colWidths=col_widths, repeatRows=1)
 
         row_bgs = [('BACKGROUND', (0, i+1), (-1, i+1),
@@ -1585,12 +1649,20 @@ def api_group_set_company(request, group_id):
 def api_conversation_messages(request, conversation_id):
     """Retorna mensagens novas de uma conversa (polling fallback do WebSocket)."""
     conversation = get_object_or_404(Conversation, id=conversation_id)
-    after_id = int(request.GET.get('after', 0))
+    after_ts = request.GET.get('after_ts', '')
+    try:
+        import datetime as _dt
+        after_dt = _dt.datetime.fromisoformat(after_ts) if after_ts else None
+        if after_dt and after_dt.tzinfo is None:
+            import pytz
+            after_dt = pytz.utc.localize(after_dt)
+    except (ValueError, ImportError):
+        after_dt = None
 
-    msgs = Message.objects.filter(
-        conversation=conversation,
-        id__gt=after_id,
-    ).order_by('id').select_related('sender')[:30]
+    qs = Message.objects.filter(conversation=conversation).order_by('created_at').select_related('sender')
+    if after_dt:
+        qs = qs.filter(created_at__gt=after_dt)
+    msgs = qs[:30]
 
     data = []
     for m in msgs:
@@ -1986,3 +2058,321 @@ def api_display_name(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+def sala_virtual(request):
+    display_name = request.user.get_full_name() or request.user.username
+    return render(request, 'atendimento/sala_virtual.html', {
+        'display_name': display_name,
+    })
+
+
+# ═══════════════════════════════════════════════════════
+# TAREFAS
+# ═══════════════════════════════════════════════════════
+
+@staff_required
+def tarefas(request):
+    """Página principal de tarefas"""
+    from django.contrib.auth.models import User as AuthUser
+    agents = AuthUser.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username')
+    context = {
+        **_base_ctx(request),
+        'agents': agents,
+    }
+    return render(request, 'atendimento/tarefas.html', context)
+
+
+@staff_required
+@require_http_methods(['GET', 'POST'])
+def api_tasks_list(request):
+    if request.method == 'GET':
+        status_filter = request.GET.get('status', '')
+        assigned_filter = request.GET.get('assigned_to', '')
+        qs = Task.objects.select_related('assigned_to', 'created_by').prefetch_related('task_conversations__conversation__group')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        if assigned_filter == 'me':
+            qs = qs.filter(assigned_to=request.user)
+        elif assigned_filter:
+            qs = qs.filter(assigned_to_id=assigned_filter)
+
+        tasks = []
+        for t in qs:
+            tasks.append(_task_to_dict(t))
+        return JsonResponse({'tasks': tasks})
+
+    data = json.loads(request.body)
+    title = data.get('title', '').strip()
+    if not title:
+        return JsonResponse({'error': 'title required'}, status=400)
+
+    due_date = None
+    if data.get('due_date'):
+        from django.utils.dateparse import parse_datetime
+        due_date = parse_datetime(data['due_date'])
+
+    task = Task.objects.create(
+        title=title,
+        description=data.get('description', '').strip() or None,
+        status=data.get('status', 'pending'),
+        priority=data.get('priority', 'medium'),
+        assigned_to_id=data.get('assigned_to') or None,
+        created_by=request.user,
+        due_date=due_date,
+    )
+    return JsonResponse(_task_to_dict(task), status=201)
+
+
+@staff_required
+@require_http_methods(['GET', 'PUT', 'DELETE'])
+def api_task_detail(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+
+    if request.method == 'GET':
+        return JsonResponse(_task_to_dict(task, full=True))
+
+    if request.method == 'DELETE':
+        task.delete()
+        return JsonResponse({'success': True})
+
+    data = json.loads(request.body)
+    if 'title' in data:
+        task.title = data['title'].strip()
+    if 'description' in data:
+        task.description = data['description'].strip() or None
+    if 'status' in data:
+        task.status = data['status']
+    if 'priority' in data:
+        task.priority = data['priority']
+    if 'assigned_to' in data:
+        task.assigned_to_id = data['assigned_to'] or None
+    if 'due_date' in data:
+        from django.utils.dateparse import parse_datetime
+        task.due_date = parse_datetime(data['due_date']) if data['due_date'] else None
+    task.save()
+    return JsonResponse(_task_to_dict(task))
+
+
+@staff_required
+@require_http_methods(['POST', 'DELETE'])
+def api_task_conversation(request, task_id, conversation_id):
+    task = get_object_or_404(Task, id=task_id)
+    conv = get_object_or_404(Conversation, id=conversation_id)
+
+    if request.method == 'POST':
+        tc, created = TaskConversation.objects.get_or_create(
+            task=task, conversation=conv,
+            defaults={'added_by': request.user}
+        )
+        if created and not conv.is_task_conv:
+            conv.is_task_conv = True
+            conv.save(update_fields=['is_task_conv'])
+        return JsonResponse({'success': True, 'created': created})
+
+    # DELETE: remove vínculo e, se não há mais tarefas, desmarca
+    TaskConversation.objects.filter(task=task, conversation=conv).delete()
+    if not conv.task_conversations.exists():
+        conv.is_task_conv = False
+        conv.save(update_fields=['is_task_conv'])
+    return JsonResponse({'success': True})
+
+
+@staff_required
+@require_http_methods(['POST'])
+def api_task_add_conversation_by_conv(request, conversation_id):
+    """Adiciona a conversa a uma tarefa existente ou cria nova — chamado pelo menu de contexto."""
+    conv = get_object_or_404(Conversation, id=conversation_id)
+    data = json.loads(request.body)
+    task_id = data.get('task_id')
+    if task_id:
+        task = get_object_or_404(Task, id=task_id)
+    else:
+        title = data.get('title', '').strip() or f"Tarefa #{conv.conversation_id}"
+        due_date = None
+        if data.get('due_date'):
+            from django.utils.dateparse import parse_datetime
+            due_date = parse_datetime(data['due_date'])
+        task = Task.objects.create(
+            title=title,
+            description=data.get('description', '').strip() or None,
+            status='pending',
+            priority=data.get('priority', 'medium'),
+            assigned_to_id=data.get('assigned_to') or None,
+            created_by=request.user,
+            due_date=due_date,
+        )
+    tc, created = TaskConversation.objects.get_or_create(task=task, conversation=conv, defaults={'added_by': request.user})
+    if created and not conv.is_task_conv:
+        conv.is_task_conv = True
+        conv.save(update_fields=['is_task_conv'])
+    return JsonResponse({'success': True, 'task': _task_to_dict(task)}, status=201)
+
+
+def _task_to_dict(task, full=False):
+    convs = []
+    if full:
+        for tc in task.task_conversations.select_related('conversation__group').all():
+            c = tc.conversation
+            convs.append({
+                'id': str(c.id),
+                'conversation_id': c.conversation_id,
+                'group_name': c.group.name,
+                'status': c.status,
+                'added_at': tc.added_at.isoformat(),
+            })
+
+    d = {
+        'id': str(task.id),
+        'title': task.title,
+        'description': task.description or '',
+        'status': task.status,
+        'priority': task.priority,
+        'due_date': task.due_date.isoformat() if task.due_date else None,
+        'is_overdue': task.is_overdue,
+        'assigned_to': None,
+        'created_by': None,
+        'created_at': task.created_at.isoformat(),
+        'conv_count': task.task_conversations.count(),
+    }
+    if task.assigned_to:
+        d['assigned_to'] = {
+            'id': task.assigned_to.id,
+            'name': task.assigned_to.get_full_name() or task.assigned_to.username,
+        }
+    if task.created_by:
+        d['created_by'] = {
+            'id': task.created_by.id,
+            'name': task.created_by.get_full_name() or task.created_by.username,
+        }
+    if full:
+        d['conversations'] = convs
+    return d
+
+
+# ═══════════════════════════════════════════════════════
+# CONTATOS DE ATENDENTES
+# ═══════════════════════════════════════════════════════
+
+@staff_required
+@require_http_methods(['GET', 'POST'])
+def api_attendant_contacts(request):
+    if request.method == 'GET':
+        contacts = AttendantContact.objects.select_related('user', 'connection').all()
+        return JsonResponse({'contacts': [
+            {
+                'user_id': c.user_id,
+                'user_name': c.user.get_full_name() or c.user.username,
+                'phone': c.phone,
+                'connection_id': str(c.connection_id) if c.connection_id else None,
+                'reminders_enabled': c.reminders_enabled,
+            }
+            for c in contacts
+        ]})
+
+    data = json.loads(request.body)
+    user_id = data.get('user_id')
+    phone = data.get('phone', '').strip()
+    connection_id = data.get('connection_id') or None
+    reminders_enabled = data.get('reminders_enabled', True)
+
+    if not user_id or not phone:
+        return JsonResponse({'error': 'user_id e phone são obrigatórios'}, status=400)
+
+    contact, _ = AttendantContact.objects.update_or_create(
+        user_id=user_id,
+        defaults={
+            'phone': phone,
+            'connection_id': connection_id,
+            'reminders_enabled': reminders_enabled,
+        }
+    )
+    return JsonResponse({
+        'success': True,
+        'user_id': contact.user_id,
+        'phone': contact.phone,
+    })
+
+
+@staff_required
+@require_http_methods(['DELETE'])
+def api_attendant_contact_delete(request, user_id):
+    AttendantContact.objects.filter(user_id=user_id).delete()
+    return JsonResponse({'success': True})
+
+
+@staff_required
+@require_http_methods(['POST'])
+def api_attendant_contact_test(request, user_id):
+    """Envia mensagem de teste para o contato WhatsApp do atendente."""
+    contact = get_object_or_404(AttendantContact, user_id=user_id)
+
+    if not contact.connection:
+        return JsonResponse({'success': False, 'error': 'Nenhuma conexão WhatsApp configurada para este contato'})
+
+    from django.utils import timezone as tz
+    agora = tz.localtime(tz.now())
+    user  = contact.user
+    jid   = contact.get_jid()
+
+    # Busca tarefas e chamados ativos deste atendente
+    tarefas = Task.objects.filter(
+        assigned_to=user,
+        status__in=['pending', 'in_progress'],
+    ).order_by('due_date')[:5]
+
+    chamados = Conversation.objects.filter(
+        assigned_to=user,
+        status__in=['new', 'open', 'pending'],
+    ).select_related('group').order_by('last_message_at')[:5]
+
+    nome = user.get_full_name() or user.username
+
+    if tarefas.exists() or chamados.exists():
+        # Mensagem personalizada com as tarefas/chamados reais
+        linhas = [
+            f"🧪 *[TESTE] Lembrete pessoal — {nome}*",
+            f"📅 {agora.strftime('%d/%m/%Y %H:%M')}",
+            "",
+        ]
+        if chamados.exists():
+            linhas.append(f"📞 *Chamados em aberto* ({chamados.count()}):")
+            for c in chamados:
+                label = {'new': 'Novo', 'open': 'Aberto', 'pending': 'Aguardando'}.get(c.status, c.status)
+                linhas.append(f"  • {c.group.name} [{label}]")
+            linhas.append("")
+        if tarefas.exists():
+            linhas.append(f"✅ *Tarefas pendentes* ({tarefas.count()}):")
+            for t in tarefas:
+                venc = ""
+                if t.due_date:
+                    venc = f" — prazo: {tz.localtime(t.due_date).strftime('%d/%m %H:%M')}"
+                    if t.is_overdue:
+                        venc += " ⚠️ ATRASADA"
+                linhas.append(f"  • {t.title}{venc}")
+            linhas.append("")
+        linhas.append("_Esta é uma mensagem de teste. No alerta diário você receberá este resumo automaticamente._")
+        detail = f"{tarefas.count()} tarefa(s) e {chamados.count()} chamado(s) encontrado(s)"
+    else:
+        # Mensagem padrão — sem tarefas/chamados
+        linhas = [
+            f"🧪 *[TESTE] Lembrete pessoal — {nome}*",
+            f"📅 {agora.strftime('%d/%m/%Y %H:%M')}",
+            "",
+            "✅ Nenhuma tarefa pendente nem chamado em aberto no momento.",
+            "",
+            "_Esta é uma mensagem de teste do sistema de lembretes. Quando houver tarefas ou chamados atribuídos a você, este lembrete será enviado automaticamente no alerta diário._",
+        ]
+        detail = "sem tarefas/chamados ativos — mensagem padrão enviada"
+
+    texto = "\n".join(linhas)
+
+    try:
+        client = EvolutionAPIClient(contact.connection)
+        ok = client.send_text(jid, texto)
+        if ok:
+            return JsonResponse({'success': True, 'message': f'Mensagem de teste enviada para {contact.phone} ({detail})'})
+        return JsonResponse({'success': False, 'error': f'Falha ao enviar via Evolution API para {jid}'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

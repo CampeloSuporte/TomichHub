@@ -1,495 +1,568 @@
 {% extends base_tpl %}
 
 {% block extra_css %}
-.cfg-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:0; flex-wrap:wrap; }
-.cfg-tab { padding:10px 18px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; background:none; border-top:none; border-left:none; border-right:none; font-family:'Inter',sans-serif; }
-.cfg-tab:hover { color:var(--text); }
-.cfg-tab.active { color:var(--active); border-bottom-color:var(--active); }
-.cfg-panel { display:none; padding:24px; flex:1; overflow-y:auto; }
-.cfg-panel.active { display:block; }
-.cfg-section { margin-bottom:28px; }
-.cfg-section h3 { font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-.cfg-field { margin-bottom:14px; }
-.cfg-field label { display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
-.cfg-input { width:100%; padding:8px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; box-sizing:border-box; }
-.cfg-input:focus { outline:none; border-color:var(--active); }
-.cfg-textarea { width:100%; padding:8px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; resize:vertical; min-height:100px; box-sizing:border-box; }
-.cfg-textarea:focus { outline:none; border-color:var(--active); }
-.cfg-select { width:100%; padding:8px 12px; background:var(--dark-800); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; box-sizing:border-box; }
-.color-item { display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; }
-.color-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
-.color-item-name { flex:1; font-size:13px; color:var(--text); }
-.color-item-actions { display:flex; gap:6px; }
-.icon-btn { background:none; border:none; cursor:pointer; padding:4px 6px; border-radius:4px; font-size:12px; color:var(--muted); transition:all .15s; }
-.icon-btn:hover { color:var(--text); background:rgba(255,255,255,0.07); }
-.icon-btn.danger:hover { color:#ef4444; background:rgba(239,68,68,0.08); }
-.add-row { display:flex; gap:8px; margin-top:10px; }
-.add-row .cfg-input { flex:1; }
-.qm-item { padding:10px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; }
-.qm-title { font-size:12px; font-weight:600; color:var(--active); margin-bottom:4px; }
-.qm-body { font-size:12px; color:var(--muted); }
-.perm-user-row { padding:12px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:6px; margin-bottom:8px; }
-.perm-user-name { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; }
-.perm-groups { display:flex; flex-wrap:wrap; gap:8px; }
-.perm-group-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
-.perm-group-item input { accent-color:var(--active); }
-.toggle-switch { position:relative; display:inline-block; width:40px; height:22px; }
-.toggle-switch input { opacity:0; width:0; height:0; }
-.toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,.1); border-radius:22px; transition:.3s; }
-.toggle-slider:before { position:absolute; content:""; height:16px; width:16px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.3s; }
-input:checked + .toggle-slider { background:var(--active); }
-input:checked + .toggle-slider:before { transform:translateX(18px); }
+.cfg-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.cfg-tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Inter',sans-serif}
+.cfg-tab:hover{color:var(--text)}
+.cfg-tab.active{color:var(--active);border-bottom-color:var(--active)}
+.cfg-panel{display:none;padding:24px;overflow-y:auto;flex:1}
+.cfg-panel.active{display:block}
+.cfg-section{margin-bottom:28px}
+.cfg-section h3{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.cfg-field{margin-bottom:14px}
+.cfg-field label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.cfg-input{width:100%;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;box-sizing:border-box}
+.cfg-input:focus{outline:none;border-color:var(--active)}
+.cfg-textarea{width:100%;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;resize:vertical;min-height:100px;box-sizing:border-box}
+.cfg-textarea:focus{outline:none;border-color:var(--active)}
+.cfg-select{width:100%;padding:8px 12px;background:var(--dark-800);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;box-sizing:border-box}
+.color-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;margin-bottom:6px}
+.color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.color-item-name{flex:1;font-size:13px;color:var(--text)}
+.icon-btn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:4px;font-size:12px;color:var(--muted);transition:all .15s}
+.icon-btn:hover{color:var(--text);background:rgba(255,255,255,0.07)}
+.icon-btn.danger:hover{color:#ef4444;background:rgba(239,68,68,0.08)}
+.add-row{display:flex;gap:8px;margin-top:10px}
+.add-row .cfg-input{flex:1}
+.qm-item{padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;margin-bottom:6px}
+.qm-title{font-size:12px;font-weight:600;color:var(--active);margin-bottom:4px}
+.qm-body{font-size:12px;color:var(--muted)}
+.perm-user-row{padding:12px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;margin-bottom:8px}
+.perm-user-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
+.perm-groups{display:flex;flex-wrap:wrap;gap:8px}
+.perm-group-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.perm-group-item input{accent-color:var(--active)}
+.toggle-switch{position:relative;display:inline-block;width:40px;height:22px}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.1);border-radius:22px;transition:.3s}
+.toggle-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+input:checked + .toggle-slider{background:var(--active)}
+input:checked + .toggle-slider:before{transform:translateX(18px)}
+.cfg-fb{margin-top:8px;font-size:12px;display:none;padding:6px 10px;border-radius:6px}
+.cfg-fb.ok{background:rgba(34,197,94,.1);color:#22c55e;display:block}
+.cfg-fb.err{background:rgba(239,68,68,.1);color:#ef4444;display:block}
 {% endblock %}
 
 {% block main_content %}
 <div class="atendimento-header">
-    <div class="header-title">
-        <i class="fas fa-cog" style="color:var(--active);font-size:24px;"></i>
-        <div>
-            <h2>Configurações Avançadas</h2>
-            <small>Gerencie IA, tags, categorias e permissões</small>
-        </div>
-    </div>
+  <div class="header-title">
+    <i class="fas fa-cog" style="color:var(--active);font-size:24px;"></i>
+    <div><h2>Configurações Avançadas</h2><small>Gerencie IA, tags, categorias e permissões</small></div>
+  </div>
 </div>
 
-<div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
-    <div class="cfg-tabs" id="cfgTabs">
-        <button class="cfg-tab active" data-panel="panel-0" onclick="switchTab(this)"><i class="fas fa-robot"></i> Integração IA</button>
-        <button class="cfg-tab" data-panel="panel-1" onclick="switchTab(this)"><i class="fas fa-tags"></i> Tags</button>
-        <button class="cfg-tab" data-panel="panel-2" onclick="switchTab(this)"><i class="fas fa-folder"></i> Categorias</button>
-        <button class="cfg-tab" data-panel="panel-3" onclick="switchTab(this)"><i class="fas fa-bolt"></i> Mensagens Rápidas</button>
-        <button class="cfg-tab" data-panel="panel-4" onclick="switchTab(this)"><i class="fas fa-user-shield"></i> Permissões</button>
-        <button class="cfg-tab" data-panel="panel-5" onclick="switchTab(this)"><i class="fas fa-bell"></i> Alerta Diário</button>
-        <button class="cfg-tab" data-panel="panel-6" onclick="switchTab(this)"><i class="fas fa-bullhorn"></i> Notif. Chamados</button>
-    </div>
+<div style="display:flex;flex-direction:column;height:calc(100% - 72px);overflow:hidden">
+  <div class="cfg-tabs" id="cfgTabs">
+    <button class="cfg-tab active" data-panel="panel-0"><i class="fas fa-robot"></i> Integração IA</button>
+    <button class="cfg-tab" data-panel="panel-1"><i class="fas fa-tags"></i> Tags</button>
+    <button class="cfg-tab" data-panel="panel-2"><i class="fas fa-folder"></i> Categorias</button>
+    <button class="cfg-tab" data-panel="panel-3"><i class="fas fa-bolt"></i> Mensagens Rápidas</button>
+    <button class="cfg-tab" data-panel="panel-4"><i class="fas fa-user-shield"></i> Permissões</button>
+    <button class="cfg-tab" data-panel="panel-5"><i class="fas fa-bell"></i> Alerta Diário</button>
+    <button class="cfg-tab" data-panel="panel-6"><i class="fas fa-bullhorn"></i> Notif. Chamados</button>
+    <button class="cfg-tab" data-panel="panel-7"><i class="fas fa-sign-out-alt"></i> Msg. Encerramento</button>
+    <button class="cfg-tab" data-panel="panel-8"><i class="fas fa-address-book"></i> Contatos Atendentes</button>
+  </div>
 
-    <!-- Tab 0: Integração IA -->
-    <div class="cfg-panel active" id="panel-0">
-        <div class="cfg-section">
-            <h3><i class="fas fa-robot" style="color:var(--active);"></i> Configuração da IA (Claude)</h3>
-            <div class="cfg-field">
-                <label>API Key (Claude / Anthropic)</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="password" class="cfg-input" id="aiApiKey" placeholder="sk-ant-..." value="{{ ai_key }}">
-                    <button class="btn-cyber" onclick="toggleKeyVisibility()" title="Mostrar/Ocultar"><i class="fas fa-eye" id="eyeIcon"></i></button>
-                </div>
-            </div>
-            <div class="cfg-field">
-                <label>Modelo</label>
-                <select class="cfg-select" id="aiModel">
-                    <option value="claude-sonnet-4-6" {% if ai_model == 'claude-sonnet-4-6' %}selected{% endif %}>Claude Sonnet 4.6</option>
-                    <option value="claude-opus-4-5" {% if ai_model == 'claude-opus-4-5' %}selected{% endif %}>Claude Opus 4.5</option>
-                    <option value="claude-haiku-3-5" {% if ai_model == 'claude-haiku-3-5' %}selected{% endif %}>Claude Haiku 3.5</option>
-                </select>
-            </div>
-            <div class="cfg-field">
-                <label>System Prompt</label>
-                <textarea class="cfg-textarea" id="aiPrompt" rows="6" placeholder="Você é um assistente de atendimento...">{{ ai_prompt }}</textarea>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:16px;">
-                <button class="btn-cyber" onclick="saveAiSettings()"><i class="fas fa-save"></i> Salvar</button>
-                <button class="btn-cyber secondary" onclick="testAiSettings()"><i class="fas fa-flask"></i> Testar Conexão</button>
-            </div>
-            <div id="aiResult" style="margin-top:10px;font-size:12px;display:none;"></div>
+  <!-- Tab 0: IA -->
+  <div class="cfg-panel active" id="panel-0">
+    <div class="cfg-section">
+      <h3><i class="fas fa-robot" style="color:var(--active)"></i> Configuração da IA (Claude)</h3>
+      <div class="cfg-field">
+        <label>API Key</label>
+        <div style="display:flex;gap:8px">
+          <input type="password" class="cfg-input" id="aiApiKey" value="{{ ai_key }}">
+          <button class="btn-cyber" id="eyeBtn" type="button"><i class="fas fa-eye" id="eyeIcon"></i></button>
         </div>
+      </div>
+      <div class="cfg-field">
+        <label>Modelo</label>
+        <select class="cfg-select" id="aiModel">
+          <option value="claude-sonnet-4-6"{% if ai_model == 'claude-sonnet-4-6' %} selected{% endif %}>Claude Sonnet 4.6</option>
+          <option value="claude-opus-4-5"{% if ai_model == 'claude-opus-4-5' %} selected{% endif %}>Claude Opus 4.5</option>
+          <option value="claude-haiku-3-5"{% if ai_model == 'claude-haiku-3-5' %} selected{% endif %}>Claude Haiku 3.5</option>
+        </select>
+      </div>
+      <div class="cfg-field">
+        <label>System Prompt</label>
+        <textarea class="cfg-textarea" id="aiPrompt" rows="6">{{ ai_prompt }}</textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn-cyber" id="btnSaveAi" type="button"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+      <div class="cfg-fb" id="aiResult"></div>
     </div>
+  </div>
 
-    <!-- Tab 1: Tags -->
-    <div class="cfg-panel" id="panel-1">
-        <div class="cfg-section">
-            <h3><i class="fas fa-tags" style="color:var(--active);"></i> Tags</h3>
-            <div id="tagsList">
-                {% for tag in tags %}
-                <div class="color-item" id="tag-{{ tag.id }}">
-                    <span class="color-dot" style="background:{{ tag.color }};"></span>
-                    <span class="color-item-name">{{ tag.name }}</span>
-                    <input type="color" value="{{ tag.color }}" onchange="updateTag('{{ tag.id }}', null, this.value)" style="width:28px;height:28px;padding:1px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
-                    <div class="color-item-actions">
-                        <button class="icon-btn danger" onclick="deleteTag('{{ tag.id }}')"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-                {% empty %}
-                <p style="color:var(--muted);font-size:13px;">Nenhuma tag cadastrada.</p>
+  <!-- Tab 1: Tags -->
+  <div class="cfg-panel" id="panel-1">
+    <div class="cfg-section">
+      <h3><i class="fas fa-tags" style="color:var(--active)"></i> Tags</h3>
+      <div id="tagsList">
+        {% for tag in tags %}
+        <div class="color-item" id="tag-row-{{ tag.id }}">
+          <span class="color-dot" style="background:{{ tag.color }}"></span>
+          <span class="color-item-name">{{ tag.name }}</span>
+          <input type="color" value="{{ tag.color }}" data-id="{{ tag.id }}" data-kind="tag" class="color-picker" style="width:28px;height:28px;padding:1px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer">
+          <button class="icon-btn danger" data-id="{{ tag.id }}" data-kind="tag" data-row="tag-row-{{ tag.id }}" type="button"><i class="fas fa-trash"></i></button>
+        </div>
+        {% empty %}<p style="color:var(--muted);font-size:13px">Nenhuma tag.</p>{% endfor %}
+      </div>
+      <div class="add-row">
+        <input type="text" class="cfg-input" id="newTagName" placeholder="Nome da tag">
+        <input type="color" id="newTagColor" value="#3B82F6" style="width:44px;height:36px;padding:2px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+        <button class="btn-cyber" id="btnAddTag" type="button"><i class="fas fa-plus"></i> Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Categorias -->
+  <div class="cfg-panel" id="panel-2">
+    <div class="cfg-section">
+      <h3><i class="fas fa-folder" style="color:var(--active)"></i> Categorias</h3>
+      <div id="catsList">
+        {% for cat in categories %}
+        <div class="color-item" id="cat-row-{{ cat.id }}">
+          <span class="color-dot" style="background:{{ cat.color }}"></span>
+          <span class="color-item-name">{{ cat.name }}</span>
+          <input type="color" value="{{ cat.color }}" data-id="{{ cat.id }}" data-kind="cat" class="color-picker" style="width:28px;height:28px;padding:1px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer">
+          <button class="icon-btn danger" data-id="{{ cat.id }}" data-kind="cat" data-row="cat-row-{{ cat.id }}" type="button"><i class="fas fa-trash"></i></button>
+        </div>
+        {% empty %}<p style="color:var(--muted);font-size:13px">Nenhuma categoria.</p>{% endfor %}
+      </div>
+      <div class="add-row">
+        <input type="text" class="cfg-input" id="newCatName" placeholder="Nome da categoria">
+        <input type="color" id="newCatColor" value="#7c3aed" style="width:44px;height:36px;padding:2px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+        <button class="btn-cyber" id="btnAddCat" type="button"><i class="fas fa-plus"></i> Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Mensagens Rápidas -->
+  <div class="cfg-panel" id="panel-3">
+    <div class="cfg-section">
+      <h3><i class="fas fa-bolt" style="color:var(--active)"></i> Mensagens Rápidas</h3>
+      <div id="qmList">
+        {% for qm in quick_messages %}
+        <div class="qm-item" id="qm-row-{{ qm.id }}">
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <div><div class="qm-title">{{ qm.title }}</div><div class="qm-body">{{ qm.body|truncatechars:120 }}</div></div>
+            <button class="icon-btn danger" data-id="{{ qm.id }}" data-kind="qm" data-row="qm-row-{{ qm.id }}" type="button"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {% empty %}<p style="color:var(--muted);font-size:13px">Nenhuma mensagem rápida.</p>{% endfor %}
+      </div>
+      <div style="margin-top:14px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:14px">
+        <div class="cfg-field"><label>Título</label><input type="text" class="cfg-input" id="newQMTitle" placeholder="Ex: Saudação"></div>
+        <div class="cfg-field"><label>Mensagem</label><textarea class="cfg-textarea" id="newQMBody" rows="3" placeholder="Olá! Como posso ajudar?"></textarea></div>
+        <button class="btn-cyber" id="btnAddQM" type="button"><i class="fas fa-plus"></i> Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Permissões -->
+  <div class="cfg-panel" id="panel-4">
+    <div class="cfg-section">
+      <h3><i class="fas fa-user-shield" style="color:var(--active)"></i> Permissões por Usuário</h3>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Marque os grupos que cada atendente pode visualizar.</p>
+      {% for user in users %}
+      <div class="perm-user-row">
+        <div class="perm-user-name">
+          {{ user.get_full_name|default:user.username }}
+          {% if user.is_staff %}<span style="font-size:10px;color:var(--active);margin-left:6px">ADMIN</span>{% endif %}
+        </div>
+        {% if not user.is_staff %}
+        <div class="perm-groups">
+          {% for group in groups %}
+          <label class="perm-group-item">
+            <input type="checkbox" class="perm-cb" data-user="{{ user.id }}" data-group="{{ group.id }}">
+            {{ group.name }}
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <span style="color:var(--muted);font-size:12px"><i class="fas fa-infinity"></i> Acesso total</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Tab 5: Alerta Diário -->
+  <div class="cfg-panel" id="panel-5">
+    <div class="cfg-section">
+      <h3><i class="fas fa-bell" style="color:var(--active)"></i> Alerta Diário — Resumo no Grupo</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envia um resumo geral de todos os chamados abertos e assumidos para o grupo selecionado. Disparado uma vez por dia no horário configurado.</p>
+      <div class="cfg-field" style="display:flex;align-items:center;gap:12px">
+        <label style="margin:0">Ativo</label>
+        <label class="toggle-switch"><input type="checkbox" id="alertEnabled"{% if daily_alert_enabled == 'true' %} checked{% endif %}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cfg-field">
+        <label>Horário do alerta</label>
+        <input type="time" class="cfg-input" id="alertTime" value="{{ daily_alert_time }}" style="max-width:160px">
+      </div>
+      <div class="cfg-field">
+        <label>Grupo destinatário</label>
+        <select class="cfg-select" id="alertGroup">
+          <option value="">-- Selecione --</option>
+          {% for group in groups %}<option value="{{ group.id }}"{% if daily_alert_group == group.id|stringformat:"s" %} selected{% endif %}>{{ group.name }} ({{ group.connection.name }})</option>{% endfor %}
+        </select>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+
+      <h3 style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px"><i class="fas fa-user-clock" style="color:#a78bfa"></i> Lembretes Pessoais dos Atendentes</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envia um WhatsApp individual para cada atendente cadastrado com seus chamados e tarefas. Disparado <strong style="color:var(--text)">duas vezes por dia</strong>: manhã e meio-dia.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="cfg-field">
+          <label>Horário da manhã</label>
+          <input type="time" class="cfg-input" id="reminderMorning" value="{{ reminder_morning_time }}" style="max-width:160px">
+        </div>
+        <div class="cfg-field">
+          <label>Horário do meio-dia</label>
+          <input type="time" class="cfg-input" id="reminderNoon" value="{{ reminder_noon_time }}" style="max-width:160px">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-cyber" id="btnSaveAlert" type="button"><i class="fas fa-save"></i> Salvar tudo</button>
+        <button class="btn-cyber secondary" id="btnTestAlert" type="button"><i class="fas fa-paper-plane"></i> Testar alerta agora</button>
+      </div>
+      <div class="cfg-fb" id="alertResult"></div>
+    </div>
+  </div>
+
+  <!-- Tab 6: Notif. Chamados -->
+  <div class="cfg-panel" id="panel-6">
+    <div class="cfg-section">
+      <h3><i class="fas fa-bullhorn" style="color:#e91e8c"></i> Notificação de Chamados Abertos</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">A cada <strong style="color:var(--text)">10 minutos</strong> sem interação, a notificação é repetida.</p>
+      <div class="cfg-field" style="display:flex;align-items:center;gap:12px">
+        <label style="margin:0">Ativo</label>
+        <label class="toggle-switch"><input type="checkbox" id="notifAbertoEnabled"{% if notif_abertos_enabled == 'true' %} checked{% endif %}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cfg-field">
+        <label>Grupo</label>
+        <select class="cfg-select" id="notifAbertoGroup">
+          <option value="">-- Selecione --</option>
+          {% for group in groups %}{% if group.connection %}<option value="{{ group.id }}"{% if notif_abertos_group_id == group.id|stringformat:"s" %} selected{% endif %}>{{ group.name }} ({{ group.connection.name }})</option>{% endif %}{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-cyber" id="btnSaveNotif" type="button"><i class="fas fa-save"></i> Salvar</button>
+        <button class="btn-cyber secondary" id="btnTestNotif" type="button"><i class="fas fa-paper-plane"></i> Testar agora</button>
+      </div>
+      <div class="cfg-fb" id="notifAbertoResult"></div>
+    </div>
+  </div>
+
+  <!-- Tab 7: Mensagem de Encerramento -->
+  <div class="cfg-panel" id="panel-7">
+    <div class="cfg-section">
+      <h3><i class="fas fa-sign-out-alt" style="color:#22c55e"></i> Mensagem de Encerramento</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+        Esta mensagem será enviada automaticamente via WhatsApp quando um atendimento for marcado como <strong style="color:#22c55e">Resolvido</strong> ou <strong style="color:#64748b">Encerrado</strong>.<br>
+        Deixe em branco para não enviar nenhuma mensagem.
+      </p>
+      <div class="cfg-field">
+        <label>Mensagem</label>
+        <textarea class="cfg-input" id="msgEncerramento" rows="5" style="resize:vertical;font-size:13px">{{ msg_encerramento }}</textarea>
+      </div>
+      <button class="btn-cyber" id="btnSaveMsgEncerramento" type="button"><i class="fas fa-save"></i> Salvar</button>
+      <div class="cfg-fb" id="msgEncerramentoResult"></div>
+    </div>
+  </div>
+
+  <!-- Tab 8: Contatos Atendentes -->
+  <div class="cfg-panel" id="panel-8">
+    <div class="cfg-section">
+      <h3><i class="fas fa-address-book" style="color:var(--active)"></i> Contatos dos Atendentes (WhatsApp)</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+        Cadastre o número de WhatsApp de cada atendente para que ele receba lembretes pessoais no alerta diário:<br>
+        tarefas em aberto que lhe foram atribuídas e chamados que assumiu.
+      </p>
+      <div id="acList">
+        {% for user in users %}{% if user.is_staff %}
+        <div class="perm-user-row" id="ac-row-{{ user.id }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="perm-user-name" style="margin:0">
+              {{ user.get_full_name|default:user.username }}
+              {% if user.is_staff %}<span style="font-size:10px;color:var(--active);margin-left:6px">ADMIN</span>{% endif %}
+            </span>
+            {% if user.attendant_contact %}
+            <span style="font-size:11px;color:var(--accent-400)"><i class="fas fa-check-circle"></i> Cadastrado</span>
+            {% endif %}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:160px">
+              <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Número (com DDI)</label>
+              <input type="text" class="cfg-input ac-phone" data-uid="{{ user.id }}"
+                value="{{ user.attendant_contact.phone|default:'' }}" placeholder="5511999999999">
+            </div>
+            <div style="flex:1;min-width:160px">
+              <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Conexão WhatsApp</label>
+              <select class="cfg-select ac-conn" data-uid="{{ user.id }}">
+                <option value="">— Selecione —</option>
+                {% for conn in connections %}
+                <option value="{{ conn.id }}"{% if user.attendant_contact and user.attendant_contact.connection_id == conn.id %} selected{% endif %}>{{ conn.name }}</option>
                 {% endfor %}
+              </select>
             </div>
-            <div class="add-row">
-                <input type="text" class="cfg-input" id="newTagName" placeholder="Nome da tag">
-                <input type="color" id="newTagColor" value="#3B82F6" style="width:44px;height:36px;padding:2px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
-                <button class="btn-cyber" onclick="addTag()"><i class="fas fa-plus"></i> Adicionar</button>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <label style="font-size:11px;color:var(--muted)">Lembretes</label>
+              <label class="toggle-switch">
+                <input type="checkbox" class="ac-enabled" data-uid="{{ user.id }}"{% if not user.attendant_contact or user.attendant_contact.reminders_enabled %} checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
             </div>
+            <button class="btn-cyber" type="button" onclick="acSave({{ user.id }})" style="flex-shrink:0"><i class="fas fa-save"></i></button>
+            {% if user.attendant_contact %}
+            <button class="btn-cyber secondary" type="button" onclick="acTest({{ user.id }})" style="flex-shrink:0" title="Enviar mensagem de teste para este atendente"><i class="fas fa-paper-plane"></i></button>
+            <button class="icon-btn danger" type="button" onclick="acDelete({{ user.id }})"><i class="fas fa-trash"></i></button>
+            {% endif %}
+          </div>
         </div>
+        {% endif %}{% endfor %}
+      </div>
+      <div class="cfg-fb" id="acResult"></div>
     </div>
-
-    <!-- Tab 2: Categorias -->
-    <div class="cfg-panel" id="panel-2">
-        <div class="cfg-section">
-            <h3><i class="fas fa-folder" style="color:var(--active);"></i> Categorias</h3>
-            <div id="catsList">
-                {% for cat in categories %}
-                <div class="color-item" id="cat-{{ cat.id }}">
-                    <span class="color-dot" style="background:{{ cat.color }};"></span>
-                    <span class="color-item-name">{{ cat.name }}</span>
-                    <input type="color" value="{{ cat.color }}" onchange="updateCat('{{ cat.id }}', null, this.value)" style="width:28px;height:28px;padding:1px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
-                    <div class="color-item-actions">
-                        <button class="icon-btn danger" onclick="deleteCat('{{ cat.id }}')"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-                {% empty %}
-                <p style="color:var(--muted);font-size:13px;">Nenhuma categoria cadastrada.</p>
-                {% endfor %}
-            </div>
-            <div class="add-row">
-                <input type="text" class="cfg-input" id="newCatName" placeholder="Nome da categoria">
-                <input type="color" id="newCatColor" value="#7c3aed" style="width:44px;height:36px;padding:2px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
-                <button class="btn-cyber" onclick="addCat()"><i class="fas fa-plus"></i> Adicionar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tab 3: Mensagens Rápidas -->
-    <div class="cfg-panel" id="panel-3">
-        <div class="cfg-section">
-            <h3><i class="fas fa-bolt" style="color:var(--active);"></i> Mensagens Rápidas</h3>
-            <div id="qmList">
-                {% for qm in quick_messages %}
-                <div class="qm-item" id="qm-{{ qm.id }}">
-                    <div style="display:flex;justify-content:space-between;align-items:start;">
-                        <div>
-                            <div class="qm-title">{{ qm.title }}</div>
-                            <div class="qm-body">{{ qm.body|truncatechars:120 }}</div>
-                        </div>
-                        <button class="icon-btn danger" onclick="deleteQM('{{ qm.id }}')"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-                {% empty %}
-                <p style="color:var(--muted);font-size:13px;">Nenhuma mensagem rápida cadastrada.</p>
-                {% endfor %}
-            </div>
-            <div style="margin-top:14px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:14px;">
-                <div class="cfg-field">
-                    <label>Título</label>
-                    <input type="text" class="cfg-input" id="newQMTitle" placeholder="Ex: Saudação">
-                </div>
-                <div class="cfg-field">
-                    <label>Mensagem</label>
-                    <textarea class="cfg-textarea" id="newQMBody" placeholder="Olá! Como posso ajudar?" rows="3"></textarea>
-                </div>
-                <button class="btn-cyber" onclick="addQM()"><i class="fas fa-plus"></i> Adicionar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tab 4: Permissões -->
-    <div class="cfg-panel" id="panel-4">
-        <div class="cfg-section">
-            <h3><i class="fas fa-user-shield" style="color:var(--active);"></i> Permissões por Usuário</h3>
-            <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">Marque os grupos que cada atendente pode visualizar. Administradores têm acesso total.</p>
-            {% for user in users %}
-            <div class="perm-user-row">
-                <div class="perm-user-name">
-                    {{ user.get_full_name|default:user.username }}
-                    {% if user.is_staff %}<span style="font-size:10px;color:var(--active);margin-left:6px;">ADMIN</span>{% endif %}
-                </div>
-                {% if not user.is_staff %}
-                <div class="perm-groups" id="perms-{{ user.id }}">
-                    {% for group in groups %}
-                    <label class="perm-group-item">
-                        <input type="checkbox"
-                               data-user="{{ user.id }}" data-group="{{ group.id }}"
-                               onchange="togglePerm(this)"
-                               {% with user_perms=user.group_permissions.all %}
-                               {% for p in user_perms %}{% if p.group_id == group.id %}checked{% endif %}{% endfor %}
-                               {% endwith %}>
-                        {{ group.name }}
-                    </label>
-                    {% empty %}
-                    <span style="color:var(--muted);font-size:12px;">Nenhum grupo disponível</span>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <span style="color:var(--muted);font-size:12px;"><i class="fas fa-infinity"></i> Acesso total</span>
-                {% endif %}
-            </div>
-            {% empty %}
-            <p style="color:var(--muted);font-size:13px;">Nenhum usuário ativo.</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Tab 5: Alerta Diário -->
-    <div class="cfg-panel" id="panel-5">
-        <div class="cfg-section">
-            <h3><i class="fas fa-bell" style="color:var(--active);"></i> Alerta Diário</h3>
-            <div class="cfg-field" style="display:flex;align-items:center;gap:12px;">
-                <label style="margin:0;">Ativo</label>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="alertEnabled" {% if daily_alert_enabled == 'true' %}checked{% endif %}>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="cfg-field">
-                <label>Horário do Alerta</label>
-                <input type="time" class="cfg-input" id="alertTime" value="{{ daily_alert_time }}" style="max-width:160px;">
-            </div>
-            <div class="cfg-field">
-                <label>Enviar para o Grupo</label>
-                <select class="cfg-select" id="alertGroup">
-                    <option value="">-- Selecione um grupo --</option>
-                    {% for group in groups %}
-                    <option value="{{ group.id }}" {% if daily_alert_group == group.id|stringformat:"s" %}selected{% endif %}>
-                        {{ group.name }} ({{ group.connection.name }})
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-                <button class="btn-cyber" onclick="saveAlertSettings()"><i class="fas fa-save"></i> Salvar</button>
-                <button class="btn-cyber secondary" onclick="testAlertaDiario(this)"><i class="fas fa-paper-plane"></i> Testar agora</button>
-            </div>
-            <div id="alertResult" style="margin-top:8px;font-size:12px;display:none;"></div>
-        </div>
-    </div>
-
-    <!-- Tab 6: Notificação de Chamados Abertos -->
-    <div class="cfg-panel" id="panel-6">
-        <div class="cfg-section">
-            <h3><i class="fas fa-bullhorn" style="color:#e91e8c;"></i> Notificação de Chamados Abertos</h3>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
-                Quando chegar um novo chamado sem atendente, o sistema envia uma mensagem no grupo configurado.
-                A cada <strong style="color:var(--text);">10 minutos</strong> sem interação, a notificação é repetida.
-            </p>
-
-            <div class="cfg-field" style="display:flex;align-items:center;gap:12px;">
-                <label style="margin:0;">Ativo</label>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="notifAbertoEnabled" {% if notif_abertos_enabled == 'true' %}checked{% endif %}>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-
-            <div class="cfg-field">
-                <label>Grupo que receberá as notificações</label>
-                <select class="cfg-select" id="notifAbertoGroup">
-                    <option value="">-- Selecione um grupo --</option>
-                    {% for group in groups %}{% if group.connection %}
-                    <option value="{{ group.id }}"
-                        {% if notif_abertos_group_id == group.id|stringformat:"s" %}selected{% endif %}>
-                        {{ group.name }} ({{ group.connection.name }})
-                    </option>
-                    {% endif %}{% endfor %}
-                </select>
-                <p style="font-size:11px;color:var(--muted);margin-top:4px;">
-                    O bot precisa estar presente neste grupo para enviar mensagens.
-                </p>
-            </div>
-
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-                <button class="btn-cyber" onclick="saveNotifAbertos()"><i class="fas fa-save"></i> Salvar</button>
-                <button class="btn-cyber secondary" onclick="testNotifAbertos(this)"><i class="fas fa-paper-plane"></i> Testar agora</button>
-            </div>
-            <div id="notifAbertoResult" style="margin-top:8px;font-size:12px;display:none;"></div>
-        </div>
-    </div>
+  </div>
 </div>
-
 <script>
-var CSRF = '{{ csrf_token }}';
+(function(){
+  var CSRF = '{{ csrf_token }}';
+  var PERM_MAP = {{ perm_map_json|safe }};
+  var URL_SETTINGS   = '{% url "atendimento:api_settings" %}';
+  var URL_TAGS       = '{% url "atendimento:api_tags_list" %}';
+  var URL_CATS       = '{% url "atendimento:api_categories_list" %}';
+  var URL_QM         = '{% url "atendimento:api_quick_messages_list" %}';
+  var URL_PERMS      = '{% url "atendimento:api_permissions" %}';
+  var URL_TEST_ALERT = '{% url "atendimento:api_test_alerta_diario" %}';
+  var URL_TEST_NOTIF = '{% url "atendimento:api_test_notif_abertos" %}';
 
-function switchTab(btn) {
-    var panelId = btn.dataset.panel;
-    /* Abas */
-    document.querySelectorAll('#cfgTabs .cfg-tab').forEach(function(t) {
-        t.classList.toggle('active', t === btn);
-    });
-    /* Painéis — ativa pelo ID, esconde todos os demais */
-    document.querySelectorAll('.cfg-panel').forEach(function(p) {
-        p.classList.toggle('active', p.id === panelId);
-    });
-}
+  function post(url, body){
+    return fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:JSON.stringify(body)}).then(function(r){return r.json();});
+  }
+  function del(url){
+    return fetch(url, {method:'DELETE', headers:{'X-CSRFToken':CSRF}});
+  }
+  function put(url, body){
+    return fetch(url, {method:'PUT', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:JSON.stringify(body)});
+  }
+  function fb(elId, ok, msg){ var el=document.getElementById(elId); if(!el) return; el.className='cfg-fb '+(ok?'ok':'err'); el.textContent=msg; }
+  function setLoading(btn, loading, orig){
+    btn.disabled=loading;
+    if(loading) btn.dataset.orig=btn.innerHTML, btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
+    else btn.innerHTML=btn.dataset.orig||orig||btn.innerHTML;
+  }
 
-// ─── IA ───
-function toggleKeyVisibility() {
-    const inp = document.getElementById('aiApiKey');
-    const ico = document.getElementById('eyeIcon');
-    if(inp.type==='password'){ inp.type='text'; ico.className='fas fa-eye-slash'; }
-    else { inp.type='password'; ico.className='fas fa-eye'; }
-}
-async function saveAiSettings() {
-    const r = await fetch('{% url "atendimento:api_settings" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({
-            ai_api_key: document.getElementById('aiApiKey').value,
-            ai_model: document.getElementById('aiModel').value,
-            ai_system_prompt: document.getElementById('aiPrompt').value,
-        })
-    });
-    const data = await r.json();
-    const el = document.getElementById('aiResult');
-    el.style.display='block';
-    if(data.success){ el.style.color='#22c55e'; el.textContent='Configurações salvas com sucesso.'; }
-    else { el.style.color='#ef4444'; el.textContent='Erro: '+(data.error||'desconhecido'); }
-}
-async function testAiSettings() {
-    const el = document.getElementById('aiResult');
-    el.style.display='block'; el.style.color='var(--muted)'; el.textContent='Testando...';
-    try {
-        await saveAiSettings();
-        el.style.color='#22c55e'; el.textContent='API Key salva. Teste manual recomendado para validar a chave.';
-    } catch(e) { el.style.color='#ef4444'; el.textContent='Erro: '+e.message; }
-}
+  // ── Tabs ──
+  document.getElementById('cfgTabs').addEventListener('click', function(e){
+    var btn=e.target.closest('.cfg-tab'); if(!btn) return;
+    var pid=btn.dataset.panel;
+    document.querySelectorAll('#cfgTabs .cfg-tab').forEach(function(t){t.classList.toggle('active',t===btn);});
+    document.querySelectorAll('.cfg-panel').forEach(function(p){p.classList.toggle('active',p.id===pid);});
+  });
 
-// ─── Tags ───
-async function addTag() {
-    const name = document.getElementById('newTagName').value.trim();
-    const color = document.getElementById('newTagColor').value;
+  // ── Permissões: checkboxes via JS (sem N+1) ──
+  document.querySelectorAll('.perm-cb').forEach(function(cb){
+    var uid=cb.dataset.user, gid=parseInt(cb.dataset.group);
+    cb.checked=!!(PERM_MAP[uid]&&PERM_MAP[uid].indexOf(gid)!==-1);
+    cb.addEventListener('change',function(){
+      post(URL_PERMS,{user_id:parseInt(uid),group_id:gid}).then(function(d){
+        if(!d||d.error){cb.checked=!cb.checked;alert('Erro ao alterar permissão');}
+      });
+    });
+  });
+
+  // ── IA ──
+  document.getElementById('eyeBtn').addEventListener('click',function(){
+    var i=document.getElementById('aiApiKey'),ic=document.getElementById('eyeIcon');
+    if(i.type==='password'){i.type='text';ic.className='fas fa-eye-slash';}
+    else{i.type='password';ic.className='fas fa-eye';}
+  });
+  document.getElementById('btnSaveAi').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    post(URL_SETTINGS,{ai_api_key:document.getElementById('aiApiKey').value,ai_model:document.getElementById('aiModel').value,ai_system_prompt:document.getElementById('aiPrompt').value})
+      .then(function(d){fb('aiResult',d.success,d.success?'Configurações salvas!':'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+
+  // ── Tags: adicionar ──
+  document.getElementById('btnAddTag').addEventListener('click',function(){
+    var name=document.getElementById('newTagName').value.trim();
+    var color=document.getElementById('newTagColor').value;
     if(!name) return;
-    const r = await fetch('{% url "atendimento:api_tags_list" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({name, color})
-    });
-    if(r.ok) { location.reload(); }
-    else { alert('Erro ao criar tag'); }
-}
-async function deleteTag(id) {
-    if(!confirm('Remover esta tag?')) return;
-    const r = await fetch(`/atendimento/api/tags/${id}/`, { method:'DELETE', headers:{'X-CSRFToken':CSRF} });
-    if(r.ok) { document.getElementById('tag-'+id)?.remove(); }
-}
-async function updateTag(id, name, color) {
-    const payload = {};
-    if(name) payload.name = name;
-    if(color) payload.color = color;
-    await fetch(`/atendimento/api/tags/${id}/`, {
-        method:'PUT', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify(payload)
-    });
-}
+    var btn=this; setLoading(btn,true);
+    post(URL_TAGS,{name:name,color:color}).then(function(d){
+      if(d.id){
+        var el=document.createElement('div');el.className='color-item';el.id='tag-row-'+d.id;
+        el.innerHTML='<span class="color-dot" style="background:'+d.color+'"></span><span class="color-item-name">'+d.name+'</span>'
+          +'<input type="color" value="'+d.color+'" data-id="'+d.id+'" data-kind="tag" class="color-picker" style="width:28px;height:28px;padding:1px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer">'
+          +'<button class="icon-btn danger" data-id="'+d.id+'" data-kind="tag" data-row="tag-row-'+d.id+'" type="button"><i class="fas fa-trash"></i></button>';
+        document.getElementById('tagsList').appendChild(el);
+        document.getElementById('newTagName').value='';
+      }
+    }).finally(function(){setLoading(btn,false);});
+  });
 
-// ─── Categorias ───
-async function addCat() {
-    const name = document.getElementById('newCatName').value.trim();
-    const color = document.getElementById('newCatColor').value;
+  // ── Cats: adicionar ──
+  document.getElementById('btnAddCat').addEventListener('click',function(){
+    var name=document.getElementById('newCatName').value.trim();
+    var color=document.getElementById('newCatColor').value;
     if(!name) return;
-    const r = await fetch('{% url "atendimento:api_categories_list" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({name, color})
-    });
-    if(r.ok) { location.reload(); }
-    else { alert('Erro ao criar categoria'); }
-}
-async function deleteCat(id) {
-    if(!confirm('Remover esta categoria?')) return;
-    const r = await fetch(`/atendimento/api/categories/${id}/`, { method:'DELETE', headers:{'X-CSRFToken':CSRF} });
-    if(r.ok) { document.getElementById('cat-'+id)?.remove(); }
-}
-async function updateCat(id, name, color) {
-    const payload = {};
-    if(name) payload.name = name;
-    if(color) payload.color = color;
-    await fetch(`/atendimento/api/categories/${id}/`, {
-        method:'PUT', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify(payload)
-    });
-}
+    var btn=this; setLoading(btn,true);
+    post(URL_CATS,{name:name,color:color}).then(function(d){
+      if(d.id){
+        var el=document.createElement('div');el.className='color-item';el.id='cat-row-'+d.id;
+        el.innerHTML='<span class="color-dot" style="background:'+d.color+'"></span><span class="color-item-name">'+d.name+'</span>'
+          +'<input type="color" value="'+d.color+'" data-id="'+d.id+'" data-kind="cat" class="color-picker" style="width:28px;height:28px;padding:1px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer">'
+          +'<button class="icon-btn danger" data-id="'+d.id+'" data-kind="cat" data-row="cat-row-'+d.id+'" type="button"><i class="fas fa-trash"></i></button>';
+        document.getElementById('catsList').appendChild(el);
+        document.getElementById('newCatName').value='';
+      }
+    }).finally(function(){setLoading(btn,false);});
+  });
 
-// ─── Quick Messages ───
-async function addQM() {
-    const title = document.getElementById('newQMTitle').value.trim();
-    const body = document.getElementById('newQMBody').value.trim();
-    if(!title||!body) return alert('Preencha título e mensagem');
-    const r = await fetch('{% url "atendimento:api_quick_messages_list" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({title, body})
+  // ── QM: adicionar ──
+  document.getElementById('btnAddQM').addEventListener('click',function(){
+    var title=document.getElementById('newQMTitle').value.trim();
+    var body=document.getElementById('newQMBody').value.trim();
+    if(!title||!body){alert('Preencha título e mensagem');return;}
+    var btn=this; setLoading(btn,true);
+    post(URL_QM,{title:title,body:body}).then(function(d){
+      if(d.id){
+        var el=document.createElement('div');el.className='qm-item';el.id='qm-row-'+d.id;
+        el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:start"><div><div class="qm-title">'+d.title+'</div><div class="qm-body">'+d.body.substring(0,120)+'</div></div>'
+          +'<button class="icon-btn danger" data-id="'+d.id+'" data-kind="qm" data-row="qm-row-'+d.id+'" type="button"><i class="fas fa-trash"></i></button></div>';
+        document.getElementById('qmList').appendChild(el);
+        document.getElementById('newQMTitle').value='';
+        document.getElementById('newQMBody').value='';
+      }
+    }).finally(function(){setLoading(btn,false);});
+  });
+
+  // ── Delete delegado ──
+  document.addEventListener('click',function(e){
+    var btn=e.target.closest('.icon-btn.danger[data-kind]'); if(!btn) return;
+    var kind=btn.dataset.kind,id=btn.dataset.id,row=btn.dataset.row;
+    if(!id) return;
+    if(!confirm('Remover?')) return;
+    var urls={tag:'/atendimento/api/tags/'+id+'/',cat:'/atendimento/api/categories/'+id+'/',qm:'/atendimento/api/quick-messages/'+id+'/'};
+    if(!urls[kind]) return;
+    del(urls[kind]).then(function(r){if(r.ok){var el=document.getElementById(row);if(el)el.remove();}else alert('Erro ao remover');});
+  });
+
+  // ── Color pickers delegado ──
+  document.addEventListener('change',function(e){
+    var inp=e.target; if(!inp.classList.contains('color-picker')) return;
+    var kind=inp.dataset.kind,id=inp.dataset.id,color=inp.value;
+    var urls={tag:'/atendimento/api/tags/'+id+'/',cat:'/atendimento/api/categories/'+id+'/'};
+    if(!urls[kind]) return;
+    put(urls[kind],{color:color});
+    var dot=inp.closest('.color-item').querySelector('.color-dot'); if(dot) dot.style.background=color;
+  });
+
+  // ── Alerta Diário + Lembretes ──
+  document.getElementById('btnSaveAlert').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    post(URL_SETTINGS,{
+      daily_alert_enabled: document.getElementById('alertEnabled').checked?'true':'false',
+      daily_alert_time:    document.getElementById('alertTime').value,
+      daily_alert_group:   document.getElementById('alertGroup').value,
+      reminder_morning_time: document.getElementById('reminderMorning').value,
+      reminder_noon_time:    document.getElementById('reminderNoon').value,
+    }).then(function(d){fb('alertResult',d.success,d.success?'Configurações salvas!':'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+  document.getElementById('btnTestAlert').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    fetch(URL_TEST_ALERT,{method:'POST',headers:{'X-CSRFToken':CSRF}}).then(function(r){return r.json();})
+      .then(function(d){fb('alertResult',d.success,d.success?'Alerta enviado! Abertos: '+(d.abertos||0)+', Assumidos: '+(d.assumidos||0):'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+
+  // ── Notif. Chamados ──
+  document.getElementById('btnSaveNotif').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    post(URL_SETTINGS,{notif_abertos_enabled:document.getElementById('notifAbertoEnabled').checked?'true':'false',notif_abertos_group_id:document.getElementById('notifAbertoGroup').value})
+      .then(function(d){fb('notifAbertoResult',d.success,d.success?'Configurações salvas!':'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+  document.getElementById('btnTestNotif').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    fetch(URL_TEST_NOTIF,{method:'POST',headers:{'X-CSRFToken':CSRF}}).then(function(r){return r.json();})
+      .then(function(d){fb('notifAbertoResult',d.success,d.success?'Mensagem enviada!':'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+
+  // ── Mensagem de Encerramento ──
+  document.getElementById('btnSaveMsgEncerramento').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    post(URL_SETTINGS,{msg_encerramento:document.getElementById('msgEncerramento').value})
+      .then(function(d){fb('msgEncerramentoResult',d.success,d.success?'Mensagem salva!':'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+
+})();
+
+// ── Contatos de Atendentes ──
+window.acSave = function(uid){
+  var phone   = document.querySelector('.ac-phone[data-uid="'+uid+'"]').value.trim();
+  var connId  = document.querySelector('.ac-conn[data-uid="'+uid+'"]').value;
+  var enabled = document.querySelector('.ac-enabled[data-uid="'+uid+'"]').checked;
+  if(!phone){ alert('Informe o número de WhatsApp'); return; }
+  fetch('/atendimento/api/attendant-contacts/', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body:JSON.stringify({user_id:uid, phone:phone, connection_id:connId||null, reminders_enabled:enabled})
+  }).then(function(r){return r.json();}).then(function(d){
+    var res = document.getElementById('acResult');
+    if(d.success){
+      res.className='cfg-fb ok'; res.textContent='Contato salvo para usuário '+uid+'!'; res.style.display='block';
+    } else {
+      res.className='cfg-fb err'; res.textContent='Erro: '+(d.error||''); res.style.display='block';
+    }
+    setTimeout(function(){ res.style.display='none'; }, 3000);
+  });
+};
+window.acDelete = function(uid){
+  if(!confirm('Remover contato deste atendente?')) return;
+  fetch('/atendimento/api/attendant-contacts/'+uid+'/', {
+    method:'DELETE',
+    headers:{'X-CSRFToken':'{{ csrf_token }}'}
+  }).then(function(r){
+    if(r.ok) location.reload();
+    else alert('Erro ao remover');
+  });
+};
+
+window.acTest = function(uid){
+  var btn = document.querySelector('#ac-row-'+uid+' .btn-cyber.secondary');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>'; }
+  fetch('/atendimento/api/attendant-contacts/'+uid+'/test/', {
+    method:'POST',
+    headers:{'X-CSRFToken':'{{ csrf_token }}'}
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      var res = document.getElementById('acResult');
+      if(d.success){
+        res.className='cfg-fb ok';
+        res.textContent = d.message || 'Mensagem enviada!';
+      } else {
+        res.className='cfg-fb err';
+        res.textContent = 'Erro: '+(d.error||'desconhecido');
+      }
+      res.style.display='block';
+      setTimeout(function(){ res.style.display='none'; }, 5000);
+    })
+    .catch(function(){
+      var res = document.getElementById('acResult');
+      res.className='cfg-fb err'; res.textContent='Erro de conexão'; res.style.display='block';
+    })
+    .finally(function(){
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i>'; }
     });
-    if(r.ok) { location.reload(); }
-    else { alert('Erro ao criar mensagem'); }
-}
-async function deleteQM(id) {
-    if(!confirm('Remover esta mensagem?')) return;
-    const r = await fetch(`/atendimento/api/quick-messages/${id}/`, { method:'DELETE', headers:{'X-CSRFToken':CSRF} });
-    if(r.ok) { document.getElementById('qm-'+id)?.remove(); }
-}
-
-// ─── Permissões ───
-async function togglePerm(cb) {
-    const userId = cb.dataset.user;
-    const groupId = cb.dataset.group;
-    const r = await fetch('{% url "atendimento:api_permissions" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({user_id: parseInt(userId), group_id: parseInt(groupId)})
-    });
-    if(!r.ok) { cb.checked = !cb.checked; alert('Erro ao alterar permissão'); }
-}
-
-// ─── Alerta ───
-async function saveAlertSettings() {
-    const r = await fetch('{% url "atendimento:api_settings" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({
-            daily_alert_enabled: document.getElementById('alertEnabled').checked ? 'true' : 'false',
-            daily_alert_time: document.getElementById('alertTime').value,
-            daily_alert_group: document.getElementById('alertGroup').value,
-        })
-    });
-    const data = await r.json();
-    const el = document.getElementById('alertResult');
-    el.style.display='block';
-    if(data.success){ el.style.color='#22c55e'; el.textContent='Configurações salvas.'; }
-    else { el.style.color='#ef4444'; el.textContent='Erro: '+(data.error||'desconhecido'); }
-}
-
-async function testNotifAbertos(btn) {
-    var orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-    var el = document.getElementById('notifAbertoResult');
-    try {
-        var r = await fetch('{% url "atendimento:api_test_notif_abertos" %}', {
-            method:'POST', headers:{'X-CSRFToken':CSRF}, credentials:'same-origin'
-        });
-        var d = await r.json();
-        el.style.display = 'block';
-        el.style.color = d.success ? '#22c55e' : '#ef4444';
-        el.textContent = d.success ? '✓ Mensagem de teste enviada!' : 'Erro: ' + (d.error || 'falha');
-    } catch(e) { el.style.display='block'; el.style.color='#ef4444'; el.textContent='Erro de conexão'; }
-    btn.disabled = false; btn.innerHTML = orig;
-}
-
-async function testAlertaDiario(btn) {
-    var orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-    var el = document.getElementById('alertResult');
-    try {
-        var r = await fetch('{% url "atendimento:api_test_alerta_diario" %}', {
-            method:'POST', headers:{'X-CSRFToken':CSRF}, credentials:'same-origin'
-        });
-        var d = await r.json();
-        el.style.display = 'block';
-        if (d.success) {
-            el.style.color = '#22c55e';
-            el.textContent = '✓ Alerta enviado! Abertos: ' + (d.abertos||0) + ', Assumidos: ' + (d.assumidos||0);
-        } else {
-            el.style.color = '#ef4444';
-            el.textContent = 'Erro: ' + (d.error || 'falha');
-        }
-    } catch(e) { el.style.display='block'; el.style.color='#ef4444'; el.textContent='Erro de conexão'; }
-    btn.disabled = false; btn.innerHTML = orig;
-}
-
-async function saveNotifAbertos() {
-    const r = await fetch('{% url "atendimento:api_settings" %}', {
-        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-        body:JSON.stringify({
-            notif_abertos_enabled: document.getElementById('notifAbertoEnabled').checked ? 'true' : 'false',
-            notif_abertos_group_id: document.getElementById('notifAbertoGroup').value,
-        })
-    });
-    const data = await r.json();
-    const el = document.getElementById('notifAbertoResult');
-    el.style.display = 'block';
-    if (data.success) { el.style.color='#22c55e'; el.textContent='Configurações salvas!'; }
-    else { el.style.color='#ef4444'; el.textContent='Erro: '+(data.error||'desconhecido'); }
-}
+};
 </script>
 {% endblock %}

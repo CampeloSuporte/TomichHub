@@ -28,6 +28,10 @@
         <button class="conv-tab {% if active_tab == 'ongoing' %}active{% endif %}" onclick="switchInboxTab('ongoing', this)">
             Em Andamento
         </button>
+        <button class="conv-tab {% if active_tab == 'task' %}active{% endif %}" onclick="switchInboxTab('task', this)" style="color:#a78bfa">
+            <i class="fas fa-tasks" style="font-size:9px"></i> Tarefas
+            <span class="conv-tab-badge" id="badge-task" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3);{% if not task_conversations %}display:none{% endif %}">{{ task_conversations|length }}</span>
+        </button>
     </div>
 </div>
 <div class="conv-select-all">
@@ -56,6 +60,17 @@
 <div id="tab-ongoing" class="conv-list inbox-tab-list" {% if active_tab != 'ongoing' %}style="display:none"{% endif %}>
     {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
     <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
+    {% endfor %}
+</div>
+{% endwith %}
+
+{% with convs=task_conversations tab_id="tab-task" empty_msg="Nenhuma conversa em tarefa" %}
+<div id="tab-task" class="conv-list inbox-tab-list" {% if active_tab != 'task' %}style="display:none"{% endif %}>
+    <div style="padding:8px 14px;font-size:11px;color:#a78bfa;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.2);display:flex;align-items:center;gap:6px">
+        <i class="fas fa-tasks"></i> Conversas vinculadas a tarefas — protocolo T-XXXX
+    </div>
+    {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
+    <div class="conv-empty"><i class="fas fa-tasks"></i><p>{{ empty_msg }}</p></div>
     {% endfor %}
 </div>
 {% endwith %}

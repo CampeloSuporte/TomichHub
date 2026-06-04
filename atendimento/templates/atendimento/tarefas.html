@@ -1,0 +1,399 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+/* ─── Layout ─── */
+.tk-wrap{display:flex;flex-direction:column;height:calc(100% - 72px);overflow:hidden}
+.tk-toolbar{padding:14px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--dark-900)}
+.tk-body{flex:1;overflow-y:auto;padding:20px}
+
+/* ─── Filtros ─── */
+.tk-filter-group{display:flex;gap:6px;flex-wrap:wrap}
+.tk-filter-btn{padding:5px 12px;font-size:11px;font-weight:600;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
+.tk-filter-btn:hover{color:var(--text);border-color:var(--dark-500)}
+.tk-filter-btn.active{background:var(--active-bg);border-color:rgba(88,166,255,.35);color:var(--brand-500)}
+
+/* ─── Kanban de tarefas ─── */
+.tk-columns{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;min-height:400px}
+@media(max-width:900px){.tk-columns{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.tk-columns{grid-template-columns:1fr}}
+
+.tk-col{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;min-height:200px}
+.tk-col-header{padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tk-col-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tk-col-label{font-size:12px;font-weight:700;color:var(--text);flex:1;text-transform:uppercase;letter-spacing:.5px}
+.tk-col-count{font-size:11px;color:var(--muted);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:10px}
+.tk-col-body{flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+
+/* ─── Task card ─── */
+.tk-card{background:var(--dark-800);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:all .15s;position:relative}
+.tk-card:hover{border-color:rgba(88,166,255,.3);background:var(--dark-700)}
+.tk-card.overdue{border-left:3px solid #ef4444}
+.tk-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.4}
+.tk-card-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.tk-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:4px}
+.tk-badge.p-low{background:rgba(100,116,139,.15);color:#94a3b8}
+.tk-badge.p-medium{background:rgba(59,130,246,.15);color:#60a5fa}
+.tk-badge.p-high{background:rgba(245,158,11,.15);color:#fbbf24}
+.tk-badge.p-urgent{background:rgba(239,68,68,.15);color:#f87171}
+.tk-card-due{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;margin-top:6px}
+.tk-card-due.overdue{color:#ef4444}
+.tk-card-convs{margin-top:6px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.tk-card-agent{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ─── Modal ─── */
+.tk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
+.tk-modal{background:var(--dark-900);border:1px solid var(--border);border-radius:12px;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.tk-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tk-modal-header h3{flex:1;font-size:15px;font-weight:700;color:var(--text);margin:0}
+.tk-modal-body{overflow-y:auto;flex:1;padding:20px}
+.tk-modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.tk-field{margin-bottom:14px}
+.tk-field label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.tk-input{width:100%;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;box-sizing:border-box}
+.tk-input:focus{outline:none;border-color:var(--active)}
+.tk-textarea{width:100%;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;resize:vertical;min-height:80px;box-sizing:border-box}
+.tk-textarea:focus{outline:none;border-color:var(--active)}
+.tk-select{width:100%;padding:8px 12px;background:var(--dark-800);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;box-sizing:border-box}
+
+/* ─── Conversas na tarefa ─── */
+.tk-conv-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.tk-conv-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text)}
+.tk-conv-item a{color:var(--active);text-decoration:none;flex:1}
+.tk-conv-item a:hover{text-decoration:underline}
+.tk-conv-rm{background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 5px;border-radius:4px;transition:color .15s}
+.tk-conv-rm:hover{color:#ef4444}
+
+/* ─── Empty state ─── */
+.tk-empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}
+.tk-empty i{font-size:28px;opacity:.2;display:block;margin-bottom:8px}
+{% endblock %}
+
+{% block main_content %}
+<div class="atendimento-header">
+  <div class="header-title">
+    <i class="fas fa-tasks" style="color:var(--active);font-size:24px;"></i>
+    <div><h2>Tarefas</h2><small>Organize e acompanhe as tarefas da equipe</small></div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-cyber" id="btnNewTask" type="button"><i class="fas fa-plus"></i> Nova Tarefa</button>
+  </div>
+</div>
+
+<div class="tk-wrap">
+  <!-- Toolbar de filtros -->
+  <div class="tk-toolbar">
+    <div class="tk-filter-group" id="filterStatus">
+      <button class="tk-filter-btn active" data-v="">Todas</button>
+      <button class="tk-filter-btn" data-v="pending"><i class="fas fa-circle" style="color:#94a3b8;font-size:8px"></i> Pendente</button>
+      <button class="tk-filter-btn" data-v="in_progress"><i class="fas fa-circle" style="color:#60a5fa;font-size:8px"></i> Em andamento</button>
+      <button class="tk-filter-btn" data-v="done"><i class="fas fa-circle" style="color:#3fb950;font-size:8px"></i> Concluída</button>
+      <button class="tk-filter-btn" data-v="cancelled"><i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> Cancelada</button>
+    </div>
+    <div class="tk-filter-group" style="margin-left:auto" id="filterAgent">
+      <button class="tk-filter-btn active" data-v="">Todos</button>
+      <button class="tk-filter-btn" data-v="me">Minhas</button>
+    </div>
+  </div>
+
+  <!-- Board de colunas -->
+  <div class="tk-body">
+    <div class="tk-columns" id="tkColumns">
+      <div class="tk-col" id="col-pending">
+        <div class="tk-col-header">
+          <span class="tk-col-dot" style="background:#94a3b8"></span>
+          <span class="tk-col-label">Pendente</span>
+          <span class="tk-col-count" id="cnt-pending">0</span>
+        </div>
+        <div class="tk-col-body" id="body-pending"></div>
+      </div>
+      <div class="tk-col" id="col-in_progress">
+        <div class="tk-col-header">
+          <span class="tk-col-dot" style="background:#60a5fa"></span>
+          <span class="tk-col-label">Em Andamento</span>
+          <span class="tk-col-count" id="cnt-in_progress">0</span>
+        </div>
+        <div class="tk-col-body" id="body-in_progress"></div>
+      </div>
+      <div class="tk-col" id="col-done">
+        <div class="tk-col-header">
+          <span class="tk-col-dot" style="background:#3fb950"></span>
+          <span class="tk-col-label">Concluída</span>
+          <span class="tk-col-count" id="cnt-done">0</span>
+        </div>
+        <div class="tk-col-body" id="body-done"></div>
+      </div>
+      <div class="tk-col" id="col-cancelled">
+        <div class="tk-col-header">
+          <span class="tk-col-dot" style="background:#64748b"></span>
+          <span class="tk-col-label">Cancelada</span>
+          <span class="tk-col-count" id="cnt-cancelled">0</span>
+        </div>
+        <div class="tk-col-body" id="body-cancelled"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Modal: criar / editar tarefa ═══ -->
+<div class="tk-modal-overlay" id="taskModal" style="display:none" onclick="TK.closeModal(event)">
+  <div class="tk-modal" onclick="event.stopPropagation()">
+    <div class="tk-modal-header">
+      <i class="fas fa-tasks" style="color:var(--active)"></i>
+      <h3 id="modalTitle">Nova Tarefa</h3>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px" onclick="TK.closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="tk-modal-body">
+      <input type="hidden" id="taskId">
+      <div class="tk-field">
+        <label>Título *</label>
+        <input type="text" class="tk-input" id="taskTitle" placeholder="Descreva a tarefa...">
+      </div>
+      <div class="tk-field">
+        <label>Descrição</label>
+        <textarea class="tk-textarea" id="taskDesc" placeholder="Detalhes da tarefa (opcional)"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="tk-field">
+          <label>Prioridade</label>
+          <select class="tk-select" id="taskPriority">
+            <option value="low">Baixa</option>
+            <option value="medium" selected>Média</option>
+            <option value="high">Alta</option>
+            <option value="urgent">Urgente</option>
+          </select>
+        </div>
+        <div class="tk-field">
+          <label>Status</label>
+          <select class="tk-select" id="taskStatus">
+            <option value="pending" selected>Pendente</option>
+            <option value="in_progress">Em Andamento</option>
+            <option value="done">Concluída</option>
+            <option value="cancelled">Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="tk-field">
+          <label>Prazo</label>
+          <input type="datetime-local" class="tk-input" id="taskDue">
+        </div>
+        <div class="tk-field">
+          <label>Responsável</label>
+          <select class="tk-select" id="taskAssigned">
+            <option value="">— Nenhum —</option>
+            {% for agent in agents %}
+            <option value="{{ agent.id }}">{{ agent.get_full_name|default:agent.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <!-- Conversas vinculadas (visível ao editar) -->
+      <div id="modalConvSection" style="display:none">
+        <div class="tk-field" style="margin-bottom:6px">
+          <label>Conversas vinculadas</label>
+        </div>
+        <div class="tk-conv-list" id="modalConvList"></div>
+      </div>
+    </div>
+    <div class="tk-modal-footer">
+      <button class="btn-cyber secondary" onclick="TK.closeModal()">Cancelar</button>
+      <button class="btn-cyber" id="btnSaveTask" type="button" onclick="TK.saveTask()">
+        <i class="fas fa-save"></i> Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+var CSRF = '{{ csrf_token }}';
+var URL_TASKS   = '{% url "atendimento:api_tasks_list" %}';
+var URL_TASK    = function(id){ return '/atendimento/api/tasks/'+id+'/'; };
+var URL_TC      = function(tid,cid){ return '/atendimento/api/tasks/'+tid+'/conversations/'+cid+'/'; };
+
+var _filterStatus = '';
+var _filterAgent  = '';
+var _allTasks = [];
+
+function api(method, url, body){
+  return fetch(url, {
+    method: method,
+    headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function(r){ return r.json(); });
+}
+
+function fmtDate(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function isOverdue(iso){
+  if(!iso) return false;
+  return new Date(iso) < new Date();
+}
+function priorityLabel(p){
+  return {low:'Baixa',medium:'Média',high:'Alta',urgent:'Urgente'}[p]||p;
+}
+function priorityClass(p){
+  return {low:'p-low',medium:'p-medium',high:'p-high',urgent:'p-urgent'}[p]||'p-medium';
+}
+
+function renderBoard(tasks){
+  var cols = {pending:[],in_progress:[],done:[],cancelled:[]};
+  tasks.forEach(function(t){
+    if(cols[t.status]) cols[t.status].push(t);
+  });
+  ['pending','in_progress','done','cancelled'].forEach(function(s){
+    var body = document.getElementById('body-'+s);
+    var cnt  = document.getElementById('cnt-'+s);
+    var filtered = cols[s];
+    cnt.textContent = filtered.length;
+    if(!filtered.length){
+      body.innerHTML = '<div class="tk-empty"><i class="fas fa-inbox"></i>Nenhuma tarefa</div>';
+      return;
+    }
+    body.innerHTML = filtered.map(function(t){
+      var od = isOverdue(t.due_date) && t.status !== 'done' && t.status !== 'cancelled';
+      return '<div class="tk-card'+(od?' overdue':'')+'" onclick="TK.openEdit(\''+t.id+'\')" data-id="'+t.id+'">'
+        +'<div class="tk-card-title">'+escHtml(t.title)+'</div>'
+        +'<div class="tk-card-meta"><span class="tk-badge '+priorityClass(t.priority)+'">'+priorityLabel(t.priority)+'</span>'
+        +(t.conv_count?'<span class="tk-badge" style="background:rgba(88,166,255,.12);color:var(--brand-500)"><i class="fas fa-comments"></i> '+t.conv_count+'</span>':'')
+        +'</div>'
+        +(t.assigned_to?'<div class="tk-card-agent"><i class="fas fa-user-circle" style="font-size:10px"></i> '+escHtml(t.assigned_to.name)+'</div>':'')
+        +(t.due_date?'<div class="tk-card-due'+(od?' overdue':'')+'"><i class="fas fa-clock"></i> '+fmtDate(t.due_date)+'</div>':'')
+        +'</div>';
+    }).join('');
+  });
+}
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function applyFilters(){
+  var tasks = _allTasks;
+  if(_filterStatus) tasks = tasks.filter(function(t){ return t.status===_filterStatus; });
+  if(_filterAgent === 'me'){
+    var me = parseInt('{{ request.user.id }}');
+    tasks = tasks.filter(function(t){ return t.assigned_to && t.assigned_to.id===me; });
+  }
+  renderBoard(tasks);
+}
+
+function loadTasks(){
+  api('GET', URL_TASKS).then(function(d){
+    _allTasks = d.tasks||[];
+    applyFilters();
+  });
+}
+
+// Filtros
+document.getElementById('filterStatus').addEventListener('click',function(e){
+  var btn = e.target.closest('.tk-filter-btn'); if(!btn) return;
+  document.querySelectorAll('#filterStatus .tk-filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  _filterStatus = btn.dataset.v;
+  applyFilters();
+});
+document.getElementById('filterAgent').addEventListener('click',function(e){
+  var btn = e.target.closest('.tk-filter-btn'); if(!btn) return;
+  document.querySelectorAll('#filterAgent .tk-filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  _filterAgent = btn.dataset.v;
+  applyFilters();
+});
+
+window.TK = {
+  closeModal: function(e){
+    if(e && e.target !== document.getElementById('taskModal')) return;
+    document.getElementById('taskModal').style.display = 'none';
+  },
+  openNew: function(prefill){
+    prefill = prefill || {};
+    document.getElementById('taskId').value = '';
+    document.getElementById('taskTitle').value = prefill.title || '';
+    document.getElementById('taskDesc').value = prefill.description || '';
+    document.getElementById('taskPriority').value = prefill.priority || 'medium';
+    document.getElementById('taskStatus').value = 'pending';
+    document.getElementById('taskDue').value = prefill.due_date || '';
+    document.getElementById('taskAssigned').value = prefill.assigned_to || '';
+    document.getElementById('modalTitle').textContent = 'Nova Tarefa';
+    document.getElementById('modalConvSection').style.display = 'none';
+    document.getElementById('taskModal').style.display = 'flex';
+    document.getElementById('taskTitle').focus();
+  },
+  openEdit: function(id){
+    api('GET', URL_TASK(id)).then(function(t){
+      document.getElementById('taskId').value = t.id;
+      document.getElementById('taskTitle').value = t.title;
+      document.getElementById('taskDesc').value = t.description || '';
+      document.getElementById('taskPriority').value = t.priority;
+      document.getElementById('taskStatus').value = t.status;
+      if(t.due_date){
+        // format to datetime-local: YYYY-MM-DDTHH:MM
+        document.getElementById('taskDue').value = t.due_date.slice(0,16);
+      } else {
+        document.getElementById('taskDue').value = '';
+      }
+      document.getElementById('taskAssigned').value = t.assigned_to ? t.assigned_to.id : '';
+      document.getElementById('modalTitle').textContent = 'Editar Tarefa';
+
+      // Conversas
+      var sec = document.getElementById('modalConvSection');
+      var list = document.getElementById('modalConvList');
+      if(t.conversations && t.conversations.length){
+        sec.style.display = '';
+        list.innerHTML = t.conversations.map(function(c){
+          return '<div class="tk-conv-item" id="tc-'+c.id+'">'
+            +'<a href="/atendimento/conversation/'+c.id+'/" target="_blank">#'+c.conversation_id+' — '+escHtml(c.group_name)+'</a>'
+            +'<button class="tk-conv-rm" title="Remover" onclick="TK.removeConv(\''+t.id+'\',\''+c.id+'\')"><i class="fas fa-unlink"></i></button>'
+            +'</div>';
+        }).join('');
+      } else {
+        sec.style.display = 'none';
+        list.innerHTML = '';
+      }
+
+      document.getElementById('taskModal').style.display = 'flex';
+    });
+  },
+  removeConv: function(tid, cid){
+    fetch(URL_TC(tid,cid),{method:'DELETE',headers:{'X-CSRFToken':CSRF}}).then(function(r){
+      if(r.ok){
+        var el = document.getElementById('tc-'+cid);
+        if(el) el.remove();
+        // Update local cache
+        var t = _allTasks.find(function(x){ return x.id===tid; });
+        if(t) t.conv_count = Math.max(0, (t.conv_count||1)-1);
+        applyFilters();
+      }
+    });
+  },
+  saveTask: function(){
+    var id = document.getElementById('taskId').value;
+    var title = document.getElementById('taskTitle').value.trim();
+    if(!title){ document.getElementById('taskTitle').focus(); return; }
+    var payload = {
+      title: title,
+      description: document.getElementById('taskDesc').value.trim(),
+      priority: document.getElementById('taskPriority').value,
+      status: document.getElementById('taskStatus').value,
+      due_date: document.getElementById('taskDue').value || null,
+      assigned_to: document.getElementById('taskAssigned').value || null,
+    };
+    var method = id ? 'PUT' : 'POST';
+    var url    = id ? URL_TASK(id) : URL_TASKS;
+    api(method, url, payload).then(function(t){
+      if(t.error){ alert('Erro: '+t.error); return; }
+      document.getElementById('taskModal').style.display = 'none';
+      loadTasks();
+    });
+  },
+};
+
+document.getElementById('btnNewTask').addEventListener('click', function(){ TK.openNew(); });
+loadTasks();
+})();
+</script>
+{% endblock %}

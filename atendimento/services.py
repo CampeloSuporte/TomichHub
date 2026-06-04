@@ -371,6 +371,11 @@ class ConversationService:
             conv = Conversation.objects.create(
                 group=group, cliente=group.cliente, status="new"
             )
+        elif conv.is_task_conv:
+            # Conversa está vinculada a uma tarefa — novas mensagens abrem um novo chamado
+            conv = Conversation.objects.create(
+                group=group, cliente=group.cliente, status="new"
+            )
         elif conv.cliente is None and group.cliente:
             # Propaga o cliente do grupo para a conversa se ainda não estava vinculado
             conv.cliente = group.cliente
@@ -695,6 +700,51 @@ class ConversationService:
             subject=session.subject or '',
             category=category_obj,
         )
+
+        # Salva mensagens coletadas durante o fluxo para exibir no chamado
+        flow_msgs = []
+        cid = conv.conversation_id
+
+        flow_msgs.append(Message(
+            conversation=conv,
+            sender_type='system',
+            sender_name='Auto Atendimento',
+            message_type='text',
+            content=flow.subject_question,
+            external_id='flow_%s_q1' % cid,
+        ))
+        if session.subject:
+            flow_msgs.append(Message(
+                conversation=conv,
+                sender_type='customer',
+                sender_name='',
+                message_type='text',
+                content=session.subject,
+                external_id='flow_%s_a1' % cid,
+            ))
+        if flow.categories:
+            flow_msgs.append(Message(
+                conversation=conv,
+                sender_type='system',
+                sender_name='Auto Atendimento',
+                message_type='text',
+                content=flow.category_question,
+                external_id='flow_%s_q2' % cid,
+            ))
+            if chosen_category:
+                flow_msgs.append(Message(
+                    conversation=conv,
+                    sender_type='customer',
+                    sender_name='',
+                    message_type='text',
+                    content=chosen_category,
+                    external_id='flow_%s_a2' % cid,
+                ))
+
+        if flow_msgs:
+            Message.objects.bulk_create(flow_msgs)
+            conv.last_message_at = timezone.now()
+            conv.save(update_fields=['last_message_at'])
 
         if flow.completion_message:
             client.send_text(group.jid, flow.completion_message)

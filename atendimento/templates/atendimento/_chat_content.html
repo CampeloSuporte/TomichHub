@@ -41,7 +41,7 @@
                     <button class="status-menu-item" onclick="chatApp.updateStatus('resolved')">
                         <span class="dot" style="background:var(--accent-400);"></span><span style="color:var(--accent-400);">Resolvido</span>
                     </button>
-                    <button class="status-menu-item" onclick="chatApp.updateStatus('closed')" style="border-top:1px solid rgba(0,245,255,0.06);">
+                    <button class="status-menu-item" onclick="chatApp.updateStatus('closed')" style="border-top:1px solid rgba(88,166,255,0.06);">
                         <span class="dot" style="background:#64748b;"></span><span style="color:#94a3b8;">Encerrar</span>
                     </button>
                 </div>
@@ -67,8 +67,25 @@
             </button>
             {% endif %}
             {% endwith %}
+            <!-- Botão Tarefas -->
+            <button class="btn-cyber{% if conversation.is_task_conv %} task-active{% else %} secondary{% endif %}" onclick="taskPanel.toggle()" id="btnTaskPanel" style="font-size:10px;padding:5px 10px;" title="Tarefas vinculadas a esta conversa">
+                <i class="fas fa-tasks"></i>
+                {% if conv_tasks %}
+                <span id="taskCountBadge" style="background:rgba(124,58,237,.25);color:#a78bfa;border-radius:10px;padding:1px 5px;font-size:9px;margin-left:2px">{{ conv_tasks|length }}</span>
+                {% endif %}
+                {% if conversation.is_task_conv %}<span style="color:#a78bfa"> Em Tarefa</span>{% else %} Tarefas{% endif %}
+            </button>
         </div>
     </div>
+
+    <!-- Faixa de aviso: conversa em tarefa -->
+    {% if conversation.is_task_conv %}
+    <div id="taskConvBanner" style="background:rgba(124,58,237,.12);border-bottom:1px solid rgba(124,58,237,.3);padding:7px 16px;display:flex;align-items:center;gap:8px;font-size:12px;color:#c4b5fd;flex-shrink:0">
+        <i class="fas fa-tasks" style="font-size:11px"></i>
+        <strong>Conversa em Tarefa</strong> — novas mensagens recebidas neste grupo abrirão um novo chamado automaticamente.
+        <span style="margin-left:auto;color:rgba(196,181,253,.5);font-size:11px">Protocolo T-{{ conversation.conversation_id }}</span>
+    </div>
+    {% endif %}
 
     <!-- ── Tags da conversa ── -->
     <div class="conv-tags-bar" id="convTagsBar">
@@ -120,7 +137,7 @@
                 {% if message.sender_type == 'customer' %}
                 <div class="msg-sender-name">{{ message.sender_name|default:conversation.group.name|truncatechars:24 }}</div>
                 {% elif message.sender_type == 'internal' %}
-                <div class="msg-sender-name" style="color:#f5c400;"><i class="fas fa-lock" style="font-size:9px;margin-right:3px;"></i>Nota interna</div>
+                <div class="msg-sender-name" style="color:#d29922;"><i class="fas fa-lock" style="font-size:9px;margin-right:3px;"></i>Nota interna</div>
                 {% else %}
                 <div class="msg-sender-name agent-name">{% if message.sender %}{{ message.sender.first_name|default:message.sender.username }}{% else %}{{ message.sender_name|default:"Agente" }}{% endif %}</div>
                 {% endif %}
@@ -167,11 +184,11 @@
         align-items:center; justify-content:center;
     " onclick="if(event.target===this)chatApp.closeResolucao()">
         <div style="
-            background:#060c18; border:1px solid rgba(0,245,255,0.22);
+            background:#161b22; border:1px solid rgba(88,166,255,0.22);
             border-radius:12px; padding:0; width:480px; max-width:94vw;
-            box-shadow:0 20px 60px rgba(0,0,0,0.8),0 0 30px rgba(0,245,255,0.07);
+            box-shadow:0 20px 60px rgba(0,0,0,0.8);
         ">
-            <div style="padding:18px 22px 14px; border-bottom:1px solid rgba(0,245,255,0.1); display:flex; align-items:center; justify-content:space-between;">
+            <div style="padding:18px 22px 14px; border-bottom:1px solid rgba(88,166,255,0.1); display:flex; align-items:center; justify-content:space-between;">
                 <div>
                     <h3 style="font-size:14px;font-weight:700;color:var(--text);margin:0;" id="resolucaoModalTitle">Informar Resolução</h3>
                     <p style="font-size:11px;color:var(--muted);margin:3px 0 0;">Descreva como o chamado foi resolvido antes de fechar</p>
@@ -190,14 +207,14 @@
                     style="
                         width:100%; padding:11px 14px; box-sizing:border-box;
                         background:rgba(255,255,255,0.04);
-                        border:1px solid rgba(0,245,255,0.18);
+                        border:1px solid rgba(88,166,255,0.18);
                         border-radius:8px; color:var(--text);
                         font-size:13px; font-family:'Inter',sans-serif;
                         resize:vertical; outline:none; line-height:1.55;
                         transition:border-color .15s;
                     "
-                    onfocus="this.style.borderColor='rgba(0,245,255,0.45)'"
-                    onblur="this.style.borderColor='rgba(0,245,255,0.18)'"
+                    onfocus="this.style.borderColor='rgba(88,166,255,0.45)'"
+                    onblur="this.style.borderColor='rgba(88,166,255,0.18)'"
                 ></textarea>
                 <p style="font-size:11px;color:var(--muted);margin:6px 0 0;">
                     Esta descrição aparecerá no relatório PDF da empresa.
@@ -205,16 +222,16 @@
                 <div style="display:flex;gap:8px;margin-top:16px;">
                     <button onclick="chatApp.closeResolucao()" style="
                         flex:1; padding:10px; background:rgba(9,14,26,0.8);
-                        border:1px solid rgba(0,245,255,0.15); border-radius:8px;
+                        border:1px solid rgba(88,166,255,0.15); border-radius:8px;
                         color:var(--muted); font-size:12px; cursor:pointer; font-family:'Inter',sans-serif;
                     ">Cancelar</button>
                     <button id="resolucaoSaveBtn" onclick="chatApp.confirmarResolucao()" style="
                         flex:2; padding:10px;
-                        background:rgba(0,245,255,0.1);
-                        border:1px solid rgba(0,245,255,0.35); border-radius:8px;
+                        background:rgba(88,166,255,0.1);
+                        border:1px solid rgba(88,166,255,0.35); border-radius:8px;
                         color:var(--brand-500); font-size:12px; font-weight:700;
                         cursor:pointer; font-family:'Inter',sans-serif;
-                        box-shadow:0 0 10px rgba(0,245,255,0.1);
+                        
                     ">
                         <i class="fas fa-check-circle" style="margin-right:6px;"></i>
                         Confirmar e Fechar Chamado
@@ -234,7 +251,7 @@
             <button class="chat-icon-btn" onclick="chatApp.cancelRecording()" title="Cancelar">
                 <i class="fas fa-times"></i>
             </button>
-            <button class="chat-icon-btn" style="color:var(--brand-500);border-color:rgba(0,245,255,0.3);" onclick="chatApp.stopRecording()">
+            <button class="chat-icon-btn" style="color:var(--brand-500);border-color:rgba(88,166,255,0.3);" onclick="chatApp.stopRecording()">
                 <i class="fas fa-stop"></i> Parar
             </button>
         </div>
@@ -348,7 +365,80 @@
             </div>
         </div>
         <iframe id="chatTerminalFrame" src="about:blank" allowfullscreen
-            style="flex:1;border:none;min-height:0;background:#02030a;"></iframe>
+            style="flex:1;border:none;min-height:0;background:#0d1117;"></iframe>
+    </div>
+
+    <!-- ══ Painel de Tarefas ══ -->
+    <div class="task-panel" id="taskPanelEl">
+        <div class="task-panel-header">
+            <i class="fas fa-tasks" style="color:#a78bfa;font-size:12px"></i>
+            <span style="flex:1;font-size:13px;font-weight:700;color:var(--text)">Tarefas</span>
+            <span id="tpConvId" style="font-size:10px;color:#a78bfa;margin-right:8px">
+                {% if conversation.is_task_conv %}Protocolo T-{{ conversation.conversation_id }}{% endif %}
+            </span>
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px" onclick="taskPanel.toggle()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="task-panel-body" id="taskPanelBody">
+            <!-- Lista de tarefas vinculadas -->
+            <div id="tpLinkedTasks">
+                {% for task in conv_tasks %}
+                <div class="tp-task-card" id="tp-task-{{ task.id }}">
+                    <div style="display:flex;align-items:flex-start;gap:8px">
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">{{ task.title }}</div>
+                            {% if task.description %}<div style="font-size:11px;color:var(--muted);margin-bottom:4px">{{ task.description|truncatechars:80 }}</div>{% endif %}
+                            <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+                                <span class="tp-badge tp-s-{{ task.status }}">{{ task.get_status_display }}</span>
+                                <span class="tp-badge tp-p-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                                {% if task.due_date %}<span style="font-size:10px;color:var(--muted)"><i class="fas fa-clock"></i> {{ task.due_date|date:"d/m H:i" }}</span>{% endif %}
+                                {% if task.assigned_to %}<span style="font-size:10px;color:var(--muted)"><i class="fas fa-user"></i> {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <button class="tp-remove-btn" onclick="taskPanel.removeConv('{{ task.id }}')" title="Desvincular desta tarefa"><i class="fas fa-unlink"></i></button>
+                    </div>
+                </div>
+                {% empty %}
+                <div id="tpEmpty" style="padding:20px;text-align:center;color:var(--muted);font-size:12px">
+                    <i class="fas fa-inbox" style="font-size:24px;opacity:.2;display:block;margin-bottom:8px"></i>
+                    Nenhuma tarefa vinculada
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Adicionar à tarefa -->
+            <div class="task-panel-section">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Adicionar a Tarefa</div>
+                <div id="tpTaskSearch" style="position:relative;margin-bottom:8px">
+                    <input type="text" class="tp-input" id="tpSearchInput" placeholder="Buscar tarefa existente..." oninput="taskPanel.searchTasks(this.value)">
+                    <div class="tp-search-results" id="tpSearchResults" style="display:none"></div>
+                </div>
+                <div style="text-align:center;font-size:11px;color:var(--muted);margin:6px 0">— ou criar nova —</div>
+                <div style="margin-bottom:8px">
+                    <input type="text" class="tp-input" id="tpNewTitle" placeholder="Título da nova tarefa">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+                    <input type="datetime-local" class="tp-input" id="tpNewDue" title="Prazo">
+                    <select class="tp-input" id="tpNewPriority">
+                        <option value="low">Baixa</option>
+                        <option value="medium" selected>Média</option>
+                        <option value="high">Alta</option>
+                        <option value="urgent">Urgente</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:10px">
+                    <select class="tp-input" id="tpNewAssigned">
+                        <option value="">— Responsável —</option>
+                        {% for agent in agents_list %}
+                        <option value="{{ agent.id }}">{{ agent.get_full_name|default:agent.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="btn-cyber" style="width:100%;justify-content:center" onclick="taskPanel.addToTask()">
+                    <i class="fas fa-plus"></i> Adicionar / Criar Tarefa
+                </button>
+                <div id="tpFeedback" style="margin-top:8px;font-size:12px;display:none;padding:6px 10px;border-radius:6px"></div>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -362,20 +452,20 @@
 }
 .transfer-modal-overlay.open { display: flex; }
 .transfer-modal {
-    background: #04060e;
-    border: 1px solid rgba(0,245,255,0.2);
+    background: #161b22;
+    border: 1px solid rgba(88,166,255,0.2);
     border-radius: 10px; width: 400px; max-width: 94vw;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(0,245,255,0.05);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.85);
 }
 .transfer-modal-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 18px 12px;
-    border-bottom: 1px solid rgba(0,245,255,0.08);
+    border-bottom: 1px solid rgba(88,166,255,0.08);
 }
 .transfer-modal-header h3 {
     margin: 0; font-size: 13px; font-weight: 700;
-    color: var(--brand-500); font-family: 'Orbitron', monospace;
+    color: var(--brand-500); font-family: 'Inter', sans-serif;
     letter-spacing: 1px; text-transform: uppercase;
 }
 .transfer-modal-header p { margin: 3px 0 0; font-size: 11px; color: var(--muted); }
@@ -391,17 +481,17 @@
     margin-bottom: 3px;
 }
 .transfer-agent-item:hover {
-    background: rgba(0,245,255,0.05);
-    border-color: rgba(0,245,255,0.12);
+    background: rgba(88,166,255,0.05);
+    border-color: rgba(88,166,255,0.12);
 }
 .transfer-agent-item.selected {
     background: rgba(0,200,216,0.1);
-    border-color: rgba(0,245,255,0.25);
+    border-color: rgba(88,166,255,0.25);
 }
 .transfer-agent-avatar {
     width: 34px; height: 34px; border-radius: 50%;
-    background: rgba(0,245,255,0.1);
-    border: 1px solid rgba(0,245,255,0.2);
+    background: rgba(88,166,255,0.1);
+    border: 1px solid rgba(88,166,255,0.2);
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700; color: var(--brand-500);
     flex-shrink: 0;
@@ -416,7 +506,7 @@
 .s-away    { background: #f59e0b; }
 .s-offline { background: #4b5563; }
 .transfer-modal-footer {
-    padding: 10px 14px; border-top: 1px solid rgba(0,245,255,0.08);
+    padding: 10px 14px; border-top: 1px solid rgba(88,166,255,0.08);
     display: flex; gap: 8px; justify-content: flex-end;
 }
 
@@ -606,14 +696,118 @@
     grid-template-rows: auto auto 1fr auto !important;
 }
 
+/* ── Painel de Tarefas ── */
+.task-panel {
+    width: 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--dark-900);
+    border-left: 0px solid rgba(124,58,237,0.2);
+    overflow: hidden;
+    transition: width 0.22s ease, border-left-width 0.22s ease;
+    min-height: 0;
+}
+.task-panel.open {
+    width: 340px;
+    border-left-width: 1px;
+}
+.task-panel-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    background: var(--dark-800);
+}
+.task-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.task-panel-section {
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.tp-task-card {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+}
+.tp-task-card:hover { background: rgba(255,255,255,.02); }
+.tp-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+}
+.tp-s-pending    { background:rgba(148,163,184,.12); color:#94a3b8; }
+.tp-s-in_progress{ background:rgba(96,165,250,.12);  color:#60a5fa; }
+.tp-s-done       { background:rgba(63,185,80,.12);   color:#3fb950; }
+.tp-s-cancelled  { background:rgba(100,116,139,.12); color:#64748b; }
+.tp-p-low        { background:rgba(100,116,139,.12); color:#94a3b8; }
+.tp-p-medium     { background:rgba(59,130,246,.12);  color:#60a5fa; }
+.tp-p-high       { background:rgba(245,158,11,.12);  color:#fbbf24; }
+.tp-p-urgent     { background:rgba(239,68,68,.12);   color:#f87171; }
+.tp-remove-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); padding: 3px 5px; border-radius: 4px;
+    flex-shrink: 0; transition: color .15s;
+}
+.tp-remove-btn:hover { color: #ef4444; }
+.tp-input {
+    width: 100%;
+    padding: 7px 10px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+}
+.tp-input:focus { outline: none; border-color: #7c3aed; }
+.tp-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--dark-800);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    z-index: 100;
+    max-height: 160px;
+    overflow-y: auto;
+    margin-top: 2px;
+}
+.tp-search-item {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.tp-search-item:last-child { border-bottom: none; }
+.tp-search-item:hover { background: var(--active-bg); color: var(--brand-500); }
+.btn-cyber.task-active {
+    background: rgba(124,58,237,.15);
+    border-color: rgba(124,58,237,.5);
+    color: #a78bfa;
+}
 /* ── Painel de Terminal ── */
 .chat-terminal-panel {
     width: 0;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    background: #02030a;
-    border-left: 0px solid rgba(0,245,255,0.12);
+    background: #0d1117;
+    border-left: 0px solid rgba(88,166,255,0.12);
     overflow: hidden;
     transition: width 0.22s ease, border-left-width 0.22s ease;
     min-height: 0;
@@ -633,7 +827,7 @@
 }
 .terminal-drag-handle:hover,
 .terminal-drag-handle.dragging {
-    background: rgba(0,245,255,0.22);
+    background: rgba(88,166,255,0.22);
 }
 .chat-terminal-panel.open {
     width: 480px;
@@ -655,7 +849,7 @@
     gap: 8px;
     padding: 8px 10px;
     background: rgba(2,3,10,0.97);
-    border-bottom: 1px solid rgba(0,245,255,0.12);
+    border-bottom: 1px solid rgba(88,166,255,0.12);
     flex-shrink: 0;
     min-height: 38px;
 }
@@ -668,7 +862,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter', sans-serif;
 }
 
 .chat-terminal-hactions { display: flex; gap: 2px; flex-shrink: 0; }
@@ -676,17 +870,17 @@
 .chat-terminal-hbtn {
     width: 26px; height: 26px;
     border-radius: 5px;
-    border: 1px solid rgba(0,245,255,0.12);
+    border: 1px solid rgba(88,166,255,0.12);
     background: transparent;
-    color: rgba(0,245,255,0.35);
+    color: rgba(88,166,255,0.35);
     cursor: pointer;
     font-size: 11px;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
 }
 .chat-terminal-hbtn:hover {
-    background: rgba(0,245,255,0.07);
-    border-color: rgba(0,245,255,0.3);
+    background: rgba(88,166,255,0.07);
+    border-color: rgba(88,166,255,0.3);
     color: var(--brand-500);
 }
 
@@ -700,10 +894,10 @@
     right: 0;
     width: 360px;
     max-height: 480px;
-    background: #04060e;
-    border: 1px solid rgba(0,245,255,0.2);
+    background: #161b22;
+    border: 1px solid rgba(88,166,255,0.2);
     border-radius: 10px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.8), 0 0 24px rgba(0,245,255,0.06);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.8);
     z-index: 600;
     overflow: hidden;
     flex-direction: column;
@@ -721,14 +915,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 14px 10px;
-    border-bottom: 1px solid rgba(0,245,255,0.08);
+    border-bottom: 1px solid rgba(88,166,255,0.08);
     font-size: 11px;
     font-weight: 700;
     color: var(--text);
     letter-spacing: 0.5px;
     text-transform: uppercase;
     flex-shrink: 0;
-    font-family: 'Orbitron', monospace;
+    font-family: 'Inter', sans-serif;
 }
 
 .hosts-list {
@@ -757,8 +951,8 @@
     transition: all 0.12s;
 }
 .host-item:hover {
-    background: rgba(0,245,255,0.04);
-    border-color: rgba(0,245,255,0.1);
+    background: rgba(88,166,255,0.04);
+    border-color: rgba(88,166,255,0.1);
 }
 
 .host-item-icon {
@@ -780,7 +974,7 @@
 }
 .host-ip {
     font-size: 11px; color: var(--muted);
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter', sans-serif;
 }
 .host-proto-badge {
     font-size: 9px; font-weight: 700;
@@ -800,29 +994,29 @@
     white-space: nowrap;
 }
 .host-btn-primary {
-    background: rgba(0,245,255,0.08);
-    border-color: rgba(0,245,255,0.25);
+    background: rgba(88,166,255,0.08);
+    border-color: rgba(88,166,255,0.25);
     color: var(--brand-500);
 }
 .host-btn-primary:hover {
-    background: rgba(0,245,255,0.15);
-    box-shadow: 0 0 8px rgba(0,245,255,0.2);
+    background: rgba(88,166,255,0.15);
+    
     color: var(--brand-500);
 }
 .host-btn-ping {
     background: transparent;
-    border-color: rgba(0,255,136,0.2);
-    color: rgba(0,255,136,0.6);
+    border-color: rgba(63,185,80,0.2);
+    color: rgba(63,185,80,0.6);
     padding: 4px 6px;
 }
 .host-btn-ping:hover {
-    background: rgba(0,255,136,0.07);
+    background: rgba(63,185,80,0.07);
     border-color: var(--accent-400);
     color: var(--accent-400);
 }
 .host-btn-ping.pinging { color: var(--muted); border-color: transparent; cursor: default; }
-.host-btn-ping.ping-ok  { color: var(--accent-400); border-color: rgba(0,255,136,0.3); }
-.host-btn-ping.ping-err { color: #ff3b4e; border-color: rgba(255,59,78,0.3); }
+.host-btn-ping.ping-ok  { color: var(--accent-400); border-color: rgba(63,185,80,0.3); }
+.host-btn-ping.ping-err { color: #f85149; border-color: rgba(255,59,78,0.3); }
 
 .hosts-empty {
     text-align: center; padding: 28px 16px;
@@ -851,6 +1045,7 @@
     var isSending    = false;
     var recorder     = null, recChunks = [], recTimer = null, recSeconds = 0;
     var attachOpen   = false;
+    var _renderedIds = new Set();  /* dedup absoluto de mensagens renderizadas */
 
     /* ── Auto-resize ── */
     msgInput.addEventListener('input', function() {
@@ -1019,7 +1214,7 @@
         }).then(function(r){return r.json();}).then(function(d){
             if (d.success) {
                 clearMedia();
-                if (!document.querySelector('[data-msg-id="'+d.message_id+'"]')) {
+                if (!_renderedIds.has(String(d.message_id))) {
                     renderMessage({id:d.message_id,content:d.content,sender_type:'agent',sender_name:'',created_at:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
                 }
             } else { alert('Erro: '+(d.error||'Falha ao enviar')); }
@@ -1082,6 +1277,7 @@
                 '<div class="msg-time">' + msg.created_at + '</div>' +
                 '</div>';
         }
+        _renderedIds.add(String(msg.id));
         chatMsgs.appendChild(el);
         scrollBottom();
     }
@@ -1103,7 +1299,7 @@
         }).then(function(r){ return r.json(); }).then(function(d){
             if (d.success) {
                 /* WebSocket já renderizou — se não, renderiza aqui como fallback */
-                if (!document.querySelector('[data-msg-id="' + d.message_id + '"]')) {
+                if (!_renderedIds.has(String(d.message_id))) {
                     renderMessage({
                         id: d.message_id,
                         content: text,
@@ -1270,11 +1466,8 @@
     /* ── WebSocket + polling de fallback ── */
     var WS_PROTO = location.protocol==='https:'?'wss':'ws';
     var ws=null,wsTimer=null,wsDelay=2000,wsOk=false;
-    var lastMsgId = (function(){
-        var msgs = document.querySelectorAll('[data-msg-id]');
-        if (!msgs.length) return 0;
-        return Math.max.apply(null, Array.from(msgs).map(function(m){return parseInt(m.dataset.msgId)||0;}));
-    })();
+    /* Timestamp do ultimo msg visto — usado pelo polling de fallback */
+    var lastMsgTs = new Date().toISOString();
 
     function connectWS() {
         try {
@@ -1284,10 +1477,10 @@
                 try {
                     var p=JSON.parse(e.data);
                     if(p.type==='new_message'&&p.message) {
-                        var msgId = p.message.id;
-                        if(!document.querySelector('[data-msg-id="'+msgId+'"]')) {
+                        var msgId = String(p.message.id);
+                        if(!_renderedIds.has(msgId)) {
                             renderMessage(p.message);
-                            if(parseInt(msgId)>lastMsgId) lastMsgId=parseInt(msgId);
+                            lastMsgTs = new Date().toISOString();
                             /* Som apenas para mensagens do cliente */
                             if (p.message.sender_type === 'customer' && typeof playSoundMessage === 'function') {
                                 playSoundMessage();
@@ -1308,14 +1501,14 @@
     /* Polling de fallback: a cada 5s busca mensagens novas não exibidas */
     var pollTimer = setInterval(function() {
         if (wsOk) return; /* WS ativo → polling desnecessário */
-        fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after='+lastMsgId, {
+        fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after_ts='+encodeURIComponent(lastMsgTs), {
             headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'
         }).then(function(r){return r.ok?r.json():null;}).then(function(d){
             if(!d||!d.messages) return;
             d.messages.forEach(function(msg){
-                if(!document.querySelector('[data-msg-id="'+msg.id+'"]')) {
+                if(!_renderedIds.has(String(msg.id))) {
                     renderMessage(msg);
-                    if(msg.id>lastMsgId) lastMsgId=msg.id;
+                    lastMsgTs = new Date().toISOString();
                 }
             });
         }).catch(function(){});
@@ -1510,8 +1703,8 @@
             hosts.forEach(function(h) {
                 var pc = PROTO_COLORS[h.protocolo] || { bg:'rgba(255,255,255,0.06)', color:'#94a3b8', border:'rgba(255,255,255,0.1)' };
                 var ic = ICON_MAP[h.protocolo] || 'fa-server';
-                var funcaoText = h.funcao ? '<span style="font-size:10px;color:rgba(0,245,255,0.45);">' + h.funcao + '</span>' : '';
-                var modeloText = h.modelo  ? '<span style="font-size:10px;color:rgba(0,245,255,0.3);">' + h.modelo + '</span>' : '';
+                var funcaoText = h.funcao ? '<span style="font-size:10px;color:rgba(88,166,255,0.45);">' + h.funcao + '</span>' : '';
+                var modeloText = h.modelo  ? '<span style="font-size:10px;color:rgba(88,166,255,0.3);">' + h.modelo + '</span>' : '';
 
                 var isTerminal = TERMINAL_PROTOS[h.protocolo];
                 var actionBtn = isTerminal
@@ -1902,6 +2095,159 @@ document.addEventListener('click', function(e) {
 });
 
 convTags.init();
+
+// ══════════════════════════════════════════════════════════
+// TASK PANEL
+// ══════════════════════════════════════════════════════════
+(function(){
+var CSRF   = '{{ csrf_token }}';
+var CONV_ID= '{{ conversation.id }}';
+var URL_ADD= '/atendimento/api/conversations/'+CONV_ID+'/add-to-task/';
+var URL_TC = function(tid){ return '/atendimento/api/tasks/'+tid+'/conversations/'+CONV_ID+'/'; };
+var URL_TASKS = '/atendimento/api/tasks/';
+var _searchTimer = null;
+
+window.taskPanel = {
+    toggle: function(){
+        var el = document.getElementById('taskPanelEl');
+        el.classList.toggle('open');
+    },
+    removeConv: function(taskId){
+        if(!confirm('Desvincular esta conversa da tarefa?')) return;
+        fetch(URL_TC(taskId), {method:'DELETE', headers:{'X-CSRFToken':CSRF}})
+            .then(function(r){
+                if(r.ok){
+                    var card = document.getElementById('tp-task-'+taskId);
+                    if(card) card.remove();
+                    // Remove banner if no more tasks
+                    var remaining = document.querySelectorAll('#tpLinkedTasks .tp-task-card').length;
+                    if(remaining === 0){
+                        var banner = document.getElementById('taskConvBanner');
+                        if(banner) banner.style.display='none';
+                        var btn = document.getElementById('btnTaskPanel');
+                        if(btn){ btn.classList.remove('task-active'); btn.classList.add('secondary'); }
+                        var badge = document.getElementById('taskCountBadge');
+                        if(badge) badge.remove();
+                    }
+                    taskPanel._fb('Conversa desvinculada da tarefa', true);
+                } else {
+                    taskPanel._fb('Erro ao desvincular', false);
+                }
+            });
+    },
+    searchTasks: function(val){
+        clearTimeout(_searchTimer);
+        var res = document.getElementById('tpSearchResults');
+        if(!val.trim()){ res.style.display='none'; return; }
+        _searchTimer = setTimeout(function(){
+            fetch(URL_TASKS, {headers:{'X-CSRFToken':CSRF}})
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    var tasks = (d.tasks||[]).filter(function(t){
+                        return t.status !== 'done' && t.status !== 'cancelled' &&
+                               t.title.toLowerCase().indexOf(val.toLowerCase()) !== -1;
+                    });
+                    if(!tasks.length){ res.style.display='none'; return; }
+                    res.innerHTML = tasks.slice(0,8).map(function(t){
+                        return '<div class="tp-search-item" onclick="taskPanel.selectExisting(\''+t.id+'\','+JSON.stringify(t.title)+')">'
+                            +'<i class="fas fa-tasks" style="font-size:10px;color:var(--muted)"></i>'+escHtml(t.title)
+                            +'</div>';
+                    }).join('');
+                    res.style.display = 'block';
+                });
+        }, 250);
+    },
+    selectExisting: function(id, title){
+        document.getElementById('tpSearchInput').value = title;
+        document.getElementById('tpSearchResults').style.display = 'none';
+        taskPanel._selectedTaskId = id;
+    },
+    _selectedTaskId: null,
+    addToTask: function(){
+        var body = {};
+        var sel = taskPanel._selectedTaskId;
+        if(sel){
+            body.task_id = sel;
+        } else {
+            var title = document.getElementById('tpNewTitle').value.trim();
+            if(!title){ document.getElementById('tpNewTitle').focus(); return; }
+            body.title     = title;
+            body.due_date  = document.getElementById('tpNewDue').value || null;
+            body.priority  = document.getElementById('tpNewPriority').value;
+            body.assigned_to = document.getElementById('tpNewAssigned').value || null;
+        }
+        fetch(URL_ADD, {
+            method:'POST',
+            headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+            body: JSON.stringify(body)
+        }).then(function(r){ return r.json(); })
+          .then(function(d){
+            if(d.success){
+                taskPanel._fb('Conversa adicionada à tarefa!', true);
+                // Clear form
+                document.getElementById('tpSearchInput').value = '';
+                document.getElementById('tpNewTitle').value = '';
+                document.getElementById('tpNewDue').value = '';
+                taskPanel._selectedTaskId = null;
+                // Add new task card
+                var t = d.task;
+                var empty = document.getElementById('tpEmpty');
+                if(empty) empty.remove();
+                var list = document.getElementById('tpLinkedTasks');
+                var card = document.createElement('div');
+                card.className = 'tp-task-card';
+                card.id = 'tp-task-'+t.id;
+                card.innerHTML = '<div style="display:flex;align-items:flex-start;gap:8px">'
+                    +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">'+escHtml(t.title)+'</div>'
+                    +'<div style="display:flex;flex-wrap:wrap;gap:5px"><span class="tp-badge tp-s-'+t.status+'">'+t.status+'</span>'
+                    +'<span class="tp-badge tp-p-'+t.priority+'">'+t.priority+'</span></div>'
+                    +'</div>'
+                    +'<button class="tp-remove-btn" onclick="taskPanel.removeConv(\''+t.id+'\')" title="Desvincular"><i class="fas fa-unlink"></i></button>'
+                    +'</div>';
+                list.insertBefore(card, list.firstChild);
+                // Update banner
+                var banner = document.getElementById('taskConvBanner');
+                if(!banner){
+                    var hdr = document.querySelector('.chat-header');
+                    if(hdr){
+                        var b = document.createElement('div');
+                        b.id='taskConvBanner';
+                        b.style.cssText='background:rgba(124,58,237,.12);border-bottom:1px solid rgba(124,58,237,.3);padding:7px 16px;display:flex;align-items:center;gap:8px;font-size:12px;color:#c4b5fd;flex-shrink:0';
+                        b.innerHTML='<i class="fas fa-tasks" style="font-size:11px"></i><strong>Conversa em Tarefa</strong> — novas mensagens recebidas neste grupo abrirão um novo chamado automaticamente.';
+                        hdr.insertAdjacentElement('afterend', b);
+                    }
+                } else {
+                    banner.style.display = 'flex';
+                }
+                // Update button style
+                var btn = document.getElementById('btnTaskPanel');
+                if(btn){ btn.classList.add('task-active'); btn.classList.remove('secondary'); }
+            } else {
+                taskPanel._fb('Erro: '+(d.error||'desconhecido'), false);
+            }
+          }).catch(function(){ taskPanel._fb('Erro ao salvar', false); });
+    },
+    _fb: function(msg, ok){
+        var el = document.getElementById('tpFeedback');
+        if(!el) return;
+        el.style.cssText = 'margin-top:8px;font-size:12px;padding:6px 10px;border-radius:6px;display:block;background:'
+            +(ok?'rgba(63,185,80,.1)':'rgba(239,68,68,.1)')+';color:'+(ok?'#3fb950':'#ef4444');
+        el.textContent = msg;
+        setTimeout(function(){ el.style.display='none'; }, 3500);
+    },
+};
+
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Fecha search results ao clicar fora
+document.addEventListener('click', function(e){
+    var res = document.getElementById('tpSearchResults');
+    var inp = document.getElementById('tpSearchInput');
+    if(res && inp && !res.contains(e.target) && e.target !== inp){
+        res.style.display = 'none';
+    }
+});
+})();
 
 </script>
 

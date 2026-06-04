@@ -158,6 +158,10 @@ class Conversation(models.Model):
     title = models.CharField(max_length=500, null=True, blank=True)
     resolution = models.TextField(null=True, blank=True)
     tags = models.ManyToManyField(Tag, blank=True, related_name='conversations')
+    is_task_conv = models.BooleanField(
+        default=False,
+        help_text='Conversa vinculada a uma tarefa — novas mensagens abrem novo chamado'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     closed_at = models.DateTimeField(null=True, blank=True)
@@ -434,6 +438,101 @@ class SystemSetting(models.Model):
             defaults={'value': str(value), 'is_secret': is_secret}
         )
         return obj
+
+
+class Task(models.Model):
+    """Tarefa de atendimento — pode vincular uma ou mais conversas"""
+    STATUS_CHOICES = [
+        ('pending', 'Pendente'),
+        ('in_progress', 'Em Andamento'),
+        ('done', 'Concluída'),
+        ('cancelled', 'Cancelada'),
+    ]
+    PRIORITY_CHOICES = [
+        ('low', 'Baixa'),
+        ('medium', 'Média'),
+        ('high', 'Alta'),
+        ('urgent', 'Urgente'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    title = models.CharField(max_length=500)
+    description = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    assigned_to = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks'
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_tasks'
+    )
+    due_date = models.DateTimeField(null=True, blank=True)
+    conversations = models.ManyToManyField(
+        Conversation, blank=True, through='TaskConversation', related_name='tasks'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Tarefa"
+        verbose_name_plural = "Tarefas"
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['assigned_to', 'status']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_overdue(self):
+        return self.due_date and self.status not in ('done', 'cancelled') and self.due_date < timezone.now()
+
+
+class TaskConversation(models.Model):
+    """Vínculo entre tarefa e conversa"""
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='task_conversations')
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='task_conversations')
+    added_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('task', 'conversation')
+        verbose_name = "Conversa da Tarefa"
+
+    def __str__(self):
+        return f"{self.task.title} ← {self.conversation}"
+
+
+class AttendantContact(models.Model):
+    """Número de WhatsApp do atendente para receber lembretes pessoais"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='attendant_contact')
+    phone = models.CharField(
+        max_length=50,
+        help_text='Número no formato internacional, ex: 5511999999999'
+    )
+    connection = models.ForeignKey(
+        WhatsAppConnection, on_delete=models.SET_NULL, null=True, blank=True,
+        help_text='Conexão WhatsApp usada para enviar os lembretes'
+    )
+    reminders_enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Contato do Atendente"
+        verbose_name_plural = "Contatos dos Atendentes"
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} → {self.phone}"
+
+    def get_jid(self):
+        """Retorna o JID WhatsApp (adiciona @s.whatsapp.net se necessário)"""
+        phone = self.phone.strip().replace('+', '').replace(' ', '').replace('-', '')
+        if '@' not in phone:
+            phone = f"{phone}@s.whatsapp.net"
+        return phone
 
 
 # Manter ChatbotConfig para compatibilidade

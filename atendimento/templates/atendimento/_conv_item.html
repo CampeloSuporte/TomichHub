@@ -1,6 +1,8 @@
 <a href="{% url 'atendimento:conversation_detail' conv.id %}"
    class="conv-item {% if active_conversation and active_conversation.id == conv.id %}active{% endif %} {% if conv.status == 'new' %}unread{% endif %}"
-   data-conv-name="{{ conv.group.name|lower }}" data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}">
+   data-conv-name="{{ conv.group.name|lower }}" data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}"
+   data-conv-id="{{ conv.id }}" data-conv-label="{{ conv.group.name|default:conv.conversation_id }}"
+   oncontextmenu="convCtxMenu.show(event, this)">
     <div class="conv-avatar"
          style="background: {% if conv.status == 'new' %}linear-gradient(135deg,#f59e0b,#d97706){% elif conv.status == 'pending' %}linear-gradient(135deg,#e91e8c,#9333ea){% elif conv.status == 'resolved' %}linear-gradient(135deg,#22c55e,#16a34a){% else %}linear-gradient(135deg,#0ea5e9,#6366f1){% endif %};">
         {{ conv.group.name|first|upper }}
@@ -15,7 +17,9 @@
             <span class="conv-name">{{ conv.group.name|default:conv.conversation_id }}</span>
             <span class="conv-time">{{ conv.last_message_at|date:"H:i" }}</span>
         </div>
-        <div class="conv-preview">{{ conv.cliente.nome_empresa|default:"Sem cliente" }}</div>
+        <div class="conv-preview">
+            {% if conv.is_task_conv %}<span style="color:#a78bfa;font-size:10px;margin-right:4px"><i class="fas fa-tasks"></i></span>{% endif %}{{ conv.cliente.nome_empresa|default:"Sem cliente" }}
+        </div>
         {% with tags=conv.tags.all %}{% if tags %}
         <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
             {% for tag in tags %}

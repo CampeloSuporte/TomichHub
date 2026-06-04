@@ -96,6 +96,20 @@ urlpatterns = [
     # Perfil do agente
     path('api/display-name/', views.api_display_name, name='api_display_name'),
 
+    path("sala/", views.sala_virtual, name="sala_virtual"),
+
+    # Tarefas
+    path('tarefas/', views.tarefas, name='tarefas'),
+    path('api/tasks/', views.api_tasks_list, name='api_tasks_list'),
+    path('api/tasks/<uuid:task_id>/', views.api_task_detail, name='api_task_detail'),
+    path('api/tasks/<uuid:task_id>/conversations/<uuid:conversation_id>/', views.api_task_conversation, name='api_task_conversation'),
+    path('api/conversations/<uuid:conversation_id>/add-to-task/', views.api_task_add_conversation_by_conv, name='api_task_add_conversation_by_conv'),
+
+    # Contatos de Atendentes
+    path('api/attendant-contacts/', views.api_attendant_contacts, name='api_attendant_contacts'),
+    path('api/attendant-contacts/<int:user_id>/', views.api_attendant_contact_delete, name='api_attendant_contact_delete'),
+    path('api/attendant-contacts/<int:user_id>/test/', views.api_attendant_contact_test, name='api_attendant_contact_test'),
+
     # Webhook
     path('webhook/evolution/', views.webhook_evolution, name='webhook_evolution'),
 ]

@@ -55,9 +55,16 @@ app.conf.beat_schedule = {
         'task': 'atendimento.tasks.notificar_chamados_abertos',
         'schedule': timedelta(minutes=10),
     },
+    # Roda a cada 5 min; a task verifica internamente se é o horário certo
+    # e usa guard anti-duplo-envio por dia
     'alerta-diario-atendimento': {
         'task': 'atendimento.tasks.enviar_alerta_diario',
-        'schedule': crontab(minute='0,5'),  # testa a cada 5min dentro da hora configurada
+        'schedule': timedelta(minutes=5),
+    },
+    # Lembretes pessoais: manhã e meio-dia (horários configurados no sistema)
+    'lembretes-pessoais-atendentes': {
+        'task': 'atendimento.tasks.enviar_lembretes_pessoais',
+        'schedule': timedelta(minutes=5),
     },
 }
 

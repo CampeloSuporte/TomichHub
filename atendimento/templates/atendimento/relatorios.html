@@ -147,6 +147,7 @@
                     <tr>
                         <th>Protocolo</th>
                         <th>Grupo</th>
+                        <th>Assunto</th>
                         <th>Categoria</th>
                         <th>Agente</th>
                         <th>Resolvido em</th>
@@ -157,7 +158,8 @@
                     <tr>
                         <td><a href="{% url 'atendimento:conversation_detail' conv.id %}" style="color:var(--active);">#{{ conv.conversation_id }}</a></td>
                         <td>{{ conv.group.name|truncatechars:30 }}</td>
-                        <td>{% if conv.category %}<span style="background:rgba(124,58,237,.15);color:#a78bfa;padding:2px 7px;border-radius:4px;font-size:10px;">{{ conv.category.name }}</span>{% else %}<span style="color:var(--muted);">—</span>{% endif %}</td>
+                        <td style="max-width:200px;white-space:normal;line-height:1.4">{{ conv.subject|default:"—"|truncatechars:60 }}</td>
+                        <td>{% if conv.category %}<span style="background:{{ conv.category.color }}18;color:{{ conv.category.color }};border:1px solid {{ conv.category.color }}40;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;">{{ conv.category.name }}</span>{% else %}<span style="color:var(--muted);">—</span>{% endif %}</td>
                         <td>{{ conv.assigned_to.get_full_name|default:"—" }}</td>
                         <td>{{ conv.closed_at|date:"d/m/Y H:i"|default:"—" }}</td>
                     </tr>
