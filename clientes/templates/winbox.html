@@ -4,123 +4,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WinBox Web — {{ acesso.tipo }} {{ acesso.host }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>{{ acesso.host }}</title>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-        :root {
-            --bg:        #0a0a0a;
-            --bg2:       #111111;
-            --bg3:       #1a1a1a;
-            --border:    #222;
-            --cyan:      #00d9ff;
-            --green:     #00ff88;
-            --red:       #ff4444;
-            --orange:    #ffa500;
-            --text:      #e2e8f0;
-            --muted:     #475569;
-            --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-        }
-
         html, body {
             width: 100%; height: 100%;
-            background: var(--bg);
-            color: var(--text);
-            font-family: var(--font-mono);
+            background: #000;
             overflow: hidden;
         }
 
-        .wb-wrapper {
-            display: flex; flex-direction: column;
-            height: 100vh; width: 100vw;
-        }
-
-        .wb-toolbar {
-            display: flex; align-items: center; gap: 10px;
-            padding: 8px 14px;
-            background: var(--bg2);
-            border-bottom: 2px solid var(--orange);
-            flex-shrink: 0; min-height: 48px;
-        }
-
-        .wb-logo { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .wb-logo svg { width: 22px; height: 22px; }
-        .wb-logo-text { font-size: 13px; font-weight: 700; color: var(--orange); letter-spacing: 1px; }
-
-        .wb-separator { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
-
-        .wb-device-info { display: flex; align-items: center; gap: 8px; flex: 1; }
-        .wb-device-host { color: var(--orange); font-size: 12px; font-weight: 700; }
-        .wb-device-type { color: var(--muted); font-size: 11px; }
-
-        .wb-status { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-        .wb-status-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .wb-status.connecting .wb-status-dot { background: var(--orange); animation: pulse 1s infinite; }
-        .wb-status.connected .wb-status-dot { background: var(--green); }
-        .wb-status.error .wb-status-dot { background: var(--red); }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-        .wb-actions { display: flex; gap: 6px; }
-        .wb-btn {
-            background: transparent; border: 1px solid var(--border); color: var(--muted);
-            padding: 5px 12px; border-radius: 3px; cursor: pointer;
-            font-family: var(--font-mono); font-size: 11px; transition: all .2s;
-        }
-        .wb-btn:hover { border-color: var(--orange); color: var(--orange); }
-
-        .wb-body { flex: 1; position: relative; overflow: hidden; background: #000; display: flex; justify-content: center; align-items: center; }
-        
         #vnc-container {
-            width: 100%; height: 100%;
+            width: 100vw;
+            height: 100vh;
+            display: block;
         }
 
-        .wb-splash {
-            position: absolute; inset: 0;
+        /* Overlay de status - aparece apenas durante conexao, some depois */
+        #wb-status {
+            position: fixed;
+            top: 10px; right: 14px;
+            display: flex; align-items: center; gap: 7px;
+            padding: 5px 11px;
+            background: rgba(10,10,10,0.82);
+            border: 1px solid #333;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 11px; color: #aaa;
+            z-index: 100;
+            transition: opacity 0.6s;
+            pointer-events: none;
+        }
+        #wb-status.hidden { opacity: 0; }
+        .wb-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .status-connecting .wb-dot { background: #d29922; animation: blink 1s infinite; }
+        .status-connected  .wb-dot { background: #3fb950; }
+        .status-error      .wb-dot { background: #f85149; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* Splash de carregamento */
+        #wb-splash {
+            position: fixed; inset: 0;
+            background: #0a0a0a;
             display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 16px; background: var(--bg); z-index: 10;
+            align-items: center; justify-content: center; gap: 14px;
+            z-index: 200;
             transition: opacity 0.5s;
         }
-        .wb-splash.hidden { opacity: 0; pointer-events: none; }
-
-        .wb-splash-ring {
-            width: 48px; height: 48px; border: 3px solid var(--border);
-            border-top-color: var(--orange); border-radius: 50%;
-            animation: spin 1s linear infinite;
+        #wb-splash.hidden { opacity: 0; pointer-events: none; }
+        .splash-ring {
+            width: 44px; height: 44px;
+            border: 3px solid #222;
+            border-top-color: #d29922;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .splash-title { font-family: monospace; font-size: 13px; color: #d29922; font-weight: 700; }
+        .splash-sub   { font-family: monospace; font-size: 11px; color: #555; }
 
-        .wb-splash-msg h2 { font-size: 14px; font-weight: 700; color: var(--orange); margin-bottom: 8px; text-align: center; }
-        .wb-splash-msg p { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.8; }
-        
         canvas { outline: none; display: block; }
     </style>
-    <!-- noVNC servido localmente para melhor performance -->
     <script type="module">
         import RFB from '{% static "novnc/core/rfb.js" %}';
 
-        let rfb;
         const acessoId = "{{ acesso.id }}";
+        const vncMode  = "{{ vnc_mode|default:'winbox' }}";
+        const _up = new URLSearchParams(location.search);
+        const _initW = parseInt(_up.get('w')) || document.documentElement.clientWidth;
+        const _initH = parseInt(_up.get('h')) || document.documentElement.clientHeight;
+        let rfb;
 
         function setStatus(cls, txt) {
-            const el = document.getElementById('wbStatus');
-            el.className = 'wb-status ' + cls;
-            document.getElementById('wbStatusText').textContent = txt;
-        }
-
-        function getContainerSize() {
-            const body = document.getElementById('wbBody');
-            return { w: body.clientWidth, h: body.clientHeight };
+            const el = document.getElementById('wb-status');
+            el.className = cls;
+            el.querySelector('#wb-status-txt').textContent = txt;
         }
 
         function initVNC() {
-            setStatus('connecting', 'Conectando VNC...');
+            setStatus('status-connecting', 'Conectando...');
 
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const vncMode = "{{ vnc_mode|default:'winbox' }}";
-            const wsUrl = `${protocol}//${window.location.host}/ws/vnc/${acessoId}/?mode=${vncMode}`;
-
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&w=' + _initW + '&h=' + _initH;
             const container = document.getElementById('vnc-container');
 
             rfb = new RFB(container, wsUrl, {
@@ -128,88 +93,75 @@
                 wsProtocols: ['binary'],
             });
 
-            // Escalar viewport para preencher o container
-            rfb.scaleViewport = true;
-            rfb.clipViewport = false;
-            rfb.background = '#0a0a0a';
-            // Solicita ao servidor VNC que ajuste a resolução ao tamanho real do container
-            rfb.resizeSession = true;
+            rfb.scaleViewport  = true;   // escala client-side
+            rfb.resizeSession  = false;  // Xvfb ja criado com dimensoes corretas; resize dinamico desmaximiza o WinBox
+            rfb.background     = '#000';
+            rfb.qualityLevel   = 6;      // qualidade/compressao equilibrada (0-9)
+            rfb.compressionLevel = 2;    // menor CPU no servidor (0-9)
 
             rfb.addEventListener('connect', () => {
-                setStatus('connected', 'Conectado');
-                document.getElementById('wbSplash').classList.add('hidden');
-                // Forçar resize para preencher toda a área disponível
-                const { w, h } = getContainerSize();
-                rfb.resizeSession && rfb._sendEncodings && rfb._sendDesktopSize && rfb._sendDesktopSize(w, h);
+                setStatus('status-connected', 'Conectado');
+                document.getElementById('wb-splash').classList.add('hidden');
+                setTimeout(() => {
+                    document.getElementById('wb-status').classList.add('hidden');
+                }, 2000);
+                // Envia tamanho real ao servidor VNC (com fallback se ainda 0)
+                function sendSize() {
+                    const w = document.documentElement.clientWidth;
+                    const h = document.documentElement.clientHeight;
+                    if (w > 0 && h > 0) {
+                        try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
+                    }
+                }
+                sendSize();
+                // Tenta novamente apos layout estabilizar (caso iframe ainda sem dimensoes)
+                setTimeout(sendSize, 300);
+                setTimeout(sendSize, 800);
+                setTimeout(sendSize, 1500);
             });
 
-            rfb.addEventListener('disconnect', (e) => {
-                setStatus('error', 'Desconectado');
-                document.getElementById('wbSplash').classList.remove('hidden');
-                document.getElementById('wbSplashTitle').innerText = "Sessão Encerrada";
-                document.getElementById('wbSplashDesc').innerText = "A conexão com o servidor foi perdida.";
-                document.getElementById('wbRing').style.display = 'none';
+            rfb.addEventListener('disconnect', () => {
+                setStatus('status-error', 'Desconectado');
+                document.getElementById('wb-status').classList.remove('hidden');
+                const sp = document.getElementById('wb-splash');
+                sp.classList.remove('hidden');
+                sp.querySelector('.splash-ring').style.display = 'none';
+                sp.querySelector('.splash-title').textContent  = 'Sessao Encerrada';
+                sp.querySelector('.splash-sub').textContent    = 'A conexao foi perdida.';
             });
 
-            // Ajustar resolução quando janela for redimensionada
+            // Re-envia resolucao ao redimensionar a janela
             let resizeTimer;
             window.addEventListener('resize', () => {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(() => {
-                    if (rfb && rfb._rfbConnectionState === 'connected') {
-                        const { w, h } = getContainerSize();
+                    const w = document.documentElement.clientWidth;
+                    const h = document.documentElement.clientHeight;
+                    if (rfb && w > 0 && h > 0) {
                         try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
                     }
-                }, 300);
+                }, 250);
             });
-        }
-
-        window.recarregar = function() {
-            window.location.reload();
-        }
-
-        window.abrirNovaAba = function() {
-            window.open(window.location.href, '_blank');
         }
 
         document.addEventListener('DOMContentLoaded', initVNC);
     </script>
 </head>
 <body>
-<div class="wb-wrapper">
-    <div class="wb-toolbar">
-        <div class="wb-logo">
-            <svg viewBox="0 0 22 22" fill="none">
-                <rect width="22" height="22" rx="4" fill="#ffa500" opacity="0.15"/>
-                <path d="M4 6h4l3 10 3-10h4" stroke="#ffa500" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="wb-logo-text">WinBox</span>
-            <span class="wb-logo-version">Web</span>
-        </div>
-        <div class="wb-separator"></div>
-        <div class="wb-device-info">
-            <span class="wb-device-host">{{ acesso.host }}</span>
-            <span class="wb-device-type">· {{ acesso.tipo }}</span>
-        </div>
-        <div id="wbStatus" class="wb-status connecting">
-            <div class="wb-status-dot"></div>
-            <span id="wbStatusText">Iniciando…</span>
-        </div>
-        <div class="wb-actions">
-            <button class="wb-btn" onclick="recarregar()" title="Recarregar">↺ Recarregar</button>
-            <button class="wb-btn" onclick="abrirNovaAba()" title="Abrir em nova aba">⤢ Nova aba</button>
-        </div>
+    <!-- Badge de status (overlay) -->
+    <div id="wb-status" class="status-connecting">
+        <div class="wb-dot"></div>
+        <span id="wb-status-txt">Iniciando...</span>
     </div>
-    <div class="wb-body" id="wbBody">
-        <div class="wb-splash" id="wbSplash">
-            <div class="wb-splash-ring" id="wbRing"></div>
-            <div class="wb-splash-msg">
-                <h2 id="wbSplashTitle">Preparando Ambiente</h2>
-                <p id="wbSplashDesc">Criando sessão segura e renderizando interface gráfica...</p>
-            </div>
-        </div>
-        <div id="vnc-container"></div>
+
+    <!-- Splash de carregamento -->
+    <div id="wb-splash">
+        <div class="splash-ring"></div>
+        <div class="splash-title">Preparando WinBox</div>
+        <div class="splash-sub">Criando sessao segura...</div>
     </div>
-</div>
+
+    <!-- Canvas noVNC - ocupa 100% da tela -->
+    <div id="vnc-container"></div>
 </body>
 </html>

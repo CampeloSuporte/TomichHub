@@ -63,6 +63,12 @@
   - Geração de PDF
   - Agendamento
 
+- **[winbox_vnc.md](winbox_vnc.md)** — WinBox Web via VNC no browser
+  - Arquitetura Xvfb + Openbox + x11vnc + noVNC
+  - Fluxo de inicialização
+  - Problemas conhecidos (ncache, resizeSession, width/height)
+  - Como testar manualmente
+
 - **[frontend_acessos.md](frontend_acessos.md)** — Gerenciamento de acessos
   - Exportação de PDF
   - Visibilidade de senhas
@@ -252,3 +258,4 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 **Última atualização:** 01/06/2026 11:20 UTC  
 **Versão:** 1.0  
 **Mantidor:** CampeloSuporte
+- [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

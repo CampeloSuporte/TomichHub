@@ -9,13 +9,15 @@ logger = logging.getLogger(__name__)
 class WinboxVNCManager:
     """Gerencia o ciclo de vida do Xvfb, Openbox, x11vnc e WinBox para uma sessão via Web."""
     
-    def __init__(self, host, port, user, password, winbox_path="/opt/crm/static/winbox4/WinBox"):
+    def __init__(self, host, port, user, password, winbox_path="/opt/crm/static/winbox4/WinBox", width=1366, height=768):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.winbox_path = winbox_path
-        
+
+        self.width = max(800, int(width))
+        self.height = max(600, int(height))
         self.display_num = None
         self.vnc_port = None
         self.processes = []
@@ -25,10 +27,10 @@ class WinboxVNCManager:
         self.display_num = self._find_free_display()
         self.vnc_port = self._find_free_port()
         
-        logger.info(f"🚀 Iniciando ambiente WinBox Web no Display :{self.display_num} / VNC Port {self.vnc_port}")
+        logger.info(f"🚀 Iniciando ambiente WinBox Web no Display :{self.display_num} / VNC Port {self.vnc_port} / Resolução {self.width}x{self.height}")
         
-        # 1. Start Xvfb (Widescreen HD 1366x768 para preencher melhor a tela)
-        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", "1366x768x24", "-nolisten", "tcp"]
+        # 1. Start Xvfb com resolucao dinamica baseada no tamanho do painel do cliente
+        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", f"{self.width}x{self.height}x24", "-nolisten", "tcp"]
         try:
             p_xvfb = subprocess.Popen(xvfb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.processes.append(p_xvfb)
@@ -50,8 +52,8 @@ class WinboxVNCManager:
             
         # 3. Start x11vnc
         vnc_cmd = [
-            "x11vnc", "-display", f":{self.display_num}", 
-            "-nopw", "-listen", "127.0.0.1", 
+            "x11vnc", "-display", f":{self.display_num}",
+            "-nopw", "-listen", "127.0.0.1",
             "-xkb", "-rfbport", str(self.vnc_port),
             "-shared", "-forever", "-quiet"
         ]
@@ -73,7 +75,17 @@ class WinboxVNCManager:
         except FileNotFoundError:
             self.stop()
             raise Exception(f"Binário do WinBox não encontrado em {self.winbox_path}")
-            
+
+        # 5. Espera a janela do WinBox aparecer, maximiza e loga o resultado
+        disp = self.display_num
+        w, h = self.width, self.height
+        subprocess.Popen(
+            ["bash", "-c",
+             f"xdotool search --sync --name 'WinBox' windowsize {w} {h} windowmove 0 0 && "
+             f"sleep 1 && wmctrl -lG >> /tmp/winbox_debug.log 2>&1"],
+            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+
         return self.vnc_port
         
     def stop(self):

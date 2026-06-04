@@ -5,6 +5,82 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-06-03 (WinBox Web VNC — Correções)
+
+### Corrigido
+
+- **`WinboxVNCManager.__init__()` — parâmetros `width` e `height` faltando**
+  (`clientes/winbox_vnc.py`): O consumer passava `width=` e `height=` ao construtor
+  mas o `__init__` não declarava esses parâmetros, causando `NameError` e impedindo
+  qualquer sessão WinBox de iniciar. Parâmetros adicionados com defaults `width=1366, height=768`.
+
+- **WinBox abrindo minúsculo no browser** (`clientes/winbox_vnc.py`):
+  Flag `-ncache 10` no x11vnc fazia o servidor reportar ao noVNC uma tela 10× mais alta
+  que a real (ex: 1400×8000 em vez de 1400×800). O noVNC escalava todo o conteúdo para
+  caber nessa altura virtual, fazendo o WinBox aparecer como um quadradinho minúsculo no
+  topo da tela. Removidos os flags problemáticos: `-ncache`, `-noscr`, `-xrandr`, `-threads`,
+  `-nowireframe`. x11vnc restaurado ao comando simples e estável.
+
+- **`rfb.resizeSession = true` desmaximizando o WinBox** (`clientes/templates/winbox.html`):
+  O noVNC com `resizeSession=true` enviava `SetDesktopSize` ao x11vnc após conectar,
+  podendo causar resize do Xvfb e desmaximizar o WinBox. Definido como `false` pois
+  o Xvfb já é criado com as dimensões exatas do viewport do usuário.
+
+### Adicionado
+
+- **Maximização via `xdotool`** (`clientes/winbox_vnc.py`):
+  Após iniciar o WinBox, um processo background aguarda a janela aparecer
+  (`xdotool search --sync --name 'WinBox'`) e a redimensiona para a resolução correta,
+  servindo como fallback ao Openbox.
+
+- **`xdotool` e `wmctrl`** instalados no servidor como dependências do WinBox VNC.
+
+- **Documentação** (`docs/winbox_vnc.md`): Documentação técnica completa do módulo
+  WinBox Web VNC, incluindo arquitetura, fluxo de inicialização, problemas conhecidos
+  e como testar manualmente.
+
+---
+
+## [Não publicado] — 2026-06-02 (Notificações de Chamados em Aberto no CRM)
+
+### Adicionado
+
+- **Notificador global de chamados em aberto** (`templates/base.html`):
+  Sistema de notificação em tempo real via WebSocket para usuários fora do módulo de
+  atendimento (em páginas como Clientes, Financeiro, Monitoramento, etc.).
+  Ao chegar um novo chamado em aberto (conversa sem atendente), aparece um toast vermelho
+  no canto inferior direito com animação de pulso, nome do grupo e link direto para a conversa.
+  Badge vermelho com contador aparece no botão "Atendimento" da barra de navegação global.
+  Som de alerta duplo e notificação do navegador (se permissão concedida) também são emitidos.
+  Apenas para `is_staff`. Reconecta automaticamente com backoff exponencial em caso de queda.
+  Arquivos: `templates/base.html` (container `#globalTicketToasts`, estilos `.gtkt-*`,
+  script com `connect()`, `showToast()`, `updateBadge()`, `dismissToast()`).
+
+- **Toast visual diferenciado para chamados em aberto** (`atendimento/templates/atendimento/base.html`):
+  Dentro do módulo de atendimento, toasts de *novo chamado em aberto* (conversa não assumida)
+  agora têm estilo vermelho distinto do toast de mensagem normal (azul/cinza).
+  Estilo `msg-toast-ticket`: borda vermelha, fundo vermelho translúcido, animação de pulso
+  `ticketPulse`. Ícone de sino vermelho no lugar das iniciais do grupo.
+  Label "NOVO CHAMADO EM ABERTO" em vermelho acima do nome do grupo.
+  Toasts de mensagens da própria conversa assumida continuam com estilo original.
+  Arquivos: `atendimento/templates/atendimento/base.html` (CSS `.msg-toast-ticket`,
+  `.msg-toast-icon-ticket`, `.msg-toast-label`, `@keyframes ticketPulse`;
+  função `showToast(groupName, msgText, convId, initials, isNewTicket)`).
+
+### Alterado
+
+- **`showToast()` na base do atendimento** (`atendimento/templates/atendimento/base.html`):
+  Assinatura alterada de `showToast(groupName, msgText, convId, initials)` para
+  `showToast(groupName, msgText, convId, initials, isNewTicket)`. Chamada atualizada
+  para passar `isUnassigned` como quinto argumento, ativando o estilo vermelho apenas
+  em chamados sem atendente.
+
+- **Botão "Atendimento" na navegação global** (`templates/base.html`):
+  Adicionados `id="globalAtendBtn"` e `style="position:relative;"` para permitir
+  anexar o badge numérico vermelho via JavaScript sem alterar layout.
+
+---
+
 ## [Não publicado] — 2026-06-01 (sessão 4 — Módulo Financeiro)
 
 ### Adicionado
