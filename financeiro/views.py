@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q, Sum, Count, F, Avg, Exists, OuterRef
@@ -22,7 +22,7 @@ from django.core.files.base import ContentFile
 import datetime as dt
 
 from clientes.models import Cliente, BlocoIP
-from .models import Consultoria, AluguelIPv4, Fatura, ConfiguracaoFinanceira, Pagamento, Despesa
+from .models import Consultoria, AluguelIPv4, Fatura, ConfiguracaoFinanceira, Pagamento, Despesa, ContratoAluguel
 from .decorators import acesso_financeiro_restrito
 from django.db import transaction
 from django.db.models.functions import Substr, Cast
@@ -30,6 +30,12 @@ from django.db.models.functions import Substr, Cast
 # ============================================
 # VIEWS RENDERIZADAS
 # ============================================
+
+@login_required
+@acesso_financeiro_restrito
+def listar_despesas_page(request):
+    return render(request, 'financeiro/despesas.html')
+
 
 @login_required
 @acesso_financeiro_restrito
@@ -754,10 +760,13 @@ def api_criar_aluguel_ipv4(request):
         if bloco_id:
             bloco_ip = get_object_or_404(BlocoIP, id=bloco_id)
 
+        bloco_v6 = (request.POST.get('bloco_v6') or '').strip()
+
         aluguel = AluguelIPv4.objects.create(
             cliente=cliente,
             bloco_ip=bloco_ip,
             bloco_descricao=bloco_descricao,
+            bloco_v6=bloco_v6,
             quantidade_ips=quantidade_ips,
             valor_mensal=valor_mensal,
             data_inicio=data_inicio,
@@ -828,6 +837,7 @@ def api_editar_aluguel(request, aluguel_id):
 
         aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
         aluguel.bloco_descricao = request.POST.get('bloco_descricao', aluguel.bloco_descricao)
+        aluguel.bloco_v6        = (request.POST.get('bloco_v6') or aluguel.bloco_v6 or '').strip()
         aluguel.valor_mensal    = float(request.POST.get('valor_mensal',   aluguel.valor_mensal))
         aluguel.quantidade_ips  = int(request.POST.get('quantidade_ips',   aluguel.quantidade_ips))
         data_inicio_str = request.POST.get('data_inicio', '').strip()
@@ -906,23 +916,52 @@ def api_listar_alugueis(request):
             for a in alugueis:
                 total_valor_mensal += float(a.valor_mensal)
                 data_inicio_iso = a.data_inicio.strftime('%Y-%m-%d')
+                v6_badge = f'<span class="badge bg-secondary ms-2">{a.bloco_v6}</span>' if a.bloco_v6 else ''
+                v6_esc   = (a.bloco_v6 or '').replace("'", "\\'")
+
+                # Verifica se existe contrato assinado para este aluguel
+                contrato_assinado = ContratoAluguel.objects.filter(
+                    aluguel=a, status='assinado'
+                ).order_by('-assinado_em').first()
+                btn_pdf_assinado = ''
+                if contrato_assinado and contrato_assinado.pdf_assinado:
+                    pdf_url = contrato_assinado.pdf_assinado.url
+                    btn_pdf_assinado = f'''
+                        <a href="{pdf_url}" target="_blank"
+                           class="btn btn-sm btn-success" title="Baixar PDF Assinado pelo Cliente">
+                            <i class="fas fa-file-signature me-1"></i>PDF Assinado
+                        </a>'''
+
                 html += f'''
                 <div class="card mb-3 border-info">
                     <div class="card-body">
                         <div class="row align-items-center">
-                            <div class="col-md-7">
-                                <h6 class="card-title mb-1"><i class="fas fa-network-wired text-info me-2"></i>{a.bloco_descricao}</h6>
+                            <div class="col-md-6">
+                                <h6 class="card-title mb-1">
+                                    <i class="fas fa-network-wired text-info me-2"></i>{a.bloco_descricao}
+                                    {v6_badge}
+                                </h6>
                                 <small class="text-muted">
                                     {a.quantidade_ips} IPs | Início: {a.data_inicio.strftime('%d/%m/%Y')}
                                 </small>
                             </div>
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-2 text-center">
                                 <strong class="text-info fs-5">R$ {float(a.valor_mensal):.2f}</strong>
                                 <div><small class="text-muted">/mês</small></div>
                             </div>
-                            <div class="col-md-2 text-end">
-                                <button class="btn btn-sm btn-outline-warning me-1"
-                                    onclick="abrirEditarAluguel({a.id}, '{a.bloco_descricao}', {float(a.valor_mensal)}, {a.quantidade_ips}, '{data_inicio_iso}')"
+                            <div class="col-md-4 text-end d-flex gap-1 justify-content-end flex-wrap">
+                                {btn_pdf_assinado}
+                                <a href="/financeiro/api/aluguel/{a.id}/contrato/" target="_blank"
+                                   class="btn btn-sm btn-outline-success" title="Baixar Contrato PDF (sem assinatura)">
+                                    <i class="fas fa-file-pdf me-1"></i>PDF
+                                </a>
+                                <button class="btn btn-sm btn-outline-info"
+                                    onclick="abrirContratosAluguel({a.id}, '{a.bloco_descricao}')"
+                                    title="Assinatura Digital">
+                                    <i class="fas fa-signature me-1"></i>Assinar
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning"
+                                    onclick="abrirEditarAluguel({a.id}, '{a.bloco_descricao}', '{v6_esc}', {float(a.valor_mensal)}, {a.quantidade_ips}, '{data_inicio_iso}')"
                                     title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -1425,7 +1464,8 @@ def api_registrar_pagamento(request):
 
         fatura_id = int(fatura_id)
         data_pagamento = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
-        valor_pagado = float(valor_pagado_str)
+        from decimal import Decimal, ROUND_HALF_UP
+        valor_pagado = Decimal(valor_pagado_str).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
         if valor_pagado <= 0:
             return JsonResponse({'sucesso': False, 'erro': 'Valor deve ser maior que zero'}, status=400)
@@ -1488,6 +1528,51 @@ def api_registrar_pagamento(request):
         return JsonResponse({'sucesso': False, 'erro': 'Fatura não encontrada'}, status=404)
     except Exception as e:
         print(traceback.format_exc())
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_ajustar_vencimento(request):
+    """Ajusta o dia de vencimento de todas as faturas abertas de um cliente."""
+    try:
+        import json as _json
+        from calendar import monthrange
+        data = _json.loads(request.body)
+        cliente_id = data.get('cliente_id')
+        dia = data.get('dia')
+
+        if not cliente_id:
+            return JsonResponse({'sucesso': False, 'erro': 'cliente_id obrigatório'}, status=400)
+        try:
+            dia = int(dia)
+            if not (1 <= dia <= 31):
+                raise ValueError()
+        except (TypeError, ValueError):
+            return JsonResponse({'sucesso': False, 'erro': 'Dia inválido (1-31)'}, status=400)
+
+        from clientes.models import Cliente as _Cliente
+        cliente = get_object_or_404(_Cliente, id=cliente_id)
+
+        # Atualiza faturas abertas (não pagas)
+        faturas = Fatura.objects.filter(cliente=cliente).exclude(status='PAGA')
+        atualizadas = 0
+        for fatura in faturas:
+            _, ultimo_dia = monthrange(
+                fatura.data_vencimento.year,
+                fatura.data_vencimento.month
+            )
+            dia_efetivo = min(dia, ultimo_dia)
+            fatura.data_vencimento = fatura.data_vencimento.replace(day=dia_efetivo)
+            fatura.save(update_fields=['data_vencimento'])
+            atualizadas += 1
+
+        return JsonResponse({
+            'sucesso': True,
+            'atualizadas': atualizadas,
+            'mensagem': f'{atualizadas} fatura(s) ajustada(s) para o dia {dia}.',
+        })
+    except Exception as e:
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
 
 
@@ -1816,33 +1901,63 @@ def api_proximas_vencer(request):
 @require_http_methods(['POST'])
 def api_criar_despesa(request):
     try:
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
         data = json.loads(request.body)
         nome = data.get('nome', '').strip()
         if not nome:
             return JsonResponse({'sucesso': False, 'erro': 'Nome é obrigatório'})
-        vencimento = data.get('data_vencimento', '')
-        if not vencimento:
+        vencimento_str = data.get('data_vencimento', '')
+        if not vencimento_str:
             return JsonResponse({'sucesso': False, 'erro': 'Data de vencimento é obrigatória'})
         try:
             valor = float(str(data.get('valor', 0)).replace(',', '.'))
         except (ValueError, TypeError):
             return JsonResponse({'sucesso': False, 'erro': 'Valor inválido'})
 
-        recorrencia = data.get('recorrencia', 'UNICA')
+        parcelas = int(data.get('parcelas', 1) or 1)
+        parcelas = max(1, min(12, parcelas))
+        recorrencia = data.get('recorrencia', 'UNICA') if parcelas == 1 else 'UNICA'
         meses_raw = data.get('meses_recorrencia', None)
-        meses_recorrencia = int(meses_raw) if meses_raw and str(meses_raw).isdigit() and recorrencia != 'UNICA' else None
+        meses_recorrencia = int(meses_raw) if meses_raw and str(meses_raw).isdigit() and recorrencia != 'UNICA' and parcelas == 1 else None
         privada = data.get('privada', False)
+        categoria = data.get('categoria', 'OUTROS')
+        descricao = data.get('descricao', '').strip()
+        observacoes = data.get('observacoes', '').strip()
+
+        vencimento_base = date.fromisoformat(vencimento_str)
+
+        if parcelas > 1:
+            criadas = []
+            for i in range(1, parcelas + 1):
+                venc_i = vencimento_base + relativedelta(months=i - 1)
+                nome_i = f'{nome} ({i}/{parcelas})'
+                d = Despesa.objects.create(
+                    nome=nome_i,
+                    descricao=descricao,
+                    valor=valor,
+                    categoria=categoria,
+                    recorrencia='UNICA',
+                    meses_recorrencia=None,
+                    ocorrencia_atual=i,
+                    data_vencimento=venc_i,
+                    observacoes=observacoes,
+                    privada=privada,
+                    criado_por=request.user,
+                )
+                criadas.append(d.id)
+            return JsonResponse({'sucesso': True, 'ids': criadas, 'msg': f'{parcelas} parcelas criadas com sucesso!'})
 
         d = Despesa.objects.create(
             nome=nome,
-            descricao=data.get('descricao', '').strip(),
+            descricao=descricao,
             valor=valor,
-            categoria=data.get('categoria', 'OUTROS'),
+            categoria=categoria,
             recorrencia=recorrencia,
             meses_recorrencia=meses_recorrencia,
             ocorrencia_atual=1,
-            data_vencimento=vencimento,
-            observacoes=data.get('observacoes', '').strip(),
+            data_vencimento=vencimento_base,
+            observacoes=observacoes,
             privada=privada,
             criado_por=request.user,
         )
@@ -2033,13 +2148,48 @@ def api_pagar_despesa(request, despesa_id):
 
 @login_required
 @acesso_financeiro_restrito
-@require_http_methods(['DELETE'])
+@require_http_methods(['POST', 'DELETE'])
 def api_deletar_despesa(request, despesa_id):
     try:
         d = get_object_or_404(Despesa, id=despesa_id)
         nome = d.nome
         d.delete()
         return JsonResponse({'sucesso': True, 'msg': f'Despesa "{nome}" deletada.'})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_despesas_bulk(request):
+    """Ação em massa sobre despesas: deletar, marcar privada/pública, marcar paga."""
+    try:
+        data = json.loads(request.body)
+        ids  = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+        acao = data.get('acao', '')
+        if not ids:
+            return JsonResponse({'sucesso': False, 'erro': 'Nenhuma despesa selecionada.'})
+        from django.db.models import Q
+        qs = Despesa.objects.filter(
+            id__in=ids
+        ).filter(Q(privada=False) | Q(privada=True, criado_por=request.user))
+        count = qs.count()
+        if acao == 'deletar':
+            qs.delete()
+            return JsonResponse({'sucesso': True, 'msg': f'{count} despesa(s) deletada(s).'})
+        elif acao == 'privada':
+            qs.update(privada=True)
+            return JsonResponse({'sucesso': True, 'msg': f'{count} despesa(s) marcada(s) como privada.'})
+        elif acao == 'publica':
+            qs.update(privada=False)
+            return JsonResponse({'sucesso': True, 'msg': f'{count} despesa(s) marcada(s) como pública.'})
+        elif acao == 'pagar':
+            hoje = timezone.localdate()
+            qs.filter(status='PENDENTE').update(status='PAGO', data_pagamento=hoje)
+            return JsonResponse({'sucesso': True, 'msg': f'{count} despesa(s) marcada(s) como paga.'})
+        else:
+            return JsonResponse({'sucesso': False, 'erro': 'Ação inválida.'})
     except Exception as e:
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
 
@@ -2102,3 +2252,757 @@ def api_despesas_dashboard(request):
         })
     except Exception as e:
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+# ============================================
+# GERAR CONTRATO DE ALUGUEL DE BLOCO IP
+# ============================================
+
+@login_required
+def gerar_contrato_aluguel(request, aluguel_id):
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table as RLTable, TableStyle as RLTableStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from io import BytesIO
+    from datetime import date
+
+    aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
+    cliente = aluguel.cliente
+
+    loc_nome   = cliente.nome_empresa or ''
+    loc_cnpj   = cliente.cnpj or ''
+    loc_end    = cliente.endereco or ''
+    loc_cep    = cliente.cep or ''
+    loc_cidade = cliente.cidade or ''
+    loc_estado = cliente.estado or ''
+    loc_end_full = loc_end
+    if loc_cidade:  loc_end_full += f', {loc_cidade}'
+    if loc_estado:  loc_end_full += f'/{loc_estado}'
+    if loc_cep:     loc_end_full += f', CEP {loc_cep}'
+
+    bloco_v4 = aluguel.bloco_descricao or ''
+    bloco_v6 = aluguel.bloco_v6 or ''
+
+    if bloco_v6:
+        bloco_objeto = f'{bloco_v4} (IPv4) e {bloco_v6} (IPv6)'
+        bloco_tipo   = 'blocos IPv4 e IPv6'
+    else:
+        bloco_objeto = bloco_v4
+        bloco_tipo   = 'bloco IPv4'
+
+    prefixo = bloco_v4.split('/')[-1] if '/' in bloco_v4 else 'bloco'
+
+    valor = float(aluguel.valor_mensal)
+
+    def _extenso(v):
+        reais = int(v)
+        centavos = round((v - reais) * 100)
+        mapa = {
+            1:'UM', 2:'DOIS', 3:'TRÊS', 4:'QUATRO', 5:'CINCO',
+            6:'SEIS', 7:'SETE', 8:'OITO', 9:'NOVE', 10:'DEZ',
+            11:'ONZE', 12:'DOZE', 13:'TREZE', 14:'QUATORZE', 15:'QUINZE',
+            16:'DEZESSEIS', 17:'DEZESSETE', 18:'DEZOITO', 19:'DEZENOVE',
+            20:'VINTE', 30:'TRINTA', 40:'QUARENTA', 50:'CINQUENTA',
+            60:'SESSENTA', 70:'SETENTA', 80:'OITENTA', 90:'NOVENTA',
+        }
+        def _centenas(n):
+            if n == 0: return ''
+            if n == 100: return 'CEM'
+            cent_map = {200:'DUZENTOS',300:'TREZENTOS',400:'QUATROCENTOS',500:'QUINHENTOS',
+                        600:'SEISCENTOS',700:'SETECENTOS',800:'OITOCENTOS',900:'NOVECENTOS'}
+            c = (n // 100) * 100; r = n % 100
+            base = cent_map.get(c, '') if c else ''
+            resto = _dezenas(r)
+            return f'{base} E {resto}' if base and resto else base or resto
+        def _dezenas(n):
+            if n == 0: return ''
+            if n in mapa: return mapa[n]
+            d = (n // 10) * 10; u = n % 10
+            return f'{mapa[d]} E {mapa[u]}' if u else mapa[d]
+        def _numero(n):
+            if n == 0: return 'ZERO'
+            if n == 1000: return 'MIL'
+            if n > 1000:
+                m = n // 1000; r = n % 1000
+                mil = 'UM MIL' if m == 1 else f'{_numero(m)} MIL'
+                return f'{mil} E {_centenas(r)}' if r else mil
+            return _centenas(n) or _dezenas(n)
+
+        txt = _numero(reais)
+        if centavos:
+            txt += f' REAIS E {_dezenas(centavos)} CENTAVOS'
+        else:
+            txt += ' REAIS'
+        return txt
+
+    valor_extenso = _extenso(valor)
+    valor_fmt = f'R$ {valor:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+    multa = valor * 12 * 0.40
+    multa_fmt = f'R$ {multa:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+    hoje = date.today()
+    meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    data_ext = f'Senhor do Bonfim, {hoje.day} de {meses_pt[hoje.month-1]} de {hoje.year}'
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=2.5*cm, leftMargin=2.5*cm,
+        topMargin=2*cm, bottomMargin=2*cm,
+        title=f'Contrato Aluguel Bloco IP - {loc_nome}',
+    )
+
+    styles = getSampleStyleSheet()
+    st_titulo = ParagraphStyle('Titulo', parent=styles['Normal'],
+        fontSize=13, fontName='Helvetica-Bold', alignment=TA_CENTER, spaceAfter=16)
+    st_corpo  = ParagraphStyle('Corpo', parent=styles['Normal'],
+        fontSize=10, fontName='Helvetica', alignment=TA_JUSTIFY, leading=16, spaceAfter=8)
+    st_secao  = ParagraphStyle('Secao', parent=styles['Normal'],
+        fontSize=10, fontName='Helvetica-Bold', spaceBefore=12, spaceAfter=4)
+    st_assina = ParagraphStyle('Assina', parent=styles['Normal'],
+        fontSize=10, fontName='Helvetica', alignment=TA_CENTER, leading=14)
+
+    B = lambda t: f'<b>{t}</b>'
+    story = []
+
+    story.append(Paragraph('CONTRATO DE ALUGUEL DE BLOCO IP', st_titulo))
+    story.append(Spacer(1, 0.3*cm))
+
+    story.append(Paragraph(
+        f'Pelo presente instrumento particular de contrato de aluguel, de um lado, '
+        f'{B(loc_nome)} CNPJ sob o nº {B(loc_cnpj)}, residente e domiciliado(a) na '
+        f'{B(loc_end_full)}, doravante denominado(a) {B("locatário(a)")}, '
+        f'e do outro lado, {B("CAMPELO SUPORTE E CONSULTORIA ESPECIALIZADA EM REDES")}, '
+        f'CNPJ sob o nº {B("45.216.351/0001-72")}, residente e domiciliado(a) na '
+        f'{B("R CARLOS PEREIRA DE CARVALHO, nº 295, Centro, CEP 48.840-000")}, '
+        f'doravante denominado(a) {B("locador(a)")}, têm justo e contratado o seguinte:',
+        st_corpo
+    ))
+
+    clausulas = [
+        ('1 - Objeto',
+         f'O objeto do presente contrato é o aluguel do {bloco_tipo} com a vigência de um ano, '
+         f'localizado no endereço {B("(" + bloco_objeto + ")")} pelo valor mensal de '
+         f'{B(valor_fmt + " (" + valor_extenso + ")")}, com sigilo absoluto. '
+         f'O locatário(a) se compromete a não emprestar ou alugar o bloco para terceiros '
+         f'e a anunciá-lo somente como /{prefixo}.'),
+        ('2 - Prazo',
+         'O prazo de vigência do presente contrato é de 1 (um) ano, contado a partir da data de '
+         'assinatura deste instrumento e terminando em 12 meses.'),
+        ('3 - Condições de Pagamento',
+         f'O locatário(a) se compromete a pagar o valor mensal do aluguel até o dia 17 (Dezessete) '
+         f'de cada mês da seguinte forma: Pix — de forma pré-paga, deve ser pago para uso do bloco. '
+         f'O não pagamento poderá ocorrer a suspensão do aluguel no prazo de 10 dias.'),
+        ('4 - Sigilo e Informações',
+         f'O locatário(a) se compromete a manter sigilo absoluto sobre a existência do bloco em sua '
+         f'posse e não poderá informar a nenhuma entidade governamental ou terceiros sobre a sua existência.'),
+        ('5 - Obrigações do Locatário',
+         f'O locatário(a) se compromete a utilizar o bloco somente para o fim específico acordado '
+         f'entre as partes, bem como a zelar pela sua conservação e segurança, não podendo danificá-lo '
+         f'ou causar qualquer tipo de prejuízo ao locador(a).'),
+        ('6 - Rescisão',
+         f'Em caso de rescisão do presente contrato, fica estipulada uma multa rescisória equivalente '
+         f'a 40% do valor total do contrato ({B(multa_fmt)}). Em caso de rescisão deverá pagar a '
+         f'referida multa, no prazo de 30 (trinta) dias após a rescisão. A não realização do pagamento '
+         f'da multa implicará na cobrança judicial do valor devido, acrescido de juros de mora e '
+         f'correção monetária.'),
+        ('7 - Foro',
+         'Fica eleito o foro da Comarca de Senhor do Bonfim - BA, para dirimir qualquer controvérsia '
+         'oriunda deste contrato.'),
+    ]
+
+    for titulo_c, texto_c in clausulas:
+        story.append(Paragraph(titulo_c, st_secao))
+        story.append(Paragraph(texto_c, st_corpo))
+
+    story.append(Spacer(1, 0.5*cm))
+    story.append(Paragraph(
+        'E, por estarem assim justas e contratadas, as partes assinam o presente contrato em duas vias '
+        'de igual teor e forma, na presença das testemunhas abaixo.',
+        st_corpo
+    ))
+    story.append(Spacer(1, 0.8*cm))
+    story.append(Paragraph(f'<b>{data_ext}.</b>', st_assina))
+    story.append(Spacer(1, 1.5*cm))
+
+    # Assinatura do locador
+    cfg_fin = ConfiguracaoFinanceira.objects.first()
+    locador_cell = _celula_assinatura_locador(cfg_fin, st_assina, cm)
+
+    tbl = RLTable(
+        [[
+            Paragraph('______________________________________________<br/>'
+                      f'<b>{loc_nome}</b><br/>'
+                      f'CNPJ: {loc_cnpj}<br/>Locatário(a)', st_assina),
+            locador_cell,
+        ]],
+        colWidths=[8*cm, 8*cm],
+    )
+    tbl.setStyle(RLTableStyle([
+        ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING',  (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(tbl)
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    nome_arquivo = f'contrato_bloco_ip_{loc_nome.replace(" ", "_")}_{bloco_v4.replace("/", "-")}.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+    return response
+
+
+# ============================================
+# ASSINATURA DIGITAL DE CONTRATO
+# ============================================
+
+def _celula_assinatura_locador(cfg_fin, st_assina, cm):
+    """Retorna a célula da tabela para o locador: imagem + texto se tiver assinatura salva."""
+    from reportlab.platypus import Paragraph, Image as RLImage
+    from io import BytesIO
+    import base64 as _b64
+
+    assinatura = (cfg_fin.assinatura_locador if cfg_fin else '') or ''
+    if assinatura:
+        try:
+            img_data = assinatura
+            if ',' in img_data:
+                img_data = img_data.split(',', 1)[1]
+            img_bytes  = _b64.b64decode(img_data)
+            img_buf    = BytesIO(img_bytes)
+            img        = RLImage(img_buf, width=6*cm, height=2*cm)
+            return [
+                img,
+                Paragraph('<b>CAMPELO SUPORTE E CONSULTORIA</b><br/>'
+                          'CNPJ: 45.216.351/0001-72<br/>Locador(a)', st_assina),
+            ]
+        except Exception:
+            pass
+    # Fallback: linha em branco
+    return Paragraph('______________________________________________<br/>'
+                     '<b>CAMPELO SUPORTE E CONSULTORIA</b><br/>'
+                     'CNPJ: 45.216.351/0001-72<br/>Locador(a)', st_assina)
+
+
+def _build_contrato_story(aluguel, styles_extra=None):
+    """Retorna (story_list, nome_arquivo) com o conteúdo do contrato sem bloco de assinatura."""
+    from reportlab.platypus import Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from datetime import date
+
+    cliente    = aluguel.cliente
+    loc_nome   = cliente.nome_empresa or ''
+    loc_cnpj   = cliente.cnpj or ''
+    loc_end    = cliente.endereco or ''
+    loc_cep    = cliente.cep or ''
+    loc_cidade = cliente.cidade or ''
+    loc_estado = cliente.estado or ''
+    loc_end_full = loc_end
+    if loc_cidade: loc_end_full += f', {loc_cidade}'
+    if loc_estado: loc_end_full += f'/{loc_estado}'
+    if loc_cep:    loc_end_full += f', CEP {loc_cep}'
+
+    bloco_v4 = aluguel.bloco_descricao or ''
+    bloco_v6 = aluguel.bloco_v6 or ''
+    bloco_objeto = f'{bloco_v4} (IPv4) e {bloco_v6} (IPv6)' if bloco_v6 else bloco_v4
+    bloco_tipo   = 'blocos IPv4 e IPv6' if bloco_v6 else 'bloco IPv4'
+    prefixo      = bloco_v4.split('/')[-1] if '/' in bloco_v4 else 'bloco'
+
+    valor = float(aluguel.valor_mensal)
+
+    def _extenso(v):
+        reais = int(v); centavos = round((v - reais) * 100)
+        mapa = {1:'UM',2:'DOIS',3:'TRÊS',4:'QUATRO',5:'CINCO',6:'SEIS',7:'SETE',8:'OITO',9:'NOVE',
+                10:'DEZ',11:'ONZE',12:'DOZE',13:'TREZE',14:'QUATORZE',15:'QUINZE',16:'DEZESSEIS',
+                17:'DEZESSETE',18:'DEZOITO',19:'DEZENOVE',20:'VINTE',30:'TRINTA',40:'QUARENTA',
+                50:'CINQUENTA',60:'SESSENTA',70:'SETENTA',80:'OITENTA',90:'NOVENTA'}
+        cent_map = {200:'DUZENTOS',300:'TREZENTOS',400:'QUATROCENTOS',500:'QUINHENTOS',
+                    600:'SEISCENTOS',700:'SETECENTOS',800:'OITOCENTOS',900:'NOVECENTOS'}
+        def _dez(n):
+            if n == 0: return ''
+            if n in mapa: return mapa[n]
+            d=(n//10)*10; u=n%10
+            return f'{mapa[d]} E {mapa[u]}' if u else mapa[d]
+        def _cent(n):
+            if n == 0: return ''
+            if n == 100: return 'CEM'
+            c=(n//100)*100; r=n%100
+            base=cent_map.get(c,'')
+            resto=_dez(r)
+            return f'{base} E {resto}' if base and resto else base or resto
+        def _num(n):
+            if n == 0: return 'ZERO'
+            if n == 1000: return 'MIL'
+            if n > 1000:
+                m=n//1000; r=n%1000
+                mil='UM MIL' if m==1 else f'{_num(m)} MIL'
+                return f'{mil} E {_cent(r)}' if r else mil
+            return _cent(n) or _dez(n)
+        txt = _num(reais)
+        txt += f' REAIS E {_dez(centavos)} CENTAVOS' if centavos else ' REAIS'
+        return txt
+
+    valor_extenso = _extenso(valor)
+    valor_fmt = f'R$ {valor:,.2f}'.replace(',','X').replace('.',',').replace('X','.')
+    multa     = valor * 12 * 0.40
+    multa_fmt = f'R$ {multa:,.2f}'.replace(',','X').replace('.',',').replace('X','.')
+
+    hoje      = date.today()
+    meses_pt  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    data_ext  = f'Senhor do Bonfim, {hoje.day} de {meses_pt[hoje.month-1]} de {hoje.year}'
+
+    styles   = getSampleStyleSheet()
+    st_titulo = ParagraphStyle('Titulo', parent=styles['Normal'],
+        fontSize=13, fontName='Helvetica-Bold', alignment=TA_CENTER, spaceAfter=16)
+    st_corpo  = ParagraphStyle('Corpo', parent=styles['Normal'],
+        fontSize=10, fontName='Helvetica', alignment=TA_JUSTIFY, leading=16, spaceAfter=8)
+    st_secao  = ParagraphStyle('Secao', parent=styles['Normal'],
+        fontSize=10, fontName='Helvetica-Bold', spaceBefore=12, spaceAfter=4)
+    st_assina = ParagraphStyle('Assina', parent=styles['Normal'],
+        fontSize=10, fontName='Helvetica', alignment=TA_CENTER, leading=14)
+
+    B = lambda t: f'<b>{t}</b>'
+    story = []
+    story.append(Paragraph('CONTRATO DE ALUGUEL DE BLOCO IP', st_titulo))
+    story.append(Spacer(1, 0.3*cm))
+    story.append(Paragraph(
+        f'Pelo presente instrumento particular de contrato de aluguel, de um lado, '
+        f'{B(loc_nome)} CNPJ sob o nº {B(loc_cnpj)}, residente e domiciliado(a) na '
+        f'{B(loc_end_full)}, doravante denominado(a) {B("locatário(a)")}, '
+        f'e do outro lado, {B("CAMPELO SUPORTE E CONSULTORIA ESPECIALIZADA EM REDES")}, '
+        f'CNPJ sob o nº {B("45.216.351/0001-72")}, residente e domiciliado(a) na '
+        f'{B("R CARLOS PEREIRA DE CARVALHO, nº 295, Centro, CEP 48.840-000")}, '
+        f'doravante denominado(a) {B("locador(a)")}, têm justo e contratado o seguinte:',
+        st_corpo
+    ))
+    clausulas = [
+        ('1 - Objeto',
+         f'O objeto do presente contrato é o aluguel do {bloco_tipo} com a vigência de um ano, '
+         f'localizado no endereço {B("(" + bloco_objeto + ")")} pelo valor mensal de '
+         f'{B(valor_fmt + " (" + valor_extenso + ")")}, com sigilo absoluto. '
+         f'O locatário(a) se compromete a não emprestar ou alugar o bloco para terceiros '
+         f'e a anunciá-lo somente como /{prefixo}.'),
+        ('2 - Prazo',
+         'O prazo de vigência do presente contrato é de 1 (um) ano, contado a partir da data de '
+         'assinatura deste instrumento e terminando em 12 meses.'),
+        ('3 - Condições de Pagamento',
+         f'O locatário(a) se compromete a pagar o valor mensal do aluguel até o dia 17 (Dezessete) '
+         f'de cada mês da seguinte forma: Pix — de forma pré-paga, deve ser pago para uso do bloco. '
+         f'O não pagamento poderá ocorrer a suspensão do aluguel no prazo de 10 dias.'),
+        ('4 - Sigilo e Informações',
+         f'O locatário(a) se compromete a manter sigilo absoluto sobre a existência do bloco em sua '
+         f'posse e não poderá informar a nenhuma entidade governamental ou terceiros sobre a sua existência.'),
+        ('5 - Obrigações do Locatário',
+         f'O locatário(a) se compromete a utilizar o bloco somente para o fim específico acordado '
+         f'entre as partes, bem como a zelar pela sua conservação e segurança, não podendo danificá-lo '
+         f'ou causar qualquer tipo de prejuízo ao locador(a).'),
+        ('6 - Rescisão',
+         f'Em caso de rescisão do presente contrato, fica estipulada uma multa rescisória equivalente '
+         f'a 40% do valor total do contrato ({B(multa_fmt)}). Em caso de rescisão deverá pagar a '
+         f'referida multa, no prazo de 30 (trinta) dias após a rescisão. A não realização do pagamento '
+         f'da multa implicará na cobrança judicial do valor devido, acrescido de juros de mora e '
+         f'correção monetária.'),
+        ('7 - Foro',
+         'Fica eleito o foro da Comarca de Senhor do Bonfim - BA, para dirimir qualquer controvérsia '
+         'oriunda deste contrato.'),
+    ]
+    for titulo_c, texto_c in clausulas:
+        story.append(Paragraph(titulo_c, st_secao))
+        story.append(Paragraph(texto_c, st_corpo))
+
+    story.append(Spacer(1, 0.5*cm))
+    story.append(Paragraph(
+        'E, por estarem assim justas e contratadas, as partes assinam o presente contrato em duas vias '
+        'de igual teor e forma, na presença das testemunhas abaixo.',
+        st_corpo
+    ))
+    story.append(Spacer(1, 0.8*cm))
+    story.append(Paragraph(f'<b>{data_ext}.</b>', st_assina))
+
+    nome_arquivo = f'contrato_{loc_nome.replace(" ","_")}_{bloco_v4.replace("/","-")}.pdf'
+    return story, nome_arquivo, st_assina, loc_nome, loc_cnpj
+
+
+@login_required
+@require_http_methods(['POST'])
+def gerar_link_assinatura(request, aluguel_id):
+    """Cria (ou retorna existente) um ContratoAluguel com link único para assinatura."""
+    aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
+
+    dias = int(request.POST.get('dias_validade', 7))
+    expira = timezone.now() + timedelta(days=dias)
+
+    # Reutiliza contrato pendente se existir
+    contrato = ContratoAluguel.objects.filter(aluguel=aluguel, status='pendente').first()
+    if not contrato:
+        contrato = ContratoAluguel.objects.create(aluguel=aluguel, expira_em=expira)
+    else:
+        contrato.expira_em = expira
+        contrato.save(update_fields=['expira_em'])
+
+    scheme = 'https' if request.is_secure() else 'http'
+    link   = f'{scheme}://{request.get_host()}/financeiro/contrato/{contrato.token}/assinar/'
+    return JsonResponse({'ok': True, 'link': link, 'token': str(contrato.token),
+                         'expira_em': contrato.expira_em.strftime('%d/%m/%Y %H:%M')})
+
+
+def assinar_contrato(request, token):
+    """Página pública onde o cliente lê e assina o contrato."""
+    from django.views.decorators.csrf import csrf_exempt
+    contrato = get_object_or_404(ContratoAluguel, token=token)
+
+    if contrato.status == 'assinado':
+        return render(request, 'financeiro/contrato_assinado.html', {'contrato': contrato})
+    if contrato.esta_expirado():
+        contrato.status = 'expirado'
+        contrato.save(update_fields=['status'])
+        return render(request, 'financeiro/contrato_expirado.html', {'contrato': contrato})
+
+    aluguel  = contrato.aluguel
+    cliente  = aluguel.cliente
+    return render(request, 'financeiro/contrato_assinar.html', {
+        'contrato': contrato,
+        'aluguel':  aluguel,
+        'cliente':  cliente,
+    })
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+def _enviar_contrato_email(contrato):
+    """Envia PDF do contrato assinado por email para o cliente."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email.mime.text import MIMEText
+    from email import encoders as _enc
+    from clientes.models import ConfiguracaoSistema
+    from django.conf import settings as djsettings
+
+    cliente = contrato.aluguel.cliente
+    email_destino = getattr(cliente, 'email', '') or ''
+    if not email_destino:
+        print(f'⚠️ Email do cliente {cliente.nome_empresa} não cadastrado — contrato não enviado.')
+        return False
+
+    smtp_cfg  = ConfiguracaoSistema.get()
+    smtp_host = smtp_cfg.smtp_host or getattr(djsettings, 'EMAIL_HOST', '')
+    smtp_port = int(smtp_cfg.smtp_port or getattr(djsettings, 'EMAIL_PORT', 587))
+    smtp_user = smtp_cfg.smtp_user or getattr(djsettings, 'EMAIL_HOST_USER', '')
+    smtp_pass = smtp_cfg.smtp_pass or getattr(djsettings, 'EMAIL_HOST_PASSWORD', '')
+    remetente = smtp_cfg.smtp_from or smtp_user
+    use_tls   = smtp_cfg.smtp_use_tls
+
+    if not smtp_host or not smtp_user:
+        print('⚠️ SMTP não configurado — contrato não enviado por email.')
+        return False
+
+    assinado_em = contrato.assinado_em.strftime('%d/%m/%Y às %H:%M') if contrato.assinado_em else ''
+    bloco_v4    = contrato.aluguel.bloco_descricao
+    bloco_v6    = contrato.aluguel.bloco_v6 or ''
+    blocos_str  = f'{bloco_v4}' + (f' e {bloco_v6}' if bloco_v6 else '')
+
+    corpo_html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;background:#f9f9f9;border-radius:8px;overflow:hidden;">
+      <div style="background:#161b22;padding:28px 32px;text-align:center;">
+        <h2 style="color:#e6edf3;margin:0;font-size:1.2rem;">Contrato Assinado Digitalmente</h2>
+        <p style="color:#7d8590;margin:6px 0 0;font-size:.85rem;">Campelo Suporte e Consultoria Especializada em Redes</p>
+      </div>
+      <div style="padding:28px 32px;background:#fff;">
+        <p style="color:#333;font-size:.95rem;">Olá, <b>{cliente.nome_empresa}</b>!</p>
+        <p style="color:#555;font-size:.9rem;line-height:1.6;">
+          Segue em anexo a cópia do contrato de aluguel de bloco IP assinado digitalmente.
+        </p>
+        <div style="background:#f5f5f5;border-radius:6px;padding:16px;margin:20px 0;font-size:.85rem;color:#555;">
+          <p style="margin:0 0 6px;"><b>Bloco(s):</b> {blocos_str}</p>
+          <p style="margin:0 0 6px;"><b>Assinado por:</b> {contrato.nome_assinante}</p>
+          <p style="margin:0 0 6px;"><b>Data/hora:</b> {assinado_em}</p>
+          <p style="margin:0;"><b>Token de verificação:</b> <code style="font-size:.8rem;">{contrato.token}</code></p>
+        </div>
+        <p style="color:#555;font-size:.85rem;line-height:1.6;">
+          Este documento é a sua cópia do contrato. Guarde-o em local seguro.
+        </p>
+      </div>
+      <div style="padding:16px 32px;background:#f0f0f0;text-align:center;">
+        <p style="color:#888;font-size:.75rem;margin:0;">
+          E-mail gerado automaticamente pelo sistema CRM — Campelo Suporte · CNPJ 45.216.351/0001-72
+        </p>
+      </div>
+    </div>
+    """
+
+    msg = MIMEMultipart('mixed')
+    msg['Subject'] = f'Contrato de Aluguel de Bloco IP — {blocos_str}'
+    msg['From']    = remetente
+    msg['To']      = email_destino
+
+    msg.attach(MIMEText(corpo_html, 'html', 'utf-8'))
+
+    # Anexa PDF se existir
+    if contrato.pdf_assinado:
+        try:
+            pdf_bytes = contrato.pdf_assinado.read()
+            part = MIMEBase('application', 'pdf')
+            part.set_payload(pdf_bytes)
+            _enc.encode_base64(part)
+            part.add_header('Content-Disposition',
+                            f'attachment; filename="contrato_assinado_{bloco_v4.replace("/","-")}.pdf"')
+            msg.attach(part)
+        except Exception as exc:
+            print(f'⚠️ Não foi possível anexar PDF: {exc}')
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+        server.ehlo()
+        if use_tls:
+            server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(remetente, [email_destino], msg.as_string())
+
+    print(f'✅ Contrato enviado por email para {email_destino}')
+    return True
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def confirmar_assinatura(request, token):
+    """Recebe a assinatura do cliente, gera PDF assinado e marca como assinado."""
+    import base64 as _b64
+    from reportlab.platypus import SimpleDocTemplate, Spacer, Table as RLTable, TableStyle as RLTableStyle, Image as RLImage
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+
+    contrato = get_object_or_404(ContratoAluguel, token=token)
+    if contrato.status == 'assinado':
+        return JsonResponse({'ok': False, 'erro': 'Contrato já assinado.'}, status=400)
+    if contrato.esta_expirado():
+        return JsonResponse({'ok': False, 'erro': 'Link expirado.'}, status=400)
+
+    try:
+        body          = json.loads(request.body)
+        assinatura_b64 = body.get('assinatura', '')
+        nome_assinante = (body.get('nome') or '').strip()
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'Dados inválidos.'}, status=400)
+
+    if not assinatura_b64 or not nome_assinante:
+        return JsonResponse({'ok': False, 'erro': 'Nome e assinatura são obrigatórios.'}, status=400)
+
+    # Salva assinatura
+    contrato.assinatura_img = assinatura_b64
+    contrato.nome_assinante = nome_assinante
+    contrato.ip_assinante   = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+    contrato.assinado_em    = timezone.now()
+    contrato.status         = 'assinado'
+
+    # Gera PDF com assinatura embutida
+    try:
+        story, nome_arquivo, st_assina, loc_nome, loc_cnpj = _build_contrato_story(contrato.aluguel)
+
+        # Decodifica imagem da assinatura e compõe sobre fundo branco
+        img_data = assinatura_b64
+        if ',' in img_data:
+            img_data = img_data.split(',', 1)[1]
+        img_bytes = _b64.b64decode(img_data)
+
+        try:
+            from PIL import Image as _PILImage
+            _img_pil = _PILImage.open(BytesIO(img_bytes))
+            if _img_pil.mode in ('RGBA', 'LA', 'P'):
+                _img_pil = _img_pil.convert('RGBA')
+                _bg = _PILImage.new('RGBA', _img_pil.size, (255, 255, 255, 255))
+                _bg.paste(_img_pil, mask=_img_pil.split()[3])
+                _img_pil = _bg.convert('RGB')
+            else:
+                _img_pil = _img_pil.convert('RGB')
+            img_buffer = BytesIO()
+            _img_pil.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+        except Exception:
+            img_buffer = BytesIO(img_bytes)
+
+        # Bloco de assinaturas com imagem do cliente
+        from reportlab.platypus import Paragraph
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER
+
+        assinado_em_fmt = contrato.assinado_em.strftime('%d/%m/%Y %H:%M')
+
+        img_assinatura = RLImage(img_buffer, width=6*cm, height=2*cm)
+
+        cfg_fin = ConfiguracaoFinanceira.objects.first()
+        locador_cell = _celula_assinatura_locador(cfg_fin, st_assina, cm)
+
+        tbl = RLTable(
+            [[
+                # Coluna locatário — imagem de assinatura
+                [img_assinatura,
+                 Paragraph(f'<b>{loc_nome}</b><br/>CNPJ: {loc_cnpj}<br/>'
+                           f'Assinado em: {assinado_em_fmt}<br/>Locatário(a)', st_assina)],
+                # Coluna locador — imagem salva ou linha em branco
+                locador_cell,
+            ]],
+            colWidths=[8*cm, 8*cm],
+        )
+        tbl.setStyle(RLTableStyle([
+            ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING',  (0,0), (-1,-1), 8),
+            ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ]))
+        story.append(Spacer(1, 1.2*cm))
+        story.append(tbl)
+
+        # Rodapé com hash de verificação
+        from reportlab.platypus import Paragraph as P2
+        st_footer = ParagraphStyle('Footer', fontName='Helvetica', fontSize=7,
+                                   alignment=TA_CENTER, textColor=(0.5,0.5,0.5))
+        story.append(Spacer(1, 0.5*cm))
+        story.append(P2(
+            f'Documento assinado digitalmente · Token: {contrato.token} · '
+            f'IP: {contrato.ip_assinante} · {assinado_em_fmt}',
+            st_footer
+        ))
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+                                rightMargin=2.5*cm, leftMargin=2.5*cm,
+                                topMargin=2*cm, bottomMargin=2*cm)
+        doc.build(story)
+        pdf_bytes = buf.getvalue()
+
+        contrato.pdf_assinado.save(nome_arquivo, ContentFile(pdf_bytes), save=False)
+    except Exception as exc:
+        import traceback as _tb
+        print(f'⚠️ Erro ao gerar PDF assinado: {exc}\n{_tb.format_exc()}')
+
+    contrato.save()
+
+    # Envia cópia por email ao cliente (não-bloqueante)
+    try:
+        _enviar_contrato_email(contrato)
+    except Exception as exc:
+        print(f'⚠️ Erro ao enviar email contrato: {exc}')
+
+    return JsonResponse({'ok': True, 'mensagem': 'Contrato assinado com sucesso!'})
+
+
+@login_required
+def download_contrato_assinado(request, token):
+    """Download do PDF assinado (apenas usuários autenticados)."""
+    contrato = get_object_or_404(ContratoAluguel, token=token, status='assinado')
+    if not contrato.pdf_assinado:
+        return HttpResponse('PDF ainda não gerado.', status=404)
+    response = HttpResponse(contrato.pdf_assinado.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="contrato_assinado_{contrato.token}.pdf"'
+    return response
+
+
+@login_required
+def listar_contratos_aluguel(request, aluguel_id):
+    """Lista contratos de um aluguel (para o painel admin)."""
+    aluguel   = get_object_or_404(AluguelIPv4, id=aluguel_id)
+    contratos = ContratoAluguel.objects.filter(aluguel=aluguel).order_by('-criado_em')
+    data = []
+    for c in contratos:
+        scheme = 'https' if request.is_secure() else 'http'
+        link   = f'{scheme}://{request.get_host()}/financeiro/contrato/{c.token}/assinar/'
+        data.append({
+            'id':           c.id,
+            'token':        str(c.token),
+            'status':       c.status,
+            'status_label': c.get_status_display(),
+            'nome_assinante': c.nome_assinante,
+            'assinado_em':  c.assinado_em.strftime('%d/%m/%Y %H:%M') if c.assinado_em else None,
+            'criado_em':    c.criado_em.strftime('%d/%m/%Y %H:%M'),
+            'expira_em':    c.expira_em.strftime('%d/%m/%Y %H:%M') if c.expira_em else None,
+            'link':         link,
+            'pdf_url':      c.pdf_assinado.url if c.pdf_assinado else None,
+        })
+    return JsonResponse({'ok': True, 'contratos': data})
+
+
+@login_required
+def assinatura_locador(request):
+    """GET: retorna assinatura salva. POST: salva nova assinatura."""
+    cfg = ConfiguracaoFinanceira.objects.first()
+    if request.method == 'GET':
+        return JsonResponse({
+            'ok': True,
+            'assinatura': cfg.assinatura_locador if cfg else '',
+        })
+    # POST
+    try:
+        body = json.loads(request.body)
+        assinatura = (body.get('assinatura') or '').strip()
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'Dados inválidos.'}, status=400)
+
+    if not cfg:
+        return JsonResponse({'ok': False, 'erro': 'Configuração financeira não encontrada.'}, status=400)
+
+    cfg.assinatura_locador = assinatura
+    cfg.save(update_fields=['assinatura_locador'])
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def api_clientes_aluguel_ativo(request):
+    """Clientes com aluguel IPv4 ativo e suas faturas abertas."""
+    alugueis = (
+        AluguelIPv4.objects
+        .filter(status='ATIVO')
+        .select_related('cliente')
+        .order_by('cliente__nome_empresa', 'bloco_descricao')
+    )
+
+    clientes_map = {}
+    for a in alugueis:
+        cid = a.cliente_id
+        if cid not in clientes_map:
+            clientes_map[cid] = {
+                'id':           cid,
+                'nome':         a.cliente.nome_empresa,
+                'cnpj':         a.cliente.cnpj,
+                'email':        a.cliente.email,
+                'telefone':     a.cliente.telefone or '',
+                'blocos':       [],
+                'faturas':      [],
+                'total_mensal': 0,
+            }
+        clientes_map[cid]['blocos'].append({
+            'bloco':       a.bloco_descricao,
+            'bloco_v6':    a.bloco_v6,
+            'qtd_ips':     a.quantidade_ips,
+            'valor':       float(a.valor_mensal),
+            'data_inicio': a.data_inicio.strftime('%d/%m/%Y'),
+        })
+        clientes_map[cid]['total_mensal'] += float(a.valor_mensal)
+
+    if clientes_map:
+        faturas = (
+            Fatura.objects
+            .filter(cliente_id__in=clientes_map.keys(), status__in=['ABERTA', 'RASCUNHO'])
+            .order_by('data_vencimento')
+        )
+        hoje = date.today()
+        for f in faturas:
+            venc = f.data_vencimento
+            clientes_map[f.cliente_id]['faturas'].append({
+                'numero':       f.numero_fatura,
+                'valor':        float(f.valor_total),
+                'vencimento':   venc.strftime('%d/%m/%Y'),
+                'vencida':      venc < hoje,
+                'status':       f.status,
+                'status_label': dict(Fatura.STATUS_CHOICES).get(f.status, f.status),
+            })
+
+    resultado = sorted(clientes_map.values(), key=lambda x: x['nome'])
+    return JsonResponse({'ok': True, 'clientes': resultado})

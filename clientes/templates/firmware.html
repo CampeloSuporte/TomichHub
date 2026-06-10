@@ -201,10 +201,10 @@
 
         <!-- Resultado do link gerado -->
         <div id="comp-resultado" style="display:none">
-          <div id="comp-info-bar" class="mb-3" style="padding:10px 14px;border-radius:8px;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.25)">
+          <div id="comp-info-bar" class="mb-3" style="padding:10px 14px;border-radius:8px;background:rgba(63,185,80,.06);border:1px solid rgba(63,185,80,.25)">
             <div class="d-flex align-items-center flex-wrap gap-3">
               <div class="d-flex flex-wrap gap-3 flex-grow-1">
-                <span style="font-size:.8rem;color:#8b949e">Expira em: <strong style="color:#00ff88" id="comp-expira"></strong></span>
+                <span style="font-size:.8rem;color:#8b949e">Expira em: <strong style="color:#3fb950" id="comp-expira"></strong></span>
                 <span style="font-size:.8rem;color:#8b949e">Tamanho: <strong style="color:#e6edf3" id="comp-tamanho"></strong></span>
               </div>
               <button id="comp-btn-revogar" onclick="fwRevogarLinkAtual()"
@@ -245,7 +245,7 @@
 <div id="fwDlOverlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
   <div style="background:#0d1117;border:2px solid #00d9ff;border-radius:10px;width:92%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,217,255,.25);position:relative">
     <div style="padding:14px 18px;border-bottom:1px solid #1c2230;display:flex;align-items:center;gap:10px">
-      <span id="fwDlPulse" style="width:9px;height:9px;border-radius:50%;background:#00ff88;display:inline-block;box-shadow:0 0 8px #00ff88;animation:pulse-green 1.2s ease-in-out infinite"></span>
+      <span id="fwDlPulse" style="width:9px;height:9px;border-radius:50%;background:#3fb950;display:inline-block;box-shadow:0 0 8px #3fb950;animation:pulse-green 1.2s ease-in-out infinite"></span>
       <span style="font-size:.9rem;color:#e6edf3;font-weight:600"><i class="fas fa-download me-2" style="color:#00d9ff"></i>Downloads em andamento</span>
       <span id="fwDlCount" style="margin-left:4px;font-size:.72rem;background:rgba(0,217,255,.15);border:1px solid rgba(0,217,255,.3);color:#00d9ff;border-radius:10px;padding:1px 8px"></span>
       <button onclick="document.getElementById('fwDlOverlay').style.display='none'"
@@ -262,22 +262,22 @@
   style="display:none;position:fixed;bottom:24px;right:24px;z-index:9998;cursor:pointer;
   background:#0d1117;border:2px solid #00d9ff;border-radius:50px;padding:10px 18px;
   box-shadow:0 0 20px rgba(0,217,255,.35);color:#00d9ff;font-size:.82rem;font-weight:600;align-items:center;gap:8px">
-  <span style="width:8px;height:8px;border-radius:50%;background:#00ff88;animation:pulse-green 1s ease-in-out infinite"></span>
+  <span style="width:8px;height:8px;border-radius:50%;background:#3fb950;animation:pulse-green 1s ease-in-out infinite"></span>
   <i class="fas fa-download me-1"></i>
   <span id="fwDlBadgeTxt">0 downloads</span>
 </div>
 
 <style>
 @keyframes pulse-green {
-  0%,100% { box-shadow: 0 0 4px #00ff88; opacity:1; }
-  50%      { box-shadow: 0 0 12px #00ff88; opacity:.7; }
+  0%,100% { box-shadow: 0 0 4px #3fb950; opacity:1; }
+  50%      { box-shadow: 0 0 12px #3fb950; opacity:.7; }
 }
 .fwdl-card { background:#0a0f1a;border:1px solid #1c2230;border-radius:8px;padding:12px 14px; }
-.fwdl-card.done { border-color:rgba(0,255,136,.45); }
+.fwdl-card.done { border-color:rgba(63,185,80,.45); }
 .fwdl-card.erro { border-color:rgba(224,96,96,.45); }
 .fwdl-bar-wrap { height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:8px;overflow:hidden; }
 .fwdl-bar { height:100%;border-radius:3px;background:linear-gradient(90deg,#0080cc,#00d9ff);transition:width .4s ease; }
-.fwdl-bar.done { background:linear-gradient(90deg,#00a86b,#00ff88); }
+.fwdl-bar.done { background:linear-gradient(90deg,#00a86b,#3fb950); }
 </style>
 
 <!-- ══ Modal: Detalhes de Link Existente ══════════════════════════════════ -->
@@ -307,7 +307,7 @@
 .fw-btn:hover { background:rgba(255,255,255,.07); }
 .fw-btn-share { color:#00d9ff; }
 .fw-btn-delete { color:#e06060; }
-.fw-btn-links  { color:#00ff88; }
+.fw-btn-links  { color:#3fb950; }
 #fw-dropzone.drag-over { border-color:#00d9ff !important; background:rgba(0,217,255,.04); }
 .proto-row { margin-bottom:10px; }
 .proto-label { font-size:.68rem;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px; }
@@ -326,7 +326,7 @@
     white-space:nowrap;transition:background .15s;
 }
 .proto-copy:hover { background:rgba(0,217,255,.2); }
-.proto-copy.copied { background:rgba(0,255,136,.15);border-color:rgba(0,255,136,.4);color:#00ff88; }
+.proto-copy.copied { background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:#3fb950; }
 .link-ativo-card {
     border:1px solid #30363d;border-radius:8px;padding:12px 14px;margin-bottom:10px;
     background:#0d1117;
@@ -391,7 +391,7 @@ function fwRenderizar(d) {
         const icone = fwIcone(a.nome, a.mime_type);
         const nLinks = a.links_ativos.length;
         const linkBadge = nLinks > 0
-            ? `<span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);color:#00ff88;cursor:pointer"
+            ? `<span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:#3fb950;cursor:pointer"
                 onclick="fwVerLinks(${a.id})" title="Ver links ativos">
                 <i class="fas fa-link me-1"></i>${nLinks} link${nLinks>1?'s':''}
                </span>`
@@ -660,7 +660,7 @@ async function fwRevogarLinkAtual() {
 
 const PROTO_DEFS = [
     {key:'http',     label:'HTTP',           icon:'fas fa-globe',          cor:'#00d9ff'},
-    {key:'https',    label:'HTTPS',          icon:'fas fa-lock',           cor:'#00ff88'},
+    {key:'https',    label:'HTTPS',          icon:'fas fa-lock',           cor:'#3fb950'},
     {key:'ftp',      label:'FTP',            icon:'fas fa-server',         cor:'#ffaa00'},
     {key:'sftp',     label:'SFTP',           icon:'fas fa-shield-alt',     cor:'#b464ff'},
     {key:'tftp',     label:'TFTP',           icon:'fas fa-exchange-alt',   cor:'#4fc3f7'},
@@ -802,7 +802,7 @@ async function fwVerLinks(arqId) {
     for (const c of d.compartilhamentos) {
         html += `<div class="link-ativo-card mb-3">
             <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
-                <span style="font-size:.8rem;color:#8b949e">Expira: <strong style="color:#00ff88">${c.expira_em}</strong></span>
+                <span style="font-size:.8rem;color:#8b949e">Expira: <strong style="color:#3fb950">${c.expira_em}</strong></span>
                 <span style="font-size:.8rem;color:#8b949e">Acessos: <strong style="color:#00d9ff">${c.acessos}</strong></span>
                 ${c.ftp_user ? `<span style="font-size:.78rem;color:#8b949e">Usuário: <code style="color:#b464ff">${c.ftp_user}</code></span>
                 <span style="font-size:.78rem;color:#8b949e">Senha: <code style="color:#b464ff">${c.ftp_senha}</code></span>` : ''}
@@ -958,7 +958,7 @@ async function fwBaixarUrl() {
 
             if (st === 'concluido') {
                 // Sucesso
-                elBar.style.background = 'linear-gradient(90deg,#00a86b,#00ff88)';
+                elBar.style.background = 'linear-gradient(90deg,#00a86b,#3fb950)';
                 clearInterval(intervalo);
                 setTimeout(() => {
                     _modalUploadUrl.hide();
@@ -1081,7 +1081,7 @@ function fwDlRenderizarCard(dl_id) {
     card.className = 'fwdl-card' + (isDone ? ' done' : '');
 
     const icone  = isDone
-        ? `<i class="fas fa-check-circle" style="color:#00ff88"></i>`
+        ? `<i class="fas fa-check-circle" style="color:#3fb950"></i>`
         : `<i class="fas fa-arrow-circle-down" style="color:#00d9ff;animation:pulse-green 1s ease-in-out infinite"></i>`;
 
     const bytesLabel = dl.tamanho > 0
@@ -1103,7 +1103,7 @@ function fwDlRenderizarCard(dl_id) {
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:4px">
             <span style="font-size:.7rem;color:#555">${bytesLabel}</span>
-            <span style="font-size:.72rem;font-weight:600;color:${isDone ? '#00ff88' : '#00d9ff'}">${dl.pct}%</span>
+            <span style="font-size:.72rem;font-weight:600;color:${isDone ? '#3fb950' : '#00d9ff'}">${dl.pct}%</span>
           </div>
         </div>
       </div>`;

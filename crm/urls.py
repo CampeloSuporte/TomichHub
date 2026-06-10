@@ -1,10 +1,13 @@
 
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import RedirectView
 
 urlpatterns = [
+    # Compatibilidade: login_url='login' em todo o projeto aponta para /login/
+    path('login/', RedirectView.as_view(url='/auth/login/', query_string=True)),
     path('admin/', admin.site.urls),
     path('clientes/', include('clientes.urls')),
     path('funcao_equipamento/', include('funcao_equipamento.urls')),

@@ -4,28 +4,24 @@
 {% block content %}
 <style>
 :root {
-    --cy: #00f5ff;
-    --gr: #00ff88;
-    --bl: #1a4fff;
-    --or: #ffa500;
-    --rd: #ff5555;
-    --bg: #02030a;
-    --bg2: #060c18;
-    --muted: rgba(0,245,255,0.4);
+    --cy: #58a6ff; --gr: #3fb950; --bl: #388bfd;
+    --or: #d29922; --rd: #f85149; --pu: #bc8cff;
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1c2128;
+    --muted: #7d8590;
 }
 
 .rpt-page {
     background: var(--bg);
     min-height: 100vh;
     padding: 1.5rem;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    font-family: 'Inter', sans-serif;
 }
 
 .rpt-title {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.4rem;
     color: var(--cy);
-    text-shadow: 0 0 18px rgba(0,245,255,0.5);
+    
     letter-spacing: 3px;
     text-transform: uppercase;
 }
@@ -34,7 +30,7 @@
 /* Filter bar */
 .filter-bar {
     background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.15);
+    border: 1px solid rgba(88,166,255,0.15);
     border-radius: 8px;
     padding: 1rem 1.2rem;
     margin-bottom: 1.2rem;
@@ -53,7 +49,7 @@
 .filter-group select,
 .filter-group input[type=date] {
     background: #030a14;
-    border: 1px solid rgba(0,245,255,0.2);
+    border: 1px solid rgba(88,166,255,0.2);
     border-radius: 4px;
     color: var(--cy);
     padding: .35rem .6rem;
@@ -64,11 +60,11 @@
 }
 .filter-group select:focus,
 .filter-group input:focus {
-    border-color: rgba(0,245,255,0.5);
+    border-color: rgba(88,166,255,0.5);
 }
 .btn-filter {
-    background: rgba(0,245,255,0.1);
-    border: 1px solid rgba(0,245,255,0.3);
+    background: rgba(88,166,255,0.1);
+    border: 1px solid rgba(88,166,255,0.3);
     color: var(--cy);
     border-radius: 4px;
     padding: .35rem 1rem;
@@ -80,10 +76,10 @@
     height: fit-content;
     align-self: flex-end;
 }
-.btn-filter:hover { background: rgba(0,245,255,0.2); }
+.btn-filter:hover { background: rgba(88,166,255,0.2); }
 .btn-reset {
     background: transparent;
-    border: 1px solid rgba(0,245,255,0.15);
+    border: 1px solid rgba(88,166,255,0.15);
     color: var(--muted);
     border-radius: 4px;
     padding: .35rem .8rem;
@@ -96,7 +92,7 @@
     display: inline-block;
     line-height: 1.5;
 }
-.btn-reset:hover { color: var(--cy); border-color: rgba(0,245,255,0.3); }
+.btn-reset:hover { color: var(--cy); border-color: rgba(88,166,255,0.3); }
 
 /* Summary row */
 .sum-row {
@@ -107,7 +103,7 @@
 }
 .sum-chip {
     background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.12);
+    border: 1px solid rgba(88,166,255,0.12);
     border-radius: 6px;
     padding: .5rem 1rem;
     font-size: .78rem;
@@ -116,21 +112,21 @@
     gap: .5rem;
 }
 .sum-chip .sum-n {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.1rem;
 }
 
 /* Table */
 .rpt-card {
     background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.15);
+    border: 1px solid rgba(88,166,255,0.15);
     border-radius: 8px;
     overflow: hidden;
 }
 .rpt-card-head {
     padding: .8rem 1.2rem;
-    border-bottom: 1px solid rgba(0,245,255,0.12);
-    font-family: 'Orbitron', sans-serif;
+    border-bottom: 1px solid rgba(88,166,255,0.12);
+    font-family: 'Inter', sans-serif;
     font-size: .78rem;
     color: var(--cy);
     letter-spacing: 2px;
@@ -145,27 +141,27 @@
     font-size: .8rem;
 }
 .cy-table thead th {
-    background: rgba(0,245,255,0.05);
+    background: rgba(88,166,255,0.05);
     color: var(--cy);
     font-size: .68rem;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     padding: .55rem .8rem;
-    border-bottom: 1px solid rgba(0,245,255,0.12);
+    border-bottom: 1px solid rgba(88,166,255,0.12);
     white-space: nowrap;
 }
 .cy-table tbody tr {
-    border-bottom: 1px solid rgba(0,245,255,0.05);
+    border-bottom: 1px solid rgba(88,166,255,0.05);
     transition: background .12s;
 }
-.cy-table tbody tr:hover { background: rgba(0,245,255,0.03); }
-.cy-table td { padding: .5rem .8rem; color: #c9d8e8; }
+.cy-table tbody tr:hover { background: rgba(88,166,255,0.03); }
+.cy-table td { padding: .5rem .8rem; color: #c9d1d9; }
 
 .badge-cy { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: .68rem; font-weight: 600; letter-spacing: .5px; }
-.badge-ok   { background: rgba(0,255,136,.12); color: #00ff88; border: 1px solid rgba(0,255,136,.3); }
-.badge-err  { background: rgba(255,85,85,.12);  color: #ff5555; border: 1px solid rgba(255,85,85,.3); }
-.badge-warn { background: rgba(255,165,0,.12);  color: #ffa500; border: 1px solid rgba(255,165,0,.3); }
-.badge-info { background: rgba(0,245,255,.1);   color: #00f5ff; border: 1px solid rgba(0,245,255,.25); }
+.badge-ok   { background: rgba(63,185,80,.12); color: #3fb950; border: 1px solid rgba(63,185,80,.3); }
+.badge-err  { background: rgba(255,85,85,.12);  color: #f85149; border: 1px solid rgba(255,85,85,.3); }
+.badge-warn { background: rgba(255,165,0,.12);  color: #d29922; border: 1px solid rgba(255,165,0,.3); }
+.badge-info { background: rgba(88,166,255,.1);   color: #58a6ff; border: 1px solid rgba(88,166,255,.25); }
 
 /* Pagination */
 .pager {
@@ -177,7 +173,7 @@
 }
 .pager a, .pager span {
     background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.15);
+    border: 1px solid rgba(88,166,255,0.15);
     color: var(--cy);
     border-radius: 4px;
     padding: .3rem .7rem;
@@ -185,10 +181,10 @@
     text-decoration: none;
     transition: background .15s;
 }
-.pager a:hover { background: rgba(0,245,255,0.1); }
+.pager a:hover { background: rgba(88,166,255,0.1); }
 .pager .current {
-    background: rgba(0,245,255,0.15);
-    border-color: rgba(0,245,255,0.4);
+    background: rgba(88,166,255,0.15);
+    border-color: rgba(88,166,255,0.4);
     font-weight: bold;
 }
 
@@ -254,15 +250,15 @@
         </div>
         <div class="sum-chip">
             <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">OK</span>
-            <span class="sum-n" style="color:#00ff88;">{{ total_ok }}</span>
+            <span class="sum-n" style="color:#3fb950;">{{ total_ok }}</span>
         </div>
         <div class="sum-chip">
             <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">Erro</span>
-            <span class="sum-n" style="color:#ff5555;">{{ total_erro }}</span>
+            <span class="sum-n" style="color:#f85149;">{{ total_erro }}</span>
         </div>
         <div class="sum-chip">
             <span style="color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:1px;">Sem Mud.</span>
-            <span class="sum-n" style="color:#ffa500;">{{ total_sem }}</span>
+            <span class="sum-n" style="color:#d29922;">{{ total_sem }}</span>
         </div>
     </div>
 
@@ -270,7 +266,7 @@
     <div class="rpt-card">
         <div class="rpt-card-head">
             <span><i class="fas fa-list"></i> Registros</span>
-            <span style="font-family:'Share Tech Mono',monospace; font-size:.7rem; color:var(--muted);">
+            <span style="font-family:'Inter', sans-serif; font-size:.7rem; color:var(--muted);">
                 Página {{ backups.number }} de {{ backups.paginator.num_pages }}
             </span>
         </div>
@@ -296,7 +292,7 @@
                             {{ bk.cliente.nome_empresa|truncatechars:22 }}
                         </a>
                     </td>
-                    <td style="color:#c9d8e8;">{{ bk.acesso.host }}</td>
+                    <td style="color:#c9d1d9;">{{ bk.acesso.host }}</td>
                     <td style="color:var(--muted); font-size:.75rem;">{{ bk.template.nome|default:"—"|truncatechars:20 }}</td>
                     <td>
                         {% if bk.status == 'SUCESSO' %}
@@ -314,7 +310,7 @@
                     <td style="color:var(--muted); white-space:nowrap;">
                         {% if bk.duracao_segundos %}{{ bk.duracao_segundos }}s{% else %}—{% endif %}
                     </td>
-                    <td style="font-size:.7rem; color:rgba(0,245,255,.35); font-family:'Share Tech Mono',monospace;">
+                    <td style="font-size:.7rem; color:rgba(88,166,255,.35); font-family:'Inter', sans-serif;">
                         {% if bk.hash_conteudo %}{{ bk.hash_conteudo|truncatechars:12 }}{% else %}—{% endif %}
                     </td>
                 </tr>

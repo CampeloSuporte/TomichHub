@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-05-26
+**Atualizado em:** 2026-06-03
 
 ---
 
@@ -15,8 +15,9 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 - Drag & drop de dispositivos a partir da paleta lateral
 - Conexões entre nós com drag a partir dos pontos de ancoragem
 - Importação automática de hosts do CRM
-- Exportação SVG, Undo/Redo, Grid, Snap
+- Exportação PNG (via canvas 2×), Undo/Redo, Grid, Snap
 - Acesso direto aos hosts via terminal/browser
+- Waypoints: dobrar conexões arrastando pontos intermediários
 
 ---
 
@@ -27,7 +28,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **v=8** (parâmetro de cache-busting no HTML).
+Versão atual: **v=10** (parâmetro de cache-busting no HTML).
 
 ---
 
@@ -100,6 +101,55 @@ atualizado sem ser movidos ou duplicados.
 
 ---
 
+## Conexões (Links)
+
+### Propriedades de uma conexão
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `iface` | string | Velocidade/tipo de interface (chave em `IFACES`) |
+| `label` | string | Rótulo livre exibido no meio da linha |
+| `ip_local` | string | IP P2P lado A (ex: `10.0.0.1/30`) |
+| `ip_remote` | string | IP P2P lado B (ex: `10.0.0.2/30`) |
+| `vlan` | string | VLAN ID — exibida como `V100` junto ao label de velocidade |
+| `iface_a` | string | Nome da interface no lado A (ex: `ge0/0/1`, `eth0`, `sfp1`) |
+| `iface_b` | string | Nome da interface no lado B (ex: `ge0/0/2`, `eth1`, `sfp2`) |
+| `style` | `solid`\|`dashed`\|`dotted` | Estilo do traço |
+| `shape` | `straight`\|`curved`\|`wavy` | Forma da linha |
+| `waypoints` | `[{x,y}, ...]` | Pontos intermediários que dobram a linha |
+
+### Tipos de Interface (`IFACES`)
+
+| Chave | Label | Cor |
+|---|---|---|
+| `100m` | 100 Mbps | cinza |
+| `1g` | 1 Gbps | verde |
+| `10g` | 10 Gbps | ciano |
+| `40g` | 40 Gbps | azul |
+| `100g` | 100 Gbps | roxo |
+| `sfp` | SFP 1G | amarelo |
+| `sfp+` | SFP+ 10G | laranja |
+| `gpon` | GPON | salmão |
+| `xpon` | XGS-PON | lilás |
+| `wifi` | Wireless | amarelo |
+| `mw` | Microwave | laranja |
+| `other` | Outro | cinza |
+
+### Waypoints — editar o caminho da linha
+
+Os waypoints permitem dobrar conexões de forma livre:
+
+| Ação | Como fazer |
+|---|---|
+| Adicionar ponto de dobra | Arrastar o **círculo vazio** (○) no centro de um segmento |
+| Mover waypoint | Arrastar o **círculo preenchido** (●) azul |
+| Remover waypoint | **Duplo-clique** no círculo preenchido |
+| Limpar todos os waypoints | Botão "Limpar waypoints (N)" no painel de propriedades |
+
+Os handles de waypoints ficam visíveis somente quando o link está selecionado.
+
+---
+
 ## Remoção de Dispositivos
 
 Selecionar um nó ou conexão e:
@@ -108,6 +158,17 @@ Selecionar um nó ou conexão e:
 
 A remoção de um nó também remove todas as conexões associadas a ele.
 Suporta Undo (`Ctrl+Z`).
+
+---
+
+## Exportação PNG
+
+O botão **PNG** na toolbar exporta a topologia atual como imagem PNG em resolução 2× (retina):
+
+1. O SVG atual é serializado e convertido para `Blob`
+2. Um `<canvas>` recebe o SVG renderizado via `drawImage`
+3. O fundo é preenchido com `#0d1117` (tema escuro)
+4. O arquivo `topologia.png` é gerado via `canvas.toBlob`
 
 ---
 
@@ -130,6 +191,7 @@ Suporta Undo (`Ctrl+Z`).
 | `Ctrl+Z` | Desfazer |
 | `Ctrl+Y` | Refazer |
 | `C` | Alternar modo conexão |
-| `Delete` / `Backspace` | Remover selecionado |
+| `Delete` / `Backspace` | Remover nó ou conexão selecionado |
 | `Escape` | Cancelar conexão / Desselecionar |
 | Scroll do mouse | Zoom |
+| Duplo-clique em waypoint | Remover waypoint |

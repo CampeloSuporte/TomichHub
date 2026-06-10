@@ -12,9 +12,9 @@
       </a>
       <div>
         <h4 class="mb-0">
-          <i class="fas fa-map-marker-alt me-2" style="color:#00f5ff"></i>Geolocalização IP
+          <i class="fas fa-map-marker-alt me-2" style="color:#58a6ff;opacity:.8"></i>Geolocalização IP
         </h4>
-        <small style="color:rgba(0,245,255,.4)">
+        <small style="color:rgba(88,166,255,.4)">
           Consulta um IP ou prefixo em múltiplos bancos de dados e compara os resultados
         </small>
       </div>
@@ -25,7 +25,7 @@
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-5">
-            <label class="form-label" style="font-size:.82rem;color:rgba(0,245,255,.4)">
+            <label class="form-label" style="font-size:.82rem;color:rgba(88,166,255,.4)">
               IP ou Prefixo IPv4 / IPv6
             </label>
             <input id="geo-alvo" type="text" class="form-control"
@@ -36,13 +36,13 @@
           </div>
           <div class="col-auto">
             <button id="geo-btn" class="btn" onclick="geoBuscar()"
-              style="background:rgba(0,245,255,.15);border:1px solid #00f5ff;color:#00f5ff;min-width:130px">
+              style="background:rgba(88,166,255,.15);border:1px solid #58a6ff;color:#58a6ff;min-width:130px">
               <i class="fas fa-search me-1"></i> Consultar
             </button>
           </div>
           <div class="col-auto">
-            <span id="geo-loading" style="display:none;color:rgba(0,245,255,.4);font-size:.85rem">
-              <i class="fas fa-circle-notch fa-spin me-1" style="color:#00f5ff"></i>
+            <span id="geo-loading" style="display:none;color:rgba(88,166,255,.4);font-size:.85rem">
+              <i class="fas fa-circle-notch fa-spin me-1" style="color:#58a6ff;opacity:.8"></i>
               Consultando bancos… aguarde
             </span>
           </div>
@@ -51,11 +51,11 @@
         <!-- Fontes consultadas -->
         <div class="mt-3 d-flex flex-wrap gap-2">
           <span style="font-size:.75rem;color:#555">Fontes:</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">ip-api.com</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">ipinfo.io</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">MaxMind / RIPE stat</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">DB-IP.com</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">ipwhois.app</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">ip-api.com</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">ipinfo.io</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">MaxMind / RIPE stat</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">DB-IP.com</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">ipwhois.app</span>
           <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,200,100,.07);border:1px solid rgba(0,200,100,.3);color:#00c864">🇧🇷 LACNIC RDAP</span>
         </div>
       </div>
@@ -76,7 +76,7 @@
             </h5>
             <span id="geo-ip-badge"
               style="font-family:monospace;font-size:.8rem;padding:2px 10px;border-radius:10px;
-                     background:rgba(0,245,255,.08);border:1px solid rgba(0,245,255,.2);color:#00f5ff">
+                     background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);color:#58a6ff">
             </span>
           </div>
           <div id="geo-tabela"></div>
@@ -87,7 +87,7 @@
       <div id="geo-mapa-card" class="card mb-4" style="display:none">
         <div class="card-body">
           <h5 class="mb-3">
-            <i class="fas fa-globe-americas me-2" style="color:#00ff88"></i>Coordenadas de consenso
+            <i class="fas fa-globe-americas me-2" style="color:#3fb950"></i>Coordenadas de consenso
           </h5>
           <div id="geo-mapa-content"></div>
         </div>
@@ -114,15 +114,15 @@
       <div class="card-body">
         <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
           <h5 class="mb-0">
-            <i class="fas fa-file-csv me-2" style="color:#00f5ff"></i>Geofeed Público (RFC 8805)
+            <i class="fas fa-file-csv me-2" style="color:#58a6ff;opacity:.8"></i>Geofeed Público (RFC 8805)
           </h5>
           <span style="font-size:.75rem;padding:2px 10px;border-radius:10px;
-                       background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);
-                       color:rgba(0,245,255,.5)">Registro.br</span>
+                       background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);
+                       color:rgba(88,166,255,.5)">Registro.br</span>
         </div>
         <p style="font-size:.83rem;color:#aaa;margin-bottom:12px">
           Arquivo público com todos os prefixos corrigidos, no formato exigido pelo Registro.br.
-          Informe esta URL no campo <code style="color:#00f5ff">geofeed:</code> ao configurar seu bloco IP no Registro.br.
+          Informe esta URL no campo <code style="color:#58a6ff;opacity:.8">geofeed:</code> ao configurar seu bloco IP no Registro.br.
         </p>
 
         <!-- URL do arquivo -->
@@ -130,15 +130,15 @@
           <input id="geofeed-url" type="text" readonly
             value="{{ geofeed_url }}"
             style="flex:1;min-width:200px;font-family:monospace;font-size:.85rem;
-                   background:rgba(0,0,0,.4);border:1px solid rgba(0,245,255,.2);
-                   color:#00f5ff;padding:6px 12px;border-radius:6px;outline:none">
+                   background:rgba(0,0,0,.4);border:1px solid rgba(88,166,255,.2);
+                   color:#58a6ff;padding:6px 12px;border-radius:6px;outline:none">
           <button class="btn btn-sm" onclick="copiarGeofeedUrl()"
-            style="border:1px solid rgba(0,245,255,.3);color:#00f5ff;white-space:nowrap">
+            style="border:1px solid rgba(88,166,255,.3);color:#58a6ff;white-space:nowrap">
             <i class="fas fa-copy me-1"></i> Copiar URL
           </button>
           <a id="geofeed-link" href="{{ geofeed_url }}" target="_blank"
             class="btn btn-sm"
-            style="border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.5);white-space:nowrap">
+            style="border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.5);white-space:nowrap">
             <i class="fas fa-external-link-alt me-1"></i> Abrir
           </a>
           <button class="btn btn-sm" onclick="geofeedPreview()"
@@ -149,7 +149,7 @@
 
         <!-- Preview inline (oculto por padrão) -->
         <div id="geofeed-preview-wrap" style="display:none">
-          <div style="background:rgba(0,0,0,.5);border:1px solid rgba(0,245,255,.1);
+          <div style="background:rgba(0,0,0,.5);border:1px solid rgba(88,166,255,1);
                       border-radius:6px;padding:12px;max-height:220px;overflow:auto">
             <pre id="geofeed-preview-content"
               style="font-size:.78rem;color:#aaa;margin:0;white-space:pre-wrap"></pre>
@@ -158,9 +158,9 @@
 
         <!-- Orientações Registro.br -->
         <div style="margin-top:12px;padding:10px 14px;border-radius:8px;
-                    background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.08);
+                    background:rgba(88,166,255,.04);border:1px solid rgba(88,166,255,.08);
                     font-size:.78rem;color:#666">
-          <i class="fas fa-info-circle me-1" style="color:#00f5ff"></i>
+          <i class="fas fa-info-circle me-1" style="color:#58a6ff;opacity:.8"></i>
           Para configurar no Registro.br: acesse a aba <strong style="color:#aaa">NUMERAÇÃO</strong>
           do seu bloco IP → <strong style="color:#aaa">Configurar Geofeed</strong> → cole a URL acima.
           O arquivo é atualizado automaticamente a cada nova correção enviada.
@@ -176,7 +176,7 @@
             <i class="fas fa-history me-2" style="color:#b464ff"></i>Histórico de Correções
           </h5>
           <button class="btn btn-sm ms-auto" onclick="geoCarregarHistorico()"
-            style="border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);font-size:.75rem">
+            style="border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);font-size:.75rem">
             <i class="fas fa-sync-alt me-1"></i> Atualizar
           </button>
         </div>
@@ -195,21 +195,21 @@
 <div id="geo-modal-resposta"
   style="display:none;position:fixed;inset:0;z-index:1070;background:rgba(0,0,0,.78);overflow:auto">
   <div style="max-width:680px;margin:50px auto;padding:0 16px 40px">
-    <div style="background:#02030a;border:1px solid rgba(0,245,255,.15);border-radius:12px;
+    <div style="background:#0d1117;border:1px solid rgba(88,166,255,.15);border-radius:12px;
                 box-shadow:0 8px 40px rgba(0,0,0,.7)">
       <div style="padding:14px 20px;border-bottom:1px solid #21262d;
                   display:flex;align-items:center;gap:10px">
-        <i class="fas fa-envelope-open-text" style="color:#00f5ff"></i>
+        <i class="fas fa-envelope-open-text" style="color:#58a6ff;opacity:.8"></i>
         <span style="font-weight:600;color:#e6edf3">Resposta do RIR</span>
         <button onclick="document.getElementById('geo-modal-resposta').style.display='none'"
-          style="margin-left:auto;background:none;border:none;color:rgba(0,245,255,.4);
+          style="margin-left:auto;background:none;border:none;color:rgba(88,166,255,.4);
                  font-size:1.2rem;cursor:pointer">&times;</button>
       </div>
       <div style="padding:18px 20px">
         <div id="geo-resposta-meta" style="margin-bottom:12px"></div>
         <pre id="geo-resposta-corpo"
           style="background:#0a0e14;border:1px solid #21262d;border-radius:7px;
-                 padding:14px;font-size:.78rem;color:#d0e8f0;white-space:pre-wrap;
+                 padding:14px;font-size:.78rem;color:#e6edf3;white-space:pre-wrap;
                  max-height:400px;overflow:auto;font-family:monospace"></pre>
       </div>
     </div>
@@ -220,7 +220,7 @@
 <div id="geo-modal-correcao"
   style="display:none;position:fixed;inset:0;z-index:1060;background:rgba(0,0,0,.75);overflow:auto">
   <div style="max-width:720px;margin:40px auto;padding:0 16px 40px">
-    <div style="background:#02030a;border:1px solid rgba(0,245,255,.15);border-radius:12px;
+    <div style="background:#0d1117;border:1px solid rgba(88,166,255,.15);border-radius:12px;
                 box-shadow:0 8px 40px rgba(0,0,0,.7)">
 
       <!-- Cabeçalho do modal -->
@@ -231,12 +231,12 @@
           <div style="font-weight:600;color:#e6edf3;font-size:1rem">
             Correção de Geolocalização — RFC 8805 Geofeed
           </div>
-          <div style="font-size:.75rem;color:rgba(0,245,255,.4);margin-top:1px">
+          <div style="font-size:.75rem;color:rgba(88,166,255,.4);margin-top:1px">
             Gera o arquivo padrão da indústria para corrigir a geolocalização em todos os bancos
           </div>
         </div>
         <button onclick="document.getElementById('geo-modal-correcao').style.display='none'"
-          style="margin-left:auto;background:none;border:none;color:rgba(0,245,255,.4);
+          style="margin-left:auto;background:none;border:none;color:rgba(88,166,255,.4);
                  font-size:1.3rem;cursor:pointer;line-height:1">&times;</button>
       </div>
 
@@ -245,25 +245,25 @@
 
         <!-- Prefixo (readonly) -->
         <div class="mb-3">
-          <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+          <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
             Prefixo / IP consultado
           </label>
           <input id="cor-prefixo" type="text" class="form-control"
-            style="font-family:monospace;background:#060c18;color:#00f5ff;cursor:default"
+            style="font-family:monospace;background:#161b22;color:#58a6ff;cursor:default"
             readonly>
         </div>
 
         <!-- País + Região -->
         <div class="row g-2 mb-3">
           <div class="col-4">
-            <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+            <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
               País <span style="color:#555">(ISO 2 letras)</span>
             </label>
             <input id="cor-pais" type="text" class="form-control" placeholder="BR"
               maxlength="2" style="text-transform:uppercase;font-family:monospace">
           </div>
           <div class="col-8">
-            <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+            <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
               Estado / Região
               <span style="color:#555">(ex: SP, BA ou BR-SP)</span>
             </label>
@@ -275,11 +275,11 @@
         <!-- Cidade + Organização -->
         <div class="row g-2 mb-3">
           <div class="col-5">
-            <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Cidade</label>
+            <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Cidade</label>
             <input id="cor-cidade" type="text" class="form-control" placeholder="São Paulo">
           </div>
           <div class="col-7">
-            <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+            <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
               Organização / Provedor
             </label>
             <input id="cor-org" type="text" class="form-control"
@@ -290,14 +290,14 @@
         <!-- Coordenadas -->
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+            <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
               Latitude <span style="color:#555">(ex: -23.5505)</span>
             </label>
             <input id="cor-lat" type="text" class="form-control"
               placeholder="-23.5505" style="font-family:monospace">
           </div>
           <div class="col-6">
-            <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+            <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
               Longitude <span style="color:#555">(ex: -46.6333)</span>
             </label>
             <input id="cor-lon" type="text" class="form-control"
@@ -307,7 +307,7 @@
 
         <!-- E-mail de contato -->
         <div class="mb-3">
-          <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+          <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
             <i class="fas fa-at me-1"></i>E-mail de contato
             <span style="color:#555">(usado nos formulários e e-mails)</span>
           </label>
@@ -318,7 +318,7 @@
 
         <!-- Destinos -->
         <div class="mb-4">
-          <div style="font-size:.8rem;color:rgba(0,245,255,.4);margin-bottom:8px">
+          <div style="font-size:.8rem;color:rgba(88,166,255,.4);margin-bottom:8px">
             <i class="fas fa-paper-plane me-1"></i>Enviar para:
           </div>
           <div class="d-flex flex-wrap gap-2" id="cor-destinos">
@@ -352,7 +352,7 @@
           <div id="cor-org-extra" class="mt-3">
             <div class="row g-2">
               <div class="col-8">
-                <label class="form-label" style="font-size:.78rem;color:rgba(0,245,255,.4)">
+                <label class="form-label" style="font-size:.78rem;color:rgba(88,166,255,.4)">
                   <i class="fas fa-building me-1"></i>Nome correto do ISP / Organização
                 </label>
                 <input id="cor-org-nome" type="text" class="form-control"
@@ -360,7 +360,7 @@
                   style="font-size:.88rem">
               </div>
               <div class="col-4">
-                <label class="form-label" style="font-size:.78rem;color:rgba(0,245,255,.4)">Tipo de correção</label>
+                <label class="form-label" style="font-size:.78rem;color:rgba(88,166,255,.4)">Tipo de correção</label>
                 <select id="cor-correction-type" class="form-select" style="font-size:.85rem">
                   <option value="Both" selected>ISP + Org (Both)</option>
                   <option value="ISP">Apenas ISP</option>
@@ -426,9 +426,9 @@
     font-size: .68rem;
     padding: 2px 8px;
     border-radius: 10px;
-    background: rgba(0,255,136,.12);
-    border: 1px solid rgba(0,255,136,.3);
-    color: #00ff88;
+    background: rgba(63,185,80,.12);
+    border: 1px solid rgba(63,185,80,.3);
+    color: #3fb950;
     white-space: nowrap;
 }
 .geo-badge-warn {
@@ -452,12 +452,12 @@
     white-space: nowrap;
 }
 .geo-cell { font-size: .82rem; color: #c9d1d9; }
-.geo-cell-dim { font-size: .8rem; color:rgba(0,245,255,.4); }
+.geo-cell-dim { font-size: .8rem; color:rgba(88,166,255,.4); }
 .geo-consenso-box {
     padding: 8px 12px;
     border-radius: 6px;
-    background: rgba(0,245,255,.06);
-    border: 1px solid rgba(0,245,255,.12);
+    background: rgba(88,166,255,.06);
+    border: 1px solid rgba(88,166,255,.12);
     font-size: .88rem;
     color: #e6edf3;
     font-family: monospace;
@@ -474,8 +474,8 @@
     cursor: pointer;
     padding: 6px 11px;
     border-radius: 7px;
-    border:1px solid rgba(0,245,255,.15);
-    background:#060c18;
+    border:1px solid rgba(88,166,255,.15);
+    background:#161b22;
     font-size: .8rem;
     color: #e6edf3;
     user-select: none;
@@ -568,8 +568,8 @@ function renderGeoResultado(d) {
              <span><strong>${divergem}</strong> fonte${divergem>1?'s divergem':' diverge'} do consenso — verifique a tabela abaixo e utilize o botão de correção se necessário.</span>
            </div>`
         : `<div style="margin-top:14px;padding:9px 14px;border-radius:7px;
-                       background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.25);
-                       font-size:.82rem;color:#00ff88;display:flex;align-items:center;gap:8px">
+                       background:rgba(63,185,80,.06);border:1px solid rgba(63,185,80,.25);
+                       font-size:.82rem;color:#3fb950;display:flex;align-items:center;gap:8px">
              <i class="fas fa-check-circle"></i>
              <span>Todas as <strong>${totalOk}</strong> fontes disponíveis concordam entre si.</span>
            </div>`;
@@ -577,22 +577,22 @@ function renderGeoResultado(d) {
     const consensoCols = [
         c.pais_code ? `
         <div class="col-auto">
-          <div style="font-size:.72rem;color:rgba(0,245,255,.4);margin-bottom:4px">País</div>
+          <div style="font-size:.72rem;color:rgba(88,166,255,.4);margin-bottom:4px">País</div>
           <div class="geo-consenso-box">${flag(c.pais_code)}${c.pais_code}</div>
         </div>` : '',
         c.regiao ? `
         <div class="col-auto">
-          <div style="font-size:.72rem;color:rgba(0,245,255,.4);margin-bottom:4px">Estado / Região</div>
+          <div style="font-size:.72rem;color:rgba(88,166,255,.4);margin-bottom:4px">Estado / Região</div>
           <div class="geo-consenso-box">${c.regiao}</div>
         </div>` : '',
         c.cidade ? `
         <div class="col-auto">
-          <div style="font-size:.72rem;color:rgba(0,245,255,.4);margin-bottom:4px">Cidade</div>
+          <div style="font-size:.72rem;color:rgba(88,166,255,.4);margin-bottom:4px">Cidade</div>
           <div class="geo-consenso-box">${c.cidade}</div>
         </div>` : '',
         (c.org || c.isp) ? `
         <div class="col">
-          <div style="font-size:.72rem;color:rgba(0,245,255,.4);margin-bottom:4px">Organização / ISP</div>
+          <div style="font-size:.72rem;color:rgba(88,166,255,.4);margin-bottom:4px">Organização / ISP</div>
           <div class="geo-consenso-box">${c.org || c.isp}</div>
         </div>` : '',
     ].filter(Boolean).join('');
@@ -600,14 +600,14 @@ function renderGeoResultado(d) {
     document.getElementById('geo-consenso').innerHTML = `
     <div class="card-body">
       <div class="d-flex align-items-center gap-2 mb-3">
-        <i class="fas fa-check-double" style="color:#00f5ff"></i>
+        <i class="fas fa-check-double" style="color:#58a6ff;opacity:.8"></i>
         <span style="font-weight:600;color:#e6edf3;font-size:.95rem">Consenso entre fontes</span>
-        <span style="font-size:.78rem;color:rgba(0,245,255,.4)">
+        <span style="font-size:.78rem;color:rgba(88,166,255,.4)">
           ${totalConc} de ${totalOk} fontes concordam
         </span>
         <div class="ms-auto" style="display:flex;align-items:center;gap:6px">
           <div style="font-size:.72rem;color:#555">concordância</div>
-          <div style="font-size:1.2rem;font-weight:700;color:${totalConc===totalOk?'#00ff88':divergem>1?'#e06060':'#ffaa00'}">
+          <div style="font-size:1.2rem;font-weight:700;color:${totalConc===totalOk?'#3fb950':divergem>1?'#e06060':'#ffaa00'}">
             ${totalOk > 0 ? Math.round(totalConc/totalOk*100) : 0}%
           </div>
         </div>
@@ -678,20 +678,20 @@ function renderGeoResultado(d) {
         document.getElementById('geo-mapa-content').innerHTML = `
         <div class="d-flex gap-3 flex-wrap align-items-center">
           <div>
-            <div style="font-size:.72rem;color:rgba(0,245,255,.4);margin-bottom:2px">Latitude</div>
+            <div style="font-size:.72rem;color:rgba(88,166,255,.4);margin-bottom:2px">Latitude</div>
             <div style="font-family:monospace;font-size:.9rem;color:#e6edf3">${lat}</div>
           </div>
           <div>
-            <div style="font-size:.72rem;color:rgba(0,245,255,.4);margin-bottom:2px">Longitude</div>
+            <div style="font-size:.72rem;color:rgba(88,166,255,.4);margin-bottom:2px">Longitude</div>
             <div style="font-family:monospace;font-size:.9rem;color:#e6edf3">${lon}</div>
           </div>
           <div class="ms-md-auto d-flex gap-2">
             <a href="${osmUrl}" target="_blank" rel="noopener"
-              class="btn btn-sm" style="border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);font-size:.78rem">
+              class="btn btn-sm" style="border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);font-size:.78rem">
               <i class="fas fa-map me-1"></i>OpenStreetMap
             </a>
             <a href="${gmapsUrl}" target="_blank" rel="noopener"
-              class="btn btn-sm" style="border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);font-size:.78rem">
+              class="btn btn-sm" style="border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);font-size:.78rem">
               <i class="fas fa-map-marker-alt me-1"></i>Google Maps
             </a>
           </div>
@@ -787,7 +787,7 @@ async function geoGerarGeofeed() {
             const portaisHtml = resp.portais.map(p => `
                 <a href="${p.url}" target="_blank" rel="noopener"
                    style="display:flex;align-items:center;gap:8px;padding:7px 11px;
-                          border-radius:7px;border:1px solid rgba(0,245,255,.15);background:#060c18;
+                          border-radius:7px;border:1px solid rgba(88,166,255,.15);background:#161b22;
                           text-decoration:none;transition:border-color .15s"
                    onmouseover="this.style.borderColor='${p.cor}'"
                    onmouseout="this.style.borderColor='#30363d'">
@@ -801,10 +801,10 @@ async function geoGerarGeofeed() {
             // Submissões realizadas
             const listaEnv = (resp.enviados || []).map(e => {
                 const detail = e.tipo === 'email'
-                    ? `<span style="color:#555"> → </span><code style="color:#00f5ff;font-size:.8rem">${e.email}</code>`
-                    : `<span style="color:#555"> — </span><span style="color:rgba(0,245,255,.4);font-size:.78rem">${e.info || ''}</span>`;
+                    ? `<span style="color:#555"> → </span><code style="color:#58a6ff;font-size:.8rem">${e.email}</code>`
+                    : `<span style="color:#555"> — </span><span style="color:rgba(88,166,255,.4);font-size:.78rem">${e.info || ''}</span>`;
                 return `<li style="margin-top:4px">
-                    <i class="fas fa-check" style="color:#00ff88;font-size:.7rem;margin-right:5px"></i>
+                    <i class="fas fa-check" style="color:#3fb950;font-size:.7rem;margin-right:5px"></i>
                     <strong style="color:#e6edf3">${e.label}</strong>${detail}</li>`;
             }).join('');
 
@@ -816,7 +816,7 @@ async function geoGerarGeofeed() {
 
             const submissoesHtml = (listaEnv || listaErr) ? `
               <div style="padding:10px 14px;border-bottom:1px solid #21262d">
-                <div style="font-size:.75rem;color:rgba(0,245,255,.4);margin-bottom:6px">
+                <div style="font-size:.75rem;color:rgba(88,166,255,.4);margin-bottom:6px">
                   <i class="fas fa-paper-plane me-1"></i>Resultado das submissões:
                 </div>
                 <ul style="margin:0;padding-left:16px;font-size:.8rem">
@@ -825,12 +825,12 @@ async function geoGerarGeofeed() {
               </div>` : '';
 
             fb.innerHTML = `
-            <div style="border-radius:8px;border:1px solid rgba(0,255,136,.25);overflow:hidden">
+            <div style="border-radius:8px;border:1px solid rgba(63,185,80,.25);overflow:hidden">
 
               <!-- Cabeçalho -->
-              <div style="padding:10px 14px;background:rgba(0,255,136,.06);
-                          border-bottom:1px solid rgba(0,255,136,.15)">
-                <div style="font-size:.85rem;color:#00ff88;font-weight:600">
+              <div style="padding:10px 14px;background:rgba(63,185,80,.06);
+                          border-bottom:1px solid rgba(63,185,80,.15)">
+                <div style="font-size:.85rem;color:#3fb950;font-weight:600">
                   <i class="fas fa-check-circle me-2"></i>${escHtml(resp.mensagem)}
                 </div>
               </div>
@@ -841,18 +841,18 @@ async function geoGerarGeofeed() {
               <!-- CSV -->
               <div style="padding:14px;border-bottom:1px solid #21262d">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                  <span style="font-size:.75rem;color:rgba(0,245,255,.4)">
+                  <span style="font-size:.75rem;color:rgba(88,166,255,.4)">
                     <i class="fas fa-file-csv me-1"></i>Geofeed RFC 8805 —
-                    <code style="color:#00f5ff;font-size:.78rem">geofeed.csv</code>
+                    <code style="color:#58a6ff;font-size:.78rem">geofeed.csv</code>
                   </span>
                   <button onclick="geoCopiaCsv(this)" data-csv="${resp.csv.replace(/"/g,'&quot;')}"
-                    style="margin-left:auto;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.25);
-                           color:#00f5ff;border-radius:5px;padding:2px 10px;font-size:.72rem;cursor:pointer">
+                    style="margin-left:auto;background:rgba(88,166,255,1);border:1px solid rgba(88,166,255,.25);
+                           color:#58a6ff;border-radius:5px;padding:2px 10px;font-size:.72rem;cursor:pointer">
                     <i class="fas fa-copy me-1"></i>Copiar
                   </button>
                 </div>
                 <pre style="margin:0;background:#0a0e14;border:1px solid #21262d;border-radius:6px;
-                             padding:12px;font-size:.78rem;color:#d0e8f0;white-space:pre-wrap;
+                             padding:12px;font-size:.78rem;color:#e6edf3;white-space:pre-wrap;
                              font-family:monospace;line-height:1.5">${escHtml(resp.csv)}</pre>
               </div>
 
@@ -863,10 +863,10 @@ async function geoGerarGeofeed() {
                   <div style="color:#ffaa00;font-weight:600;margin-bottom:5px">
                     <i class="fas fa-info-circle me-1"></i>Como publicar o Geofeed
                   </div>
-                  <ol style="margin:0;padding-left:17px;color:#d0e8f0;line-height:1.75">
-                    <li>Hospede o arquivo em <code style="color:rgba(0,245,255,.4)">https://seudominio.com.br/geofeed.csv</code></li>
+                  <ol style="margin:0;padding-left:17px;color:#e6edf3;line-height:1.75">
+                    <li>Hospede o arquivo em <code style="color:rgba(88,166,255,.4)">https://seudominio.com.br/geofeed.csv</code></li>
                     <li>No objeto <strong>inetnum</strong> (RIPE/LACNIC) ou <strong>NET</strong> (ARIN) adicione:<br>
-                        <code style="color:#00ff88;background:#0a0e14;padding:2px 6px;border-radius:3px">
+                        <code style="color:#3fb950;background:#0a0e14;padding:2px 6px;border-radius:3px">
                           geofeed: https://seudominio.com.br/geofeed.csv</code></li>
                     <li>Os bancos (MaxMind, ipinfo.io, Google…) consomem automaticamente em dias/semanas.</li>
                   </ol>
@@ -875,7 +875,7 @@ async function geoGerarGeofeed() {
 
               <!-- Portais -->
               <div style="padding:12px 14px">
-                <div style="font-size:.74rem;color:rgba(0,245,255,.4);margin-bottom:8px">
+                <div style="font-size:.74rem;color:rgba(88,166,255,.4);margin-bottom:8px">
                   <i class="fas fa-external-link-alt me-1"></i>Portais para editar objetos diretamente:
                 </div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px">${portaisHtml}</div>
@@ -985,7 +985,7 @@ async function geoConfirmarMaxmind(id, el) {
                 <i class="fas fa-envelope-open-text me-1"></i>MaxMind confirmado</span>`;
             // Toast
             const t = document.createElement('div');
-            t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:.82rem;background:rgba(0,255,136,.15);border:1px solid rgba(0,255,136,.4);color:#00ff88;transition:opacity .4s';
+            t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:.82rem;background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.4);color:#3fb950;transition:opacity .4s';
             t.innerHTML = `<i class="fas fa-check-circle me-2"></i>${d.mensagem}`;
             document.body.appendChild(t);
             setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 5000);
@@ -1023,8 +1023,8 @@ function statusAplicacaoBadge(reg) {
             <i class="fas fa-hourglass-half me-1"></i>${reg.fontes_aplicadas}/${reg.fontes_total} fontes – re-verificar</span>`;
     }
     return `<span style="font-size:.68rem;padding:2px 7px;border-radius:10px;
-                background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);
-                color:#00f5ff;white-space:nowrap;cursor:pointer"
+                background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);
+                color:#58a6ff;white-space:nowrap;cursor:pointer"
             onclick="geoVerificarAplicacao(${reg.id}, this)">
         <i class="fas fa-sync-alt me-1"></i>Verificar aplicação</span>`;
 }
@@ -1043,20 +1043,20 @@ async function geoCarregarHistorico() {
         for (const reg of d.registros) {
             const destsHtml = (reg.destinos_email || []).map(e => {
                 if (e.tipo === 'geofeed') {
-                    return `<span style="font-size:.67rem;padding:2px 6px;border-radius:6px;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);color:#00ff88">
+                    return `<span style="font-size:.67rem;padding:2px 6px;border-radius:6px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:#3fb950">
                         <i class="fas fa-file-code me-1"></i>Geofeed RFC 8805</span>`;
                 }
                 if (e.label && e.label.startsWith('MaxMind')) {
-                    const cor   = e.email_confirmado ? '#00ff88' : '#b464ff';
-                    const bg    = e.email_confirmado ? 'rgba(0,255,136,.08)' : 'rgba(180,100,255,.08)';
-                    const bord  = e.email_confirmado ? 'rgba(0,255,136,.25)' : 'rgba(180,100,255,.3)';
+                    const cor   = e.email_confirmado ? '#3fb950' : '#b464ff';
+                    const bg    = e.email_confirmado ? 'rgba(63,185,80,.08)' : 'rgba(180,100,255,.08)';
+                    const bord  = e.email_confirmado ? 'rgba(63,185,80,.25)' : 'rgba(180,100,255,.3)';
                     const icon  = e.email_confirmado ? 'fa-envelope-open-text' : 'fa-envelope';
                     const sub   = e.email_confirmado ? ' ✓' : '';
                     return `<span style="font-size:.67rem;padding:2px 6px;border-radius:6px;background:${bg};border:1px solid ${bord};color:${cor}">
                         <i class="fas ${icon} me-1"></i>${e.label}${sub}</span>`;
                 }
                 if (e.tipo === 'email') {
-                    return `<span style="font-size:.67rem;padding:2px 6px;border-radius:6px;background:rgba(0,200,100,.07);border:1px solid rgba(0,200,100,.2);color:rgba(0,245,255,.4)">
+                    return `<span style="font-size:.67rem;padding:2px 6px;border-radius:6px;background:rgba(0,200,100,.07);border:1px solid rgba(0,200,100,.2);color:rgba(88,166,255,.4)">
                         <i class="fas fa-envelope me-1"></i>${e.label}</span>`;
                 }
                 return `<span style="font-size:.67rem;color:#555">${e.label}</span>`;
@@ -1067,12 +1067,12 @@ async function geoCarregarHistorico() {
             <div class="geo-hist-row" id="hist-row-${reg.id}">
               <div class="d-flex align-items-start gap-3 flex-wrap">
                 <div style="min-width:160px">
-                  <div style="font-family:monospace;font-size:.85rem;color:#00f5ff">${reg.prefixo}</div>
+                  <div style="font-family:monospace;font-size:.85rem;color:#58a6ff">${reg.prefixo}</div>
                   <div style="font-size:.72rem;color:#555;margin-top:1px">${reg.data_envio} · ${reg.solicitante}</div>
                 </div>
                 <div style="min-width:140px">
-                  <div style="font-size:.75rem;color:rgba(0,245,255,.4)">Dados enviados</div>
-                  <div style="font-size:.8rem;color:#d0e8f0">${localEnviado || '—'}</div>
+                  <div style="font-size:.75rem;color:rgba(88,166,255,.4)">Dados enviados</div>
+                  <div style="font-size:.8rem;color:#e6edf3">${localEnviado || '—'}</div>
                   ${reg.org ? `<div style="font-size:.75rem;color:#555">${reg.org}</div>` : ''}
                 </div>
                 <div style="min-width:100px">
@@ -1146,9 +1146,9 @@ async function geoVerificarAplicacao(id, el) {
         // Mini toast
         const toast = document.createElement('div');
         toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:.82rem;transition:opacity .4s';
-        toast.style.background = d.aplicado ? 'rgba(0,255,136,.15)' : 'rgba(255,170,0,.12)';
-        toast.style.border     = d.aplicado ? '1px solid rgba(0,255,136,.4)' : '1px solid rgba(255,170,0,.35)';
-        toast.style.color      = d.aplicado ? '#00ff88' : '#ffaa00';
+        toast.style.background = d.aplicado ? 'rgba(63,185,80,.15)' : 'rgba(255,170,0,.12)';
+        toast.style.border     = d.aplicado ? '1px solid rgba(63,185,80,.4)' : '1px solid rgba(255,170,0,.35)';
+        toast.style.color      = d.aplicado ? '#3fb950' : '#ffaa00';
         toast.innerHTML        = `<i class="fas fa-${d.aplicado ? 'check-circle' : 'hourglass-half'} me-2"></i>${d.mensagem}`;
         document.body.appendChild(toast);
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 4000);
@@ -1191,7 +1191,7 @@ function copiarGeofeedUrl() {
         const btn = event.target.closest('button');
         const orig = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check me-1"></i> Copiado!';
-        btn.style.color = '#00ff88';
+        btn.style.color = '#3fb950';
         setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1800);
     });
 }

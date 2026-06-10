@@ -26,8 +26,8 @@ window.INLINE_SSH_ACESSOS = [
    ════════════════════════════════════════════════ */
 :root {
     --itp-bg: #0a0a0a; --itp-border: #1e2a1e;
-    --itp-green: #00ff88; --itp-cyan: #00d9ff;
-    --itp-orange: #ffa500; --itp-red: #ff5555;
+    --itp-green: #3fb950; --itp-cyan: #00d9ff;
+    --itp-orange: #d29922; --itp-red: #f85149;
     --itp-text: #c8d3c8; --itp-muted: #4a5568;
     --itp-sidebar-w: 220px; --itp-wiki-w: 480px;
     --itp-height: 65vh; --itp-min-h: 180px; --itp-max-h: 95vh;
@@ -42,12 +42,12 @@ window.INLINE_SSH_ACESSOS = [
     background: #0d1a0d; border: 1.5px solid var(--itp-green);
     color: var(--itp-green); font-size: 20px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 16px rgba(0,255,136,.25), 0 4px 12px rgba(0,0,0,.5);
+    box-shadow: 0 0 16px rgba(63,185,80,.25), 0 4px 12px rgba(0,0,0,.5);
     transition: transform .2s, box-shadow .2s, opacity .2s;
     opacity: 0; pointer-events: none;
 }
 #itpFab.visivel { opacity: 1; pointer-events: auto; }
-#itpFab:hover { transform: scale(1.1); box-shadow: 0 0 24px rgba(0,255,136,.45), 0 6px 16px rgba(0,0,0,.5); }
+#itpFab:hover { transform: scale(1.1); box-shadow: 0 0 24px rgba(63,185,80,.45), 0 6px 16px rgba(0,0,0,.5); }
 
 /* FAB — Abrir em nova página */
 #itpFabPopout {
@@ -82,23 +82,23 @@ window.INLINE_SSH_ACESSOS = [
     font-family: 'JetBrains Mono','Courier New',monospace; font-size: 12px;
     transform: translateY(100%);
     transition: transform .32s cubic-bezier(.4,0,.2,1);
-    box-shadow: 0 -4px 32px rgba(0,0,0,.6), 0 -1px 0 rgba(0,255,136,.12);
+    box-shadow: 0 -4px 32px rgba(0,0,0,.6), 0 -1px 0 rgba(63,185,80,.12);
 }
 #itpPanel.aberto { transform: translateY(0); }
 
 /* Drag handle */
 .itp-drag-handle {
     height: 6px; cursor: ns-resize; flex-shrink: 0; position: relative;
-    background: linear-gradient(90deg, transparent, rgba(0,255,136,.3) 20%, rgba(0,255,136,.5) 50%, rgba(0,255,136,.3) 80%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(63,185,80,.3) 20%, rgba(63,185,80,.5) 50%, rgba(63,185,80,.3) 80%, transparent);
     transition: background .2s;
 }
 .itp-drag-handle::after {
     content: ''; position: absolute; left: 50%; top: 50%;
     transform: translate(-50%,-50%);
     width: 48px; height: 3px; border-radius: 2px;
-    background: rgba(0,255,136,.5); box-shadow: 0 0 6px rgba(0,255,136,.3);
+    background: rgba(63,185,80,.5); 
 }
-.itp-drag-handle:hover { background: linear-gradient(90deg, transparent, rgba(0,255,136,.6) 20%, rgba(0,255,136,1) 50%, rgba(0,255,136,.6) 80%, transparent); }
+.itp-drag-handle:hover { background: linear-gradient(90deg, transparent, rgba(63,185,80,.6) 20%, rgba(63,185,80,1) 50%, rgba(63,185,80,.6) 80%, transparent); }
 body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
 
 /* Body row */
@@ -154,13 +154,13 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
     border-left: 2px solid transparent;
     transition: background .12s, border-color .12s;
 }
-.itp-host-item:hover { background: rgba(0,255,136,.04); border-left-color: rgba(0,255,136,.2); }
-.itp-host-item.ativo { background: rgba(0,255,136,.07); border-left-color: var(--itp-green); }
+.itp-host-item:hover { background: rgba(63,185,80,.04); border-left-color: rgba(63,185,80,.2); }
+.itp-host-item.ativo { background: rgba(63,185,80,.07); border-left-color: var(--itp-green); }
 @keyframes itpPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 .itp-host-dot {
     width: 6px; height: 6px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; transition: background .3s;
 }
-.itp-host-item.conectado .itp-host-dot { background: var(--itp-green); box-shadow: 0 0 6px rgba(0,255,136,.5); }
+.itp-host-item.conectado .itp-host-dot { background: var(--itp-green);  }
 .itp-host-item.conectando .itp-host-dot { background: var(--itp-orange); animation: itpPulse 1s infinite; }
 .itp-host-info { flex: 1; min-width: 0; }
 .itp-host-name { font-size: 11px; color: var(--itp-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; line-height: 1.3; }
@@ -169,7 +169,7 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
 .itp-host-badge {
     font-size: 8px; padding: 1px 4px; border-radius: 2px;
     text-transform: uppercase; white-space: nowrap;
-    background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.12); color: #006640;
+    background: rgba(63,185,80,.06); border: 1px solid rgba(63,185,80,.12); color: #006640;
 }
 .itp-host-badge.telnet { background: rgba(255,165,0,.06); border-color: rgba(255,165,0,.12); color: #806600; }
 .itp-host-badge.wbx { background: rgba(0,217,255,.06); border-color: rgba(0,217,255,.12); color: #006680; }
@@ -189,7 +189,7 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
 .itp-status-dot {
     width: 7px; height: 7px; border-radius: 50%; background: #2a3a2a; flex-shrink: 0; transition: background .3s, box-shadow .3s;
 }
-.itp-status-dot.ok { background: var(--itp-green); box-shadow: 0 0 6px rgba(0,255,136,.5); }
+.itp-status-dot.ok { background: var(--itp-green);  }
 .itp-status-dot.err { background: var(--itp-red); }
 .itp-term-spacer { flex: 1; }
 .itp-term-actions { display: flex; align-items: center; gap: 3px; }
@@ -218,7 +218,7 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
 }
 .itp-tabs::-webkit-scrollbar { display: none; }
 .itp-tab {
-    padding: 5px 11px; border-radius: 3px 3px 0 0; border: 1px solid #1a1a1a; border-bottom: none;
+    padding: 5px 11px; border-radius: 3px 3px 0 0; border: 1px solid #161b22; border-bottom: none;
     cursor: pointer; display: flex; align-items: center; gap: 6px;
     font-size: 10px; color: #4a5a4a; background: #0c0c0c;
     white-space: nowrap; transition: color .12s, background .12s, border-color .12s;
@@ -263,7 +263,7 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
     font-family: inherit; transition: color .15s, border-color .15s, background .15s; white-space: nowrap;
 }
 .itp-btn-foot:hover { color: var(--itp-text); border-color: #2a4a2a; }
-.itp-btn-foot.active-toggle { color: var(--itp-green); border-color: rgba(0,255,136,.25); }
+.itp-btn-foot.active-toggle { color: var(--itp-green); border-color: rgba(63,185,80,.25); }
 
 /* ════════════════════════════════════════════════
    WIKI SIDEBAR (full — identical to terminal.html)
@@ -286,11 +286,11 @@ body.itp-resizing * { user-select: none; cursor: ns-resize !important; }
     cursor: ew-resize; z-index: 11; background: transparent; transition: background .2s;
 }
 .itp-wiki-resize-handle:hover,
-.itp-wiki-resize-handle.arrastando { background: rgba(0,255,136,.25); }
+.itp-wiki-resize-handle.arrastando { background: rgba(63,185,80,.25); }
 .itp-wiki-resize-handle::after {
     content: ''; position: absolute; top: 50%; left: 50%;
     transform: translate(-50%,-50%); width: 2px; height: 40px;
-    background: rgba(0,255,136,.4); border-radius: 2px; opacity: 0; transition: opacity .2s;
+    background: rgba(63,185,80,.4); border-radius: 2px; opacity: 0; transition: opacity .2s;
 }
 .itp-wiki-resize-handle:hover::after,
 .itp-wiki-resize-handle.arrastando::after { opacity: 1; }
@@ -305,8 +305,8 @@ body.itp-wiki-resizing * { cursor: ew-resize !important; }
 .itp-wiki-sidebar-header h3 { margin: 0; color: var(--itp-green); font-size: 14px; font-weight: 700; letter-spacing: 1px; flex: 1; }
 .itp-wiki-header-actions { display: flex; align-items: center; gap: 4px; }
 .itp-wiki-width-indicator {
-    font-size: 9px; color: #333; padding: 2px 6px; background: #0d0d0d;
-    border: 1px solid #1a1a1a; border-radius: 2px;
+    font-size: 9px; color: #333; padding: 2px 6px; background: #0d1117;
+    border: 1px solid #161b22; border-radius: 2px;
     white-space: nowrap; transition: color .2s;
 }
 body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); border-color: var(--itp-green); }
@@ -318,7 +318,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 }
 .itp-btn-preset:hover { border-color: var(--itp-green); color: var(--itp-green); }
 .itp-btn-wiki-action {
-    background: transparent; border: 1px solid #2a2a2a; color: #555;
+    background: transparent; border: 1px solid #1c2128; color: #555;
     width: 30px; height: 30px; border-radius: 3px; cursor: pointer; font-size: 13px;
     display: flex; align-items: center; justify-content: center; transition: .2s; flex-shrink: 0;
 }
@@ -329,7 +329,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 /* Wiki search */
 .itp-wiki-sidebar-search { padding: 12px 16px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
 .itp-wiki-search-input {
-    width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
+    width: 100%; background: #161b22; border: 1px solid #1c2128; color: #fff;
     padding: 10px 13px; border-radius: 3px; font-family: inherit;
     font-size: 13px; outline: none; transition: border-color .2s; box-sizing: border-box;
 }
@@ -347,7 +347,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 /* Result items */
 .wiki-loading, .wiki-error, .wiki-no-results { text-align: center; padding: 50px 20px; color: #555; font-size: 12px; }
 .wiki-error { color: #5a2a2a; }
-.wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background .15s; }
+.wiki-result-item { padding: 14px 16px; border-bottom: 1px solid #161b22; cursor: pointer; transition: background .15s; }
 .wiki-result-item:hover { background: rgba(0,217,255,.04); }
 .wiki-result-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 10px; color: #555; }
 .wiki-result-categoria { color: var(--itp-cyan); font-size: 10px; }
@@ -365,12 +365,12 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
     color: var(--itp-cyan); padding: 12px 16px; cursor: pointer;
     font-family: inherit; font-size: 12px; text-align: left; transition: background .15s;
 }
-.btn-voltar-wiki:hover { background: #141414; }
+.btn-voltar-wiki:hover { background: #21262d; }
 .wiki-artigo-header { padding: 16px; border-bottom: 1px solid #1e1e1e; background: #0e0e0e; }
 .wiki-artigo-header h2 { color: #fff; font-size: 15px; margin: 0 0 10px; font-weight: 700; line-height: 1.4; }
 .wiki-artigo-meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .badge-cat { background: rgba(0,217,255,.12); color: var(--itp-cyan); padding: 2px 8px; border-radius: 2px; font-size: 10px; }
-.badge-fab { background: rgba(0,255,136,.12); color: var(--itp-green); padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+.badge-fab { background: rgba(63,185,80,.12); color: var(--itp-green); padding: 2px 8px; border-radius: 2px; font-size: 10px; }
 .wiki-artigo-conteudo { padding: 16px; }
 .wiki-artigo-conteudo h2 {
     display: flex; align-items: stretch; margin: 20px 0 12px;
@@ -390,7 +390,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 .wiki-artigo-conteudo ul, .wiki-artigo-conteudo ol { padding-left: 18px; margin: 8px 0; }
 .wiki-artigo-conteudo li { margin: 4px 0; color: #bbb; font-size: 12px; }
 .wiki-artigo-conteudo code {
-    background: rgba(0,255,136,.1); color: var(--itp-green); padding: 1px 5px;
+    background: rgba(63,185,80,.1); color: var(--itp-green); padding: 1px 5px;
     border-radius: 2px; font-family: inherit; font-size: 11px;
 }
 
@@ -399,7 +399,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 .wiki-code-toolbar { background: #111; padding: 6px 10px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 5px; }
 .wiki-code-toolbar-title { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
 .wiki-code-lang-badge {
-    background: rgba(255,170,0,.15); color: #ffa500; font-size: 9px; font-weight: 800;
+    background: rgba(255,170,0,.15); color: #d29922; font-size: 9px; font-weight: 800;
     padding: 2px 7px; border-radius: 2px; border: 1px solid rgba(255,170,0,.25);
     white-space: nowrap; flex-shrink: 0; text-transform: uppercase; letter-spacing: .5px;
 }
@@ -410,21 +410,21 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 .wiki-bloco-acoes { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
 .wiki-bloco-lang { font-size: 9px; color: #444; background: #0a0a0a; padding: 2px 7px; border-radius: 10px; border: 1px solid #222; }
 .wiki-bloco-descricao { padding: 8px 12px; color: #666; font-size: 11px; border-bottom: 1px solid #1e1e1e; margin: 0; }
-.wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #1a1a1a; }
+.wiki-blocos-section-title { padding: 10px 16px 4px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #161b22; }
 
 /* Buttons */
 .btn-bloco {
-    background: transparent; border: 1px solid #2a2a2a; color: #555;
+    background: transparent; border: 1px solid #1c2128; color: #555;
     padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
     font-family: inherit; transition: .2s; white-space: nowrap; line-height: 1.5;
 }
 .btn-bloco:hover { color: #aaa; border-color: #444; }
-.btn-bloco.btn-editar:hover { color: #ffa500; border-color: #ffa500; }
-.btn-bloco.btn-editar.ativo { color: #ffa500; border-color: #ffa500; background: rgba(255,165,0,.08); }
+.btn-bloco.btn-editar:hover { color: #d29922; border-color: #d29922; }
+.btn-bloco.btn-editar.ativo { color: #d29922; border-color: #d29922; background: rgba(255,165,0,.08); }
 .btn-bloco.btn-copiar:hover { color: var(--itp-cyan); border-color: var(--itp-cyan); }
 .btn-bloco.btn-copiar.copiado { color: var(--itp-green); border-color: var(--itp-green); }
-.btn-bloco.btn-enviar { color: var(--itp-green); border-color: var(--itp-green); background: rgba(0,255,136,.07); font-weight: 600; }
-.btn-bloco.btn-enviar:hover { background: rgba(0,255,136,.16); box-shadow: 0 0 8px rgba(0,255,136,.2); }
+.btn-bloco.btn-enviar { color: var(--itp-green); border-color: var(--itp-green); background: rgba(63,185,80,.07); font-weight: 600; }
+.btn-bloco.btn-enviar:hover { background: rgba(63,185,80,.16);  }
 
 /* Edit aviso */
 .wiki-bloco-edit-aviso {
@@ -443,16 +443,16 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
     border-right: 1px solid #1e1e1e; user-select: none; font-size: 10px; vertical-align: top; padding-top: 1px;
 }
 .wiki-codigo-pre code .ln .lc { display: table-cell; padding: 0 12px; white-space: pre; }
-.wiki-codigo-pre code .ln .lc .wiki-var-highlight { background: rgba(255,170,0,.18); color: #ffaa00; border-radius: 2px; padding: 0 2px; border-bottom: 1px dashed #ffa500; }
+.wiki-codigo-pre code .ln .lc .wiki-var-highlight { background: rgba(255,170,0,.18); color: #ffaa00; border-radius: 2px; padding: 0 2px; border-bottom: 1px dashed #d29922; }
 
 /* Editor */
-.wiki-codigo-editor-wrap { display: none; border-left: 3px solid #ffa500; background: #0a0a0a; }
+.wiki-codigo-editor-wrap { display: none; border-left: 3px solid #d29922; background: #0a0a0a; }
 .wiki-codigo-editor-wrap.visivel { display: block; }
 .wiki-codigo-editor {
-    width: 100%; min-height: 80px; max-height: 420px; background: #0d0d0d; color: #e8e8e8;
+    width: 100%; min-height: 80px; max-height: 420px; background: #0d1117; color: #e8e8e8;
     border: none; outline: none; resize: vertical; font-family: inherit;
     font-size: 12px; line-height: 1.7; padding: 10px 14px; tab-size: 4;
-    scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #ffa500;
+    scrollbar-width: thin; scrollbar-color: #333 transparent; caret-color: #d29922;
 }
 .wiki-codigo-editor::-webkit-scrollbar { width: 4px; }
 .wiki-codigo-editor::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
@@ -467,52 +467,52 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 .wiki-bloco-footer-info { color: #3a3a3a; font-size: 10px; }
 .wiki-bloco-footer-acoes { display: flex; gap: 6px; align-items: center; }
 .btn-resetar {
-    background: transparent; border: 1px solid #2a2a2a; color: #555;
+    background: transparent; border: 1px solid #1c2128; color: #555;
     padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px;
     font-family: inherit; transition: .2s;
 }
 .btn-resetar:hover { color: var(--itp-red); border-color: var(--itp-red); }
 .btn-enviar-grande {
-    background: rgba(0,255,136,.1); border: 1px solid var(--itp-green); color: var(--itp-green);
+    background: rgba(63,185,80,.1); border: 1px solid var(--itp-green); color: var(--itp-green);
     padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 11px;
     font-family: inherit; font-weight: 600; transition: .2s;
     display: flex; align-items: center; gap: 6px;
 }
-.btn-enviar-grande:hover { background: rgba(0,255,136,.2); box-shadow: 0 0 12px rgba(0,255,136,.28); }
+.btn-enviar-grande:hover { background: rgba(63,185,80,.2);  }
 .btn-enviar-grande.enviado { animation: itpFlashGreen .5s ease; }
 @keyframes itpFlashGreen {
-    0%   { box-shadow: 0 0 0   rgba(0,255,136,0); }
-    40%  { box-shadow: 0 0 20px rgba(0,255,136,.55); }
-    100% { box-shadow: 0 0 0   rgba(0,255,136,0); }
+    0%   { box-shadow: 0 0 0   rgba(63,185,80,0); }
+    40%  {  }
+    100% { box-shadow: 0 0 0   rgba(63,185,80,0); }
 }
 
 /* Variables panel */
 .wiki-vars-panel { background: rgba(255,170,0,.03); border-top: 1px solid rgba(255,170,0,.12); overflow: hidden; transition: max-height .3s ease; }
 .wiki-vars-toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; background: rgba(255,170,0,.05); border-bottom: 1px solid rgba(255,170,0,.08); transition: background .15s; }
 .wiki-vars-toggle:hover { background: rgba(255,170,0,.09); }
-.wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #ffa500; text-transform: uppercase; letter-spacing: .8px; }
-.wiki-vars-badge { background: rgba(255,170,0,.2); color: #ffa500; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
+.wiki-vars-toggle-left { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; color: #d29922; text-transform: uppercase; letter-spacing: .8px; }
+.wiki-vars-badge { background: rgba(255,170,0,.2); color: #d29922; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 800; }
 .wiki-vars-toggle-arrow { color: #555; font-size: 11px; transition: transform .25s; user-select: none; }
 .wiki-vars-toggle-arrow.aberto { transform: rotate(180deg); }
 .wiki-vars-body { padding: 10px 12px; display: none; flex-direction: column; gap: 8px; }
 .wiki-vars-body.visivel { display: flex; }
-.wiki-vars-hint { font-size: 10px; color: #555; padding: 4px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 2px; line-height: 1.5; }
-.wiki-vars-hint code { background: rgba(255,170,0,.12); color: #ffa500; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
+.wiki-vars-hint { font-size: 10px; color: #555; padding: 4px 0; border-bottom: 1px solid #161b22; margin-bottom: 2px; line-height: 1.5; }
+.wiki-vars-hint code { background: rgba(255,170,0,.12); color: #d29922; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
 .wiki-vars-grid { display: flex; flex-direction: column; gap: 6px; }
 .wiki-var-row { display: flex; align-items: center; gap: 8px; }
-.wiki-var-label { background: rgba(255,170,0,.12); color: #ffa500; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,.2); font-family: inherit; }
+.wiki-var-label { background: rgba(255,170,0,.12); color: #d29922; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 2px; white-space: nowrap; min-width: 80px; text-align: center; border: 1px solid rgba(255,170,0,.2); font-family: inherit; }
 .wiki-var-arrow { color: #333; font-size: 12px; flex-shrink: 0; }
-.wiki-var-inp { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 10px; border-radius: 2px; font-family: inherit; font-size: 12px; outline: none; transition: border-color .15s, background .15s; min-width: 0; }
-.wiki-var-inp:focus { border-color: #ffa500; background: #1e1e1e; }
+.wiki-var-inp { flex: 1; background: #161b22; border: 1px solid #1c2128; color: #fff; padding: 6px 10px; border-radius: 2px; font-family: inherit; font-size: 12px; outline: none; transition: border-color .15s, background .15s; min-width: 0; }
+.wiki-var-inp:focus { border-color: #d29922; background: #1e1e1e; }
 .wiki-var-inp::placeholder { color: #3a3a3a; }
-.wiki-var-inp.preenchido { border-color: rgba(0,255,136,.35); color: var(--itp-green); }
-.wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #1a1a1a; flex-wrap: wrap; }
-.btn-vars-limpar { background: transparent; border: 1px solid #2a2a2a; color: #555; padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: inherit; transition: .2s; }
+.wiki-var-inp.preenchido { border-color: rgba(63,185,80,.35); color: var(--itp-green); }
+.wiki-vars-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid #161b22; flex-wrap: wrap; }
+.btn-vars-limpar { background: transparent; border: 1px solid #1c2128; color: #555; padding: 5px 10px; border-radius: 2px; cursor: pointer; font-size: 10px; font-family: inherit; transition: .2s; }
 .btn-vars-limpar:hover { color: var(--itp-red); border-color: var(--itp-red); }
 .wiki-vars-preview-wrap { display: none; }
 .wiki-vars-preview-wrap.visivel { display: block; }
 .wiki-vars-preview-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
-.wiki-vars-preview-pre { background: rgba(0,255,136,.04); border: 1px solid rgba(0,255,136,.1); border-left: 3px solid rgba(0,255,136,.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: inherit; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
+.wiki-vars-preview-pre { background: rgba(63,185,80,.04); border: 1px solid rgba(63,185,80,.1); border-left: 3px solid rgba(63,185,80,.4); border-radius: 2px; padding: 8px 10px; overflow-x: auto; font-family: inherit; font-size: 10px; color: #b0e0b0; white-space: pre; line-height: 1.6; max-height: 140px; overflow-y: auto; }
 
 /* Toast */
 .itp-wiki-toast {
@@ -542,9 +542,9 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
     border-bottom: 1px solid #111;
 }
 .itp-ctx-item:last-child { border-bottom: none; }
-.itp-ctx-item:hover { background: rgba(0,255,136,.06); color: var(--itp-green); }
+.itp-ctx-item:hover { background: rgba(63,185,80,.06); color: var(--itp-green); }
 .itp-ctx-item.winbox:hover { background: rgba(0,217,255,.06); color: var(--itp-cyan); }
-.itp-ctx-sep { height: 1px; background: #1a1a1a; }
+.itp-ctx-sep { height: 1px; background: #161b22; }
 
 /* Winbox inline expand (inside host list) */
 .itp-wbx-expand {
@@ -573,7 +573,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
     transition: background .15s, box-shadow .15s;
     box-shadow: 2px 0 8px rgba(0,0,0,.4);
 }
-.itp-sidebar-tab:hover { background: rgba(0,255,136,.08); box-shadow: 2px 0 12px rgba(0,255,136,.15); }
+.itp-sidebar-tab:hover { background: rgba(63,185,80,.08); box-shadow: 2px 0 12px rgba(63,185,80,.15); }
 .itp-sidebar-tab.visivel { display: block; }
 
 @media (max-width: 640px) {
@@ -649,21 +649,21 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
             <div class="itp-footer">
                 <span style="font-size:9px;color:#2a3a2a;letter-spacing:.5px;flex:1;">CONEXA Terminal</span>
                 {% if request.user.is_staff %}
-                <button class="itp-btn-foot" id="itpBtnScripts" onclick="itpScriptsAbrir()" title="Executar script no equipamento ativo" style="color:#ffa500;border-color:rgba(255,165,0,.35);">&#9889; Scripts</button>
+                <button class="itp-btn-foot" id="itpBtnScripts" onclick="itpScriptsAbrir()" title="Executar script no equipamento ativo" style="color:#d29922;border-color:rgba(255,165,0,.35);">&#9889; Scripts</button>
                 {% endif %}
                 <button class="itp-btn-foot active-toggle" id="itpBtnSidebar" onclick="itpToggleSidebar()">&#9664; Hosts</button>
             </div>
 
             <!-- ── Scripts Panel ── -->
-            <div id="itpScriptsPainel" style="position:absolute;top:0;right:-540px;width:520px;height:100%;background:#0d0d0d;border-left:1px solid #222;display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);z-index:50;font-family:'JetBrains Mono',monospace;font-size:12px;">
+            <div id="itpScriptsPainel" style="position:absolute;top:0;right:-540px;width:520px;height:100%;background:#0d1117;border-left:1px solid #222;display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);z-index:50;font-family:'JetBrains Mono',monospace;font-size:12px;">
                 <div style="padding:12px 16px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;gap:10px;">
-                    <span style="color:#ffa500;font-weight:700;font-size:13px;flex:1;">&#9889; Scripts de Automação</span>
+                    <span style="color:#d29922;font-weight:700;font-size:13px;flex:1;">&#9889; Scripts de Automação</span>
                     <span id="itpSpEquip" style="font-size:10px;color:#555;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                     <button onclick="itpScriptsFechar()" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px 6px;" title="Fechar">&#10005;</button>
                 </div>
                 <!-- tabs -->
-                <div style="display:flex;border-bottom:1px solid #1a1a1a;padding:0 12px;">
-                    <button id="itpSpt-exec" onclick="itpSpTab('exec')" style="background:none;border:none;border-bottom:2px solid #ffa500;color:#ffa500;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Executar</button>
+                <div style="display:flex;border-bottom:1px solid #161b22;padding:0 12px;">
+                    <button id="itpSpt-exec" onclick="itpSpTab('exec')" style="background:none;border:none;border-bottom:2px solid #d29922;color:#d29922;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Executar</button>
                     <button id="itpSpt-output" onclick="itpSpTab('output')" style="background:none;border:none;border-bottom:2px solid transparent;color:#555;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Output</button>
                     <button id="itpSpt-hist" onclick="itpSpTab('hist')" style="background:none;border:none;border-bottom:2px solid transparent;color:#555;padding:8px 12px;cursor:pointer;font-size:11px;font-family:inherit;">Histórico</button>
                 </div>
@@ -671,12 +671,12 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
                 <div id="itpSpp-exec" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;">
                     <div>
                         <div style="font-size:10px;color:#555;margin-bottom:4px;">EQUIPAMENTO</div>
-                        <select id="itpSpAcesoSelect" onchange="itpSpSelecionarAceso(this.value)" style="width:100%;background:#111;border:1px solid #ffa500;color:#ccc;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
+                        <select id="itpSpAcesoSelect" onchange="itpSpSelecionarAceso(this.value)" style="width:100%;background:#111;border:1px solid #d29922;color:#ccc;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
                             <option value="">— Selecione o equipamento —</option>
                         </select>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <select id="itpSpFab" onchange="itpSpCarregarScripts()" style="background:#111;border:1px solid #2a2a2a;color:#888;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
+                        <select id="itpSpFab" onchange="itpSpCarregarScripts()" style="background:#111;border:1px solid #1c2128;color:#888;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
                             <option value="">— Todos fabricantes —</option>
                             <option value="mikrotik">MikroTik</option>
                             <option value="cisco">Cisco</option>
@@ -686,17 +686,17 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
                             <option value="parks">Parks</option>
                             <option value="generico">Genérico</option>
                         </select>
-                        <select id="itpSpSelect" onchange="itpSpSelecionarScript(this.value)" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#ccc;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
+                        <select id="itpSpSelect" onchange="itpSpSelecionarScript(this.value)" style="flex:1;background:#111;border:1px solid #1c2128;color:#ccc;padding:5px 8px;border-radius:4px;font-family:inherit;font-size:11px;">
                             <option value="">— Selecione um script —</option>
                         </select>
                     </div>
                     <div id="itpSpDesc" style="font-size:10px;color:#444;min-height:16px;"></div>
                     <div id="itpSpParams" style="display:flex;flex-direction:column;gap:8px;"></div>
-                    <button id="itpSpBtnExec" onclick="itpSpExecutar()" style="margin-top:4px;padding:9px;background:rgba(255,165,0,.12);border:1px solid #ffa500;color:#ffa500;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='rgba(255,165,0,.22)'" onmouseout="this.style.background='rgba(255,165,0,.12)'">&#9654; Executar Script</button>
+                    <button id="itpSpBtnExec" onclick="itpSpExecutar()" style="margin-top:4px;padding:9px;background:rgba(255,165,0,.12);border:1px solid #d29922;color:#d29922;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='rgba(255,165,0,.22)'" onmouseout="this.style.background='rgba(255,165,0,.12)'">&#9654; Executar Script</button>
                 </div>
                 <!-- pane output -->
                 <div id="itpSpp-output" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:4px;">
-                    <div id="itpSpOutputBox" style="flex:1;background:#050505;border:1px solid #1a1a1a;border-radius:4px;padding:10px;min-height:200px;overflow-y:auto;font-size:11px;color:#ccc;white-space:pre-wrap;word-break:break-all;"></div>
+                    <div id="itpSpOutputBox" style="flex:1;background:#050505;border:1px solid #161b22;border-radius:4px;padding:10px;min-height:200px;overflow-y:auto;font-size:11px;color:#ccc;white-space:pre-wrap;word-break:break-all;"></div>
                 </div>
                 <!-- pane hist -->
                 <div id="itpSpp-hist" style="flex:1;overflow-y:auto;padding:14px;display:none;">
@@ -942,7 +942,9 @@ window.itpAbrirWinbox = function(id) {
     const pane = document.createElement('div');
     pane.className = 'itp-pane ativo'; pane.id = `itpPane-${tid}`;
     const iframe = document.createElement('iframe');
-    iframe.src = `/clientes/winbox/${id}/`;
+    const _iw = $content.clientWidth || window.innerWidth;
+    const _ih = $content.clientHeight || window.innerHeight;
+    iframe.src = `/clientes/winbox/${id}/?w=${_iw}&h=${_ih}`;
     iframe.style.cssText = 'width:100%;height:100%;border:none;background:#0a0a0a;';
     pane.appendChild(iframe);
     $content.appendChild(pane);
@@ -1030,8 +1032,8 @@ window.itpAbrirTerminal = function(acessoData) {
             fontSize: ITP_FONT_SIZE,
             fontFamily: `'${ITP_FONT}','Courier New',monospace`,
             fontWeight: 400, fontWeightBold: 700, lineHeight: 1.2, letterSpacing: 0,
-            theme: { background: '#000000', foreground: '#e0e0e0', cursor: '#00ff88',
-                     cursorAccent: '#000000', selectionBackground: 'rgba(0,255,136,0.2)' },
+            theme: { background: '#000000', foreground: '#e0e0e0', cursor: '#3fb950',
+                     cursorAccent: '#000000', selectionBackground: 'rgba(63,185,80,0.2)' },
             scrollback: 8000, allowTransparency: true, convertEol: true,
         });
         const fitAddon = new FitAddon.FitAddon();
@@ -1522,7 +1524,7 @@ function _renderWikiArtigo(artigo) {
                     <strong>${_esc(b.titulo)}</strong>
                     <div class="wiki-bloco-acoes">
                         <span class="wiki-bloco-lang">${_esc(b.linguagem)}</span>
-                        ${temVars ? `<span class="wiki-bloco-lang" style="color:#ffa500;border-color:rgba(255,170,0,.3);">&#9889;vars</span>` : ''}
+                        ${temVars ? `<span class="wiki-bloco-lang" style="color:#d29922;border-color:rgba(255,170,0,.3);">&#9889;vars</span>` : ''}
                         ${_tbBtns(idx)}
                     </div>
                 </div>
@@ -1617,7 +1619,7 @@ function _processarConteudo(html) {
                 <div class="wiki-code-toolbar-title">
                     ${blocoLang ? `<span class="wiki-code-lang-badge">${_esc(blocoLang)}</span>` : ''}
                     ${blocoTitulo ? `<span class="wiki-code-title-text">${_esc(blocoTitulo)}</span>` : ''}
-                    ${temVars ? `<span style="color:#ffa500;font-size:10px;white-space:nowrap;margin-left:4px;">&#9889; ${detectarVariaveis(codigoOriginal).length} var(s)</span>` : ''}
+                    ${temVars ? `<span style="color:#d29922;font-size:10px;white-space:nowrap;margin-left:4px;">&#9889; ${detectarVariaveis(codigoOriginal).length} var(s)</span>` : ''}
                 </div>
                 ${_tbBtns(idx)}
             </div>
@@ -1857,8 +1859,8 @@ window._itpWikiVoltar        = function() { _renderWikiResultados(_wikiLastResul
             const ativo = t === tab;
             pane.style.display = ativo ? 'flex' : 'none';
             if (ativo) pane.style.flexDirection = 'column';
-            tabEl.style.color = ativo ? '#ffa500' : '#555';
-            tabEl.style.borderBottom = ativo ? '2px solid #ffa500' : '2px solid transparent';
+            tabEl.style.color = ativo ? '#d29922' : '#555';
+            tabEl.style.borderBottom = ativo ? '2px solid #d29922' : '2px solid transparent';
         });
     };
 
@@ -1996,9 +1998,9 @@ window._itpWikiVoltar        = function() { _renderWikiResultados(_wikiLastResul
             const box = document.getElementById('itpSpHistBox');
             if (!data.historico || !data.historico.length) { box.innerHTML = '<div style="color:#444;padding:10px;">Nenhuma execução registrada.</div>'; return; }
             box.innerHTML = data.historico.map(h => `
-                <div style="border:1px solid #1a1a1a;border-radius:4px;padding:8px 10px;margin-bottom:6px;">
+                <div style="border:1px solid #161b22;border-radius:4px;padding:8px 10px;margin-bottom:6px;">
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-                        <span style="color:${h.status==='sucesso'?'#00ff88':h.status==='erro'?'#ff5555':'#ffa500'};font-size:10px;">${_esc2(h.status)}</span>
+                        <span style="color:${h.status==='sucesso'?'#3fb950':h.status==='erro'?'#f85149':'#d29922'};font-size:10px;">${_esc2(h.status)}</span>
                         <span style="color:#555;font-size:10px;">${_esc2(h.script||h.script_nome||'')}</span>
                         <span style="color:#333;font-size:10px;margin-left:auto;">${_esc2(h.iniciado_em)}</span>
                     </div>

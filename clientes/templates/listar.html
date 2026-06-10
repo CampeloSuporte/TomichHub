@@ -62,7 +62,7 @@
                 <!-- Indicador de tipo de usuário (DEBUG) -->
                 <div style="position: top: 100px; right: 20px; z-index: 1000; font-size: 11px;">
                     {% if is_cliente %}
-                        <span style="background: rgba(0, 255, 136, 0.2); color: var(--primary-green); padding: 8px 12px; border-radius: 4px; border: 1px solid var(--primary-green);">
+                        <span style="background: rgba(63,185,80,0.2); color: var(--primary-green); padding: 8px 12px; border-radius: 4px; border: 1px solid var(--primary-green);">
                             👤 CLIENTE
                         </span>
                     {% else %}
@@ -136,6 +136,11 @@
                 <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'documentacao')">
                         📚 Documentação de Rede
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="trocarAba(event, 'hotspot')">
+                        📡 Hotspot
                     </a>
                 </li>
                 <li class="nav-item">
@@ -251,7 +256,7 @@
                                             <button class="icon-btn btn-sm"
                                                     onclick="abrirWebAcesso({{ acesso.id }}, '{{ acesso.host }}', '{{ acesso.porta }}')"
                                                     title="Abrir Interface Web (Proxy)"
-                                                    style="color:#00f5ff;">
+                                                    style="color:#58a6ff;">
                                                 <i class="fas fa-display"></i>
                                             </button>
 
@@ -403,12 +408,12 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                             <div>
-                                <h5 class="mb-0"><i class="fas fa-route me-2" style="color:#00ff88"></i>Atualização IRR — TC</h5>
-                                <small style="color:rgba(0,245,255,.4)">Gera e envia os objetos RPSL para <code style="color:#00f5ff">auto-dbm@bgp.net.br</code> via e-mail</small>
+                                <h5 class="mb-0"><i class="fas fa-route me-2" style="color:#3fb950"></i>Atualização IRR — TC</h5>
+                                <small style="color:rgba(88,166,255,.4)">Gera e envia os objetos RPSL para <code style="color:#58a6ff">auto-dbm@bgp.net.br</code> via e-mail</small>
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-sm" onclick="irrConsultarWhois()"
-                                    style="background:rgba(0,245,255,.12);border:1px solid #00f5ff;color:#00f5ff;font-size:.8rem">
+                                    style="background:rgba(88,166,255,.12);border:1px solid #58a6ff;color:#58a6ff;font-size:.8rem">
                                     <i class="fas fa-search me-1"></i> Consultar IRR
                                 </button>
                                 <button class="btn btn-sm" onclick="irrMostrarPreview()"
@@ -416,7 +421,7 @@
                                     <i class="fas fa-eye me-1"></i> Preview E-mail
                                 </button>
                                 <button class="btn btn-sm" onclick="irrEnviar()"
-                                    style="background:rgba(0,255,136,.15);border:1px solid #00ff88;color:#00ff88;font-size:.8rem">
+                                    style="background:rgba(63,185,80,.15);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                                     <i class="fas fa-paper-plane me-1"></i> Enviar Atualização
                                 </button>
                                 <button class="btn btn-sm" onclick="irrVerificarResposta()"
@@ -439,76 +444,76 @@
                         <div id="irr-sub-dados" class="irr-sub">
                             <div class="row g-3">
                                 <div class="col-md-3">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">ASN *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">ASN *</label>
                                     <input id="irr-asn" type="text" class="form-control form-control-sm irr-input" placeholder="65001">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">AS Name *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">AS Name *</label>
                                     <input id="irr-as-name" type="text" class="form-control form-control-sm irr-input" placeholder="PROVEDOR-NET">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Descrição da Empresa *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Descrição da Empresa *</label>
                                     <input id="irr-empresa-descr" type="text" class="form-control form-control-sm irr-input" placeholder="Provedor Net Telecomunicações">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">NIC Handle *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">NIC Handle *</label>
                                     <input id="irr-nic-hdl" type="text" class="form-control form-control-sm irr-input" placeholder="JOAOS1-NICBR">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Senha IRR (plaintext) *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Senha IRR (plaintext) *</label>
                                     <input id="irr-password" type="text" class="form-control form-control-sm irr-input" placeholder="vJ_pOsPJl...">
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">E-mail de Contato *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">E-mail de Contato *</label>
                                     <input id="irr-email-contato" type="email" class="form-control form-control-sm irr-input" placeholder="contato@empresa.com.br" value="abuso@tomich.com.br">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">E-mail Abuse/Rede</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">E-mail Abuse/Rede</label>
                                     <input id="irr-email-abuse" type="email" class="form-control form-control-sm irr-input" placeholder="abuse@empresa.com.br">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Website</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Website</label>
                                     <input id="irr-website" type="text" class="form-control form-control-sm irr-input" placeholder="https://www.empresa.com.br">
                                 </div>
                                 <div class="col-12"><hr style="border-color:rgba(255,255,255,.06);margin:4px 0"></div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Nome (Person) *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Nome (Person) *</label>
                                     <input id="irr-person-name" type="text" class="form-control form-control-sm irr-input" placeholder="João Silva">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Telefone *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Telefone *</label>
                                     <input id="irr-phone" type="text" class="form-control form-control-sm irr-input" placeholder="5574988737970">
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Endereço *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Endereço *</label>
                                     <input id="irr-address" type="text" class="form-control form-control-sm irr-input" placeholder="Rua Exemplo, Cidade-BA BRA">
                                 </div>
                                 <div class="col-12"><hr style="border-color:rgba(255,255,255,.06);margin:4px 0"></div>
                                 <div class="col-md-2">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">País</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">País</label>
                                     <input id="irr-geo-pais" type="text" class="form-control form-control-sm irr-input" placeholder="BR" maxlength="5">
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Alpha-3</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Alpha-3</label>
                                     <input id="irr-geo-alpha3" type="text" class="form-control form-control-sm irr-input" placeholder="BRA" maxlength="5">
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Cód. Numérico</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Cód. Numérico</label>
                                     <input id="irr-geo-num" type="text" class="form-control form-control-sm irr-input" placeholder="076" maxlength="5">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Estado (BR-XX)</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Estado (BR-XX)</label>
                                     <input id="irr-geo-estado" type="text" class="form-control form-control-sm irr-input" placeholder="BR-BA" maxlength="20">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">Cidade</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Cidade</label>
                                     <input id="irr-geo-cidade" type="text" class="form-control form-control-sm irr-input" placeholder="São Paulo">
                                 </div>
                             </div>
                             <div class="mt-3 d-flex gap-2">
                                 <button class="btn btn-sm" onclick="irrSalvar()"
-                                    style="background:rgba(0,255,136,.2);border:1px solid #00ff88;color:#00ff88;font-size:.8rem">
+                                    style="background:rgba(63,185,80,.2);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                                     <i class="fas fa-save me-1"></i> Salvar Configuração
                                 </button>
                             </div>
@@ -518,33 +523,33 @@
                         <div id="irr-sub-rotas" class="irr-sub" style="display:none">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
                                         Prefixos IPv4 <small style="color:#555">(um por linha — objetos route)</small>
                                     </label>
                                     <textarea id="irr-ipv4-rotas" rows="6" class="form-control form-control-sm irr-input"
-                                        style="font-family:'Share Tech Mono',monospace;font-size:.8rem"
+                                        style="font-family:'Inter', sans-serif;font-size:.8rem"
                                         placeholder="186.65.76.0/22&#10;186.65.76.0/23&#10;186.65.78.0/23"></textarea>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
                                         Prefixos IPv6 <small style="color:#555">(um por linha — objetos route6)</small>
                                     </label>
                                     <textarea id="irr-ipv6-rotas" rows="6" class="form-control form-control-sm irr-input"
-                                        style="font-family:'Share Tech Mono',monospace;font-size:.8rem"
+                                        style="font-family:'Inter', sans-serif;font-size:.8rem"
                                         placeholder="2804:80E0::/32&#10;2804:80E0::/33&#10;2804:80E0:8000::/33"></textarea>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
                                         Route-set mp-members <small style="color:#555">(um por linha — inclua range ex: 201.7.168.0/21^21-24)</small>
                                     </label>
                                     <textarea id="irr-route-set-members" rows="3" class="form-control form-control-sm irr-input"
-                                        style="font-family:'Share Tech Mono',monospace;font-size:.8rem"
+                                        style="font-family:'Inter', sans-serif;font-size:.8rem"
                                         placeholder="201.7.168.0/21^21-24&#10;2804:168c::/32^32-48"></textarea>
                                 </div>
                             </div>
                             <div class="mt-3">
                                 <button class="btn btn-sm" onclick="irrSalvar()"
-                                    style="background:rgba(0,255,136,.2);border:1px solid #00ff88;color:#00ff88;font-size:.8rem">
+                                    style="background:rgba(63,185,80,.2);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                                     <i class="fas fa-save me-1"></i> Salvar
                                 </button>
                             </div>
@@ -555,9 +560,9 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(0,245,255,.4)">Upstream ASNs (AS-UPSTREAMS)</label>
+                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(88,166,255,.4)">Upstream ASNs (AS-UPSTREAMS)</label>
                                         <button class="btn btn-sm" onclick="irrAddUpstream()"
-                                            style="padding:2px 8px;font-size:.75rem;background:rgba(0,245,255,.1);border:1px solid #00f5ff;color:#00f5ff">
+                                            style="padding:2px 8px;font-size:.75rem;background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff">
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
@@ -565,9 +570,9 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(0,245,255,.4)">Customer ASNs (AS-CUSTOMERS)</label>
+                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(88,166,255,.4)">Customer ASNs (AS-CUSTOMERS)</label>
                                         <button class="btn btn-sm" onclick="irrAddCustomer()"
-                                            style="padding:2px 8px;font-size:.75rem;background:rgba(0,255,136,.1);border:1px solid #00ff88;color:#00ff88">
+                                            style="padding:2px 8px;font-size:.75rem;background:rgba(63,185,80,.1);border:1px solid #30363d;color:#3fb950">
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
@@ -579,7 +584,7 @@
                             <div class="mt-3" style="border-top:1px solid rgba(255,255,255,.07);padding-top:14px">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
                                     <div>
-                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(0,245,255,.4)">
+                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(88,166,255,.4)">
                                             <i class="fas fa-exchange-alt me-1" style="color:#ffaa00"></i>
                                             Participação em IX (<code style="font-size:.75rem">member-of</code>)
                                         </label>
@@ -595,7 +600,7 @@
 
                             <div class="mt-3">
                                 <button class="btn btn-sm" onclick="irrSalvar()"
-                                    style="background:rgba(0,255,136,.2);border:1px solid #00ff88;color:#00ff88;font-size:.8rem">
+                                    style="background:rgba(63,185,80,.2);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                                     <i class="fas fa-save me-1"></i> Salvar
                                 </button>
                             </div>
@@ -910,7 +915,7 @@
                     <small id="modalVisualizarBackupInfo" style="color:var(--text-muted);font-size:12px;"></small>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button onclick="copiarConteudoBackup()" style="background:rgba(0,245,255,.15);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">
+                    <button onclick="copiarConteudoBackup()" style="background:rgba(88,166,255,.15);border:1px solid var(--accent-cyan);color:var(--accent-cyan);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">
                         <i class="fas fa-copy me-1"></i> Copiar
                     </button>
                     <button class="btn-close-modal" onclick="fecharModalVisualizarBackup()">
@@ -926,7 +931,7 @@
                 <div id="modalVisualizarBackupTruncado" style="display:none;background:rgba(255,170,0,.1);border-bottom:1px solid rgba(255,170,0,.3);padding:8px 16px;font-size:12px;color:#ffaa00;flex-shrink:0;">
                     <i class="fas fa-info-circle me-1"></i> Arquivo truncado — exibindo os primeiros 512 KB.
                 </div>
-                <pre id="modalVisualizarBackupConteudo" style="display:none;margin:0;padding:16px;font-family:'Share Tech Mono',monospace;font-size:12px;line-height:1.5;background:transparent;color:var(--text-light);white-space:pre-wrap;word-break:break-all;overflow-y:auto;flex:1;"></pre>
+                <pre id="modalVisualizarBackupConteudo" style="display:none;margin:0;padding:16px;font-family:'Inter', sans-serif;font-size:12px;line-height:1.5;background:transparent;color:var(--text-light);white-space:pre-wrap;word-break:break-all;overflow-y:auto;flex:1;"></pre>
             </div>
         </div>
     </div>
@@ -939,18 +944,18 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>
-                                <h5 class="mb-0"><i class="fas fa-shield-alt me-2" style="color:#00ff88"></i>OpenVPN — MikroTik</h5>
-                                <small style="color:rgba(0,245,255,.4)">Configura OpenVPN Server no MikroTik e gera o arquivo .ovpn automaticamente</small>
+                                <h5 class="mb-0"><i class="fas fa-shield-alt me-2" style="color:#3fb950"></i>OpenVPN — MikroTik</h5>
+                                <small style="color:rgba(88,166,255,.4)">Configura OpenVPN Server no MikroTik e gera o arquivo .ovpn automaticamente</small>
                             </div>
                             {% if is_admin %}
                             <button class="btn btn-sm" onclick="ovpnAbrirModal()"
-                                style="background:rgba(0,255,136,.15);border:1px solid #00ff88;color:#00ff88;font-size:.8rem">
+                                style="background:rgba(63,185,80,.15);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                                 <i class="fas fa-plus me-1"></i> Nova VPN OpenVPN
                             </button>
                             {% endif %}
                         </div>
                         <div id="ovpn-lista" style="min-height:60px">
-                            <div style="color:rgba(0,245,255,.4);font-size:.85rem;text-align:center;padding:20px">
+                            <div style="color:rgba(88,166,255,.4);font-size:.85rem;text-align:center;padding:20px">
                                 <i class="fas fa-spinner fa-spin me-2"></i> Carregando...
                             </div>
                         </div>
@@ -968,11 +973,11 @@
                             <h5 class="mb-0">Topologia de Rede</h5>
                             <div class="d-flex gap-2 ms-auto flex-wrap">
                                 <button class="btn btn-sm" id="topo-sub-imagens" onclick="topoSubAba('imagens')"
-                                    style="background:rgba(0,245,255,.15);border:1px solid var(--primary-cyan,#00d9ff);color:#00f5ff;font-size:.8rem">
+                                    style="background:rgba(88,166,255,.15);border:1px solid var(--primary-cyan,#00d9ff);color:#58a6ff;font-size:.8rem">
                                     <i class="fas fa-images me-1"></i> Imagens
                                 </button>
                                 <button class="btn btn-sm" id="topo-sub-editor" onclick="topoSubAba('editor')"
-                                    style="background:rgba(63,185,80,.1);border:1px solid #3fb950;color:#3fb950;font-size:.8rem">
+                                    style="background:rgba(63,185,80,.1);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                                     <i class="fas fa-pen-nib me-1"></i> Editor de Topologia
                                 </button>
                                 <button class="btn btn-sm btn-primary" onclick="abrirModalUploadTopologia()" style="font-size:.8rem">
@@ -984,9 +989,9 @@
                         <!-- Painel: Editor de Topologia (embutido) -->
                         <div id="topo-painel-editor" style="display:none">
                             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                                <span style="font-size:.78rem;color:rgba(0,245,255,.4)" id="topo-editor-status">Carregando editor...</span>
+                                <span style="font-size:.78rem;color:rgba(88,166,255,.4)" id="topo-editor-status">Carregando editor...</span>
                                 <a href="/clientes/{{ cliente.id }}/topologia/editor/" target="_blank" rel="noopener"
-                                    style="margin-left:auto;font-size:.75rem;color:rgba(0,245,255,.4);text-decoration:none;border:1px solid rgba(0,245,255,.15);border-radius:4px;padding:2px 8px"
+                                    style="margin-left:auto;font-size:.75rem;color:rgba(88,166,255,.4);text-decoration:none;border:1px solid rgba(88,166,255,.15);border-radius:4px;padding:2px 8px"
                                     title="Abrir em nova aba">
                                     <i class="fas fa-external-link-alt"></i> Nova aba
                                 </a>
@@ -995,7 +1000,7 @@
                                 src="about:blank"
                                 data-src="/clientes/{{ cliente.id }}/topologia/editor/?embed=1"
                                 data-loaded="0"
-                                style="width:100%;height:calc(100vh - 200px);min-height:600px;border:1px solid rgba(0,245,255,.15);border-radius:8px;display:block;background:#02030a">
+                                style="width:100%;height:calc(100vh - 200px);min-height:600px;border:1px solid rgba(88,166,255,.15);border-radius:8px;display:block;background:#0d1117">
                             </iframe>
                         </div>
 
@@ -1076,17 +1081,17 @@
                                         
                                         <!-- INFORMAÇÕES -->
                                         <div class="p-3">
-                                            <p class="mb-1" style="color: var(--primary-green); font-family:'Share Tech Mono',monospace; font-size: 13px; font-weight: 700;">
+                                            <p class="mb-1" style="color: var(--primary-green); font-family:'Inter', sans-serif; font-size: 13px; font-weight: 700;">
                                                 <i class="fas fa-layer-group" style="margin-right: 6px;"></i>{{ topologia.nome }}
                                             </p>
-                                            <p class="mb-2" style="color: var(--text-muted); font-family:'Share Tech Mono',monospace; font-size: 11px;">
+                                            <p class="mb-2" style="color: var(--text-muted); font-family:'Inter', sans-serif; font-size: 11px;">
                                                 <i class="fas fa-calendar" style="margin-right: 4px;"></i>{{ topologia.data_upload|date:"d/m/Y H:i" }}
                                             </p>
                                             
                                             <!-- ✅ NOVO: Exibir link DrawIO se existir -->
                                             {% if topologia.drawio_url %}
                                             <div style="background: rgba(156, 39, 176, 0.05); border: 1px solid rgba(156, 39, 176, 0.2); border-radius: 4px; padding: 8px; margin-top: 10px;">
-                                                <p style="color: #9c27b0; font-family:'Share Tech Mono',monospace; font-size: 10px; margin: 0 0 6px 0;">
+                                                <p style="color: #9c27b0; font-family:'Inter', sans-serif; font-size: 10px; margin: 0 0 6px 0;">
                                                     <i class="fas fa-diagram-project" style="margin-right: 4px;"></i> DrawIO
                                                 </p>
                                                 <button 
@@ -1288,16 +1293,16 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>
-                                <h5 class="mb-0"><i class="fas fa-network-wired me-2" style="color:#00f5ff"></i>VPN WireGuard — MikroTik</h5>
-                                <small style="color:rgba(0,245,255,.4)">Conecta redes privadas do cliente sem precisar de servidor Linux/proxy</small>
+                                <h5 class="mb-0"><i class="fas fa-network-wired me-2" style="color:#58a6ff"></i>VPN WireGuard — MikroTik</h5>
+                                <small style="color:rgba(88,166,255,.4)">Conecta redes privadas do cliente sem precisar de servidor Linux/proxy</small>
                             </div>
                             <button class="btn btn-sm" onclick="wgCriarVPN()"
-                                style="background:rgba(0,245,255,.15);border:1px solid #00f5ff;color:#00f5ff;font-size:.8rem">
+                                style="background:rgba(88,166,255,.15);border:1px solid #58a6ff;color:#58a6ff;font-size:.8rem">
                                 <i class="fas fa-plus me-1"></i> Nova VPN WireGuard
                             </button>
                         </div>
                         <div id="wg-lista" style="min-height:60px">
-                            <div style="color:rgba(0,245,255,.4);font-size:.85rem;text-align:center;padding:20px">
+                            <div style="color:rgba(88,166,255,.4);font-size:.85rem;text-align:center;padding:20px">
                                 <i class="fas fa-spinner fa-spin me-2"></i> Carregando...
                             </div>
                         </div>
@@ -1389,7 +1394,7 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-light);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
-                    <h5 class="modal-title"><i class="fas fa-shield-alt me-2" style="color:#00ff88"></i>Nova Configuração OpenVPN</h5>
+                    <h5 class="modal-title"><i class="fas fa-shield-alt me-2" style="color:#3fb950"></i>Nova Configuração OpenVPN</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -1463,7 +1468,7 @@
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-sm" id="ovpn-btn-criar"
                         onclick="ovpnCriar()"
-                        style="background:rgba(0,255,136,.2);border:1px solid #00ff88;color:#00ff88;">
+                        style="background:rgba(63,185,80,.2);border:1px solid #30363d;color:#3fb950;">
                         <i class="fas fa-play me-1"></i>Configurar e Gerar .ovpn
                     </button>
                 </div>
@@ -1476,7 +1481,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-light);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
-                    <h5 class="modal-title"><i class="fas fa-user-plus me-2" style="color:#00ff88"></i>Novo Usuário OpenVPN</h5>
+                    <h5 class="modal-title"><i class="fas fa-user-plus me-2" style="color:#3fb950"></i>Novo Usuário OpenVPN</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -1486,13 +1491,13 @@
                         <input id="ovpn-usuario-nome" type="text" class="form-control form-control-sm"
                             placeholder="ex: joao-silva"
                             style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
-                        <small style="color:rgba(0,245,255,.4)">Será usado como nome do certificado e usuário PPP no MikroTik</small>
+                        <small style="color:rgba(88,166,255,.4)">Será usado como nome do certificado e usuário PPP no MikroTik</small>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-sm" onclick="ovpnUsuarioCriar()"
-                        style="background:rgba(0,255,136,.15);border:1px solid #00ff88;color:#00ff88;">
+                        style="background:rgba(63,185,80,.15);border:1px solid #30363d;color:#3fb950;">
                         <i class="fas fa-play me-1"></i> Criar Usuário
                     </button>
                 </div>
@@ -1505,12 +1510,12 @@
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-light);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
-                    <h5 class="modal-title"><i class="fas fa-terminal me-2" style="color:#00f5ff"></i>Logs de Execução — OpenVPN</h5>
+                    <h5 class="modal-title"><i class="fas fa-terminal me-2" style="color:#58a6ff"></i>Logs de Execução — OpenVPN</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="padding:0;">
                     <pre id="ovpn-logs-content"
-                        style="margin:0;padding:16px;background:#02030a;color:#d0e8f0;font-size:.78rem;
+                        style="margin:0;padding:16px;background:#0d1117;color:#e6edf3;font-size:.78rem;
                                max-height:500px;overflow-y:auto;border-radius:0 0 6px 6px;white-space:pre-wrap;"></pre>
                 </div>
             </div>
@@ -1523,9 +1528,9 @@
             <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-light);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
                     <div>
-                        <h5 class="modal-title mb-0"><i class="fas fa-envelope me-2" style="color:#00ff88"></i>Preview — E-mail IRR</h5>
-                        <small style="color:rgba(0,245,255,.4)">
-                            Para: <code id="irr-preview-destino" style="color:#00f5ff"></code> &nbsp;·&nbsp;
+                        <h5 class="modal-title mb-0"><i class="fas fa-envelope me-2" style="color:#3fb950"></i>Preview — E-mail IRR</h5>
+                        <small style="color:rgba(88,166,255,.4)">
+                            Para: <code id="irr-preview-destino" style="color:#58a6ff"></code> &nbsp;·&nbsp;
                             Assunto: <code id="irr-preview-assunto" style="color:#ffaa00"></code>
                         </small>
                     </div>
@@ -1533,17 +1538,17 @@
                 </div>
                 <div class="modal-body" style="padding:0;">
                     <pre id="irr-preview-corpo"
-                        style="margin:0;padding:16px;background:#02030a;color:#d0e8f0;font-size:.76rem;
+                        style="margin:0;padding:16px;background:#0d1117;color:#e6edf3;font-size:.76rem;
                                max-height:560px;overflow-y:auto;border-radius:0;white-space:pre-wrap;"></pre>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border);gap:8px;">
                     <button class="btn btn-sm" onclick="irrCopiarPreview()"
-                        style="background:rgba(0,245,255,.1);border:1px solid #00f5ff;color:#00f5ff;font-size:.8rem">
+                        style="background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff;font-size:.8rem">
                         <i class="fas fa-copy me-1"></i> Copiar
                     </button>
                     <button class="btn btn-sm" data-bs-dismiss="modal"
                         onclick="irrEnviar()"
-                        style="background:rgba(0,255,136,.15);border:1px solid #00ff88;color:#00ff88;font-size:.8rem">
+                        style="background:rgba(63,185,80,.15);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
                         <i class="fas fa-paper-plane me-1"></i> Enviar Agora
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -1558,14 +1563,14 @@
             <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-light);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
                     <div>
-                        <h5 class="modal-title mb-0"><i class="fas fa-search me-2" style="color:#00f5ff"></i>Estrutura IRR Atual</h5>
-                        <small style="color:rgba(0,245,255,.4)">Dados consultados diretamente no servidor WHOIS — <span id="irr-whois-servidor" style="color:#00f5ff"></span></small>
+                        <h5 class="modal-title mb-0"><i class="fas fa-search me-2" style="color:#58a6ff"></i>Estrutura IRR Atual</h5>
+                        <small style="color:rgba(88,166,255,.4)">Dados consultados diretamente no servidor WHOIS — <span id="irr-whois-servidor" style="color:#58a6ff"></span></small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="padding:0;">
                     <pre id="irr-whois-raw"
-                        style="margin:0;padding:16px;background:#02030a;color:#d0e8f0;font-size:.76rem;
+                        style="margin:0;padding:16px;background:#0d1117;color:#e6edf3;font-size:.76rem;
                                max-height:560px;overflow-y:auto;border-radius:0;white-space:pre-wrap;"></pre>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border);">
@@ -1584,7 +1589,7 @@
                         <h5 class="modal-title mb-0">
                             <i class="fas fa-inbox me-2" style="color:#b464ff"></i>Resposta do TC — IRR
                         </h5>
-                        <small id="irr-resp-meta" style="color:rgba(0,245,255,.4)"></small>
+                        <small id="irr-resp-meta" style="color:rgba(88,166,255,.4)"></small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -1596,9 +1601,9 @@
                     <div id="irr-resp-resumo" class="row g-2 mb-3" style="display:none!important"></div>
 
                     <!-- Corpo completo do e-mail -->
-                    <div style="font-size:.78rem;color:rgba(0,245,255,.4);margin-bottom:6px">Corpo do e-mail de resposta:</div>
+                    <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-bottom:6px">Corpo do e-mail de resposta:</div>
                     <pre id="irr-resp-corpo"
-                        style="margin:0;padding:14px;background:#02030a;color:#d0e8f0;font-size:.75rem;
+                        style="margin:0;padding:14px;background:#0d1117;color:#e6edf3;font-size:.75rem;
                                max-height:460px;overflow-y:auto;border-radius:6px;white-space:pre-wrap;border:1px solid var(--border)"></pre>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border);">
@@ -1764,6 +1769,272 @@
             <!-- TAB MONITORAMENTO -->
             {% include 'monitoramento/tab_monitoramento.html' %}
 
+            <!-- TAB HOTSPOT -->
+            <div id="tab-hotspot" class="tab-content-main" style="display:none;">
+              <div style="padding:16px 0 0;">
+
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-0" style="color:var(--primary-green);font-family:'Inter',sans-serif;">
+                      <i class="fas fa-wifi me-2"></i> Gerenciamento de Hotspot
+                    </h5>
+                    <small style="color:var(--text-muted);">Configure e aplique hotspots MikroTik · captura de leads</small>
+                  </div>
+                  <button class="btn btn-sm btn-primary" onclick="hsNovoConfig()">
+                    <i class="fas fa-plus me-1"></i> Novo Hotspot
+                  </button>
+                </div>
+
+                <!-- Two-pane layout -->
+                <div style="display:flex;gap:16px;align-items:flex-start;">
+
+                  <!-- Left: list -->
+                  <div id="hs-list-pane" style="width:280px;flex-shrink:0;">
+                    <div id="hs-list" style="display:flex;flex-direction:column;gap:8px;">
+                      <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
+                        <i class="fas fa-wifi" style="font-size:2rem;opacity:.3;"></i>
+                        <p style="margin-top:8px;font-size:.85rem;">Nenhum hotspot configurado</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Right: detail panel (hidden until selection) -->
+                  <div id="hs-detail-pane" style="flex:1;display:none;">
+                    <!-- Sub-tabs -->
+                    <ul class="nav server-tabs mb-3" id="hsSubTabs">
+                      <li class="nav-item"><a class="nav-link active" href="#" onclick="hsAba(event,'config')"><i class="fas fa-cog me-1"></i>Configuração</a></li>
+                      <li class="nav-item"><a class="nav-link" href="#" onclick="hsAba(event,'banners')"><i class="fas fa-images me-1"></i>Banners</a></li>
+                      <li class="nav-item"><a class="nav-link" href="#" onclick="hsAba(event,'leads')"><i class="fas fa-users me-1"></i>Leads</a></li>
+                    </ul>
+
+                    <!-- Sub-tab: Configuração -->
+                    <div id="hs-tab-config">
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="hs-field" style="grid-column:1/-1;">
+                          <label class="hs-label">Nome / Identificação</label>
+                          <input type="text" id="hs_nome" class="hs-input" placeholder="Ex: Hotspot Loja Centro">
+                        </div>
+                        <div class="hs-field" style="grid-column:1/-1;">
+                          <label class="hs-label">Acesso MikroTik</label>
+                          <select id="hs_acesso" class="hs-input">
+                            <option value="">— selecione —</option>
+                            {% for acesso in acessos %}
+                              <option value="{{ acesso.id }}">{{ acesso.host }} ({{ acesso.tipo }})</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Interface</label>
+                          <input type="text" id="hs_interface" class="hs-input" placeholder="bridge">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Interface Física (bridge port)</label>
+                          <input type="text" id="hs_interface_fisica" class="hs-input" placeholder="ex: wlan1, ether2 (opcional)">
+                          <small class="text-muted">Interface do roteador que receberá os clientes do hotspot</small>
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Gateway</label>
+                          <input type="text" id="hs_gateway" class="hs-input" placeholder="192.168.88.1">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Pool Início</label>
+                          <input type="text" id="hs_pool_start" class="hs-input" placeholder="192.168.88.10">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Pool Fim</label>
+                          <input type="text" id="hs_pool_end" class="hs-input" placeholder="192.168.88.254">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Rede (CIDR)</label>
+                          <input type="text" id="hs_network" class="hs-input" placeholder="192.168.88.0/24">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">DNS</label>
+                          <input type="text" id="hs_dns" class="hs-input" placeholder="8.8.8.8">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Download Máx.</label>
+                          <input type="text" id="hs_down" class="hs-input" placeholder="10M">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Upload Máx.</label>
+                          <input type="text" id="hs_up" class="hs-input" placeholder="5M">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Sessão (min, 0=ilimitado)</label>
+                          <input type="number" id="hs_session" class="hs-input" value="0" min="0">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Idle Timeout (min)</label>
+                          <input type="number" id="hs_idle" class="hs-input" value="30" min="1">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Usuário Guest (MikroTik)</label>
+                          <input type="text" id="hs_guest_user" class="hs-input" placeholder="guest">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Senha Guest</label>
+                          <input type="text" id="hs_guest_pass" class="hs-input" placeholder="wifi123">
+                        </div>
+                        <div class="hs-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+                          <label class="hs-label" style="color:var(--primary-green);">Portal de Login</label>
+                        </div>
+                        <div class="hs-field" style="grid-column:1/-1;">
+                          <label class="hs-label">Título do Portal</label>
+                          <input type="text" id="hs_titulo" class="hs-input" placeholder="WiFi Grátis">
+                        </div>
+                        <div class="hs-field" style="grid-column:1/-1;">
+                          <label class="hs-label">Subtítulo</label>
+                          <input type="text" id="hs_subtitulo" class="hs-input" placeholder="Preencha seus dados e conecte-se!">
+                        </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Cor Principal</label>
+                          <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="color" id="hs_cor" value="#1a73e8" style="width:44px;height:36px;padding:2px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;">
+                            <input type="text" id="hs_cor_txt" class="hs-input" value="#1a73e8" style="flex:1;" oninput="document.getElementById('hs_cor').value=this.value">
+                          </div>
+                        </div>
+                        <div class="hs-field" style="display:flex;align-items:center;gap:8px;padding-top:20px;">
+                          <label class="hs-label" style="margin:0;">Ativo</label>
+                          <input type="checkbox" id="hs_ativo" checked style="width:18px;height:18px;cursor:pointer;">
+                        </div>
+                        <!-- Controle de banda DHCP -->
+                        <div class="hs-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+                          <label class="hs-label" style="color:#f0a500;">🎛️ Controle de Banda (DHCP Queue Simple)</label>
+                        </div>
+                        <div class="hs-field" style="grid-column:1/-1;">
+                          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <input type="checkbox" id="hs_dhcp_controle_banda" style="width:18px;height:18px;cursor:pointer;" onchange="toggleHsBanda(this)">
+                            <label for="hs_dhcp_controle_banda" style="margin:0;font-size:.85rem;cursor:pointer;">
+                              Ativar Queue Simple por IP via DHCP Lease Script
+                            </label>
+                          </div>
+                          <small style="color:var(--text-muted);font-size:.78rem;display:block;margin-bottom:6px;">
+                            Quando ativado, o script abaixo é aplicado no DHCP Server do MikroTik para criar uma fila de banda por IP automaticamente.
+                          </small>
+                        </div>
+                        <div class="hs-field" id="hs_banda_wrap" style="display:none;">
+                          <label class="hs-label">Limite de Banda (download/upload)</label>
+                          <input type="text" id="hs_dhcp_banda_limit" class="hs-input" placeholder="10M/10M" value="10M/10M" oninput="atualizarScriptPreview()">
+                          <small style="color:var(--text-muted);font-size:.78rem;margin-top:4px;display:block;">
+                            Ex: <code>10M/10M</code>, <code>5M/2M</code>, <code>20M/10M</code>. Script aplicado no DHCP:
+                          </small>
+                          <pre id="hs_banda_script_preview" style="margin-top:6px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px;font-size:.72rem;color:#79c0ff;overflow-x:auto;white-space:pre;"></pre>
+                        </div>
+                      </div>
+
+                      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-primary" onclick="hsSalvar()">
+                          <i class="fas fa-save me-1"></i> Salvar
+                        </button>
+                        <button class="btn btn-sm" id="hs-btn-aplicar"
+                                style="background:var(--primary-green);color:#fff;border:none;"
+                                onclick="hsAplicar()">
+                          <i class="fas fa-upload me-1"></i> Aplicar no MikroTik
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="hsPreview()">
+                          <i class="fas fa-eye me-1"></i> Preview Portal
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="hsDeletar()">
+                          <i class="fas fa-trash me-1"></i> Excluir
+                        </button>
+                      </div>
+
+                      <!-- indicador de progresso inline (badge) -->
+                      <div id="hs-apply-status" style="display:none;margin-top:10px;font-size:.82rem;color:var(--text-muted);"></div>
+                    </div>
+
+                    <!-- Sub-tab: Banners -->
+                    <div id="hs-tab-banners" style="display:none;">
+
+                      <!-- Logo da empresa -->
+                      <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border-color,#333);">
+                        <p style="font-weight:600;font-size:.85rem;margin-bottom:6px;">Logo da empresa</p>
+                        <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:10px;">
+                          Aparece acima do título no portal. Recomendado: PNG transparente, até 300×100px.
+                        </p>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                          <div id="hs-logo-preview" style="display:none;position:relative;">
+                            <img id="hs-logo-img" src="" alt="Logo" style="max-height:60px;max-width:160px;object-fit:contain;border-radius:8px;border:1px solid var(--border-color,#444);padding:4px;background:#111;">
+                            <button onclick="hsDeletarLogo()" style="position:absolute;top:-6px;right:-6px;background:#dc3545;border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>
+                          </div>
+                          <label class="btn btn-sm btn-outline-primary" style="cursor:pointer;">
+                            <i class="fas fa-image me-1"></i> <span id="hs-logo-btn-text">Upload de Logo</span>
+                            <input type="file" id="hs-logo-input" accept="image/*" style="display:none;" onchange="hsUploadLogo(this)">
+                          </label>
+                        </div>
+                      </div>
+
+                      <!-- Banners do slideshow -->
+                      <div style="margin-bottom:12px;">
+                        <p style="font-weight:600;font-size:.85rem;margin-bottom:6px;">Banners do slideshow</p>
+                        <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:10px;">
+                          Faça upload de imagens para o slideshow do portal de login. Recomendado: 900×400px, JPG/PNG.
+                        </p>
+                        <label class="btn btn-sm btn-primary" style="cursor:pointer;">
+                          <i class="fas fa-upload me-1"></i> Upload de Banner
+                          <input type="file" id="hs-banner-input" accept="image/*" style="display:none;" onchange="hsUploadBanner(this)">
+                        </label>
+                      </div>
+                      <div id="hs-banners-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;"></div>
+                    </div>
+
+                    <!-- Sub-tab: Leads -->
+                    <div id="hs-tab-leads" style="display:none;">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span id="hs-leads-count" style="color:var(--text-muted);font-size:.85rem;"></span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="hsExportLeads()">
+                          <i class="fas fa-file-csv me-1"></i> Exportar CSV
+                        </button>
+                      </div>
+                      <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+                          <thead>
+                            <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);">
+                              <th style="padding:6px 8px;text-align:left;">Nome</th>
+                              <th style="padding:6px 8px;text-align:left;">Telefone</th>
+                              <th style="padding:6px 8px;text-align:left;">Nasc.</th>
+                              <th style="padding:6px 8px;text-align:left;">MAC</th>
+                              <th style="padding:6px 8px;text-align:left;">Data</th>
+                            </tr>
+                          </thead>
+                          <tbody id="hs-leads-tbody"></tbody>
+                        </table>
+                        <div id="hs-leads-empty" style="text-align:center;padding:30px;color:var(--text-muted);display:none;">
+                          Nenhum lead capturado ainda.
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- /detail-pane -->
+                </div><!-- /two-pane -->
+              </div>
+            </div><!-- /tab-hotspot -->
+
+<!-- Modal log: Aplicar no MikroTik -->
+<div id="hs-modal-log-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;
+            align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;
+              width:min(680px,95vw);max-height:80vh;display:flex;flex-direction:column;
+              box-shadow:0 30px 80px rgba(0,0,0,.6);">
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:16px 20px;border-bottom:1px solid var(--border);">
+      <h3 style="margin:0;font-size:1rem;color:var(--text-light);">
+        <i class="fas fa-upload me-2" style="color:var(--primary-green);"></i>Aplicar no MikroTik
+      </h3>
+      <button onclick="document.getElementById('hs-modal-log-overlay').style.display='none'"
+              style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="hs-apply-log"
+         style="flex:1;overflow-y:auto;padding:16px 20px;background:#0a0f1a;
+                font-family:monospace;font-size:.82rem;color:#a3e635;
+                white-space:pre-wrap;min-height:200px;border-radius:0 0 14px 14px;"></div>
+  </div>
+</div>
+
             <!-- TAB CHAMADOS -->
     <div id="tab-documentacao" class="tab-content-main" style="display: none;">
     <div class="ipam-page">
@@ -1771,7 +2042,7 @@
         <!-- Cabeçalho -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h5 class="mb-0" style="color:var(--primary-green);font-family:'Share Tech Mono',monospace;">
+                <h5 class="mb-0" style="color:var(--primary-green);font-family:'Inter', sans-serif;">
                     <i class="fas fa-network-wired me-2"></i> Documentação de IP
                 </h5>
                 <small style="color:var(--text-muted);">Prefixos · Sub-redes · IPs · VLANs · VPNs</small>
@@ -1940,7 +2211,7 @@
                     <h6 style="color:var(--text-muted);font-size:.82rem;"><i class="fas fa-info-circle me-1"></i>Colunas reconhecidas</h6>
                     <div class="row g-2 mt-1" style="font-size:.78rem;">
                         <div class="col-md-6">
-                            <div style="background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.15);border-radius:6px;padding:10px;">
+                            <div style="background:rgba(63,185,80,.05);border:1px solid rgba(63,185,80,.15);border-radius:6px;padding:10px;">
                                 <strong style="color:var(--primary-green);">Subnets CSV</strong><br>
                                 <code style="color:#aaa;">subnet</code>, <code style="color:#aaa;">mask</code>,
                                 <code style="color:#aaa;">description</code>, <code style="color:#aaa;">vlan</code>,
@@ -1948,7 +2219,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div style="background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.15);border-radius:6px;padding:10px;">
+                            <div style="background:rgba(88,166,255,.05);border:1px solid rgba(88,166,255,.15);border-radius:6px;padding:10px;">
                                 <strong style="color:var(--accent-cyan);">IP Addresses CSV</strong><br>
                                 <code style="color:#aaa;">ip_addr</code>, <code style="color:#aaa;">hostname</code>,
                                 <code style="color:#aaa;">description</code>, <code style="color:#aaa;">mac</code>,
@@ -1999,7 +2270,7 @@ const IPAM = {
 
     /* Badges de status */
     .ipam-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.75rem; font-weight:600; }
-    .ipam-badge-ativo      { background:rgba(0,255,136,.15);  color:#00ff88; border:1px solid rgba(0,255,136,.3); }
+    .ipam-badge-ativo      { background:rgba(63,185,80,.15);  color:#3fb950; border:1px solid rgba(63,185,80,.3); }
     .ipam-badge-reservado  { background:rgba(255,170,0,.15);  color:#ffaa00; border:1px solid rgba(255,170,0,.3); }
     .ipam-badge-deprecado  { background:rgba(200,50,50,.15);  color:#e06060; border:1px solid rgba(200,50,50,.3); }
     .ipam-badge-inativo    { background:rgba(150,150,150,.15);color:#999;    border:1px solid rgba(150,150,150,.3);}
@@ -2064,7 +2335,7 @@ const IPAM = {
 
     /* Container — sem overflow horizontal */
     .irr-input { background:var(--surface)!important;color:var(--text-light)!important;border-color:var(--border)!important; }
-    .irr-input:focus { border-color:#00ff88!important;box-shadow:0 0 0 .15rem rgba(0,255,136,.15)!important; }
+    .irr-input:focus { border-color:#3fb950!important;box-shadow:0 0 0 .15rem rgba(63,185,80,.15)!important; }
     #tab-documentacao { overflow-x: hidden; }
     #tab-documentacao > .ipam-page { width:100%; max-width:100%; box-sizing:border-box; padding:0 12px; }
     `;
@@ -2207,7 +2478,7 @@ function _renderBreakdown(bd, pid){
     function _sortKey(rede){ return _ipSortBigInt(rede.split('/')[0]); }
 
     /* ── Barra visual ── */
-    const statusColors = {ativo:'#00ff88', reservado:'#ffaa00', deprecado:'#e06060'};
+    const statusColors = {ativo:'#3fb950', reservado:'#ffaa00', deprecado:'#e06060'};
     const allItems = [
         ...bd.alocadas.map(a => ({tipo:'alocada', rede:a.rede, status:a.status, pct:a.pct, _k:_sortKey(a.rede)})),
         ...bd.livres.map(l   => ({tipo:'livre',   rede:l.rede,                             _k:_sortKey(l.rede)})),
@@ -2217,7 +2488,7 @@ function _renderBreakdown(bd, pid){
     allItems.forEach(item => {
         const wPct = Math.max(0.2, _pct(item.rede));
         if(item.tipo === 'alocada'){
-            const c = statusColors[item.status] || '#00ff88';
+            const c = statusColors[item.status] || '#3fb950';
             barHtml += `<div title="${item.rede} · ${item.pct}%" style="display:inline-block;width:${wPct}%;min-width:3px;height:100%;background:${c};opacity:.75;vertical-align:top;border-right:1px solid rgba(0,0,0,.3);"></div>`;
         } else {
             barHtml += `<div title="${item.rede} (livre)" style="display:inline-block;width:${wPct}%;min-width:3px;height:100%;background:rgba(255,255,255,.07);border-right:1px solid rgba(255,255,255,.06);vertical-align:top;"></div>`;
@@ -2234,14 +2505,14 @@ function _renderBreakdown(bd, pid){
     merged.forEach(item => {
         if(item._tipo === 'alocada'){
             const barW = Math.min(100, item.pct);
-            const barC = item.pct >= 90 ? '#e06060' : item.pct >= 70 ? '#ffaa00' : '#00ff88';
+            const barC = item.pct >= 90 ? '#e06060' : item.pct >= 70 ? '#ffaa00' : '#3fb950';
             const hostsLabel = isV6
                 ? `<span style="font-size:.7rem;">${_fmtIPv6Size(item.total_hosts)}</span>`
                 : `${item.pct}% · ${item.usados}/${item.total_hosts}`;
             rows += `
-            <tr style="background:rgba(0,255,136,.03);">
+            <tr style="background:rgba(63,185,80,.03);">
                 <td style="padding:6px 12px;white-space:nowrap;">
-                    <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${statusColors[item.status]||'#00ff88'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>
+                    <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${statusColors[item.status]||'#3fb950'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>
                     <strong style="font-family:'Courier New',monospace;color:var(--text-light);">${item.rede}</strong>
                 </td>
                 <td style="padding:6px 8px;color:var(--text-muted);font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.descricao||''}">${item.descricao||''}</td>
@@ -2258,7 +2529,7 @@ function _renderBreakdown(bd, pid){
             </tr>`;
         } else {
             const sugsHtml = item.sugestoes.map(s =>
-                `<button class="btn btn-xs me-1 mb-1" style="padding:2px 8px;font-size:.72rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);color:var(--primary-green);"
+                `<button class="btn btn-xs me-1 mb-1" style="padding:2px 8px;font-size:.72rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);"
                     onclick="ipamCriarSubRedeNoEspaco('${item.rede}',${s.prefixlen},${pid})">${s.label}</button>`
             ).join('');
             rows += `
@@ -2274,7 +2545,7 @@ function _renderBreakdown(bd, pid){
                 </td>
                 <td style="padding:6px 8px;">
                     <button class="btn btn-xs" onclick="ipamCriarSubRedeNoEspaco('${item.rede}',0,${pid})"
-                        style="padding:2px 8px;font-size:.72rem;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);color:var(--primary-green);white-space:nowrap;">
+                        style="padding:2px 8px;font-size:.72rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--primary-green);white-space:nowrap;">
                         <i class="fas fa-plus me-1"></i>Personalizado
                     </button>
                 </td>
@@ -2283,7 +2554,7 @@ function _renderBreakdown(bd, pid){
     });
 
     if(!merged.length){
-        rows = `<tr><td colspan="6" class="text-center" style="color:var(--text-muted);padding:16px;"><i class="fas fa-check-circle me-2" style="color:rgba(0,255,136,.4)"></i>Prefixo completamente livre.</td></tr>`;
+        rows = `<tr><td colspan="6" class="text-center" style="color:var(--text-muted);padding:16px;"><i class="fas fa-check-circle me-2" style="color:rgba(63,185,80,.4)"></i>Prefixo completamente livre.</td></tr>`;
     }
 
     /* ── Stats ── */
@@ -2317,7 +2588,7 @@ function _renderBreakdown(bd, pid){
     <div class="ipam-bd-panel" style="padding:14px 18px 18px;background:rgba(0,0,0,.3);border-top:1px solid rgba(0,217,255,.12);">
         ${statsHtml}
         <div style="height:20px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.08);margin-bottom:14px;font-size:0;white-space:nowrap;background:rgba(255,255,255,.03);">
-            ${barHtml || '<div style="width:100%;height:100%;background:rgba(0,255,136,.06);display:inline-block;"></div>'}
+            ${barHtml || '<div style="width:100%;height:100%;background:rgba(63,185,80,.06);display:inline-block;"></div>'}
         </div>
         <div class="table-responsive">
         <table class="table table-dark table-sm mb-0" style="font-size:.82rem;">
@@ -2334,7 +2605,7 @@ function _renderBreakdown(bd, pid){
         </div>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="btn btn-sm" onclick="ipamCriarSubRedeNoEspaco(null,0,${pid})"
-                style="font-size:.8rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);color:var(--primary-green);">
+                style="font-size:.8rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);">
                 <i class="fas fa-plus me-1"></i>Adicionar sub-rede
             </button>
             <button class="btn btn-sm" onclick="ipamAbrirDividir('prefixo', ${pid}, '${bd.prefixo}', ${bd.prefixlen}, ${bd.version})"
@@ -2787,7 +3058,7 @@ window.ipamCarregarVpns = async function(){
     const d = await r.json();
     const vpns = d.vpns || [];
     if(!vpns.length){ tb.innerHTML = tbEmpty(9,'Nenhuma VPN documentada.'); return; }
-    const tipoColors = {ipsec:'#00d9ff',gre:'#a080ff',l2tp:'#ffaa00',mpls:'#ff8c42',wireguard:'#00ff88',openvpn:'#60d060',outro:'#aaa'};
+    const tipoColors = {ipsec:'#00d9ff',gre:'#a080ff',l2tp:'#ffaa00',mpls:'#ff8c42',wireguard:'#3fb950',openvpn:'#60d060',outro:'#aaa'};
     tb.innerHTML = vpns.map(v => `
     <tr>
         <td style="color:var(--text-light);font-weight:600">${v.nome}</td>
@@ -3307,7 +3578,7 @@ function getCsrfToken(){
 
                 <!-- ─── Sub-aba: Conectividade ───────────────────────────────── -->
                 <div id="tr-sub-conectividade">
-                    <div class="alert mb-3" style="background:rgba(0,245,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
+                    <div class="alert mb-3" style="background:rgba(88,166,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
                         <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
                         Executa <strong>ping</strong> e <strong>MTR / traceroute</strong> via proxy SSH para os destinos selecionados.
                     </div>
@@ -3339,14 +3610,14 @@ function getCsrfToken(){
                             </label>
                             <div class="d-flex gap-2 align-items-center">
                                 <select id="selectDestinoUnico" class="form-control"
-                                    style="background:#02030a;border:1px solid #e3b341;color:var(--text-light);font-family:'Share Tech Mono',monospace;font-size:.85rem;max-width:280px;">
+                                    style="background:#0d1117;border:1px solid #e3b341;color:var(--text-light);font-family:'Inter', sans-serif;font-size:.85rem;max-width:280px;">
                                     <!-- Populado via JS com DESTINOS_PADRAO + extras -->
                                 </select>
-                                <span style="color:rgba(0,245,255,.3);font-size:.78rem;">ou</span>
+                                <span style="color:rgba(88,166,255,.3);font-size:.78rem;">ou</span>
                                 <input id="inputDestinoUnicoCustom" type="text"
                                     class="form-control"
                                     placeholder="Digite IP ou domínio..."
-                                    style="background:#02030a;border:1px solid #e3b341;color:var(--text-light);font-family:'Share Tech Mono',monospace;font-size:.85rem;max-width:240px;"
+                                    style="background:#0d1117;border:1px solid #e3b341;color:var(--text-light);font-family:'Inter', sans-serif;font-size:.85rem;max-width:240px;"
                                     oninput="if(this.value.trim()) document.getElementById('selectDestinoUnico').value = '';">
                                 <span style="color:#e3b341;font-size:.75rem;white-space:nowrap;">
                                     <i class="fas fa-info-circle me-1"></i>Até 100 pkt
@@ -3357,24 +3628,24 @@ function getCsrfToken(){
                         <style>
                         .modo-btn {
                             background: rgba(4,8,22,.8);
-                            border:1px solid rgba(0,245,255,.15);
-                            color:rgba(0,245,255,.4);
+                            border:1px solid rgba(88,166,255,.15);
+                            color:rgba(88,166,255,.4);
                             transition: all .2s;
                         }
                         .modo-btn.active-modo {
-                            background: rgba(0,255,136,.12);
+                            background: rgba(63,185,80,.12);
                             border-color: var(--primary-green);
                             color: var(--primary-green);
                             font-weight: 700;
                         }
                         .modo-btn:hover:not(.active-modo) {
-                            border-color: rgba(0,245,255,.3);
+                            border-color: rgba(88,166,255,.3);
                             color: var(--text-light);
                         }
                         </style>
 
                     <!-- ── Painel de controle ──────────────────────── -->
-                    <div style="background:#060c18;border:1px solid rgba(0,245,255,.15);border-radius:10px;padding:20px;margin-bottom:20px;">
+                    <div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:10px;padding:20px;margin-bottom:20px;">
                         <div class="row g-3 align-items-end">
 
                             <!-- Versão IP -->
@@ -3384,15 +3655,15 @@ function getCsrfToken(){
                                 </label>
                                 <div class="d-flex gap-2">
                                     <button id="btnIPv4" class="btn btn-sm flex-fill ip-ver-btn active-ip"
-                                        onclick="setIPVer('v4')" style="font-family:'Share Tech Mono',monospace;font-size:.8rem;">
+                                        onclick="setIPVer('v4')" style="font-family:'Inter', sans-serif;font-size:.8rem;">
                                         IPv4
                                     </button>
                                     <button id="btnIPv6" class="btn btn-sm flex-fill ip-ver-btn"
-                                        onclick="setIPVer('v6')" style="font-family:'Share Tech Mono',monospace;font-size:.8rem;">
+                                        onclick="setIPVer('v6')" style="font-family:'Inter', sans-serif;font-size:.8rem;">
                                         IPv6
                                     </button>
                                     <button id="btnIPambos" class="btn btn-sm flex-fill ip-ver-btn"
-                                        onclick="setIPVer('ambos')" style="font-family:'Share Tech Mono',monospace;font-size:.8rem;">
+                                        onclick="setIPVer('ambos')" style="font-family:'Inter', sans-serif;font-size:.8rem;">
                                         Ambos
                                     </button>
                                 </div>
@@ -3406,7 +3677,7 @@ function getCsrfToken(){
                                 </label>
                                 <input id="inputPackets" type="number" value="5" min="1" max="50"
                                     class="form-control"
-                                    style="background:#02030a;border:1px solid rgba(0,245,255,.15);color:var(--text-light);text-align:center;font-family:'Share Tech Mono',monospace;">
+                                    style="background:#0d1117;border:1px solid rgba(88,166,255,.15);color:var(--text-light);text-align:center;font-family:'Inter', sans-serif;">
                             </div>
 
                             <!-- Timeout por pacote -->
@@ -3416,7 +3687,7 @@ function getCsrfToken(){
                                 </label>
                                 <input id="inputWait" type="number" value="3" min="1" max="10"
                                     class="form-control"
-                                    style="background:#02030a;border:1px solid rgba(0,245,255,.15);color:var(--text-light);text-align:center;font-family:'Share Tech Mono',monospace;">
+                                    style="background:#0d1117;border:1px solid rgba(88,166,255,.15);color:var(--text-light);text-align:center;font-family:'Inter', sans-serif;">
                             </div>
 
                             <!-- Destino extra -->
@@ -3428,7 +3699,7 @@ function getCsrfToken(){
                                     <input id="inputDestinoExtra" type="text"
                                         class="form-control"
                                         placeholder="Ex: 8.8.4.4 ou meusite.com"
-                                        style="background:#02030a;border:1px solid rgba(0,245,255,.15);color:var(--text-light);font-family:'Share Tech Mono',monospace;font-size:.85rem;"
+                                        style="background:#0d1117;border:1px solid rgba(88,166,255,.15);color:var(--text-light);font-family:'Inter', sans-serif;font-size:.85rem;"
                                         onkeydown="if(event.key==='Enter'){adicionarDestinoExtra();event.preventDefault();}">
                                     <button class="btn btn-sm btn-outline-secondary" onclick="adicionarDestinoExtra()" style="white-space:nowrap;">
                                         <i class="fas fa-plus"></i>
@@ -3456,7 +3727,7 @@ function getCsrfToken(){
                     <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
                         <small style="color:var(--text-muted);">Destinos padrão:</small>
                         {% for destino in destinos_padrao %}
-                        <span class="badge" style="background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.25);color:var(--accent-cyan);font-family:'Share Tech Mono',monospace;padding:5px 11px;border-radius:20px;font-size:.82rem;">
+                        <span class="badge" style="background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);color:var(--accent-cyan);font-family:'Inter', sans-serif;padding:5px 11px;border-radius:20px;font-size:.82rem;">
                             {{ destino }}
                         </span>
                         {% endfor %}
@@ -3471,18 +3742,18 @@ function getCsrfToken(){
                     <style>
                         .ip-ver-btn {
                             background: rgba(4,8,22,.8);
-                            border:1px solid rgba(0,245,255,.15);
-                            color:rgba(0,245,255,.4);
+                            border:1px solid rgba(88,166,255,.15);
+                            color:rgba(88,166,255,.4);
                             transition: all .2s;
                         }
                         .ip-ver-btn.active-ip {
-                            background: rgba(0,245,255,.15);
+                            background: rgba(88,166,255,.15);
                             border-color: var(--accent-cyan);
                             color: var(--accent-cyan);
                             font-weight: 700;
                         }
                         .ip-ver-btn:hover:not(.active-ip) {
-                            border-color: rgba(0,245,255,.3);
+                            border-color: rgba(88,166,255,.3);
                             color: var(--text-light);
                         }
                     </style>
@@ -3490,7 +3761,7 @@ function getCsrfToken(){
 
                 <!-- ─── Sub-aba: DNS ────────────────────────────────────────── -->
                 <div id="tr-sub-dns" style="display:none;">
-                    <div class="alert mb-4" style="background:rgba(0,245,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
+                    <div class="alert mb-4" style="background:rgba(88,166,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
                         <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
                         Compara a resolução DNS do domínio usando o DNS do cliente e os principais DNS públicos.
                     </div>
@@ -3524,11 +3795,11 @@ function getCsrfToken(){
 
                     <div class="d-flex flex-wrap gap-2 mb-4">
                         <small style="color:var(--text-muted);align-self:center;">DNS públicos:</small>
-                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Google 8.8.8.8</span>
-                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Cloudflare 1.1.1.1</span>
-                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">OpenDNS 208.67.222.222</span>
-                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Quad9 9.9.9.9</span>
-                        <span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">AdGuard 94.140.14.14</span>
+                        <span class="badge" style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Google 8.8.8.8</span>
+                        <span class="badge" style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Cloudflare 1.1.1.1</span>
+                        <span class="badge" style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">OpenDNS 208.67.222.222</span>
+                        <span class="badge" style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">Quad9 9.9.9.9</span>
+                        <span class="badge" style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);padding:4px 10px;border-radius:12px;">AdGuard 94.140.14.14</span>
                     </div>
 
                     <div id="testeDNSStatus" style="display:none;color:var(--text-muted);font-size:.9rem;margin-bottom:16px;">
@@ -3559,7 +3830,7 @@ function getCsrfToken(){
             <div class="modal-body-acesso">
 
                 {# Info box #}
-                <div class="alert" style="background:rgba(0,245,255,.08);border-left:3px solid var(--accent-cyan);
+                <div class="alert" style="background:rgba(88,166,255,.08);border-left:3px solid var(--accent-cyan);
                                         color:var(--text-light);margin-bottom:20px;">
                     <i class="fas fa-info-circle me-2"></i>
                     URLs privadas (RFC-1918) são acessadas automaticamente via o <strong>tunnel SSH ativo</strong>
@@ -3567,7 +3838,7 @@ function getCsrfToken(){
                 </div>
 
                 {# PHP IPAM #}
-                <div style="border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:16px;margin-bottom:20px;">
+                <div style="border:1px solid rgba(63,185,80,.2);border-radius:6px;padding:16px;margin-bottom:20px;">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <h6 style="color:var(--primary-green);margin:0;">
                             <i class="fas fa-network-wired me-2"></i>PHP IPAM
@@ -3602,7 +3873,7 @@ function getCsrfToken(){
                 </div>
 
                 {# NetBox #}
-                <div style="border:1px solid rgba(0,245,255,.2);border-radius:6px;padding:16px;margin-bottom:20px;">
+                <div style="border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:16px;margin-bottom:20px;">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <h6 style="color:var(--accent-cyan);margin:0;">
                             <i class="fas fa-cubes me-2"></i>NetBox
@@ -3650,43 +3921,43 @@ function getCsrfToken(){
 
     <!-- MODAL WEB PROXY -->
     <div id="modalWebAcesso" class="modal-overlay" style="display:none; padding:16px;">
-    <div style="background:#02030a; width:95vw; height:90vh; border-radius:10px;
+    <div style="background:#0d1117; width:95vw; height:90vh; border-radius:10px;
                 display:flex; flex-direction:column; overflow:hidden;
-                border:1px solid rgba(0,245,255,.15); box-shadow:0 32px 80px rgba(0,0,0,.7);">
+                border:1px solid rgba(88,166,255,.15); box-shadow:0 32px 80px rgba(0,0,0,.7);">
 
         <!-- HEADER -->
         <div style="display:flex; align-items:center; justify-content:space-between;
-                    padding:10px 16px; background:#060c18; border-bottom:1px solid rgba(0,245,255,.12); flex-shrink:0;">
+                    padding:10px 16px; background:#161b22; border-bottom:1px solid rgba(88,166,255,.12); flex-shrink:0;">
         <div style="display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-display" style="color:#00f5ff;"></i>
-            <span id="webAcessoTitle" style="color:#e2e8f0; font-family:'Share Tech Mono',monospace; font-size:13px; font-weight:700;"></span>
+            <i class="fas fa-display" style="color:#58a6ff;"></i>
+            <span id="webAcessoTitle" style="color:#e2e8f0; font-family:'Inter', sans-serif; font-size:13px; font-weight:700;"></span>
             <span id="webAcessoStatus" style="font-size:11px; color:#475569;"></span>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
             <!-- Scheme -->
             <select id="webAcessoScheme" onchange="recarregarWebAcesso()"
-                    style="background:#02030a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;
+                    style="background:#0d1117;color:#e2e8f0;border:1px solid #334155;border-radius:5px;
                         padding:5px 8px;font-size:12px;cursor:pointer;">
             <option value="http">HTTP</option>
             <option value="https">HTTPS</option>
             </select>
             <!-- Porta -->
             <input id="webAcessoPorta" type="number" value="80" min="1" max="65535"
-                style="background:#02030a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;
+                style="background:#0d1117;color:#e2e8f0;border:1px solid #334155;border-radius:5px;
                         padding:5px 8px;width:72px;font-size:12px;"
                 onkeydown="if(event.key==='Enter') recarregarWebAcesso()">
             <button onclick="recarregarWebAcesso()"
-                    style="background:#02030a;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                    style="background:#0d1117;border:1px solid #334155;color:#94a3b8;border-radius:5px;
                         padding:5px 9px;cursor:pointer;font-size:12px;" title="Recarregar">
             <i class="fas fa-sync-alt"></i>
             </button>
             <button onclick="abrirWebNovaAba()"
-                    style="background:#02030a;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                    style="background:#0d1117;border:1px solid #334155;color:#94a3b8;border-radius:5px;
                         padding:5px 9px;cursor:pointer;font-size:12px;" title="Abrir em nova aba">
             <i class="fas fa-external-link-alt"></i>
             </button>
             <button onclick="fecharWebAcesso()"
-                    style="background:#02030a;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                    style="background:#0d1117;border:1px solid #334155;color:#94a3b8;border-radius:5px;
                         padding:5px 9px;cursor:pointer;font-size:14px;" title="Fechar">
             <i class="fas fa-times"></i>
             </button>
@@ -3694,7 +3965,7 @@ function getCsrfToken(){
         </div>
 
         <!-- LOADING BAR -->
-        <div id="webAcessoLoading" style="height:2px; background:linear-gradient(90deg,#00ff88,#00d9ff);
+        <div id="webAcessoLoading" style="height:2px; background:linear-gradient(90deg,#3fb950,#00d9ff);
             display:none; animation:webLoadingAnim 1.5s ease-in-out infinite; flex-shrink:0;"></div>
 
         <!-- IFRAME -->
@@ -3897,7 +4168,7 @@ function getCsrfToken(){
                     el.style.color = 'var(--primary-green)';
                 } else {
                     el.textContent = '⚠️ Nenhum tunnel SSH ativo — IPs privados não funcionarão';
-                    el.style.color = 'var(--warning-yellow, #ffa500)';
+                    el.style.color = 'var(--warning-yellow, #d29922)';
                 }
             })
             .catch(() => {
@@ -4117,7 +4388,7 @@ function getCsrfToken(){
                             ${bloco.tipo}
                         </span>
                     </td>
-                    <td style="font-family:'Share Tech Mono',monospace; color: var(--primary-green); font-weight: 700;">
+                    <td style="font-family:'Inter', sans-serif; color: var(--primary-green); font-weight: 700;">
                         ${bloco.bloco}
                     </td>
                     <td>${bloco.asn}</td>
@@ -4140,7 +4411,7 @@ function getCsrfToken(){
                             <button class="btn-action btn-info" onclick="validarBlocoManual(${bloco.id}, '${bloco.bloco}')" title="Validar Agora">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
-                            <button class="btn-action" onclick="window.open('{% url 'lg_pesquisa' %}?prefixo='+encodeURIComponent('${bloco.bloco}'),'_blank')" title="Consultar Looking Glass" style="background:rgba(0,245,255,.15);border:1px solid rgba(0,245,255,.4);color:#00f5ff">
+                            <button class="btn-action" onclick="window.open('{% url 'lg_pesquisa' %}?prefixo='+encodeURIComponent('${bloco.bloco}'),'_blank')" title="Consultar Looking Glass" style="background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.4);color:#58a6ff">
                                 <i class="fas fa-route"></i>
                             </button>
                             <button class="btn-action btn-view" onclick="abrirModalEditarBloco(${bloco.id})" title="Editar">
@@ -4283,8 +4554,8 @@ function getCsrfToken(){
     // ─── Status message ───────────────────────────────────────────────────
     function irrMsg(texto, tipo) {
         const el = document.getElementById('irr-status-msg');
-        const cor = tipo === 'ok' ? '#00ff88' : tipo === 'erro' ? '#e06060' : '#ffaa00';
-        const bg  = tipo === 'ok' ? 'rgba(0,255,136,.08)' : tipo === 'erro' ? 'rgba(224,96,96,.1)' : 'rgba(255,170,0,.08)';
+        const cor = tipo === 'ok' ? '#3fb950' : tipo === 'erro' ? '#e06060' : '#ffaa00';
+        const bg  = tipo === 'ok' ? 'rgba(63,185,80,.08)' : tipo === 'erro' ? 'rgba(224,96,96,.1)' : 'rgba(255,170,0,.08)';
         el.style.display = '';
         el.innerHTML = `<div style="padding:8px 12px;border-radius:6px;background:${bg};border:1px solid ${cor};color:${cor};font-size:.83rem;">
             <i class="fas fa-${tipo==='ok'?'check-circle':tipo==='erro'?'times-circle':'info-circle'} me-2"></i>${texto}</div>`;
@@ -4590,7 +4861,7 @@ function getCsrfToken(){
 
             // Badge status geral
             const cores = {
-                sucesso:     { bg: 'rgba(0,255,136,.12)', brd: '#00ff88', cor: '#00ff88', ic: 'check-circle',   txt: 'ACEITO COM SUCESSO' },
+                sucesso:     { bg: 'rgba(63,185,80,.12)', brd: '#3fb950', cor: '#3fb950', ic: 'check-circle',   txt: 'ACEITO COM SUCESSO' },
                 erro:        { bg: 'rgba(224,96,96,.12)',  brd: '#e06060', cor: '#e06060', ic: 'times-circle',   txt: 'REJEITADO / ERRO' },
                 parcial:     { bg: 'rgba(255,170,0,.1)',   brd: '#ffaa00', cor: '#ffaa00', ic: 'exclamation-triangle', txt: 'PARCIALMENTE ACEITO' },
                 desconhecido:{ bg: 'rgba(180,100,255,.1)', brd: '#b464ff', cor: '#b464ff', ic: 'question-circle', txt: 'STATUS DESCONHECIDO' },
@@ -4609,23 +4880,23 @@ function getCsrfToken(){
                 let html = '';
                 if (d.aceitos.length) {
                     html += `<div class="col-md-4">
-                        <div style="background:rgba(0,255,136,.07);border:1px solid #00ff88;border-radius:6px;padding:10px;font-size:.8rem">
-                        <div style="color:#00ff88;font-weight:600;margin-bottom:6px"><i class="fas fa-check me-1"></i>Aceitos (${d.aceitos.length})</div>
-                        ${d.aceitos.map(a => `<div style="color:#d0e8f0;padding:2px 0">${a}</div>`).join('')}
+                        <div style="background:rgba(63,185,80,.07);border:1px solid #30363d;border-radius:6px;padding:10px;font-size:.8rem">
+                        <div style="color:#3fb950;font-weight:600;margin-bottom:6px"><i class="fas fa-check me-1"></i>Aceitos (${d.aceitos.length})</div>
+                        ${d.aceitos.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
                         </div></div>`;
                 }
                 if (d.rejeitados.length) {
                     html += `<div class="col-md-4">
                         <div style="background:rgba(224,96,96,.07);border:1px solid #e06060;border-radius:6px;padding:10px;font-size:.8rem">
                         <div style="color:#e06060;font-weight:600;margin-bottom:6px"><i class="fas fa-times me-1"></i>Rejeitados (${d.rejeitados.length})</div>
-                        ${d.rejeitados.map(a => `<div style="color:#d0e8f0;padding:2px 0">${a}</div>`).join('')}
+                        ${d.rejeitados.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
                         </div></div>`;
                 }
                 if (d.erros.length) {
                     html += `<div class="col-md-4">
                         <div style="background:rgba(255,170,0,.07);border:1px solid #ffaa00;border-radius:6px;padding:10px;font-size:.8rem">
                         <div style="color:#ffaa00;font-weight:600;margin-bottom:6px"><i class="fas fa-exclamation-triangle me-1"></i>Erros (${d.erros.length})</div>
-                        ${d.erros.map(a => `<div style="color:#d0e8f0;padding:2px 0">${a}</div>`).join('')}
+                        ${d.erros.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
                         </div></div>`;
                 }
                 resumoEl.innerHTML = html;
@@ -4890,7 +5161,7 @@ function getCsrfToken(){
                         </span>
                     </td>
                     <td>
-                        <span style="font-family:'Share Tech Mono',monospace;font-size:12px;">${backup.acesso_host}</span>
+                        <span style="font-family:'Inter', sans-serif;font-size:12px;">${backup.acesso_host}</span>
                     </td>
                     <td><span style="color:var(--accent-cyan);">${backup.template}</span></td>
                     <td>${statusBadge}</td>
@@ -4905,10 +5176,10 @@ function getCsrfToken(){
             // Visualizar — apenas se tiver arquivo
             if (backup.tem_arquivo) {
                 html += `
-                    <button class="btn btn-sm" style="background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.4);color:var(--accent-cyan);padding:4px 8px;" onclick="visualizarBackup(${backup.id}, '${backup.acesso_tipo.replace(/'/g,"\\'")}', '${backup.data}')" title="Visualizar conteúdo">
+                    <button class="btn btn-sm" style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.4);color:var(--accent-cyan);padding:4px 8px;" onclick="visualizarBackup(${backup.id}, '${backup.acesso_tipo.replace(/'/g,"\\'")}', '${backup.data}')" title="Visualizar conteúdo">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <a href="/clientes/backups/download/${backup.id}/" class="btn btn-sm" style="background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.4);color:var(--primary-green);padding:4px 8px;" title="Download">
+                    <a href="/clientes/backups/download/${backup.id}/" class="btn btn-sm" style="background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:var(--primary-green);padding:4px 8px;" title="Download">
                         <i class="fas fa-download"></i>
                     </a>
                 `;
@@ -4958,7 +5229,7 @@ function getCsrfToken(){
         const b = _backupMap.get(backupId);
         if (!b) return;
 
-        const statusColor = b.status_code === 'SUCESSO' ? '#00ff88'
+        const statusColor = b.status_code === 'SUCESSO' ? '#3fb950'
                           : b.status_code === 'ERRO'    ? '#dc3545'
                           : b.status_code === 'PARCIAL' ? '#ffaa00'
                           : 'var(--accent-cyan)';
@@ -4992,7 +5263,7 @@ function getCsrfToken(){
         const mensagemHtml = b.mensagem ? `
             <div style="margin-top:12px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:10px 12px">
                 <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Mensagem</div>
-                <pre style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#c8dde8;margin:0;white-space:pre-wrap;word-break:break-word">${b.mensagem}</pre>
+                <pre style="font-family:'Inter', sans-serif;font-size:11px;color:#c8dde8;margin:0;white-space:pre-wrap;word-break:break-word">${b.mensagem}</pre>
             </div>` : '';
 
         uiAlert({ titulo: 'Detalhes do Backup', msg: ' ', icone: `fas ${statusIcon}`, iconeCor: statusColor });
@@ -5109,6 +5380,9 @@ function getCsrfToken(){
         if (nomeAba === 'documentacao') {
             if (typeof ipamCarregarPrefixos === 'function' && !window.IPAM?.prefixos?.length) ipamCarregarPrefixos();
             if (typeof ipamCarregarSubRedes === 'function' && !window.IPAM?.subredes?.length) ipamCarregarSubRedes();
+        }
+        if (nomeAba === 'hotspot') {
+            if (typeof hsCarregarLista === 'function') hsCarregarLista();
         }
     }
 
@@ -5585,7 +5859,7 @@ function getCsrfToken(){
             if (!el) return;
 
             if (!d.vpns || !d.vpns.length) {
-                el.innerHTML = `<div style="color:rgba(0,245,255,.4);text-align:center;padding:20px;font-size:.85rem">
+                el.innerHTML = `<div style="color:rgba(88,166,255,.4);text-align:center;padding:20px;font-size:.85rem">
                     <i class="fas fa-lock-open me-2" style="opacity:.4"></i>
                     Nenhuma VPN WireGuard configurada para este cliente.
                 </div>`;
@@ -5599,7 +5873,7 @@ function getCsrfToken(){
             el.innerHTML = d.vpns.map(v => {
                 const online = v.conectado;
                 const dot    = online
-                    ? '<span style="color:#00ff88;font-size:10px">●</span>'
+                    ? '<span style="color:#3fb950;font-size:10px">●</span>'
                     : '<span style="color:#666;font-size:10px">●</span>';
                 const status = online ? 'Conectado' : (v.peer_no_servidor ? 'Aguardando' : 'Sem peer');
                 const hs = v.last_handshake
@@ -5607,12 +5881,12 @@ function getCsrfToken(){
                     : '—';
                 const redes = v.redes.length ? v.redes.join(', ') : '—';
 
-                return `<div style="background:#060c18;border:1px solid rgba(0,245,255,.15);border-radius:8px;padding:14px;margin-bottom:10px">
+                return `<div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:8px;padding:14px;margin-bottom:10px">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                         <div>
                             <strong style="color:#e6edf3">${dot} ${v.nome}</strong>
-                            <span style="margin-left:10px;font-size:.75rem;color:${online ? '#00ff88' : 'rgba(0,245,255,.35)'}">${status}</span>
-                            <div style="font-size:.78rem;color:rgba(0,245,255,.4);margin-top:2px">
+                            <span style="margin-left:10px;font-size:.75rem;color:${online ? '#3fb950' : 'rgba(88,166,255,.35)'}">${status}</span>
+                            <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-top:2px">
                                 IP VPN: <span style="color:#58a6ff">${v.vpn_ip}</span>
                                 &nbsp;|&nbsp; Redes: <span style="color:#e3b341">${redes}</span>
                             </div>
@@ -5627,7 +5901,7 @@ function getCsrfToken(){
                                 <i class="fas fa-code me-1"></i> Script MikroTik
                             </button>
                             <button class="btn btn-sm" onclick="wgEditarRedes(${v.id})"
-                                style="background:rgba(0,245,255,.1);border:1px solid #00f5ff;color:#00f5ff;font-size:.75rem">
+                                style="background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff;font-size:.75rem">
                                 <i class="fas fa-edit me-1"></i> Editar Redes
                             </button>
                             ${!v.peer_no_servidor ? `<button class="btn btn-sm" onclick="wgReativar(${v.id})"
@@ -5651,25 +5925,25 @@ function getCsrfToken(){
     async function wgCriarVPN() {
         // Modal de criação
         const html = `<div id="wg-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center">
-            <div style="background:#060c18;border:1px solid rgba(0,245,255,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
-                <h5 style="color:#00f5ff;margin-bottom:20px"><i class="fas fa-network-wired me-2"></i>Nova VPN WireGuard</h5>
+            <div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
+                <h5 style="color:#58a6ff;margin-bottom:20px"><i class="fas fa-network-wired me-2"></i>Nova VPN WireGuard</h5>
                 <div style="margin-bottom:12px">
-                    <label style="color:rgba(0,245,255,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome da VPN</label>
-                    <input id="wgNome" class="form-control" value="VPN MikroTik" style="background:#02030a;border-color:rgba(0,245,255,.15);color:#e6edf3">
+                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome da VPN</label>
+                    <input id="wgNome" class="form-control" value="VPN MikroTik" style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3">
                 </div>
                 <div style="margin-bottom:16px">
-                    <label style="color:rgba(0,245,255,.4);font-size:.82rem;display:block;margin-bottom:4px">
+                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">
                         Redes privadas do cliente <small style="color:#666">(uma por linha, ex: 192.168.1.0/24)</small>
                     </label>
                     <textarea id="wgRedes" class="form-control" rows="4" placeholder="192.168.1.0/24&#10;10.0.0.0/8"
-                        style="background:#02030a;border-color:rgba(0,245,255,.15);color:#e6edf3;font-family:'Share Tech Mono',monospace;font-size:.82rem"></textarea>
+                        style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem"></textarea>
                     <small style="color:#666">O CRM poderá acessar diretamente IPs dessas redes após a VPN ser estabelecida</small>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end">
                     <button onclick="document.getElementById('wg-modal-overlay').remove()"
-                        style="background:transparent;border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
+                        style="background:transparent;border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
                     <button onclick="wgConfirmarCriacao()"
-                        style="background:#00f5ff18;border:1px solid #00f5ff;color:#00f5ff;padding:6px 16px;border-radius:6px;cursor:pointer">
+                        style="background:#58a6ff18;border:1px solid #58a6ff;color:#58a6ff;padding:6px 16px;border-radius:6px;cursor:pointer">
                         <i class="fas fa-plus me-1"></i> Criar VPN
                     </button>
                 </div>
@@ -5683,7 +5957,7 @@ function getCsrfToken(){
         const redes = document.getElementById('wgRedes').value.trim();
         document.getElementById('wg-modal-overlay')?.remove();
         document.getElementById('wg-lista').innerHTML =
-            '<div style="color:rgba(0,245,255,.4);text-align:center;padding:20px"><i class="fas fa-spinner fa-spin me-2"></i>Criando VPN...</div>';
+            '<div style="color:rgba(88,166,255,.4);text-align:center;padding:20px"><i class="fas fa-spinner fa-spin me-2"></i>Criando VPN...</div>';
         try {
             const r = await fetch(`/clientes/${WG_CLIENTE_ID}/vpn-wg/criar/`, {
                 method: 'POST',
@@ -5711,14 +5985,14 @@ function getCsrfToken(){
             if (!d.ok) { uiAlert('Erro ao gerar script'); return; }
 
             const html = `<div id="wg-script-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center">
-                <div style="background:#02030a;border:1px solid rgba(0,245,255,.15);border-radius:12px;padding:24px;width:720px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
+                <div style="background:#0d1117;border:1px solid rgba(88,166,255,.15);border-radius:12px;padding:24px;width:720px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
                         <h5 style="color:#58a6ff;margin:0"><i class="fas fa-terminal me-2"></i>Script MikroTik — ${d.nome}</h5>
                         <button onclick="document.getElementById('wg-script-overlay').remove()"
-                            style="background:transparent;border:none;color:rgba(0,245,255,.4);font-size:1.4rem;cursor:pointer">✕</button>
+                            style="background:transparent;border:none;color:rgba(88,166,255,.4);font-size:1.4rem;cursor:pointer">✕</button>
                     </div>
-                    <div style="background:#060c18;border:1px solid #21262d;border-radius:6px;flex:1;overflow:auto;padding:14px">
-                        <pre id="wg-script-content" style="color:#e6edf3;font-family:'Share Tech Mono',monospace;font-size:.78rem;margin:0;white-space:pre-wrap">${d.script.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+                    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;flex:1;overflow:auto;padding:14px">
+                        <pre id="wg-script-content" style="color:#e6edf3;font-family:'Inter', sans-serif;font-size:.78rem;margin:0;white-space:pre-wrap">${d.script.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
                     </div>
                     <div style="display:flex;gap:10px;margin-top:12px">
                         <button onclick="wgCopiarScript()"
@@ -5726,11 +6000,11 @@ function getCsrfToken(){
                             <i class="fas fa-copy me-1"></i> Copiar Script
                         </button>
                         <button onclick="wgDownloadScript('${d.nome}', document.getElementById('wg-script-content').textContent)"
-                            style="background:rgba(0,255,136,.1);border:1px solid #00ff88;color:#00ff88;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
+                            style="background:rgba(63,185,80,.1);border:1px solid #30363d;color:#3fb950;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
                             <i class="fas fa-download me-1"></i> Download .rsc
                         </button>
                         <button onclick="document.getElementById('wg-script-overlay').remove()"
-                            style="margin-left:auto;background:transparent;border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
+                            style="margin-left:auto;background:transparent;border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
                             Fechar
                         </button>
                     </div>
@@ -5745,7 +6019,7 @@ function getCsrfToken(){
         navigator.clipboard.writeText(text).then(() => {
             const btn = event.target.closest('button');
             btn.innerHTML = '<i class="fas fa-check me-1"></i> Copiado!';
-            btn.style.color = '#00ff88';
+            btn.style.color = '#3fb950';
             setTimeout(() => {
                 btn.innerHTML = '<i class="fas fa-copy me-1"></i> Copiar Script';
                 btn.style.color = '#58a6ff';
@@ -5790,26 +6064,26 @@ function getCsrfToken(){
         const nome = v.nome || '';
         const redesStr = Array.isArray(v.redes) ? v.redes.join('\n') : '';
         const html = `<div id="wg-edit-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center">
-            <div style="background:#060c18;border:1px solid rgba(0,245,255,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
-                <h5 style="color:#00f5ff;margin-bottom:4px"><i class="fas fa-edit me-2"></i>Editar VPN</h5>
-                <p style="color:rgba(0,245,255,.4);font-size:.8rem;margin-bottom:16px">${nome}</p>
+            <div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
+                <h5 style="color:#58a6ff;margin-bottom:4px"><i class="fas fa-edit me-2"></i>Editar VPN</h5>
+                <p style="color:rgba(88,166,255,.4);font-size:.8rem;margin-bottom:16px">${nome}</p>
                 <div style="margin-bottom:12px">
-                    <label style="color:rgba(0,245,255,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome da VPN</label>
-                    <input id="wgEditNome" class="form-control" value="${nome}" style="background:#02030a;border-color:rgba(0,245,255,.15);color:#e6edf3">
+                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome da VPN</label>
+                    <input id="wgEditNome" class="form-control" value="${nome}" style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3">
                 </div>
                 <div style="margin-bottom:16px">
-                    <label style="color:rgba(0,245,255,.4);font-size:.82rem;display:block;margin-bottom:4px">
+                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">
                         Redes privadas <small style="color:#666">(uma por linha, ex: 192.168.1.0/24)</small>
                     </label>
                     <textarea id="wgEditRedes" class="form-control" rows="5"
-                        style="background:#02030a;border-color:rgba(0,245,255,.15);color:#e6edf3;font-family:'Share Tech Mono',monospace;font-size:.82rem">${redesStr}</textarea>
+                        style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem">${redesStr}</textarea>
                     <small style="color:#666">O CRM usará estas redes para rotear tráfego via VPN</small>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end">
                     <button onclick="document.getElementById('wg-edit-overlay').remove()"
-                        style="background:transparent;border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
+                        style="background:transparent;border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
                     <button onclick="wgConfirmarEdicao(${vpnId})"
-                        style="background:#00f5ff18;border:1px solid #00f5ff;color:#00f5ff;padding:6px 16px;border-radius:6px;cursor:pointer">
+                        style="background:#58a6ff18;border:1px solid #58a6ff;color:#58a6ff;padding:6px 16px;border-radius:6px;cursor:pointer">
                         <i class="fas fa-save me-1"></i> Salvar
                     </button>
                 </div>
@@ -5921,20 +6195,20 @@ function getCsrfToken(){
     function _ovpnHtmlUsuarios(c) {
         if(!c.usuarios || !c.usuarios.length) return '';
         var rows = c.usuarios.map(function(u) {
-            var uColor = {configurando:'#ffaa00',concluido:'#00ff88',erro:'#e06060'}[u.status]||'rgba(0,245,255,.35)';
+            var uColor = {configurando:'#ffaa00',concluido:'#3fb950',erro:'#e06060'}[u.status]||'rgba(88,166,255,.35)';
             var uIcon  = {configurando:'fa-spinner fa-spin',concluido:'fa-check-circle',erro:'fa-times-circle'}[u.status]||'fa-circle';
             var acoes  = '';
-            if(u.status==='concluido') acoes += '<a href="/clientes/openvpn/usuario/'+u.id+'/download/" style="color:#00ff88;font-size:.75rem;text-decoration:none;"><i class="fas fa-download me-1"></i>.ovpn</a>';
+            if(u.status==='concluido') acoes += '<a href="/clientes/openvpn/usuario/'+u.id+'/download/" style="color:#3fb950;font-size:.75rem;text-decoration:none;"><i class="fas fa-download me-1"></i>.ovpn</a>';
             if(u.status==='configurando') acoes += '<span style="color:#ffaa00;font-size:.75rem">Configurando…</span>';
             if(u.status==='erro') acoes += '<span style="color:#e06060;font-size:.75rem" title="'+u.erro_msg+'">Erro</span>';
             acoes += '<button onclick="ovpnUsuarioDeletar('+u.id+')" style="border:none;background:none;color:#e06060;cursor:pointer;font-size:.8rem;padding:0"><i class="fas fa-trash"></i></button>';
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(255,255,255,.03);border-radius:5px;margin-bottom:4px;font-size:.82rem;">'
-                 + '<span><i class="fas fa-user me-1" style="color:rgba(0,245,255,.4)"></i><b style="color:var(--text-light)">'+u.nome+'</b>'
+                 + '<span><i class="fas fa-user me-1" style="color:rgba(88,166,255,.4)"></i><b style="color:var(--text-light)">'+u.nome+'</b>'
                  + ' <i class="fas '+uIcon+' ms-1" style="color:'+uColor+';font-size:.7rem"></i></span>'
                  + '<span style="display:flex;gap:6px;">'+acoes+'</span></div>';
         }).join('');
         return '<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;">'
-             + '<div style="font-size:.75rem;color:rgba(0,245,255,.4);margin-bottom:6px;"><i class="fas fa-users me-1"></i>Usuários adicionais</div>'
+             + '<div style="font-size:.75rem;color:rgba(88,166,255,.4);margin-bottom:6px;"><i class="fas fa-users me-1"></i>Usuários adicionais</div>'
              + rows + '</div>';
     }
 
@@ -5947,11 +6221,11 @@ function getCsrfToken(){
             const d = await r.json();
             const cfgs = d.configs || [];
             if(!cfgs.length) {
-                el.innerHTML = `<div style="color:rgba(0,245,255,.4);font-size:.85rem;text-align:center;padding:20px;">Nenhuma configuração OpenVPN criada ainda.</div>`;
+                el.innerHTML = `<div style="color:rgba(88,166,255,.4);font-size:.85rem;text-align:center;padding:20px;">Nenhuma configuração OpenVPN criada ainda.</div>`;
                 return;
             }
             el.innerHTML = cfgs.map(c => {
-                const statusColor = {configurando:'#ffaa00', concluido:'#00ff88', erro:'#e06060'}[c.status] || 'rgba(0,245,255,.35)';
+                const statusColor = {configurando:'#ffaa00', concluido:'#3fb950', erro:'#e06060'}[c.status] || 'rgba(88,166,255,.35)';
                 const statusIcon  = {configurando:'fa-spinner fa-spin', concluido:'fa-check-circle', erro:'fa-times-circle'}[c.status] || 'fa-circle';
                 const statusLabel = {configurando:'Configurando…', concluido:'Concluído', erro:'Erro'}[c.status] || c.status;
                 return `
@@ -5959,16 +6233,16 @@ function getCsrfToken(){
                     <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
                         <div>
                             <div style="font-weight:600;color:var(--text-light);font-size:.95rem;">
-                                <i class="fas fa-lock me-2" style="color:#00ff88;font-size:.8rem;"></i>${c.nome_vpn}
-                                <span style="margin-left:8px;font-size:.72rem;padding:2px 7px;background:rgba(255,255,255,.06);border-radius:4px;color:rgba(0,245,255,.4);">ROS v${c.ros_version}</span>
+                                <i class="fas fa-lock me-2" style="color:#3fb950;font-size:.8rem;"></i>${c.nome_vpn}
+                                <span style="margin-left:8px;font-size:.72rem;padding:2px 7px;background:rgba(255,255,255,.06);border-radius:4px;color:rgba(88,166,255,.4);">ROS v${c.ros_version}</span>
                             </div>
-                            <div style="font-size:.82rem;color:rgba(0,245,255,.4);margin-top:4px;">
+                            <div style="font-size:.82rem;color:rgba(88,166,255,.4);margin-top:4px;">
                                 <i class="fas fa-server me-1"></i>${c.acesso_tipo||''} <code style="color:var(--accent-cyan)">${c.acesso_host}</code>
                                 &nbsp;·&nbsp;
                                 <i class="fas fa-globe me-1"></i><code style="color:var(--accent-cyan)">${c.ip_publico}:${c.porta}</code>
                             </div>
                             ${c.status === 'concluido' ? `
-                            <div style="font-size:.78rem;color:rgba(0,245,255,.4);margin-top:4px;">
+                            <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-top:4px;">
                                 <i class="fas fa-user me-1"></i>Usuário: <code style="color:#ffaa00">${c.vpn_username}</code>
                                 &nbsp;·&nbsp;
                                 <i class="fas fa-key me-1"></i>Senha: <code style="color:#ffaa00">${c.vpn_password}</code>
@@ -5982,11 +6256,11 @@ function getCsrfToken(){
                         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;">
                             ${c.tem_arquivo ? `
                             <a href="/clientes/openvpn/${c.id}/download/"
-                                style="padding:4px 12px;background:rgba(0,255,136,.15);border:1px solid rgba(0,255,136,.35);color:#00ff88;border-radius:5px;font-size:.8rem;text-decoration:none;">
+                                style="padding:4px 12px;background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.35);color:#3fb950;border-radius:5px;font-size:.8rem;text-decoration:none;">
                                 <i class="fas fa-download me-1"></i>.ovpn
                             </a>` : ''}
                             <button onclick="ovpnVerLogs(${c.id})"
-                                style="padding:4px 10px;background:rgba(0,245,255,.08);border:1px solid rgba(0,245,255,.2);color:var(--accent-cyan);border-radius:5px;font-size:.8rem;cursor:pointer;">
+                                style="padding:4px 10px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);color:var(--accent-cyan);border-radius:5px;font-size:.8rem;cursor:pointer;">
                                 <i class="fas fa-terminal me-1"></i>Logs
                             </button>
                             ${c.status==='erro' ? `
@@ -5994,7 +6268,7 @@ function getCsrfToken(){
                                 style="padding:4px 10px;background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.25);color:#ffaa00;border-radius:5px;font-size:.8rem;cursor:pointer;">
                                 <i class="fas fa-redo me-1"></i>Tentar Novamente
                             </button>` : ''}
-                            ${(c.status==='concluido' && window._ovpnIsAdmin) ? '<button onclick="ovpnUsuarioAbrirModal('+c.id+')" style="padding:4px 10px;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.25);color:#00ff88;border-radius:5px;font-size:.8rem;cursor:pointer;"><i class=\'fas fa-user-plus me-1\'></i>Novo Usuário</button>' : ''}
+                            ${(c.status==='concluido' && window._ovpnIsAdmin) ? '<button onclick="ovpnUsuarioAbrirModal('+c.id+')" style="padding:4px 10px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:#3fb950;border-radius:5px;font-size:.8rem;cursor:pointer;"><i class=\'fas fa-user-plus me-1\'></i>Novo Usuário</button>' : ''}
                             <button onclick="ovpnDeletar(${c.id})"
                                 style="padding:4px 10px;background:rgba(224,96,96,.08);border:1px solid rgba(224,96,96,.25);color:#e06060;border-radius:5px;font-size:.8rem;cursor:pointer;">
                                 <i class="fas fa-trash me-1"></i>
@@ -6498,7 +6772,7 @@ function getCsrfToken(){
         if (!_destinosExtras.length) { container.style.display = 'none'; return; }
         container.style.display = '';
         badgesEl.innerHTML = _destinosExtras.map(d =>
-            `<span style="background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.35);color:#e3b341;font-family:'Share Tech Mono',monospace;padding:4px 10px;border-radius:20px;font-size:.8rem;display:flex;align-items:center;gap:6px;">
+            `<span style="background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.35);color:#e3b341;font-family:'Inter', sans-serif;padding:4px 10px;border-radius:20px;font-size:.8rem;display:flex;align-items:center;gap:6px;">
                 ${d}
                 <span style="cursor:pointer;color:#f85149;font-size:.9rem;" onclick="removerDestinoExtra('${d}')" title="Remover">&times;</span>
             </span>`
@@ -6594,13 +6868,13 @@ function getCsrfToken(){
 
             // Bloco de ping por versão
             function pingBloco(p, ver) {
-                if (!p) return `<span style="color:rgba(0,245,255,.4);font-size:.78rem;">— não testado</span>`;
+                if (!p) return `<span style="color:rgba(88,166,255,.4);font-size:.78rem;">— não testado</span>`;
                 const cor = p.alcancavel ? (p.perda_pct === 0 ? '#3fb950' : '#e3b341') : '#f85149';
                 const rttStr = p.rtt_avg ? `${p.rtt_avg} ms` : '—';
                 return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                    <span style="font-family:'Share Tech Mono',monospace;font-size:.72rem;color:${cor};background:rgba(${cor==='#3fb950'?'63,185,80':cor==='#e3b341'?'227,179,65':'248,81,73'},.1);padding:2px 7px;border-radius:10px;">${ver}</span>
+                    <span style="font-family:'Inter', sans-serif;font-size:.72rem;color:${cor};background:rgba(${cor==='#3fb950'?'63,185,80':cor==='#e3b341'?'227,179,65':'248,81,73'},.1);padding:2px 7px;border-radius:10px;">${ver}</span>
                     <span style="font-size:.78rem;color:var(--text-muted);">env:${p.enviados} rec:${p.recebidos} perd:${p.perdidos} (${p.perda_pct}%)</span>
-                    <span style="color:var(--accent-cyan);font-family:'Share Tech Mono',monospace;font-size:.82rem;">${rttStr}</span>
+                    <span style="color:var(--accent-cyan);font-family:'Inter', sans-serif;font-size:.82rem;">${rttStr}</span>
                 </div>`;
             }
 
@@ -6613,11 +6887,11 @@ function getCsrfToken(){
             function mtrBloco(m, ver) {
                 if (!m || !m.output) return '';
                 const btnId = `mtr_${r.destino.replace(/[^a-z0-9]/gi,'_')}_${ver}`;
-                return `<button class="btn btn-sm" style="font-size:.72rem;padding:3px 10px;background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.18);color:var(--accent-cyan);"
+                return `<button class="btn btn-sm" style="font-size:.72rem;padding:3px 10px;background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.18);color:var(--accent-cyan);"
                     onclick="const pre=document.getElementById('${btnId}');pre.style.display=pre.style.display==='none'?'block':'none';this.textContent=pre.style.display==='none'?'▼ Rota ${ver}':'▲ Ocultar ${ver}'">
                     ▼ Rota ${ver} (${m.ferramenta})
                 </button>
-                <pre id="${btnId}" style="display:none;font-size:.7rem;color:rgba(0,245,255,.4);background:#02030a;border:1px solid #21262d;border-radius:6px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin-top:6px;">${m.output.replace(/</g,'&lt;')}</pre>`;
+                <pre id="${btnId}" style="display:none;font-size:.7rem;color:rgba(88,166,255,.4);background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin-top:6px;">${m.output.replace(/</g,'&lt;')}</pre>`;
             }
 
             const mtrHtml = [
@@ -6631,13 +6905,13 @@ function getCsrfToken(){
 
             html += `
             <div class="col-12 col-lg-6">
-                <div style="background:#060c18;border:1px solid ${isExtra ? 'rgba(255,152,0,.35)' : '#30363d'};border-radius:10px;overflow:hidden;height:100%;">
+                <div style="background:#161b22;border:1px solid ${isExtra ? 'rgba(255,152,0,.35)' : '#30363d'};border-radius:10px;overflow:hidden;height:100%;">
                     <!-- Header -->
                     <div style="padding:12px 18px;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between;">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <span style="font-size:1.3rem;color:${statusCor};">${statusIcon}</span>
                             <div>
-                                <div style="color:var(--text-light);font-family:'Share Tech Mono',monospace;font-size:.93rem;font-weight:700;">${r.destino}${extraBadge}</div>
+                                <div style="color:var(--text-light);font-family:'Inter', sans-serif;font-size:.93rem;font-weight:700;">${r.destino}${extraBadge}</div>
                                 <div style="color:${statusCor};font-size:.75rem;margin-top:1px;">${statusTexto}</div>
                             </div>
                         </div>
@@ -6719,7 +6993,7 @@ function getCsrfToken(){
             resumoEmoji = '\u2713'; resumoTitulo = 'Consistente';
             resumoMsg   = `Todos os ${data.qtd_responderam} servidores resolveram para o mesmo endere\u00e7o: <strong>${data.todos_ips_distintos.join(', ')}</strong>`;
         } else if (status === 'cdn') {
-            resumoCor   = '#00f5ff'; resumoRgb = '0,245,255';
+            resumoCor   = '#58a6ff'; resumoRgb = '0,245,255';
             resumoEmoji = '\u26a1'; resumoTitulo = 'Geo-DNS / CDN Detectado';
             const asnStr = data.unique_asns && data.unique_asns.length
                 ? ` (ASN ${data.unique_asns.join(', ')})`
@@ -6730,7 +7004,7 @@ function getCsrfToken(){
                     ? `IPs no mesmo bloco /16 \u2014 prov\u00e1vel anycast/CDN.`
                     : `Dom\u00ednio conhecido por usar CDN/geo-DNS.`;
             resumoMsg = `<strong>Isto \u00e9 normal.</strong> ${motivo}<br>
-                <small style="color:rgba(0,245,255,.3);">IPs distintos: ${data.todos_ips_distintos.join(' \u2502 ')}</small>`;
+                <small style="color:rgba(88,166,255,.3);">IPs distintos: ${data.todos_ips_distintos.join(' \u2502 ')}</small>`;
         } else if (status === 'inconsistente') {
             resumoCor   = '#f85149'; resumoRgb = '248,81,73';
             resumoEmoji = '\u2717'; resumoTitulo = 'Inconsist\u00eancia Detectada';
@@ -6742,7 +7016,7 @@ function getCsrfToken(){
             resumoEmoji = '\u26a0'; resumoTitulo = 'Resposta Parcial';
             resumoMsg   = `Apenas ${data.qtd_responderam} servidor(es) respondeu. Verifique a conectividade do proxy.`;
         } else {
-            resumoCor   = 'rgba(0,245,255,.35)'; resumoRgb = '139,148,158';
+            resumoCor   = 'rgba(88,166,255,.35)'; resumoRgb = '139,148,158';
             resumoEmoji = '\u2717'; resumoTitulo = 'Sem Resolu\u00e7\u00e3o';
             resumoMsg   = 'Nenhum servidor DNS resolveu o dom\u00ednio via proxy. Verifique o nome e a conectividade.';
         }
@@ -6759,7 +7033,7 @@ function getCsrfToken(){
         // Banner informativo de CDN
         if (status === 'cdn') {
             html += `
-            <div style="background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.15);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:rgba(0,245,255,.4);line-height:1.6;">
+            <div style="background:rgba(88,166,255,.05);border:1px solid rgba(88,166,255,.15);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:rgba(88,166,255,.4);line-height:1.6;">
                 <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
                 <strong style="color:var(--text-light);">O que \u00e9 Geo-DNS / CDN?</strong><br>
                 Servi\u00e7os como WhatsApp, Instagram, Google e Netflix usam redes de distribui\u00e7\u00e3o globais (CDN) e geo-DNS
@@ -6778,8 +7052,8 @@ function getCsrfToken(){
         </div>
 
         <div class="table-responsive">
-        <table class="table" style="background:#060c18;border-radius:10px;overflow:hidden;color:var(--text-light);font-size:.87rem;">
-            <thead><tr style="background:rgba(0,245,255,.04);color:var(--text-muted);border-bottom:1px solid rgba(0,245,255,.12);">
+        <table class="table" style="background:#161b22;border-radius:10px;overflow:hidden;color:var(--text-light);font-size:.87rem;">
+            <thead><tr style="background:rgba(88,166,255,.04);color:var(--text-muted);border-bottom:1px solid rgba(88,166,255,.12);">
                 <th style="padding:12px 16px;">Servidor DNS</th>
                 <th style="padding:12px 16px;">IP</th>
                 <th style="padding:12px 16px;">IPv4 Resolvido</th>
@@ -6790,19 +7064,19 @@ function getCsrfToken(){
 
         for (const r of data.resultados) {
             const badge = r.is_cliente
-                ? `<span style="background:rgba(0,245,255,.15);color:var(--accent-cyan);border:1px solid rgba(0,245,255,.3);border-radius:12px;padding:2px 8px;font-size:.72rem;">Cliente</span>`
+                ? `<span style="background:rgba(88,166,255,.15);color:var(--accent-cyan);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:2px 8px;font-size:.72rem;">Cliente</span>`
                 : `<span style="background:rgba(63,185,80,.1);color:#3fb950;border:1px solid rgba(63,185,80,.3);border-radius:12px;padding:2px 8px;font-size:.72rem;">P\u00fablico</span>`;
 
             const ferrBadge = r.ferramenta && r.ferramenta !== '?'
-                ? `<span style="color:rgba(0,245,255,.3);font-size:.7rem;margin-left:5px;">(${r.ferramenta})</span>` : '';
+                ? `<span style="color:rgba(88,166,255,.3);font-size:.7rem;margin-left:5px;">(${r.ferramenta})</span>` : '';
 
             // IPv4 com ASN badge abaixo
-            let ipv4Html = `<span style="color:rgba(0,245,255,.4)">\u2014</span>`;
+            let ipv4Html = `<span style="color:rgba(88,166,255,.4)">\u2014</span>`;
             if (r.ipv4 && r.ipv4.length) {
                 ipv4Html = r.ipv4.map(ip => {
                     const asnInfo = (r.asn_info && r.asn_info[ip]) || (data.asn_map && data.asn_map[ip]);
                     const asnBadge = asnInfo
-                        ? `<br><span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:rgba(0,245,255,.3);background:rgba(110,118,129,.1);border-radius:4px;padding:1px 5px;">
+                        ? `<br><span style="font-family:'Inter', sans-serif;font-size:.68rem;color:rgba(88,166,255,.3);background:rgba(110,118,129,.1);border-radius:4px;padding:1px 5px;">
                             AS${asnInfo.asn}${asnInfo.country ? ' \u00b7 ' + asnInfo.country : ''}
                            </span>`
                         : '';
@@ -6811,25 +7085,25 @@ function getCsrfToken(){
             }
 
             const ipv6Str = r.ipv6 && r.ipv6.length
-                ? `<small style="font-family:'Share Tech Mono',monospace;color:rgba(0,245,255,.3);word-break:break-all;">${r.ipv6[0]}</small>`
-                : `<span style="color:rgba(0,245,255,.4)">\u2014</span>`;
+                ? `<small style="font-family:'Inter', sans-serif;color:rgba(88,166,255,.3);word-break:break-all;">${r.ipv6[0]}</small>`
+                : `<span style="color:rgba(88,166,255,.4)">\u2014</span>`;
 
             const erroStr = r.erro
                 ? `<div style="color:#f85149;font-size:.74rem;margin-top:3px;"><i class="fas fa-exclamation-triangle me-1"></i>${r.erro}</div>` : '';
 
             const rawBtn = r.raw
-                ? `<button class="btn btn-sm" style="font-size:.67rem;padding:1px 7px;margin-top:4px;background:rgba(110,118,129,.1);border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.4);"
+                ? `<button class="btn btn-sm" style="font-size:.67rem;padding:1px 7px;margin-top:4px;background:rgba(110,118,129,.1);border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);"
                     onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">raw</button>
-                   <pre style="display:none;font-size:.67rem;color:rgba(0,245,255,.4);background:#02030a;border:1px solid #21262d;border-radius:4px;padding:8px;max-height:140px;overflow:auto;margin-top:4px;white-space:pre-wrap;">${r.raw ? r.raw.replace(/</g,'&lt;') : ''}</pre>` : '';
+                   <pre style="display:none;font-size:.67rem;color:rgba(88,166,255,.4);background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:8px;max-height:140px;overflow:auto;margin-top:4px;white-space:pre-wrap;">${r.raw ? r.raw.replace(/</g,'&lt;') : ''}</pre>` : '';
 
             // Status por linha
             let statusHtml;
             if (r.erro) {
                 statusHtml = `<span style="color:#f85149;">\u26a0 Erro SSH</span>`;
             } else if (!r.ipv4 || !r.ipv4.length) {
-                statusHtml = `<span style="color:rgba(0,245,255,.4);">\u2014 Sem resposta</span>`;
+                statusHtml = `<span style="color:rgba(88,166,255,.4);">\u2014 Sem resposta</span>`;
             } else if (status === 'cdn') {
-                statusHtml = `<span style="color:#00f5ff;font-weight:600;">\u26a1 CDN</span>`;
+                statusHtml = `<span style="color:#58a6ff;font-weight:600;">\u26a1 CDN</span>`;
             } else if (r.consistente === true) {
                 statusHtml = `<span style="color:#3fb950;font-weight:700;">\u2713 OK</span>`;
             } else if (r.consistente === false) {
@@ -6840,7 +7114,7 @@ function getCsrfToken(){
 
             html += `<tr style="border-bottom:1px solid #21262d;">
                 <td style="padding:12px 16px;"><div style="font-weight:600;">${r.nome} ${badge}${ferrBadge}</div>${erroStr}${rawBtn}</td>
-                <td style="padding:12px 16px;font-family:'Share Tech Mono',monospace;color:var(--accent-cyan);">${r.dns}</td>
+                <td style="padding:12px 16px;font-family:'Inter', sans-serif;color:var(--accent-cyan);">${r.dns}</td>
                 <td style="padding:12px 16px;">${ipv4Html}</td>
                 <td style="padding:12px 16px;">${ipv6Str}</td>
                 <td style="padding:12px 16px;text-align:center;">${statusHtml}</td>
@@ -6867,7 +7141,7 @@ function getCsrfToken(){
     <div id="modalIpamOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
       <div style="background:#0a0a0a;border:2px solid var(--primary-green);border-radius:8px;width:90%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 0 30px var(--glow-green);position:relative;z-index:100000;">
         <div style="border-bottom:1px solid var(--border);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
-          <h5 id="modalIpamTitle" style="color:var(--primary-green);font-family:'Share Tech Mono',monospace;margin:0;"></h5>
+          <h5 id="modalIpamTitle" style="color:var(--primary-green);font-family:'Inter', sans-serif;margin:0;"></h5>
           <button onclick="ipamFecharModal()" style="background:transparent;border:none;color:rgba(255,255,255,.7);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
         </div>
         <div id="modalIpamBody" style="padding:20px;"></div>
@@ -6877,6 +7151,220 @@ function getCsrfToken(){
         </div>
       </div>
     </div>
+
+    <script>
+    // ── HOTSPOT ──────────────────────────────────────────────────────────────
+    var HS_CID   = '{{ cliente.id }}';
+    var _hsId    = null;
+    var _hsLeads = [];
+    (function(){
+        var s=document.createElement('style');
+        s.textContent='.hs-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .2s,background .2s;}'
+            +'.hs-card:hover{border-color:var(--primary-green);}'
+            +'.hs-card.selected{border-color:var(--primary-green);background:rgba(74,222,128,.07);}'
+            +'.hs-card-name{font-weight:600;font-size:.9rem;color:var(--text-light);}'
+            +'.hs-card-meta{font-size:.75rem;color:var(--text-muted);margin-top:3px;}'
+            +'.hs-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:.7rem;font-weight:500;}'
+            +'.hs-badge-green{background:rgba(74,222,128,.15);color:#4ade80;}'
+            +'.hs-badge-gray{background:rgba(148,163,184,.15);color:#94a3b8;}'
+            +'.hs-label{display:block;font-size:.78rem;color:var(--text-muted);margin-bottom:4px;font-weight:500;}'
+            +'.hs-field{display:flex;flex-direction:column;}'
+            +'.hs-input{background:var(--surface);border:1.5px solid var(--border);color:var(--text-light);border-radius:8px;padding:8px 10px;font-size:.875rem;outline:none;transition:border-color .2s;}'
+            +'.hs-input:focus{border-color:var(--primary-green);}'
+            +'.hs-input option{background:var(--surface);}'
+            +'.hs-banner-thumb{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/7;}'
+            +'.hs-banner-thumb img{width:100%;height:100%;object-fit:cover;}'
+            +'.hs-banner-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:6px;padding:3px 6px;cursor:pointer;font-size:.75rem;}';
+        document.head.appendChild(s);
+        var pk=document.getElementById('hs_cor'),tx=document.getElementById('hs_cor_txt');
+        if(pk&&tx)pk.addEventListener('input',function(){tx.value=pk.value;});
+    }());
+    function _hsFetch(url,opts){
+        var d={credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':(document.cookie.match(/csrftoken=([^;]+)/)||[])[1]||''}};
+        if(opts&&opts.body&&typeof opts.body==='object'&&!(opts.body instanceof FormData)){opts.body=JSON.stringify(opts.body);d.headers['Content-Type']='application/json';}
+        return fetch(url,Object.assign(d,opts||{}));
+    }
+    function hsAba(ev,aba){
+        if(ev)ev.preventDefault();
+        ['config','banners','leads'].forEach(function(a){var el=document.getElementById('hs-tab-'+a);if(el)el.style.display=a===aba?'':'none';});
+        document.querySelectorAll('#hsSubTabs .nav-link').forEach(function(el){el.classList.remove('active');});
+        if(ev&&ev.target)ev.target.classList.add('active');
+        if(aba==='banners')hsCarregarBanners();
+        if(aba==='leads')hsCarregarLeads();
+    }
+    function hsRenderList(hotspots){
+        var el=document.getElementById('hs-list');
+        if(!hotspots.length){el.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--text-muted);"><i class="fas fa-wifi" style="font-size:2rem;opacity:.3;"></i><p style="margin-top:8px;font-size:.85rem;">Nenhum hotspot configurado</p></div>';var pd=document.getElementById('hs-detail-pane');if(pd)pd.style.display='none';return;}
+        el.innerHTML=hotspots.map(function(h){
+            var badge=h.ativo?'<span class="hs-badge hs-badge-green"><i class="fas fa-circle" style="font-size:.5rem;"></i> Ativo</span>':'<span class="hs-badge hs-badge-gray">Inativo</span>';
+            var cfg=h.configurado_em?'<i class="fas fa-check-circle" style="color:#4ade80;margin-right:4px;font-size:.7rem;"></i>Aplicado '+h.configurado_em:'<i class="fas fa-clock" style="color:#f59e0b;margin-right:4px;font-size:.7rem;"></i>Não aplicado';
+            return '<div class="hs-card" id="hs-card-'+h.id+'" onclick="hsSelecionar('+h.id+')">'
+                +'<div style="display:flex;justify-content:space-between;align-items:flex-start;"><span class="hs-card-name">'+h.nome+'</span>'+badge+'</div>'
+                +'<div class="hs-card-meta">'+(h.acesso_host||'—')+' · '+h.rate_limit_down+'/'+h.rate_limit_up+'</div>'
+                +'<div class="hs-card-meta" style="margin-top:4px;">'+cfg+'</div>'
+                +'<div class="hs-card-meta" style="margin-top:4px;"><i class="fas fa-images" style="margin-right:3px;"></i>'+h.banners_count+' banners · <i class="fas fa-users" style="margin-left:6px;margin-right:3px;"></i>'+h.leads_count+' leads</div></div>';
+        }).join('');
+    }
+    function hsCarregarLista(){
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/listar/').then(function(r){return r.json();}).then(function(d){if(d.ok)hsRenderList(d.hotspots);}).catch(function(){});
+    }
+    function hsSelecionar(id){
+        _hsId=id;
+        document.querySelectorAll('.hs-card').forEach(function(el){el.classList.remove('selected');});
+        var card=document.getElementById('hs-card-'+id);if(card)card.classList.add('selected');
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+id+'/detalhe/').then(function(r){return r.json();}).then(function(d){
+            if(!d.ok)return;
+            var h=d.hotspot;
+            function sv(i,v){var e=document.getElementById(i);if(e)e.value=v;}
+            sv('hs_nome',h.nome||'');sv('hs_acesso',h.acesso_id||'');sv('hs_interface',h.interface||'bridge');sv('hs_interface_fisica',h.interface_fisica||'');
+            sv('hs_gateway',h.gateway||'192.168.88.1');sv('hs_pool_start',h.pool_start||'192.168.88.10');
+            sv('hs_pool_end',h.pool_end||'192.168.88.254');sv('hs_network',h.network||'192.168.88.0/24');
+            sv('hs_dns',h.dns_servidor||'8.8.8.8');sv('hs_down',h.rate_limit_down||'10M');sv('hs_up',h.rate_limit_up||'5M');
+            sv('hs_session',h.session_timeout||0);sv('hs_idle',h.idle_timeout||30);
+            sv('hs_guest_user',h.guest_usuario||'guest');sv('hs_guest_pass',h.guest_senha||'wifi123');
+            sv('hs_titulo',h.portal_titulo||'WiFi Grátis');sv('hs_subtitulo',h.portal_subtitulo||'');
+            sv('hs_cor',h.cor_primaria||'#1a73e8');sv('hs_cor_txt',h.cor_primaria||'#1a73e8');
+            var at=document.getElementById('hs_ativo');if(at)at.checked=h.ativo;
+            var cb=document.getElementById('hs_dhcp_controle_banda');if(cb){cb.checked=h.dhcp_controle_banda||false;toggleHsBanda(cb);}
+            sv('hs_dhcp_banda_limit',h.dhcp_banda_limit||'10M/10M');atualizarScriptPreview();
+            hsAtualizarLogoPreview(h.logo_url||null);
+            var pn=document.getElementById('hs-detail-pane');if(pn){pn.style.removeProperty('display');pn.style.display='block';}
+            hsAba(null,'config');
+            document.querySelectorAll('#hsSubTabs .nav-link').forEach(function(el,i){el.classList.toggle('active',i===0);});
+        });
+    }
+    function hsNovoConfig(){
+        _hsId=null;
+        function sv(i,v){var e=document.getElementById(i);if(e)e.value=v;}
+        sv('hs_nome','');sv('hs_acesso','');sv('hs_interface','bridge');sv('hs_interface_fisica','');sv('hs_gateway','192.168.88.1');
+        sv('hs_pool_start','192.168.88.10');sv('hs_pool_end','192.168.88.254');sv('hs_network','192.168.88.0/24');
+        sv('hs_dns','8.8.8.8');sv('hs_down','10M');sv('hs_up','5M');sv('hs_session','0');sv('hs_idle','30');
+        sv('hs_guest_user','guest');sv('hs_guest_pass','wifi123');sv('hs_titulo','WiFi Grátis');sv('hs_subtitulo','');
+        sv('hs_cor','#1a73e8');sv('hs_cor_txt','#1a73e8');
+        var at=document.getElementById('hs_ativo');if(at)at.checked=true;
+        var cb=document.getElementById('hs_dhcp_controle_banda');if(cb){cb.checked=false;toggleHsBanda(cb);}
+        sv('hs_dhcp_banda_limit','10M/10M');atualizarScriptPreview();
+        hsAtualizarLogoPreview(null);
+        var pn=document.getElementById('hs-detail-pane');if(pn){pn.style.removeProperty('display');pn.style.display='block';}
+        document.querySelectorAll('.hs-card').forEach(function(el){el.classList.remove('selected');});
+        hsAba(null,'config');
+        document.querySelectorAll('#hsSubTabs .nav-link').forEach(function(el,i){el.classList.toggle('active',i===0);});
+        var nm=document.getElementById('hs_nome');if(nm)nm.focus();
+    }
+    function toggleHsBanda(cb){
+        var wrap=document.getElementById('hs_banda_wrap');
+        if(wrap)wrap.style.display=cb.checked?'block':'none';
+        if(cb.checked)atualizarScriptPreview();
+    }
+    function atualizarScriptPreview(){
+        var el=document.getElementById('hs_banda_script_preview');
+        if(!el)return;
+        var limit=(document.getElementById('hs_dhcp_banda_limit')||{}).value||'10M/10M';
+        el.textContent=
+            ':local queueName ("DHCP-" . $leaseActMAC);\n'+
+            ':if ($leaseBound = "1") do={\n'+
+            '    /queue simple remove [find name=$queueName];\n'+
+            '    /queue simple add name=$queueName target=($leaseActIP."/32") \\\n'+
+            '        max-limit='+limit+' \\\n'+
+            '        comment=[/ip dhcp-server lease get [find where \\\n'+
+            '            active-mac-address=$leaseActMAC && active-address=$leaseActIP] host-name];\n'+
+            '} else={\n'+
+            '    /queue simple remove [find name=$queueName];\n'+
+            '}';
+    }
+    function hsSalvar(){
+        var p={id:_hsId,acesso_id:document.getElementById('hs_acesso').value||null,nome:document.getElementById('hs_nome').value.trim(),interface:document.getElementById('hs_interface').value.trim(),interface_fisica:document.getElementById('hs_interface_fisica').value.trim(),gateway:document.getElementById('hs_gateway').value.trim(),pool_start:document.getElementById('hs_pool_start').value.trim(),pool_end:document.getElementById('hs_pool_end').value.trim(),network:document.getElementById('hs_network').value.trim(),dns_servidor:document.getElementById('hs_dns').value.trim(),rate_limit_down:document.getElementById('hs_down').value.trim(),rate_limit_up:document.getElementById('hs_up').value.trim(),session_timeout:parseInt(document.getElementById('hs_session').value)||0,idle_timeout:parseInt(document.getElementById('hs_idle').value)||30,guest_usuario:document.getElementById('hs_guest_user').value.trim(),guest_senha:document.getElementById('hs_guest_pass').value.trim(),portal_titulo:document.getElementById('hs_titulo').value.trim(),portal_subtitulo:document.getElementById('hs_subtitulo').value.trim(),cor_primaria:document.getElementById('hs_cor_txt').value.trim(),ativo:document.getElementById('hs_ativo').checked,dhcp_controle_banda:document.getElementById('hs_dhcp_controle_banda')?.checked||false,dhcp_banda_limit:document.getElementById('hs_dhcp_banda_limit')?.value.trim()||'10M/10M'};
+        if(!p.nome){alert('Informe o nome do hotspot.');return;}
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/salvar/',{method:'POST',body:p}).then(function(r){return r.json();}).then(function(d){if(d.ok){_hsId=d.id;hsCarregarLista();setTimeout(function(){hsSelecionar(_hsId);},300);}else alert('Erro: '+(d.error||''));});
+    }
+    function hsDeletar(){
+        if(!_hsId)return;if(!confirm('Excluir este hotspot e todos seus banners/leads?'))return;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/deletar/',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.ok){_hsId=null;var pn=document.getElementById('hs-detail-pane');if(pn)pn.style.display='none';hsCarregarLista();}});
+    }
+    function hsAplicar(){
+        if(!_hsId){alert('Selecione ou salve um hotspot primeiro.');return;}
+        var btn=document.getElementById('hs-btn-aplicar');
+        var log=document.getElementById('hs-apply-log');
+        var overlay=document.getElementById('hs-modal-log-overlay');
+        // Abrir modal e mostrar spinner
+        log.textContent='⏳ Conectando ao MikroTik...\n';
+        overlay.style.display='flex';
+        btn.disabled=true;
+        btn.innerHTML='<i class="fas fa-spinner fa-spin me-1"></i> Aplicando...';
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/aplicar/',{method:'POST'})
+            .then(function(r){return r.json();})
+            .then(function(d){
+                log.textContent=d.log.join('\n');
+                log.scrollTop=log.scrollHeight;
+                hsCarregarLista();
+                setTimeout(function(){hsSelecionar(_hsId);},400);
+            })
+            .catch(function(e){log.textContent+='\n❌ Erro: '+e;})
+            .finally(function(){
+                btn.disabled=false;
+                btn.innerHTML='<i class="fas fa-upload me-1"></i> Aplicar no MikroTik';
+            });
+    }
+    function hsPreview(){if(!_hsId){alert('Salve e selecione um hotspot primeiro.');return;}window.open('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/preview/','_blank');}
+    function hsCarregarBanners(){
+        if(!_hsId)return;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/banners/').then(function(r){return r.json();}).then(function(d){
+            var grid=document.getElementById('hs-banners-grid');
+            if(!d.ok||!d.banners.length){grid.innerHTML='<div style="color:var(--text-muted);font-size:.85rem;padding:16px 0;">Nenhum banner ainda.</div>';return;}
+            grid.innerHTML=d.banners.map(function(b){return '<div class="hs-banner-thumb"><img src="'+b.url+'" alt="'+(b.titulo||'')+'"><button class="hs-banner-del" onclick="hsDeletarBanner('+b.id+')" title="Remover"><i class="fas fa-trash"></i></button>'+(b.titulo?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);padding:4px 8px;font-size:.72rem;color:#fff;">'+b.titulo+'</div>':'')+'</div>';}).join('');
+        });
+    }
+    function hsUploadBanner(input){
+        if(!_hsId){alert('Selecione/salve um hotspot primeiro.');input.value='';return;}
+        if(!input.files.length)return;
+        var fd=new FormData();fd.append('imagem',input.files[0]);input.value='';
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/banner/upload/',{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){if(d.ok){hsCarregarBanners();hsCarregarLista();}else alert('Erro: '+(d.error||''));});
+    }
+    function hsDeletarBanner(bid){
+        if(!confirm('Remover este banner?'))return;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/banner/'+bid+'/del/',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.ok){hsCarregarBanners();hsCarregarLista();}});
+    }
+    function hsAtualizarLogoPreview(url){
+        var prev=document.getElementById('hs-logo-preview');
+        var img=document.getElementById('hs-logo-img');
+        var btn=document.getElementById('hs-logo-btn-text');
+        if(url){prev.style.display='';img.src=url;btn.textContent='Trocar Logo';}
+        else{prev.style.display='none';img.src='';btn.textContent='Upload de Logo';}
+    }
+    function hsUploadLogo(input){
+        if(!_hsId){alert('Selecione/salve um hotspot primeiro.');input.value='';return;}
+        if(!input.files.length)return;
+        var fd=new FormData();fd.append('logo',input.files[0]);input.value='';
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/logo/upload/',{method:'POST',body:fd})
+            .then(function(r){return r.json();})
+            .then(function(d){if(d.ok){hsAtualizarLogoPreview(d.url);}else alert('Erro: '+(d.error||''));});
+    }
+    function hsDeletarLogo(){
+        if(!confirm('Remover a logo?'))return;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/logo/deletar/',{method:'POST'})
+            .then(function(r){return r.json();})
+            .then(function(d){if(d.ok)hsAtualizarLogoPreview(null);});
+    }
+    function hsCarregarLeads(){
+        if(!_hsId)return;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/leads/').then(function(r){return r.json();}).then(function(d){
+            if(!d.ok)return;_hsLeads=d.leads;
+            document.getElementById('hs-leads-count').textContent=d.total+' leads capturados';
+            var tb=document.getElementById('hs-leads-tbody'),em=document.getElementById('hs-leads-empty');
+            if(!d.leads.length){tb.innerHTML='';em.style.display='';return;}
+            em.style.display='none';
+            tb.innerHTML=d.leads.map(function(l){return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text-light);">'+l.nome+'</td><td style="padding:7px 8px;color:var(--text-light);">'+l.telefone+'</td><td style="padding:7px 8px;color:var(--text-muted);">'+(l.data_nascimento||'—')+'</td><td style="padding:7px 8px;color:var(--text-muted);font-family:monospace;font-size:.78rem;">'+(l.mac||'—')+'</td><td style="padding:7px 8px;color:var(--text-muted);">'+l.criado_em+'</td></tr>';}).join('');
+        });
+    }
+    function hsExportLeads(){
+        if(!_hsLeads.length){alert('Nenhum lead para exportar.');return;}
+        var rows=[['Nome','Telefone','Nascimento','MAC','IP','Data']];
+        _hsLeads.forEach(function(l){rows.push([l.nome,l.telefone,l.data_nascimento||'',l.mac||'',l.ip_cliente||'',l.criado_em]);});
+        var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+        var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='leads_hotspot.csv';a.click();
+    }
+    </script>
 
     {% endblock content %}
 
@@ -6969,6 +7457,7 @@ function realizarPing(acessoId, host) {
 function fecharModalPing() {
     document.getElementById('modalPingOverlay').style.display = 'none';
 }
-</script>
+
+
 
 {% block modals %}{% endblock %}

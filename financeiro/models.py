@@ -27,11 +27,11 @@ class ConfiguracaoFinanceira(models.Model):
     endereco = models.TextField()
     telefone = models.CharField(max_length=15)
     email = models.EmailField()
-    
+
     # Configurações
     juros_atraso_percentual = models.DecimalField(
-        max_digits=5, 
-        decimal_places=2, 
+        max_digits=5,
+        decimal_places=2,
         default=0.10,
         help_text="Juros diário por atraso (ex: 0.10 = 0.1%)"
     )
@@ -41,10 +41,14 @@ class ConfiguracaoFinanceira(models.Model):
         default=0,
         help_text="Multa fixa por atraso"
     )
-    
+
+    # Assinatura digital do locador (base64 PNG)
+    assinatura_locador = models.TextField(blank=True, default='',
+        help_text='Assinatura do locador em base64 (PNG). Usada automaticamente nos contratos.')
+
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = 'Configuração Financeira'
         verbose_name_plural = 'Configurações Financeiras'
@@ -137,6 +141,7 @@ class AluguelIPv4(models.Model):
     bloco_ip = models.ForeignKey(BlocoIP, on_delete=models.SET_NULL, null=True, blank=True)
 
     bloco_descricao = models.CharField(max_length=100, help_text="Ex: 200.100.50.0/24")
+    bloco_v6 = models.CharField(max_length=100, blank=True, default='', help_text="Ex: 2804:1234::/48 (opcional)")
     quantidade_ips = models.IntegerField(help_text="Quantidade de IPs no bloco")
 
     valor_mensal = models.DecimalField(max_digits=10, decimal_places=2)
@@ -594,3 +599,44 @@ class Despesa(models.Model):
     @property
     def dias_para_vencer(self):
         return (self.data_vencimento - timezone.localdate()).days
+
+
+class ContratoAluguel(models.Model):
+    STATUS_CHOICES = [
+        ('pendente',  'Aguardando assinatura'),
+        ('assinado',  'Assinado'),
+        ('expirado',  'Expirado'),
+    ]
+
+    aluguel      = models.ForeignKey(AluguelIPv4, on_delete=models.CASCADE, related_name='contratos')
+    token        = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+
+    # Assinatura
+    assinatura_img  = models.TextField(blank=True, default='')   # base64 PNG do pad
+    nome_assinante  = models.CharField(max_length=255, blank=True, default='')
+    ip_assinante    = models.GenericIPAddressField(null=True, blank=True)
+    assinado_em     = models.DateTimeField(null=True, blank=True)
+
+    # PDF gerado com assinatura
+    pdf_assinado = models.FileField(upload_to='contratos/assinados/', null=True, blank=True)
+
+    criado_em  = models.DateTimeField(auto_now_add=True)
+    expira_em  = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name        = 'Contrato de Aluguel'
+        verbose_name_plural = 'Contratos de Aluguel'
+        ordering            = ['-criado_em']
+
+    def __str__(self):
+        return f'Contrato {self.token} — {self.aluguel}'
+
+    def esta_expirado(self):
+        if self.expira_em and timezone.now() > self.expira_em:
+            return True
+        return False
+
+    @property
+    def link_assinatura(self):
+        return f'/financeiro/contrato/{self.token}/assinar/'

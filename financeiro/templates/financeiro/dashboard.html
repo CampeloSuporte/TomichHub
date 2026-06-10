@@ -4,34 +4,33 @@
 {% block content %}
 <style>
 :root {
-    --cy: #00f5ff;
-    --gr: #00ff88;
-    --bl: #1a4fff;
-    --or: #ffa500;
-    --rd: #ff5555;
-    --pu: #b060ff;
-    --bg: #02030a;
-    --bg2: #060c18;
-    --bg3: #0a1628;
-    --muted: rgba(0,245,255,0.4);
+    --cy:    #58a6ff;
+    --gr:    #3fb950;
+    --bl:    #388bfd;
+    --or:    #d29922;
+    --rd:    #f85149;
+    --pu:    #bc8cff;
+    --bg:    #0d1117;
+    --bg2:   #161b22;
+    --bg3:   #1c2128;
+    --muted: #7d8590;
 }
 
 .fin-page {
     background: var(--bg);
     min-height: 100vh;
     padding: 1.5rem;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    font-family: 'Inter', sans-serif;
 }
 
 .fin-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.5rem;
-    color: var(--cy);
-    text-shadow: 0 0 18px rgba(0,245,255,0.5);
-    letter-spacing: 3px;
-    text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #e6edf3;
+    letter-spacing: -0.01em;
 }
-.fin-subtitle { color: var(--muted); font-size: .75rem; letter-spacing: 2px; }
+.fin-subtitle { color: #7d8590; font-size: .8rem; }
 
 /* ── KPI Cards ── */
 .kpi-grid {
@@ -42,7 +41,7 @@
 }
 .kpi-card {
     background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.13);
+    border: 1px solid rgba(88, 166, 255, 0.13);
     border-radius: 8px;
     padding: 1.2rem 1rem;
     position: relative;
@@ -59,23 +58,24 @@
     box-shadow: 0 0 10px var(--kpi-color, var(--cy));
 }
 .kpi-card:hover {
-    border-color: rgba(0,245,255,0.3);
-    box-shadow: 0 0 20px rgba(0,245,255,0.07);
-    transform: translateY(-2px);
+    border-color: rgba(88, 166, 255, 0.3);
+    
+    
 }
 .kpi-label {
-    font-size: .65rem;
-    color: var(--muted);
+    font-size: .7rem;
+    color: #7d8590;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.5px;
     margin-bottom: .4rem;
 }
 .kpi-value {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.6rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 700;
     line-height: 1;
-    color: var(--kpi-color, var(--cy));
-    text-shadow: 0 0 10px var(--kpi-color, var(--cy));
+    color: #e6edf3;
 }
 .kpi-value .kpi-prefix { font-size: 1rem; opacity: .7; }
 .kpi-sub { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
@@ -92,19 +92,20 @@
 /* ── Cards genéricos ── */
 .cy-card {
     background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.13);
+    border: 1px solid rgba(88, 166, 255, 0.13);
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 1.2rem;
 }
 .cy-card-head {
-    padding: .75rem 1.1rem;
-    border-bottom: 1px solid rgba(0,245,255,0.1);
-    font-family: 'Orbitron', sans-serif;
-    font-size: .75rem;
-    color: var(--cy);
-    letter-spacing: 2px;
-    text-transform: uppercase;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid #30363d;
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #c9d1d9;
+    letter-spacing: 0;
+    text-transform: none;
     display: flex;
     align-items: center;
     gap: .5rem;
@@ -125,7 +126,7 @@
     flex-wrap: wrap;
 }
 .vencer-strip .strip-icon { color: var(--or); font-size: 1.1rem; flex-shrink: 0; }
-.vencer-strip .strip-text { font-size: .78rem; color: #e0c080; }
+.vencer-strip .strip-text { font-size: .78rem; color: #d29922; }
 .vencer-strip .strip-items { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .3rem; }
 .vencer-chip {
     background: rgba(255,165,0,.1);
@@ -152,28 +153,28 @@
     font-size: .78rem;
 }
 .cy-table thead th {
-    background: rgba(0,245,255,0.04);
+    background: rgba(88, 166, 255, 0.04);
     color: var(--cy);
     font-size: .65rem;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     padding: .5rem .75rem;
-    border-bottom: 1px solid rgba(0,245,255,0.1);
+    border-bottom: 1px solid rgba(88, 166, 255, 0.1);
     white-space: nowrap;
 }
 .cy-table tbody tr {
-    border-bottom: 1px solid rgba(0,245,255,0.05);
+    border-bottom: 1px solid rgba(88, 166, 255, 0.05);
     transition: background .1s;
 }
-.cy-table tbody tr:hover { background: rgba(0,245,255,0.03); }
-.cy-table td { padding: .45rem .75rem; color: #c9d8e8; }
+.cy-table tbody tr:hover { background: rgba(88, 166, 255, 0.03); }
+.cy-table td { padding: .45rem .75rem; color: #c9d1d9; }
 
 .badge-cy { display:inline-block; padding:2px 7px; border-radius:3px; font-size:.65rem; font-weight:600; letter-spacing:.5px; }
-.b-ok    { background:rgba(0,255,136,.1); color:#00ff88; border:1px solid rgba(0,255,136,.3); }
-.b-err   { background:rgba(255,85,85,.1);  color:#ff5555; border:1px solid rgba(255,85,85,.3); }
-.b-warn  { background:rgba(255,165,0,.1);  color:#ffa500; border:1px solid rgba(255,165,0,.3); }
-.b-info  { background:rgba(0,245,255,.08); color:#00f5ff; border:1px solid rgba(0,245,255,.22); }
-.b-pu    { background:rgba(176,96,255,.1); color:#b060ff; border:1px solid rgba(176,96,255,.3); }
+.b-ok    { background:rgba(63, 185, 80, .1); color:#3fb950; border:1px solid rgba(63, 185, 80, .3); }
+.b-err   { background:rgba(255,85,85,.1);  color:#f85149; border:1px solid rgba(255,85,85,.3); }
+.b-warn  { background:rgba(255,165,0,.1);  color:#d29922; border:1px solid rgba(255,165,0,.3); }
+.b-info  { background:rgba(88, 166, 255, .08); color:#58a6ff; border:1px solid rgba(88, 166, 255, .22); }
+.b-pu    { background:rgba(176,96,255,.1); color:#bc8cff; border:1px solid rgba(176,96,255,.3); }
 
 /* ── Search ── */
 .cy-search-wrap { position: relative; }
@@ -181,7 +182,7 @@
 .cy-search-input {
     width: 100%;
     background: #030a14;
-    border: 1px solid rgba(0,245,255,0.2);
+    border: 1px solid rgba(88, 166, 255, 0.2);
     border-radius: 6px;
     color: var(--cy);
     padding: .5rem .75rem .5rem 2.2rem;
@@ -190,20 +191,20 @@
     outline: none;
     transition: border-color .2s;
 }
-.cy-search-input:focus { border-color: rgba(0,245,255,0.5); }
-.cy-search-input::placeholder { color: rgba(0,245,255,0.3); }
+.cy-search-input:focus { border-color: rgba(88, 166, 255, 0.5); }
+.cy-search-input::placeholder { color: rgba(88, 166, 255, 0.3); }
 #resultado-pesquisa { margin-top: .75rem; }
 
 /* ── Aging bars ── */
 .aging-row { margin-bottom: 1rem; }
 .aging-label { display:flex; justify-content:space-between; margin-bottom:.3rem; font-size:.75rem; }
-.aging-label .name { color: #c9d8e8; }
-.aging-label .val  { color: var(--cy); font-family:'Orbitron',sans-serif; font-size:.7rem; }
+.aging-label .name { color: #c9d1d9; }
+.aging-label .val  { color: var(--cy); font-family:'Inter',sans-serif; font-size:.7rem; }
 .aging-bar-bg { height: 6px; background: rgba(255,255,255,.07); border-radius: 3px; overflow: hidden; }
 .aging-bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
 
 /* ── Tabs (client mode) ── */
-.cy-tabs { display:flex; gap:0; border-bottom:1px solid rgba(0,245,255,0.15); margin-bottom:1.2rem; flex-wrap:wrap; }
+.cy-tabs { display:flex; gap:0; border-bottom:1px solid rgba(88, 166, 255, 0.15); margin-bottom:1.2rem; flex-wrap:wrap; }
 .cy-tab {
     padding: .55rem 1.1rem;
     font-size: .72rem;
@@ -225,8 +226,8 @@
 
 /* ── Btn ── */
 .btn-cy {
-    background: rgba(0,245,255,.08);
-    border: 1px solid rgba(0,245,255,.25);
+    background: rgba(88, 166, 255, .08);
+    border: 1px solid rgba(88, 166, 255, .25);
     color: var(--cy);
     border-radius: 5px;
     padding: .35rem .9rem;
@@ -240,20 +241,20 @@
     align-items: center;
     gap: .4rem;
 }
-.btn-cy:hover { background: rgba(0,245,255,.15); color: var(--cy); }
-.btn-cy-gr { --c: #00ff88; background:rgba(0,255,136,.08); border-color:rgba(0,255,136,.25); color:#00ff88; }
-.btn-cy-gr:hover { background:rgba(0,255,136,.15); color:#00ff88; }
-.btn-cy-rd { background:rgba(255,85,85,.08); border-color:rgba(255,85,85,.25); color:#ff5555; }
-.btn-cy-rd:hover { background:rgba(255,85,85,.15); color:#ff5555; }
-.btn-cy-or { background:rgba(255,165,0,.08); border-color:rgba(255,165,0,.25); color:#ffa500; }
-.btn-cy-or:hover { background:rgba(255,165,0,.15); color:#ffa500; }
+.btn-cy:hover { background: rgba(88, 166, 255, .15); color: var(--cy); }
+.btn-cy-gr { --c: #3fb950; background:rgba(63, 185, 80, .08); border-color:rgba(63, 185, 80, .25); color:#3fb950; }
+.btn-cy-gr:hover { background:rgba(63, 185, 80, .15); color:#3fb950; }
+.btn-cy-rd { background:rgba(255,85,85,.08); border-color:rgba(255,85,85,.25); color:#f85149; }
+.btn-cy-rd:hover { background:rgba(255,85,85,.15); color:#f85149; }
+.btn-cy-or { background:rgba(255,165,0,.08); border-color:rgba(255,165,0,.25); color:#d29922; }
+.btn-cy-or:hover { background:rgba(255,165,0,.15); color:#d29922; }
 .btn-cy-sm { padding:.2rem .6rem; font-size:.7rem; }
 
 /* ── Spinner ── */
 .cy-spinner {
     display: inline-block;
     width: 14px; height: 14px;
-    border: 2px solid rgba(0,245,255,.3);
+    border: 2px solid rgba(88, 166, 255, .3);
     border-top-color: var(--cy);
     border-radius: 50%;
     animation: spin .7s linear infinite;
@@ -262,91 +263,91 @@
 
 /* ── Modals ── */
 .modal-content {
-    background: #060c18 !important;
-    border: 1px solid rgba(0,245,255,0.2) !important;
+    background: #161b22 !important;
+    border: 1px solid rgba(88, 166, 255, 0.2) !important;
     border-radius: 8px !important;
-    color: #c9d8e8 !important;
+    color: #c9d1d9 !important;
 }
 .modal-header {
-    border-bottom: 1px solid rgba(0,245,255,0.12) !important;
+    border-bottom: 1px solid rgba(88, 166, 255, 0.12) !important;
     padding: 1rem 1.25rem;
-    background: rgba(0,245,255,0.04) !important;
+    background: rgba(88, 166, 255, 0.04) !important;
 }
 .modal-title {
-    font-family: 'Orbitron', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: .85rem !important;
     letter-spacing: 2px !important;
     text-transform: uppercase;
     color: var(--cy) !important;
 }
-.modal-footer { border-top: 1px solid rgba(0,245,255,0.1) !important; }
+.modal-footer { border-top: 1px solid rgba(88, 166, 255, 0.1) !important; }
 .modal-body { padding: 1.25rem; }
 .btn-close-white { filter: invert(1) sepia(1) saturate(3) hue-rotate(155deg) !important; }
 
 /* Forms inside modals */
-.form-label { color: rgba(0,245,255,0.6) !important; font-size: .72rem !important; letter-spacing: 1px !important; text-transform: uppercase; }
+.form-label { color: rgba(88, 166, 255, 0.6) !important; font-size: .72rem !important; letter-spacing: 1px !important; text-transform: uppercase; }
 .form-control, .form-select {
     background: #030a14 !important;
-    border: 1px solid rgba(0,245,255,0.2) !important;
-    color: #c9d8e8 !important;
+    border: 1px solid rgba(88, 166, 255, 0.2) !important;
+    color: #c9d1d9 !important;
     border-radius: 4px !important;
-    font-family: 'Share Tech Mono','Courier New',monospace !important;
+    font-family: 'Inter','Courier New',monospace !important;
     font-size: .82rem !important;
 }
 .form-control:focus, .form-select:focus {
     background: #040d1a !important;
-    border-color: rgba(0,245,255,0.5) !important;
-    box-shadow: 0 0 0 .15rem rgba(0,245,255,.15) !important;
+    border-color: rgba(88, 166, 255, 0.5) !important;
+    box-shadow: 0 0 0 .15rem rgba(88, 166, 255, .15) !important;
     color: #e8f4f8 !important;
 }
-.form-control::placeholder { color: rgba(0,245,255,0.2) !important; }
-.form-select option { background: #060c18; }
-.input-group-text { background: #040d1a !important; border-color: rgba(0,245,255,.2) !important; color: var(--muted) !important; }
+.form-control::placeholder { color: rgba(88, 166, 255, 0.2) !important; }
+.form-select option { background: #161b22; }
+.input-group-text { background: #040d1a !important; border-color: rgba(88, 166, 255, .2) !important; color: var(--muted) !important; }
 .alert-danger   { background:rgba(255,85,85,.1) !important;   border-color:rgba(255,85,85,.3) !important;   color:#ffa0a0 !important; }
 .alert-warning  { background:rgba(255,165,0,.1) !important;   border-color:rgba(255,165,0,.3) !important;   color:#ffc870 !important; }
-.alert-info     { background:rgba(0,245,255,.07) !important;  border-color:rgba(0,245,255,.2) !important;   color:#80d8e8 !important; }
-.alert-light    { background:rgba(0,245,255,.04) !important;  border-color:rgba(0,245,255,.12) !important;  color:#c0d4e0 !important; }
+.alert-info     { background:rgba(88, 166, 255, .07) !important;  border-color:rgba(88, 166, 255, .2) !important;   color:#80d8e8 !important; }
+.alert-light    { background:rgba(88, 166, 255, .04) !important;  border-color:rgba(88, 166, 255, .12) !important;  color:#c0d4e0 !important; }
 
 /* ── Despesas ── */
-.cy-select-sm{background:var(--bg2);border:1px solid rgba(0,245,255,.2);color:var(--text);border-radius:5px;padding:3px 8px;font-size:.75rem;outline:none}
-.cy-btn-primary{background:rgba(0,245,255,.12);border:1px solid var(--cy);color:var(--cy);border-radius:5px;padding:4px 12px;font-size:.75rem;cursor:pointer;transition:all .15s}
-.cy-btn-primary:hover{background:rgba(0,245,255,.22)}
+.cy-select-sm{background:var(--bg2);border:1px solid rgba(88, 166, 255, .2);color:var(--text);border-radius:5px;padding:3px 8px;font-size:.75rem;outline:none}
+.cy-btn-primary{background:rgba(88, 166, 255, .12);border:1px solid var(--cy);color:var(--cy);border-radius:5px;padding:4px 12px;font-size:.75rem;cursor:pointer;transition:all .15s}
+.cy-btn-primary:hover{background:rgba(88, 166, 255, .22)}
 .cy-btn-sm{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#aaa;border-radius:4px;padding:2px 9px;font-size:.72rem;cursor:pointer;transition:all .15s}
 .cy-btn-sm:hover{border-color:var(--cy);color:var(--cy)}
 .cy-btn-danger{background:rgba(248,82,82,.1);border:1px solid rgba(248,82,82,.4);color:#f85252;border-radius:4px;padding:2px 9px;font-size:.72rem;cursor:pointer}
 .despesa-row{display:grid;grid-template-columns:2.5fr 80px 90px 180px 120px;gap:.5rem;align-items:center;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);font-size:.8rem}
 .despesa-row:last-child{border-bottom:none}
-.despesa-row:hover{background:rgba(0,245,255,.02)}
+.despesa-row:hover{background:rgba(88, 166, 255, .02)}
 .despesa-nome{font-weight:600;color:#e0eaf6}
 .despesa-cat{font-size:.68rem;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,.07);color:#8aa}
 .badge-vencido{background:rgba(248,82,82,.15)!important;color:#f87272!important}
-.badge-hoje{background:rgba(255,165,0,.15)!important;color:#ffa500!important}
-.badge-pendente{background:rgba(0,245,255,.1)!important;color:var(--cy)!important}
+.badge-hoje{background:rgba(255,165,0,.15)!important;color:#d29922!important}
+.badge-pendente{background:rgba(88, 166, 255, .1)!important;color:var(--cy)!important}
 .badge-pago{background:rgba(0,200,100,.12)!important;color:#40d080!important}
 .alerta-despesa{padding:.5rem 1rem;border-radius:7px;margin-bottom:.5rem;font-size:.82rem;display:flex;align-items:center;gap:.6rem}
 .alerta-despesa.vencida{background:rgba(248,82,82,.1);border:1px solid rgba(248,82,82,.3);color:#f87272}
-.alerta-despesa.hoje{background:rgba(255,165,0,.1);border:1px solid rgba(255,165,0,.3);color:#ffa500}
+.alerta-despesa.hoje{background:rgba(255,165,0,.1);border:1px solid rgba(255,165,0,.3);color:#d29922}
 
 /* Nav tabs (Bootstrap compat) */
-.nav-tabs { border-bottom-color: rgba(0,245,255,.15) !important; }
+.nav-tabs { border-bottom-color: rgba(88, 166, 255, .15) !important; }
 .nav-link { color: var(--muted) !important; font-size:.72rem !important; letter-spacing:1.5px; text-transform:uppercase; font-family:inherit !important; }
-.nav-link.active { color: var(--cy) !important; border-bottom-color: var(--cy) !important; background: rgba(0,245,255,.04) !important; border-color: rgba(0,245,255,.15) rgba(0,245,255,.15) transparent !important; }
+.nav-link.active { color: var(--cy) !important; border-bottom-color: var(--cy) !important; background: rgba(88, 166, 255, .04) !important; border-color: rgba(88, 166, 255, .15) rgba(88, 166, 255, .15) transparent !important; }
 .nav-link:hover:not(.active) { color: var(--cy) !important; }
 
 /* Tables inside dynamic HTML */
-.table { color: #c9d8e8 !important; font-size:.8rem !important; }
-.table thead th, .table-light th { background:rgba(0,245,255,.04) !important; color:var(--cy) !important; font-size:.65rem !important; letter-spacing:1.5px; text-transform:uppercase; border-color:rgba(0,245,255,.1) !important; }
-.table tbody tr { border-color:rgba(0,245,255,.06) !important; }
-.table-hover tbody tr:hover { background:rgba(0,245,255,.03) !important; }
-.table-light { background: rgba(0,245,255,.03) !important; }
-.table-light td { color:#a0b8c8 !important; background:rgba(0,245,255,.03) !important; }
+.table { color: #c9d1d9 !important; font-size:.8rem !important; }
+.table thead th, .table-light th { background:rgba(88, 166, 255, .04) !important; color:var(--cy) !important; font-size:.65rem !important; letter-spacing:1.5px; text-transform:uppercase; border-color:rgba(88, 166, 255, .1) !important; }
+.table tbody tr { border-color:rgba(88, 166, 255, .06) !important; }
+.table-hover tbody tr:hover { background:rgba(88, 166, 255, .03) !important; }
+.table-light { background: rgba(88, 166, 255, .03) !important; }
+.table-light td { color:#a0b8c8 !important; background:rgba(88, 166, 255, .03) !important; }
 .table-warning { background:rgba(255,165,0,.07) !important; }
 .table-warning td { color:#ffc870 !important; background:rgba(255,165,0,.07) !important; }
 
 /* Badges inside dynamic HTML */
 .badge.bg-danger   { background:rgba(255,85,85,.2) !important; color:#ff7070; border:1px solid rgba(255,85,85,.3); }
-.badge.bg-success  { background:rgba(0,255,136,.12) !important; color:#00ff88; border:1px solid rgba(0,255,136,.3); }
-.badge.bg-warning  { background:rgba(255,165,0,.12) !important; color:#ffa500; border:1px solid rgba(255,165,0,.3); }
+.badge.bg-success  { background:rgba(63, 185, 80, .12) !important; color:#3fb950; border:1px solid rgba(63, 185, 80, .3); }
+.badge.bg-warning  { background:rgba(255,165,0,.12) !important; color:#d29922; border:1px solid rgba(255,165,0,.3); }
 .badge.bg-secondary{ background:rgba(150,150,180,.15) !important; color:#9090b0; border:1px solid rgba(150,150,180,.25); }
 .badge.bg-primary  { background:rgba(26,79,255,.2) !important; color:#6090ff; border:1px solid rgba(26,79,255,.3); }
 
@@ -358,7 +359,7 @@
 .progress { background: rgba(255,255,255,.06) !important; height: 6px !important; border-radius: 3px !important; }
 
 /* scan divider */
-.scan-line { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--cy),transparent); margin:1.2rem 0; opacity:.2; }
+.scan-line { display: none; }
 
 /* client cards */
 .client-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
@@ -416,7 +417,35 @@
 <!-- Alertas de vencimento próximo -->
 <div id="vencer-strip-wrap"></div>
 
-<!-- Alertas de despesas vencidas / vencendo hoje -->
+<!-- Card: Despesas Vencidas -->
+<div id="card-despesas-vencidas" style="display:none;">
+    <div class="cy-card" style="border-color:rgba(248,82,82,.4);">
+        <div class="cy-card-head" style="justify-content:space-between;">
+            <span style="color:#f87272;">
+                <i class="fas fa-exclamation-circle"></i> Despesas Operacionais Vencidas
+                <span id="badge-despesas-vencidas" style="margin-left:8px;background:rgba(248,82,82,.15);border:1px solid rgba(248,82,82,.4);color:#f87272;font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:20px;"></span>
+            </span>
+            <a href="#card-despesas" onclick="document.getElementById('despesas-filtro-status').value='VENCIDO';carregarDespesas();document.getElementById('card-despesas').scrollIntoView({behavior:'smooth'});return false;"
+               style="font-size:.75rem;background:#21262d;border:1px solid #30363d;color:#c9d1d9;text-decoration:none;padding:4px 12px;border-radius:6px;">
+                <i class="fas fa-list me-1"></i> Ver todas as despesas
+            </a>
+        </div>
+        <div class="cy-card-body" style="padding-top:0;">
+            <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                <thead>
+                    <tr style="border-bottom:1px solid #21262d;">
+                        <th style="padding:7px 8px;color:#7d8590;font-weight:500;text-align:left;">Despesa</th>
+                        <th style="padding:7px 8px;color:#7d8590;font-weight:500;text-align:left;">Categoria</th>
+                        <th style="padding:7px 8px;color:#7d8590;font-weight:500;text-align:right;">Valor</th>
+                        <th style="padding:7px 8px;color:#7d8590;font-weight:500;text-align:right;">Venceu em</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-despesas-vencidas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Alerta hoje (mantido pequeno) -->
 <div id="despesas-alerta-wrap"></div>
 
 <!-- Gráfico + Aging -->
@@ -475,9 +504,12 @@
             <select id="despesas-filtro-status" class="cy-select-sm" onchange="carregarDespesas()">
                 <option value="">Todas</option>
                 <option value="PENDENTE">Pendentes</option>
-                <option value="VENCIDO">Vencidas</option>
+                <option value="VENCIDO" selected>Vencidas</option>
                 <option value="PAGO">Pagas</option>
             </select>
+            <a href="{% url 'listar_despesas_page' %}" class="cy-btn-primary" style="text-decoration:none;">
+                <i class="fas fa-list"></i> Ver Todas
+            </a>
             <button class="cy-btn-primary" onclick="abrirModalNovaDespesa()">
                 <i class="fas fa-plus"></i> Nova Despesa
             </button>
@@ -503,7 +535,7 @@
     <div class="cy-card-head" style="justify-content:space-between;">
         <span style="color:var(--gr);"><i class="fas fa-check-circle"></i> Clientes que Quitaram em Atraso</span>
         <select id="filtroPeriodoPagos" onchange="carregarClientesPagaramVencidos()"
-            style="background:#030a14; border:1px solid rgba(0,245,255,.2); color:var(--cy); border-radius:4px; padding:2px 8px; font-family:inherit; font-size:.72rem; outline:none;">
+            style="background:#030a14; border:1px solid rgba(88, 166, 255, .2); color:var(--cy); border-radius:4px; padding:2px 8px; font-family:inherit; font-size:.72rem; outline:none;">
             <option value="30">Últimos 30 dias</option>
             <option value="60">Últimos 60 dias</option>
             <option value="90" selected>Últimos 90 dias</option>
@@ -601,9 +633,14 @@
             <div id="alugueis-tab" class="tab-pane fade">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
                     <span style="font-size:.75rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase;">Blocos IPv4 Alugados</span>
-                    <button class="btn-cy btn-cy-sm" style="--c:#00f5ff;" data-bs-toggle="modal" data-bs-target="#modalNovoAluguel">
-                        <i class="fas fa-plus"></i> Novo
-                    </button>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                        <button class="btn-cy btn-cy-sm" style="--c:#bc8cff;" onclick="abrirAssinaturaLocador()" title="Configurar minha assinatura">
+                            <i class="fas fa-pen-nib"></i> Minha Assinatura
+                        </button>
+                        <button class="btn-cy btn-cy-sm" style="--c:#58a6ff;" data-bs-toggle="modal" data-bs-target="#modalNovoAluguel">
+                            <i class="fas fa-plus"></i> Novo
+                        </button>
+                    </div>
                 </div>
                 <div id="lista-alugueis">
                     <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
@@ -623,9 +660,14 @@
             <div id="faturas-tab" class="tab-pane fade">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
                     <span style="font-size:.75rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase;">Histórico de Faturas</span>
-                    <button class="btn-cy btn-cy-sm" data-bs-toggle="modal" data-bs-target="#modalNovaFatura">
-                        <i class="fas fa-plus"></i> Fatura Manual
-                    </button>
+                    <div style="display:flex;gap:.4rem;">
+                        <button class="btn-cy btn-cy-sm" style="--c:#d29922;" onclick="abrirModalAjustarVencimento()">
+                            <i class="fas fa-calendar-alt"></i> Ajustar Vencimento
+                        </button>
+                        <button class="btn-cy btn-cy-sm" data-bs-toggle="modal" data-bs-target="#modalNovaFatura">
+                            <i class="fas fa-plus"></i> Fatura Manual
+                        </button>
+                    </div>
                 </div>
                 <div id="lista-faturas">
                     <div style="text-align:center; padding:2rem; color:var(--muted);"><div class="cy-spinner"></div></div>
@@ -642,6 +684,45 @@
 <!-- ================================================== -->
 <!-- MODALS -->
 <!-- ================================================== -->
+
+
+<!-- MODAL: AJUSTAR VENCIMENTO DAS FATURAS -->
+<div class="modal fade" id="modalAjustarVencimento" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-calendar-alt me-2" style="color:#d29922;"></i>Ajustar Dia de Vencimento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:.82rem; color:var(--muted); margin-bottom:1rem;">
+                    Altera o dia de vencimento de <strong>todas as faturas abertas</strong> deste cliente,
+                    mantendo o mês e ano originais.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Dia de Vencimento *</label>
+                    <input type="number" class="form-control" id="inputDiaVencimento"
+                           min="1" max="31" placeholder="Ex: 10" required>
+                    <small style="color:var(--muted); font-size:.72rem;">
+                        Para meses com menos dias, será usado o último dia disponível.
+                    </small>
+                </div>
+                <div id="msgErroAjusteVenc" class="alert alert-danger d-none py-2"></div>
+                <div id="msgSucessoAjusteVenc" class="alert alert-success d-none py-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-cy btn-cy-sm" style="--c:#d29922;"
+                        id="btnConfirmarAjuste" onclick="confirmarAjusteVencimento()">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerAjuste"></span>
+                    <i class="fas fa-check me-1"></i>Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- MODAL: NOVA CONSULTORIA -->
 <div class="modal fade" id="modalNovaConsultoria" tabindex="-1">
@@ -685,7 +766,7 @@
                     <div class="mb-3">
                         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin:0;">
                             <input type="checkbox" name="privada" style="width:16px;height:16px;cursor:pointer;">
-                            <span style="font-size:.8rem;color:rgba(0,245,255,.6);">
+                            <span style="font-size:.8rem;color:rgba(88, 166, 255, .6);">
                                 <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
                             </span>
                         </label>
@@ -768,9 +849,15 @@
             <form id="formNovoAluguel" onsubmit="enviarNovoAluguel(event)">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Descrição do Bloco *</label>
-                        <input type="text" class="form-control" name="bloco_descricao" placeholder="Ex: 200.100.50.0/24" required>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Bloco IPv4 *</label>
+                            <input type="text" class="form-control" name="bloco_descricao" placeholder="Ex: 200.100.50.0/24" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Bloco IPv6 <small class="text-muted">(opcional)</small></label>
+                            <input type="text" class="form-control" name="bloco_v6" placeholder="Ex: 2804:1234::/48">
+                        </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
@@ -802,7 +889,7 @@
                     <div class="mb-3">
                         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin:0;">
                             <input type="checkbox" name="privada" style="width:16px;height:16px;cursor:pointer;">
-                            <span style="font-size:.8rem;color:rgba(0,245,255,.6);">
+                            <span style="font-size:.8rem;color:rgba(88, 166, 255, .6);">
                                 <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
                             </span>
                         </label>
@@ -821,6 +908,90 @@
     </div>
 </div>
 
+<!-- MODAL: ASSINATURA DIGITAL -->
+<div class="modal fade" id="modalAssinaturaDigital" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-signature me-2"></i>Assinatura Digital — <span id="assinaturaBloco"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Gerar link -->
+                <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:20px;">
+                    <p style="font-size:.85rem;color:#8b949e;margin-bottom:12px;">Gere um link único para o cliente assinar digitalmente. O link expira após o prazo definido.</p>
+                    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                        <div>
+                            <label style="font-size:.75rem;color:#7d8590;display:block;margin-bottom:4px;">Validade (dias)</label>
+                            <input type="number" id="diasValidade" value="7" min="1" max="30" style="width:90px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 10px;color:#e6edf3;font-size:.9rem;">
+                        </div>
+                        <button class="btn-cy btn-cy-sm" onclick="gerarLinkAssinatura()">
+                            <i class="fas fa-link me-1"></i>Gerar Link
+                        </button>
+                    </div>
+                    <div id="linkAssinaturaBox" style="display:none;margin-top:14px;">
+                        <label style="font-size:.75rem;color:#7d8590;display:block;margin-bottom:4px;">Link para o cliente</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="linkAssinaturaInput" readonly
+                                style="flex:1;background:#161b22;border:1px solid #238636;border-radius:6px;padding:8px 10px;color:#3fb950;font-size:.82rem;font-family:monospace;">
+                            <button class="btn-cy btn-cy-sm" onclick="copiarLink()" title="Copiar">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <small id="linkExpiraInfo" style="color:#7d8590;font-size:.75rem;margin-top:4px;display:block;"></small>
+                    </div>
+                </div>
+
+                <!-- Histórico de contratos -->
+                <p style="font-size:.85rem;font-weight:600;color:#c9d1d9;margin-bottom:10px;">Contratos gerados</p>
+                <div id="listaContratos" style="min-height:60px;">
+                    <div style="text-align:center;color:#7d8590;font-size:.85rem;padding:20px;">Carregando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ASSINATURA DO LOCADOR -->
+<div class="modal fade" id="modalAssinaturaLocador" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pen-nib me-2"></i>Minha Assinatura (Locador)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:.85rem;color:#8b949e;margin-bottom:16px;">
+                    Esta assinatura será usada automaticamente no campo do <strong>Locador</strong> em todos os contratos gerados.
+                </p>
+                <!-- Preview assinatura salva -->
+                <div id="locadorAssPreviewBox" style="display:none;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:18px;text-align:center;">
+                    <p style="font-size:.75rem;color:#7d8590;margin-bottom:8px;">Assinatura atualmente salva:</p>
+                    <img id="locadorAssPreviewImg" src="" alt="Assinatura salva" style="max-height:80px;max-width:300px;filter:invert(1) brightness(2);">
+                    <br>
+                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="limparAssinaturaLocador()">
+                        <i class="fas fa-trash me-1"></i>Remover assinatura salva
+                    </button>
+                </div>
+                <!-- Pad de assinatura -->
+                <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;">
+                    <p style="font-size:.8rem;color:#7d8590;margin-bottom:8px;">Desenhe sua nova assinatura abaixo:</p>
+                    <canvas id="locadorAssCanvas" width="660" height="160"
+                        style="background:#fff;border-radius:6px;cursor:crosshair;width:100%;display:block;touch-action:none;"></canvas>
+                    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="locadorAssClear()">
+                            <i class="fas fa-eraser me-1"></i>Limpar
+                        </button>
+                        <button class="btn-cy btn-cy-sm ms-auto" onclick="salvarAssinaturaLocador()">
+                            <i class="fas fa-save me-1"></i>Salvar Assinatura
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL: EDITAR ALUGUEL -->
 <div class="modal fade" id="modalEditarAluguel" tabindex="-1">
     <div class="modal-dialog">
@@ -833,9 +1004,15 @@
                 {% csrf_token %}
                 <input type="hidden" id="editAluguelId">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Descrição *</label>
-                        <input type="text" class="form-control" id="editAluguelDescricao" name="bloco_descricao" required>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Bloco IPv4 *</label>
+                            <input type="text" class="form-control" id="editAluguelDescricao" name="bloco_descricao" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Bloco IPv6 <small class="text-muted">(opcional)</small></label>
+                            <input type="text" class="form-control" id="editAluguelV6" name="bloco_v6" placeholder="Ex: 2804:1234::/48">
+                        </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
@@ -905,7 +1082,7 @@
                     <div class="mb-3">
                         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin:0;">
                             <input type="checkbox" name="privada" style="width:16px;height:16px;cursor:pointer;">
-                            <span style="font-size:.8rem;color:rgba(0,245,255,.6);">
+                            <span style="font-size:.8rem;color:rgba(88, 166, 255, .6);">
                                 <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
                             </span>
                         </label>
@@ -952,7 +1129,7 @@
                     <div class="mb-3">
                         <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin:0;">
                             <input type="checkbox" name="privada" style="width:16px;height:16px;cursor:pointer;">
-                            <span style="font-size:.8rem;color:rgba(0,245,255,.6);">
+                            <span style="font-size:.8rem;color:rgba(88, 166, 255, .6);">
                                 <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
                             </span>
                         </label>
@@ -983,8 +1160,8 @@
                 <div style="text-align:center; padding:2rem;"><div class="cy-spinner"></div></div>
             </div>
             <div id="secaoPagamentosRegistrados" style="display:none;" class="px-3 pb-3">
-                <hr style="border-color:rgba(0,245,255,.12);">
-                <div style="font-family:'Orbitron',sans-serif; font-size:.72rem; color:var(--cy); letter-spacing:2px; margin-bottom:.75rem; text-transform:uppercase;">
+                <hr style="border-color:rgba(88, 166, 255, .12);">
+                <div style="font-family:'Inter',sans-serif; font-size:.72rem; color:var(--cy); letter-spacing:2px; margin-bottom:.75rem; text-transform:uppercase;">
                     <i class="fas fa-history me-2"></i>Pagamentos Registrados
                 </div>
                 <div id="tabelaPagamentosContainer">
@@ -1087,8 +1264,8 @@
 <!-- ═══ MODAL NOVA DESPESA ════════════════════════════════════════════════ -->
 <div class="modal fade" id="modalNovaDespesa" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="background:#0d1822;border:1px solid rgba(0,245,255,.2);">
-      <div class="modal-header" style="border-color:rgba(0,245,255,.15);">
+    <div class="modal-content" style="background:#0d1822;border:1px solid rgba(88, 166, 255, .2);">
+      <div class="modal-header" style="border-color:rgba(88, 166, 255, .15);">
         <h5 class="modal-title" style="color:var(--cy);font-size:.9rem;"><i class="fas fa-file-invoice-dollar"></i> Nova Despesa</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -1123,22 +1300,26 @@
               </select>
             </div>
             <div class="col-6">
-              <label class="form-label cy-label">Recorrência</label>
-              <select class="form-select cy-input" name="recorrencia" onchange="toggleMesesRecorrencia(this,'novaMesesWrap')">
-                <option value="UNICA" selected>Única</option>
-                <option value="MENSAL">Mensal</option>
-                <option value="BIMESTRAL">Bimestral</option>
-                <option value="TRIMESTRAL">Trimestral</option>
-                <option value="SEMESTRAL">Semestral</option>
-                <option value="ANUAL">Anual</option>
+              <label class="form-label cy-label">Parcelas</label>
+              <select class="form-select cy-input" name="parcelas" id="novaDespesaParcelas" onchange="toggleParcelas(this)">
+                <option value="1" selected>1x (sem parcelamento)</option>
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
+                <option value="5">5x</option>
+                <option value="6">6x</option>
+                <option value="7">7x</option>
+                <option value="8">8x</option>
+                <option value="9">9x</option>
+                <option value="10">10x</option>
+                <option value="11">11x</option>
+                <option value="12">12x</option>
               </select>
             </div>
           </div>
-          <div class="mb-2 d-none" id="novaMesesWrap">
-            <label class="form-label cy-label">Repetir por quantos meses? <span style="color:var(--muted);font-weight:400">(vazio = indefinido)</span></label>
-            <input type="number" min="1" max="360" class="form-control cy-input" name="meses_recorrencia" placeholder="Ex: 12">
-            <small style="display:block;margin-top:.3rem;color:#6a9bb5;">
-              <i class="fas fa-info-circle me-1"></i>Deixe vazio para repetir indefinidamente. Coloque o número de meses para um período específico.
+          <div class="mb-2 d-none" id="novaParcelajHint">
+            <small style="display:block;padding:6px 10px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);border-radius:6px;color:#3fb950;">
+              <i class="fas fa-layer-group me-1"></i>Serão criadas <strong id="hintParcelas">2</strong> despesas mensais automaticamente com sufixo (1/N), (2/N)…
             </small>
           </div>
           <div class="mb-2">
@@ -1148,15 +1329,15 @@
           <div class="mb-3">
             <div style="display:flex;align-items:center;gap:.5rem;">
               <input type="checkbox" id="novaDespesaPrivada" name="privada" style="width:16px;height:16px;cursor:pointer;">
-              <label for="novaDespesaPrivada" style="margin:0;font-size:.8rem;color:rgba(0,245,255,.6);cursor:pointer;">
+              <label for="novaDespesaPrivada" style="margin:0;font-size:.8rem;color:rgba(88, 166, 255, .6);cursor:pointer;">
                 <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
               </label>
             </div>
             <small style="display:block;margin-top:.2rem;color:var(--muted);margin-left:1.5rem;">Desmarcado = visível para todos</small>
           </div>
-          <div class="modal-footer" style="border-color:rgba(0,245,255,.1);padding:.75rem 0 0;">
+          <div class="modal-footer" style="border-color:rgba(88, 166, 255, .1);padding:.75rem 0 0;">
             <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-sm" style="background:rgba(0,245,255,.15);border:1px solid var(--cy);color:var(--cy);" id="btnSalvarDespesa">
+            <button type="submit" class="btn btn-sm" style="background:rgba(88, 166, 255, .15);border:1px solid var(--cy);color:var(--cy);" id="btnSalvarDespesa">
               <span id="spinnerDespesa" class="spinner-border spinner-border-sm d-none me-1"></span>
               <i class="fas fa-save"></i> Salvar
             </button>
@@ -1170,9 +1351,9 @@
 <!-- ═══ MODAL EDITAR DESPESA ══════════════════════════════════════════════ -->
 <div class="modal fade" id="modalEditarDespesa" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="background:#0d1822;border:1px solid rgba(0,245,255,.2);">
-      <div class="modal-header" style="border-color:rgba(0,245,255,.15);">
-        <h5 class="modal-title" style="color:#ffa500;font-size:.9rem;"><i class="fas fa-edit"></i> Editar Despesa</h5>
+    <div class="modal-content" style="background:#0d1822;border:1px solid rgba(88, 166, 255, .2);">
+      <div class="modal-header" style="border-color:rgba(88, 166, 255, .15);">
+        <h5 class="modal-title" style="color:#d29922;font-size:.9rem;"><i class="fas fa-edit"></i> Editar Despesa</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -1195,7 +1376,7 @@
             </div>
           </div>
           <div class="row g-2 mb-2">
-            <div class="col-4">
+            <div class="col-6">
               <label class="form-label cy-label">Categoria</label>
               <select class="form-select cy-input" id="editDespesaCat">
                 <option value="INFRAESTRUTURA">Infraestrutura</option>
@@ -1206,29 +1387,13 @@
                 <option value="OUTROS">Outros</option>
               </select>
             </div>
-            <div class="col-4">
-              <label class="form-label cy-label">Recorrência</label>
-              <select class="form-select cy-input" id="editDespesaRecorr" onchange="toggleMesesRecorrencia(this,'editMesesWrap')">
-                <option value="UNICA">Única</option>
-                <option value="MENSAL">Mensal</option>
-                <option value="BIMESTRAL">Bimestral</option>
-                <option value="TRIMESTRAL">Trimestral</option>
-                <option value="SEMESTRAL">Semestral</option>
-                <option value="ANUAL">Anual</option>
-              </select>
-            </div>
-            <div class="col-4">
+            <div class="col-6">
               <label class="form-label cy-label">Status</label>
               <select class="form-select cy-input" id="editDespesaStatus">
                 <option value="PENDENTE">Pendente</option>
                 <option value="PAGO">Pago</option>
               </select>
             </div>
-          </div>
-          <div class="mb-2 d-none" id="editMesesWrap">
-            <label class="form-label cy-label">Total de meses <span style="color:var(--muted);font-weight:400">(vazio = indefinido)</span></label>
-            <input type="number" min="1" max="360" class="form-control cy-input" id="editDespesaMeses" placeholder="Ex: 12">
-            <div id="editDespesaRecorrInfo" style="margin-top:.5rem;padding:.5rem;background:rgba(176,96,255,.08);border:1px solid rgba(176,96,255,.2);border-radius:4px;font-size:.75rem;color:#b060ff;display:none;"></div>
           </div>
           <div class="mb-2" id="editDespesaDataPgWrap">
             <label class="form-label cy-label">Data do Pagamento</label>
@@ -1241,15 +1406,15 @@
           <div class="mb-3">
             <div style="display:flex;align-items:center;gap:.5rem;">
               <input type="checkbox" id="editDespesaPrivada" style="width:16px;height:16px;cursor:pointer;">
-              <label for="editDespesaPrivada" style="margin:0;font-size:.8rem;color:rgba(0,245,255,.6);cursor:pointer;">
+              <label for="editDespesaPrivada" style="margin:0;font-size:.8rem;color:rgba(88, 166, 255, .6);cursor:pointer;">
                 <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
               </label>
             </div>
             <small style="display:block;margin-top:.2rem;color:var(--muted);margin-left:1.5rem;">Desmarcado = visível para todos</small>
           </div>
-          <div class="modal-footer" style="border-color:rgba(0,245,255,.1);padding:.75rem 0 0;">
+          <div class="modal-footer" style="border-color:rgba(88, 166, 255, .1);padding:.75rem 0 0;">
             <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-sm" style="background:rgba(255,165,0,.15);border:1px solid #ffa500;color:#ffa500;">
+            <button type="submit" class="btn btn-sm" style="background:rgba(255,165,0,.15);border:1px solid #d29922;color:#d29922;">
               <i class="fas fa-save"></i> Atualizar
             </button>
           </div>
@@ -1314,11 +1479,11 @@ function limparErro(elId) {
     if (el) el.classList.add('d-none');
 }
 function mostrarToast(msg, tipo = 'success') {
-    const cores = { success: 'rgba(0,255,136,.9)', warning: 'rgba(255,165,0,.9)', danger: 'rgba(255,85,85,.9)', info: 'rgba(0,245,255,.9)' };
+    const cores = { success: 'rgba(63, 185, 80, .9)', warning: 'rgba(255,165,0,.9)', danger: 'rgba(255,85,85,.9)', info: 'rgba(88, 166, 255, .9)' };
     const el = document.createElement('div');
     el.style.cssText = `position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
         background:${cores[tipo]||'#333'};color:#020c14;padding:.7rem 1.2rem;
-        border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:.82rem;
+        border-radius:5px;font-family:'Inter', sans-serif;font-size:.82rem;
         font-weight:700;max-width:360px;letter-spacing:.5px;
         box-shadow:0 0 20px ${cores[tipo]||'#333'};animation:slideIn .3s ease;`;
     el.textContent = msg;
@@ -1347,7 +1512,7 @@ function carregarDashboardInicial() {
         document.getElementById('info-ticket').textContent       = 'média por fatura paga';
 
         const vp = data.variacao_percentual;
-        const cor = vp >= 0 ? '#00ff88' : '#ff5555';
+        const cor = vp >= 0 ? '#3fb950' : '#f85149';
         const sinal = vp >= 0 ? '▲' : '▼';
         document.getElementById('variacao-badge').innerHTML =
             `<span style="color:${cor};font-size:.68rem;">${sinal} ${Math.abs(vp).toFixed(1)}% vs mês anterior</span>`;
@@ -1369,12 +1534,12 @@ function carregarDashboardInicial() {
                     <th></th>
                 </tr></thead><tbody>`;
             data.clientes_abertos.forEach(c => {
-                const cor = c.dias_atraso > 60 ? 'var(--rd)' : c.dias_atraso > 30 ? 'var(--or)' : '#c9d8e8';
+                const cor = c.dias_atraso > 60 ? 'var(--rd)' : c.dias_atraso > 30 ? 'var(--or)' : '#c9d1d9';
                 html += `<tr>
                     <td style="color:var(--cy);font-weight:600;">${c.nome_empresa}</td>
                     <td style="color:var(--muted);font-size:.72rem;">${c.cnpj}</td>
                     <td style="text-align:center;"><span class="badge-cy b-err">${c.boletos_abertos}</span></td>
-                    <td style="text-align:right;color:${cor};font-family:'Orbitron',sans-serif;font-size:.8rem;">R$ ${fmt(c.valor_total)}</td>
+                    <td style="text-align:right;color:${cor};font-family:'Inter',sans-serif;font-size:.8rem;">R$ ${fmt(c.valor_total)}</td>
                     <td style="text-align:center;color:${cor};font-size:.75rem;">${c.dias_atraso}d</td>
                     <td><a href="?cliente_id=${c.id}" class="btn-cy btn-cy-sm"><i class="fas fa-arrow-right"></i></a></td>
                 </tr>`;
@@ -1430,7 +1595,7 @@ function carregarTopClientes() {
             html += `<div style="margin-bottom:.75rem;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:.25rem;font-size:.75rem;">
                     <span><a href="?cliente_id=${c.id}" style="color:var(--cy);text-decoration:none;">${medal} ${c.nome.substring(0,24)}</a></span>
-                    <span style="color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.7rem;">R$ ${fmt(c.total_pago)}</span>
+                    <span style="color:var(--gr);font-family:'Inter',sans-serif;font-size:.7rem;">R$ ${fmt(c.total_pago)}</span>
                 </div>
                 <div class="aging-bar-bg">
                     <div class="aging-bar-fill" style="width:${pct.toFixed(1)}%;background:var(--gr);"></div>
@@ -1491,7 +1656,7 @@ function carregarClientesPagaramVencidos() {
                 <td style="color:var(--cy);">${c.nome_empresa}</td>
                 <td style="color:var(--muted);font-size:.72rem;">${c.cnpj}</td>
                 <td style="text-align:center;"><span class="badge-cy b-ok">${c.faturas_pagas_atraso}</span></td>
-                <td style="text-align:right;color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(c.valor_total_quitado)}</td>
+                <td style="text-align:right;color:var(--gr);font-family:'Inter',sans-serif;font-size:.78rem;">R$ ${fmt(c.valor_total_quitado)}</td>
                 <td style="text-align:center;"><span class="badge-cy ${corBadge}">${c.media_dias_atraso}d</span></td>
                 <td style="text-align:center;color:var(--muted);font-size:.72rem;">${c.ultimo_pagamento}</td>
                 <td style="text-align:center;white-space:nowrap;">
@@ -1540,9 +1705,9 @@ function abrirDetalheQuitadas(cliente) {
         </tr>`;
     });
 
-    html += `<tr style="border-top:1px solid rgba(0,245,255,.15);">
+    html += `<tr style="border-top:1px solid rgba(88, 166, 255, .15);">
         <td style="color:var(--muted);">Total</td>
-        <td style="text-align:right;color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(totalValor)}</td>
+        <td style="text-align:right;color:var(--gr);font-family:'Inter',sans-serif;font-size:.78rem;">R$ ${fmt(totalValor)}</td>
         <td colspan="3"></td>
     </tr></tbody></table></div>`;
 
@@ -1569,15 +1734,15 @@ function carregarGrafico() {
                     {
                         label: 'Recebido',
                         data: data.valores_pagos,
-                        backgroundColor: 'rgba(0,255,136,0.55)',
-                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(63, 185, 80, 0.55)',
+                        borderColor: '#3fb950',
                         borderWidth: 1, borderRadius: 4, order: 1,
                     },
                     {
                         label: 'Em Aberto',
                         data: data.valores_abertos,
                         backgroundColor: 'rgba(255,85,85,0.4)',
-                        borderColor: '#ff5555',
+                        borderColor: '#f85149',
                         borderWidth: 1, borderRadius: 4, order: 2,
                     }
                 ]
@@ -1585,17 +1750,17 @@ function carregarGrafico() {
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { color: 'rgba(0,245,255,.5)', font: { size: 11, family: "'Share Tech Mono',monospace" } } },
-                    tooltip: { backgroundColor: '#060c18', titleColor: '#00f5ff', bodyColor: '#c9d8e8', borderColor: 'rgba(0,245,255,.2)', borderWidth: 1 }
+                    legend: { labels: { color: 'rgba(88, 166, 255, .5)', font: { size: 11, family: "'Inter', sans-serif" } } },
+                    tooltip: { backgroundColor: '#161b22', titleColor: '#58a6ff', bodyColor: '#c9d1d9', borderColor: 'rgba(88, 166, 255, .2)', borderWidth: 1 }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { color: 'rgba(0,245,255,.45)', callback: v => 'R$ ' + fmt(v), font: { family:"'Share Tech Mono',monospace", size:10 } },
-                        grid: { color: 'rgba(0,245,255,.06)' }
+                        ticks: { color: 'rgba(88, 166, 255, .45)', callback: v => 'R$ ' + fmt(v), font: { family:"'Inter', sans-serif", size:10 } },
+                        grid: { color: 'rgba(88, 166, 255, .06)' }
                     },
                     x: {
-                        ticks: { color: 'rgba(0,245,255,.45)', font: { family:"'Share Tech Mono',monospace", size:10 } },
+                        ticks: { color: 'rgba(88, 166, 255, .45)', font: { family:"'Inter', sans-serif", size:10 } },
                         grid: { display: false }
                     }
                 }
@@ -1630,9 +1795,9 @@ function carregarAging() {
             </div>`;
         });
 
-        html += `<div style="display:flex;justify-content:space-between;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(0,245,255,.1);font-size:.78rem;">
+        html += `<div style="display:flex;justify-content:space-between;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(88, 166, 255, .1);font-size:.78rem;">
             <span style="color:var(--muted);">Total Vencido</span>
-            <span style="color:var(--rd);font-family:'Orbitron',sans-serif;font-size:.75rem;">R$ ${fmt(total)}</span>
+            <span style="color:var(--rd);font-family:'Inter',sans-serif;font-size:.75rem;">R$ ${fmt(total)}</span>
         </div>`;
         div.innerHTML = html || '<div style="text-align:center;padding:2rem;color:var(--gr);font-size:.8rem;">Sem faturas vencidas 🎉</div>';
     })
@@ -1663,9 +1828,9 @@ function pesquisarClientes() {
                     ? `<span class="badge-cy b-err" style="margin-left:.5rem;">${c.boletos_abertos} vencida(s)</span>`
                     : `<span class="badge-cy b-ok" style="margin-left:.5rem;">Em dia</span>`;
                 html += `<a href="?cliente_id=${c.id}" style="
-                    display:block; background:var(--bg3); border:1px solid rgba(0,245,255,.12);
+                    display:block; background:var(--bg3); border:1px solid rgba(88, 166, 255, .12);
                     border-radius:5px; padding:.5rem .75rem; text-decoration:none;
-                    transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(0,245,255,.35)'" onmouseout="this.style.borderColor='rgba(0,245,255,.12)'">
+                    transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(88, 166, 255, .35)'" onmouseout="this.style.borderColor='rgba(88, 166, 255, .12)'">
                     <span style="color:var(--cy);font-size:.8rem;">${c.nome_empresa}${badge}</span><br>
                     <span style="color:var(--muted);font-size:.7rem;">${c.cnpj}</span>
                 </a>`;
@@ -1791,9 +1956,10 @@ function enviarNovoAluguel(event) {
     .finally(() => { spinner.classList.add('d-none'); btn.disabled = false; });
 }
 
-function abrirEditarAluguel(id, descricao, valor, ips, dataInicio) {
+function abrirEditarAluguel(id, descricao, v6, valor, ips, dataInicio) {
     document.getElementById('editAluguelId').value        = id;
     document.getElementById('editAluguelDescricao').value = descricao;
+    document.getElementById('editAluguelV6').value        = v6 || '';
     document.getElementById('editAluguelValor').value     = valor;
     document.getElementById('editAluguelIps').value       = ips;
 
@@ -1857,6 +2023,176 @@ function carregarAlugueis() {
     .then(r => r.json())
     .then(data => { if (data.sucesso) document.getElementById('lista-alugueis').innerHTML = data.html; });
 }
+
+// ===== ASSINATURA DIGITAL =====
+let _aluguelIdAssinatura = null;
+
+function abrirContratosAluguel(id, bloco) {
+    _aluguelIdAssinatura = id;
+    document.getElementById('assinaturaBloco').textContent = bloco;
+    document.getElementById('linkAssinaturaBox').style.display = 'none';
+    carregarContratosAluguel();
+    new bootstrap.Modal(document.getElementById('modalAssinaturaDigital')).show();
+}
+
+function carregarContratosAluguel() {
+    if (!_aluguelIdAssinatura) return;
+    fetch(`/financeiro/api/aluguel/${_aluguelIdAssinatura}/contratos/`)
+    .then(r => r.json())
+    .then(d => {
+        const el = document.getElementById('listaContratos');
+        if (!d.ok || !d.contratos.length) {
+            el.innerHTML = '<div style="text-align:center;color:#7d8590;font-size:.85rem;padding:20px;">Nenhum contrato gerado ainda.</div>';
+            return;
+        }
+        const badgeColor = { pendente:'#d29922', assinado:'#3fb950', expirado:'#f85149' };
+        el.innerHTML = d.contratos.map(c => `
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:.82rem;color:#8b949e;">Criado em ${c.criado_em}${c.expira_em ? ' · Expira: '+c.expira_em : ''}</div>
+                ${c.nome_assinante ? `<div style="font-size:.85rem;color:#c9d1d9;margin-top:2px;">✍️ <b>${c.nome_assinante}</b> — ${c.assinado_em}</div>` : ''}
+            </div>
+            <span style="padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;background:${badgeColor[c.status]}22;color:${badgeColor[c.status]};border:1px solid ${badgeColor[c.status]}44;">${c.status_label}</span>
+            ${c.status === 'pendente' ? `<button class="btn btn-sm btn-outline-secondary" onclick="copiarTexto('${c.link}')" title="Copiar link"><i class="fas fa-copy"></i></button>` : ''}
+            ${c.pdf_url ? `<a href="${c.pdf_url}" target="_blank" class="btn btn-sm btn-outline-success" title="Baixar PDF assinado"><i class="fas fa-file-pdf"></i></a>` : ''}
+        </div>`).join('');
+    });
+}
+
+function gerarLinkAssinatura() {
+    if (!_aluguelIdAssinatura) return;
+    const dias = document.getElementById('diasValidade').value || 7;
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf());
+    fd.append('dias_validade', dias);
+    fetch(`/financeiro/api/aluguel/${_aluguelIdAssinatura}/link-assinatura/`, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) {
+            document.getElementById('linkAssinaturaInput').value = d.link;
+            document.getElementById('linkExpiraInfo').textContent = `Válido até ${d.expira_em}`;
+            document.getElementById('linkAssinaturaBox').style.display = 'block';
+            carregarContratosAluguel();
+        } else {
+            alert('Erro: ' + (d.erro || ''));
+        }
+    });
+}
+
+function copiarLink() {
+    const input = document.getElementById('linkAssinaturaInput');
+    copiarTexto(input.value);
+}
+
+function copiarTexto(txt) {
+    navigator.clipboard.writeText(txt).then(() => mostrarToast('Link copiado!', 'success'));
+}
+
+// ===== ASSINATURA LOCADOR =====
+(function() {
+    let _canvas, _ctx, _drawing = false, _lastX = 0, _lastY = 0;
+
+    window.abrirAssinaturaLocador = function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalAssinaturaLocador'));
+        modal.show();
+        document.getElementById('modalAssinaturaLocador').addEventListener('shown.bs.modal', function() {
+            _initCanvas();
+        }, { once: true });
+        // Carrega assinatura salva
+        fetch('/financeiro/api/assinatura-locador/')
+        .then(r => r.json())
+        .then(d => {
+            const box = document.getElementById('locadorAssPreviewBox');
+            const img = document.getElementById('locadorAssPreviewImg');
+            if (d.ok && d.assinatura) {
+                img.src = d.assinatura;
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
+        });
+    };
+
+    function _initCanvas() {
+        _canvas = document.getElementById('locadorAssCanvas');
+        _ctx = _canvas.getContext('2d');
+        _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+        _ctx.strokeStyle = '#111';
+        _ctx.lineWidth = 2.5;
+        _ctx.lineCap = 'round';
+        _ctx.lineJoin = 'round';
+        _canvas.onmousedown  = e => { _drawing = true; [_lastX, _lastY] = _pos(e); };
+        _canvas.onmousemove  = e => { if (!_drawing) return; _draw(_pos(e)); };
+        _canvas.onmouseup    = () => { _drawing = false; };
+        _canvas.onmouseleave = () => { _drawing = false; };
+        _canvas.ontouchstart = e => { e.preventDefault(); _drawing = true; [_lastX, _lastY] = _pos(e.touches[0]); };
+        _canvas.ontouchmove  = e => { e.preventDefault(); if (!_drawing) return; _draw(_pos(e.touches[0])); };
+        _canvas.ontouchend   = () => { _drawing = false; };
+    }
+
+    function _pos(e) {
+        const r = _canvas.getBoundingClientRect();
+        const scaleX = _canvas.width / r.width;
+        const scaleY = _canvas.height / r.height;
+        return [(e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleY];
+    }
+
+    function _draw([x, y]) {
+        _ctx.beginPath();
+        _ctx.moveTo(_lastX, _lastY);
+        _ctx.lineTo(x, y);
+        _ctx.stroke();
+        [_lastX, _lastY] = [x, y];
+    }
+
+    window.locadorAssClear = function() {
+        if (_canvas) _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+    };
+
+    window.salvarAssinaturaLocador = function() {
+        if (!_canvas) return;
+        const data = _canvas.toDataURL('image/png');
+        // Verifica se o canvas está em branco
+        const blank = document.createElement('canvas');
+        blank.width = _canvas.width; blank.height = _canvas.height;
+        if (data === blank.toDataURL('image/png')) {
+            mostrarToast('Desenhe sua assinatura antes de salvar.', 'warning');
+            return;
+        }
+        fetch('/financeiro/api/assinatura-locador/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ assinatura: data })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                mostrarToast('Assinatura salva com sucesso!', 'success');
+                document.getElementById('locadorAssPreviewImg').src = data;
+                document.getElementById('locadorAssPreviewBox').style.display = 'block';
+                locadorAssClear();
+            } else {
+                mostrarToast('Erro: ' + (d.erro || ''), 'error');
+            }
+        });
+    };
+
+    window.limparAssinaturaLocador = function() {
+        if (!confirm('Remover a assinatura salva?')) return;
+        fetch('/financeiro/api/assinatura-locador/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ assinatura: '' })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                mostrarToast('Assinatura removida.', 'warning');
+                document.getElementById('locadorAssPreviewBox').style.display = 'none';
+            }
+        });
+    };
+})();
 
 // ===== VENDAS =====
 function atualizarValorParcela() {
@@ -2012,7 +2348,7 @@ function visualizarFatura(faturaId) {
             ? f.itens.map(i => `<tr>
                 <td>${i.descricao}</td>
                 <td><span class="badge-cy b-info">${i.tipo}</span></td>
-                <td style="text-align:right;color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(i.valor)}</td>
+                <td style="text-align:right;color:var(--gr);font-family:'Inter',sans-serif;font-size:.78rem;">R$ ${fmt(i.valor)}</td>
               </tr>`).join('')
             : '<tr><td colspan="3" style="text-align:center;color:var(--muted);">Nenhum item associado</td></tr>';
 
@@ -2022,7 +2358,7 @@ function visualizarFatura(faturaId) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
             <div>
                 <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Número</div>
-                <div style="font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--cy);">${f.numero_fatura}</div>
+                <div style="font-family:'Inter',sans-serif;font-size:1rem;color:var(--cy);">${f.numero_fatura}</div>
             </div>
             <div>
                 <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Status</div>
@@ -2032,16 +2368,16 @@ function visualizarFatura(faturaId) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
             <div>
                 <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Valor Total</div>
-                <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--gr);">R$ ${fmt(f.valor_total)}</div>
+                <div style="font-family:'Inter',sans-serif;font-size:1.2rem;color:var(--gr);">R$ ${fmt(f.valor_total)}</div>
             </div>
             <div>
                 <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.25rem;">Vencimento</div>
-                <div style="font-size:.9rem;color:#c9d8e8;">${f.data_vencimento}</div>
+                <div style="font-size:.9rem;color:#c9d1d9;">${f.data_vencimento}</div>
             </div>
         </div>
-        <hr style="border-color:rgba(0,245,255,.1);">
+        <hr style="border-color:rgba(88, 166, 255, .1);">
         <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Cliente</div>
-        <div style="background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.1);border-radius:5px;padding:.6rem .75rem;margin-bottom:1rem;">
+        <div style="background:rgba(88, 166, 255, .04);border:1px solid rgba(88, 166, 255, .1);border-radius:5px;padding:.6rem .75rem;margin-bottom:1rem;">
             <div style="color:var(--cy);font-size:.85rem;">${f.cliente.nome}</div>
             <div style="color:var(--muted);font-size:.72rem;">CNPJ: ${f.cliente.cnpj}${f.cliente.email ? ' | ' + f.cliente.email : ''}</div>
         </div>
@@ -2091,22 +2427,22 @@ function carregarPagamentos(faturaId) {
             tbody.innerHTML += `<tr>
                 <td><span class="badge-cy b-info">${p.numero_recibo}</span></td>
                 <td style="font-size:.72rem;color:var(--muted);">${p.data_pagamento}</td>
-                <td style="color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(p.valor)}</td>
+                <td style="color:var(--gr);font-family:'Inter',sans-serif;font-size:.78rem;">R$ ${fmt(p.valor)}</td>
                 <td>${btns}</td>
                 <td><button onclick="deletarPagamento(${p.id})" class="btn-cy btn-cy-rd btn-cy-sm" title="Deletar"><i class="fas fa-trash"></i></button></td>
             </tr>`;
         });
 
-        tbody.innerHTML += `<tr style="border-top:1px solid rgba(0,245,255,.15);">
+        tbody.innerHTML += `<tr style="border-top:1px solid rgba(88, 166, 255, .15);">
             <td colspan="2" style="text-align:right;color:var(--muted);font-size:.72rem;">Total Pago:</td>
-            <td style="color:var(--gr);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(data.total_pago)}</td>
+            <td style="color:var(--gr);font-family:'Inter',sans-serif;font-size:.78rem;">R$ ${fmt(data.total_pago)}</td>
             <td colspan="2"></td>
         </tr>`;
 
         if (data.saldo_fatura > 0) {
             tbody.innerHTML += `<tr>
                 <td colspan="2" style="text-align:right;color:var(--muted);font-size:.72rem;">Saldo Pendente:</td>
-                <td style="color:var(--rd);font-family:'Orbitron',sans-serif;font-size:.78rem;">R$ ${fmt(data.saldo_fatura)}</td>
+                <td style="color:var(--rd);font-family:'Inter',sans-serif;font-size:.78rem;">R$ ${fmt(data.saldo_fatura)}</td>
                 <td colspan="2"></td>
             </tr>`;
         }
@@ -2152,11 +2488,18 @@ function enviarRegistroPagamento(event) {
     .then(r => r.json())
     .then(data => {
         if (data.sucesso) {
-            bootstrap.Modal.getInstance(document.getElementById('modalRegistrarPagamento')).hide();
-            form.reset();
-            visualizarFatura(faturaAtualId);
-            if (clienteId) carregarFaturas(); else { carregarDashboardInicial(); carregarClientesPagaramVencidos(); }
-            mostrarToast(`Pagamento registrado! Recibo: ${data.pagamento.numero_recibo}`, 'success');
+            const _modalEl = document.getElementById('modalRegistrarPagamento');
+            const _recibo  = data.pagamento.numero_recibo;
+            // Aguarda o modal fechar completamente antes de abrir outro (evita backdrop preso)
+            _modalEl.addEventListener('hidden.bs.modal', function _onHidden() {
+                _modalEl.removeEventListener('hidden.bs.modal', _onHidden);
+                form.reset();
+                visualizarFatura(faturaAtualId);
+                if (clienteId) carregarFaturas();
+                else { carregarDashboardInicial(); carregarClientesPagaramVencidos(); }
+                mostrarToast(`Pagamento registrado! Recibo: ${_recibo}`, 'success');
+            });
+            bootstrap.Modal.getInstance(_modalEl).hide();
         } else { mostrarErro('msgErroPagamento', data.erro); }
     })
     .catch(e => mostrarErro('msgErroPagamento', e.message))
@@ -2185,16 +2528,27 @@ async function carregarDespesasDashboard() {
         if (d.count_hoje > 0) sub.push(`${d.count_hoje} vence hoje`);
         document.getElementById('kpi-despesas-sub').textContent = sub.join(' · ') || 'Sem pendências';
 
-        // Alertas
+        // Card de vencidas
+        const cardVenc = document.getElementById('card-despesas-vencidas');
+        const tbodyVenc = document.getElementById('tabela-despesas-vencidas');
+        const badgeVenc = document.getElementById('badge-despesas-vencidas');
+        if (d.vencidas.length > 0) {
+            badgeVenc.textContent = d.vencidas.length + ' vencida' + (d.vencidas.length > 1 ? 's' : '');
+            tbodyVenc.innerHTML = d.vencidas.map(x => `
+                <tr style="border-bottom:1px solid #21262d;">
+                    <td style="padding:7px 8px;color:#e6edf3;">${x.nome}</td>
+                    <td style="padding:7px 8px;color:#8b949e;">${x.categoria}</td>
+                    <td style="padding:7px 8px;color:#f87272;text-align:right;font-weight:600;">R$ ${fmt(x.valor)}</td>
+                    <td style="padding:7px 8px;color:#f87272;text-align:right;white-space:nowrap;">${x.data_vencimento_fmt}</td>
+                </tr>`).join('');
+            cardVenc.style.display = 'block';
+        } else {
+            cardVenc.style.display = 'none';
+        }
+
+        // Alerta "vence hoje" (strip pequeno mantido)
         const wrap = document.getElementById('despesas-alerta-wrap');
         let html = '';
-        if (d.vencidas.length > 0) {
-            html += `<div class="alerta-despesa vencida">
-                <i class="fas fa-exclamation-circle"></i>
-                <strong>${d.vencidas.length} despesa${d.vencidas.length>1?'s':''} vencida${d.vencidas.length>1?'s':''}:</strong>
-                ${d.vencidas.map(x => `<span style="margin-left:.4rem">${x.nome} <strong>R$ ${fmt(x.valor)}</strong> (${x.data_vencimento_fmt})</span>`).join(' &bull; ')}
-            </div>`;
-        }
         if (d.hoje.length > 0) {
             html += `<div class="alerta-despesa hoje">
                 <i class="fas fa-calendar-day"></i>
@@ -2220,25 +2574,14 @@ async function carregarDespesas() {
             return;
         }
 
-        const header = `<div class="despesa-row" style="font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(0,245,255,.1);">
-            <span><i class="fas fa-tag me-1" style="opacity:.5;"></i>Nome</span><span><i class="fas fa-infinity me-1" style="opacity:.5;"></i>Recorrência</span><span style="text-align:right"><i class="fas fa-dollar-sign me-1" style="opacity:.5;"></i>Valor</span><span style="text-align:center"><i class="fas fa-calendar me-1" style="opacity:.5;"></i>Vencimento</span><span style="text-align:center"><i class="fas fa-check-circle me-1" style="opacity:.5;"></i>Status</span>
+        const header = `<div class="despesa-row" style="font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(88, 166, 255, .1);">
+            <span><i class="fas fa-tag me-1" style="opacity:.5;"></i>Nome</span><span style="text-align:right"><i class="fas fa-dollar-sign me-1" style="opacity:.5;"></i>Valor</span><span style="text-align:center"><i class="fas fa-calendar me-1" style="opacity:.5;"></i>Vencimento</span><span style="text-align:center"><i class="fas fa-check-circle me-1" style="opacity:.5;"></i>Status</span>
         </div>`;
 
         const rows = d.despesas.map(x => {
             const se = x.status_efetivo;
             const badgeCls = se==='VENCIDO'?'badge-vencido':se==='VENCE_HOJE'?'badge-hoje':se==='PAGO'?'badge-pago':'badge-pendente';
             const badgeLbl = se==='VENCIDO'?'Vencida':se==='VENCE_HOJE'?'Vence Hoje':se==='PAGO'?'Pago':'Pendente';
-
-            // Recorrência melhorada
-            let recorrrenciaDisplay = '—';
-            if (x.recorrencia !== 'UNICA') {
-                let recLabel = x.recorrencia_label.split(' ')[0].toLowerCase();
-                if (x.meses_recorrencia) {
-                    recorrrenciaDisplay = `${x.ocorrencia_atual}/${x.meses_recorrencia} ${recLabel}`;
-                } else {
-                    recorrrenciaDisplay = `${x.ocorrencia_atual}x ${recLabel}`;
-                }
-            }
 
             const btnPagar = x.status !== 'PAGO'
                 ? `<button class="cy-btn-sm" style="border-color:#40d080;color:#40d080;transition:all .15s;" onmouseover="this.style.background='rgba(64,208,128,.2)'" onmouseout="this.style.background=''" onclick="pagarDespesa(${x.id})" title="Marcar como paga"><i class="fas fa-check"></i></button>`
@@ -2248,10 +2591,9 @@ async function carregarDespesas() {
 
             return `<div class="despesa-row">
                 <div>
-                    <div class="despesa-nome">${x.nome}${x.privada ? ' <i class="fas fa-lock" style="font-size:.65rem;color:#b060ff;margin-left:.3rem;"></i>' : ''}</div>
+                    <div class="despesa-nome">${x.nome}${x.privada ? ' <i class="fas fa-lock" style="font-size:.65rem;color:#bc8cff;margin-left:.3rem;"></i>' : ''}</div>
                     <div style="font-size:.7rem;color:#6a8fa8;margin-top:2px">${x.categoria_label}</div>
                 </div>
-                <span class="despesa-cat" style="${x.recorrencia !== 'UNICA' ? 'color:#b060ff;border-color:rgba(176,96,255,.3);background:rgba(176,96,255,.05);' : ''}" title="${x.recorrencia_label}">${recorrrenciaDisplay}</span>
                 <span style="text-align:right;color:#e0f0ff;font-weight:600;">R$ ${fmt(x.valor)}</span>
                 <span style="text-align:center;font-size:.75rem;color:#9ab;">${x.data_vencimento_fmt}</span>
                 <div style="display:flex;gap:.3rem;justify-content:flex-end;align-items:center;">
@@ -2272,9 +2614,9 @@ function abrirModalNovaDespesa() {
     document.getElementById('msgErroDespesa').classList.add('d-none');
     // Default vencimento = hoje
     document.querySelector('#formNovaDespesa [name=data_vencimento]').value = new Date().toISOString().split('T')[0];
-    // Reset recorrência para UNICA
-    document.querySelector('#formNovaDespesa [name=recorrencia]').value = 'UNICA';
-    toggleMesesRecorrencia(document.querySelector('#formNovaDespesa [name=recorrencia]'), 'novaMesesWrap');
+    // Reset parcelas
+    document.getElementById('novaDespesaParcelas').value = '1';
+    toggleParcelas(document.getElementById('novaDespesaParcelas'));
     new bootstrap.Modal(document.getElementById('modalNovaDespesa')).show();
 }
 
@@ -2286,15 +2628,16 @@ async function enviarNovaDespesa(e) {
     btn.disabled = true; sp.classList.remove('d-none');
     document.getElementById('msgErroDespesa').classList.add('d-none');
 
+    const parcelas = parseInt(document.getElementById('novaDespesaParcelas').value) || 1;
     const payload = {
         nome: form.nome.value.trim(),
         valor: form.valor.value,
         data_vencimento: form.data_vencimento.value,
         categoria: form.categoria.value,
-        recorrencia: form.recorrencia.value,
-        meses_recorrencia: form.meses_recorrencia?.value || null,
+        recorrencia: 'UNICA',
         observacoes: form.observacoes.value,
         privada: document.getElementById('novaDespesaPrivada')?.checked || false,
+        parcelas: parcelas,
     };
 
     try {
@@ -2307,7 +2650,7 @@ async function enviarNovaDespesa(e) {
         if (d.sucesso) {
             bootstrap.Modal.getInstance(document.getElementById('modalNovaDespesa')).hide();
             form.reset();
-            mostrarToast('Despesa cadastrada!', 'success');
+            mostrarToast(d.msg || 'Despesa cadastrada!', 'success');
             carregarDespesas();
             carregarDespesasDashboard();
         } else {
@@ -2331,28 +2674,6 @@ function abrirModalEditarDespesa(x) {
     document.getElementById('editDespesaDataPg').value= x.data_pagamento || '';
     document.getElementById('editDespesaPrivada').checked = x.privada || false;
     document.getElementById('msgErroDespesaEdit').classList.add('d-none');
-
-    const recorrSel = document.getElementById('editDespesaRecorr');
-    recorrSel.value = x.recorrencia;
-    document.getElementById('editDespesaMeses').value = x.meses_recorrencia || '';
-
-    // Mostrar informação de recorrência
-    toggleMesesRecorrencia(recorrSel, 'editMesesWrap');
-    const infoEl = document.getElementById('editDespesaRecorrInfo');
-    if (x.recorrencia !== 'UNICA') {
-        let infoText = `Ocorrência atual: <strong>${x.ocorrencia_atual}</strong>`;
-        if (x.meses_recorrencia) {
-            const faltam = x.meses_recorrencia - x.ocorrencia_atual;
-            infoText += ` de ${x.meses_recorrencia} | ${faltam} ${faltam === 1 ? 'mês' : 'meses'} restante${faltam !== 1 ? 's' : ''}`;
-        } else {
-            infoText += ` (sem limite)`;
-        }
-        infoEl.innerHTML = `<i class="fas fa-infinity me-1"></i>${infoText}`;
-        infoEl.style.display = 'block';
-    } else {
-        infoEl.style.display = 'none';
-    }
-
     new bootstrap.Modal(document.getElementById('modalEditarDespesa')).show();
 }
 
@@ -2360,16 +2681,14 @@ async function enviarEditarDespesa(e) {
     e.preventDefault();
     const id = document.getElementById('editDespesaId').value;
     const payload = {
-        nome:              document.getElementById('editDespesaNome').value,
-        valor:             document.getElementById('editDespesaValor').value,
-        data_vencimento:   document.getElementById('editDespesaVenc').value,
-        categoria:         document.getElementById('editDespesaCat').value,
-        recorrencia:       document.getElementById('editDespesaRecorr').value,
-        meses_recorrencia: document.getElementById('editDespesaMeses').value || null,
-        status:            document.getElementById('editDespesaStatus').value,
-        data_pagamento:    document.getElementById('editDespesaDataPg').value || null,
-        observacoes:       document.getElementById('editDespesaObs').value,
-        privada:           document.getElementById('editDespesaPrivada')?.checked || false,
+        nome:            document.getElementById('editDespesaNome').value,
+        valor:           document.getElementById('editDespesaValor').value,
+        data_vencimento: document.getElementById('editDespesaVenc').value,
+        categoria:       document.getElementById('editDespesaCat').value,
+        status:          document.getElementById('editDespesaStatus').value,
+        data_pagamento:  document.getElementById('editDespesaDataPg').value || null,
+        observacoes:     document.getElementById('editDespesaObs').value,
+        privada:         document.getElementById('editDespesaPrivada')?.checked || false,
     };
     try {
         const r = await fetch(`/financeiro/api/despesa/${id}/editar/`, {
@@ -2396,20 +2715,15 @@ async function enviarEditarDespesa(e) {
 }
 
 async function deletarDespesa(id, nome) {
-    const ok = await uiConfirm({
-        titulo: 'Excluir Despesa',
-        msg: `Deletar a despesa <strong>${nome}</strong>?`,
-        icone: 'fas fa-trash-alt',
-        iconeCor: '#e06060',
-        btnLabel: 'Excluir',
-    });
-    if (!ok) return;
-    const r = await fetch(`/financeiro/api/despesa/${id}/deletar/`, {
-        method: 'DELETE', headers: {'X-CSRFToken': csrf()},
-    });
-    const d = await r.json();
-    if (d.sucesso) { mostrarToast(d.msg, 'warning'); carregarDespesas(); carregarDespesasDashboard(); }
-    else uiAlert('Erro: ' + d.erro);
+    if (!confirm(`Excluir a despesa "${nome}"?`)) return;
+    try {
+        const r = await fetch(`/financeiro/api/despesa/${id}/deletar/`, {
+            method: 'POST', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/json'},
+        });
+        const d = await r.json();
+        if (d.sucesso) { mostrarToast(d.msg, 'warning'); carregarDespesas(); carregarDespesasDashboard(); }
+        else alert('Erro: ' + d.erro);
+    } catch(e) { alert('Erro de conexão: ' + e.message); }
 }
 
 function toggleMesesRecorrencia(sel, wrapId) {
@@ -2418,29 +2732,102 @@ function toggleMesesRecorrencia(sel, wrapId) {
     wrap.classList.toggle('d-none', sel.value === 'UNICA');
 }
 
+function toggleParcelas(sel) {
+    const n = parseInt(sel.value) || 1;
+    const hint = document.getElementById('novaParcelajHint');
+    if (n > 1) {
+        document.getElementById('hintParcelas').textContent = n;
+        hint.classList.remove('d-none');
+    } else {
+        hint.classList.add('d-none');
+    }
+}
+
 async function pagarDespesa(id) {
-    const ok = await uiConfirm({
-        titulo: 'Marcar como paga',
-        msg: 'Confirmar pagamento desta despesa?\n\nSe for recorrente, a próxima ocorrência será criada automaticamente.',
-        icone: 'fas fa-check-circle',
-        iconeCor: '#40d080',
-        btnLabel: 'Confirmar Pagamento',
-    });
-    if (!ok) return;
+    if (!confirm('Confirmar pagamento desta despesa?')) return;
     try {
         const r = await fetch(`/financeiro/api/despesa/${id}/pagar/`, {
-            method: 'POST', headers: {'X-CSRFToken': csrf()},
+            method: 'POST', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/json'},
         });
         const d = await r.json();
         if (d.sucesso) {
             mostrarToast(d.msg, 'success');
             carregarDespesas();
             carregarDespesasDashboard();
-        } else uiAlert('Erro: ' + d.erro);
-    } catch(e) { uiAlert(e.message); }
+        } else alert('Erro: ' + d.erro);
+    } catch(e) { alert('Erro de conexão: ' + e.message); }
 }
 
 // Despesas são carregadas pelo DOMContentLoaded principal
+
+// ── AJUSTAR VENCIMENTO ────────────────────────────────────────
+function abrirModalAjustarVencimento() {
+    document.getElementById('inputDiaVencimento').value = '';
+    document.getElementById('msgErroAjusteVenc').classList.add('d-none');
+    document.getElementById('msgSucessoAjusteVenc').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('modalAjustarVencimento')).show();
+    setTimeout(() => document.getElementById('inputDiaVencimento').focus(), 300);
+}
+
+function confirmarAjusteVencimento() {
+    const dia = parseInt(document.getElementById('inputDiaVencimento').value);
+    const errEl = document.getElementById('msgErroAjusteVenc');
+    const okEl  = document.getElementById('msgSucessoAjusteVenc');
+    const btn   = document.getElementById('btnConfirmarAjuste');
+    const spin  = document.getElementById('spinnerAjuste');
+
+    errEl.classList.add('d-none');
+    okEl.classList.add('d-none');
+
+    if (!dia || dia < 1 || dia > 31) {
+        errEl.textContent = 'Informe um dia válido entre 1 e 31.';
+        errEl.classList.remove('d-none');
+        return;
+    }
+
+    if (!clienteId) {
+        errEl.textContent = 'Nenhum cliente selecionado.';
+        errEl.classList.remove('d-none');
+        return;
+    }
+
+    btn.disabled = true;
+    spin.classList.remove('d-none');
+
+    fetch("{% url 'api_ajustar_vencimento' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ cliente_id: clienteId, dia: dia })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            okEl.textContent = data.mensagem;
+            okEl.classList.remove('d-none');
+            carregarFaturas();
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(
+                    document.getElementById('modalAjustarVencimento')
+                ).hide();
+            }, 1800);
+        } else {
+            errEl.textContent = data.erro || 'Erro ao ajustar vencimento.';
+            errEl.classList.remove('d-none');
+        }
+    })
+    .catch(e => {
+        errEl.textContent = 'Erro de conexão: ' + e.message;
+        errEl.classList.remove('d-none');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        spin.classList.add('d-none');
+    });
+}
+
 </script>
 
 {% endblock %}

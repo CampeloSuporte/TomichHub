@@ -2,7 +2,27 @@
 
 ## 🔥 Implementações Recentes (Junho 2026)
 
-### Módulo Financeiro — Recorrências e Privacidade
+### Sessão 2 — 10/06/2026: Despesas Avançado + Hotspot Banda + Contratos Digitais
+
+**O que foi implementado?**
+- ✅ Parcelamento de despesas (1x–12x) substituindo campo Recorrência
+- ✅ Página dedicada `/financeiro/despesas/` com bulk actions e filtros
+- ✅ Correção de bugs: `uiConfirm` indefinido, método POST/DELETE
+- ✅ Contratos de aluguel IPv4 com assinatura digital (canvas + PDF + PIL)
+- ✅ Hotspot: controle de banda por IP via DHCP Queue Simple MikroTik
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[DESPESAS_AVANCADO.md](DESPESAS_AVANCADO.md)** | Parcelamento, página dedicada, bulk actions, bugs |
+| **[CONTRATOS_ASSINATURA_DIGITAL.md](CONTRATOS_ASSINATURA_DIGITAL.md)** | Contratos de aluguel com assinatura digital |
+| **[HOTSPOT_CONTROLE_BANDA.md](HOTSPOT_CONTROLE_BANDA.md)** | Queue Simple por IP via DHCP Lease Script |
+| **[IMPLEMENTACOES_JUNHO_2026.md](IMPLEMENTACOES_JUNHO_2026.md)** | Checklist completo (sessões 1 e 2) |
+
+---
+
+### Sessão 1 — 01/06/2026: Recorrências e Privacidade
 
 **O que foi implementado?**
 - ✅ Despesas com auto-recorrência (mensal, trimestral, anual, etc)
@@ -48,6 +68,12 @@
   - Permissões
 
 ### Outros Módulos
+
+- **[HOTSPOT_CONTROLE_BANDA.md](HOTSPOT_CONTROLE_BANDA.md)** — Hotspot: controle de banda por IP
+  - Queue Simple ativado via DHCP Lease Script
+  - Script RouterOS com escaping correto para SSH
+  - Preview em tempo real na interface
+  - Como verificar no MikroTik
 
 - **[monitoramento.md](monitoramento.md)** — Dashboard de monitoramento
   - Persistência de configuração
@@ -128,13 +154,17 @@
 ```
 docs/
 ├─ INDEX.md (este arquivo)
-├─ FINANCEIRO.md ..................... 📌 Módulo financeiro (completo)
-├─ DESPESA_RECORRENCIA.md ............ 📌 Recorrências (detalho)
-├─ PRIVACIDADE_FINANCEIRA.md ......... 📌 Privacidade (detalhado)
-├─ IMPLEMENTACOES_JUNHO_2026.md ...... 📌 Checklist e resumo executivo
+├─ FINANCEIRO.md ......................... 📌 Módulo financeiro (completo)
+├─ DESPESA_RECORRENCIA.md ................ 📌 Recorrências (detalhado)
+├─ DESPESAS_AVANCADO.md .................. 📌 Parcelamento, bulk actions, bugs
+├─ PRIVACIDADE_FINANCEIRA.md ............. 📌 Privacidade (detalhado)
+├─ CONTRATOS_ASSINATURA_DIGITAL.md ....... 📌 Contratos com assinatura digital
+├─ HOTSPOT_CONTROLE_BANDA.md ............. 📌 Hotspot: DHCP Queue Simple por IP
+├─ IMPLEMENTACOES_JUNHO_2026.md .......... 📌 Checklist e resumo executivo
 ├─ monitoramento.md
 ├─ backup_automatico.md
 ├─ envio_credenciais_email.md
+├─ winbox_vnc.md
 └─ frontend_acessos.md
 ```
 
@@ -240,7 +270,8 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
-| 01/06/2026 | Recorrência + Privacidade (5 modelos) | Este INDEX + 4 arquivos |
+| 10/06/2026 | Parcelamento, bulk actions, contratos digitais, hotspot banda | DESPESAS_AVANCADO.md, CONTRATOS_ASSINATURA_DIGITAL.md, HOTSPOT_CONTROLE_BANDA.md |
+| 01/06/2026 | Recorrência + Privacidade (5 modelos) | FINANCEIRO.md, DESPESA_RECORRENCIA.md, PRIVACIDADE_FINANCEIRA.md, IMPLEMENTACOES_JUNHO_2026.md |
 | 27/05/2026 | Dashboard persistência, Backup automático | monitoramento.md, backup_automatico.md |
 | 26/05/2026 | Terminal SSH, IPAM, Agent NOC | (docs anteriores) |
 
@@ -255,7 +286,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 01/06/2026 11:20 UTC  
-**Versão:** 1.0  
+**Última atualização:** 10/06/2026  
+**Versão:** 1.2  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

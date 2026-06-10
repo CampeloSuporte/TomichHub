@@ -2431,6 +2431,7 @@ _NOC_ALIASES = [
     '@noc', 'noc', 'nokia', 'noque', 'nok', 'knock', 'nóc', 'nc',
     'agente', 'agente noc', 'gente',
     'arroba noc', 'at noc', 'a noc', 'você noc', 'voce noc',
+    '@tomichinho', 'tomichinho',
 ]
 
 
@@ -2522,10 +2523,10 @@ def _processar_wa_webhook(payload: dict):
         if not texto:
             return
 
-        # Prefixos válidos: @noc (configurado) + @<número do bot> (menção WA)
+        # Prefixos válidos: @noc (configurado) + @<número do bot> (menção WA) + apelidos fixos
         texto_lower = texto.lower()
         numero_bot  = (config.wa_noc_numero or '').strip().lstrip('+').replace(' ', '')
-        prefixos_validos = [prefixo]
+        prefixos_validos = [prefixo, '@tomichinho', 'tomichinho']
         if numero_bot:
             prefixos_validos.append(f'@{numero_bot}')
 

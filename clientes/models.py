@@ -1,3 +1,5 @@
+import uuid as _uuid_mod
+
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -1444,3 +1446,95 @@ class TrocaSenhaAcesso(models.Model):
     def __str__(self):
         acesso_str = str(self.acesso) if self.acesso else '(removido)'
         return f'TrocaSenha #{self.id} — {acesso_str} ({self.status})'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Hotspot
+# ─────────────────────────────────────────────────────────────────────────────
+
+class HotspotConfig(models.Model):
+    cliente       = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='hotspot_configs')
+    acesso        = models.ForeignKey('Acesso', on_delete=models.SET_NULL, null=True, blank=True, related_name='hotspot_configs')
+    uuid          = models.UUIDField(default=_uuid_mod.uuid4, unique=True, editable=False)
+    nome          = models.CharField(max_length=100)
+
+    # MikroTik network
+    interface       = models.CharField(max_length=50, default='bridge')
+    # Interface física (ex: wlan1, ether2) adicionada como bridge port — deixar vazio
+    # se a interface já está no bridge ou se a bridge foi criada manualmente
+    interface_fisica = models.CharField(max_length=50, blank=True, default='')
+    network       = models.CharField(max_length=18, default='192.168.88.0/24')
+    gateway       = models.CharField(max_length=15, default='192.168.88.1')
+    pool_start    = models.CharField(max_length=15, default='192.168.88.10')
+    pool_end      = models.CharField(max_length=15, default='192.168.88.254')
+    dns_servidor  = models.CharField(max_length=15, default='8.8.8.8')
+
+    # Profile
+    session_timeout = models.IntegerField(default=0, help_text='Minutos (0=ilimitado)')
+    idle_timeout    = models.IntegerField(default=30, help_text='Minutos')
+    rate_limit_down = models.CharField(max_length=20, default='10M')
+    rate_limit_up   = models.CharField(max_length=20, default='5M')
+
+    # Controle de banda via DHCP lease script (Queue Simple)
+    dhcp_controle_banda = models.BooleanField(default=False, help_text='Ativar queue simple por IP via DHCP lease script')
+    dhcp_banda_limit    = models.CharField(max_length=20, default='10M/10M', help_text='Ex: 10M/10M (download/upload)')
+
+    # Guest credentials (shared account on MikroTik)
+    guest_usuario = models.CharField(max_length=50, default='guest')
+    guest_senha   = models.CharField(max_length=50, default='wifi123')
+
+    # Portal appearance
+    portal_titulo    = models.CharField(max_length=100, default='WiFi Grátis')
+    portal_subtitulo = models.CharField(max_length=200, blank=True)
+    cor_primaria     = models.CharField(max_length=7, default='#1a73e8')
+    logo             = models.ImageField(upload_to='hotspot/logos/', null=True, blank=True)
+
+    configurado_em = models.DateTimeField(null=True, blank=True)
+    ativo          = models.BooleanField(default=True)
+    criado_em      = models.DateTimeField(auto_now_add=True)
+    atualizado_em  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Configuração Hotspot'
+        verbose_name_plural = 'Configurações Hotspot'
+        ordering            = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.nome} — {self.cliente.nome_empresa}'
+
+
+class HotspotBanner(models.Model):
+    hotspot   = models.ForeignKey(HotspotConfig, on_delete=models.CASCADE, related_name='banners')
+    imagem    = models.ImageField(upload_to='hotspot/banners/')
+    titulo    = models.CharField(max_length=100, blank=True)
+    subtitulo = models.CharField(max_length=200, blank=True)
+    ordem     = models.IntegerField(default=0)
+    ativo     = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Banner Hotspot'
+        verbose_name_plural = 'Banners Hotspot'
+        ordering            = ['ordem', 'criado_em']
+
+    def __str__(self):
+        return f'Banner #{self.ordem} — {self.hotspot.nome}'
+
+
+class HotspotLead(models.Model):
+    hotspot         = models.ForeignKey(HotspotConfig, on_delete=models.CASCADE, related_name='leads')
+    nome            = models.CharField(max_length=100)
+    telefone        = models.CharField(max_length=20)
+    data_nascimento = models.DateField(null=True, blank=True)
+    cpf             = models.CharField(max_length=14, blank=True)
+    mac             = models.CharField(max_length=17, blank=True)
+    ip_cliente      = models.CharField(max_length=15, blank=True)
+    criado_em       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Lead Hotspot'
+        verbose_name_plural = 'Leads Hotspot'
+        ordering            = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.nome} ({self.telefone})'

@@ -155,7 +155,7 @@
       <div class="grph-toolbar-brand">
         <svg viewBox="0 0 24 24" width="18" height="18">
           <polyline points="2 17 7 12 11 15 16 9 22 12"
-                    stroke="#00ff88" stroke-width="2" fill="none"
+                    stroke="#3fb950" stroke-width="2" fill="none"
                     stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 20h20" stroke="#334155" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
@@ -230,7 +230,7 @@
       <div class="grph-modal-title-wrap">
         <svg viewBox="0 0 24 24" width="16" height="16">
           <polyline points="2 17 7 12 11 15 16 9 22 12"
-                    stroke="#00ff88" stroke-width="2" fill="none"
+                    stroke="#3fb950" stroke-width="2" fill="none"
                     stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <h3 id="grph-modal-title">Adicionar Monitor</h3>
@@ -275,7 +275,7 @@
 
         <!-- ITEM IN (DOWNLOAD) -->
         <label class="grph-label" style="margin-top:18px;">
-          <span style="color:#00ff88;">↓</span> Item Download (Bits received) *
+          <span style="color:#3fb950;">↓</span> Item Download (Bits received) *
         </label>
         <div class="grph-search-wrap">
           <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
@@ -287,13 +287,13 @@
                  oninput="grphFiltrarItens('in', this.value)"/>
         </div>
         <div id="grph-m-item-in-badge" class="grph-host-badge"
-             style="display:none; background:rgba(0,255,136,.06); border-color:rgba(0,255,136,.2); color:#00ff88; margin-bottom:4px;"></div>
+             style="display:none; background:rgba(63,185,80,.06); border-color:rgba(63,185,80,.2); color:#3fb950; margin-bottom:4px;"></div>
         <div id="grph-m-item-in-list" class="grph-search-results" style="display:none; max-height:180px;"></div>
         <input type="hidden" id="grph-m-item-in-id"/>
 
         <!-- ITEM OUT (UPLOAD) -->
         <label class="grph-label" style="margin-top:14px;">
-          <span style="color:#00f5ff;">↑</span> Item Upload (Bits sent) *
+          <span style="color:#58a6ff;">↑</span> Item Upload (Bits sent) *
         </label>
         <div class="grph-search-wrap">
           <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
@@ -305,7 +305,7 @@
                  oninput="grphFiltrarItens('out', this.value)"/>
         </div>
         <div id="grph-m-item-out-badge" class="grph-host-badge"
-             style="display:none; background:rgba(0,245,255,.06); border-color:rgba(0,245,255,.2); color:#00f5ff; margin-bottom:4px;"></div>
+             style="display:none; background:rgba(88,166,255,.06); border-color:rgba(88,166,255,.2); color:#58a6ff; margin-bottom:4px;"></div>
         <div id="grph-m-item-out-list" class="grph-search-results" style="display:none; max-height:180px;"></div>
         <input type="hidden" id="grph-m-item-out-id"/>
 
@@ -422,13 +422,13 @@
 }
 .grph-live-pill {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(0,255,136,0.07); border: 1px solid rgba(0,255,136,0.2);
+  background: rgba(63,185,80,0.07); border: 1px solid rgba(63,185,80,0.2);
   border-radius: 20px; padding: 4px 10px;
-  font-size: .7rem; font-weight: 700; color: #00ff88; letter-spacing: .5px;
+  font-size: .7rem; font-weight: 700; color: #3fb950; letter-spacing: .5px;
 }
 .grph-live-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #00ff88; animation: grph-blink 1.3s ease-in-out infinite;
+  background: #3fb950; animation: grph-blink 1.3s ease-in-out infinite;
 }
 .grph-live-interval { color: #334155; font-weight: 400; font-size: .68rem; }
 @keyframes grph-blink { 0%,100%{opacity:1} 50%{opacity:.2} }
@@ -485,7 +485,7 @@
 }
 .grph-card-glow {
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,255,136,.3), rgba(0,245,255,.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(63,185,80,.3), rgba(88,166,255,.3), transparent);
   opacity: 0; transition: opacity .2s;
 }
 .grph-card:hover .grph-card-glow { opacity: 1; }
@@ -501,8 +501,8 @@
   background: #1e293b; border: 1px solid #334155;
   transition: background .3s, border-color .3s; flex-shrink: 0;
 }
-.grph-poll-dot.pulsing { background: #00ff88; border-color: #00ff88; animation: grph-blink .6s ease-in-out 3; }
-.grph-poll-dot.grph-dot-active { background: rgba(0,255,136,.3); border-color: rgba(0,255,136,.6); }
+.grph-poll-dot.pulsing { background: #3fb950; border-color: #30363d; animation: grph-blink .6s ease-in-out 3; }
+.grph-poll-dot.grph-dot-active { background: rgba(63,185,80,.3); border-color: rgba(63,185,80,.6); }
 .grph-host {
   font-size: .85rem; font-weight: 700; color: #e2e8f0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;
@@ -529,7 +529,7 @@
 .grph-stat-block { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
 .grph-stat-divider { width: 1px; background: rgba(255,255,255,0.06); margin: 6px 0; }
 .grph-stat-arrow { font-size: 1.2rem; font-weight: 700; line-height: 1; flex-shrink: 0; }
-.grph-stat-in  .grph-stat-arrow { color: #00ff88; }
+.grph-stat-in  .grph-stat-arrow { color: #3fb950; }
 .grph-stat-out .grph-stat-arrow { color: #00d9ff; }
 .grph-stat-peak .grph-stat-arrow { color: #f59e0b; }
 .grph-stat-val {
@@ -581,7 +581,7 @@
 .grph-fullscreen-sub { margin: 4px 0 0; font-size: .78rem; color: #475569; }
 .grph-fullscreen-actions { display: flex; align-items: center; gap: 16px; }
 .grph-fs-stats { display: flex; gap: 12px; font-family: 'SF Mono','Fira Code',monospace; font-size: .85rem; font-weight: 700; }
-.grph-fs-stat-in  { color: #00ff88; }
+.grph-fs-stat-in  { color: #3fb950; }
 .grph-fs-stat-out { color: #00d9ff; }
 .grph-fullscreen-canvas-wrap { flex: 1; padding: 20px; min-height: 0; height: 420px; }
 .grph-fullscreen-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
@@ -656,8 +656,8 @@
 .grph-ri-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .grph-ri small { font-size: .7rem; color: #475569; }
 .grph-host-badge {
-  background: rgba(0,255,136,.06); border: 1px solid rgba(0,255,136,.2);
-  border-radius: 6px; padding: 7px 12px; font-size: .78rem; color: #00ff88;
+  background: rgba(63,185,80,.06); border: 1px solid rgba(63,185,80,.2);
+  border-radius: 6px; padding: 7px 12px; font-size: .78rem; color: #3fb950;
   margin-top: 8px; font-weight: 600;
 }
 .grph-preview-box {
@@ -692,10 +692,10 @@ const GRAPH = (() => {
 
   // ── Paleta ────────────────────────────────────────────────
   const C = {
-    in:      '#00ff88',
+    in:      '#3fb950',
     out:     '#00d9ff',
-    inFill:  'rgba(0,255,136,0.08)',
-    outFill: 'rgba(0,245,255,0.08)',
+    inFill:  'rgba(63,185,80,0.08)',
+    outFill: 'rgba(88,166,255,0.08)',
     grid:    'rgba(255,255,255,0.04)',
     text:    '#475569',
   };
@@ -813,7 +813,7 @@ const GRAPH = (() => {
       <div class="grph-empty-icon">
         <svg viewBox="0 0 120 80" width="120" height="80">
           <defs><linearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#00ff88" stop-opacity="0.4"/>
+            <stop offset="0%" stop-color="#3fb950" stop-opacity="0.4"/>
             <stop offset="100%" stop-color="#00d9ff" stop-opacity="0.4"/>
           </linearGradient></defs>
           <rect x="4"  y="50" width="16" height="26" rx="3" fill="url(#emptyGrad)" opacity=".5"/>
@@ -1212,10 +1212,10 @@ const GRAPH = (() => {
       box.innerHTML = data.hosts.map(h => `
         <div class="grph-ri" onclick="GRAPH.selecionarHost('${h.hostid}','${(h.name||h.host).replace(/'/g,"\\'")}')">
           <div class="grph-ri-main">
-            <span class="grph-ri-dot" style="background:${h.available==='up'?'#00ff88':'#ef4444'}"></span>
+            <span class="grph-ri-dot" style="background:${h.available==='up'?'#3fb950':'#ef4444'}"></span>
             <span>${h.name || h.host}</span>
           </div>
-          <small>${h.ip} — <b style="color:${h.available==='up'?'#00ff88':'#ef4444'}">${h.available}</b></small>
+          <small>${h.ip} — <b style="color:${h.available==='up'?'#3fb950':'#ef4444'}">${h.available}</b></small>
         </div>`).join('');
     }
     box.style.display = 'block';
@@ -1360,8 +1360,8 @@ const GRAPH = (() => {
     if (inId || outId) {
       prev.style.display = 'block';
       prev.innerHTML =
-        `<div class="grph-preview-row"><span>In Item ID</span><b style="color:#00ff88">${inId || '<span style="color:#64748b">—</span>'}</b></div>` +
-        `<div class="grph-preview-row"><span>Out Item ID</span><b style="color:#00f5ff">${outId || '<span style="color:#64748b">—</span>'}</b></div>`;
+        `<div class="grph-preview-row"><span>In Item ID</span><b style="color:#3fb950">${inId || '<span style="color:#64748b">—</span>'}</b></div>` +
+        `<div class="grph-preview-row"><span>Out Item ID</span><b style="color:#58a6ff">${outId || '<span style="color:#64748b">—</span>'}</b></div>`;
     } else {
       prev.style.display = 'none';
     }

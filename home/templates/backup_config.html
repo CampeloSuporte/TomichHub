@@ -46,7 +46,7 @@
                         <tr id="row-template-{{ t.id }}">
                             <td><strong style="color:var(--primary-green);">{{ t.nome }}</strong></td>
                             <td>
-                                <span class="badge" style="background:rgba(0,245,255,.15);color:var(--accent-cyan);border:1px solid rgba(0,245,255,.3);">
+                                <span class="badge" style="background:rgba(88,166,255,.15);color:var(--accent-cyan);border:1px solid rgba(88,166,255,.3);">
                                     {{ t.get_fabricante_display }}
                                 </span>
                             </td>
@@ -65,7 +65,7 @@
                             </td>
                             <td>
                                 <div class="d-flex gap-1">
-                                    <button class="btn btn-sm" style="background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.3);color:var(--accent-cyan);padding:4px 8px;"
+                                    <button class="btn btn-sm" style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);color:var(--accent-cyan);padding:4px 8px;"
                                         onclick='abrirModalTemplate({{ t.id }})' title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -145,7 +145,7 @@
                                 </select>
                             </td>
                             <td>
-                                <button class="btn btn-sm" style="background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.4);color:var(--primary-green);padding:4px 10px;"
+                                <button class="btn btn-sm" style="background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:var(--primary-green);padding:4px 10px;"
                                     onclick="salvarConfigAcesso({{ ac.id }})" title="Salvar">
                                     <i class="fas fa-save me-1"></i> Salvar
                                 </button>
@@ -171,7 +171,7 @@
 <div class="modal fade" id="modalTemplate" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content" style="background:var(--bg-dark);border:1px solid var(--primary-green);color:var(--text-light);">
-            <div class="modal-header" style="border-bottom:1px solid rgba(0,255,136,.2);">
+            <div class="modal-header" style="border-bottom:1px solid rgba(63,185,80,.2);">
                 <h5 class="modal-title" id="modalTemplateTitulo"><i class="fas fa-file-code me-2"></i>Template de Backup</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -199,7 +199,7 @@
                             <small class="text-muted ms-1">— um por linha</small>
                         </label>
                         <textarea id="tplComandos" rows="8" class="form-control"
-                            style="background:#02030a;border:1px solid var(--primary-green);color:#00ff88;font-family:'Share Tech Mono',monospace;font-size:13px;resize:vertical;"
+                            style="background:#0d1117;border:1px solid var(--primary-green);color:#3fb950;font-family:'Inter', sans-serif;font-size:13px;resize:vertical;"
                             placeholder="/export compact&#10;/ip address print&#10;/interface print"></textarea>
                     </div>
                     <div class="col-12">
@@ -216,7 +216,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top:1px solid rgba(0,255,136,.2);">
+            <div class="modal-footer" style="border-top:1px solid rgba(63,185,80,.2);">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="salvarTemplate()">
                     <i class="fas fa-save me-1"></i> Salvar

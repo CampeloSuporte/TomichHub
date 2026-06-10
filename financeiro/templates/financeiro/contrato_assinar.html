@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assinar Contrato — {{ cliente.nome_empresa }}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh;}
+.page{max-width:860px;margin:0 auto;padding:32px 16px 80px;}
+.header{text-align:center;margin-bottom:32px;}
+.header h1{font-size:1.4rem;font-weight:700;color:#e6edf3;margin-bottom:4px;}
+.header p{font-size:.85rem;color:#7d8590;}
+.contrato-box{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:32px;margin-bottom:24px;font-size:.9rem;line-height:1.7;color:#c9d1d9;}
+.contrato-box h2{font-size:1.1rem;text-align:center;margin-bottom:20px;color:#e6edf3;}
+.clausula-titulo{font-weight:700;margin-top:16px;margin-bottom:4px;color:#e6edf3;}
+.clausula-corpo{text-align:justify;}
+.sign-section{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px;margin-bottom:24px;}
+.sign-section h3{font-size:1rem;font-weight:600;color:#e6edf3;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:.75rem;color:#7d8590;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.field input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px 12px;color:#e6edf3;font-size:.95rem;outline:none;transition:border-color .15s;}
+.field input:focus{border-color:#58a6ff;}
+.pad-wrap{border:1px solid #30363d;border-radius:8px;overflow:hidden;background:#fff;cursor:crosshair;position:relative;}
+#signCanvas{display:block;width:100%;touch-action:none;}
+.pad-actions{display:flex;gap:8px;margin-top:8px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:background .15s,opacity .15s;}
+.btn-primary{background:#238636;color:#fff;}
+.btn-primary:hover{background:#2ea043;}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.btn-outline{background:transparent;color:#8b949e;border:1px solid #30363d;}
+.btn-outline:hover{border-color:#58a6ff;color:#58a6ff;}
+.checkbox-wrap{display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;padding:14px;background:#0d1117;border-radius:8px;border:1px solid #30363d;}
+.checkbox-wrap input[type=checkbox]{width:18px;height:18px;margin-top:2px;cursor:pointer;flex-shrink:0;}
+.checkbox-wrap label{font-size:.85rem;color:#c9d1d9;cursor:pointer;line-height:1.5;}
+.alert{padding:14px 16px;border-radius:8px;font-size:.85rem;margin-bottom:16px;display:none;}
+.alert-err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:#f85149;}
+.alert-ok{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:#3fb950;}
+.badge-status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.75rem;font-weight:600;}
+.badge-pendente{background:rgba(210,153,34,.12);color:#d29922;border:1px solid rgba(210,153,34,.25);}
+.info-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;padding:14px 16px;background:#161b22;border:1px solid #30363d;border-radius:8px;font-size:.82rem;color:#8b949e;}
+.info-bar span b{color:#c9d1d9;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>📄 Assinatura de Contrato</h1>
+    <p>Campelo Suporte e Consultoria Especializada em Redes</p>
+  </div>
+
+  <div class="info-bar">
+    <span><b>Cliente:</b> {{ cliente.nome_empresa }}</span>
+    <span><b>Bloco:</b> {{ aluguel.bloco_descricao }}{% if aluguel.bloco_v6 %} · {{ aluguel.bloco_v6 }}{% endif %}</span>
+    <span><b>Valor:</b> R$ {{ aluguel.valor_mensal }}</span>
+    {% if contrato.expira_em %}
+    <span><b>Link válido até:</b> {{ contrato.expira_em|date:"d/m/Y H:i" }}</span>
+    {% endif %}
+    <span class="badge-status badge-pendente">⏳ Aguardando assinatura</span>
+  </div>
+
+  <!-- Texto do contrato -->
+  <div class="contrato-box">
+    <h2>CONTRATO DE ALUGUEL DE BLOCO IP</h2>
+
+    <p class="clausula-corpo">
+      Pelo presente instrumento particular de contrato de aluguel, de um lado,
+      <b>{{ cliente.nome_empresa }}</b> CNPJ sob o nº <b>{{ cliente.cnpj }}</b>,
+      residente e domiciliado(a) na <b>{{ cliente.endereco }}{% if cliente.cidade %}, {{ cliente.cidade }}{% endif %}{% if cliente.estado %}/{{ cliente.estado }}{% endif %}{% if cliente.cep %}, CEP {{ cliente.cep }}{% endif %}</b>,
+      doravante denominado(a) <b>locatário(a)</b>, e do outro lado,
+      <b>CAMPELO SUPORTE E CONSULTORIA ESPECIALIZADA EM REDES</b>, CNPJ sob o nº
+      <b>45.216.351/0001-72</b>, residente e domiciliado(a) na
+      <b>R CARLOS PEREIRA DE CARVALHO, nº 295, Centro, CEP 48.840-000</b>,
+      doravante denominado(a) <b>locador(a)</b>, têm justo e contratado o seguinte:
+    </p>
+
+    <p class="clausula-titulo">1 - Objeto</p>
+    <p class="clausula-corpo">
+      O objeto do presente contrato é o aluguel do bloco{% if aluguel.bloco_v6 %}s IPv4 e IPv6{% else %} IPv4{% endif %}
+      com a vigência de um ano, localizado no endereço
+      <b>({{ aluguel.bloco_descricao }}{% if aluguel.bloco_v6 %} e {{ aluguel.bloco_v6 }}{% endif %})</b>
+      pelo valor mensal de <b>R$ {{ aluguel.valor_mensal }}</b>, com sigilo absoluto.
+      O locatário(a) se compromete a não emprestar ou alugar o bloco para terceiros.
+    </p>
+
+    <p class="clausula-titulo">2 - Prazo</p>
+    <p class="clausula-corpo">O prazo de vigência do presente contrato é de 1 (um) ano, contado a partir da data de assinatura deste instrumento e terminando em 12 meses.</p>
+
+    <p class="clausula-titulo">3 - Condições de Pagamento</p>
+    <p class="clausula-corpo">O locatário(a) se compromete a pagar o valor mensal do aluguel até o dia 17 (Dezessete) de cada mês via Pix, de forma pré-paga. O não pagamento poderá ocorrer a suspensão do aluguel no prazo de 10 dias.</p>
+
+    <p class="clausula-titulo">4 - Sigilo e Informações</p>
+    <p class="clausula-corpo">O locatário(a) se compromete a manter sigilo absoluto sobre a existência do bloco em sua posse e não poderá informar a nenhuma entidade governamental ou terceiros sobre a sua existência.</p>
+
+    <p class="clausula-titulo">5 - Obrigações do Locatário</p>
+    <p class="clausula-corpo">O locatário(a) se compromete a utilizar o bloco somente para o fim específico acordado entre as partes, bem como a zelar pela sua conservação e segurança.</p>
+
+    <p class="clausula-titulo">6 - Rescisão</p>
+    <p class="clausula-corpo">Em caso de rescisão do presente contrato, fica estipulada uma multa rescisória equivalente a 40% do valor total do contrato. A multa deverá ser paga no prazo de 30 (trinta) dias após a rescisão.</p>
+
+    <p class="clausula-titulo">7 - Foro</p>
+    <p class="clausula-corpo">Fica eleito o foro da Comarca de Senhor do Bonfim - BA, para dirimir qualquer controvérsia oriunda deste contrato.</p>
+  </div>
+
+  <!-- Seção de assinatura -->
+  <div class="sign-section">
+    <h3>✍️ Assinar Contrato</h3>
+
+    <div class="field">
+      <label>Seu nome completo *</label>
+      <input type="text" id="nomeAssinante" placeholder="Digite seu nome completo" autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label>Assinatura (desenhe abaixo) *</label>
+      <div class="pad-wrap">
+        <canvas id="signCanvas" height="160"></canvas>
+      </div>
+      <div class="pad-actions">
+        <button class="btn btn-outline" onclick="limparPad()">🗑 Limpar</button>
+        <small style="color:#7d8590;margin-left:auto;align-self:center;">Use o mouse ou dedo para assinar</small>
+      </div>
+    </div>
+
+    <div class="checkbox-wrap">
+      <input type="checkbox" id="concordo">
+      <label for="concordo">
+        Li e concordo com todos os termos e condições deste contrato de aluguel de bloco IP.
+        Estou ciente de que esta assinatura digital tem validade jurídica.
+      </label>
+    </div>
+
+    <div class="alert alert-err" id="msgErro"></div>
+    <div class="alert alert-ok"  id="msgOk"></div>
+
+    <button class="btn btn-primary" id="btnAssinar" onclick="enviarAssinatura()" style="width:100%;justify-content:center;padding:14px;">
+      ✅ Confirmar Assinatura
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ── Signature Pad ──────────────────────────────────────────
+const canvas  = document.getElementById('signCanvas');
+const ctx     = canvas.getContext('2d');
+let drawing   = false;
+let hasDrawn  = false;
+
+function resizeCanvas() {
+  const ratio = window.devicePixelRatio || 1;
+  const rect  = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width * ratio;
+  canvas.height = 160 * ratio;
+  canvas.style.width  = rect.width + 'px';
+  canvas.style.height = '160px';
+  ctx.scale(ratio, ratio);
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src  = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+}
+canvas.addEventListener('mousedown',  e => { drawing = true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x,p.y); });
+canvas.addEventListener('mousemove',  e => { if(!drawing) return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); hasDrawn=true; });
+canvas.addEventListener('mouseup',    () => drawing = false);
+canvas.addEventListener('mouseleave', () => drawing = false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x,p.y); }, {passive:false});
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); if(!drawing) return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); hasDrawn=true; }, {passive:false});
+canvas.addEventListener('touchend',   () => drawing = false);
+
+function limparPad() { ctx.clearRect(0,0,canvas.width,canvas.height); hasDrawn=false; }
+
+// ── Enviar ─────────────────────────────────────────────────
+async function enviarAssinatura() {
+  const nome = document.getElementById('nomeAssinante').value.trim();
+  const ok   = document.getElementById('concordo').checked;
+  const err  = document.getElementById('msgErro');
+  const suc  = document.getElementById('msgOk');
+  err.style.display = 'none'; suc.style.display = 'none';
+
+  if (!nome)     { err.textContent='Informe seu nome completo.'; err.style.display='block'; return; }
+  if (!hasDrawn) { err.textContent='Desenhe sua assinatura no campo acima.'; err.style.display='block'; return; }
+  if (!ok)       { err.textContent='Você precisa concordar com os termos.'; err.style.display='block'; return; }
+
+  const btn = document.getElementById('btnAssinar');
+  btn.disabled = true; btn.textContent = '⏳ Enviando...';
+
+  // Compõe sobre fundo branco para garantir visibilidade no PDF
+  const assinatura = (() => {
+    const tmp = document.createElement('canvas');
+    tmp.width  = canvas.width;
+    tmp.height = canvas.height;
+    const tc = tmp.getContext('2d');
+    tc.fillStyle = '#ffffff';
+    tc.fillRect(0, 0, tmp.width, tmp.height);
+    tc.drawImage(canvas, 0, 0);
+    return tmp.toDataURL('image/png');
+  })();
+  try {
+    const resp = await fetch('{% url "confirmar_assinatura" contrato.token %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, assinatura }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      suc.textContent = '✅ Contrato assinado com sucesso! Você pode fechar esta página.';
+      suc.style.display = 'block';
+      btn.style.display = 'none';
+      document.getElementById('concordo').closest('.checkbox-wrap').style.display='none';
+    } else {
+      err.textContent = data.erro || 'Erro ao enviar.';
+      err.style.display = 'block';
+      btn.disabled = false; btn.textContent = '✅ Confirmar Assinatura';
+    }
+  } catch(e) {
+    err.textContent = 'Erro de conexão. Tente novamente.';
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = '✅ Confirmar Assinatura';
+  }
+}
+</script>
+</body>
+</html>

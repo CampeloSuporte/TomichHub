@@ -8,7 +8,9 @@
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -80,7 +82,7 @@
                             <i class="fas fa-route me-2" style="color:#00d9ff"></i>Pesquisa LG
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'geo_consulta' %}">
-                            <i class="fas fa-map-marker-alt me-2" style="color:#00ff88"></i>Geolocalização IP
+                            <i class="fas fa-map-marker-alt me-2" style="color:#3fb950"></i>Geolocalização IP
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'firmware_index' %}">
                             <i class="fas fa-hdd me-2" style="color:#ffaa00"></i>Arquivos / Firmware
@@ -89,7 +91,7 @@
                             <i class="fas fa-bolt me-2" style="color:#ffa500"></i>Scripts de Automação
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'relatorio_backups' %}">
-                            <i class="fas fa-database me-2" style="color:#00f5ff"></i>Relatório de Backups
+                            <i class="fas fa-database me-2" style="color:#58a6ff"></i>Relatório de Backups
                         </a></li>
                         {% if request.user.is_superuser %}
                         <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1);"></li>
@@ -107,12 +109,12 @@
                 <!-- Agent NOC -->
                 <div class="dropdown">
                     <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"
-                        style="color:#00f5ff;border-color:rgba(0,245,255,.3);background:rgba(0,245,255,.06);">
+                        >
                         🤖 Agent NOC
                     </button>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'agent_grupos' %}">
-                            <i class="fab fa-whatsapp me-2" style="color:#00ff88"></i>Grupos WhatsApp
+                            <i class="fab fa-whatsapp me-2" style="color:#3fb950"></i>Grupos WhatsApp
                         </a></li>
                         <li><a class="dropdown-item" href="{% url 'agent_knowledge' %}">
                             <i class="fas fa-brain me-2" style="color:#b060ff"></i>Base de Conhecimento
@@ -127,8 +129,7 @@
 
                 <!-- Atendimento — somente para administradores e funcionários -->
                 {% if request.user.is_staff %}
-                <a href="{% url 'atendimento:dashboard' %}" class="btn btn-sm"
-                    style="color:#b060ff;border-color:rgba(176,96,255,.3);background:rgba(176,96,255,.06);">
+                <a href="{% url 'atendimento:dashboard' %}" class="btn btn-sm" id="globalAtendBtn" style="position:relative;">
                     <i class="fas fa-headset me-1"></i> Atendimento
                 </a>
                 {% endif %}
@@ -141,7 +142,7 @@
                 <div class="client-search-wrapper" id="clientSearchWrapper">
 
                     <!-- Botão fechado -->
-                    <button class="btn btn-sm btn-outline-secondary" id="btnAbrirBuscaCliente" title="Buscar Cliente">
+                    <button class="btn btn-sm" id="btnAbrirBuscaCliente" title="Buscar Cliente">
                         <i class="fas fa-search me-1"></i> Buscar Cliente
                     </button>
 
@@ -159,7 +160,7 @@
                                 <!-- Dropdown de resultados -->
                                 <div class="client-search-results" id="clientSearchResults" style="display:none;"></div>
                             </div>
-                            <button class="btn btn-sm btn-close-client-search" id="btnFecharBuscaCliente" title="Fechar">
+                            <button class="btn btn-sm" id="btnFecharBuscaCliente" title="Fechar">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -219,7 +220,7 @@
         {% block modals %}{% endblock %}
 
     <!-- Bootstrap JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js" defer></script>
 
     <script>
         // Dropdown ao hover
@@ -415,27 +416,27 @@
 
     .client-search-input {
         width: 210px;
-        background: rgba(0,245,255,.05);
-        border: 1px solid rgba(0,245,255,.2);
+        background: rgba(88,166,255,.05);
+        border: 1px solid rgba(88,166,255,.2);
         color: #fff;
-        font-family: 'Share Tech Mono', monospace;
+        font-family: 'Inter', sans-serif;
         font-size: 12px;
         transition: border-color .2s, width .3s, box-shadow .2s;
     }
-    .client-search-input::placeholder { color: rgba(0,245,255,.3); }
+    .client-search-input::placeholder { color: rgba(88,166,255,.3); }
     .client-search-input:focus {
         width: 250px;
-        background: rgba(0,245,255,.08);
-        border-color: #00f5ff;
-        box-shadow: 0 0 0 2px rgba(0,245,255,.15), 0 0 12px rgba(0,245,255,.1);
+        background: rgba(88,166,255,.08);
+        border-color: #58a6ff;
+        box-shadow: 0 0 0 2px rgba(88,166,255,.15), 0 0 12px rgba(88,166,255,.1);
         color: #fff;
         outline: none;
     }
 
     .btn-close-client-search {
         background: transparent;
-        border: 1px solid rgba(0,245,255,.2);
-        color: rgba(0,245,255,.5);
+        border: 1px solid rgba(88,166,255,.2);
+        color: rgba(88,166,255,.5);
         padding: 4px 8px;
         border-radius: 3px;
         cursor: pointer;
@@ -454,9 +455,9 @@
         min-width: 280px; max-height: 320px;
         overflow-y: auto;
         background: rgba(4, 8, 22, .98);
-        border: 1px solid rgba(0,245,255,.18);
+        border: 1px solid rgba(88,166,255,.18);
         border-radius: 4px;
-        box-shadow: 0 8px 32px rgba(0,0,0,.7), 0 0 16px rgba(0,245,255,.06);
+        box-shadow: 0 8px 32px rgba(0,0,0,.7), 0 0 16px rgba(88,166,255,.06);
         z-index: 9999;
         backdrop-filter: blur(10px);
     }
@@ -464,31 +465,31 @@
     .client-result-item {
         padding: 10px 14px;
         cursor: pointer;
-        border-bottom: 1px solid rgba(0,245,255,.06);
+        border-bottom: 1px solid rgba(88,166,255,.06);
         transition: background .15s, padding-left .15s;
-        font-family: 'Share Tech Mono', monospace;
+        font-family: 'Inter', sans-serif;
     }
     .client-result-item:last-child { border-bottom: none; }
     .client-result-item:hover,
     .client-result-item.active {
-        background: rgba(0,245,255,.07);
+        background: rgba(88,166,255,.07);
         padding-left: 18px;
     }
 
-    .client-result-nome { font-size: 12px; color: #d0e8f0; }
-    .client-result-cnpj { font-size: 11px; color: rgba(0,245,255,.35); margin-top: 2px; }
-    .client-result-empty { padding: 14px; color: rgba(0,245,255,.35); font-size: 12px; text-align: center; }
+    .client-result-nome { font-size: 12px; color: #e6edf3; }
+    .client-result-cnpj { font-size: 11px; color: rgba(88,166,255,.35); margin-top: 2px; }
+    .client-result-empty { padding: 14px; color: rgba(88,166,255,.35); font-size: 12px; text-align: center; }
 
     .client-search-results mark {
-        background: rgba(0,245,255,.2);
-        color: #00f5ff;
+        background: rgba(88,166,255,.2);
+        color: #58a6ff;
         border-radius: 2px;
         padding: 0 1px;
     }
 
     .client-search-results::-webkit-scrollbar { width: 3px; }
     .client-search-results::-webkit-scrollbar-track { background: transparent; }
-    .client-search-results::-webkit-scrollbar-thumb { background: rgba(0,245,255,.2); border-radius: 4px; }
+    .client-search-results::-webkit-scrollbar-thumb { background: rgba(88,166,255,.2); border-radius: 4px; }
     </style>
 </body>
 
@@ -498,19 +499,19 @@
 
 <!-- Modal de confirmação (overlay puro — sem Bootstrap modal) -->
 <div id="uiModalConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99995;backdrop-filter:blur(3px);align-items:center;justify-content:center;">
-  <div style="background:rgba(4,8,22,.98);border:1px solid rgba(0,245,255,.22);box-shadow:0 8px 40px rgba(0,0,0,.85),0 0 30px rgba(0,245,255,.06);font-family:'Share Tech Mono',monospace;border-radius:10px;width:320px;max-width:94vw;">
+  <div style="background:#1c2128;border:1px solid #30363d;box-shadow:0 8px 24px rgba(0,0,0,.5);font-family:'Inter',sans-serif;border-radius:10px;width:320px;max-width:94vw;">
     <div style="padding:28px 24px 16px;text-align:center">
       <div id="ui-confirm-icon" style="font-size:2rem;margin-bottom:14px"></div>
-      <div id="ui-confirm-title" style="font-size:.9rem;font-weight:600;color:#d0e8f0;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'Orbitron',monospace;"></div>
-      <div id="ui-confirm-msg" style="font-size:.8rem;color:rgba(0,245,255,.5);line-height:1.6"></div>
+      <div id="ui-confirm-title" style="font-size:.9rem;font-weight:600;color:#e6edf3;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'Inter',sans-serif;"></div>
+      <div id="ui-confirm-msg" style="font-size:.8rem;color:rgba(88,166,255,.5);line-height:1.6"></div>
     </div>
-    <div style="border-top:1px solid rgba(0,245,255,.1);padding:12px 20px;display:flex;gap:8px;">
+    <div style="border-top:1px solid rgba(88,166,255,.1);padding:12px 20px;display:flex;gap:8px;">
       <button id="ui-confirm-cancel"
-        style="flex:1;background:transparent;border:1px solid rgba(0,245,255,.15);color:rgba(0,245,255,.5);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:6px;border-radius:5px;cursor:pointer;">
+        style="flex:1;background:transparent;border:1px solid #30363d;color:#7d8590;font-family:'Inter',sans-serif;font-size:12px;padding:7px;border-radius:6px;cursor:pointer;">
         Cancelar
       </button>
       <button id="ui-confirm-ok"
-        style="flex:1;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:6px;border-radius:5px;cursor:pointer;border:1px solid;">
+        style="flex:1;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:7px;border-radius:6px;cursor:pointer;border:1px solid;">
         Confirmar
       </button>
     </div>
@@ -519,15 +520,15 @@
 
 <!-- Modal de alerta (overlay puro — sem Bootstrap modal) -->
 <div id="uiModalAlert" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99995;backdrop-filter:blur(3px);align-items:center;justify-content:center;">
-  <div style="background:rgba(4,8,22,.98);border:1px solid rgba(0,245,255,.22);box-shadow:0 8px 40px rgba(0,0,0,.85),0 0 30px rgba(0,245,255,.06);font-family:'Share Tech Mono',monospace;border-radius:10px;width:320px;max-width:94vw;">
+  <div style="background:#1c2128;border:1px solid #30363d;box-shadow:0 8px 24px rgba(0,0,0,.5);font-family:'Inter',sans-serif;border-radius:10px;width:320px;max-width:94vw;">
     <div style="padding:28px 24px 16px;text-align:center">
       <div id="ui-alert-icon" style="font-size:2rem;margin-bottom:14px"></div>
-      <div id="ui-alert-title" style="font-size:.9rem;font-weight:600;color:#d0e8f0;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'Orbitron',monospace;"></div>
-      <div id="ui-alert-msg" style="font-size:.8rem;color:rgba(0,245,255,.5);line-height:1.6"></div>
+      <div id="ui-alert-title" style="font-size:.9rem;font-weight:600;color:#e6edf3;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'Inter',sans-serif;"></div>
+      <div id="ui-alert-msg" style="font-size:.8rem;color:rgba(88,166,255,.5);line-height:1.6"></div>
     </div>
-    <div style="border-top:1px solid rgba(0,245,255,.1);padding:12px 20px;">
+    <div style="border-top:1px solid rgba(88,166,255,.1);padding:12px 20px;">
       <button id="ui-alert-ok"
-        style="width:100%;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.35);color:#00f5ff;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:7px;border-radius:5px;cursor:pointer;">
+        style="width:100%;background:rgba(56,139,253,.1);border:1px solid #58a6ff;color:#58a6ff;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:8px;border-radius:6px;cursor:pointer;">
         OK
       </button>
     </div>
@@ -609,7 +610,7 @@ window.uiAlert = function({ titulo='Aviso', msg='', icone='fas fa-info-circle',
 // ── uiToast ───────────────────────────────────────────────────────────────
 window.uiToast = function(msg, tipo='ok') {
     const el  = document.getElementById('ui-toast');
-    const cor = tipo === 'ok' ? '#00ff88' : tipo === 'info' ? '#00d9ff' : '#e06060';
+    const cor = tipo === 'ok' ? '#3fb950' : tipo === 'info' ? '#00d9ff' : '#e06060';
     const rgb = _uiHexRgb(cor);
     el.textContent      = msg;
     el.style.background = `rgba(${rgb},.12)`;
@@ -631,5 +632,127 @@ function _uiHexRgb(hex) {
 
 })();
 </script>
+
+
+<!-- Notificador global de chamados -->
+{% if request.user.is_staff %}
+<div id="globalTicketToasts" style="position:fixed;bottom:28px;right:28px;z-index:99990;display:flex;flex-direction:column;gap:10px;pointer-events:none;max-width:340px;"></div>
+<style>
+.gtkt-toast{display:flex;align-items:center;gap:12px;background:rgba(18,22,30,.97);border:1px solid rgba(248,81,73,.5);border-radius:10px;padding:12px 14px;min-width:260px;max-width:320px;box-shadow:0 4px 20px rgba(248,81,73,.15),0 2px 8px rgba(0,0,0,.5);pointer-events:all;cursor:pointer;animation:gtktIn .2s ease,gtktPulse 1.2s ease-in-out .3s 2;font-family:Inter,sans-serif;}
+.gtkt-toast:hover{border-color:#f85149;}
+.gtkt-icon{border-radius:50%;width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(248,81,73,.15);color:#f85149;}
+.gtkt-body{flex:1;min-width:0;}
+.gtkt-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#f85149;margin-bottom:3px;}
+.gtkt-group{font-size:13px;font-weight:600;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gtkt-sub{font-size:11px;color:rgba(230,237,243,.5);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gtkt-close{color:rgba(248,81,73,.4);cursor:pointer;font-size:13px;padding:2px 4px;flex-shrink:0;line-height:1;}
+.gtkt-close:hover{color:#f85149;}
+.gtkt-toast.gtkt-msg{border-color:rgba(88,166,255,.45);box-shadow:0 4px 20px rgba(88,166,255,.12),0 2px 8px rgba(0,0,0,.5);animation:gtktIn .2s ease,gtktPulseBlue 1.2s ease-in-out .3s 2;}
+.gtkt-toast.gtkt-msg:hover{border-color:#58a6ff;}
+.gtkt-toast.gtkt-msg .gtkt-icon{background:rgba(88,166,255,.15);color:#58a6ff;}
+.gtkt-toast.gtkt-msg .gtkt-label{color:#58a6ff;}
+.gtkt-toast.gtkt-msg .gtkt-close{color:rgba(88,166,255,.4);}
+.gtkt-toast.gtkt-msg .gtkt-close:hover{color:#58a6ff;}
+@keyframes gtktIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gtktPulse{0%,100%{box-shadow:0 4px 20px rgba(248,81,73,.15),0 2px 8px rgba(0,0,0,.5)}50%{box-shadow:0 4px 20px rgba(248,81,73,.4),0 0 0 5px rgba(248,81,73,.12)}}
+@keyframes gtktPulseBlue{0%,100%{box-shadow:0 4px 20px rgba(88,166,255,.12),0 2px 8px rgba(0,0,0,.5)}50%{box-shadow:0 4px 20px rgba(88,166,255,.35),0 0 0 5px rgba(88,166,255,.1)}}
+</style>
+<script>
+(function(){
+var ws=null,wsDelay=3000,openCount=0;
+
+function updateBadge(d){
+    openCount=Math.max(0,openCount+d);
+    var btn=document.getElementById('globalAtendBtn');
+    if(!btn)return;
+    var badge=document.getElementById('globalAtendBadge');
+    if(openCount>0){
+        if(!badge){badge=document.createElement('span');badge.id='globalAtendBadge';badge.style.cssText='position:absolute;top:-5px;right:-6px;background:#f85149;color:#fff;font-size:9px;font-weight:700;border-radius:50%;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;font-family:Inter,sans-serif;';btn.appendChild(badge);}
+        badge.textContent=openCount>99?'99+':openCount;
+    }else if(badge){badge.remove();}
+}
+
+function dismissToast(el){
+    if(!el||el._gone)return;el._gone=true;clearTimeout(el._timer);
+    el.style.opacity='0';el.style.transform='translateY(12px)';el.style.transition='opacity .25s,transform .25s';
+    setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},280);
+    updateBadge(-1);
+}
+
+function playTick(isNew){
+    try{
+        var ctx=new(window.AudioContext||window.webkitAudioContext)();
+        var freqs=isNew?[900,700]:[700,550];
+        [0,.18].forEach(function(d){
+            var o=ctx.createOscillator(),g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.type='sine';
+            o.frequency.setValueAtTime(freqs[0],ctx.currentTime+d);
+            o.frequency.exponentialRampToValueAtTime(freqs[1],ctx.currentTime+d+.13);
+            g.gain.setValueAtTime(.22,ctx.currentTime+d);
+            g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+d+.16);
+            o.start(ctx.currentTime+d);o.stop(ctx.currentTime+d+.18);
+        });
+    }catch(e){}
+}
+
+function showToast(groupName,convId,isNew,msgPreview){
+    var c=document.getElementById('globalTicketToasts');if(!c)return;
+    var sg=(groupName||'Grupo').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var cls=isNew?'gtkt-toast':'gtkt-toast gtkt-msg';
+    var icon=isNew?'fa-bell':'fa-comment-dots';
+    var label=isNew?'Novo chamado em aberto':'Nova mensagem';
+    var sub=isNew?'Clique para atender':(msgPreview?(msgPreview.slice(0,50).replace(/</g,'&lt;')+(msgPreview.length>50?'\u2026':'')):'Clique para ver');
+    var el=document.createElement('div');el.className=cls;
+    el.innerHTML='<div class="gtkt-icon"><i class="fas '+icon+'"></i></div>'
+        +'<div class="gtkt-body"><div class="gtkt-label">'+label+'</div>'
+        +'<div class="gtkt-group">'+sg+'</div>'
+        +'<div class="gtkt-sub">'+sub+'</div></div>'
+        +'<span class="gtkt-close" title="Fechar">&#x2715;</span>';
+    el.querySelector('.gtkt-close').addEventListener('click',function(e){e.stopPropagation();dismissToast(el);});
+    el.addEventListener('click',function(){dismissToast(el);window.location.href='/atendimento/conversation/'+convId+'/';});
+    c.appendChild(el);updateBadge(1);
+    try{playTick(isNew);}catch(e){}
+    if('Notification'in window&&Notification.permission==='granted'){
+        try{
+            var body=groupName+(msgPreview?'\n'+msgPreview.slice(0,80):'');
+            var n=new Notification(label,{body:body,icon:'/static/favicon-16x16.png',tag:'gtkt-'+convId,renotify:true});
+            n.onclick=function(){window.focus();window.location.href='/atendimento/conversation/'+convId+'/';n.close();};
+            setTimeout(function(){n.close();},8000);
+        }catch(e){}
+    }
+    el._timer=setTimeout(function(){dismissToast(el);},10000);
+}
+
+function connect(){
+    var proto=location.protocol==='https:'?'wss':'ws';
+    try{
+        ws=new WebSocket(proto+'://'+location.host+'/ws/atendimento/inbox/');
+        ws.onopen=function(){wsDelay=3000;};
+        ws.onmessage=function(e){
+            try{
+                var p=JSON.parse(e.data);
+                if(p.type!=='new_message'||!p.conversation)return;
+                if(p.message&&p.message.sender_type==='agent')return;
+                var conv=p.conversation;
+                if(window.location.href.indexOf('/atendimento/conversation/'+conv.id)!==-1)return;
+                if(!conv.assigned_to_id){
+                    showToast(conv.group_name,conv.id,true,null);
+                }else{
+                    var preview=p.message&&p.message.content?p.message.content:'';
+                    showToast(conv.group_name,conv.id,false,preview);
+                }
+            }catch(err){}
+        };
+        ws.onclose=function(){setTimeout(function(){wsDelay=Math.min(wsDelay*1.5,60000);connect();},wsDelay);};
+        ws.onerror=function(){ws.close();};
+    }catch(err){}
+}
+
+if('Notification'in window&&Notification.permission==='default'){Notification.requestPermission();}
+connect();
+})();
+</script>
+{% endif %}
 
 </html>

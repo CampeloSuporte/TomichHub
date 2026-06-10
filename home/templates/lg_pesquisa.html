@@ -10,8 +10,8 @@
         <i class="fas fa-arrow-left me-1"></i> Dashboard
       </a>
       <div>
-        <h4 class="mb-0"><i class="fas fa-route me-2" style="color:#00f5ff"></i>Pesquisa Looking Glass</h4>
-        <small style="color:rgba(0,245,255,.4)">Consulta um prefixo em múltiplos route servers e LGs públicos simultaneamente</small>
+        <h4 class="mb-0"><i class="fas fa-route me-2" style="color:#58a6ff;opacity:.8"></i>Pesquisa Looking Glass</h4>
+        <small style="color:rgba(88,166,255,.4)">Consulta um prefixo em múltiplos route servers e LGs públicos simultaneamente</small>
       </div>
     </div>
 
@@ -20,7 +20,7 @@
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-5">
-            <label class="form-label" style="font-size:.82rem;color:rgba(0,245,255,.4)">Prefixo IPv4 ou IPv6</label>
+            <label class="form-label" style="font-size:.82rem;color:rgba(88,166,255,.4)">Prefixo IPv4 ou IPv6</label>
             <input id="lg-prefixo" type="text" class="form-control"
               placeholder="Ex: 179.0.110.0/24  ou  2804:80e0::/32"
               value="{{ prefixo_inicial }}"
@@ -28,13 +28,13 @@
           </div>
           <div class="col-auto">
             <button id="lg-btn" class="btn" onclick="lgBuscar()"
-              style="background:rgba(0,245,255,.15);border:1px solid #00f5ff;color:#00f5ff;min-width:130px">
+              style="background:rgba(88,166,255,.15);border:1px solid #58a6ff;color:#58a6ff;min-width:130px">
               <i class="fas fa-search me-1"></i> Pesquisar
             </button>
           </div>
           <div class="col-auto">
-            <span id="lg-loading" style="display:none;color:rgba(0,245,255,.4);font-size:.85rem">
-              <i class="fas fa-circle-notch fa-spin me-1" style="color:#00f5ff"></i>
+            <span id="lg-loading" style="display:none;color:rgba(88,166,255,.4);font-size:.85rem">
+              <i class="fas fa-circle-notch fa-spin me-1" style="color:#58a6ff;opacity:.8"></i>
               Consultando LGs… pode levar até 25 segundos
             </span>
           </div>
@@ -43,10 +43,10 @@
         <!-- Fontes consultadas -->
         <div class="mt-3 d-flex flex-wrap gap-2" id="lg-fontes-badges">
           <span style="font-size:.75rem;color:#555">Fontes:</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">RIPE RIS Looking Glass</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">RIPE RIS Looking Glass</span>
           <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,200,100,.07);border:1px solid rgba(0,200,100,.3);color:#00c864">🇧🇷 IX.br / NIC.br (PTTs Brasileiros)</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">RIPE Prefix Overview</span>
-          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.2);color:rgba(0,245,255,.4)">RIPE RIS Whois</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">RIPE Prefix Overview</span>
+          <span style="font-size:.73rem;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);color:rgba(88,166,255,.4)">RIPE RIS Whois</span>
         </div>
       </div>
     </div>
@@ -61,7 +61,7 @@
       <div class="card mb-4">
         <div class="card-body">
           <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-            <h5 class="mb-0"><i class="fas fa-project-diagram me-2" style="color:#00ff88"></i>AS Paths encontrados</h5>
+            <h5 class="mb-0"><i class="fas fa-project-diagram me-2" style="color:#3fb950"></i>AS Paths encontrados</h5>
             <button id="lg-topo-btn" class="btn btn-sm" onclick="lgVerTopologia()"
               style="display:none;background:rgba(180,100,255,.15);border:1px solid #b464ff;color:#b464ff;font-size:.78rem">
               <i class="fas fa-sitemap me-1"></i>Ver Topologia BGP
@@ -93,16 +93,16 @@
 <!-- Modal de Topologia BGP -->
 <div id="lg-topo-modal" style="display:none;position:fixed;inset:0;z-index:1060;background:rgba(0,0,0,.75);overflow:auto">
   <div style="max-width:1100px;margin:40px auto;padding:0 16px">
-    <div style="background:#02030a;border:1px solid rgba(0,245,255,.15);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.7)">
+    <div style="background:#0d1117;border:1px solid rgba(88,166,255,.15);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.7)">
       <div style="padding:16px 20px;border-bottom:1px solid #21262d;display:flex;align-items:center;gap:12px">
         <i class="fas fa-sitemap" style="color:#b464ff;font-size:1.1rem"></i>
         <span style="font-weight:600;color:#e6edf3;font-size:1rem">Topologia de Interligação BGP</span>
-        <span id="lg-topo-subtitulo" style="font-size:.8rem;color:rgba(0,245,255,.4);margin-left:4px"></span>
+        <span id="lg-topo-subtitulo" style="font-size:.8rem;color:rgba(88,166,255,.4);margin-left:4px"></span>
         <button onclick="document.getElementById('lg-topo-modal').style.display='none'"
-          style="margin-left:auto;background:none;border:none;color:rgba(0,245,255,.4);font-size:1.2rem;cursor:pointer;line-height:1">&times;</button>
+          style="margin-left:auto;background:none;border:none;color:rgba(88,166,255,.4);font-size:1.2rem;cursor:pointer;line-height:1">&times;</button>
       </div>
       <div style="padding:16px 20px">
-        <div id="lg-topo-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:.75rem;color:rgba(0,245,255,.4)"></div>
+        <div id="lg-topo-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:.75rem;color:rgba(88,166,255,.4)"></div>
         <div id="lg-topo-svg-wrap" style="overflow:auto;border:1px solid #21262d;border-radius:8px;background:#0a0e14">
           <svg id="lg-topo-svg" style="display:block"></svg>
         </div>
@@ -126,7 +126,7 @@
     color:#e6edf3;
     word-break:break-all;
     padding:8px 12px;
-    background:#02030a;
+    background:#0d1117;
     border-radius:6px;
     margin:8px 0;
 }
@@ -134,9 +134,9 @@
     display:inline-block;
     padding:1px 6px;
     border-radius:4px;
-    background:rgba(0,245,255,.12);
-    border:1px solid rgba(0,245,255,.25);
-    color:#00f5ff;
+    background:rgba(88,166,255,.12);
+    border:1px solid rgba(88,166,255,.25);
+    color:#58a6ff;
     font-size:.82rem;
     margin:1px;
     font-family:monospace;
@@ -144,18 +144,18 @@
     transition:background .15s, border-color .15s;
 }
 .lg-asn:hover {
-    background:rgba(0,245,255,.22);
-    border-color:rgba(0,245,255,.5);
+    background:rgba(88,166,255,.22);
+    border-color:rgba(88,166,255,.5);
 }
 .lg-asn.origin {
-    background:rgba(0,255,136,.12);
-    border-color:rgba(0,255,136,.3);
-    color:#00ff88;
+    background:rgba(63,185,80,.12);
+    border-color:rgba(63,185,80,.3);
+    color:#3fb950;
     font-weight:600;
 }
 .lg-asn.origin:hover {
-    background:rgba(0,255,136,.22);
-    border-color:rgba(0,255,136,.55);
+    background:rgba(63,185,80,.22);
+    border-color:rgba(63,185,80,.55);
 }
 /* Tooltip do ASN */
 #lg-asn-tip {
@@ -164,17 +164,17 @@
     pointer-events:none;
     padding:7px 12px;
     border-radius:7px;
-    background:#060c18;
-    border:1px solid #00f5ff;
+    background:#161b22;
+    border:1px solid #58a6ff;
     box-shadow:0 4px 20px rgba(0,0,0,.6);
     font-size:.8rem;
     color:#e6edf3;
     max-width:280px;
     transition:opacity .15s;
 }
-#lg-asn-tip .tip-asn { color:#00f5ff; font-family:monospace; font-weight:600; }
+#lg-asn-tip .tip-asn { color:#58a6ff; font-family:monospace; font-weight:600; }
 #lg-asn-tip .tip-nome { color:#e6edf3; margin-top:2px; }
-#lg-asn-tip .tip-spin { color:rgba(0,245,255,.4); font-style:italic; }
+#lg-asn-tip .tip-spin { color:rgba(88,166,255,.4); font-style:italic; }
 .lg-fonte-card {
     border:1px solid var(--border);
     border-radius:8px;
@@ -195,9 +195,9 @@
     font-size:.68rem;
     padding:1px 7px;
     border-radius:10px;
-    background:rgba(0,255,136,.12);
-    border:1px solid rgba(0,255,136,.3);
-    color:#00ff88;
+    background:rgba(63,185,80,.12);
+    border:1px solid rgba(63,185,80,.3);
+    color:#3fb950;
     white-space:nowrap;
 }
 .lg-tag-unico {
@@ -219,8 +219,8 @@ const CSRF = (function(){
 
 // Paleta de cores para diferenciar AS paths distintos
 const PATH_CORES = [
-    {brd:'#00f5ff', bg:'rgba(0,245,255,.08)', txt:'#00f5ff'},
-    {brd:'#00ff88', bg:'rgba(0,255,136,.08)', txt:'#00ff88'},
+    {brd:'#58a6ff', bg:'rgba(88,166,255,.08)', txt:'#58a6ff'},
+    {brd:'#3fb950', bg:'rgba(63,185,80,.08)', txt:'#3fb950'},
     {brd:'#ffaa00', bg:'rgba(255,170,0,.08)', txt:'#ffaa00'},
     {brd:'#b464ff', bg:'rgba(180,100,255,.08)', txt:'#b464ff'},
     {brd:'#e06060', bg:'rgba(224,96,96,.08)', txt:'#e06060'},
@@ -270,11 +270,11 @@ async function lgBuscar() {
 
 function renderLGResultado(d) {
     // ── Resumo geral ──────────────────────────────────────────────
-    const cor   = d.encontrado ? '#00ff88' : '#e06060';
-    const bg    = d.encontrado ? 'rgba(0,255,136,.08)' : 'rgba(224,96,96,.08)';
+    const cor   = d.encontrado ? '#3fb950' : '#e06060';
+    const bg    = d.encontrado ? 'rgba(63,185,80,.08)' : 'rgba(224,96,96,.08)';
     const icone = d.encontrado ? 'check-circle' : 'times-circle';
     const msg   = d.encontrado
-        ? `Prefixo <strong style="color:#e6edf3;font-family:monospace">${d.prefixo}</strong> encontrado em <strong style="color:#00ff88">${d.fontes_com_prefixo}</strong> de <strong>${d.total_fontes}</strong> fontes consultadas.`
+        ? `Prefixo <strong style="color:#e6edf3;font-family:monospace">${d.prefixo}</strong> encontrado em <strong style="color:#3fb950">${d.fontes_com_prefixo}</strong> de <strong>${d.total_fontes}</strong> fontes consultadas.`
         : `Prefixo <strong style="color:#e6edf3;font-family:monospace">${d.prefixo}</strong> <strong style="color:#e06060">não encontrado</strong> em nenhuma fonte consultada.`;
 
     const nPaths = Object.keys(d.por_aspath).length;
@@ -291,7 +291,7 @@ function renderLGResultado(d) {
     if (geoInfo) {
         const bandeira = geoInfo.pais ? `<img src="https://flagcdn.com/16x12/${geoInfo.pais.toLowerCase()}.png" style="vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : '';
         const local = [geoInfo.cidade, geoInfo.pais].filter(Boolean).join(', ');
-        geoBadge = `<span style="margin-left:10px;font-size:.78rem;color:rgba(0,245,255,.4);display:inline-flex;align-items:center;gap:4px">
+        geoBadge = `<span style="margin-left:10px;font-size:.78rem;color:rgba(88,166,255,.4);display:inline-flex;align-items:center;gap:4px">
             <i class="fas fa-map-marker-alt" style="color:#ffaa00;font-size:.72rem"></i>
             ${bandeira}<span style="color:#e6edf3">${local}</span>
             ${geoInfo.cobertura < 100 ? `<span style="color:#555">(${Math.round(geoInfo.cobertura)}%)</span>` : ''}
@@ -302,25 +302,25 @@ function renderLGResultado(d) {
         <div class="card-body">
             <div style="padding:12px 16px;border-radius:8px;background:${bg};border:1px solid ${cor};color:${cor};font-size:.9rem;margin-bottom:${d.encontrado?'14px':'0'}">
                 <i class="fas fa-${icone} me-2"></i>${msg}
-                ${originInfo ? `<span style="margin-left:12px;font-size:.82rem;color:rgba(0,245,255,.4)">ASN de origem: <strong style="color:#00f5ff">AS${originInfo.asn}</strong>${originInfo.nome ? ` – <span style="color:#e6edf3">${originInfo.nome}</span>` : ''}${geoBadge}</span>` : geoBadge ? `<span style="margin-left:8px">${geoBadge}</span>` : ''}
+                ${originInfo ? `<span style="margin-left:12px;font-size:.82rem;color:rgba(88,166,255,.4)">ASN de origem: <strong style="color:#58a6ff;opacity:.8">AS${originInfo.asn}</strong>${originInfo.nome ? ` – <span style="color:#e6edf3">${originInfo.nome}</span>` : ''}${geoBadge}</span>` : geoBadge ? `<span style="margin-left:8px">${geoBadge}</span>` : ''}
             </div>
             ${d.encontrado && nPaths > 0 ? `
             <div class="row g-3 mt-1">
                 <div class="col-6 col-md-3">
-                    <div style="font-size:.75rem;color:rgba(0,245,255,.4)">AS Paths distintos</div>
+                    <div style="font-size:.75rem;color:rgba(88,166,255,.4)">AS Paths distintos</div>
                     <div style="font-size:1.6rem;font-weight:700;color:#e6edf3">${nPaths}</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div style="font-size:.75rem;color:rgba(0,245,255,.4)">Coletores RIPE RIS</div>
-                    <div style="font-size:1.6rem;font-weight:700;color:#00f5ff">${totalRrcs}</div>
+                    <div style="font-size:.75rem;color:rgba(88,166,255,.4)">Coletores RIPE RIS</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#58a6ff">${totalRrcs}</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div style="font-size:.75rem;color:rgba(0,245,255,.4)">Total de peers</div>
-                    <div style="font-size:1.6rem;font-weight:700;color:#00f5ff">${totalPeers}</div>
+                    <div style="font-size:.75rem;color:rgba(88,166,255,.4)">Total de peers</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#58a6ff">${totalPeers}</div>
                 </div>
                 ${pathConsensual ? `
                 <div class="col-12 col-md-3">
-                    <div style="font-size:.75rem;color:rgba(0,245,255,.4);margin-bottom:4px">Path mais visto (${d.por_aspath[pathConsensual].length} RRCs)</div>
+                    <div style="font-size:.75rem;color:rgba(88,166,255,.4);margin-bottom:4px">Path mais visto (${d.por_aspath[pathConsensual].length} RRCs)</div>
                     <div style="font-size:.78rem">${lgAsPathHtml(pathConsensual)}</div>
                 </div>` : ''}
             </div>` : ''}
@@ -350,11 +350,11 @@ function renderLGResultado(d) {
                     <span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:${c.bg};border:1px solid ${c.brd};color:${c.txt}">
                         ${isMain ? '★ Path principal' : `Path #${idx+1}`}
                     </span>
-                    <span style="font-size:.75rem;color:rgba(0,245,255,.4)">${nLgs} RRC${nLgs>1?'s':''} confirmaram</span>
+                    <span style="font-size:.75rem;color:rgba(88,166,255,.4)">${nLgs} RRC${nLgs>1?'s':''} confirmaram</span>
                     ${brBadge}
                 </div>
                 <div class="lg-path-code">${lgAsPathHtml(path)}</div>
-                <div style="font-size:.78rem;color:rgba(0,245,255,.4);margin-top:6px">
+                <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-top:6px">
                     <i class="fas fa-eye me-1" style="color:${c.txt}"></i>
                     ${lgs.map(l => `<span style="margin-right:8px">${l.ponto}</span>`).join('')}
                 </div>
@@ -377,7 +377,7 @@ function renderLGResultado(d) {
     const sortedRes = [...d.resultados].sort((a,b) => a.fonte === 'RIPE RIS' ? -1 : b.fonte === 'RIPE RIS' ? 1 : 0);
     for (const res of sortedRes) {
         const ok       = res.encontrado;
-        const cor      = ok ? '#00ff88' : '#555';
+        const cor      = ok ? '#3fb950' : '#555';
         const vps      = res.vantage_points || [];
         const isRipe   = res.fonte === 'RIPE RIS';
         const isIxbr   = res.fonte === 'IX.br';
@@ -395,14 +395,14 @@ function renderLGResultado(d) {
                 <i class="fas fa-${ok ? 'check-circle' : 'times-circle'}" style="color:${isIxbr && ok ? '#00c864' : cor}"></i>
                 <span style="font-weight:600;color:#e6edf3;font-size:.88rem">${res.fonte}</span>
                 <span style="font-size:.75rem;color:#555">${res.descricao || ''}</span>
-                ${ok && vps.length ? `<span style="font-size:.73rem;color:rgba(0,245,255,.4);margin-left:4px">${totalLabel}</span>` : ''}
-                ${podeExpandir ? `<span style="font-size:.68rem;color:${isIxbr?'#00c864':'#00f5ff'};margin-left:auto"><i class="fas fa-chevron-down me-1"></i>${expandLabel}</span>` : ''}
+                ${ok && vps.length ? `<span style="font-size:.73rem;color:rgba(88,166,255,.4);margin-left:4px">${totalLabel}</span>` : ''}
+                ${podeExpandir ? `<span style="font-size:.68rem;color:${isIxbr?'#00c864':'#58a6ff'};margin-left:auto"><i class="fas fa-chevron-down me-1"></i>${expandLabel}</span>` : ''}
                 ${res.erro ? `<span style="font-size:.73rem;color:#e06060;margin-left:auto">Erro: ${res.erro}</span>` : ''}
             </div>`;
         if (ok && vps.length) {
             fontesHtml += `<div id="${collapseId}" class="${(isRipe || isIxbr) ? 'd-none' : ''}" style="margin-top:8px">`;
             for (const vp of vps) {
-                const c   = pathCores[vp.as_path] || {txt:'rgba(0,245,255,.4)'};
+                const c   = pathCores[vp.as_path] || {txt:'rgba(88,166,255,.4)'};
                 const cnt = d.por_aspath[vp.as_path]?.length || 0;
                 const srcLabel = isIxbr ? 'PTT' : 'RRC';
                 const tag = cnt > 1
@@ -416,7 +416,7 @@ function renderLGResultado(d) {
                 const peersLabel = isIxbr ? 'rotas neste PTT' : 'peers neste RRC';
                 fontesHtml += `
                 <div class="lg-vp-row">
-                    <div style="min-width:240px;color:rgba(0,245,255,.4);font-size:.8rem;display:flex;align-items:center;gap:6px">${locTag}<span>${vp.nome}</span></div>
+                    <div style="min-width:240px;color:rgba(88,166,255,.4);font-size:.8rem;display:flex;align-items:center;gap:6px">${locTag}<span>${vp.nome}</span></div>
                     <div style="flex:1">
                         <span style="font-family:monospace;font-size:.8rem;color:${c.txt}">${vp.as_path}</span>
                         ${vp.n_peers > 1 ? `<span style="font-size:.68rem;color:#555;margin-left:8px">(${vp.n_peers} ${peersLabel})</span>` : ''}
@@ -577,8 +577,8 @@ function lgVerTopologia() {
 
     let defs = `<defs>
         <marker id="arr-gray"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#30363d"/></marker>
-        <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00ff88"/></marker>
-        <marker id="arr-blue"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00f5ff"/></marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+        <marker id="arr-blue"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/></marker>
         <marker id="arr-purp"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#b464ff"/></marker>
     </defs>`;
 
@@ -594,7 +594,7 @@ function lgVerTopologia() {
         const dx = (x2 - x1) * 0.45;
         const isOriginEdge = originSet.has(e.from);
         const isTier1Edge  = TIER1_ASNS.has(parseInt(e.to));
-        const col  = isOriginEdge ? '#00ff8840' : isTier1Edge ? '#00f5ff30' : '#30363d';
+        const col  = isOriginEdge ? '#3fb95040' : isTier1Edge ? '#58a6ff30' : '#30363d';
         const arr  = isOriginEdge ? 'arr-green'  : isTier1Edge ? 'arr-blue'  : 'arr-gray';
         edgesSvg += `<path d="M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}"
             fill="none" stroke="${col}" stroke-width="1.5" marker-end="url(#${arr})"/>`;
@@ -605,9 +605,9 @@ function lgVerTopologia() {
     for (const [asn, node] of Object.entries(nodeMap)) {
         const isOrigin = originSet.has(asn);
         const isTier1  = TIER1_ASNS.has(parseInt(asn));
-        const brd   = isOrigin ? '#00ff88' : isTier1 ? '#00f5ff' : '#30363d';
-        const bg    = isOrigin ? 'rgba(0,255,136,.14)' : isTier1 ? 'rgba(0,245,255,.10)' : 'rgba(255,255,255,.04)';
-        const tcol  = isOrigin ? '#00ff88' : isTier1 ? '#00f5ff' : 'rgba(0,245,255,.4)';
+        const brd   = isOrigin ? '#3fb950' : isTier1 ? '#58a6ff' : '#30363d';
+        const bg    = isOrigin ? 'rgba(63,185,80,.14)' : isTier1 ? 'rgba(88,166,255,.10)' : 'rgba(255,255,255,.04)';
+        const tcol  = isOrigin ? '#3fb950' : isTier1 ? '#58a6ff' : 'rgba(88,166,255,.4)';
         const label = node.nome ? node.nome.substring(0, 18) : '';
         const rx = node.x, ry = node.y;
         nodesSvg += `<g class="topo-node" data-asn="${asn}">
@@ -629,12 +629,12 @@ function lgVerTopologia() {
                     const el = document.getElementById(`topo-nome-${asn}`);
                     if (el && _asnCache[asn]) {
                         el.textContent = _asnCache[asn].substring(0, 18);
-                        el.setAttribute('fill', 'rgba(0,245,255,.4)');
+                        el.setAttribute('fill', 'rgba(88,166,255,.4)');
                     }
                 }).catch(()=>{ _asnCache[asn] = null; });
         } else if (_asnCache[asn]) {
             const el = document.getElementById(`topo-nome-${asn}`);
-            if (el) { el.textContent = _asnCache[asn].substring(0, 18); el.setAttribute('fill', 'rgba(0,245,255,.4)'); }
+            if (el) { el.textContent = _asnCache[asn].substring(0, 18); el.setAttribute('fill', 'rgba(88,166,255,.4)'); }
         }
     }
 
@@ -643,8 +643,8 @@ function lgVerTopologia() {
     const nEdges = edges.length;
     document.getElementById('lg-topo-subtitulo').textContent = `${nNodes} ASNs · ${nEdges} conexões`;
     document.getElementById('lg-topo-legend').innerHTML = `
-        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(0,255,136,.14)" stroke="#00ff88" stroke-width="1.2"/></svg> Origem (anunciante do prefixo)</span>
-        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(0,245,255,.10)" stroke="#00f5ff" stroke-width="1.2"/></svg> Tier 1 / Upstream</span>
+        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(63,185,80,.14)" stroke="#3fb950" stroke-width="1.2"/></svg> Origem (anunciante do prefixo)</span>
+        <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(88,166,255,.10)" stroke="#58a6ff" stroke-width="1.2"/></svg> Tier 1 / Upstream</span>
         <span><svg width="14" height="14"><rect width="14" height="14" rx="3" fill="rgba(255,255,255,.04)" stroke="#30363d" stroke-width="1.2"/></svg> Trânsito</span>
         <span style="color:#555">← Setas mostram propagação do prefixo</span>`;
 

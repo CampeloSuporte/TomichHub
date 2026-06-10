@@ -29,11 +29,11 @@
     <div class="row">
         <!-- Detalhes da Fatura -->
         <div class="col-lg-8">
-            <div class="card mb-4" style="background-color: #1a1a1a; border-color: #00ff88;">
-                <div class="card-header bg-dark" style="border-color: #00ff88;">
+            <div class="card mb-4">
+                <div class="card-header bg-dark">
                     <h5 class="mb-0 text-white fw-bold">Detalhes da Fatura</h5>
                 </div>
-                <div class="card-body" style="background-color: #1a1a1a;">
+                <div class="card-body" style="background-color: #161b22;">
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <p class="text-white"><strong>Cliente:</strong><br>
@@ -50,11 +50,11 @@
                         </div>
                     </div>
 
-                    <hr style="border-color: #00ff88;">
+                    <hr>
 
                     <!-- Itens -->
                     <h6 class="mb-3 text-white fw-bold">Itens da Fatura</h6>
-                    <table class="table table-sm" style="color: #fff;">
+                    <table class="table table-sm" >
                         <tbody>
                             {% for consultoria in fatura.consultorias.all %}
                             <tr>
@@ -72,7 +72,7 @@
                         </tbody>
                     </table>
 
-                    <hr style="border-color: #00ff88;">
+                    <hr>
 
                     <!-- Totalizações -->
                     <div class="row">
@@ -93,7 +93,7 @@
                                 <span>+ R$ {{ fatura.juros|floatformat:2 }}</span>
                             </p>
                             {% endif %}
-                            <p class="d-flex justify-content-between border-top pt-2" style="border-color: #00ff88;">
+                            <p class="d-flex justify-content-between border-top pt-2">
                                 <strong class="text-white">Total:</strong>
                                 <strong class="text-info">R$ {{ fatura.valor_total|floatformat:2 }}</strong>
                             </p>
@@ -105,11 +105,11 @@
 
         <!-- Status e Pagamentos -->
         <div class="col-lg-4">
-            <div class="card mb-4" style="background-color: #1a1a1a; border-color: #00ff88;">
-                <div class="card-header bg-dark" style="border-color: #00ff88;">
+            <div class="card mb-4">
+                <div class="card-header bg-dark">
                     <h5 class="mb-0 text-white fw-bold">Status</h5>
                 </div>
-                <div class="card-body text-center" style="background-color: #1a1a1a;">
+                <div class="card-body text-center" style="background-color: #161b22;">
                     <h2 class="mb-3">
                         <span class="badge {% if fatura.status == 'PAGA' %}bg-success{% else %}bg-danger{% endif %}">
                             {{ fatura.get_status_display }}
@@ -132,13 +132,13 @@
 
             <!-- Pagamentos Recebidos -->
             {% if pagamentos %}
-            <div class="card" style="background-color: #1a1a1a; border-color: #00ff88;">
-                <div class="card-header bg-dark" style="border-color: #00ff88;">
+            <div class="card">
+                <div class="card-header bg-dark">
                     <h5 class="mb-0 text-white fw-bold">Pagamentos Recebidos</h5>
                 </div>
-                <div class="card-body" style="background-color: #1a1a1a;">
+                <div class="card-body" style="background-color: #161b22;">
                     {% for pagamento in pagamentos %}
-                    <div class="mb-3 pb-3" style="border-bottom: 1px solid #00ff88;">
+                    <div class="mb-3 pb-3" style="border-bottom: 1px solid #3fb950;">
                         <p class="mb-1 text-white">
                             <strong>{{ pagamento.get_tipo_display }}</strong>
                             <span class="badge bg-success">{{ pagamento.data_pagamento|date:'d/m/Y' }}</span>
@@ -175,22 +175,22 @@
 }
 
 .table tbody tr {
-    border-bottom-color: #00ff88;
+    border-bottom-color: #30363d;
 }
 
 .badge {
-    color: #1a1a1a;
+    color: #161b22;
     font-weight: 600;
 }
 
 .card {
-    background-color: #1a1a1a;
-    border-color: #00ff88;
+    background-color: #161b22;
+    border-color: #30363d;
 }
 
 .card-header {
-    background-color: #2a2a2a;
-    border-color: #00ff88;
+    background-color: #1c2128;
+    border-color: #30363d;
 }
 
 h1, h2, h3, h4, h5, h6 {

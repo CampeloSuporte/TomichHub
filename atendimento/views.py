@@ -15,14 +15,17 @@ def _is_staff(user):
 def staff_required(view_func):
     """Permite acesso apenas a administradores e funcionários (is_staff).
     Redireciona clientes e usuários comuns para a página inicial."""
+    from functools import wraps
+    from django.conf import settings as _settings
+    @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect(f'/login/?next={request.path}')
+            login_url = getattr(_settings, 'LOGIN_URL', '/auth/login/')
+            return redirect(f'{login_url}?next={request.path}')
         if not request.user.is_staff:
             return redirect('quadro_geral')
         return view_func(request, *args, **kwargs)
-    from functools import wraps
-    return wraps(view_func)(wrapper)
+    return wrapper
 
 # Alias para retrocompatibilidade com views de admin
 def admin_required(view_func):
@@ -423,26 +426,10 @@ def api_send_media(request, conversation_id):
         if not media_base64:
             return JsonResponse({'success': False, 'error': 'Base64 vazio'}, status=400)
 
-        from .services import EvolutionAPIClient
-        client = EvolutionAPIClient(conversation.group.connection)
+        # Salva o arquivo de mídia em disco (I/O local, rápido)
+        import mimetypes as _mt, time as _t, threading as _th
+        from .services import EvolutionAPIClient, _save_media_file
 
-        if media_type == 'audio':
-            ok = client.send_audio(conversation.group.jid, media_base64)
-        else:
-            ok = client.send_media(
-                conversation.group.jid,
-                mediatype=media_type,
-                media_b64=media_base64,
-                filename=file_name,
-                caption=caption,
-            )
-
-        if not ok:
-            return JsonResponse({'success': False, 'error': 'Falha ao enviar mídia'}, status=400)
-
-        # Salva o arquivo de mídia em disco e obtém URL real
-        import mimetypes as _mt, time as _t
-        from .services import _save_media_file
         detected_mime, _ = _mt.guess_type(file_name)
         if not detected_mime:
             detected_mime = {
@@ -458,7 +445,7 @@ def api_send_media(request, conversation_id):
         except Exception as _save_err:
             logger.warning("Salvar midia falhou: %s", _save_err)
 
-        # Conteudo: legenda > nome do arquivo (doc) > label do tipo
+        # Conteúdo da mensagem
         if caption:
             content = caption
         elif media_type == 'document':
@@ -467,7 +454,9 @@ def api_send_media(request, conversation_id):
             type_labels = {'image': 'Imagem', 'audio': 'Áudio', 'document': 'Documento', 'video': 'Vídeo'}
             content = type_labels.get(media_type, media_type)
 
+        # Salva no DB imediatamente
         display_name = ConversationService.get_agent_display_name(request.user)
+        now = timezone.now()
         msg = Message.objects.create(
             conversation=conversation,
             sender_type='agent',
@@ -475,13 +464,32 @@ def api_send_media(request, conversation_id):
             sender_name=display_name,
             message_type=media_type,
             content=content,
-            external_id=f"local_media_{_t.time()}",
+            external_id=f"local_media_{int(_t.time()*1000)}",
             attachment_url=attachment_url,
+            created_at=now,
         )
-        conversation.last_message_at = __import__('datetime').datetime.now()
+        conversation.last_message_at = now
         if conversation.status == 'new':
             conversation.status = 'open'
         conversation.save(update_fields=['last_message_at', 'status'])
+
+        # Envia ao WhatsApp em background
+        _conn  = conversation.group.connection
+        _jid   = conversation.group.jid
+        _mid   = msg.id
+
+        def _send_media_bg():
+            try:
+                client = EvolutionAPIClient(_conn)
+                if media_type == 'audio':
+                    client.send_audio(_jid, media_base64)
+                else:
+                    client.send_media(_jid, mediatype=media_type, media_b64=media_base64,
+                                      filename=file_name, caption=caption)
+            except Exception as _e:
+                logger.error(f"Erro bg envio mídia (msg {_mid}): {_e}")
+
+        _th.Thread(target=_send_media_bg, daemon=True).start()
 
         return JsonResponse({'success': True, 'message_id': str(msg.id), 'content': content})
 
@@ -2007,10 +2015,8 @@ def api_start_conversation_by_group(request):
                 'created': False,
             })
 
-        import uuid as _uuid
         conv = Conversation.objects.create(
             group=group,
-            conversation_id=str(_uuid.uuid4())[:8].upper(),
             status='open',
             assigned_to=request.user,
             cliente=group.cliente,
@@ -2193,7 +2199,10 @@ def api_task_add_conversation_by_conv(request, conversation_id):
         due_date = None
         if data.get('due_date'):
             from django.utils.dateparse import parse_datetime
+            from django.utils import timezone as _tz
             due_date = parse_datetime(data['due_date'])
+            if due_date and due_date.tzinfo is None:
+                due_date = _tz.make_aware(due_date)
         task = Task.objects.create(
             title=title,
             description=data.get('description', '').strip() or None,
@@ -2203,10 +2212,7 @@ def api_task_add_conversation_by_conv(request, conversation_id):
             created_by=request.user,
             due_date=due_date,
         )
-    tc, created = TaskConversation.objects.get_or_create(task=task, conversation=conv, defaults={'added_by': request.user})
-    if created and not conv.is_task_conv:
-        conv.is_task_conv = True
-        conv.save(update_fields=['is_task_conv'])
+    TaskConversation.objects.get_or_create(task=task, conversation=conv, defaults={'added_by': request.user})
     return JsonResponse({'success': True, 'task': _task_to_dict(task)}, status=201)
 
 

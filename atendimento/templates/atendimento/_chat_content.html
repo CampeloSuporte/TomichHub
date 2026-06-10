@@ -1046,6 +1046,10 @@
     var recorder     = null, recChunks = [], recTimer = null, recSeconds = 0;
     var attachOpen   = false;
     var _renderedIds = new Set();  /* dedup absoluto de mensagens renderizadas */
+    /* Popula com IDs já renderizados pelo Django template */
+    chatMsgs.querySelectorAll('[data-msg-id]').forEach(function(el) {
+        _renderedIds.add(String(el.dataset.msgId));
+    });
 
     /* ── Auto-resize ── */
     msgInput.addEventListener('input', function() {
@@ -1164,7 +1168,7 @@
                 fr.onload = function(ev) {
                     mediaBase64 = ev.target.result.split(',')[1];
                     mediaType = 'audio'; mediaFileName = 'audio.webm';
-                    showMediaPreview('Áudio gravado', 'audio', null);
+                    sendMedia(); // envio automático ao parar
                 };
                 fr.readAsDataURL(blob);
                 stream.getTracks().forEach(function(t) { t.stop(); });
@@ -1498,9 +1502,11 @@
     }
     connectWS();
 
-    /* Polling de fallback: a cada 5s busca mensagens novas não exibidas */
+    /* Polling de segurança: 4s sem WS, 20s com WS (safety net contra perda de mensagem) */
+    var _pollRunning = false;
     var pollTimer = setInterval(function() {
-        if (wsOk) return; /* WS ativo → polling desnecessário */
+        if (_pollRunning) return;
+        _pollRunning = true;
         fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after_ts='+encodeURIComponent(lastMsgTs), {
             headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'
         }).then(function(r){return r.ok?r.json():null;}).then(function(d){
@@ -1511,8 +1517,32 @@
                     lastMsgTs = new Date().toISOString();
                 }
             });
-        }).catch(function(){});
-    }, 5000);
+        }).catch(function(){}).finally(function(){ _pollRunning = false; });
+    }, wsOk ? 20000 : 4000);
+
+    /* Ajusta intervalo dinamicamente conforme status do WS */
+    var _prevWsOk = wsOk;
+    setInterval(function() {
+        if (_prevWsOk !== wsOk) {
+            _prevWsOk = wsOk;
+            clearInterval(pollTimer);
+            pollTimer = setInterval(function() {
+                if (_pollRunning) return;
+                _pollRunning = true;
+                fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after_ts='+encodeURIComponent(lastMsgTs), {
+                    headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'
+                }).then(function(r){return r.ok?r.json():null;}).then(function(d){
+                    if(!d||!d.messages) return;
+                    d.messages.forEach(function(msg){
+                        if(!_renderedIds.has(String(msg.id))) {
+                            renderMessage(msg);
+                            lastMsgTs = new Date().toISOString();
+                        }
+                    });
+                }).catch(function(){}).finally(function(){ _pollRunning = false; });
+            }, wsOk ? 20000 : 4000);
+        }
+    }, 3000);
 
     /* ── Fecha attach menu ao clicar fora ── */
     document.addEventListener('click', function(e) {

@@ -3,281 +3,300 @@
 
 {% block content %}
 <style>
-:root {
-    --cy: #00f5ff;
-    --gr: #00ff88;
-    --bl: #1a4fff;
-    --or: #ffa500;
-    --rd: #ff5555;
-    --bg: #02030a;
-    --bg2: #060c18;
-    --bg3: #0a1628;
-    --muted: rgba(0,245,255,0.4);
-}
-
 .dash-page {
-    background: var(--bg);
-    min-height: 100vh;
-    padding: 1.5rem;
-    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    padding: 24px;
+    min-height: calc(100vh - 52px);
+    font-family: 'Inter', sans-serif;
 }
 
+/* ── Header ── */
+.dash-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
 .dash-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.6rem;
-    color: var(--cy);
-    text-shadow: 0 0 18px rgba(0,245,255,0.5);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 0.2rem;
+    font-size: 22px;
+    font-weight: 700;
+    color: #e6edf3;
+    letter-spacing: -0.02em;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
+.dash-title i { color: #58a6ff; font-size: 18px; }
+.dash-subtitle { font-size: 12px; color: #7d8590; }
 
-.dash-subtitle {
-    color: var(--muted);
-    font-size: 0.78rem;
-    letter-spacing: 2px;
-}
-
-/* ---- Stat cards ---- */
+/* ── Stat Grid ── */
 .stat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
 }
-
 .stat-card {
-    background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.15);
+    background: #161b22;
+    border: 1px solid #30363d;
     border-radius: 8px;
-    padding: 1.2rem 1rem;
+    padding: 16px;
     position: relative;
     overflow: hidden;
-    transition: border-color .2s, box-shadow .2s;
+    transition: border-color .15s;
 }
 .stat-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0;
     width: 3px; height: 100%;
-    background: var(--accent, var(--cy));
-    box-shadow: 0 0 10px var(--accent, var(--cy));
+    background: var(--accent, #58a6ff);
+    border-radius: 8px 0 0 8px;
 }
-.stat-card:hover {
-    border-color: rgba(0,245,255,0.35);
-    box-shadow: 0 0 16px rgba(0,245,255,0.08);
-}
+.stat-card { cursor: pointer; user-select: none; }
+.stat-card:hover { border-color: #484f58; }
 .stat-label {
-    font-size: 0.68rem;
-    color: var(--muted);
+    font-size: 11px;
+    color: #7d8590;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: .4rem;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
 }
 .stat-value {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2rem;
+    font-size: 28px;
+    font-weight: 700;
     line-height: 1;
-    color: var(--accent, var(--cy));
-    text-shadow: 0 0 12px var(--accent, var(--cy));
+    color: #e6edf3;
 }
 .stat-icon {
     position: absolute;
-    right: 1rem; top: 50%;
+    right: 14px; top: 50%;
     transform: translateY(-50%);
-    font-size: 1.8rem;
-    color: var(--accent, var(--cy));
-    opacity: 0.12;
+    font-size: 28px;
+    color: var(--accent, #58a6ff);
+    opacity: 0.08;
 }
 
-/* ---- Chart card ---- */
-.chart-card {
-    background: var(--bg2);
-    border: 1px solid rgba(0,245,255,0.15);
+/* ── Cards de conteúdo ── */
+.content-card {
+    background: #161b22;
+    border: 1px solid #30363d;
     border-radius: 8px;
-    padding: 1.2rem;
-    margin-bottom: 1.5rem;
+    padding: 18px;
+    margin-bottom: 16px;
 }
-.card-heading {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.85rem;
-    color: var(--cy);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
+.content-card-header {
     display: flex;
     align-items: center;
-    gap: .5rem;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 8px;
 }
-.card-heading i { opacity: .7; }
+.content-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #c9d1d9;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.content-card-title i { color: #58a6ff; opacity: .8; font-size: 12px; }
+.content-card-link {
+    font-size: 12px;
+    color: #58a6ff;
+    text-decoration: none;
+    opacity: .8;
+    transition: opacity .15s;
+}
+.content-card-link:hover { opacity: 1; }
 
-/* ---- Tables ---- */
-.cy-table {
+/* ── Tabelas ── */
+.dash-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8rem;
+    font-size: 12px;
 }
-.cy-table thead th {
-    background: rgba(0,245,255,0.05);
-    color: var(--cy);
-    font-size: 0.7rem;
-    letter-spacing: 1.5px;
+.dash-table thead th {
+    background: #0d1117;
+    color: #7d8590;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
     text-transform: uppercase;
-    padding: .55rem .7rem;
-    border-bottom: 1px solid rgba(0,245,255,0.15);
+    padding: 8px 10px;
+    border-bottom: 1px solid #30363d;
+    white-space: nowrap;
+    text-align: left;
+}
+.dash-table tbody tr {
+    border-bottom: 1px solid #21262d;
+    transition: background .1s;
+}
+.dash-table tbody tr:last-child { border-bottom: none; }
+.dash-table tbody tr:hover { background: rgba(255,255,255,.02); }
+.dash-table td {
+    padding: 8px 10px;
+    color: #c9d1d9;
+    vertical-align: middle;
+}
+.dash-table code {
+    background: #21262d;
+    color: #79c0ff;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Cascadia Code','Consolas','Courier New',monospace;
+}
+
+/* ── Badges ── */
+.badge-dash {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
     white-space: nowrap;
 }
-.cy-table tbody tr {
-    border-bottom: 1px solid rgba(0,245,255,0.06);
-    transition: background .15s;
+.badge-ok   { background: rgba(63,185,80,.12);  color: #3fb950; border: 1px solid rgba(63,185,80,.25); }
+.badge-err  { background: rgba(248,81,73,.12);  color: #f85149; border: 1px solid rgba(248,81,73,.25); }
+.badge-warn { background: rgba(210,153,34,.12); color: #d29922; border: 1px solid rgba(210,153,34,.25); }
+.badge-info { background: rgba(88,166,255,.1);  color: #58a6ff; border: 1px solid rgba(88,166,255,.2); }
+
+/* ── Layout ── */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
 }
-.cy-table tbody tr:hover { background: rgba(0,245,255,0.04); }
-.cy-table td {
-    padding: .5rem .7rem;
-    color: #c9d8e8;
-}
-.cy-table code {
-    background: rgba(0,245,255,0.07);
-    color: var(--cy);
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-size: .78rem;
+@media(max-width:768px) {
+    .two-col { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: repeat(2,1fr); }
 }
 
-/* status badges */
-.badge-cy {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-size: .7rem;
-    letter-spacing: .5px;
-    font-weight: 600;
-}
-.badge-ok    { background: rgba(0,255,136,.12); color: var(--gr); border:1px solid rgba(0,255,136,.3); }
-.badge-err   { background: rgba(255,85,85,.12);  color: var(--rd); border:1px solid rgba(255,85,85,.3); }
-.badge-warn  { background: rgba(255,165,0,.12);  color: var(--or); border:1px solid rgba(255,165,0,.3); }
-.badge-info  { background: rgba(0,245,255,.1);   color: var(--cy); border:1px solid rgba(0,245,255,.25); }
-
-/* two-col layout */
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-@media(max-width:768px){ .two-col { grid-template-columns: 1fr; } .stat-grid { grid-template-columns: repeat(2, 1fr); } }
-
+/* ── Empty state ── */
 .empty-state {
     text-align: center;
-    padding: 2rem;
-    color: var(--gr);
+    padding: 32px 16px;
+    color: #7d8590;
 }
-.empty-state i { font-size: 1.8rem; display: block; margin-bottom: .5rem; opacity:.7; }
-.empty-state p { font-size: .78rem; color: var(--muted); }
+.empty-state i { font-size: 28px; display: block; margin-bottom: 8px; opacity: .4; }
+.empty-state p { font-size: 12px; }
 
-.link-cy {
-    color: var(--cy);
-    text-decoration: none;
-    font-size: .75rem;
-    letter-spacing: 1px;
-    opacity: .7;
-    transition: opacity .2s;
+/* ── Divider ── */
+.dash-divider {
+    border: none;
+    border-top: 1px solid #21262d;
+    margin: 20px 0;
 }
-.link-cy:hover { opacity: 1; }
 
-.scan-line {
-    width: 100%; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--cy), transparent);
-    margin: 1.5rem 0;
-    opacity: .25;
-}
+/* ── RPKI/IRR row border ── */
+.row-danger  { border-left: 2px solid #f85149 !important; }
+.row-warning { border-left: 2px solid #d29922 !important; }
 </style>
 
 <div class="dash-page">
+
     <!-- Header -->
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem;">
+    <div class="dash-header">
         <div>
-            <div class="dash-title"><i class="fas fa-tachometer-alt" style="margin-right:.5rem;"></i> Dashboard</div>
-            <div class="dash-subtitle">{{ data_hoje|date:"d/m/Y" }} &nbsp;|&nbsp; VISÃO GERAL DO SISTEMA</div>
+            <div class="dash-title">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </div>
+            <div class="dash-subtitle">{{ data_hoje|date:"d/m/Y" }} &nbsp;·&nbsp; Visão geral do sistema</div>
         </div>
-        <a href="{% url 'relatorio_backups' %}" class="link-cy" style="opacity:1; font-size:.8rem;">
-            <i class="fas fa-database"></i> Relatório de Backups
-        </a>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button onclick="abrirClientesAluguelAtivo()" style="background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.35);color:#3fb950;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;letter-spacing:.5px;">
+                <i class="fas fa-network-wired" style="margin-right:5px;"></i> Aluguéis de IP Ativos
+            </button>
+            <a href="{% url 'relatorio_backups' %}" class="content-card-link" style="font-size:13px;">
+                <i class="fas fa-database" style="margin-right:4px;"></i> Relatório de Backups
+            </a>
+        </div>
     </div>
 
     <!-- Stat cards -->
     <div class="stat-grid">
-        <div class="stat-card" style="--accent: var(--cy);">
+        <div class="stat-card" style="--accent:#58a6ff;">
             <div class="stat-label">Clientes</div>
-            <div class="stat-value">{{ total_clientes }}</div>
+            <div class="stat-value" data-val="{{ total_clientes }}">••••</div>
             <i class="fas fa-users stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: #1a4fff;">
+        <div class="stat-card" style="--accent:#388bfd;">
             <div class="stat-label">Hosts Cadastrados</div>
-            <div class="stat-value">{{ total_acessos }}</div>
+            <div class="stat-value" data-val="{{ total_acessos }}">••••</div>
             <i class="fas fa-server stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: var(--cy);">
+        <div class="stat-card" style="--accent:#58a6ff;">
             <div class="stat-label">Hosts c/ Backup</div>
-            <div class="stat-value">{{ acessos_com_backup }}</div>
+            <div class="stat-value" data-val="{{ acessos_com_backup }}">••••</div>
             <i class="fas fa-hdd stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: var(--gr);">
+        <div class="stat-card" style="--accent:#3fb950;">
             <div class="stat-label">Backups OK Hoje</div>
-            <div class="stat-value">{{ backups_hoje_ok }}</div>
+            <div class="stat-value" data-val="{{ backups_hoje_ok }}">••••</div>
             <i class="fas fa-check-circle stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: var(--rd);">
+        <div class="stat-card" style="--accent:#f85149;">
             <div class="stat-label">Backups Erro Hoje</div>
-            <div class="stat-value">{{ backups_hoje_erro }}</div>
+            <div class="stat-value" data-val="{{ backups_hoje_erro }}">••••</div>
             <i class="fas fa-times-circle stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: var(--or);">
+        <div class="stat-card" style="--accent:#d29922;">
             <div class="stat-label">Sem Mudança Hoje</div>
-            <div class="stat-value">{{ backups_sem_mudanca }}</div>
+            <div class="stat-value" data-val="{{ backups_sem_mudanca }}">••••</div>
             <i class="fas fa-minus-circle stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: var(--rd);">
+        <div class="stat-card" style="--accent:#f85149;">
             <div class="stat-label">RPKI Inválidos</div>
-            <div class="stat-value">{{ total_blocos_rpki_invalidos }}</div>
+            <div class="stat-value" data-val="{{ total_blocos_rpki_invalidos }}">••••</div>
             <i class="fas fa-shield-alt stat-icon"></i>
         </div>
-        <div class="stat-card" style="--accent: var(--or);">
+        <div class="stat-card" style="--accent:#d29922;">
             <div class="stat-label">IRR Inválidos</div>
-            <div class="stat-value">{{ total_blocos_irr_invalidos }}</div>
+            <div class="stat-value" data-val="{{ total_blocos_irr_invalidos }}">••••</div>
             <i class="fas fa-route stat-icon"></i>
         </div>
     </div>
 
-    <!-- Backup chart -->
-    <div class="chart-card">
-        <div class="card-heading"><i class="fas fa-chart-bar"></i> Backups — Últimos 14 Dias</div>
-        <canvas id="backupChart" style="max-height:220px;"></canvas>
+    <!-- Gráfico de backups -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <div class="content-card-title">
+                <i class="fas fa-chart-bar"></i> Backups — Últimos 14 Dias
+            </div>
+        </div>
+        <canvas id="backupChart" style="max-height:200px;"></canvas>
     </div>
 
-    <!-- últimos backups + top clientes -->
+    <!-- Últimos backups + Top clientes -->
     <div class="two-col">
-        <!-- últimos backups -->
-        <div class="chart-card" style="margin-bottom:0;">
-            <div class="card-heading" style="justify-content:space-between;">
-                <span><i class="fas fa-history"></i> Últimos Backups</span>
-                <a href="{% url 'relatorio_backups' %}" class="link-cy">ver todos →</a>
+        <div class="content-card" style="margin-bottom:0;">
+            <div class="content-card-header">
+                <div class="content-card-title"><i class="fas fa-history"></i> Últimos Backups</div>
+                <a href="{% url 'relatorio_backups' %}" class="content-card-link">ver todos →</a>
             </div>
             <div style="overflow-x:auto;">
-                <table class="cy-table">
+                <table class="dash-table">
                     <thead><tr>
-                        <th>Host</th>
-                        <th>Cliente</th>
-                        <th>Status</th>
-                        <th>Data</th>
+                        <th>Host</th><th>Cliente</th><th>Status</th><th>Data</th>
                     </tr></thead>
                     <tbody>
                     {% for bk in ultimos_backups %}
                     <tr>
-                        <td><span style="color:var(--cy);">{{ bk.acesso.host|truncatechars:18 }}</span></td>
+                        <td style="color:#79c0ff; font-weight:500;">{{ bk.acesso.host|truncatechars:18 }}</td>
                         <td>{{ bk.cliente.nome_empresa|truncatechars:16 }}</td>
                         <td>
-                            {% if bk.status == 'SUCESSO' %}<span class="badge-cy badge-ok">OK</span>
-                            {% elif bk.status == 'ERRO' %}<span class="badge-cy badge-err">ERRO</span>
-                            {% elif bk.status == 'SEM_MUDANCAS' %}<span class="badge-cy badge-warn">SEM MUD.</span>
-                            {% else %}<span class="badge-cy badge-info">{{ bk.status }}</span>{% endif %}
+                            {% if bk.status == 'SUCESSO' %}<span class="badge-dash badge-ok">OK</span>
+                            {% elif bk.status == 'ERRO' %}<span class="badge-dash badge-err">ERRO</span>
+                            {% elif bk.status == 'SEM_MUDANCAS' %}<span class="badge-dash badge-warn">SEM MUD.</span>
+                            {% else %}<span class="badge-dash badge-info">{{ bk.status }}</span>{% endif %}
                         </td>
-                        <td style="color:var(--muted); white-space:nowrap;">{{ bk.data_backup|date:"d/m H:i" }}</td>
+                        <td style="color:#7d8590; white-space:nowrap;">{{ bk.data_backup|date:"d/m H:i" }}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="4">
@@ -289,26 +308,24 @@
             </div>
         </div>
 
-        <!-- top clientes -->
-        <div class="chart-card" style="margin-bottom:0;">
-            <div class="card-heading"><i class="fas fa-star"></i> Top Clientes por Hosts</div>
+        <div class="content-card" style="margin-bottom:0;">
+            <div class="content-card-header">
+                <div class="content-card-title"><i class="fas fa-star"></i> Top Clientes por Hosts</div>
+            </div>
             <div style="overflow-x:auto;">
-                <table class="cy-table">
-                    <thead><tr>
-                        <th>#</th>
-                        <th>Cliente</th>
-                        <th>Hosts</th>
-                    </tr></thead>
+                <table class="dash-table">
+                    <thead><tr><th>#</th><th>Cliente</th><th>Hosts</th></tr></thead>
                     <tbody>
                     {% for c in top_clientes %}
                     <tr>
-                        <td style="color:var(--muted);">{{ forloop.counter }}</td>
+                        <td style="color:#7d8590;">{{ forloop.counter }}</td>
                         <td>
-                            <a href="{% url 'listar_clientes' %}?id={{ c.id }}" style="color:var(--cy); text-decoration:none;">
+                            <a href="{% url 'listar_clientes' %}?id={{ c.id }}"
+                               style="color:#79c0ff; text-decoration:none; font-weight:500;">
                                 {{ c.nome_empresa|truncatechars:24 }}
                             </a>
                         </td>
-                        <td><span class="badge-cy badge-info">{{ c.total_hosts }}</span></td>
+                        <td><span class="badge-dash badge-info">{{ c.total_hosts }}</span></td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="3">
@@ -321,27 +338,28 @@
         </div>
     </div>
 
-    <div class="scan-line"></div>
+    <hr class="dash-divider">
 
     <!-- RPKI / IRR -->
     <div class="two-col">
-        <!-- RPKI -->
-        <div class="chart-card" style="margin-bottom:0;">
-            <div class="card-heading" style="color: var(--rd);">
-                <i class="fas fa-exclamation-circle"></i> RPKI Inválidos
-                <span style="margin-left:auto; font-size:.7rem; color:var(--muted);">{{ total_blocos_rpki_invalidos }} bloco(s)</span>
+        <div class="content-card" style="margin-bottom:0;">
+            <div class="content-card-header">
+                <div class="content-card-title" style="color:#f85149;">
+                    <i class="fas fa-exclamation-circle" style="color:#f85149;"></i> RPKI Inválidos
+                </div>
+                <span style="font-size:11px; color:#7d8590;">{{ total_blocos_rpki_invalidos }} bloco(s)</span>
             </div>
             {% if blocos_rpki_invalidos %}
             <div style="overflow-x:auto;">
-                <table class="cy-table">
+                <table class="dash-table">
                     <thead><tr><th>Bloco</th><th>Cliente</th><th>Status</th><th>Validado</th></tr></thead>
                     <tbody>
                     {% for bloco in blocos_rpki_invalidos %}
-                    <tr style="border-left: 2px solid var(--rd);">
+                    <tr class="row-danger">
                         <td><code>{{ bloco.bloco }}</code></td>
                         <td>{{ bloco.cliente.nome_empresa|truncatechars:18 }}</td>
-                        <td><span class="badge-cy badge-err">{{ bloco.get_status_rpki_display }}</span></td>
-                        <td style="color:var(--muted); white-space:nowrap;">
+                        <td><span class="badge-dash badge-err">{{ bloco.get_status_rpki_display }}</span></td>
+                        <td style="color:#7d8590; white-space:nowrap;">
                             {% if bloco.ultima_validacao %}{{ bloco.ultima_validacao|date:"d/m H:i" }}{% else %}—{% endif %}
                         </td>
                     </tr>
@@ -350,27 +368,31 @@
                 </table>
             </div>
             {% else %}
-            <div class="empty-state"><i class="fas fa-check-circle" style="color:var(--gr);"></i><p>Todos os blocos RPKI válidos.</p></div>
+            <div class="empty-state">
+                <i class="fas fa-check-circle" style="color:#3fb950; opacity:.7;"></i>
+                <p>Todos os blocos RPKI válidos.</p>
+            </div>
             {% endif %}
         </div>
 
-        <!-- IRR -->
-        <div class="chart-card" style="margin-bottom:0;">
-            <div class="card-heading" style="color: var(--or);">
-                <i class="fas fa-exclamation-triangle"></i> IRR Inválidos
-                <span style="margin-left:auto; font-size:.7rem; color:var(--muted);">{{ total_blocos_irr_invalidos }} bloco(s)</span>
+        <div class="content-card" style="margin-bottom:0;">
+            <div class="content-card-header">
+                <div class="content-card-title" style="color:#d29922;">
+                    <i class="fas fa-exclamation-triangle" style="color:#d29922;"></i> IRR Inválidos
+                </div>
+                <span style="font-size:11px; color:#7d8590;">{{ total_blocos_irr_invalidos }} bloco(s)</span>
             </div>
             {% if blocos_irr_invalidos %}
             <div style="overflow-x:auto;">
-                <table class="cy-table">
+                <table class="dash-table">
                     <thead><tr><th>Bloco</th><th>Cliente</th><th>Status</th><th>Validado</th></tr></thead>
                     <tbody>
                     {% for bloco in blocos_irr_invalidos %}
-                    <tr style="border-left: 2px solid var(--or);">
+                    <tr class="row-warning">
                         <td><code>{{ bloco.bloco }}</code></td>
                         <td>{{ bloco.cliente.nome_empresa|truncatechars:18 }}</td>
-                        <td><span class="badge-cy badge-warn">{{ bloco.get_status_irr_display }}</span></td>
-                        <td style="color:var(--muted); white-space:nowrap;">
+                        <td><span class="badge-dash badge-warn">{{ bloco.get_status_irr_display }}</span></td>
+                        <td style="color:#7d8590; white-space:nowrap;">
                             {% if bloco.ultima_validacao %}{{ bloco.ultima_validacao|date:"d/m H:i" }}{% else %}—{% endif %}
                         </td>
                     </tr>
@@ -379,40 +401,62 @@
                 </table>
             </div>
             {% else %}
-            <div class="empty-state"><i class="fas fa-check-circle" style="color:var(--gr);"></i><p>Todos os blocos IRR válidos.</p></div>
+            <div class="empty-state">
+                <i class="fas fa-check-circle" style="color:#3fb950; opacity:.7;"></i>
+                <p>Todos os blocos IRR válidos.</p>
+            </div>
             {% endif %}
         </div>
     </div>
+
+
 </div>
 
+<script>
+// Stat cards — sempre oculto ao entrar, revela ao clicar
+(function(){
+    var visible = false;
+
+    function toggle() {
+        visible = !visible;
+        document.querySelectorAll('.stat-value[data-val]').forEach(function(el) {
+            el.textContent = visible ? el.dataset.val : '••••';
+        });
+        document.querySelectorAll('.stat-card').forEach(function(c) {
+            c.title = visible ? 'Clique para ocultar' : 'Clique para revelar';
+        });
+    }
+
+    document.querySelectorAll('.stat-card').forEach(function(c) {
+        c.title = 'Clique para revelar';
+        c.onclick = toggle;
+    });
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
 (function(){
     const raw = {{ grafico_backups|safe }};
-    const labels = raw.map(d => d.data);
-    const okData  = raw.map(d => d.ok);
-    const errData = raw.map(d => d.erro);
-
     new Chart(document.getElementById('backupChart'), {
         type: 'bar',
         data: {
-            labels,
+            labels: raw.map(d => d.data),
             datasets: [
                 {
                     label: 'OK',
-                    data: okData,
-                    backgroundColor: 'rgba(0,255,136,0.55)',
-                    borderColor: '#00ff88',
+                    data: raw.map(d => d.ok),
+                    backgroundColor: 'rgba(63,185,80,.5)',
+                    borderColor: '#3fb950',
                     borderWidth: 1,
-                    borderRadius: 3,
+                    borderRadius: 4,
                 },
                 {
                     label: 'Erro',
-                    data: errData,
-                    backgroundColor: 'rgba(255,85,85,0.45)',
-                    borderColor: '#ff5555',
+                    data: raw.map(d => d.erro),
+                    backgroundColor: 'rgba(248,81,73,.45)',
+                    borderColor: '#f85149',
                     borderWidth: 1,
-                    borderRadius: 3,
+                    borderRadius: 4,
                 }
             ]
         },
@@ -421,29 +465,151 @@
             maintainAspectRatio: true,
             plugins: {
                 legend: {
-                    labels: { color: 'rgba(0,245,255,0.6)', font: { family: "'Share Tech Mono',monospace", size: 11 } }
+                    labels: {
+                        color: '#8b949e',
+                        font: { family: "'Inter',sans-serif", size: 12 },
+                        boxWidth: 12, boxHeight: 12, borderRadius: 3,
+                    }
                 },
                 tooltip: {
-                    backgroundColor: '#060c18',
-                    titleColor: '#00f5ff',
-                    bodyColor: '#c9d8e8',
-                    borderColor: 'rgba(0,245,255,0.3)',
+                    backgroundColor: '#1c2128',
+                    titleColor: '#e6edf3',
+                    bodyColor: '#8b949e',
+                    borderColor: '#30363d',
                     borderWidth: 1,
+                    cornerRadius: 6,
+                    padding: 10,
+                    titleFont: { family: "'Inter',sans-serif", size: 12, weight: '600' },
+                    bodyFont:  { family: "'Inter',sans-serif", size: 12 },
                 }
             },
             scales: {
                 x: {
-                    ticks: { color: 'rgba(0,245,255,0.45)', font: { family:"'Share Tech Mono',monospace", size:10 }, maxRotation:45 },
-                    grid: { color: 'rgba(0,245,255,0.05)' }
+                    ticks: {
+                        color: '#7d8590',
+                        font: { family: "'Inter',sans-serif", size: 11 },
+                        maxRotation: 45,
+                    },
+                    grid: { color: '#21262d' }
                 },
                 y: {
                     beginAtZero: true,
-                    ticks: { color: 'rgba(0,245,255,0.45)', font: { family:"'Share Tech Mono',monospace", size:10 }, stepSize: 1 },
-                    grid: { color: 'rgba(0,245,255,0.07)' }
+                    ticks: {
+                        color: '#7d8590',
+                        font: { family: "'Inter',sans-serif", size: 11 },
+                        stepSize: 1,
+                    },
+                    grid: { color: '#21262d' }
                 }
             }
         }
     });
 })();
+</script>
+
+<!-- MODAL: CLIENTES COM ALUGUEL ATIVO -->
+<div class="modal fade" id="modalClientesAluguelAtivo" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="background:#161b22;border:1px solid #30363d;color:#e6edf3;">
+            <div class="modal-header" style="border-bottom:1px solid #21262d;">
+                <h5 class="modal-title" style="font-size:.95rem;font-weight:600;">
+                    <i class="fas fa-network-wired me-2" style="color:#3fb950;"></i>Clientes com Aluguel de IP Ativo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <div id="clientesAtivosSummary" style="display:flex;gap:16px;flex-wrap:wrap;padding:16px 20px;background:#0d1117;border-bottom:1px solid #21262d;">
+                    <div style="font-size:.82rem;color:#7d8590;">Carregando...</div>
+                </div>
+                <div id="clientesAtivosLista" style="padding:16px 20px;max-height:65vh;overflow-y:auto;">
+                    <div style="text-align:center;padding:2rem;color:#7d8590;"><i class="fas fa-spinner fa-spin me-2"></i>Buscando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirClientesAluguelAtivo() {
+    new bootstrap.Modal(document.getElementById('modalClientesAluguelAtivo')).show();
+    document.getElementById('clientesAtivosSummary').innerHTML = '<div style="font-size:.82rem;color:#7d8590;">Carregando...</div>';
+    document.getElementById('clientesAtivosLista').innerHTML = '<div style="text-align:center;padding:2rem;color:#7d8590;"><i class="fas fa-spinner fa-spin me-2"></i>Buscando...</div>';
+
+    fetch('/financeiro/api/clientes-aluguel-ativo/')
+    .then(r => r.json())
+    .then(d => {
+        if (!d.ok) { document.getElementById('clientesAtivosLista').innerHTML = '<div style="color:#f85149;padding:1rem;">Erro ao carregar.</div>'; return; }
+
+        const clientes = d.clientes;
+        const totalClientes   = clientes.length;
+        const totalMensal     = clientes.reduce((s, c) => s + c.total_mensal, 0);
+        const totalFatAberta  = clientes.reduce((s, c) => s + c.faturas.length, 0);
+        const totalFatVencida = clientes.reduce((s, c) => s + c.faturas.filter(f => f.vencida).length, 0);
+
+        document.getElementById('clientesAtivosSummary').innerHTML = `
+            <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 18px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#3fb950;">${totalClientes}</div>
+                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Clientes</div>
+            </div>
+            <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 18px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#58a6ff;">R$ ${totalMensal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Receita Mensal</div>
+            </div>
+            <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 18px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#d29922;">${totalFatAberta}</div>
+                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Faturas Abertas</div>
+            </div>
+            ${totalFatVencida ? `<div style="background:#161b22;border:1px solid #f8514966;border-radius:8px;padding:10px 18px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#f85149;">${totalFatVencida}</div>
+                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Faturas Vencidas</div>
+            </div>` : ''}
+        `;
+
+        if (!clientes.length) {
+            document.getElementById('clientesAtivosLista').innerHTML = '<div style="text-align:center;padding:2rem;color:#7d8590;">Nenhum cliente com aluguel ativo encontrado.</div>';
+            return;
+        }
+
+        document.getElementById('clientesAtivosLista').innerHTML = clientes.map(c => `
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:10px;margin-bottom:14px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #21262d;flex-wrap:wrap;gap:8px;">
+                <div>
+                    <span style="font-size:.95rem;font-weight:600;color:#e6edf3;">${c.nome}</span>
+                    <span style="font-size:.75rem;color:#7d8590;margin-left:10px;">${c.cnpj}</span>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    ${c.telefone ? `<span style="font-size:.78rem;color:#8b949e;"><i class="fas fa-phone me-1"></i>${c.telefone}</span>` : ''}
+                    <span style="font-size:.78rem;color:#8b949e;"><i class="fas fa-envelope me-1"></i>${c.email}</span>
+                    <span style="font-size:.8rem;font-weight:600;color:#3fb950;">R$ ${c.total_mensal.toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês</span>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                <div style="padding:12px 16px;border-right:1px solid #21262d;">
+                    <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:8px;"><i class="fas fa-network-wired me-1"></i>Blocos Ativos</p>
+                    ${c.blocos.map(b => `
+                    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 12px;margin-bottom:6px;">
+                        <div style="font-size:.85rem;font-weight:600;color:#c9d1d9;font-family:monospace;">${b.bloco}</div>
+                        ${b.bloco_v6 ? `<div style="font-size:.75rem;color:#8b949e;font-family:monospace;">${b.bloco_v6}</div>` : ''}
+                        <div style="font-size:.72rem;color:#7d8590;margin-top:3px;">${b.qtd_ips} IPs · Desde ${b.data_inicio} · <span style="color:#3fb950;">R$ ${b.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês</span></div>
+                    </div>`).join('')}
+                </div>
+                <div style="padding:12px 16px;">
+                    <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#d29922;margin-bottom:8px;"><i class="fas fa-file-invoice me-1"></i>Faturas Abertas</p>
+                    ${c.faturas.length ? c.faturas.map(f => `
+                    <div style="background:#161b22;border:1px solid ${f.vencida ? '#f8514944' : '#30363d'};border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <div>
+                            <div style="font-size:.82rem;font-weight:600;color:#c9d1d9;">${f.numero}</div>
+                            <div style="font-size:.72rem;color:${f.vencida ? '#f85149' : '#7d8590'};">${f.vencida ? '⚠️ Vencida em' : 'Vence em'} ${f.vencimento}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:.85rem;font-weight:600;color:${f.vencida ? '#f85149' : '#e6edf3'};">R$ ${f.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+                            <span style="font-size:.68rem;padding:2px 7px;border-radius:20px;background:${f.status==='ABERTA'?'#d2992222':'#30363d'};color:${f.status==='ABERTA'?'#d29922':'#8b949e'};">${f.status_label}</span>
+                        </div>
+                    </div>`).join('') : '<div style="font-size:.82rem;color:#7d8590;padding:8px 0;">Nenhuma fatura aberta.</div>'}
+                </div>
+            </div>
+        </div>`).join('');
+    });
+}
 </script>
 {% endblock %}

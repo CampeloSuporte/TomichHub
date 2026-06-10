@@ -364,20 +364,15 @@ class ConversationService:
 
     @staticmethod
     def get_or_create_conversation(group: ContactGroup) -> Conversation:
+        # Busca apenas conversas regulares (não-task) abertas — task_conv são tickets separados
         conv = Conversation.objects.filter(
-            group=group, status__in=["new", "open", "pending"]
-        ).first()
+            group=group, status__in=["new", "open", "pending"], is_task_conv=False
+        ).order_by('-last_message_at').first()
         if not conv:
             conv = Conversation.objects.create(
                 group=group, cliente=group.cliente, status="new"
             )
-        elif conv.is_task_conv:
-            # Conversa está vinculada a uma tarefa — novas mensagens abrem um novo chamado
-            conv = Conversation.objects.create(
-                group=group, cliente=group.cliente, status="new"
-            )
         elif conv.cliente is None and group.cliente:
-            # Propaga o cliente do grupo para a conversa se ainda não estava vinculado
             conv.cliente = group.cliente
             conv.save(update_fields=["cliente"])
         return conv
@@ -644,10 +639,11 @@ class ConversationService:
         if from_me:
             return None
 
-        # Não inicia se já existe conversa aberta
+        # Não inicia se já existe conversa regular aberta (task_conv não conta)
         has_open = Conversation.objects.filter(
             group=group,
             status__in=['new', 'open', 'pending'],
+            is_task_conv=False,
         ).exists()
         if has_open:
             return None
@@ -777,55 +773,74 @@ class ConversationService:
     @staticmethod
     def send_message(conversation: Conversation, text: str,
                      agent=None) -> Tuple[bool, str]:
-        """Envia mensagem no WhatsApp e registra no banco.
+        """Salva a mensagem imediatamente e envia ao WhatsApp em background.
         Formato enviado: *NomeAgente*\n\nmensagem
         """
+        import threading as _threading
+
         try:
             display_name = ConversationService.get_agent_display_name(agent)
-            # Formata com nome em negrito (Markdown do WhatsApp)
             whatsapp_text = f"*{display_name}*\n\n{text}"
 
-            client = EvolutionAPIClient(conversation.group.connection)
-            ok, remote_id = client.send_text(conversation.group.jid, whatsapp_text)
+            # 1. Salva no DB imediatamente com ID temporário
+            now = timezone.now()
+            temp_id = f"sending_{int(now.timestamp() * 1000)}_{conversation.id}"
+            msg = Message.objects.create(
+                external_id=temp_id,
+                conversation=conversation,
+                sender_type="agent",
+                sender=agent,
+                sender_name=display_name,
+                message_type="text",
+                content=text,
+                created_at=now,
+            )
 
-            if ok:
-                now = timezone.now()
-                # Usa o ID real do Evolution para evitar duplicação pelo webhook fromMe
-                external_id = remote_id if remote_id else f"local_{now.timestamp()}"
-                msg, _ = Message.objects.get_or_create(
-                    external_id=external_id,
-                    defaults={
-                        "conversation": conversation,
-                        "sender_type": "agent",
-                        "sender": agent,
-                        "sender_name": display_name,
-                        "message_type": "text",
-                        "content": text,
-                    },
-                )
-                conversation.last_message_at = now
-                if conversation.status == "new":
-                    conversation.status = "open"
-                conversation.save(update_fields=["last_message_at", "status"])
-                ConversationActivity.objects.create(
-                    conversation=conversation,
-                    actor=agent,
-                    action="message_sent",
-                    description=text[:100],
-                )
-                local_time = timezone.localtime(now)
-                _ws_send_conversation(str(conversation.id), {
-                    "type": "new_message",
-                    "message": {
-                        "id": str(msg.id),
-                        "content": text,
-                        "sender_type": "agent",
-                        "sender_name": display_name,
-                        "created_at": local_time.strftime("%H:%M"),
-                    },
-                })
-                return True, str(msg.id)
-            return False, "Falha ao enviar mensagem via WhatsApp"
+            # 2. Atualiza conversa e cria atividade
+            conversation.last_message_at = now
+            if conversation.status == "new":
+                conversation.status = "open"
+            conversation.save(update_fields=["last_message_at", "status"])
+            ConversationActivity.objects.create(
+                conversation=conversation,
+                actor=agent,
+                action="message_sent",
+                description=text[:100],
+            )
+
+            # 3. Notifica via WebSocket antes de qualquer I/O externo
+            local_time = timezone.localtime(now)
+            _ws_send_conversation(str(conversation.id), {
+                "type": "new_message",
+                "message": {
+                    "id": str(msg.id),
+                    "content": text,
+                    "sender_type": "agent",
+                    "sender_name": display_name,
+                    "created_at": local_time.strftime("%H:%M"),
+                },
+            })
+
+            # 4. Envia ao WhatsApp em background — sem bloquear a resposta HTTP
+            msg_id = msg.id
+            group_connection = conversation.group.connection
+            group_jid = conversation.group.jid
+
+            def _send_bg():
+                try:
+                    client = EvolutionAPIClient(group_connection)
+                    ok, remote_id = client.send_text(group_jid, whatsapp_text)
+                    if ok and remote_id:
+                        Message.objects.filter(id=msg_id).update(external_id=remote_id)
+                    elif not ok:
+                        logger.error(f"Envio bg falhou (msg {msg_id}): {remote_id}")
+                except Exception as _e:
+                    logger.error(f"Erro bg no envio (msg {msg_id}): {_e}")
+
+            _threading.Thread(target=_send_bg, daemon=True).start()
+
+            return True, str(msg.id)
+
         except Exception as e:
             logger.error(f"Erro ao enviar mensagem: {e}")
             return False, str(e)

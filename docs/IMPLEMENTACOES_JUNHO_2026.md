@@ -2,12 +2,12 @@
 
 ## 📋 Resumo Executivo
 
-Período: 01/06/2026  
-Módulo: Financeiro (`financeiro/`)  
+Período: 01/06/2026 – 10/06/2026  
+Módulos: Financeiro (`financeiro/`), Clientes (`clientes/`)  
 Responsável: CampeloSuporte  
 Status: ✅ **CONCLUÍDO E DOCUMENTADO**
 
-### O que foi feito
+### Sessão 1 — 01/06/2026 (Recorrências e Privacidade)
 
 1. ✅ **Sistema de Recorrência de Despesas** — Auto-geração de ciclos mensais/anuais/etc
 2. ✅ **Privacidade para Despesas** — Itens visíveis apenas para criador
@@ -18,9 +18,51 @@ Status: ✅ **CONCLUÍDO E DOCUMENTADO**
 7. ✅ **Melhorias de Layout** — Grid CSS ajustado para evitar sobreposição
 8. ✅ **Documentação Completa** — 4 arquivos .md criados
 
+### Sessão 2 — 10/06/2026 (Despesas Avançado + Hotspot Banda + Contratos Digitais)
+
+1. ✅ **Parcelamento de Despesas (1x–12x)** — Substituiu campo Recorrência; cria N registros mensais
+2. ✅ **Página Dedicada de Despesas** — `/financeiro/despesas/` com resumo, filtros e bulk actions
+3. ✅ **Ações em Massa (Bulk Actions)** — Selecionar várias despesas e marcar/excluir de uma vez
+4. ✅ **Filtro Padrão Vencidas** — Dashboard exibe apenas despesas vencidas por padrão
+5. ✅ **Correção Bug Excluir/Pagar** — `uiConfirm` undefined substituído por `confirm()` nativo
+6. ✅ **Contratos de Aluguel com Assinatura Digital** — PDF + link único + canvas + PIL compositing
+7. ✅ **Hotspot Controle de Banda** — Queue Simple por IP via DHCP Lease Script no MikroTik
+8. ✅ **Documentação** — 3 novos arquivos .md (CONTRATOS, DESPESAS_AVANCADO, HOTSPOT_CONTROLE_BANDA)
+
 ---
 
 ## 📁 Arquivos de Documentação
+
+### Sessão 2 — 10/06/2026
+
+### 5. **DESPESAS_AVANCADO.md** — Funcionalidades Avançadas de Despesas
+- Parcelamento 1x–12x (substituição da recorrência)
+- Página dedicada `/financeiro/despesas/`
+- Ações em massa (bulk actions)
+- Filtro padrão "Vencidas"
+- Correção de bugs (uiConfirm, método POST/DELETE)
+
+👉 [Ver DESPESAS_AVANCADO.md](DESPESAS_AVANCADO.md)
+
+### 6. **CONTRATOS_ASSINATURA_DIGITAL.md** — Contratos de Aluguel IPv4
+- Assinatura digital do locador (permanente)
+- Link único para assinatura remota do cliente
+- Geração de PDF com ReportLab + PIL
+- Resolução de transparência RGBA → fundo branco
+
+👉 [Ver CONTRATOS_ASSINATURA_DIGITAL.md](CONTRATOS_ASSINATURA_DIGITAL.md)
+
+### 7. **HOTSPOT_CONTROLE_BANDA.md** — Controle de Banda DHCP Queue Simple
+- Queue Simple por IP via DHCP Lease Script
+- Script RouterOS com escaping correto
+- Preview em tempo real na interface
+- Exemplos de limite de banda
+
+👉 [Ver HOTSPOT_CONTROLE_BANDA.md](HOTSPOT_CONTROLE_BANDA.md)
+
+---
+
+### Sessão 1 — 01/06/2026
 
 ### 1. **FINANCEIRO.md** — Visão Geral Completa
 - Descrição de todas as features
@@ -60,6 +102,105 @@ Status: ✅ **CONCLUÍDO E DOCUMENTADO**
 ---
 
 ## ✅ Checklist de Implementação
+
+### Sessão 2 — 10/06/2026
+
+---
+
+### Feature: Parcelamento de Despesas
+
+- [x] Campo `parcelas` no formulário Nova Despesa (1x–12x)
+- [x] Campo Recorrência removido dos modais (Nova + Editar)
+- [x] Coluna Recorrência removida da tabela de listagem
+- [x] `api_criar_despesa`: cria N registros mensais com `dateutil.relativedelta`
+- [x] Nomes sufixados `(1/3)`, `(2/3)`, `(3/3)` etc.
+- [x] Toast com mensagem "N parcelas criadas com sucesso!"
+- [x] Aviso visual ao selecionar > 1 parcela
+
+**Status:** ✅ PRONTO PARA PRODUÇÃO
+
+---
+
+### Feature: Página Dedicada de Despesas
+
+- [x] View `listar_despesas_page` em `financeiro/views.py`
+- [x] URL `despesas/` em `financeiro/urls.py`
+- [x] Template `financeiro/despesas.html` criado do zero
+- [x] Cards de resumo (Total, Vencidas, Hoje, Pendentes, Pagas)
+- [x] Barra de filtros (texto, status, categoria)
+- [x] Botão "Ver Todas" no dashboard apontando para a página
+- [x] Modais de Nova e Editar embutidos
+
+**Status:** ✅ PRONTO PARA PRODUÇÃO
+
+---
+
+### Feature: Ações em Massa (Bulk Actions)
+
+- [x] Checkboxes em cada linha da tabela
+- [x] Checkbox "Selecionar todos" no cabeçalho
+- [x] Barra de bulk actions (aparece/some ao selecionar)
+- [x] View `api_despesas_bulk` em `financeiro/views.py`
+- [x] URL `api/despesas/bulk/` em `financeiro/urls.py`
+- [x] Ações: Marcar Privada, Marcar Pública, Marcar Paga, Excluir
+- [x] Filtro de segurança: apenas despesas visíveis ao usuário logado
+- [x] Confirmação via `confirm()` antes de deletar
+
+**Status:** ✅ PRONTO PARA PRODUÇÃO
+
+---
+
+### Feature: Correções de Bug — Despesas
+
+- [x] `deletarDespesa`: `uiConfirm` → `confirm()` nativo
+- [x] `pagarDespesa`: `uiConfirm` → `confirm()` nativo
+- [x] `api_deletar_despesa`: aceita `POST` além de `DELETE`
+- [x] Filtro padrão "Vencidas" no dashboard
+
+**Status:** ✅ PRONTO PARA PRODUÇÃO
+
+---
+
+### Feature: Contratos de Aluguel com Assinatura Digital
+
+- [x] Modelo `ContratoAluguel` com token UUID
+- [x] Modelo `ConfiguracaoFinanceira` com campo `assinatura_locador`
+- [x] Migration `0013_configuracaofinanceira_assinatura_locador`
+- [x] View `gerar_contrato_aluguel` (PDF via ReportLab)
+- [x] View `gerar_link_assinatura` (cria ContratoAluguel + envia e-mail)
+- [x] View `assinar_contrato` (página pública)
+- [x] View `confirmar_assinatura` (salva assinatura + gera PDF)
+- [x] View `download_contrato_assinado`
+- [x] View `assinatura_locador` (GET/POST)
+- [x] Resolução de transparência RGBA: composite PIL em fundo branco
+- [x] Template `contrato_assinar.html` com canvas responsivo
+- [x] Botão "PDF Assinado" na listagem de aluguéis
+- [x] Modal de assinatura do locador no dashboard
+
+**Status:** ✅ PRONTO PARA PRODUÇÃO
+
+---
+
+### Feature: Hotspot Controle de Banda (DHCP Queue Simple)
+
+- [x] Campo `dhcp_controle_banda` no modelo `HotspotConfig`
+- [x] Campo `dhcp_banda_limit` no modelo `HotspotConfig`
+- [x] Migration `clientes/migrations/0071_hotspotconfig_dhcp_controle_banda`
+- [x] `_aplicar_mikrotik`: step 3b aplica/limpa lease-script
+- [x] Escaping correto de `$` e `"` para RouterOS via SSH
+- [x] Seção "Controle de Banda" no formulário de hotspot
+- [x] Checkbox com toggle do campo de banda
+- [x] Preview do script atualiza em tempo real
+- [x] `hsSalvar`: inclui novos campos no payload
+- [x] `hsSelecionar`/`hsNovoConfig`: carrega/reseta novos campos
+
+**Status:** ✅ PRONTO PARA PRODUÇÃO
+
+---
+
+### Sessão 1 — 01/06/2026
+
+---
 
 ### Feature: Recorrência de Despesas
 

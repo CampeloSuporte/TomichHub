@@ -63,10 +63,28 @@
       "Read(//usr/bin/**)",
       "Bash(systemctl show *)",
       "Bash(pip list *)",
-      "Bash(python3 -c \"import py_compile; py_compile.compile\\('/opt/crm/atendimento/views.py'\\); print\\('OK'\\)\")"
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\('/opt/crm/atendimento/views.py'\\); print\\('OK'\\)\")",
+      "Bash(python3 -c \"import sys; sys.path.insert\\(0, '/opt/crm'\\); from clientes.winbox_vnc import WinboxVNCManager; m = WinboxVNCManager\\('192.168.1.1', 8291, 'admin', 'pass', width=1920, height=1080\\); print\\(f'OK: width={m.width}, height={m.height}'\\)\")",
+      "Bash(journalctl -u daphne -n 80 --no-pager)",
+      "Bash(journalctl -u crm -n 80 --no-pager)",
+      "Bash(xdotool --version)",
+      "Bash(wmctrl --version)",
+      "Read(//root/.local/share/MikroTik/**)",
+      "Read(//root/.local/share/MikroTik/WinBox/**)",
+      "Bash(getent passwd *)",
+      "Read(//var/www/**)",
+      "Bash(sudo -u www-data DISPLAY=:197 bash -c \"Xvfb :197 -screen 0 1366x768x24 -nolisten tcp & sleep 1 && openbox --config-file /opt/crm/clientes/openbox_rc.xml & sleep 1 && wmctrl -lG; kill %1 %2\")",
+      "Bash(sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin DJANGO_SETTINGS_MODULE=crm.settings bash)",
+      "Bash(journalctl -u daphne -n 3 --no-pager)",
+      "Bash(journalctl -u daphne -n 5 --no-pager)",
+      "Bash(python manage.py makemigrations atendimento --name=\"task_attendantcontact\")",
+      "Bash(python3 manage.py makemigrations atendimento --name=\"task_attendantcontact\")"
     ],
     "additionalDirectories": [
       "/etc/nginx/sites-enabled"
     ]
+  },
+  "enabledPlugins": {
+    "andrej-karpathy-skills@karpathy-skills": true
   }
 }

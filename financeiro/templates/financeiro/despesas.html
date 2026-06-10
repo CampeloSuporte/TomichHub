@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+:root{--cy:#58a6ff;--rd:#f85252;--muted:#7d8590;}
+.page-wrap{max-width:1150px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;}
+.page-title{font-size:1.1rem;font-weight:700;color:#e6edf3;display:flex;align-items:center;gap:.5rem;}
+.filter-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.6rem;padding:.65rem 1rem;background:#0d1822;border:1px solid rgba(88,166,255,.12);border-radius:8px;}
+.filter-bar input,.filter-bar select{background:#161b22;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;padding:5px 10px;font-size:.8rem;outline:none;}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--cy);}
+.filter-bar input{flex:1;min-width:160px;}
+.bulk-bar{display:none;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.6rem;padding:.55rem 1rem;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.25);border-radius:8px;}
+.bulk-bar.active{display:flex;}
+.card-despesas{background:#0d1822;border:1px solid rgba(88,166,255,.15);border-radius:10px;overflow:hidden;}
+.despesa-row{display:grid;grid-template-columns:28px 2.2fr 90px 105px 85px 155px;gap:.5rem;align-items:center;padding:.55rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);font-size:.82rem;}
+.despesa-row:last-child{border-bottom:none;}
+.despesa-row:hover{background:rgba(88,166,255,.025);}
+.despesa-row.selected{background:rgba(88,166,255,.07);}
+.despesa-nome{font-weight:500;color:#c9d1d9;}
+.despesa-sub{font-size:.7rem;color:#6a8fa8;margin-top:2px;}
+.badge-d{font-size:.68rem;padding:2px 8px;border-radius:10px;display:inline-flex;align-items:center;}
+.badge-vencido{background:rgba(248,82,82,.15);color:#f87272;}
+.badge-hoje{background:rgba(210,153,34,.15);color:#d29922;}
+.badge-pago{background:rgba(0,200,100,.12);color:#40d080;}
+.badge-pendente{background:rgba(88,166,255,.1);color:#58a6ff;}
+.cy-btn-sm{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#aaa;border-radius:4px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:all .15s;}
+.cy-btn-sm:hover{border-color:var(--cy);color:var(--cy);}
+.cy-btn-danger{background:rgba(248,82,82,.1);border:1px solid rgba(248,82,82,.4);color:#f85252;border-radius:4px;padding:3px 10px;font-size:.72rem;cursor:pointer;}
+.cy-btn-danger:hover{background:rgba(248,82,82,.2);}
+.cy-btn-pagar{background:rgba(64,208,128,.08);border:1px solid rgba(64,208,128,.3);color:#40d080;border-radius:4px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:all .15s;}
+.cy-btn-pagar:hover{background:rgba(64,208,128,.18);}
+.cy-input{background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:7px 10px;font-size:.85rem;width:100%;outline:none;transition:border-color .15s;}
+.cy-input:focus{border-color:var(--cy);}
+.cy-label{font-size:.75rem;color:#7d8590;margin-bottom:.25rem;display:block;}
+.btn-nova{background:rgba(88,166,255,.12);border:1px solid var(--cy);color:var(--cy);border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem;}
+.btn-nova:hover{background:rgba(88,166,255,.22);}
+.btn-back{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;}
+.btn-back:hover{border-color:var(--cy);color:var(--cy);}
+.resumo-bar{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
+.resumo-card{flex:1;min-width:130px;background:#0d1822;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.6rem .9rem;font-size:.78rem;color:#7d8590;}
+.resumo-card strong{display:block;font-size:1rem;font-weight:700;margin-top:2px;}
+.empty-state{text-align:center;padding:3rem 1rem;color:#7d8590;font-size:.9rem;}
+input[type=checkbox]{accent-color:var(--cy);cursor:pointer;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <a href="{% url 'dashboard_financeiro' %}" class="btn-back"><i class="fas fa-arrow-left"></i> Financeiro</a>
+      <span class="page-title"><i class="fas fa-file-invoice-dollar" style="color:#ff6b35"></i> Despesas Operacionais</span>
+    </div>
+    <button class="btn-nova" onclick="abrirModalNovaDespesa()"><i class="fas fa-plus"></i> Nova Despesa</button>
+  </div>
+
+  <!-- Resumo -->
+  <div class="resumo-bar">
+    <div class="resumo-card">Total <strong id="res-total">—</strong></div>
+    <div class="resumo-card" style="border-color:rgba(248,82,82,.3);">Vencidas <strong id="res-vencidas" style="color:#f87272;">—</strong></div>
+    <div class="resumo-card" style="border-color:rgba(210,153,34,.3);">Vencem Hoje <strong id="res-hoje" style="color:#d29922;">—</strong></div>
+    <div class="resumo-card" style="border-color:rgba(88,166,255,.25);">Pendentes <strong id="res-pendentes" style="color:#58a6ff;">—</strong></div>
+    <div class="resumo-card" style="border-color:rgba(0,200,100,.25);">Pagas <strong id="res-pagas" style="color:#40d080;">—</strong></div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filter-bar">
+    <input type="text" id="busca" placeholder="Buscar por nome…" oninput="carregarDespesas()">
+    <select id="filtro-status" onchange="carregarDespesas()">
+      <option value="">Todas</option>
+      <option value="PENDENTE">Pendentes</option>
+      <option value="VENCIDO">Vencidas</option>
+      <option value="PAGO">Pagas</option>
+    </select>
+    <select id="filtro-cat" onchange="carregarDespesas()">
+      <option value="">Todas categorias</option>
+      <option value="INFRAESTRUTURA">Infraestrutura</option>
+      <option value="PESSOAL">Pessoal</option>
+      <option value="SERVICOS">Serviços</option>
+      <option value="ADMINISTRATIVO">Administrativo</option>
+      <option value="FISCAL">Fiscal</option>
+      <option value="OUTROS">Outros</option>
+    </select>
+    <button class="cy-btn-sm" onclick="document.getElementById('busca').value='';document.getElementById('filtro-status').value='';document.getElementById('filtro-cat').value='';carregarDespesas();">
+      <i class="fas fa-times"></i> Limpar
+    </button>
+    <span id="contador-despesas" style="font-size:.75rem;color:#7d8590;margin-left:auto;"></span>
+  </div>
+
+  <!-- Barra de ações em massa (aparece ao selecionar) -->
+  <div class="bulk-bar" id="bulk-bar">
+    <span id="bulk-count" style="font-size:.8rem;color:#58a6ff;font-weight:600;"></span>
+    <button class="cy-btn-sm" onclick="bulkAcao('privada')"><i class="fas fa-lock me-1"></i>Marcar Privada</button>
+    <button class="cy-btn-sm" onclick="bulkAcao('publica')"><i class="fas fa-lock-open me-1"></i>Marcar Pública</button>
+    <button class="cy-btn-sm" style="border-color:rgba(64,208,128,.4);color:#40d080;" onclick="bulkAcao('pagar')"><i class="fas fa-check me-1"></i>Marcar Paga</button>
+    <button class="cy-btn-danger" onclick="bulkAcao('deletar')"><i class="fas fa-trash me-1"></i>Excluir Selecionadas</button>
+    <button class="cy-btn-sm" style="margin-left:auto;" onclick="desmarcarTodos()"><i class="fas fa-times me-1"></i>Cancelar</button>
+  </div>
+
+  <!-- Lista -->
+  <div class="card-despesas">
+    <div id="lista-container">
+      <div class="empty-state"><div class="spinner-border spinner-border-sm text-secondary"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL NOVA DESPESA ═══════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalNovaDespesa" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:#0d1822;border:1px solid rgba(88,166,255,.2);">
+      <div class="modal-header" style="border-color:rgba(88,166,255,.15);">
+        <h5 class="modal-title" style="color:var(--cy);font-size:.9rem;"><i class="fas fa-file-invoice-dollar"></i> Nova Despesa</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="msgErroDespesa" class="alert alert-danger d-none" style="font-size:.8rem;"></div>
+        <form id="formNovaDespesa" onsubmit="enviarNovaDespesa(event)">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="cy-label">Nome da Despesa *</label>
+            <input type="text" class="cy-input" name="nome" required placeholder="Ex: Conta de Energia, Aluguel…">
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="cy-label">Valor (R$) *</label>
+              <input type="number" step="0.01" min="0.01" class="cy-input" name="valor" required placeholder="0,00">
+            </div>
+            <div class="col-6">
+              <label class="cy-label">Vencimento *</label>
+              <input type="date" class="cy-input" name="data_vencimento" required>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="cy-label">Categoria</label>
+              <select class="cy-input" name="categoria">
+                <option value="INFRAESTRUTURA">Infraestrutura</option>
+                <option value="PESSOAL">Pessoal</option>
+                <option value="SERVICOS">Serviços</option>
+                <option value="ADMINISTRATIVO">Administrativo</option>
+                <option value="FISCAL">Fiscal / Tributário</option>
+                <option value="OUTROS" selected>Outros</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="cy-label">Parcelas</label>
+              <select class="cy-input" name="parcelas" id="novaParcelas" onchange="toggleParcelas(this)">
+                <option value="1" selected>1x (sem parcelamento)</option>
+                <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+                <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
+                <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+                <option value="11">11x</option><option value="12">12x</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-2 d-none" id="parcelaHint">
+            <small style="display:block;padding:6px 10px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);border-radius:6px;color:#3fb950;">
+              <i class="fas fa-layer-group me-1"></i>Serão criadas <strong id="hintN">2</strong> despesas mensais com sufixo (1/N), (2/N)…
+            </small>
+          </div>
+          <div class="mb-2">
+            <label class="cy-label">Observações</label>
+            <textarea class="cy-input" name="observacoes" rows="2" placeholder="Opcional"></textarea>
+          </div>
+          <div class="mb-3">
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <input type="checkbox" id="novaPrivada" name="privada" style="width:16px;height:16px;cursor:pointer;">
+              <label for="novaPrivada" style="margin:0;font-size:.8rem;color:rgba(88,166,255,.6);cursor:pointer;">
+                <i class="fas fa-lock me-1"></i>Privada (apenas você vê)
+              </label>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:.5rem;padding-top:.5rem;border-top:1px solid rgba(88,166,255,.1);">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-sm" style="background:rgba(88,166,255,.15);border:1px solid var(--cy);color:var(--cy);" id="btnSalvar">
+              <span id="spinnerSalvar" class="spinner-border spinner-border-sm d-none me-1"></span>
+              <i class="fas fa-save"></i> Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL EDITAR DESPESA ════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalEditarDespesa" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:#0d1822;border:1px solid rgba(88,166,255,.2);">
+      <div class="modal-header" style="border-color:rgba(88,166,255,.15);">
+        <h5 class="modal-title" style="color:#d29922;font-size:.9rem;"><i class="fas fa-edit"></i> Editar Despesa</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="msgErroEdit" class="alert alert-danger d-none" style="font-size:.8rem;"></div>
+        <input type="hidden" id="editId">
+        <div class="mb-2">
+          <label class="cy-label">Nome *</label>
+          <input type="text" class="cy-input" id="editNome" required>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6"><label class="cy-label">Valor (R$)</label><input type="number" step="0.01" class="cy-input" id="editValor"></div>
+          <div class="col-6"><label class="cy-label">Vencimento</label><input type="date" class="cy-input" id="editVenc"></div>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="cy-label">Categoria</label>
+            <select class="cy-input" id="editCat">
+              <option value="INFRAESTRUTURA">Infraestrutura</option>
+              <option value="PESSOAL">Pessoal</option>
+              <option value="SERVICOS">Serviços</option>
+              <option value="ADMINISTRATIVO">Administrativo</option>
+              <option value="FISCAL">Fiscal</option>
+              <option value="OUTROS">Outros</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="cy-label">Status</label>
+            <select class="cy-input" id="editStatus">
+              <option value="PENDENTE">Pendente</option>
+              <option value="PAGO">Pago</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="cy-label">Data do Pagamento</label>
+          <input type="date" class="cy-input" id="editDataPg">
+        </div>
+        <div class="mb-2"><label class="cy-label">Observações</label><textarea class="cy-input" id="editObs" rows="2"></textarea></div>
+        <div class="mb-3">
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <input type="checkbox" id="editPrivada" style="width:16px;height:16px;cursor:pointer;">
+            <label for="editPrivada" style="margin:0;font-size:.8rem;color:rgba(88,166,255,.6);cursor:pointer;"><i class="fas fa-lock me-1"></i>Privada</label>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;padding-top:.5rem;border-top:1px solid rgba(88,166,255,.1);">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-sm" style="background:rgba(210,153,34,.12);border:1px solid #d29922;color:#d29922;" onclick="enviarEditar()">
+            <i class="fas fa-save"></i> Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+const fmt = v => parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ── Resumo ──────────────────────────────────────────────────────────────────
+async function carregarResumo() {
+    try {
+        const [r1, r2] = await Promise.all([
+            fetch('/financeiro/api/despesas/dashboard/'),
+            fetch('/financeiro/api/despesa/listar/?status='),
+        ]);
+        const d1 = await r1.json();
+        const d2 = await r2.json();
+        const soma = arr => arr.reduce((s,x) => s + parseFloat(x.valor), 0);
+        if (d1.sucesso) {
+            document.getElementById('res-vencidas').textContent  = `R$ ${fmt(soma(d1.vencidas))} (${d1.vencidas.length})`;
+            document.getElementById('res-hoje').textContent      = `R$ ${fmt(soma(d1.hoje))} (${d1.hoje.length})`;
+            const pend = [...d1.vencidas, ...d1.hoje, ...d1.proximas];
+            document.getElementById('res-pendentes').textContent = `R$ ${fmt(soma(pend))} (${pend.length})`;
+        }
+        if (d2.sucesso) {
+            document.getElementById('res-total').textContent = `R$ ${fmt(soma(d2.despesas))} (${d2.despesas.length})`;
+            const pagas = d2.despesas.filter(x => x.status === 'PAGO');
+            document.getElementById('res-pagas').textContent  = `R$ ${fmt(soma(pagas))} (${pagas.length})`;
+        }
+    } catch(e) {}
+}
+
+// ── Listar ──────────────────────────────────────────────────────────────────
+let _despesasCache = [];
+let debounceTimer;
+
+function carregarDespesas() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(_carregar, 250);
+}
+
+async function _carregar() {
+    const status = document.getElementById('filtro-status').value;
+    const cat    = document.getElementById('filtro-cat').value;
+    const busca  = document.getElementById('busca').value.trim();
+    const cont   = document.getElementById('lista-container');
+    cont.innerHTML = '<div class="empty-state"><div class="spinner-border spinner-border-sm text-secondary"></div></div>';
+    desmarcarTodos();
+    try {
+        const r = await fetch(`/financeiro/api/despesa/listar/?status=${encodeURIComponent(status)}&categoria=${encodeURIComponent(cat)}`);
+        const d = await r.json();
+        if (!d.sucesso) { cont.innerHTML = `<div class="empty-state" style="color:#f87272">Erro ao carregar.</div>`; return; }
+
+        let lista = d.despesas;
+        if (busca) {
+            const q = busca.toLowerCase();
+            lista = lista.filter(x => x.nome.toLowerCase().includes(q) || (x.observacoes||'').toLowerCase().includes(q));
+        }
+
+        _despesasCache = lista;
+        document.getElementById('contador-despesas').textContent = `${lista.length} despesa${lista.length !== 1 ? 's' : ''}`;
+
+        if (!lista.length) { cont.innerHTML = '<div class="empty-state"><i class="fas fa-inbox me-2"></i>Nenhuma despesa encontrada.</div>'; return; }
+
+        const header = `<div class="despesa-row" style="font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(88,166,255,.15);">
+            <span><input type="checkbox" id="chk-all" title="Selecionar todos" onchange="toggleTodos(this)" style="width:15px;height:15px;"></span>
+            <span>Nome</span>
+            <span style="text-align:right">Valor</span>
+            <span style="text-align:center">Vencimento</span>
+            <span style="text-align:center">Status</span>
+            <span></span>
+        </div>`;
+
+        const rows = lista.map(x => {
+            const se  = x.status_efetivo;
+            const cls = se==='VENCIDO'?'badge-vencido':se==='VENCE_HOJE'?'badge-hoje':se==='PAGO'?'badge-pago':'badge-pendente';
+            const lbl = se==='VENCIDO'?'Vencida':se==='VENCE_HOJE'?'Vence Hoje':se==='PAGO'?'Pago':'Pendente';
+            const xJ  = JSON.stringify(x).replace(/"/g,'&quot;');
+            const nom = x.nome.replace(/'/g,"\\'").replace(/\\/g,'\\\\');
+            const btnPag = x.status !== 'PAGO'
+                ? `<button class="cy-btn-pagar" onclick="pagarDespesa(${x.id})"><i class="fas fa-check me-1"></i>Pagar</button>`
+                : `<span style="font-size:.7rem;color:#40d080;"><i class="fas fa-check-double me-1"></i>Pago</span>`;
+            return `<div class="despesa-row" id="row-${x.id}">
+                <span><input type="checkbox" class="chk-despesa" data-id="${x.id}" onchange="onCheckChange()" style="width:15px;height:15px;"></span>
+                <div>
+                    <div class="despesa-nome">${x.nome}${x.privada?'<i class="fas fa-lock" style="font-size:.6rem;color:#bc8cff;margin-left:.35rem;" title="Privada"></i>':''}</div>
+                    <div class="despesa-sub">${x.categoria_label}${x.observacoes ? ' · ' + x.observacoes.substring(0,50) : ''}</div>
+                </div>
+                <span style="text-align:right;font-weight:600;color:#e0f0ff;">R$ ${fmt(x.valor)}</span>
+                <span style="text-align:center;font-size:.76rem;color:#9ab;">${x.data_vencimento_fmt}</span>
+                <div style="text-align:center;">${btnPag}</div>
+                <div style="display:flex;gap:.3rem;justify-content:flex-end;align-items:center;">
+                    <span class="badge-d ${cls}">${lbl}</span>
+                    <button class="cy-btn-sm" onclick="abrirEditar(${xJ})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="cy-btn-danger" onclick="deletar(${x.id},'${nom}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+
+        cont.innerHTML = `<div style="overflow-x:auto;">${header}${rows}</div>`;
+    } catch(e) { cont.innerHTML = `<div class="empty-state" style="color:#f87272">${e.message}</div>`; }
+}
+
+// ── Seleção / Bulk ───────────────────────────────────────────────────────────
+function toggleTodos(chkAll) {
+    document.querySelectorAll('.chk-despesa').forEach(c => c.checked = chkAll.checked);
+    onCheckChange();
+}
+
+function onCheckChange() {
+    const selecionados = document.querySelectorAll('.chk-despesa:checked');
+    const total        = document.querySelectorAll('.chk-despesa');
+    const bulkBar      = document.getElementById('bulk-bar');
+    const chkAll       = document.getElementById('chk-all');
+    if (chkAll) chkAll.checked = selecionados.length === total.length && total.length > 0;
+    // highlight rows
+    document.querySelectorAll('.chk-despesa').forEach(c => {
+        const row = document.getElementById('row-' + c.dataset.id);
+        if (row) row.classList.toggle('selected', c.checked);
+    });
+    if (selecionados.length > 0) {
+        bulkBar.classList.add('active');
+        document.getElementById('bulk-count').textContent = `${selecionados.length} selecionada${selecionados.length !== 1 ? 's' : ''}`;
+    } else {
+        bulkBar.classList.remove('active');
+    }
+}
+
+function desmarcarTodos() {
+    document.querySelectorAll('.chk-despesa').forEach(c => c.checked = false);
+    const chkAll = document.getElementById('chk-all');
+    if (chkAll) chkAll.checked = false;
+    document.getElementById('bulk-bar').classList.remove('active');
+    document.querySelectorAll('.despesa-row').forEach(r => r.classList.remove('selected'));
+}
+
+async function bulkAcao(acao) {
+    const ids = [...document.querySelectorAll('.chk-despesa:checked')].map(c => parseInt(c.dataset.id));
+    if (!ids.length) return;
+    const labels = {'deletar':'Excluir','privada':'Marcar como Privada','publica':'Marcar como Pública','pagar':'Marcar como Paga'};
+    if (!confirm(`${labels[acao]} ${ids.length} despesa(s) selecionada(s)?`)) return;
+    try {
+        const r = await fetch('/financeiro/api/despesas/bulk/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+            body: JSON.stringify({ids, acao}),
+        });
+        const d = await r.json();
+        if (d.sucesso) { mostrarToast(d.msg, acao==='deletar'?'danger':'success'); carregarDespesas(); carregarResumo(); }
+        else alert('Erro: ' + d.erro);
+    } catch(e) { alert('Erro de conexão: ' + e.message); }
+}
+
+// ── Nova Despesa ─────────────────────────────────────────────────────────────
+function abrirModalNovaDespesa() {
+    document.getElementById('formNovaDespesa').reset();
+    document.getElementById('msgErroDespesa').classList.add('d-none');
+    document.querySelector('#formNovaDespesa [name=data_vencimento]').value = new Date().toISOString().split('T')[0];
+    document.getElementById('novaParcelas').value = '1';
+    toggleParcelas(document.getElementById('novaParcelas'));
+    new bootstrap.Modal(document.getElementById('modalNovaDespesa')).show();
+}
+
+function toggleParcelas(sel) {
+    const n = parseInt(sel.value) || 1;
+    const hint = document.getElementById('parcelaHint');
+    if (n > 1) { document.getElementById('hintN').textContent = n; hint.classList.remove('d-none'); }
+    else { hint.classList.add('d-none'); }
+}
+
+async function enviarNovaDespesa(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn  = document.getElementById('btnSalvar');
+    const sp   = document.getElementById('spinnerSalvar');
+    btn.disabled = true; sp.classList.remove('d-none');
+    document.getElementById('msgErroDespesa').classList.add('d-none');
+    const parcelas = parseInt(document.getElementById('novaParcelas').value) || 1;
+    const payload = {
+        nome: form.nome.value.trim(), valor: form.valor.value,
+        data_vencimento: form.data_vencimento.value, categoria: form.categoria.value,
+        recorrencia: 'UNICA', observacoes: form.observacoes.value,
+        privada: document.getElementById('novaPrivada')?.checked || false, parcelas,
+    };
+    try {
+        const r = await fetch('/financeiro/api/despesa/criar/', {
+            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:JSON.stringify(payload)
+        });
+        const d = await r.json();
+        if (d.sucesso) {
+            bootstrap.Modal.getInstance(document.getElementById('modalNovaDespesa')).hide();
+            mostrarToast(d.msg || 'Despesa criada!', 'success');
+            carregarDespesas(); carregarResumo();
+        } else {
+            document.getElementById('msgErroDespesa').textContent = d.erro;
+            document.getElementById('msgErroDespesa').classList.remove('d-none');
+        }
+    } catch(err) {
+        document.getElementById('msgErroDespesa').textContent = err.message;
+        document.getElementById('msgErroDespesa').classList.remove('d-none');
+    } finally { btn.disabled = false; sp.classList.add('d-none'); }
+}
+
+// ── Editar ───────────────────────────────────────────────────────────────────
+function abrirEditar(x) {
+    document.getElementById('editId').value    = x.id;
+    document.getElementById('editNome').value  = x.nome;
+    document.getElementById('editValor').value = x.valor;
+    document.getElementById('editVenc').value  = x.data_vencimento;
+    document.getElementById('editCat').value   = x.categoria;
+    document.getElementById('editStatus').value= x.status;
+    document.getElementById('editDataPg').value= x.data_pagamento || '';
+    document.getElementById('editObs').value   = x.observacoes || '';
+    document.getElementById('editPrivada').checked = x.privada || false;
+    document.getElementById('msgErroEdit').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('modalEditarDespesa')).show();
+}
+
+async function enviarEditar() {
+    const id = document.getElementById('editId').value;
+    const payload = {
+        nome:            document.getElementById('editNome').value,
+        valor:           document.getElementById('editValor').value,
+        data_vencimento: document.getElementById('editVenc').value,
+        categoria:       document.getElementById('editCat').value,
+        status:          document.getElementById('editStatus').value,
+        data_pagamento:  document.getElementById('editDataPg').value || null,
+        observacoes:     document.getElementById('editObs').value,
+        privada:         document.getElementById('editPrivada')?.checked || false,
+    };
+    try {
+        const r = await fetch(`/financeiro/api/despesa/${id}/editar/`, {
+            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:JSON.stringify(payload)
+        });
+        const d = await r.json();
+        if (d.sucesso) {
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarDespesa')).hide();
+            mostrarToast('Despesa atualizada!', 'success');
+            carregarDespesas(); carregarResumo();
+        } else {
+            document.getElementById('msgErroEdit').textContent = d.erro;
+            document.getElementById('msgErroEdit').classList.remove('d-none');
+        }
+    } catch(err) {
+        document.getElementById('msgErroEdit').textContent = err.message;
+        document.getElementById('msgErroEdit').classList.remove('d-none');
+    }
+}
+
+// ── Pagar ────────────────────────────────────────────────────────────────────
+async function pagarDespesa(id) {
+    if (!confirm('Marcar despesa como paga?')) return;
+    try {
+        const r = await fetch(`/financeiro/api/despesa/${id}/pagar/`, {
+            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:'{}'
+        });
+        const d = await r.json();
+        if (d.sucesso) { mostrarToast('Despesa marcada como paga!', 'success'); carregarDespesas(); carregarResumo(); }
+        else alert('Erro: ' + d.erro);
+    } catch(e) { alert('Erro de conexão: ' + e.message); }
+}
+
+// ── Deletar ──────────────────────────────────────────────────────────────────
+async function deletar(id, nome) {
+    if (!confirm(`Excluir "${nome}"?`)) return;
+    try {
+        const r = await fetch(`/financeiro/api/despesa/${id}/deletar/`, {
+            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:'{}'
+        });
+        const d = await r.json();
+        if (d.sucesso) { mostrarToast('Despesa deletada.', 'danger'); carregarDespesas(); carregarResumo(); }
+        else alert('Erro: ' + d.erro);
+    } catch(e) { alert('Erro de conexão: ' + e.message); }
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function mostrarToast(msg, tipo) {
+    const c = document.getElementById('toast-container') || (() => {
+        const el = document.createElement('div');
+        el.id = 'toast-container';
+        el.style = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;';
+        document.body.appendChild(el); return el;
+    })();
+    const bg = tipo==='success'?'#40d080':tipo==='danger'?'#f85252':tipo==='warning'?'#d29922':'#58a6ff';
+    const t = document.createElement('div');
+    t.style = `background:${bg};color:#fff;padding:.55rem 1rem;border-radius:7px;font-size:.82rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.3);`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+document.addEventListener('DOMContentLoaded', () => { carregarDespesas(); carregarResumo(); });
+</script>
+{% endblock %}

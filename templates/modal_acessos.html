@@ -1389,8 +1389,8 @@
 }
 .btn-gerar-senha:hover {
     background: #1e293b;
-    border-color: #00ff88;
-    color: #00ff88;
+    border-color: #30363d;
+    color: #3fb950;
 }
 </style>
 <script>
@@ -2106,7 +2106,7 @@ function _gerarSenha(inputId) {
     if (btn) {
         const orig = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.style.color = '#00ff88';
+        btn.style.color = '#3fb950';
         setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
     }
 }

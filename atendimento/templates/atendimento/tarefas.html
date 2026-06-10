@@ -196,6 +196,10 @@
       </div>
     </div>
     <div class="tk-modal-footer">
+      <button class="btn-cyber" id="btnDeleteTask" type="button" onclick="TK.deleteTask()"
+              style="display:none;border-color:#ef4444;color:#ef4444;margin-right:auto;">
+        <i class="fas fa-trash"></i> Excluir
+      </button>
       <button class="btn-cyber secondary" onclick="TK.closeModal()">Cancelar</button>
       <button class="btn-cyber" id="btnSaveTask" type="button" onclick="TK.saveTask()">
         <i class="fas fa-save"></i> Salvar
@@ -320,6 +324,7 @@ window.TK = {
     document.getElementById('taskAssigned').value = prefill.assigned_to || '';
     document.getElementById('modalTitle').textContent = 'Nova Tarefa';
     document.getElementById('modalConvSection').style.display = 'none';
+    document.getElementById('btnDeleteTask').style.display = 'none';
     document.getElementById('taskModal').style.display = 'flex';
     document.getElementById('taskTitle').focus();
   },
@@ -331,13 +336,13 @@ window.TK = {
       document.getElementById('taskPriority').value = t.priority;
       document.getElementById('taskStatus').value = t.status;
       if(t.due_date){
-        // format to datetime-local: YYYY-MM-DDTHH:MM
         document.getElementById('taskDue').value = t.due_date.slice(0,16);
       } else {
         document.getElementById('taskDue').value = '';
       }
       document.getElementById('taskAssigned').value = t.assigned_to ? t.assigned_to.id : '';
       document.getElementById('modalTitle').textContent = 'Editar Tarefa';
+      document.getElementById('btnDeleteTask').style.display = 'flex';
 
       // Conversas
       var sec = document.getElementById('modalConvSection');
@@ -368,6 +373,16 @@ window.TK = {
         if(t) t.conv_count = Math.max(0, (t.conv_count||1)-1);
         applyFilters();
       }
+    });
+  },
+  deleteTask: function(){
+    var id = document.getElementById('taskId').value;
+    if(!id) return;
+    if(!confirm('Excluir esta tarefa permanentemente?')) return;
+    api('DELETE', URL_TASK(id)).then(function(){
+      document.getElementById('taskModal').style.display = 'none';
+      _allTasks = _allTasks.filter(function(t){ return t.id !== id; });
+      applyFilters();
     });
   },
   saveTask: function(){

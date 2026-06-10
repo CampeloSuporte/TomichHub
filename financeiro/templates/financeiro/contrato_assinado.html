@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contrato Assinado</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0d1117;color:#c9d1d9;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+.box{text-align:center;padding:48px 32px;background:#161b22;border:1px solid #30363d;border-radius:12px;max-width:480px;width:100%;margin:16px;}
+.icon{font-size:3.5rem;margin-bottom:16px;}
+h1{font-size:1.4rem;color:#3fb950;margin-bottom:8px;}
+p{color:#7d8590;font-size:.9rem;line-height:1.6;margin-bottom:16px;}
+.meta{font-size:.8rem;color:#484f58;margin-top:8px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;background:#238636;color:#fff;border:none;text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="icon">✅</div>
+  <h1>Contrato já assinado</h1>
+  <p>Este contrato foi assinado por <b>{{ contrato.nome_assinante }}</b> em {{ contrato.assinado_em|date:"d/m/Y \à\s H:i" }}.</p>
+  {% if contrato.pdf_assinado %}
+  <a class="btn" href="/financeiro/contrato/{{ contrato.token }}/download/">⬇ Baixar PDF assinado</a>
+  {% endif %}
+  <div class="meta">Token: {{ contrato.token }}</div>
+</div>
+</body>
+</html>

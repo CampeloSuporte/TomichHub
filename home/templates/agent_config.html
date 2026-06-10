@@ -3,37 +3,42 @@
 
 {% block content %}
 <style>
-:root { --cy:#00f5ff;--gr:#00ff88;--or:#ffa500;--rd:#ff5555;--bg:#02030a;--bg2:#060c18;--bg3:#0a1628;--muted:rgba(0,245,255,0.4); }
-.cfg-page { background:var(--bg);min-height:100vh;padding:1.5rem;font-family:'Share Tech Mono','Courier New',monospace; }
-.cfg-title { font-family:'Orbitron',sans-serif;font-size:1.4rem;color:var(--cy);text-shadow:0 0 16px rgba(0,245,255,.5);letter-spacing:3px;text-transform:uppercase; }
+:root {
+    --cy: #58a6ff; --gr: #3fb950; --bl: #388bfd;
+    --or: #d29922; --rd: #f85149; --pu: #bc8cff;
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1c2128;
+    --muted: #7d8590;
+}
+.cfg-page { background:var(--bg);min-height:100vh;padding:1.5rem;font-family:'Inter','Courier New',monospace; }
+.cfg-title { font-family:'Inter',sans-serif;font-size:1.4rem;color:var(--cy);letter-spacing:3px;text-transform:uppercase; }
 .cfg-sub   { color:var(--muted);font-size:.75rem;letter-spacing:2px; }
 
-.cfg-card  { background:var(--bg2);border:1px solid rgba(0,245,255,.12);border-radius:8px;margin-bottom:1.5rem;overflow:hidden; }
-.cfg-card-header { padding:.85rem 1.2rem;border-bottom:1px solid rgba(0,245,255,.08);display:flex;align-items:center;gap:.75rem; }
-.cfg-card-title  { font-family:'Orbitron',sans-serif;font-size:.85rem;color:var(--cy);letter-spacing:2px; }
+.cfg-card  { background:var(--bg2);border:1px solid rgba(88,166,255,.12);border-radius:8px;margin-bottom:1.5rem;overflow:hidden; }
+.cfg-card-header { padding:.85rem 1.2rem;border-bottom:1px solid rgba(88,166,255,.08);display:flex;align-items:center;gap:.75rem; }
+.cfg-card-title  { font-family:'Inter',sans-serif;font-size:.85rem;color:var(--cy);letter-spacing:2px; }
 .cfg-card-body   { padding:1.2rem; }
 
 .cfg-label { display:block;font-size:.7rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:.3rem; }
-.cfg-input, .cfg-select { width:100%;background:var(--bg3);border:1px solid rgba(0,245,255,.2);border-radius:6px;padding:.5rem .75rem;color:#d0e8f0;font-family:inherit;font-size:.82rem; }
-.cfg-input:focus,.cfg-select:focus { outline:none;border-color:var(--cy);box-shadow:0 0 8px rgba(0,245,255,.15); }
+.cfg-input, .cfg-select { width:100%;background:var(--bg3);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:.5rem .75rem;color:#e6edf3;font-family:inherit;font-size:.82rem; }
+.cfg-input:focus,.cfg-select:focus { outline:none;border-color:var(--cy); }
 .cfg-select option { background:var(--bg3); }
 .form-grid { display:grid;grid-template-columns:1fr 1fr;gap:.75rem; }
 .form-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem; }
 
-.btn-cy { background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.3);color:var(--cy);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:inherit; }
-.btn-cy:hover { background:rgba(0,245,255,.22);box-shadow:0 0 10px rgba(0,245,255,.2); }
-.btn-gr { background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.3);color:var(--gr);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s;font-family:inherit; }
-.btn-gr:hover { background:rgba(0,255,136,.22); }
+.btn-cy { background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);color:var(--cy);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:inherit; }
+.btn-cy:hover { background:rgba(88,166,255,.22); }
+.btn-gr { background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.3);color:var(--gr);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s;font-family:inherit; }
+.btn-gr:hover { background:rgba(63,185,80,.22); }
 .btn-or { background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.3);color:var(--or);padding:.4rem 1rem;border-radius:6px;font-size:.8rem;cursor:pointer;transition:background .15s;font-family:inherit; }
 .btn-or:hover { background:rgba(255,165,0,.22); }
 
 .status-pill { display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .7rem;border-radius:10px;font-size:.72rem; }
-.status-ok   { background:rgba(0,255,136,.12);color:var(--gr);border:1px solid rgba(0,255,136,.3); }
+.status-ok   { background:rgba(63,185,80,.12);color:var(--gr);border:1px solid rgba(63,185,80,.3); }
 .status-err  { background:rgba(255,85,85,.12); color:var(--rd);border:1px solid rgba(255,85,85,.25); }
-.status-unk  { background:rgba(0,245,255,.08); color:var(--muted);border:1px solid rgba(0,245,255,.15); }
+.status-unk  { background:rgba(88,166,255,.08); color:var(--muted);border:1px solid rgba(88,166,255,.15); }
 
-.help-text { font-size:.72rem;color:rgba(0,245,255,.35);margin-top:.25rem; }
-.section-divider { border:none;border-top:1px solid rgba(0,245,255,.07);margin:1rem 0; }
+.help-text { font-size:.72rem;color:rgba(88,166,255,.35);margin-top:.25rem; }
+.section-divider { border:none;border-top:1px solid rgba(88,166,255,.07);margin:1rem 0; }
 
 .toggle-row { display:flex;align-items:center;gap:.75rem;padding:.5rem 0; }
 .toggle-row input[type=checkbox] { accent-color:var(--cy);width:16px;height:16px; }
@@ -48,29 +53,29 @@
 
 .ag-toast-container { position:fixed;top:1.2rem;right:1.2rem;z-index:99999;display:flex;flex-direction:column;gap:.5rem; }
 .ag-toast-item { padding:.65rem 1rem;border-radius:7px;font-size:.82rem;border:1px solid;animation:toastIn .2s ease;min-width:240px; }
-.ag-toast-ok   { background:rgba(0,255,136,.12);border-color:rgba(0,255,136,.3);color:var(--gr); }
+.ag-toast-ok   { background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.3);color:var(--gr); }
 .ag-toast-erro { background:rgba(255,85,85,.12); border-color:rgba(255,85,85,.3); color:var(--rd); }
-.ag-toast-info { background:rgba(0,245,255,.1);  border-color:rgba(0,245,255,.3); color:var(--cy); }
+.ag-toast-info { background:rgba(88,166,255,.1);  border-color:rgba(88,166,255,.3); color:var(--cy); }
 @keyframes toastIn { from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)} }
 
-.result-box { background:var(--bg3);border:1px solid rgba(0,245,255,.15);border-radius:6px;padding:.75rem;font-size:.78rem;color:#c8dde8;margin-top:.75rem;display:none; }
+.result-box { background:var(--bg3);border:1px solid rgba(88,166,255,.15);border-radius:6px;padding:.75rem;font-size:.78rem;color:#c8dde8;margin-top:.75rem;display:none; }
 .result-box.show { display:block; }
 
 /* Token Monitor */
-.tk-stat { background:var(--bg3);border:1px solid rgba(0,245,255,.12);border-radius:8px;padding:1rem;text-align:center;flex:1;min-width:130px; }
-.tk-stat-val { font-family:'Orbitron',sans-serif;font-size:1.3rem;color:var(--cy);line-height:1; }
+.tk-stat { background:var(--bg3);border:1px solid rgba(88,166,255,.12);border-radius:8px;padding:1rem;text-align:center;flex:1;min-width:130px; }
+.tk-stat-val { font-family:'Inter',sans-serif;font-size:1.3rem;color:var(--cy);line-height:1; }
 .tk-stat-lbl { font-size:.68rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:.3rem; }
 .tk-stat.green .tk-stat-val { color:var(--gr); }
 .tk-stat.orange .tk-stat-val { color:var(--or); }
 .tk-stat.purple .tk-stat-val { color:#c084fc; }
-.tk-bar-wrap { background:rgba(0,245,255,.06);border-radius:4px;height:6px;overflow:hidden;margin-top:4px; }
+.tk-bar-wrap { background:rgba(88,166,255,.06);border-radius:4px;height:6px;overflow:hidden;margin-top:4px; }
 .tk-bar { height:100%;border-radius:4px;transition:width .5s; }
-.tk-period-btn { background:var(--bg3);border:1px solid rgba(0,245,255,.15);color:var(--muted);padding:.25rem .65rem;border-radius:5px;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .15s; }
-.tk-period-btn.active,.tk-period-btn:hover { border-color:var(--cy);color:var(--cy);background:rgba(0,245,255,.08); }
+.tk-period-btn { background:var(--bg3);border:1px solid rgba(88,166,255,.15);color:var(--muted);padding:.25rem .65rem;border-radius:5px;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .15s; }
+.tk-period-btn.active,.tk-period-btn:hover { border-color:var(--cy);color:var(--cy);background:rgba(88,166,255,.08); }
 .tk-chart { display:flex;align-items:flex-end;gap:3px;height:60px;padding-top:4px; }
-.tk-bar-day { flex:1;background:rgba(0,245,255,.25);border-radius:2px 2px 0 0;min-height:2px;position:relative;cursor:default;transition:background .15s; }
-.tk-bar-day:hover { background:rgba(0,245,255,.5); }
-.tk-bar-day-out { position:absolute;bottom:0;left:0;right:0;background:rgba(0,255,136,.35);border-radius:2px 2px 0 0; }
+.tk-bar-day { flex:1;background:rgba(88,166,255,.25);border-radius:2px 2px 0 0;min-height:2px;position:relative;cursor:default;transition:background .15s; }
+.tk-bar-day:hover { background:rgba(88,166,255,.5); }
+.tk-bar-day-out { position:absolute;bottom:0;left:0;right:0;background:rgba(63,185,80,.35);border-radius:2px 2px 0 0; }
 </style>
 
 <div class="cfg-page">
@@ -124,7 +129,7 @@
             <!-- Barra proporção entrada/saída -->
             <div style="font-size:.7rem;color:var(--muted);margin-bottom:.3rem">Proporção entrada <span style="color:var(--cy)">■</span> / saída <span style="color:var(--gr)">■</span></div>
             <div class="tk-bar-wrap" style="height:8px;margin-bottom:1rem">
-                <div class="tk-bar" id="tk-bar-prop" style="background:linear-gradient(90deg,rgba(0,245,255,.6) var(--inp-pct,50%),rgba(0,255,136,.5) var(--inp-pct,50%));width:100%"></div>
+                <div class="tk-bar" id="tk-bar-prop" style="background:linear-gradient(90deg,rgba(88,166,255,.6) var(--inp-pct,50%),rgba(63,185,80,.5) var(--inp-pct,50%));width:100%"></div>
             </div>
             <!-- Gráfico diário -->
             <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">Últimos 14 dias <span style="color:var(--muted);font-size:.65rem">(azul=entrada, verde=saída)</span></div>
@@ -148,12 +153,12 @@
                 <div class="provedor-card {% if agent_cfg.provedor_ia == 'claude' %}provedor-ativo{% endif %}"
                      id="card-claude" onclick="selecionarProvedor('claude')"
                      style="flex:1;min-width:200px;cursor:pointer;border-radius:8px;padding:16px;
-                            border:2px solid {% if agent_cfg.provedor_ia == 'claude' %}var(--cy){% else %}rgba(0,245,255,.12){% endif %};
-                            background:{% if agent_cfg.provedor_ia == 'claude' %}rgba(0,245,255,.07){% else %}var(--bg3){% endif %};
+                            border:2px solid {% if agent_cfg.provedor_ia == 'claude' %}var(--cy){% else %}rgba(88,166,255,.12){% endif %};
+                            background:{% if agent_cfg.provedor_ia == 'claude' %}rgba(88,166,255,.07){% else %}var(--bg3){% endif %};
                             transition:all .2s">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <span style="font-size:1.4rem">🧠</span>
-                        <span style="font-family:'Orbitron',sans-serif;font-size:.85rem;color:var(--cy)">Claude</span>
+                        <span style="font-family:'Inter',sans-serif;font-size:.85rem;color:var(--cy)">Claude</span>
                         <span style="font-size:.7rem;color:var(--muted)">Anthropic</span>
                         {% if agent_cfg.provedor_ia == 'claude' %}<span class="ms-auto status-pill status-ok">● ativo</span>{% endif %}
                     </div>
@@ -167,7 +172,7 @@
                             transition:all .2s">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <span style="font-size:1.4rem">🤖</span>
-                        <span style="font-family:'Orbitron',sans-serif;font-size:.85rem;color:#10a37f">ChatGPT</span>
+                        <span style="font-family:'Inter',sans-serif;font-size:.85rem;color:#10a37f">ChatGPT</span>
                         <span style="font-size:.7rem;color:var(--muted)">OpenAI</span>
                         {% if agent_cfg.provedor_ia == 'openai' %}<span class="ms-auto status-pill" style="background:rgba(16,163,127,.12);color:#10a37f;border:1px solid rgba(16,163,127,.3)">● ativo</span>{% endif %}
                     </div>
@@ -376,7 +381,7 @@
             <p style="color:#c8dde8;font-size:.82rem;margin-bottom:.75rem">
                 Configure o webhook na sua instância Evolution API para receber mensagens dos grupos:
             </p>
-            <div style="background:var(--bg3);border-radius:6px;padding:.75rem 1rem;font-family:monospace;font-size:.8rem;color:var(--cy);border:1px solid rgba(0,245,255,.15)">
+            <div style="background:var(--bg3);border-radius:6px;padding:.75rem 1rem;font-family:monospace;font-size:.8rem;color:var(--cy);border:1px solid rgba(88,166,255,.15)">
                 POST {{ request.scheme }}://{{ request.get_host }}/home/agent/wa/webhook/
             </div>
             <div class="help-text mt-2">
@@ -448,8 +453,8 @@ async function selecionarProvedor(provedor) {
         const cardClaude = document.getElementById('card-claude');
         const cardOpenAI = document.getElementById('card-openai');
 
-        cardClaude.style.borderColor = isOpenAI ? 'rgba(0,245,255,.12)' : 'var(--cy)';
-        cardClaude.style.background  = isOpenAI ? 'var(--bg3)' : 'rgba(0,245,255,.07)';
+        cardClaude.style.borderColor = isOpenAI ? 'rgba(88,166,255,.12)' : 'var(--cy)';
+        cardClaude.style.background  = isOpenAI ? 'var(--bg3)' : 'rgba(88,166,255,.07)';
         cardOpenAI.style.borderColor = isOpenAI ? '#10a37f' : 'rgba(16,163,127,.2)';
         cardOpenAI.style.background  = isOpenAI ? 'rgba(16,163,127,.07)' : 'var(--bg3)';
 

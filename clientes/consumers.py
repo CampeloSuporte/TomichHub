@@ -594,10 +594,6 @@ class SSHConsumer(WebsocketConsumer):
         shell.invoke_shell()
         self._paramiko_shell = shell
 
-        if self.is_huawei:
-            time.sleep(0.5)
-            shell.send("screen-length 0 temporary\r")
-
         tempo_total = time.time() - tempo_inicio
         self.send_json({
             'type': 'connected',
@@ -727,10 +723,6 @@ class SSHConsumer(WebsocketConsumer):
                 shell.get_pty(term=pty_term, width=pty_w, height=pty_h)
             shell.invoke_shell()
             self._paramiko_shell = shell
-
-            if self.is_huawei:
-                time.sleep(0.5)
-                shell.send("screen-length 0 temporary\r")
 
             tempo_total = time.time() - tempo_inicio
             self.send_json({
@@ -1085,15 +1077,7 @@ class SSHConsumer(WebsocketConsumer):
             return
 
     def _disable_huawei_paging(self):
-        try:
-            self.ssh_process.send("screen-length 0 temporary\r")
-            time.sleep(0.5)
-            try:
-                self.ssh_process.read_nonblocking(timeout=0.5, size=32768)
-            except:
-                pass
-        except Exception as e:
-            logger.warning(f"⚠️ Não foi possível desabilitar paginação: {e}")
+        pass  # screen-length 0 temporary removido a pedido do operador
 
     # =========================================================
     # Telnet direto
@@ -1507,6 +1491,8 @@ class WinboxVNCConsumer(SSHConsumer):
             query_string = self.scope.get('query_string', b'').decode()
             params = parse_qs(query_string)
             mode = params.get('mode', ['winbox'])[0]
+            vnc_w = int(params.get('w', ['1366'])[0])
+            vnc_h = int(params.get('h', ['768'])[0])
             
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
@@ -1565,7 +1551,9 @@ class WinboxVNCConsumer(SSHConsumer):
                     host=target_host,
                     port=target_port,
                     user=acesso.usuario,
-                    password=acesso.senha
+                    password=acesso.senha,
+                    width=vnc_w,
+                    height=vnc_h
                 )
             
             vnc_port = self.vnc_manager.start()

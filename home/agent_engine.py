@@ -600,7 +600,7 @@ class AgentNOCEngine:
             linha = '  - ' + ' | '.join(parts)
             if a.contexto_backup:
                 if incluir_contexto:
-                    # Contexto compacto: 1500 chars máx para não explodir o context window
+                    # Contexto compacto: 800 chars máx para não explodir o context window
                     # BGP peers ficam no artigo [BGP] do cliente (não repetir aqui)
                     ctx_raw = a.contexto_backup
                     # Remove seção BGP do contexto (já está no artigo [BGP])
@@ -609,8 +609,8 @@ class AgentNOCEngine:
                         if idx_bgp > 200:
                             ctx_raw = ctx_raw[:idx_bgp] + '\n      [BGP: ver artigo [BGP] do cliente]'
                             break
-                    ctx = ctx_raw[:1500]
-                    if len(a.contexto_backup) > 1500:
+                    ctx = ctx_raw[:800]
+                    if len(a.contexto_backup) > 800:
                         ctx += '\n      ... [use fetch_host_config para detalhes]'
                     ctx_indent = '\n'.join('      ' + l for l in ctx.splitlines())
                     linha += f'\n    [Configuração conhecida do backup]\n{ctx_indent}'
@@ -688,7 +688,7 @@ class AgentNOCEngine:
                 artigos_fab = await sync_to_async(list)(
                     AgentKnowledge.objects.filter(ativo=True, fabricante__in=list(fabricantes_hosts))
                     .filter(_Q(cliente__isnull=True) | _Q(cliente=cliente))
-                    .order_by('fabricante', 'titulo')[:20]
+                    .order_by('fabricante', 'titulo')[:10]
                 )
             else:
                 artigos_fab = []
@@ -734,10 +734,10 @@ class AgentNOCEngine:
                 elif '[INFRA]' in artigo.titulo:
                     continue  # não injetar — muito grande, redundante
                 else:
-                    # Artigo de fabricante (manual/procedure): injetar completo, máx 2000 chars
+                    # Artigo de fabricante (manual/procedure): injetar completo, máx 1000 chars
                     linhas_kb.append(f"\n### [{artigo.fabricante.upper()}] {artigo.titulo}")
                     if artigo.conteudo:
-                        linhas_kb.append(artigo.conteudo.strip()[:2000])
+                        linhas_kb.append(artigo.conteudo.strip()[:1000])
 
             if bgp_index_lines:
                 bgp_index_section = (
@@ -1384,8 +1384,10 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
 
         await self._registrar_log('user_msg', mensagem)
         self._historico.append({"role": "user", "content": mensagem})
-        if len(self._historico) > 40:
-            self._historico = self._historico[-40:]
+        # OpenAI gpt-4o tem limite baixo de TPM — historico menor para evitar 429
+        max_hist = 16 if provedor == 'openai' else 40
+        if len(self._historico) > max_hist:
+            self._historico = self._historico[-max_hist:]
 
         await self.notify_cb({"type": "thinking", "content": "Processando..."})
 
@@ -1456,8 +1458,17 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
         import openai as openai_lib
         system_prompt = await self._build_system_prompt()
 
+        # Truncar system prompt para caber no limite de TPM do gpt-4o (30k)
+        # ~4 chars por token → 18000 tokens máx para o system prompt
+        MAX_SYSTEM_CHARS = 18000
+        if len(system_prompt) > MAX_SYSTEM_CHARS:
+            system_prompt = system_prompt[:MAX_SYSTEM_CHARS] + '\n\n... [contexto truncado para caber no limite de tokens]'
+
+        # Manter apenas as últimas 10 trocas do histórico (20 mensagens)
+        historico_recente = self._historico[-20:] if len(self._historico) > 20 else list(self._historico)
+
         # OpenAI usa system como primeira mensagem
-        messages = [{"role": "system", "content": system_prompt}] + list(self._historico)
+        messages = [{"role": "system", "content": system_prompt}] + historico_recente
 
         client = openai_lib.AsyncOpenAI(api_key=config.openai_api_key)
 

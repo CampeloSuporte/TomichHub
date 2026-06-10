@@ -5,6 +5,7 @@ urlpatterns = [
 
     # ===== VIEWS RENDERIZADAS =====
     path('', views.dashboard_financeiro, name='dashboard_financeiro'),
+    path('despesas/', views.listar_despesas_page, name='listar_despesas_page'),
 
     # ===== APIS: DASHBOARD =====
     path('api/dashboard/', views.api_dashboard_financeiro, name='api_dashboard_financeiro'),
@@ -35,6 +36,13 @@ urlpatterns = [
     path('api/aluguel/listar/', views.api_listar_alugueis, name='api_listar_alugueis'),
     path('api/aluguel/<int:aluguel_id>/editar/', views.api_editar_aluguel, name='api_editar_aluguel'),
     path('api/aluguel/<int:aluguel_id>/deletar/', views.api_deletar_aluguel, name='api_deletar_aluguel'),
+    path('api/aluguel/<int:aluguel_id>/contrato/',           views.gerar_contrato_aluguel,      name='gerar_contrato_aluguel'),
+    path('api/aluguel/<int:aluguel_id>/link-assinatura/',   views.gerar_link_assinatura,       name='gerar_link_assinatura'),
+    path('api/aluguel/<int:aluguel_id>/contratos/',         views.listar_contratos_aluguel,    name='listar_contratos_aluguel'),
+    # Públicas (sem login)
+    path('contrato/<uuid:token>/assinar/',                  views.assinar_contrato,            name='assinar_contrato'),
+    path('contrato/<uuid:token>/confirmar/',                views.confirmar_assinatura,        name='confirmar_assinatura'),
+    path('contrato/<uuid:token>/download/',                 views.download_contrato_assinado,  name='download_contrato_assinado'),
 
     # ===== APIS: VENDAS DE EQUIPAMENTO =====
     path('api/venda/', views.api_criar_venda_equipamento, name='api_criar_venda_equipamento'),
@@ -43,6 +51,7 @@ urlpatterns = [
     path('api/venda/<int:venda_id>/deletar/', views.api_deletar_venda, name='api_deletar_venda'),
 
     # ===== APIS: PAGAMENTOS =====
+    path('api/fatura/ajustar-vencimento/', views.api_ajustar_vencimento, name='api_ajustar_vencimento'),
     path('api/pagamento/registrar/', views.api_registrar_pagamento, name='api_registrar_pagamento'),
     path('api/pagamento/<int:fatura_id>/listar/', views.api_listar_pagamentos, name='api_listar_pagamentos'),
     path('api/pagamento/<int:pagamento_id>/deletar/', views.api_deletar_pagamento, name='api_deletar_pagamento'),
@@ -54,5 +63,12 @@ urlpatterns = [
     path('api/despesa/<int:despesa_id>/editar/',  views.api_editar_despesa,  name='api_editar_despesa'),
     path('api/despesa/<int:despesa_id>/pagar/',   views.api_pagar_despesa,   name='api_pagar_despesa'),
     path('api/despesa/<int:despesa_id>/deletar/', views.api_deletar_despesa, name='api_deletar_despesa'),
+    path('api/despesas/bulk/', views.api_despesas_bulk, name='api_despesas_bulk'),
     path('api/despesas/dashboard/',               views.api_despesas_dashboard, name='api_despesas_dashboard'),
+
+    # ===== ASSINATURA DO LOCADOR =====
+    path('api/assinatura-locador/', views.assinatura_locador, name='assinatura_locador'),
+
+    # ===== RELATÓRIO: CLIENTES COM ALUGUEL ATIVO =====
+    path('api/clientes-aluguel-ativo/', views.api_clientes_aluguel_ativo, name='api_clientes_aluguel_ativo'),
 ]

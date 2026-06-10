@@ -1711,17 +1711,65 @@ document.addEventListener('keydown', function(e) {
 
 {% block extra_scripts %}{% endblock %}
 
+<style>
+/* ── SPA progress bar ── */
+#spa-bar {
+    position: fixed; top: 0; left: 0; height: 2px; z-index: 99999;
+    background: var(--brand-600); pointer-events: none;
+    width: 0; opacity: 0; transition: none;
+}
+/* skeleton shimmer para loading state */
+@keyframes _shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
+}
+.spa-skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 600px 100%;
+    animation: _shimmer 1.2s infinite linear;
+}
+</style>
+<div id="spa-bar"></div>
+
 <script>
 /* ── SPA: navegação AJAX universal para o Atendimento ─────────── */
 (function() {
     var convPanel   = document.querySelector('.conv-panel');
     var mainContent = document.querySelector('.main-content');
+    var spaBar      = document.getElementById('spa-bar');
+    var _prefetchCache = {};
+    var _prefetchTimer = null;
+    var _loading = false;
+
+    /* ── Progress bar ── */
+    var _barT1, _barT2;
+    function barStart() {
+        clearTimeout(_barT1); clearTimeout(_barT2);
+        spaBar.style.transition = 'none';
+        spaBar.style.width = '0'; spaBar.style.opacity = '1';
+        requestAnimationFrame(function() {
+            spaBar.style.transition = 'width 0.35s ease';
+            spaBar.style.width = '55%';
+            _barT1 = setTimeout(function() {
+                spaBar.style.transition = 'width 1.8s linear';
+                spaBar.style.width = '88%';
+            }, 360);
+        });
+    }
+    function barDone() {
+        clearTimeout(_barT1); clearTimeout(_barT2);
+        spaBar.style.transition = 'width 0.12s ease';
+        spaBar.style.width = '100%';
+        _barT2 = setTimeout(function() {
+            spaBar.style.transition = 'opacity 0.25s ease';
+            spaBar.style.opacity = '0';
+        }, 130);
+    }
 
     /* Só intercepta links dentro do módulo /atendimento/ */
     function isAtendimentoUrl(absHref) {
         try {
             var url = new URL(absHref, window.location.href);
-            /* mesmo host, path dentro de /atendimento/, fora de /api/ */
             return url.host === location.host &&
                    url.pathname.indexOf('/atendimento/') !== -1 &&
                    url.pathname.indexOf('/atendimento/api/') === -1;
@@ -1754,8 +1802,23 @@ document.addEventListener('keydown', function(e) {
         } catch(e) { return 'open'; }
     }
 
+    /* Prefetch de uma URL (armazena a Promise já resolvida) */
+    function prefetch(href) {
+        if (_prefetchCache[href]) return;
+        _prefetchCache[href] = fetch(href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function(r) {
+            if (!r.ok) throw new Error(r.status);
+            return r.text();
+        }).catch(function() { delete _prefetchCache[href]; return null; });
+    }
+
     /* Carrega uma URL via AJAX e atualiza conv-panel + main-content */
     function loadPage(href, push) {
+        if (_loading) return;
+        _loading = true;
+
         /* Seleção otimista: marca o item da conversa como ativo imediatamente */
         var convLink = document.querySelector('.conv-item[href="' + href + '"]');
         if (!convLink) {
@@ -1764,37 +1827,38 @@ document.addEventListener('keydown', function(e) {
             if (seg) convLink = document.querySelector('.conv-item[href*="/' + seg + '/"]');
         }
         if (convLink) {
-            document.querySelectorAll('.conv-item').forEach(function(el) {
-                el.classList.remove('active');
-            });
+            document.querySelectorAll('.conv-item').forEach(function(el) { el.classList.remove('active'); });
             convLink.classList.add('active');
             convLink.classList.remove('unread', 'conv-pulsing');
         }
 
-        /* Fade out rápido */
-        mainContent.style.transition = 'opacity 0.08s ease';
-        mainContent.style.opacity = '0';
+        barStart();
 
-        fetch(href, {
+        /* Skeleton: escurece levemente sem sumir */
+        mainContent.style.transition = 'opacity 0.06s ease';
+        mainContent.style.opacity = '0.35';
+        mainContent.classList.add('spa-skeleton');
+
+        /* Usa cache de prefetch se disponível, senão faz fetch normal */
+        var cached = _prefetchCache[href];
+        delete _prefetchCache[href];
+        var fetchPromise = cached || fetch(href, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin'
-        })
-        .then(function(r) {
+        }).then(function(r) {
             if (!r.ok) throw new Error(r.status);
             return r.text();
-        })
-        .then(function(html) {
+        });
+
+        fetchPromise.then(function(html) {
+            if (!html) throw new Error('empty');
             var doc = (new DOMParser()).parseFromString(html, 'text/html');
 
             /* 1. CSS específico da página */
             var newStyle = doc.querySelector('style._ajax-style');
             if (newStyle && newStyle.textContent.trim()) {
                 var styleEl = document.querySelector('style._ajax-style');
-                if (!styleEl) {
-                    styleEl = document.createElement('style');
-                    styleEl.className = '_ajax-style';
-                    document.head.appendChild(styleEl);
-                }
+                if (!styleEl) { styleEl = document.createElement('style'); styleEl.className = '_ajax-style'; document.head.appendChild(styleEl); }
                 styleEl.textContent = newStyle.textContent;
             }
 
@@ -1816,34 +1880,50 @@ document.addEventListener('keydown', function(e) {
 
             /* 3. Main-content */
             var newMC = doc.querySelector('[data-target="main-content"]');
-            if (newMC) {
-                mainContent.innerHTML = newMC.innerHTML;
-                execScripts(mainContent);
-            }
+            if (newMC) { mainContent.innerHTML = newMC.innerHTML; execScripts(mainContent); }
 
-            /* 4. Scripts extras (extra_scripts block) */
+            /* 4. Scripts extras */
             var newES = doc.querySelector('[data-target="extra-scripts"]');
             if (newES) execScripts(newES);
 
             if (push) history.pushState({ href: href }, '', href);
             updateActiveNav(href);
-
-            /* Fade in */
-            mainContent.style.opacity = '1';
         })
         .catch(function() {
-            mainContent.style.opacity = '1';
             mainContent.innerHTML =
                 '<div style="display:flex;align-items:center;justify-content:center;height:100%;">' +
                 '<div style="text-align:center;color:var(--danger);">' +
                 '<i class="fas fa-exclamation-circle" style="font-size:32px;opacity:.5;display:block;margin-bottom:10px;"></i>' +
                 '<p style="font-size:13px;">Erro ao carregar. <a href="' + href + '" style="color:var(--brand-600);">Clique para recarregar</a></p></div></div>';
+        })
+        .finally(function() {
+            mainContent.classList.remove('spa-skeleton');
+            mainContent.style.transition = 'opacity 0.1s ease';
+            mainContent.style.opacity = '1';
+            barDone();
+            _loading = false;
         });
     }
 
+    /* Prefetch on hover — dispara após 130ms para evitar fetches acidentais */
+    document.addEventListener('mouseover', function(e) {
+        var link = e.target.closest('a.conv-item[href], a.nav-item[href]');
+        if (!link) return;
+        var absHref = link.href;
+        if (!isAtendimentoUrl(absHref)) return;
+        var url = new URL(absHref);
+        var path = url.pathname + url.search;
+        if (path === location.pathname + location.search) return;
+        clearTimeout(_prefetchTimer);
+        _prefetchTimer = setTimeout(function() { prefetch(path); }, 130);
+    });
+    document.addEventListener('mouseout', function(e) {
+        var link = e.target.closest('a.conv-item[href], a.nav-item[href]');
+        if (link) clearTimeout(_prefetchTimer);
+    });
+
     /* Intercepta todos os cliques em links internos do atendimento */
     document.addEventListener('click', function(e) {
-        /* Guarda aba ativa quando usuário clica em uma aba */
         var tabLink = e.target.closest('.conv-tab');
         if (tabLink) {
             try {
@@ -1855,16 +1935,14 @@ document.addEventListener('keydown', function(e) {
 
         var link = e.target.closest('a[href]');
         if (!link) return;
-        /* link.href resolve URLs relativas (?tab=mine → /atendimento/inbox/?tab=mine) */
         var absHref = link.href;
         if (!isAtendimentoUrl(absHref)) return;
         if (link.target === '_blank' || link.hasAttribute('download')) return;
 
         e.preventDefault();
-        /* Extrai só path + query para comparar com location atual */
         var url = new URL(absHref);
         var path = url.pathname + url.search;
-        if (path === location.pathname + location.search) return; /* já está na página */
+        if (path === location.pathname + location.search) return;
         loadPage(path, true);
     });
 
@@ -1879,9 +1957,11 @@ document.addEventListener('keydown', function(e) {
         }
     });
 
-    /* Persiste estado inicial para o popstate funcionar */
     history.replaceState({ href: location.href }, '', location.href);
     updateActiveNav(location.pathname);
+
+    /* Expõe loadPage globalmente para uso em outros scripts */
+    window.loadPage = loadPage;
 })();
 </script>
 
@@ -1957,9 +2037,9 @@ document.addEventListener('keydown', function(e) {
 #sala-widget {
   position: fixed;
   bottom: 16px;
-  right: 16px;
+  left: 4px;
   z-index: 900;
-  width: 300px;
+  width: 352px;
   display: flex;
   flex-direction: column-reverse;
   gap: 6px;

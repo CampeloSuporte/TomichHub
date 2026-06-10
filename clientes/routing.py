@@ -1,9 +1,10 @@
 from django.urls import re_path
 from . import consumers
 from home.agent_consumer import AgentNOCConsumer
-from atendimento.consumers import ConversationConsumer, InboxConsumer
+from atendimento.consumers import ConversationConsumer, InboxConsumer, VirtualRoomConsumer
 
 websocket_urlpatterns = [
+    re_path(r"ws/atendimento/sala/$", VirtualRoomConsumer.as_asgi()),
     # Atendimento — tempo real
     re_path(r'ws/atendimento/conversa/(?P<conversation_id>[0-9a-f-]+)/$', ConversationConsumer.as_asgi()),
     re_path(r'ws/atendimento/inbox/$', InboxConsumer.as_asgi()),

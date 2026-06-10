@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOMICH HUB — Acesso</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'css/css_login.css' %}" rel="stylesheet">
 </head>
 <body>
@@ -130,12 +130,12 @@
         drops = Array(cols).fill(0).map(() => Math.random() * -80);
     }
 
-    const PALETTE = ['#00f5ff','#1a4fff','#00ff88','rgba(0,245,255,.6)','rgba(26,79,255,.5)'];
+    const PALETTE = ['#58a6ff','#388bfd','#3fb950','rgba(88,166,255,.6)','rgba(56,139,253,.5)'];
 
     function drawMatrix() {
         ctx.fillStyle = 'rgba(2,3,10,.06)';
         ctx.fillRect(0, 0, W, H);
-        ctx.font = FONT + 'px Share Tech Mono, monospace';
+        ctx.font = FONT + 'px Courier New, monospace';
         for (let i = 0; i < cols; i++) {
             ctx.fillStyle = PALETTE[i % PALETTE.length];
             ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], i * FONT, drops[i] * FONT);

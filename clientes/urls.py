@@ -9,6 +9,7 @@ from .documentacao_views import (
 from . import ipam_views as ipam
 from . import firmware_views as fw
 from . import script_views as sv
+from . import hotspot_views as hv
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -194,4 +195,24 @@ urlpatterns = [
     path('scripts/executar/',                       sv.executar_script,     name='executar_script'),
     path('scripts/historico/<int:acesso_id>/',      sv.historico_execucoes, name='historico_scripts'),
     path('scripts/<int:script_id>/',                sv.detalhe_script,      name='detalhe_script'),
+
+    # ── Hotspot ─────────────────────────────────────────────────────────────
+    path('<int:cliente_id>/hotspot/listar/',                                      hv.hotspot_listar,         name='hotspot_listar'),
+    path('<int:cliente_id>/hotspot/salvar/',                                      hv.hotspot_salvar,         name='hotspot_salvar'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/detalhe/',                    hv.hotspot_detalhe,        name='hotspot_detalhe'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/deletar/',                    hv.hotspot_deletar,        name='hotspot_deletar'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/aplicar/',                    hv.hotspot_aplicar,        name='hotspot_aplicar'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/preview/',                    hv.hotspot_preview_html,   name='hotspot_preview'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/banners/',                    hv.hotspot_banners,        name='hotspot_banners'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/banner/upload/',              hv.hotspot_banner_upload,  name='hotspot_banner_upload'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/banner/<int:banner_id>/del/', hv.hotspot_banner_deletar, name='hotspot_banner_deletar'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/logo/upload/',               hv.hotspot_logo_upload,    name='hotspot_logo_upload'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/logo/deletar/',              hv.hotspot_logo_deletar,   name='hotspot_logo_deletar'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/leads/',                      hv.hotspot_leads,          name='hotspot_leads'),
+    # Public — pixel for lead capture from MikroTik's login.html (no auth)
+    path('hotspot/pixel/<uuid:hotspot_uuid>/',                                    hv.hotspot_lead_pixel,           name='hotspot_lead_pixel'),
+    path('hotspot/portal/<uuid:hotspot_uuid>/',                                   hv.hotspot_portal,               name='hotspot_portal'),
+    path('hotspot/portal/<uuid:hotspot_uuid>/conectar/',                          hv.hotspot_portal_conectar,      name='hotspot_portal_conectar'),
+    # Public — MikroTik downloads this via /tool fetch (no auth)
+    path('hotspot/login-html/<uuid:hotspot_uuid>/',                               hv.hotspot_login_html_publico,   name='hotspot_login_html_publico'),
 ]
