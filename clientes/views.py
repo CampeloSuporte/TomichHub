@@ -3359,6 +3359,101 @@ def parsear_output_ping(output, host, return_code):
 
 
 @login_required(login_url='login')
+def traceroute_acesso(request, acesso_id):
+    """Executa traceroute para um acesso (direto ou via proxy SSH)."""
+    import subprocess, platform
+
+    try:
+        acesso = Acesso.objects.get(id=acesso_id)
+    except Acesso.DoesNotExist:
+        return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get(usuario=request.user)
+            if acesso.cliente.id != cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    host = acesso.host
+    eh_privado = is_private_ip(host)
+
+    try:
+        if eh_privado:
+            proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+            if not proxy:
+                if vpn_cobre_ip(acesso.cliente, host):
+                    resultado = _traceroute_direto(host)
+                else:
+                    return JsonResponse({'error': 'IP privado sem proxy SSH ativo', 'host': host}, status=400)
+            else:
+                resultado = _traceroute_via_proxy(proxy, host)
+        else:
+            resultado = _traceroute_direto(host)
+
+        return JsonResponse(resultado)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def _traceroute_direto(host):
+    import subprocess, platform, re
+    sistema = platform.system()
+    if sistema == 'Windows':
+        cmd = ['tracert', '-d', '-h', '20', host]
+    else:
+        # prefere mtr, cai para traceroute
+        import shutil
+        if shutil.which('mtr'):
+            cmd = ['mtr', '--report', '--report-cycles', '3', '--no-dns', host]
+        elif shutil.which('traceroute'):
+            cmd = ['traceroute', '-n', '-w', '2', '-m', '20', host]
+        else:
+            cmd = ['tracepath', '-n', host]
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        output = (proc.stdout + proc.stderr).strip()
+    except subprocess.TimeoutExpired:
+        return {'host': host, 'status': 'timeout', 'output': 'Timeout ao executar traceroute.'}
+    except FileNotFoundError:
+        return {'host': host, 'status': 'erro', 'output': 'Ferramenta de traceroute não encontrada no servidor.'}
+
+    return {
+        'host': host,
+        'status': 'ok',
+        'ferramenta': cmd[0],
+        'output': output[:4000],
+    }
+
+
+def _traceroute_via_proxy(proxy, host):
+    try:
+        import paramiko
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(
+            hostname=proxy.host, port=proxy.porta,
+            username=proxy.usuario, password=proxy.senha,
+            timeout=10, look_for_keys=False, allow_agent=False,
+        )
+        cmd = (
+            f'which mtr > /dev/null 2>&1 && '
+            f'mtr --report --report-cycles 3 --no-dns {host} 2>&1 || '
+            f'traceroute -n -w 2 -m 20 {host} 2>&1'
+        )
+        _, stdout, stderr = ssh.exec_command(cmd, timeout=60)
+        output = (stdout.read() + stderr.read()).decode('utf-8', errors='ignore').strip()
+        ssh.close()
+        ferramenta = 'mtr' if ('Loss%' in output or 'HOST' in output) else 'traceroute'
+        return {'host': host, 'status': 'ok', 'ferramenta': ferramenta, 'output': output[:4000]}
+    except Exception as e:
+        return {'host': host, 'status': 'erro', 'output': f'Erro via proxy SSH: {e}'}
+
+
+@login_required(login_url='login')
 def cadastrar_bloco_ip(request):
     """Cadastra um novo bloco de IP"""
     if request.method == 'POST':

@@ -1,34 +1,92 @@
+
+
 // Abrir modal de edição
 function abrirModalEditarAcesso(acessoId) {
-    fetch(`/clientes/buscar/${acessoId}/`)
+    console.log('🔧 Abrindo modal de edição para acesso ID:', acessoId);
+    
+    fetch(`/clientes/acessos/buscar/${acessoId}/`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('edit_acesso_id').value = data.id;
-            document.getElementById('edit_tipo').value = data.tipo;
-            document.getElementById('edit_hostname').value = data.host;
-            document.getElementById('edit_hostname_ipv6').value = data.host_ipv6 || '';
-            document.getElementById('edit_protocolo').value = data.protocolo;
-            document.getElementById('edit_porta').value = data.porta;
-            document.getElementById('edit_usuario').value = data.usuario;
-            document.getElementById('edit_senha').value = data.senha;
-            document.getElementById('edit_senha_adm').value = data.senha_adm || '';
-            document.getElementById('edit_vlan').value = data.vlan || '';
+            console.log('📦 Dados recebidos:', data);
             
-            // Preencher função
-            document.getElementById('edit_funcao').value = data.funcao_id;
-            document.getElementById('edit_funcao_input').value = data.funcao_nome;
+            // ✅ 1. Preenchimento de IDENTIFICAÇÃO
+            document.getElementById('edit_acesso_id').value = acessoId;
             
-            // Preencher modelo
-            document.getElementById('edit_modelo').value = data.modelo_id;
-            document.getElementById('edit_modelo_input').value = data.modelo_nome;
+            // ✅ 2. Preenchimento de DADOS BÁSICOS
+            document.getElementById('dup1_tipo').value = data.tipo;
+            document.getElementById('dup1_hostname').value = data.host;
+            document.getElementById('dup1_hostname_ipv6').value = data.host_ipv6 || '';
+            document.getElementById('dup1_protocolo').value = data.protocolo;
+            document.getElementById('dup1_porta').value = data.porta;
+            document.getElementById('dup1_winbox').value = data.winbox || '';
+            document.getElementById('dup1_usuario').value = data.usuario;
+            document.getElementById('dup1_senha').value = data.senha;
+            document.getElementById('dup1_senha_adm').value = data.senha_adm || '';
+            document.getElementById('dup1_vlan').value = data.vlan || '';
             
-            // Alterar action do form
-            document.getElementById('formEditarAcesso').action = `/acessos/editar/${acessoId}/`;
+            // ✅ 3. Preenchimento de FUNÇÃO E MODELO
+            document.getElementById('dup1_funcao').value = data.funcao_id;
+            document.getElementById('dup1_funcao_input').value = data.funcao_nome;
+            document.getElementById('dup1_modelo').value = data.modelo_id;
+            document.getElementById('dup1_modelo_input').value = data.modelo_nome;
+
+            // ✅ 4. CRÍTICO: Preenchimento de BACKUP
+            console.log('📦 Dados de backup recebidos:', {
+                backup_habilitado: data.backup_habilitado,
+                backup_template_id: data.backup_template_id,
+                backup_template_nome: data.backup_template_nome,
+                backup_automatico: data.backup_automatico
+            });
             
+            // Checkbox de habilitar backup
+            const checkboxBackup = document.getElementById('dup1_backup_habilitado');
+            if (checkboxBackup) {
+                checkboxBackup.checked = data.backup_habilitado || false;
+                console.log('✅ Checkbox backup marcado:', checkboxBackup.checked);
+            }
+            
+            // Mostrar/ocultar campos de backup
+            const backupFields = document.getElementById('dup1_backup_fields');
+            if (backupFields) {
+                backupFields.style.display = (data.backup_habilitado) ? 'block' : 'none';
+            }
+            
+            // Template de backup
+            const selectTemplate = document.getElementById('dup1_backup_template');
+            if (selectTemplate && data.backup_template_id) {
+                const templateId = String(data.backup_template_id);
+                for (let i = 0; i < selectTemplate.options.length; i++) {
+                    if (String(selectTemplate.options[i].value) === templateId) {
+                        selectTemplate.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            // ✅ CRÍTICO: Checkbox de backup automático
+            const checkboxAutomatico = document.getElementById('dup1_backup_automatico');
+            if (checkboxAutomatico) {
+                checkboxAutomatico.checked = data.backup_automatico || false;
+                console.log('✅ Backup automático:', checkboxAutomatico.checked);
+            }
+
+            // ✅ 5. Define o action do form
+            document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;
+
+            // ✅ 6. Exibe o modal
             document.getElementById('modalEditarAcesso').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // ✅ 7. IMPORTANTE: Re-inicializar listeners após abrir o modal
+            inicializarSearchSelects();
+            
+            console.log('✅ Modal aberto com sucesso!');
+        })
+        .catch(error => {
+            console.error('❌ Erro ao buscar acesso:', error);
+            alert('Erro ao carregar dados do acesso');
         });
 }
-
 // Fechar modal de edição
 function fecharModalEditarAcesso() {
     document.getElementById('modalEditarAcesso').style.display = 'none';
@@ -436,7 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // chamados.js - Sistema de Gerenciamento de Chamados
 
 // Variável global para armazenar o chamado atual
-let chamadoAtual = null;
 
 // ============================================
 // FUNÇÕES DE CARREGAMENTO
@@ -971,3 +1028,415 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
+// ============================================
+// FILTRO DE ACESSOS - BUSCA INLINE EM TEMPO REAL
+// ============================================
+
+// Armazenar estado original
+let estadoOriginal = null;
+
+// Função para abrir o campo de filtro
+function abrirFiltroAcessos() {
+    const filtroContainer = document.getElementById('filtro-acessos-container');
+    
+    if (!filtroContainer) {
+        // Salvar estado original ANTES de fazer qualquer coisa
+        salvarEstadoOriginal();
+        
+        // Criar container do filtro
+        const container = document.createElement('div');
+        container.id = 'filtro-acessos-container';
+        container.className = 'filtro-acessos-wrapper';
+        container.innerHTML = `
+            <div class="filtro-acessos-box">
+                <div class="filtro-acessos-header">
+                    <i class="fas fa-search"></i>
+                    <input 
+                        type="text" 
+                        id="inputFiltroAcessosInline"
+                        class="filtro-acessos-input" 
+                        placeholder="Buscar hosts, routers, switches..."
+                        autocomplete="off"
+                    >
+                    <button class="filtro-acessos-close" onclick="fecharFiltroAcessos()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="filtro-acessos-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Digite o nome do acesso para filtrar em tempo real</span>
+                </div>
+            </div>
+        `;
+        
+        // Inserir antes da aba de acessos
+        const tabAcessos = document.getElementById('tab-acessos');
+        const divAbas = tabAcessos.querySelector('#funcaoTabs');
+        divAbas.parentNode.insertBefore(container, divAbas);
+        
+        // Focar no input
+        setTimeout(() => {
+            document.getElementById('inputFiltroAcessosInline').focus();
+        }, 100);
+    } else {
+        // Se já existe, apenas mostrar e focar
+        filtroContainer.style.display = 'block';
+        document.getElementById('inputFiltroAcessosInline').focus();
+    }
+    
+    // Adicionar listener para o input
+    const input = document.getElementById('inputFiltroAcessosInline');
+    if (input) {
+        input.removeEventListener('input', filtrarAcessosInline);
+        input.addEventListener('input', filtrarAcessosInline);
+        
+        input.removeEventListener('keydown', handleKeydown);
+        input.addEventListener('keydown', handleKeydown);
+    }
+}
+
+// Salvar estado original das funções
+function salvarEstadoOriginal() {
+    estadoOriginal = {
+        funcoes: {},
+        abaAtiva: null
+    };
+    
+    // Salvar display de cada função e qual está ativa
+    document.querySelectorAll('.funcao-content').forEach(funcao => {
+        const id = funcao.id;
+        estadoOriginal.funcoes[id] = funcao.style.display;
+    });
+    
+    // Salvar qual aba está ativa
+    const abaAtiva = document.querySelector('#funcaoTabs .nav-link.active');
+    if (abaAtiva) {
+        estadoOriginal.abaAtiva = abaAtiva.textContent.trim();
+    }
+}
+
+// Função para fechar o filtro
+function fecharFiltroAcessos() {
+    const filtroContainer = document.getElementById('filtro-acessos-container');
+    if (filtroContainer) {
+        filtroContainer.style.display = 'none';
+    }
+    
+    // Limpar filtro e restaurar estado original
+    restaurarEstadoOriginal();
+}
+
+// Restaurar estado original completamente
+function restaurarEstadoOriginal() {
+    // Limpar input
+    const input = document.getElementById('inputFiltroAcessosInline');
+    if (input) {
+        input.value = '';
+    }
+    
+    // Esconder e limpar container filtrado
+    const containerFiltrado = document.getElementById('container-acessos-filtrados');
+    if (containerFiltrado) {
+        containerFiltrado.style.display = 'none';
+        containerFiltrado.innerHTML = '';
+    }
+    
+    // Restaurar estado de todas as funções
+    if (estadoOriginal) {
+        // Esconder todas
+        document.querySelectorAll('.funcao-content').forEach(funcao => {
+            funcao.style.display = 'none';
+        });
+        
+        // Restaurar a primeira que estava visível
+        const primeiraFuncao = document.querySelector('.funcao-content');
+        if (primeiraFuncao) {
+            primeiraFuncao.style.display = 'block';
+        }
+    }
+    
+    // Restaurar abas
+    document.querySelectorAll('#funcaoTabs .nav-link').forEach(link => {
+        link.style.display = 'block';
+        link.classList.remove('active');
+    });
+    
+    // Ativar primeira aba
+    const primeiraAba = document.querySelector('#funcaoTabs .nav-link');
+    if (primeiraAba) {
+        primeiraAba.classList.add('active');
+    }
+}
+
+// Função para filtrar em tempo real
+function filtrarAcessosInline() {
+    const input = document.getElementById('inputFiltroAcessosInline');
+    const filtro = input.value.toLowerCase().trim();
+    
+    if (filtro === '') {
+        restaurarEstadoOriginal();
+        return;
+    }
+    
+    // Esconder todas as funções
+    document.querySelectorAll('.funcao-content').forEach(funcao => {
+        funcao.style.display = 'none';
+    });
+    
+    // Esconder todas as abas de função
+    document.querySelectorAll('#funcaoTabs .nav-link').forEach(link => {
+        link.style.display = 'none';
+    });
+    
+    // Mostrar container de resultados filtrados
+    let containerFiltrado = document.getElementById('container-acessos-filtrados');
+    if (!containerFiltrado) {
+        containerFiltrado = document.createElement('div');
+        containerFiltrado.id = 'container-acessos-filtrados';
+        containerFiltrado.className = 'row g-4';
+        
+        const tabAcessos = document.getElementById('tab-acessos');
+        const divAbas = tabAcessos.querySelector('#funcaoTabs');
+        divAbas.parentNode.insertBefore(containerFiltrado, divAbas.nextSibling);
+    }
+    
+    containerFiltrado.style.display = 'block';
+    containerFiltrado.innerHTML = '';
+    
+    let encontrou = 0;
+    
+    // Buscar em todas as funções
+    document.querySelectorAll('.funcao-content').forEach(funcaoContent => {
+        const acessos = funcaoContent.querySelectorAll('.col-xl-3');
+        
+        acessos.forEach(acesso => {
+            const tipo = acesso.querySelector('h5');
+            const tipoTexto = tipo ? tipo.textContent.toLowerCase() : '';
+            
+            if (tipoTexto.includes(filtro)) {
+                encontrou++;
+                // Clonar o card do acesso
+                const cardClone = acesso.cloneNode(true);
+                // Remover classes Bootstrap que conflitam
+                cardClone.classList.remove('col-xl-3', 'col-lg-4', 'col-md-6');
+                containerFiltrado.appendChild(cardClone);
+            }
+        });
+    });
+    
+    if (encontrou === 0) {
+        containerFiltrado.innerHTML = `
+            <div class="col-12 text-center mt-4">
+                <div class="alert alert-warning" style="border-left: 3px solid var(--accent-cyan);">
+                    <i class="fas fa-search me-2"></i>
+                    Nenhum acesso encontrado com: "<strong>${input.value}</strong>"
+                </div>
+            </div>
+        `;
+    } else {
+        const resultadoTexto = document.createElement('div');
+        resultadoTexto.className = 'col-12 mb-3';
+        resultadoTexto.innerHTML = `
+            <div style="color: var(--primary-green); font-family: 'Courier New', monospace; font-size: 12px; background: rgba(0, 255, 136, 0.05); padding: 12px 15px; border-left: 3px solid var(--primary-green); border-radius: 4px;">
+                <i class="fas fa-filter me-2"></i>
+                <strong>${encontrou}</strong> resultado(s) encontrado(s) • Filtro: "<strong>${input.value}</strong>"
+            </div>
+        `;
+        containerFiltrado.insertBefore(resultadoTexto, containerFiltrado.firstChild);
+    }
+}
+
+// Função para lidar com teclas
+function handleKeydown(e) {
+    if (e.key === 'Escape') {
+        fecharFiltroAcessos();
+    }
+}
+
+// Event listeners iniciais
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('inputFiltroAcessosInline');
+    if (input) {
+        input.addEventListener('input', filtrarAcessosInline);
+        input.addEventListener('keydown', handleKeydown);
+    }
+    
+    // Limpar filtro ao clicar em outra aba de função
+    const funcaoTabs = document.querySelectorAll('#funcaoTabs .nav-link');
+    funcaoTabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            // Se tem filtro ativo, limpar
+            const input = document.getElementById('inputFiltroAcessosInline');
+            if (input && input.value !== '') {
+                e.preventDefault();
+                restaurarEstadoOriginal();
+                return false;
+            }
+        });
+    });
+});
+
+// ── Diagnóstico: Ping + Traceroute ───────────────────────────────────────────
+(function () {
+    var _acessoId = null;
+    var _abaAtual = 'ping';
+    var _abortCtrl = null;   // AbortController da fetch em andamento
+
+    // ── Helpers internos ──────────────────────────────────────────────────────
+    function _statusDiv() { return document.getElementById('ping-status'); }
+
+    function _spinner(msg) {
+        return `<div style="text-align:center;padding:28px 0;color:var(--text-muted,#64748b);">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p style="margin-top:12px;font-size:.85rem;">${msg}</p>
+        </div>`;
+    }
+
+    function _erro(msg) {
+        return `<div class="ping-result-error">
+            <div class="ping-icon-error"><i class="fas fa-exclamation-triangle"></i></div>
+            <h3 class="ping-result-title">Erro</h3>
+            <p class="ping-message">${msg}</p>
+        </div>`;
+    }
+
+    function _cancelarFetch() {
+        if (_abortCtrl) { _abortCtrl.abort(); _abortCtrl = null; }
+    }
+
+    function _setAba(aba) {
+        _abaAtual = aba;
+        const cor   = 'var(--primary-blue,#3b82f6)';
+        const muted = 'var(--text-muted,#64748b)';
+        const pBtn  = document.getElementById('diagTabPing');
+        const tBtn  = document.getElementById('diagTabTrace');
+        if (pBtn) { pBtn.style.borderBottomColor = aba === 'ping'  ? cor : 'transparent'; pBtn.style.color  = aba === 'ping'  ? cor : muted; }
+        if (tBtn) { tBtn.style.borderBottomColor = aba === 'trace' ? cor : 'transparent'; tBtn.style.color  = aba === 'trace' ? cor : muted; }
+    }
+
+    // ── API pública ───────────────────────────────────────────────────────────
+    window.realizarPing = function (acessoId, host) {
+        _acessoId = acessoId;
+        const modal = document.getElementById('modalPingResult');
+        if (!modal) { console.error('[diag] #modalPingResult não encontrado'); return; }
+        document.getElementById('ping-host-title').textContent = host;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        _cancelarFetch();
+        _setAba('ping');
+        _executarPing();
+    };
+
+    window.fecharModalPing = function () {
+        _cancelarFetch();
+        const modal = document.getElementById('modalPingResult');
+        if (modal) modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    };
+
+    window.diagMudarAba = function (aba) {
+        if (aba === _abaAtual) return;
+        _cancelarFetch();   // cancela ping/trace em andamento antes de trocar
+        _setAba(aba);
+        if (aba === 'ping') _executarPing();
+        else                _executarTraceroute();
+    };
+
+    // ── Ping ──────────────────────────────────────────────────────────────────
+    function _executarPing() {
+        const div = _statusDiv();
+        div.style.display = 'flex';
+        div.innerHTML = _spinner('Executando ping…');
+
+        _abortCtrl = new AbortController();
+        const signal = _abortCtrl.signal;
+
+        fetch(`/clientes/acessos/ping/${_acessoId}/`, { signal })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { div.innerHTML = _erro(data.error); return; }
+
+                const ok     = data.status === 'sucesso';
+                const cor    = ok ? 'var(--success-green,#22c55e)' : 'var(--danger-red,#ef4444)';
+                const icone  = ok ? 'fa-check-circle' : (data.status === 'timeout' ? 'fa-clock' : 'fa-times-circle');
+                const label  = ok ? 'Alcançável' : (data.status === 'timeout' ? 'Timeout' : 'Inacessível');
+                const perda  = data.percentual_perda != null ? parseFloat(data.percentual_perda).toFixed(1) : '?';
+                const t      = data.tempos || {};
+
+                let temposHtml = '';
+                if (t.avg != null) {
+                    temposHtml = `
+                        <div class="ping-stats-row">
+                            <span class="ping-stat-label">Latência Min/Avg/Max:</span>
+                            <span class="ping-stat-value">${parseFloat(t.min).toFixed(1)} / ${parseFloat(t.avg).toFixed(1)} / ${parseFloat(t.max).toFixed(1)} ms</span>
+                        </div>`;
+                }
+
+                div.style.display = 'block';
+                div.innerHTML = `
+                    <div class="${ok ? 'ping-result-success' : 'ping-result-' + (data.status === 'timeout' ? 'warning' : 'error')}">
+                        <div class="${ok ? 'ping-icon-success' : (data.status === 'timeout' ? 'ping-icon-warning' : 'ping-icon-error')}">
+                            <i class="fas ${icone}"></i>
+                        </div>
+                        <h3 class="ping-result-title" style="color:${cor}">${label}</h3>
+                        <div class="ping-stats">
+                            <div class="ping-stats-row">
+                                <span class="ping-stat-label">Pacotes enviados:</span>
+                                <span class="ping-stat-value">${data.packets_enviados ?? '?'}</span>
+                            </div>
+                            <div class="ping-stats-row">
+                                <span class="ping-stat-label">Pacotes recebidos:</span>
+                                <span class="ping-stat-value" style="color:${cor}">${data.packets_recebidos ?? '?'}</span>
+                            </div>
+                            <div class="ping-stats-row">
+                                <span class="ping-stat-label">Perda de pacotes:</span>
+                                <span class="ping-stat-value" style="color:${parseFloat(perda)>0?'var(--warning-orange,#f59e0b)':cor}">${perda}%</span>
+                            </div>
+                            ${temposHtml}
+                        </div>
+                        <p class="ping-message">${data.mensagem || ''}</p>
+                    </div>`;
+            })
+            .catch(err => { if (err.name !== 'AbortError') div.innerHTML = _erro('Erro: ' + err.message); });
+    }
+
+    // ── Traceroute ────────────────────────────────────────────────────────────
+    function _executarTraceroute() {
+        const div = _statusDiv();
+        div.style.display = 'flex';
+        div.innerHTML = _spinner('Executando traceroute… (aguarde ~10 s)');
+
+        _abortCtrl = new AbortController();
+        const signal = _abortCtrl.signal;
+
+        fetch(`/clientes/acessos/traceroute/${_acessoId}/`, { signal })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { div.innerHTML = _erro(data.error); return; }
+
+                const linhas = (data.output || '').split('\n');
+                const rows = linhas.map(l =>
+                    `<tr><td style="font-family:monospace;font-size:.78rem;white-space:pre;
+                                    color:var(--text-primary,#e2e8f0);padding:2px 8px;">${
+                        l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    }</td></tr>`
+                ).join('');
+
+                div.style.display = 'block';
+                div.innerHTML = `
+                    <div style="width:100%;padding:4px 0;">
+                        <p style="font-size:.78rem;color:var(--text-muted,#64748b);margin:0 0 8px;">
+                            <i class="fas fa-route me-1"></i>
+                            Ferramenta: <b style="color:var(--text-primary,#e2e8f0)">${data.ferramenta || 'traceroute'}</b>
+                        </p>
+                        <div style="background:#060d18;border:1px solid var(--border-color,#1e293b);
+                                    border-radius:8px;max-height:360px;overflow-y:auto;">
+                            <table style="width:100%;border-collapse:collapse;"><tbody>${rows}</tbody></table>
+                        </div>
+                    </div>`;
+            })
+            .catch(err => { if (err.name !== 'AbortError') div.innerHTML = _erro('Erro: ' + err.message); });
+    }
+})();

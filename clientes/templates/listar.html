@@ -4302,7 +4302,7 @@ function getCsrfToken(){
 
 
     <script src="{% static 'js/main.js' %}"></script>
-    <script src="{% static 'js/listar_acesso.js' %}"></script>
+    <script src="{% static 'js/listar_acesso.js' %}?v=2"></script>
 
 
     <script>
@@ -7369,96 +7369,28 @@ function getCsrfToken(){
 
     {% endblock content %}
 
-<!-- ── Modal Ping ──────────────────────────────────────────────────────────── -->
-<div id="modalPingOverlay" class="modal-overlay" style="display:none;" onclick="if(event.target===this)fecharModalPing()">
-  <div class="modal-acesso" style="max-width:480px;">
+{% block modals %}
+<!-- ── Modal Ping / Traceroute ───────────────────────────────────────────── -->
+<div id="modalPingResult" class="modal-overlay" style="display:none;" onclick="if(event.target===this)fecharModalPing()">
+  <div class="modal-acesso" style="max-width:540px;">
     <div class="modal-header-acesso">
-      <h2 class="modal-title"><i class="fas fa-globe me-2"></i>Ping — <span id="pingModalHost"></span></h2>
+      <h2 class="modal-title"><i class="fas fa-globe me-2"></i>Diagnóstico — <span id="ping-host-title"></span></h2>
       <button class="btn-close-modal" onclick="fecharModalPing()"><i class="fas fa-times"></i></button>
     </div>
-    <div class="modal-body-acesso" id="pingModalBody" style="min-height:120px;display:flex;align-items:center;justify-content:center;">
-      <div style="text-align:center;color:var(--text-muted);">
-        <i class="fas fa-spinner fa-spin fa-2x"></i>
-        <p style="margin-top:10px;">Executando ping...</p>
-      </div>
+    <!-- Abas -->
+    <div style="display:flex;border-bottom:1px solid var(--border-color,#2a3344);padding:0 16px;background:var(--bg-secondary,#141c2e);">
+      <button id="diagTabPing" onclick="diagMudarAba('ping')"
+              style="padding:10px 18px;border:none;background:none;cursor:pointer;font-size:.85rem;font-weight:600;
+                     border-bottom:2px solid var(--primary-blue,#3b82f6);color:var(--primary-blue,#3b82f6);margin-bottom:-1px;">
+        <i class="fas fa-circle-dot me-1"></i> Ping
+      </button>
+      <button id="diagTabTrace" onclick="diagMudarAba('trace')"
+              style="padding:10px 18px;border:none;background:none;cursor:pointer;font-size:.85rem;font-weight:600;
+                     border-bottom:2px solid transparent;color:var(--text-muted,#64748b);margin-bottom:-1px;">
+        <i class="fas fa-route me-1"></i> Traceroute
+      </button>
     </div>
+    <div id="ping-status" class="modal-body-acesso" style="min-height:140px;display:flex;align-items:center;justify-content:center;"></div>
   </div>
 </div>
-
-<script>
-function realizarPing(acessoId, host) {
-    document.getElementById('pingModalHost').textContent = host;
-    document.getElementById('pingModalBody').innerHTML = `
-        <div style="text-align:center;color:var(--text-muted);">
-            <i class="fas fa-spinner fa-spin fa-2x"></i>
-            <p style="margin-top:10px;">Executando ping...</p>
-        </div>`;
-    document.getElementById('modalPingOverlay').style.display = 'flex';
-
-    fetch(`/clientes/acessos/ping/${acessoId}/`)
-        .then(r => r.json())
-        .then(data => {
-            let html = '';
-            if (data.error) {
-                html = `<div style="text-align:center;padding:20px;">
-                    <i class="fas fa-exclamation-triangle fa-2x" style="color:var(--danger-red)"></i>
-                    <p style="margin-top:10px;color:var(--danger-red);">${data.error}</p>
-                </div>`;
-            } else {
-                const status = data.status;
-                const alcancavel = status === 'sucesso';
-                const cor = alcancavel ? 'var(--success-green)' : 'var(--danger-red)';
-                const icone = alcancavel ? 'fa-check-circle' : 'fa-times-circle';
-                const perda = data.percentual_perda != null ? data.percentual_perda.toFixed(0) : '?';
-                const tempos = data.tempos || {};
-
-                html = `
-                <div style="padding:8px 0;">
-                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                        <i class="fas ${icone} fa-2x" style="color:${cor}"></i>
-                        <div>
-                            <div style="font-size:1.1rem;font-weight:600;color:${cor}">
-                                ${alcancavel ? 'Alcançável' : (status === 'timeout' ? 'Timeout' : 'Inacessível')}
-                            </div>
-                            <div style="color:var(--text-muted);font-size:.85rem;">${data.mensagem || ''}</div>
-                        </div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                        <div style="background:var(--bg-secondary);border-radius:6px;padding:10px;text-align:center;">
-                            <div style="font-size:1.4rem;font-weight:700;">${data.packets_recebidos ?? '?'}/${data.packets_enviados ?? '?'}</div>
-                            <div style="color:var(--text-muted);font-size:.8rem;">Pacotes recebidos</div>
-                        </div>
-                        <div style="background:var(--bg-secondary);border-radius:6px;padding:10px;text-align:center;">
-                            <div style="font-size:1.4rem;font-weight:700;color:${parseFloat(perda) > 0 ? 'var(--warning-orange)' : 'var(--success-green)'};">${perda}%</div>
-                            <div style="color:var(--text-muted);font-size:.8rem;">Perda de pacotes</div>
-                        </div>
-                        ${tempos.avg != null ? `
-                        <div style="background:var(--bg-secondary);border-radius:6px;padding:10px;text-align:center;">
-                            <div style="font-size:1.4rem;font-weight:700;">${tempos.avg.toFixed(1)} ms</div>
-                            <div style="color:var(--text-muted);font-size:.8rem;">Latência média</div>
-                        </div>
-                        <div style="background:var(--bg-secondary);border-radius:6px;padding:10px;text-align:center;">
-                            <div style="font-size:1.4rem;font-weight:700;">${tempos.min?.toFixed(1) ?? '?'} / ${tempos.max?.toFixed(1) ?? '?'} ms</div>
-                            <div style="color:var(--text-muted);font-size:.8rem;">Min / Max</div>
-                        </div>` : ''}
-                    </div>
-                </div>`;
-            }
-            document.getElementById('pingModalBody').innerHTML = html;
-        })
-        .catch(err => {
-            document.getElementById('pingModalBody').innerHTML = `
-                <div style="text-align:center;padding:20px;color:var(--danger-red);">
-                    <i class="fas fa-exclamation-triangle fa-2x"></i>
-                    <p style="margin-top:10px;">Erro ao executar ping: ${err.message}</p>
-                </div>`;
-        });
-}
-
-function fecharModalPing() {
-    document.getElementById('modalPingOverlay').style.display = 'none';
-}
-
-
-
-{% block modals %}{% endblock %}
+{% endblock %}
