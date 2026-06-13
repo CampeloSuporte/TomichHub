@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+:root{--cy:#58a6ff;--gr:#3fb950;--rd:#f85149;--or:#d29922;--pu:#bc8cff;--bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--muted:#7d8590;}
+.page-wrap{max-width:1300px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;}
+.page-title{font-size:1.1rem;font-weight:700;color:#e6edf3;display:flex;align-items:center;gap:.5rem;}
+
+/* Resumo cards */
+.resumo-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-bottom:1.2rem;}
+.res-card{background:#0d1822;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.7rem 1rem;position:relative;overflow:hidden;}
+.res-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy));}
+.res-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+.res-value{font-size:1.15rem;font-weight:700;color:var(--c,var(--cy));margin-top:3px;}
+.res-sub{font-size:.68rem;color:var(--muted);margin-top:1px;}
+
+/* Filtros */
+.filter-bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem;padding:.65rem 1rem;background:#0d1822;border:1px solid rgba(88,166,255,.12);border-radius:8px;}
+.filter-bar input,.filter-bar select{background:#161b22;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;padding:5px 10px;font-size:.8rem;outline:none;}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--cy);}
+.filter-bar input{flex:1;min-width:180px;}
+
+/* Tabela */
+.blocos-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.blocos-table thead tr{background:#0d1822;}
+.blocos-table th{padding:.6rem .9rem;color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid rgba(255,255,255,.07);white-space:nowrap;}
+.blocos-table th.sortable{cursor:pointer;user-select:none;}
+.blocos-table th.sortable:hover{color:#c9d1d9;}
+.blocos-table td{padding:.55rem .9rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;color:#c9d1d9;}
+.blocos-table tbody tr:hover{background:rgba(88,166,255,.03);}
+.blocos-table tbody tr.group-first td{border-top:1px solid rgba(88,166,255,.1);}
+
+/* Badges */
+.badge-status{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;padding:2px 8px;border-radius:10px;font-weight:600;}
+.badge-ativo{background:rgba(63,185,80,.15);color:#3fb950;border:1px solid rgba(63,185,80,.3);}
+.badge-pausado{background:rgba(210,153,34,.12);color:#d29922;border:1px solid rgba(210,153,34,.3);}
+.badge-cancelado{background:rgba(248,81,73,.12);color:#f85149;border:1px solid rgba(248,81,73,.3);}
+.badge-fat{display:inline-flex;align-items:center;gap:3px;font-size:.68rem;padding:2px 7px;border-radius:8px;cursor:pointer;}
+.badge-fat-ok{background:rgba(88,166,255,.1);color:#58a6ff;border:1px solid rgba(88,166,255,.25);}
+.badge-fat-venc{background:rgba(248,81,73,.15);color:#f87070;border:1px solid rgba(248,81,73,.3);}
+
+/* Ações */
+.act-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#aaa;border-radius:4px;padding:3px 9px;font-size:.7rem;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.act-btn:hover{border-color:var(--cy);color:var(--cy);}
+.act-btn.green:hover{border-color:var(--gr);color:var(--gr);}
+.act-btn.red:hover{border-color:var(--rd);color:var(--rd);}
+
+/* Bloco info */
+.bloco-main{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.82rem;color:#79c0ff;font-weight:600;}
+.bloco-v6{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.68rem;color:var(--muted);display:block;margin-top:1px;}
+.cliente-nome{font-weight:600;color:#e6edf3;}
+.cliente-cnpj{font-size:.7rem;color:var(--muted);margin-top:1px;}
+
+/* Card container */
+.card-table{background:#0d1117;border:1px solid rgba(88,166,255,.12);border-radius:10px;overflow:hidden;}
+
+/* Faturas dropdown */
+.fat-list{font-size:.78rem;}
+.fat-item{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.fat-item:last-child{border:none;}
+.fat-num{color:var(--muted);}
+.fat-venc-badge{font-size:.65rem;padding:1px 6px;border-radius:6px;}
+.fat-vencida{background:rgba(248,81,73,.15);color:#f87070;}
+.fat-ok{background:rgba(210,153,34,.12);color:#d29922;}
+
+/* Modal fat */
+.modal-fat-header{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.95rem;margin-bottom:1rem;color:#e6edf3;}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--muted);}
+
+/* Botão voltar / novo */
+.btn-back{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#aaa;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;}
+.btn-back:hover{border-color:var(--cy);color:var(--cy);}
+.btn-primary{background:rgba(88,166,255,.12);border:1px solid var(--cy);color:var(--cy);border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;}
+.btn-primary:hover{background:rgba(88,166,255,.22);}
+
+.sortarrow{margin-left:3px;opacity:.4;}
+.sorted .sortarrow{opacity:1;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <a href="{% url 'dashboard_financeiro' %}" class="btn-back"><i class="fas fa-arrow-left"></i> Financeiro</a>
+      <span class="page-title"><i class="fas fa-network-wired" style="color:#58a6ff;"></i> Painel de Blocos IP Alugados</span>
+    </div>
+    <a href="{% url 'dashboard_financeiro' %}" class="btn-primary"><i class="fas fa-plus"></i> Novo Aluguel</a>
+  </div>
+
+  <!-- Cards resumo -->
+  <div class="resumo-bar">
+    <div class="res-card" style="--c:#58a6ff;">
+      <div class="res-label">Clientes Ativos</div>
+      <div class="res-value" id="res-clientes">—</div>
+      <div class="res-sub">com blocos ativos</div>
+    </div>
+    <div class="res-card" style="--c:#3fb950;">
+      <div class="res-label">Blocos Ativos</div>
+      <div class="res-value" id="res-ativos">—</div>
+      <div class="res-sub" id="res-ativos-sub">contratos vigentes</div>
+    </div>
+    <div class="res-card" style="--c:#3fb950;">
+      <div class="res-label">Receita Mensal</div>
+      <div class="res-value" id="res-receita">—</div>
+      <div class="res-sub">soma dos ativos</div>
+    </div>
+    <div class="res-card" style="--c:#f85149;">
+      <div class="res-label">Faturas em Aberto</div>
+      <div class="res-value" id="res-fat-qtd">—</div>
+      <div class="res-sub" id="res-fat-valor">—</div>
+    </div>
+    <div class="res-card" style="--c:#d29922;">
+      <div class="res-label">Pausados</div>
+      <div class="res-value" id="res-pausados">—</div>
+      <div class="res-sub">blocos suspensos</div>
+    </div>
+    <div class="res-card" style="--c:#7d8590;">
+      <div class="res-label">Cancelados</div>
+      <div class="res-value" id="res-cancelados">—</div>
+      <div class="res-sub">contratos encerrados</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filter-bar">
+    <i class="fas fa-search" style="color:var(--muted);font-size:.8rem;"></i>
+    <input type="text" id="busca" placeholder="Buscar cliente, CNPJ ou bloco IP…" oninput="carregarPainel()">
+    <select id="filtro-status" onchange="carregarPainel()" style="min-width:130px;">
+      <option value="">Todos os status</option>
+      <option value="ATIVO">Apenas Ativos</option>
+      <option value="PAUSADO">Apenas Pausados</option>
+      <option value="CANCELADO">Apenas Cancelados</option>
+    </select>
+    <span id="total-exibido" style="font-size:.75rem;color:var(--muted);margin-left:auto;white-space:nowrap;"></span>
+  </div>
+
+  <!-- Tabela -->
+  <div class="card-table">
+    <div style="overflow-x:auto;">
+      <table class="blocos-table">
+        <thead>
+          <tr>
+            <th class="sortable" onclick="sortTable('cliente_nome')">Cliente <span class="sortarrow">▲</span></th>
+            <th class="sortable" onclick="sortTable('bloco')">Bloco IPv4 <span class="sortarrow">▲</span></th>
+            <th>IPv6</th>
+            <th class="sortable" onclick="sortTable('qtd_ips')" style="text-align:center;">IPs <span class="sortarrow">▲</span></th>
+            <th class="sortable" onclick="sortTable('valor_mensal')" style="text-align:right;">Valor/Mês <span class="sortarrow">▲</span></th>
+            <th class="sortable" onclick="sortTable('data_inicio')" style="text-align:center;">Início <span class="sortarrow">▲</span></th>
+            <th style="text-align:center;">Status</th>
+            <th style="text-align:center;">Faturas</th>
+            <th style="text-align:center;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-blocos">
+          <tr><td colspan="9" class="empty-state"><div class="cy-spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Faturas do bloco -->
+<div class="modal fade" id="modalFaturas" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content" style="background:#161b22;border:1px solid rgba(88,166,255,.2);border-radius:10px;">
+      <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.07);padding:1rem 1.25rem;">
+        <div class="modal-fat-header">
+          <i class="fas fa-file-invoice" style="color:#58a6ff;"></i>
+          <span id="modal-fat-titulo">Faturas em Aberto</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:1rem 1.25rem;" id="modal-fat-body">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _dados = [];
+let _sortKey = 'cliente_nome';
+let _sortAsc = true;
+
+function fmt(v){ return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function carregarPainel(){
+    const busca  = document.getElementById('busca').value.trim();
+    const status = document.getElementById('filtro-status').value;
+    const params = new URLSearchParams();
+    if(busca)  params.set('busca', busca);
+    if(status) params.set('status', status);
+
+    fetch(`/financeiro/api/painel-blocos-ip/?${params}`)
+    .then(r=>r.json())
+    .then(d=>{
+        if(!d.ok) return;
+        _dados = d.alugueis;
+        renderResumo(d.resumo);
+        renderTabela();
+    }).catch(()=>{});
+}
+
+function renderResumo(r){
+    document.getElementById('res-clientes').textContent   = r.clientes_ativos;
+    document.getElementById('res-ativos').textContent     = r.blocos_ativos;
+    document.getElementById('res-receita').textContent    = fmt(r.receita_mensal);
+    document.getElementById('res-fat-qtd').textContent    = r.fat_abertas_qtd;
+    document.getElementById('res-fat-valor').textContent  = r.fat_abertas_qtd > 0 ? fmt(r.fat_abertas_valor) : 'nenhuma pendente';
+    document.getElementById('res-pausados').textContent   = r.blocos_pausados;
+    document.getElementById('res-cancelados').textContent = r.blocos_cancelados;
+}
+
+function sortTable(key){
+    if(_sortKey === key) _sortAsc = !_sortAsc;
+    else { _sortKey = key; _sortAsc = true; }
+    // Update header arrows
+    document.querySelectorAll('.blocos-table th.sortable').forEach(th=>{
+        th.classList.remove('sorted');
+        th.querySelector('.sortarrow').textContent = '▲';
+    });
+    event.currentTarget.classList.add('sorted');
+    event.currentTarget.querySelector('.sortarrow').textContent = _sortAsc ? '▲' : '▼';
+    renderTabela();
+}
+
+function renderTabela(){
+    const tbody = document.getElementById('tbody-blocos');
+    if(!_dados.length){
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Nenhum bloco encontrado.</td></tr>';
+        document.getElementById('total-exibido').textContent = '';
+        return;
+    }
+
+    const sorted = [..._dados].sort((a,b)=>{
+        let va = a[_sortKey], vb = b[_sortKey];
+        if(typeof va === 'string') va = va.toLowerCase(), vb = vb.toLowerCase();
+        if(va < vb) return _sortAsc ? -1 : 1;
+        if(va > vb) return _sortAsc ?  1 : -1;
+        return 0;
+    });
+
+    document.getElementById('total-exibido').textContent = sorted.length + ' bloco(s)';
+
+    let lastCliente = null;
+    tbody.innerHTML = sorted.map(a => {
+        const isNew = a.cliente_nome !== lastCliente;
+        lastCliente = a.cliente_nome;
+
+        const statusClass = {ATIVO:'badge-ativo', PAUSADO:'badge-pausado', CANCELADO:'badge-cancelado'}[a.status] || '';
+        const statusLabel = {ATIVO:'Ativo', PAUSADO:'Pausado', CANCELADO:'Cancelado'}[a.status] || a.status;
+
+        let fatBadge = '';
+        if(a.faturas.length){
+            const cls = a.tem_vencida ? 'badge-fat-venc' : 'badge-fat-ok';
+            const icon = a.tem_vencida ? '⚠' : '📄';
+            fatBadge = `<span class="badge-fat ${cls}" onclick="verFaturas(${a.id})"
+                title="Ver faturas em aberto">${icon} ${a.faturas.length}</span>`;
+        } else {
+            fatBadge = '<span style="font-size:.72rem;color:var(--muted);">—</span>';
+        }
+
+        const v6html = a.bloco_v6
+            ? `<span style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.72rem;color:#7d8590;">${a.bloco_v6}</span>`
+            : '<span style="color:rgba(255,255,255,.15);">—</span>';
+
+        const trClass = isNew ? 'group-first' : '';
+
+        const clienteHtml = isNew
+            ? `<div class="cliente-nome">${escHtml(a.cliente_nome)}</div>
+               <div class="cliente-cnpj">${escHtml(a.cliente_cnpj)}</div>`
+            : `<div style="color:rgba(255,255,255,.2);font-size:.72rem;padding-left:.3rem;">↳</div>`;
+
+        return `<tr class="${trClass}" data-id="${a.id}">
+          <td>${clienteHtml}</td>
+          <td><span class="bloco-main">${escHtml(a.bloco)}</span></td>
+          <td>${v6html}</td>
+          <td style="text-align:center;font-variant-numeric:tabular-nums;">${a.qtd_ips}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:#3fb950;font-weight:600;">${fmt(a.valor_mensal)}</td>
+          <td style="text-align:center;color:var(--muted);">${a.data_inicio}</td>
+          <td style="text-align:center;"><span class="badge-status ${statusClass}">${statusLabel}</span></td>
+          <td style="text-align:center;">${fatBadge}</td>
+          <td style="text-align:center;">
+            <div style="display:flex;gap:.25rem;justify-content:center;flex-wrap:wrap;">
+              <a href="/financeiro/api/aluguel/${a.id}/contrato/" target="_blank" class="act-btn green" title="PDF do contrato"><i class="fas fa-file-pdf"></i></a>
+              <a href="/financeiro/?cliente_id=${a.cliente_id}" class="act-btn" title="Abrir no Financeiro"><i class="fas fa-external-link-alt"></i></a>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+}
+
+function verFaturas(aluguelId){
+    const a = _dados.find(x => x.id === aluguelId);
+    if(!a) return;
+    document.getElementById('modal-fat-titulo').textContent = a.bloco + ' — Faturas em Aberto';
+    const body = document.getElementById('modal-fat-body');
+    if(!a.faturas.length){
+        body.innerHTML = '<div class="empty-state" style="padding:1.5rem;">Nenhuma fatura em aberto.</div>';
+    } else {
+        const total = a.faturas.reduce((s,f)=>s+f.valor, 0);
+        body.innerHTML = `
+        <div class="fat-list">
+            ${a.faturas.map(f=>`
+            <div class="fat-item">
+              <div>
+                <span class="fat-num">#${f.numero}</span>
+              </div>
+              <div style="text-align:center;">
+                <span class="fat-venc-badge ${f.vencida ? 'fat-vencida' : 'fat-ok'}">
+                  ${f.vencida ? '⚠ Vencida' : '📅 Aberta'}
+                </span>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:2px;">${f.vencimento}</div>
+              </div>
+              <div style="text-align:right;font-weight:600;color:#f85149;">${fmt(f.valor)}</div>
+            </div>`).join('')}
+            <div style="border-top:1px solid rgba(255,255,255,.08);margin-top:.5rem;padding-top:.5rem;display:flex;justify-content:space-between;font-weight:700;font-size:.82rem;">
+              <span style="color:var(--muted);">Total em aberto</span>
+              <span style="color:#f85149;">${fmt(total)}</span>
+            </div>
+        </div>`;
+    }
+    new bootstrap.Modal(document.getElementById('modalFaturas')).show();
+}
+
+function escHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('DOMContentLoaded', carregarPainel);
+</script>
+{% endblock %}

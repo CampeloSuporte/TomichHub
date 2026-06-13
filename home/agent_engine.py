@@ -64,6 +64,13 @@ SAFE_COMMANDS: dict[str, list[str]] = {
         r'^/?radius\s+print', r'^/?hotspot\s+active\s+print',
         r'^/?user\s+active\s+print',
     ],
+    'datacom': [
+        r'^show\s+', r'^display\s+',
+        r'^ping\s+', r'^traceroute\s+', r'^tracert\s+',
+        r'^show\s+interfaces?\s+', r'^show\s+transceiver\s+',
+        r'^show\s+ip\s+', r'^show\s+bgp\s+', r'^show\s+version\s*$',
+        r'^show\s+running-config', r'^show\s+cdp\s+', r'^show\s+lldp\s+',
+    ],
     'generico': [
         r'^show\s+', r'^display\s+', r'^get\s+',
         r'^ping\s+', r'^traceroute\s+', r'^tracert\s+',
@@ -586,6 +593,45 @@ class AgentNOCEngine:
                         seen_ips.add(ip)
             return ', '.join(peers[:20])
 
+        def _iface_index_compact(ctx: str) -> str:
+            """
+            Extrai índice compacto Interface→Descrição do contexto_backup.
+            Formato resultante: 'XGE0/0/2=SW-HU-ALMAS-P1 | Vlanif21=OSPF-SW-HU-ALMAS | ...'
+            Permite ao agente localizar a interface pelo nome sem executar comandos.
+            """
+            pairs = []
+            seen = set()
+
+            # 1) Interfaces com IP: "  Vlanif21  IP=... desc="OSPF-SW-HU-ALMAS""
+            for m in _re_agent.finditer(
+                r'^\s{2}(\S+)\s+IP=[\d./]+\s+desc="([^"]+)"',
+                ctx, _re_agent.MULTILINE
+            ):
+                iface, desc = m.group(1), m.group(2)
+                if iface not in seen and desc:
+                    pairs.append(f'{iface}={desc}')
+                    seen.add(iface)
+
+            # 2) Demais interfaces: "XGigabitEthernet0/0/2(SW-HU-ALMAS-P1)"
+            #    Formato na linha "Demais interfaces (sem IP): A(D1), B, C(D3), ..."
+            demais_match = _re_agent.search(
+                r'Demais interfaces[^:]*:\s*(.+?)(?:\n\n|\Z)', ctx, _re_agent.DOTALL
+            )
+            if demais_match:
+                for tok in demais_match.group(1).split(','):
+                    tok = tok.strip().rstrip('.')
+                    m2 = _re_agent.match(r'^(\S+)\(([^)]+)\)$', tok)
+                    if m2:
+                        iface, desc = m2.group(1), m2.group(2)
+                        if iface not in seen and desc:
+                            # Abreviar nomes longos: XGigabitEthernet0/0/2 → XGE0/0/2
+                            short = _re_agent.sub(r'GigabitEthernet', 'GE', iface)
+                            short = _re_agent.sub(r'XGigabitEthernet', 'XGE', short)
+                            pairs.append(f'{short}={desc}({iface})')
+                            seen.add(iface)
+
+            return ' | '.join(pairs[:40])  # máx 40 entradas
+
         def _host_line(a, incluir_cliente=False, incluir_contexto=True) -> str:
             fabricante = ''
             modelo_nome = ''
@@ -600,8 +646,6 @@ class AgentNOCEngine:
             linha = '  - ' + ' | '.join(parts)
             if a.contexto_backup:
                 if incluir_contexto:
-                    # Contexto compacto: 800 chars máx para não explodir o context window
-                    # BGP peers ficam no artigo [BGP] do cliente (não repetir aqui)
                     ctx_raw = a.contexto_backup
                     # Remove seção BGP do contexto (já está no artigo [BGP])
                     for marker in ('BGP Peers:', 'Sessões BGP:', '## BGP', 'Peer '):
@@ -609,13 +653,23 @@ class AgentNOCEngine:
                         if idx_bgp > 200:
                             ctx_raw = ctx_raw[:idx_bgp] + '\n      [BGP: ver artigo [BGP] do cliente]'
                             break
-                    ctx = ctx_raw[:800]
-                    if len(a.contexto_backup) > 800:
-                        ctx += '\n      ... [use fetch_host_config para detalhes]'
+
+                    # Índice Interface→Descrição (extraído do contexto completo, sem truncar)
+                    iface_idx = _iface_index_compact(a.contexto_backup)
+
+                    # Contexto geral truncado a 1200 chars
+                    ctx = ctx_raw[:1200]
+                    if len(ctx_raw) > 1200:
+                        ctx += '\n      ... [resumo truncado — índice de interfaces acima é completo]'
                     ctx_indent = '\n'.join('      ' + l for l in ctx.splitlines())
                     linha += f'\n    [Configuração conhecida do backup]\n{ctx_indent}'
+                    if iface_idx:
+                        linha += (
+                            f'\n    [Índice Interface→Descrição (busca parcial/case-insensitive)]\n'
+                            f'      {iface_idx}'
+                        )
                 else:
-                    # Modo global: só índice compacto de BGP peers (descrição → IP)
+                    # Modo global: índice BGP compacto
                     bgp_idx = _bgp_peers_compact(a.contexto_backup)
                     if bgp_idx:
                         linha += f'\n      BGP-peers: {bgp_idx}'
@@ -843,18 +897,24 @@ Cada host pode ter um bloco `[Configuração conhecida do backup]` com dados ext
 4. Se a descrição não estiver na tabela, informe ao usuário qual é o peer mais parecido que encontrou.
 
 ### Consultar interface por descrição
-Quando o usuário mencionar uma interface pela descrição (ex: "link para CGNAT", "uplink principal", "ALMAS P1", "energia"):
+Quando o usuário mencionar uma interface pela descrição (ex: "link para CGNAT", "uplink principal", "ALMAS P1", "energia", "Dno"):
 1. No backup, encontre `desc="<DESCRIÇÃO>"` na seção de interfaces para obter o nome exato
 2. Se não houver backup, busque no equipamento diretamente (veja comandos abaixo por fabricante)
 3. Uma vez que encontrou o nome da interface, **memorize-o na sessão** — use esse nome nas próximas ações sem buscar novamente
+
+⚠️ **BUSCA DE DESCRIÇÃO É CASE-INSENSITIVE E PARCIAL — REGRA OBRIGATÓRIA**
+Ao analisar o output de `display interface description` ou equivalente:
+- A busca é **sempre parcial e case-insensitive**: "Dno" encontra "DNO", "SW-DNO", "LINK-DNO-P1", "sw-hu-dno", etc.
+- "almas" encontra "ALMAS", "SW-ALMAS", "LINK-ALMAS-P2", "TO-ALMAS", "ALMAS-P1", etc.
+- Espaços na fala do usuário podem ser hífens na configuração: "NDD P2" encontra "NDD-P2", "SW-NDD-P2"
+- **NUNCA** declare "interface não encontrada" sem antes varrer TODAS as linhas do output buscando qualquer substring que contenha o termo informado (case-insensitive)
+- Se o output vier truncado, execute `display interface description` de novo ou use paginação
 
 ⚠️ **INTERFACE FÍSICA vs VIRTUAL — REGRA OBRIGATÓRIA**
 Quando o usuário pede informações sobre uma interface pela sua **descrição**, a resposta deve ser sobre a **interface física** que possui aquela descrição configurada — **NUNCA sobre uma Vlanif, Vlan-interface, BDI, IRB ou qualquer interface virtual derivada**.
 
 - **Correto:** `GigabitEthernet0/0/1` com `description CLIENTE-X` → responder sobre `GigabitEthernet0/0/1`
 - **Errado:** responder sobre `Vlanif100` só porque está associada ao mesmo segmento
-
-Interfaces virtuais (Vlanif, Loopback, Tunnel, BDI, IRB) têm seus próprios IPs de gerência — isso **não** é o que o usuário quer quando pergunta sobre o estado, counters ou status de uma interface por descrição.
 
 Se existir tanto uma interface física quanto uma virtual com relação ao mesmo ponto, mencione primeiro a **física** e indique a virtual apenas como informação complementar.
 
@@ -872,10 +932,13 @@ Se existir tanto uma interface física quanto uma virtual com relação ao mesmo
   - Se achou por `name` → desativar: `/interface disable [find name~"<DESCRIÇÃO>"]`
 - Se ambos retornarem vazio, informe que a interface não foi encontrada
 
-**Huawei VRP:**
-- Buscar por descrição: **SEMPRE** use `display interface description` (sem filtro) e identifique a interface no output retornado — NÃO use `| include` para busca por descrição, pois descrições com hífen (ex: `SW-HU-NDD-P2`) não casam com buscas com espaço (ex: "NDD P2"). O comando retorna uma tabela com Interface / PHY / Protocol / Description: leia todas as linhas e encontre a que contém a descrição solicitada, considerando que espaços na fala do usuário correspondem a hífens na config do equipamento.
-- Ativar: `system-view\ninterface <NOME>\nundo shutdown\nreturn`
-- Desativar: `system-view\ninterface <NOME>\nshutdown\nreturn`
+**Huawei VRP / Datacom / Cisco (switches e roteadores):**
+- Buscar por descrição: **SEMPRE** use `display interface description` (Huawei) ou `show interfaces description` (Cisco/Datacom) **sem filtro** e leia TODAS as linhas do output retornado
+- **NUNCA use `| include`** para busca por descrição, pois `SW-HU-NDD-P2` não casa com busca por "NDD P2"
+- A tabela retorna: Interface / PHY / Protocol / Description — leia cada linha e encontre qualquer uma que contenha o termo buscado (busca parcial, case-insensitive)
+- Exemplo: usuário pede "Dno" → varrer toda a tabela procurando linhas onde a coluna Description contenha "dno" (case-insensitive) → pode ser `XGigabitEthernet0/0/1` com description `SW-NDD-DNO-P1`
+- Ativar (Huawei): `system-view\ninterface <NOME>\nundo shutdown\nreturn`
+- Desativar (Huawei): `system-view\ninterface <NOME>\nshutdown\nreturn`
 
 ⚠️ **IMPORTANTE**: A descrição da interface (ex: "ALMAS P1") NÃO indica qual switch acessar.
 O switch alvo é definido pelo contexto da mensagem (ex: "switch Natividade", "switch ALMAS").
@@ -883,6 +946,69 @@ Se o usuário disse "switch Natividade", acesse o switch de Natividade — mesmo
 Se o switch alvo não estiver claro, pergunte antes de executar.
 
 ⚠️ **MEMÓRIA DE SESSÃO**: Se você já identificou a interface em uma mensagem anterior desta sessão (ex: "encontrei sfp1 com comment energia"), use esse mesmo nome/resultado nas próximas ações — não repita a busca.
+
+### Consultar sinal óptico (DDM / transceiver / potência de sinal)
+
+Quando o usuário pedir "sinal óptico", "potência de sinal", "DDM", "transceiver", "dBm", "rx power", "tx power" de uma interface:
+
+**Fluxo obrigatório (2 passos):**
+
+**Passo 1 — Encontrar o nome da interface FÍSICA pela descrição:**
+Execute o comando de listagem de descrições e identifique o nome exato da interface física.
+
+🚨 **SOMENTE interfaces físicas têm SFP/transceiver** — ignore lógicas e sub-interfaces:
+- ✅ Físicas (têm SFP): `GigabitEthernet0/1/1`, `XGigabitEthernet0/0/2`, `Eth-Trunk1`, etc.
+- ❌ Sub-interfaces (sem SFP): qualquer nome com ponto — `GigabitEthernet0/1/1.22`, `VE0/1/3.77`, etc.
+- ❌ Lógicas (sem SFP): `Vlanif`, `Loopback`, `Tunnel`, `NULL`, `NVE`
+- O output do sistema já marca cada linha: `[FÍSICA]`, `[SUB-INTERFACE]` ou `[LÓGICA]`
+- **Use SEMPRE a interface marcada como `[FÍSICA]`** para o comando de transceiver
+
+**Passo 2 — Obter o sinal óptico:**
+Com o nome da interface em mãos, execute o comando de transceiver:
+
+| Fabricante | Comando |
+|-----------|---------|
+| Huawei VRP (switch/roteador) | `display transceiver diagnosis interface <NOME>` |
+| Datacom (DM switches) | `show interfaces <NOME> transceiver` ou `show transceiver <NOME>` |
+| Cisco IOS/IOS-XE | `show interfaces <NOME> transceiver` |
+| Cisco NX-OS | `show interface <NOME> transceiver details` |
+| MikroTik (SFP com DDM) | `/interface ethernet monitor <NOME> once` |
+| ZTE OLT | `show pon onu optical-info <PON-ID> onu <ID>` |
+| Genérico Linux | `ethtool -m <INTERFACE>` |
+
+🚨 **ATENÇÃO CRÍTICA — HUAWEI VRP**: o comando de sinal óptico NÃO é `display interface X transceiver` (isso retorna erro "Too many parameters"). O comando correto é:
+- ✅ `display transceiver diagnosis interface XGigabitEthernet0/0/2` → retorna TxPower, RxPower, Temp, Voltage em dBm
+- ❌ `display interface XGigabitEthernet0/0/2 transceiver` → ERRO no VRP
+- ❌ `display interface XGigabitEthernet0/0/2` → retorna tipo do SFP mas NÃO os valores de potência (dBm)
+- Se o output não contém "(dBm)" ou "TxPower" ou "RxPower", você executou o comando errado.
+
+**Interpretação do output (valores típicos SFP single-mode):**
+- Rx Power (potência recebida): entre **-3 dBm** e **-25 dBm** → normal; abaixo de **-28 dBm** → sinal crítico; **-40 dBm** ou "N/A" → fibra cortada ou SFP sem sinal
+- Tx Power (potência transmitida): entre **-1 dBm** e **-9 dBm** → normal; abaixo de **-12 dBm** → SFP com problema
+- Temperature, Voltage, Current: use como informação complementar para diagnosticar SFP com defeito
+
+**NUNCA pule o passo 1** — execute sempre o comando de sinal óptico com o nome correto da interface física encontrado no passo 1.
+
+**Exemplo completo — "sinal óptico da interface com descrição dno" em switch Huawei:**
+```
+Passo 1: execute_command(acesso_id=X, comando="display interface description")
+  → Output: "XGigabitEthernet0/0/2  up  up  SW-HU-DNO-P1"
+  → Interface encontrada: XGigabitEthernet0/0/2
+
+Passo 2: execute_command(acesso_id=X, comando="display transceiver diagnosis interface XGigabitEthernet0/0/2")
+  → Retorna: TxPower(dBm): 1.40 normal, RxPower(dBm): -16.90 normal, Temp: 50.74°C
+  ✅ CORRETO — contém dBm
+
+❌ ERRADO (não faça isso):
+Passo 2: execute_command(acesso_id=X, comando="display interface XGigabitEthernet0/0/2")
+  → Retorna: bandwidth, utilização, tipo do SFP — NÃO contém valores de potência óptica
+❌ ERRADO: `display interface XGigabitEthernet0/0/2 transceiver` → retorna "Too many parameters" no VRP
+❌ ERRADO: `display interface XGigabitEthernet0/0/2 | include Optical` → retorna vazio
+```
+
+⚠️ **INTERCEPTAÇÃO AUTOMÁTICA**: Se você usar `| include <termo>`, o sistema executa automaticamente `display interface description` (sem filtro) e faz busca case-insensitive em Python. O resultado já vem filtrado com nomes de interface já expandidos (ex: `XGE0/0/2` → `XGigabitEthernet0/0/2`). Use o nome expandido retornado para o passo 2.
+
+🚨 **NOMES ABREVIADOS HUAWEI**: O `display interface description` exibe nomes abreviados (`XGE`, `GE`). Esses nomes NÃO FUNCIONAM em `display transceiver diagnosis interface`. O sistema já expande automaticamente no output: **sempre use o nome expandido** (`XGigabitEthernet`, `GigabitEthernet`) no comando de diagnóstico.
 
 ### Consultar OSPF, MPLS, PPPoE, VRF
 Use as seções do backup para saber quais instâncias/processos existem antes de executar comandos de verificação.
@@ -966,13 +1092,162 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
                 "requires_approval": False,
             })
 
+        # Interceptar variantes erradas do comando de transceiver Huawei e normalizar para:
+        # display transceiver diagnosis interface <NOME>
+        # Variantes capturadas:
+        #   display interface <X> transceiver [verbose|diagnosis|...]  → "Too many parameters"
+        #   display transceiver interface <X>                          → retorna info comum (sem dBm)
+        #   display transceiver <X>                                    → "Too many parameters"
+        _is_huawei_for_xcvr = (
+            fabricante.lower() == 'huawei'
+            or 'huawei' in (acesso.tipo or '').lower()
+            or 'huawei' in (acesso.modelo.fabricante if acesso.modelo else '').lower()
+        )
+        _xcvr_normalize = None
+        if _is_huawei_for_xcvr:
+            # Forma 1: display interface <X> transceiver[...]
+            m1 = re.match(r'^display\s+interface\s+(\S+)\s+transceiver.*$', comando.strip(), re.IGNORECASE)
+            # Forma 2: display transceiver interface <X>  (sem diagnosis)
+            m2 = re.match(r'^display\s+transceiver\s+interface\s+(\S+)\s*$', comando.strip(), re.IGNORECASE)
+            # Forma 3: display transceiver <X>  (sem interface keyword)
+            m3 = re.match(r'^display\s+transceiver\s+(\S+)\s*$', comando.strip(), re.IGNORECASE)
+            if m1:
+                _xcvr_normalize = m1.group(1)
+            elif m2:
+                _xcvr_normalize = m2.group(1)
+            elif m3 and not re.match(r'^(diagnosis|interface|all|verbose)', m3.group(1), re.IGNORECASE):
+                _xcvr_normalize = m3.group(1)
+        if _xcvr_normalize:
+            comando = f'display transceiver diagnosis interface {_xcvr_normalize}'
+
+        # Interceptar "display/show interface(s) description | include <termo>"
+        # O modelo frequentemente usa | include mesmo com instrução contrária.
+        # O | include do Huawei/Cisco é CASE-SENSITIVE, causando falsos negativos.
+        # Solução: rodar o comando sem o filtro e fazer busca case-insensitive em Python.
+        _iface_include = re.match(
+            r'^(display\s+interface\s+description'
+            r'|show\s+interfaces?\s+description'
+            r'|display\s+interface\s+brief'
+            r'|show\s+interfaces?\s+brief'
+            r')\s*\|\s*inc(?:lude)?\s+(.+)$',
+            comando.strip(), re.IGNORECASE
+        )
+
         # Execução
         t0 = time.monotonic()
         try:
-            if acesso.protocolo == 'SSH':
+            if _iface_include and acesso.protocolo == 'SSH':
+                cmd_base   = _iface_include.group(1).strip()
+                search_raw = _iface_include.group(2).strip()
+                # Normaliza termo: "almas" → busca "almas", "ALMAS", "SW-ALMAS-P1", etc.
+                termo = search_raw.lower()
+                output_full = await asyncio.get_event_loop().run_in_executor(
+                    None, _ssh_exec_sync, acesso, cmd_base,
+                )
+                # Filtra case-insensitive em Python — ignora linhas de cabeçalho/legenda
+                skip_prefixes = ('phy:', '*down', '#down', '-down', '(l)', '(s)',
+                                 '(e)', '(b)', '(dl)', '(lb)', '(lp)', '(o)',
+                                 'interface ', 'phys ', 'link ', '---', 'flags')
+                matches = []
+                for line in output_full.splitlines():
+                    ls = line.strip()
+                    if not ls:
+                        continue
+                    if any(ls.lower().startswith(p) for p in skip_prefixes):
+                        continue
+                    if termo in ls.lower():
+                        matches.append(ls)
+
+                # Expande abreviações Huawei: XGE→XGigabitEthernet, GE→GigabitEthernet etc.
+                # Isso evita que o modelo use o nome abreviado em comandos subsequentes
+                # (ex: "display interface XGE0/0/2 transceiver" falha; precisa do nome completo)
+                _huawei_expand = [
+                    (re.compile(r'\b(10GE)(\d+/\S+)', re.IGNORECASE), r'10GigabitEthernet\2'),
+                    (re.compile(r'\b(40GE)(\d+/\S+)', re.IGNORECASE), r'40GigabitEthernet\2'),
+                    (re.compile(r'\b(100GE)(\d+/\S+)', re.IGNORECASE), r'100GigabitEthernet\2'),
+                    (re.compile(r'\b(XGE)(\d+/\S+)', re.IGNORECASE), r'XGigabitEthernet\2'),
+                    (re.compile(r'\b(GE)(\d+/\S+)', re.IGNORECASE), r'GigabitEthernet\2'),
+                ]
+                def _expand_iface_names(text: str) -> str:
+                    for pattern, repl in _huawei_expand:
+                        text = pattern.sub(repl, text)
+                    return text
+
+                # Anota interfaces físicas vs lógicas para orientar o modelo
+                _logical_prefixes = (
+                    'vlanif', 'loopback', 'tunnel', 'null', 'nve',
+                    'meth', 'inloopback', 'stack-port',
+                )
+                _physical_prefixes = (
+                    'xgigabitethernet', 'gigabitethernet', '10gigabitethernet',
+                    '40gigabitethernet', '100gigabitethernet', 'eth-trunk',
+                    'xge', 'ge', '10ge', '40ge', '100ge',
+                    'tengigabitethernet', 'fastethernet', 'ethernet',
+                )
+                def _iface_type_tag(line: str) -> str:
+                    first = line.split()[0].lower() if line.split() else ''
+                    # Sub-interface: contém ponto após número de slot (ex: GE0/1/1.22, VE0/1/3.77)
+                    if re.search(r'\d+\.\d+', first):
+                        return line + '  [SUB-INTERFACE — sem SFP, sem sinal óptico]'
+                    if any(first.startswith(p) for p in _logical_prefixes):
+                        return line + '  [LÓGICA — sem SFP, sem sinal óptico]'
+                    if any(first.startswith(p) for p in _physical_prefixes):
+                        return line + '  [FÍSICA — tem SFP/transceiver]'
+                    return line
+
+                if matches:
+                    expanded_lines = [_iface_type_tag(l) for l in _expand_iface_names("\n".join(matches)).splitlines()]
+                    output = (
+                        f"[Busca case-insensitive por '{search_raw}' em `{cmd_base}`]\n"
+                        f"[Nomes expandidos; interfaces físicas marcadas com [FÍSICA]]\n"
+                        + "\n".join(expanded_lines)
+                    )
+                else:
+                    # Retorna output completo para o agente analisar manualmente
+                    output = (
+                        f"[Busca case-insensitive por '{search_raw}' em `{cmd_base}`: "
+                        f"0 linhas encontradas]\n\n"
+                        f"Output completo para análise:\n{output_full}"
+                    )
+            elif acesso.protocolo == 'SSH':
                 output = await asyncio.get_event_loop().run_in_executor(
                     None, _ssh_exec_sync, acesso, comando,
                 )
+                # Auto-append DDM transceiver data para portas físicas Huawei.
+                # Quando o modelo executa "display interface XGigabitEthernet0/0/2"
+                # (sem transceiver), ele vê o tipo do SFP mas não os valores de potência.
+                # Se for porta de fibra (COMMON FIBER / SFP / QSFP), buscamos o DDM automaticamente.
+                _is_huawei_vendor = (
+                    fabricante.lower() == 'huawei'
+                    or 'huawei' in (acesso.tipo or '').lower()
+                    or 'huawei' in (acesso.modelo.fabricante if acesso.modelo else '').lower()
+                )
+                _iface_no_transceiver = re.match(
+                    r'^display\s+interface\s+'
+                    r'(XGigabitEthernet|GigabitEthernet|10GigabitEthernet'
+                    r'|40GigabitEthernet|100GigabitEthernet|Eth-Trunk)\S+$',
+                    comando.strip(), re.IGNORECASE
+                )
+                if (
+                    _is_huawei_vendor
+                    and _iface_no_transceiver
+                    and re.search(r'(?:COMMON FIBER|SFP|QSFP|transceiver)', output, re.IGNORECASE)
+                ):
+                    try:
+                        # Extrai só o nome da interface (última palavra do comando)
+                        _iface_name = comando.strip().split()[-1]
+                        _xcvr_cmd = f'display transceiver diagnosis interface {_iface_name}'
+                        _xcvr_out = await asyncio.get_event_loop().run_in_executor(
+                            None, _ssh_exec_sync, acesso, _xcvr_cmd,
+                        )
+                        if _xcvr_out and 'error' not in _xcvr_out.lower()[:40]:
+                            output = (
+                                output
+                                + f"\n\n--- [DDM / Sinal Óptico: `{_xcvr_cmd}`] ---\n"
+                                + _xcvr_out
+                            )
+                    except Exception:
+                        pass
             elif acesso.protocolo == 'TELNET':
                 output = await self._telnet_exec(acesso, comando)
             else:

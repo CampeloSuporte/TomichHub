@@ -377,6 +377,17 @@
         <div class="fin-title"><i class="fas fa-coins" style="margin-right:.5rem;"></i>Painel Financeiro</div>
         <div class="fin-subtitle">Visão executiva em tempo real</div>
     </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <a href="{% url 'painel_blocos_ip' %}" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.4);color:#58a6ff;border-radius:6px;padding:6px 13px;font-size:.8rem;text-decoration:none;transition:all .15s;" onmouseover="this.style.background='rgba(88,166,255,.2)'" onmouseout="this.style.background='rgba(88,166,255,.1)'">
+            <i class="fas fa-network-wired"></i> Painel Blocos IP
+        </a>
+        <a href="{% url 'listar_despesas_page' %}" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.4);color:#ff6b35;border-radius:6px;padding:6px 13px;font-size:.8rem;text-decoration:none;transition:all .15s;" onmouseover="this.style.background='rgba(255,107,53,.2)'" onmouseout="this.style.background='rgba(255,107,53,.1)'">
+            <i class="fas fa-file-invoice-dollar"></i> Despesas
+        </a>
+        <button onclick="abrirConfigWhatsApp()" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.4);color:#25d366;border-radius:6px;padding:6px 13px;font-size:.8rem;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(37,211,102,.2)'" onmouseout="this.style.background='rgba(37,211,102,.1)'" title="Configurar alertas de cobrança via WhatsApp">
+            <i class="fab fa-whatsapp"></i> WhatsApp
+        </button>
+    </div>
 </div>
 
 <!-- KPI Cards -->
@@ -503,7 +514,7 @@
         <div style="display:flex;gap:.5rem;align-items:center;">
             <select id="despesas-filtro-status" class="cy-select-sm" onchange="carregarDespesas()">
                 <option value="">Todas</option>
-                <option value="PENDENTE">Pendentes</option>
+                <option value="PENDENTE">Pendentes (mês)</option>
                 <option value="VENCIDO" selected>Vencidas</option>
                 <option value="PAGO">Pagas</option>
             </select>
@@ -838,6 +849,43 @@
     </div>
 </div>
 
+<!-- MODAL: EDITAR VENDA DE EQUIPAMENTO -->
+<div class="modal fade" id="modalEditarVenda" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Venda de Equipamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarVenda" onsubmit="enviarEdicaoVenda(event)">
+                {% csrf_token %}
+                <input type="hidden" id="editVendaId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Descrição *</label>
+                        <input type="text" class="form-control" id="editVendaDescricao" name="descricao" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data de Início</label>
+                        <input type="date" class="form-control" id="editVendaDataInicio" name="data_inicio">
+                        <div class="alert alert-warning py-2 mt-2 d-none" id="avisoDataVenda" style="font-size:.82rem;">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Alterar a data ajustará os vencimentos de <strong>todas</strong> as faturas vinculadas em aberto.
+                        </div>
+                    </div>
+                    <div id="msgErroEditVenda" class="alert alert-danger d-none py-2 mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-or btn-cy-sm">
+                        <i class="fas fa-save me-1"></i>Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL: NOVO ALUGUEL IPv4 -->
 <div class="modal fade" id="modalNovoAluguel" tabindex="-1">
     <div class="modal-dialog">
@@ -945,6 +993,58 @@
                 <!-- Histórico de contratos -->
                 <p style="font-size:.85rem;font-weight:600;color:#c9d1d9;margin-bottom:10px;">Contratos gerados</p>
                 <div id="listaContratos" style="min-height:60px;">
+                    <div style="text-align:center;color:#7d8590;font-size:.85rem;padding:20px;">Carregando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CARTA LOA -->
+<div class="modal fade" id="modalCartaLOA" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-signature me-2" style="color:#bc8cff;"></i>Carta LOA — <span id="loaBloco"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:20px;">
+                    <p style="font-size:.85rem;color:#8b949e;margin-bottom:12px;">
+                        Gera automaticamente a Carta de Autorização (LOA) com os dados do bloco IP, ASN (via WHOIS) e link para assinatura digital.
+                    </p>
+                    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                        <div>
+                            <label style="font-size:.75rem;color:#7d8590;display:block;margin-bottom:4px;">Validade (dias)</label>
+                            <input type="number" id="loaDiasValidade" value="30" min="1" max="90"
+                                style="width:90px;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 10px;color:#e6edf3;font-size:.9rem;">
+                        </div>
+                        <button class="btn-cy btn-cy-sm" style="background:#bc8cff22;border:1px solid #bc8cff;color:#bc8cff;" onclick="gerarLinkLOA()">
+                            <i class="fas fa-magic me-1"></i>Gerar LOA
+                        </button>
+                        <a id="btnPreviewLOA" href="#" target="_blank"
+                           style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-size:.85rem;font-weight:600;background:#1f2937;border:1px solid #30363d;color:#8b949e;text-decoration:none;">
+                            <i class="fas fa-eye me-1"></i>Prévia PDF
+                        </a>
+                    </div>
+                    <div id="loaLinkBox" style="display:none;margin-top:14px;">
+                        <label style="font-size:.75rem;color:#7d8590;display:block;margin-bottom:4px;">Link para assinatura</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="loaLinkInput" readonly
+                                style="flex:1;background:#161b22;border:1px solid #bc8cff;border-radius:6px;padding:8px 10px;color:#bc8cff;font-size:.82rem;font-family:monospace;">
+                            <button class="btn-cy btn-cy-sm" onclick="copiarTexto(document.getElementById('loaLinkInput').value)" title="Copiar">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                            <small id="loaExpiraInfo" style="color:#7d8590;font-size:.75rem;display:block;"></small>
+                            <small id="loaAsnInfo" style="color:#3fb950;font-size:.75rem;display:block;"></small>
+                            <small id="loaResponsavelInfo" style="color:#58a6ff;font-size:.75rem;display:block;"></small>
+                        </div>
+                    </div>
+                </div>
+                <p style="font-size:.85rem;font-weight:600;color:#c9d1d9;margin-bottom:10px;">LOAs geradas</p>
+                <div id="listaLOAs" style="min-height:60px;">
                     <div style="text-align:center;color:#7d8590;font-size:.85rem;padding:20px;">Carregando...</div>
                 </div>
             </div>
@@ -1175,6 +1275,9 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" id="btnWhatsAppCobranca" style="display:none;--c:#25d366;" class="btn-cy btn-cy-sm" onclick="enviarCobrancaManual(faturaAtualId)">
+                    <i class="fab fa-whatsapp me-1"></i>Enviar Cobrança
+                </button>
                 <button type="button" class="btn-cy btn-cy-gr btn-cy-sm" onclick="abrirModalPagamento()">
                     <i class="fas fa-money-bill me-1"></i>Registrar Pagamento
                 </button>
@@ -2088,6 +2191,68 @@ function copiarTexto(txt) {
     navigator.clipboard.writeText(txt).then(() => mostrarToast('Link copiado!', 'success'));
 }
 
+// ===== CARTA LOA =====
+let _loaAluguelId = null;
+
+function abrirLoaAluguel(id, bloco) {
+    _loaAluguelId = id;
+    document.getElementById('loaBloco').textContent = bloco;
+    document.getElementById('loaLinkBox').style.display = 'none';
+    document.getElementById('btnPreviewLOA').href = `/financeiro/api/aluguel/${id}/preview-loa/`;
+    carregarLOAs();
+    new bootstrap.Modal(document.getElementById('modalCartaLOA')).show();
+}
+
+function carregarLOAs() {
+    if (!_loaAluguelId) return;
+    fetch(`/financeiro/api/aluguel/${_loaAluguelId}/status-loa/`)
+    .then(r => r.json())
+    .then(d => {
+        const el = document.getElementById('listaLOAs');
+        if (!d.ok || !d.loas.length) {
+            el.innerHTML = '<div style="text-align:center;color:#7d8590;font-size:.85rem;padding:20px;">Nenhuma LOA gerada ainda.</div>';
+            return;
+        }
+        const cor = { pendente:'#d29922', assinado:'#3fb950', expirado:'#f85149' };
+        el.innerHTML = d.loas.map(l => `
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:.82rem;color:#8b949e;">Criado em ${l.criado_em}${l.expira_em ? ' · Expira: '+l.expira_em : ''}</div>
+                ${l.asn_upstream ? `<div style="font-size:.8rem;color:#3fb950;margin-top:2px;">ASN Upstream: <b>${l.asn_upstream}</b></div>` : ''}
+                ${l.nome_assinante ? `<div style="font-size:.85rem;color:#c9d1d9;margin-top:2px;">✍️ <b>${l.nome_assinante}</b> — ${l.assinado_em}</div>` : ''}
+            </div>
+            <span style="padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;background:${cor[l.status]}22;color:${cor[l.status]};border:1px solid ${cor[l.status]}44;">${l.status_label}</span>
+            ${l.status === 'pendente' && l.link_assinatura ? `<button class="btn btn-sm btn-outline-secondary" onclick="copiarTexto('${l.link_assinatura}')" title="Copiar link de assinatura"><i class="fas fa-copy"></i> Link</button>` : ''}
+            ${l.link_download ? `<a href="${l.link_download}" target="_blank" class="btn btn-sm btn-outline-success" title="Baixar LOA assinada"><i class="fas fa-file-pdf me-1"></i>Download</a>` : ''}
+        </div>`).join('');
+    });
+}
+
+function gerarLinkLOA() {
+    if (!_loaAluguelId) return;
+    const dias = document.getElementById('loaDiasValidade').value || 30;
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf());
+    fd.append('dias_validade', dias);
+    fetch(`/financeiro/api/aluguel/${_loaAluguelId}/gerar-loa/`, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) {
+            document.getElementById('loaLinkInput').value = d.link;
+            document.getElementById('loaExpiraInfo').textContent = `Válido até ${d.expira_em}`;
+            document.getElementById('loaAsnInfo').textContent = d.asn_upstream ? `ASN: ${d.asn_upstream}` : '';
+            document.getElementById('loaResponsavelInfo').textContent = [
+                d.proprietaria ? `Proprietária: ${d.proprietaria}` : '',
+                d.responsavel  ? `Representante: ${d.responsavel}` : '',
+            ].filter(Boolean).join('  ·  ');
+            document.getElementById('loaLinkBox').style.display = 'block';
+            carregarLOAs();
+        } else {
+            alert('Erro: ' + (d.erro || 'Erro ao gerar LOA'));
+        }
+    });
+}
+
 // ===== ASSINATURA LOCADOR =====
 (function() {
     let _canvas, _ctx, _drawing = false, _lastX = 0, _lastY = 0;
@@ -2225,17 +2390,36 @@ function enviarNovaVenda(event) {
     .finally(() => { spinner.classList.add('d-none'); btn.disabled = false; });
 }
 
-function abrirEditarVenda(id, descricao) {
-    const novo = prompt('Nova descrição:', descricao);
-    if (!novo) return;
-    const fd = new FormData();
+function abrirEditarVenda(id, descricao, dataInicio) {
+    document.getElementById('editVendaId').value          = id;
+    document.getElementById('editVendaDescricao').value   = descricao;
+    document.getElementById('editVendaDataInicio').value  = dataInicio || '';
+    document.getElementById('avisoDataVenda').classList.add('d-none');
+    document.getElementById('msgErroEditVenda').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('modalEditarVenda')).show();
+}
+
+document.getElementById('editVendaDataInicio')?.addEventListener('change', function() {
+    document.getElementById('avisoDataVenda').classList.remove('d-none');
+});
+
+function enviarEdicaoVenda(event) {
+    event.preventDefault();
+    const id = document.getElementById('editVendaId').value;
+    const fd = new FormData(document.getElementById('formEditarVenda'));
     fd.append('csrfmiddlewaretoken', csrf());
-    fd.append('descricao', novo);
     fetch(`/financeiro/api/venda/${id}/editar/`, { method: 'POST', body: fd })
     .then(r => r.json())
     .then(data => {
-        if (data.sucesso) { carregarVendas(); mostrarToast('Venda atualizada!', 'success'); }
-        else uiAlert('Erro: ' + data.erro);
+        if (data.sucesso) {
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarVenda')).hide();
+            carregarVendas();
+            mostrarToast('Venda atualizada!', 'success');
+        } else {
+            const el = document.getElementById('msgErroEditVenda');
+            el.textContent = data.erro;
+            el.classList.remove('d-none');
+        }
     });
 }
 
@@ -2392,6 +2576,10 @@ function visualizarFatura(faturaId) {
         document.getElementById('pagto-valor-total').textContent   = 'R$ ' + fmt(f.valor_total);
         document.getElementById('dataPagamento').valueAsDate       = new Date();
         document.getElementById('valorPagado').value               = f.valor_total;
+
+        // Mostra botão WhatsApp apenas para faturas em aberto/vencidas
+        const btnWa = document.getElementById('btnWhatsAppCobranca');
+        btnWa.style.display = (f.status !== 'PAGA' && f.status !== 'CANCELADA') ? 'inline-flex' : 'none';
 
         carregarPagamentos(faturaId);
     })
@@ -2565,7 +2753,12 @@ async function carregarDespesas() {
     const container = document.getElementById('despesas-lista-container');
     container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--muted);"><div class="cy-spinner"></div></div>';
     try {
-        const r = await fetch(`/financeiro/api/despesa/listar/?status=${status}`);
+        let url = `/financeiro/api/despesa/listar/?status=${status}`;
+        if (status === 'PENDENTE') {
+            const now = new Date();
+            url += `&mes=${now.getMonth() + 1}&ano=${now.getFullYear()}`;
+        }
+        const r = await fetch(url);
         const d = await r.json();
         if (!d.sucesso) { container.innerHTML = '<p style="color:var(--rd);padding:1rem">Erro ao carregar despesas.</p>'; return; }
 
@@ -2828,6 +3021,372 @@ function confirmarAjusteVencimento() {
     });
 }
 
+</script>
+
+<!-- ================================================== -->
+<!-- MODAL: CONFIGURAÇÃO WHATSAPP / COBRANÇA            -->
+<!-- ================================================== -->
+<div class="modal fade" id="modalConfigWhatsApp" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fab fa-whatsapp me-2" style="color:#25d366;"></i>Configuração de Cobranças via WhatsApp
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Status de conexão -->
+        <div id="waStatusBar" style="display:none;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:.85rem;"></div>
+
+        <!-- Habilitar -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:14px;background:#0d1117;border-radius:8px;border:1px solid #30363d;">
+          <input type="checkbox" id="waAtivo" style="width:18px;height:18px;cursor:pointer;">
+          <label for="waAtivo" style="cursor:pointer;font-size:.9rem;color:#e6edf3;margin:0;">
+            Habilitar envio automático de cobranças via WhatsApp
+          </label>
+        </div>
+
+        <!-- Conexão Evolution API -->
+        <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:10px;">
+          <i class="fas fa-plug me-1"></i>Conexão Evolution API
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div>
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">URL da API</label>
+            <input type="text" id="waUrl" class="form-control form-control-sm"
+                   placeholder="https://evolution.seudominio.com" style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">Nome da Instância</label>
+            <input type="text" id="waInstance" class="form-control form-control-sm"
+                   placeholder="minha-instancia" style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">API Key</label>
+            <input type="password" id="waApiKey" class="form-control form-control-sm"
+                   placeholder="••••••••••••••••" style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+          <button class="btn-cy btn-cy-sm" style="--c:#58a6ff;" onclick="testarWhatsApp()">
+            <i class="fas fa-plug me-1"></i> Testar Conexão
+          </button>
+          <button class="btn-cy btn-cy-sm" style="--c:#25d366;" onclick="abrirPreviewWa()">
+            <i class="fas fa-eye me-1"></i> Preview da Mensagem
+          </button>
+        </div>
+
+        <!-- Preview inline -->
+        <div id="waPreviewInline" style="display:none;margin-bottom:20px;border:1px solid #2d6a4f;border-radius:10px;padding:16px;background:#0a1a0e;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#25d366;margin:0;">
+              <i class="fas fa-eye me-1"></i>Preview da Mensagem
+            </p>
+            <button onclick="fecharPreviewWa()" style="background:none;border:none;color:#7d8590;cursor:pointer;font-size:.8rem;padding:0;">
+              <i class="fas fa-times"></i> Fechar
+            </button>
+          </div>
+
+          <!-- Fatura de referência -->
+          <div id="waPreviewFaturaInfo" style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.82rem;display:none;">
+            <span style="color:#7d8590;">Fatura de referência:</span>
+            <span id="waPreviewFaturaDesc" style="color:#e6edf3;margin-left:8px;font-weight:600;"></span>
+          </div>
+
+          <!-- Bolha WhatsApp -->
+          <div style="background:#111;border-radius:10px;padding:14px;margin-bottom:14px;">
+            <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#7d8590;margin-bottom:10px;">
+              <i class="fas fa-mobile-alt me-1"></i>Como ficará no WhatsApp
+            </p>
+            <div id="waPreviewLoading" style="text-align:center;padding:1.5rem;color:#7d8590;">
+              <i class="fas fa-spinner fa-spin me-2"></i>Gerando preview...
+            </div>
+            <div id="waPreviewBox" style="display:none;background:#1a2a1a;border-radius:12px;border-bottom-left-radius:2px;padding:14px 16px;max-width:420px;font-size:.88rem;line-height:1.6;color:#e6edf3;white-space:pre-wrap;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+          </div>
+
+          <!-- Envio de teste -->
+          <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:10px;">
+            <i class="fas fa-paper-plane me-1"></i>Enviar Teste
+          </p>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">Número para teste (com DDD)</label>
+              <input type="tel" id="waNumeroTeste" class="form-control form-control-sm"
+                     placeholder="(99) 99999-9999"
+                     style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+            </div>
+            <button class="btn-cy btn-cy-sm" style="--c:#25d366;" onclick="enviarTestWhatsApp()">
+              <i class="fab fa-whatsapp me-1"></i> Enviar Agora
+            </button>
+          </div>
+          <div id="waTesteResultado" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:.83rem;"></div>
+        </div>
+
+        <!-- Regras de envio -->
+        <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:10px;margin-top:4px;">
+          <i class="fas fa-clock me-1"></i>Regras de Envio
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div>
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">Avisar X dias antes do vencimento</label>
+            <input type="number" id="waDiasAntes" min="1" max="30" value="3"
+                   class="form-control form-control-sm" style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">Hora de envio (HH:MM)</label>
+            <input type="time" id="waHoraEnvio" value="09:00"
+                   class="form-control form-control-sm" style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:#7d8590;margin-bottom:6px;">
+          Além do aviso, o sistema re-envia cobrança nos dias: 0 (vencimento), 1, 7 e 15 dias de atraso.
+        </p>
+
+        <!-- Templates de mensagem -->
+        <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:10px;margin-top:16px;">
+          <i class="fas fa-comment-alt me-1"></i>Templates de Mensagem
+        </p>
+        <p style="font-size:.75rem;color:#7d8590;margin-bottom:8px;">
+          Variáveis disponíveis: <code>{nome}</code> <code>{numero}</code> <code>{valor}</code> <code>{vencimento}</code> <code>{dias}</code> <code>{atraso}</code> <code>{empresa}</code><br>
+          Deixe em branco para usar o padrão do sistema.
+        </p>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:.78rem;color:#3fb950;display:block;margin-bottom:4px;">Mensagem de aviso (antes do vencimento)</label>
+          <textarea id="waMsgAviso" rows="4" class="form-control form-control-sm"
+                    placeholder="Deixe vazio para usar o padrão"
+                    style="background:#0d1117;border-color:#30363d;color:#e6edf3;font-size:.82rem;"></textarea>
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:#f85149;display:block;margin-bottom:4px;">Mensagem de cobrança (após vencimento)</label>
+          <textarea id="waMsgVencido" rows="4" class="form-control form-control-sm"
+                    placeholder="Deixe vazio para usar o padrão"
+                    style="background:#0d1117;border-color:#30363d;color:#e6edf3;font-size:.82rem;"></textarea>
+        </div>
+
+        <!-- PIX -->
+        <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:10px;margin-top:20px;">
+          <i class="fas fa-qrcode me-1"></i>Chave PIX para Pagamento
+        </p>
+        <p style="font-size:.75rem;color:#7d8590;margin-bottom:10px;">
+          Se preenchida, a chave PIX será incluída automaticamente em todas as mensagens de cobrança.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 160px;gap:12px;margin-bottom:4px;">
+          <div>
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">Chave PIX</label>
+            <input type="text" id="waPixChave" class="form-control form-control-sm"
+                   placeholder="Ex: cnpj, e-mail, celular ou chave aleatória"
+                   style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:#7d8590;display:block;margin-bottom:4px;">Tipo</label>
+            <select id="waPixTipo" class="form-select form-select-sm"
+                    style="background:#0d1117;border-color:#30363d;color:#e6edf3;">
+              <option value="">Selecione</option>
+              <option value="CNPJ">CNPJ</option>
+              <option value="CPF">CPF</option>
+              <option value="E-mail">E-mail</option>
+              <option value="Telefone">Telefone</option>
+              <option value="Aleatória">Aleatória</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn-cy btn-cy-sm" style="--c:#25d366;" onclick="salvarConfigWhatsApp()">
+          <i class="fas fa-save me-1"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── WhatsApp Preview ─────────────────────────────────────────────────────────
+
+let _waPreviewFaturaId = null;
+
+function _renderMarkdown(txt) {
+  // Converte *bold* e quebras de linha para HTML simples
+  return txt
+    .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function fecharPreviewWa() {
+  document.getElementById('waPreviewInline').style.display = 'none';
+}
+
+function abrirPreviewWa(faturaId) {
+  _waPreviewFaturaId = faturaId || null;
+  const inline = document.getElementById('waPreviewInline');
+  inline.style.display = 'block';
+  document.getElementById('waPreviewLoading').style.display = 'block';
+  document.getElementById('waPreviewBox').style.display = 'none';
+  document.getElementById('waPreviewFaturaInfo').style.display = 'none';
+  document.getElementById('waTesteResultado').style.display = 'none';
+  document.getElementById('waNumeroTeste').value = '';
+  setTimeout(() => inline.scrollIntoView({behavior: 'smooth', block: 'nearest'}), 50);
+
+  fetch('/financeiro/api/whatsapp/preview/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({fatura_id: _waPreviewFaturaId}),
+  })
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('waPreviewLoading').style.display = 'none';
+    if (!d.ok) {
+      document.getElementById('waPreviewBox').style.display = 'block';
+      document.getElementById('waPreviewBox').innerHTML = `<span style="color:#f85149;">${d.erro}</span>`;
+      return;
+    }
+    _waPreviewFaturaId = d.fatura.id;
+    document.getElementById('waPreviewFaturaDesc').textContent =
+      `#${d.fatura.numero} — ${d.fatura.cliente} — R$ ${d.fatura.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})} — Vence ${d.fatura.vencimento}`;
+    document.getElementById('waPreviewFaturaInfo').style.display = 'block';
+    document.getElementById('waPreviewBox').style.display = 'block';
+    document.getElementById('waPreviewBox').innerHTML = _renderMarkdown(d.preview);
+  })
+  .catch(() => {
+    document.getElementById('waPreviewLoading').style.display = 'none';
+    document.getElementById('waPreviewBox').style.display = 'block';
+    document.getElementById('waPreviewBox').innerHTML = '<span style="color:#f85149;">Erro ao carregar preview.</span>';
+  });
+}
+
+function enviarTestWhatsApp() {
+  const numero = document.getElementById('waNumeroTeste').value.trim();
+  if (!numero) { alert('Informe o número de teste.'); return; }
+  const res = document.getElementById('waTesteResultado');
+  res.style.display = 'block';
+  res.style.background = '#161b22';
+  res.style.border = '1px solid #30363d';
+  res.style.color = '#8b949e';
+  res.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+
+  fetch('/financeiro/api/whatsapp/preview/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({fatura_id: _waPreviewFaturaId, numero_teste: numero}),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.envio_ok) {
+      res.style.background = 'rgba(63,185,80,.1)';
+      res.style.border = '1px solid rgba(63,185,80,.35)';
+      res.style.color = '#3fb950';
+      res.innerHTML = '✅ ' + d.envio_ok;
+    } else {
+      res.style.background = 'rgba(248,81,73,.1)';
+      res.style.border = '1px solid rgba(248,81,73,.35)';
+      res.style.color = '#f85149';
+      res.innerHTML = '❌ ' + (d.envio_erro || 'Erro ao enviar.');
+    }
+  });
+}
+
+// ── WhatsApp Config ──────────────────────────────────────────────────────────
+
+function abrirConfigWhatsApp() {
+  fetch('/financeiro/api/whatsapp/config/')
+    .then(r => r.json())
+    .then(d => {
+      const c = d.config || {};
+      document.getElementById('waAtivo').checked      = !!c.wa_ativo;
+      document.getElementById('waUrl').value          = c.wa_evolution_url || '';
+      document.getElementById('waApiKey').value       = c.wa_api_key || '';
+      document.getElementById('waInstance').value     = c.wa_instance || '';
+      document.getElementById('waDiasAntes').value    = c.wa_dias_antes ?? 3;
+      document.getElementById('waHoraEnvio').value    = c.wa_hora_envio || '09:00';
+      document.getElementById('waMsgAviso').value     = c.wa_msg_aviso || '';
+      document.getElementById('waMsgVencido').value   = c.wa_msg_vencido || '';
+      document.getElementById('waPixChave').value     = c.wa_pix_chave || '';
+      document.getElementById('waPixTipo').value      = c.wa_pix_tipo || '';
+      document.getElementById('waStatusBar').style.display = 'none';
+      new bootstrap.Modal(document.getElementById('modalConfigWhatsApp')).show();
+    });
+}
+
+function testarWhatsApp() {
+  const bar = document.getElementById('waStatusBar');
+  bar.style.display = 'block';
+  bar.style.background = '#161b22';
+  bar.style.border = '1px solid #30363d';
+  bar.style.color = '#8b949e';
+  bar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Testando conexão...';
+
+  fetch('/financeiro/api/whatsapp/testar/', {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}})
+    .then(r => r.json())
+    .then(d => {
+      bar.style.background = d.ok ? 'rgba(63,185,80,.1)' : 'rgba(248,81,73,.1)';
+      bar.style.border     = d.ok ? '1px solid rgba(63,185,80,.35)' : '1px solid rgba(248,81,73,.35)';
+      bar.style.color      = d.ok ? '#3fb950' : '#f85149';
+      bar.innerHTML = (d.ok ? '✅ ' : '❌ ') + (d.msg || 'Sem resposta');
+    })
+    .catch(() => {
+      bar.style.color = '#f85149';
+      bar.innerHTML = '❌ Erro de rede.';
+    });
+}
+
+function salvarConfigWhatsApp() {
+  const payload = {
+    wa_ativo:         document.getElementById('waAtivo').checked,
+    wa_evolution_url: document.getElementById('waUrl').value.trim(),
+    wa_api_key:       document.getElementById('waApiKey').value.trim(),
+    wa_instance:      document.getElementById('waInstance').value.trim(),
+    wa_dias_antes:    parseInt(document.getElementById('waDiasAntes').value) || 3,
+    wa_hora_envio:    document.getElementById('waHoraEnvio').value || '09:00',
+    wa_msg_aviso:     document.getElementById('waMsgAviso').value.trim(),
+    wa_msg_vencido:   document.getElementById('waMsgVencido').value.trim(),
+    wa_pix_chave:     document.getElementById('waPixChave').value.trim(),
+    wa_pix_tipo:      document.getElementById('waPixTipo').value,
+  };
+  fetch('/financeiro/api/whatsapp/salvar/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalConfigWhatsApp'))?.hide();
+      showAlert('✅ Configuração WhatsApp salva!', 'success');
+    } else {
+      showAlert('❌ ' + (d.erro || 'Erro ao salvar.'), 'danger');
+    }
+  });
+}
+
+function enviarCobrancaManual(faturaId) {
+  if (!confirm('Enviar cobrança via WhatsApp para esta fatura?')) return;
+  fetch('/financeiro/api/whatsapp/enviar-cobranca/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({fatura_id: faturaId}),
+  })
+  .then(r => r.json())
+  .then(d => {
+    showAlert(d.ok ? '✅ Mensagem enviada!' : '❌ ' + (d.erro || 'Erro.'), d.ok ? 'success' : 'danger');
+  });
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+function showAlert(msg, type) {
+  const a = document.createElement('div');
+  a.className = `alert alert-${type} position-fixed`;
+  a.style = 'top:20px;right:20px;z-index:9999;min-width:280px;';
+  a.textContent = msg;
+  document.body.appendChild(a);
+  setTimeout(() => a.remove(), 4000);
+}
 </script>
 
 {% endblock %}

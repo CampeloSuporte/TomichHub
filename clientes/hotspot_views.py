@@ -8,6 +8,7 @@ Fluxo:
   4. Usuários do hotspot veem o portal, preenchem dados → leads capturados via pixel
 """
 import base64
+import html as _html
 import json
 import logging
 import os
@@ -76,21 +77,32 @@ def _portal_url(request, hotspot):
 
 def _gerar_login_html(hotspot, portal_url):
     """
-    Gera um login.html mínimo para o MikroTik que apenas redireciona
-    o usuário para o portal hospedado no CRM.
-    Usa HTTP (não HTTPS) para que o walled-garden do hotspot permita o acesso
-    antes da autenticação — nginx serve o portal via HTTP sem redirect para HTTPS.
+    Gera um login.html mínimo para o MikroTik que redireciona o usuário para
+    o portal hospedado no CRM. Usa HTTP para que o walled-garden permita o
+    acesso antes da autenticação.
+
+    Estratégia de redirect em camadas (da mais compatível para a mais rica):
+      1. <meta http-equiv="refresh"> — funciona sem JS (captive portal browsers
+         do iOS/Android às vezes bloqueiam scripts na janela de detecção)
+      2. window.location.replace() — JS padrão, passa todos os parâmetros
+         URL-encoded para que o portal saiba o $(link-login) do MikroTik
+      3. <a> visível como último recurso
     """
-    # Força HTTP: clientes do hotspot não têm HTTPS no walled-garden antes de autenticar
-    http_portal = portal_url.replace('https://', 'http://', 1)
-    # MikroTik substitui $(mac), $(ip), $(link-login), $(link-orig) antes de servir
-    # Usa $(link-login) — inclui dst= para redirecionar após autenticação
+    # Força HTTP: clientes não têm HTTPS no walled-garden antes de autenticar
+    http_portal = portal_url.replace('https://', 'http://', 1).rstrip('/')
+
+    # Para o meta-refresh usamos o portal sem parâmetros — evita problemas com
+    # caracteres especiais em $(link-login) que é uma URL completa. O portal
+    # funciona sem esses params; o hotspot_portal_conectar usa h.gateway como
+    # fallback quando link= está vazio.
     return (
         '<!DOCTYPE html>\n'
         '<html>\n'
-        '<head><meta charset="UTF-8">\n'
+        '<head>\n'
+        '<meta charset="UTF-8">\n'
+        '<meta http-equiv="refresh" content="0;url=' + http_portal + '/">\n'
         '<script>\n'
-        'var p="' + http_portal + '";\n'
+        'var p="' + http_portal + '/";\n'
         'var q="?link="+encodeURIComponent("$(link-login)")\n'
         '     +"&mac="+encodeURIComponent("$(mac)")\n'
         '     +"&ip="+encodeURIComponent("$(ip)")\n'
@@ -98,7 +110,10 @@ def _gerar_login_html(hotspot, portal_url):
         'window.location.replace(p+q);\n'
         '</script>\n'
         '</head>\n'
-        '<body>Redirecionando para o portal...</body>\n'
+        '<body>\n'
+        '<p>Redirecionando para o portal...</p>\n'
+        '<p><a href="' + http_portal + '/">Clique aqui se não for redirecionado automaticamente</a></p>\n'
+        '</body>\n'
         '</html>\n'
     )
 
@@ -286,15 +301,15 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         # ── 3b. DHCP Lease Script (controle de banda via Queue Simple) ────────
         if hotspot.dhcp_controle_banda:
             limit = hotspot.dhcp_banda_limit or '10M/10M'
-            # RouterOS string: $ → \$  " → \"  newline → \n
+            # Script simples: cria/remove queue por IP do lease
+            # \" dentro do valor RouterOS → aspas literais no script
             lease_script = (
-                ':local queueName (\\"DHCP-\\" . \\$leaseActMAC);\\n'
-                ':if (\\$leaseBound = \\"1\\") do={\\n'
-                '    /queue simple remove [find name=\\$queueName];\\n'
-                f'    /queue simple add name=\\$queueName target=(\\$leaseActIP . \\"/32\\") max-limit={limit} '
-                'comment=[/ip dhcp-server lease get [find where active-mac-address=\\$leaseActMAC && active-address=\\$leaseActIP] host-name];\\n'
-                '} else={\\n'
-                '    /queue simple remove [find name=\\$queueName];\\n'
+                ':local t ($leaseActIP.\\"/32\\"); '
+                ':if ($leaseBound = \\"1\\") do={'
+                '/queue simple remove [find where target=$t]; '
+                f'/queue simple add target=$t max-limit={limit} comment=$leaseActMAC'
+                '} else={'
+                '/queue simple remove [find where target=$t]'
                 '}'
             )
             ls_out, ls_err, ls_rc = _mt_exec(
@@ -387,87 +402,76 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         # ── 8. Walled Garden ──────────────────────────────────────────────────
         crm_host = urlparse(pixel_url).hostname or pixel_url.split('/')[2].split(':')[0]
 
-        # Verifica regra específica para ESTE servidor (regra de outro servidor não protege)
-        wg_count = _mt_count(client,
-            f'/ip hotspot walled-garden print count-only '
-            f'where dst-host="{crm_host}" server="{server_name}"')
-        if wg_count == 0:
-            wg_out, wg_err, wg_rc = _mt_exec(client,
-                f'/ip hotspot walled-garden add dst-host="{crm_host}" server="{server_name}"')
-            ok = _mt_output_ok(wg_out, wg_err, wg_rc)
-            log.append(f'{"✅" if ok else "⚠️"} Walled Garden HTTP adicionado ({crm_host}): {wg_out or wg_err or "ok"}')
-        else:
-            log.append(f'✅ Walled Garden HTTP já configurado ({crm_host} → {server_name})')
-
-        # Regra adicional sem server (cobre qualquer servidor hotspot no roteador)
-        wg_global = _mt_count(client,
-            f'/ip hotspot walled-garden print count-only '
-            f'where dst-host="{crm_host}" server=""')
-        if wg_global == 0:
-            _mt_exec(client,
-                f'/ip hotspot walled-garden add dst-host="{crm_host}"')
+        # Remove TODAS as entradas existentes para este host antes de re-adicionar
+        # (evita duplicatas causadas por múltiplos applies ou referências por ID *N)
+        _mt_exec(client,
+            f'/ip hotspot walled-garden remove [find where dst-host="{crm_host}"]')
+        # Adiciona uma entrada para o servidor específico e uma global (sem server)
+        _mt_exec(client,
+            f'/ip hotspot walled-garden add dst-host="{crm_host}" server="{server_name}"')
+        _mt_exec(client,
+            f'/ip hotspot walled-garden add dst-host="{crm_host}"')
+        log.append(f'✅ Walled Garden HTTP configurado ({crm_host})')
 
         import socket as _sock
         try:
             crm_ip = _sock.gethostbyname(crm_host)
+            # RouterOS salva sem /32 → checar sem sufixo para evitar duplicatas
             wg_https = _mt_count(client,
-                f'/ip hotspot walled-garden ip print count-only where dst-address="{crm_ip}/32"')
+                f'/ip hotspot walled-garden ip print count-only where dst-address="{crm_ip}"')
             if wg_https == 0:
                 _mt_exec(client,
                     f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
                     f'dst-port=443 protocol=tcp action=accept')
                 log.append(f'✅ Walled Garden HTTPS liberado ({crm_ip}:443)')
+            elif wg_https > 1:
+                # Limpa duplicatas de runs anteriores
+                _mt_exec(client,
+                    f'/ip hotspot walled-garden ip remove [find where dst-address="{crm_ip}"]')
+                _mt_exec(client,
+                    f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
+                    f'dst-port=443 protocol=tcp action=accept')
+                log.append(f'✅ Walled Garden HTTPS deduplicado ({crm_ip}:443)')
             else:
                 log.append(f'✅ Walled Garden HTTPS já configurado ({crm_ip}:443)')
         except Exception as _e:
             log.append(f'⚠️ Walled Garden HTTPS: não resolveu IP de {crm_host} — {_e}')
 
         # ── 9. MikroTik baixa login.html do CRM via /tool fetch ──────────────
-        # Constrói URL do endpoint público de login.html usando a mesma base do portal
-        _parsed   = pixel_url.split('/')
-        _base_url = '/'.join(_parsed[:3])  # ex: https://crm.tomich.com.br
-        login_html_url = f'{_base_url}/clientes/hotspot/login-html/{hotspot.uuid}/'
+        # Usa HTTP — nginx serve diretamente /clientes/hotspot/login-html/ sem HTTPS
+        # evitando problemas de CA bundle antigo no RouterOS
+        _crm_host = urlparse(pixel_url).hostname
+        login_html_url = f'http://{_crm_host}/clientes/hotspot/login-html/{hotspot.uuid}/'
 
         # Garante que html-directory aponte para o diretório padrão do hotspot
         _mt_exec(client,
             f'/ip hotspot profile set [find name="{profile_name}"] html-directory={dir_name}')
 
-        # Remove arquivo anterior (se existir) para evitar conflito de cache
-        rm_out, rm_err, _ = _mt_exec(client,
-            f'/file remove [find name="flash/{dir_name}/login.html"]')
-        log.append('   Arquivo anterior removido (se existia)')
-
-        # MikroTik faz o download diretamente — contorna problemas de path do SFTP
+        # Faz download direto — sobrescreve o arquivo existente automaticamente
         fetch_out, fetch_err, fetch_rc = _mt_exec(client,
             f'/tool fetch url="{login_html_url}" '
-            f'dst-path="flash/{dir_name}/login.html"',
+            f'dst-path="flash/{dir_name}/login.html" mode=http',
             timeout=30)
         fetch_combined = (fetch_out + fetch_err).strip()
-        if fetch_rc != 0 or any(k in fetch_combined.lower() for k in ('error', 'failure', 'failed')):
-            log.append(f'⚠️ /tool fetch retornou erro (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
+        fetch_ok = fetch_rc == 0 and not any(
+            k in fetch_combined.lower() for k in ('error', 'failure', 'failed', 'timed out'))
+        if fetch_ok:
+            log.append(f'✅ login.html baixado: {login_html_url}')
         else:
-            log.append(f'✅ login.html baixado pelo MikroTik de {login_html_url}')
+            log.append(f'⚠️ /tool fetch erro (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
 
-        # Aguarda RouterOS indexar o arquivo antes de verificar (timing)
+        # Aguarda RouterOS indexar o arquivo
         import time as _time
         _time.sleep(2)
 
-        # Confirmar arquivo no flash — usa match parcial para evitar problema de truncagem
+        # Confirma arquivo no flash
         fcheck, _, _ = _mt_exec(client,
             f'/file print where name~"flash/{dir_name}/login"')
-        fcheck_s = fcheck.strip()
-        data_lines = [l for l in fcheck_s.splitlines() if 'login' in l and '.html' in l]
+        data_lines = [l for l in fcheck.strip().splitlines() if 'login' in l and '.html' in l]
         if data_lines:
-            log.append(f'   Arquivo confirmado no flash: {data_lines[-1].strip()}')
+            log.append(f'   Arquivo confirmado: {data_lines[-1].strip()}')
         else:
-            log.append(f'   ⚠️ Arquivo não encontrado via name~ — log fetch: {fetch_combined or "(vazio)"}')
-
-        # Verificar html-directory do perfil
-        prof_dir, _, _ = _mt_exec(client,
-            f'/ip hotspot profile get [find name="{profile_name}"] html-directory')
-        hd = prof_dir.strip()
-        if hd in ('', 'hotspot'):
-            log.append(f'   html-directory = "{hd}" (usa flash:/hotspot/ — correto)')
+            log.append(f'   ⚠️ login.html não encontrado no flash após fetch')
 
         # Reiniciar hotspot para carregar novo login.html
         _mt_exec(client, f'/ip hotspot set [find name="{server_name}"] disabled=yes')
@@ -759,7 +763,7 @@ def hotspot_leads(request, cliente_id, hotspot_id):
 
 def _portal_page_html(hotspot, link, mac, ip, orig, request):
     """Gera a página do portal de captação de lead hospedada no CRM."""
-    scheme = 'http'  # sempre HTTP — clientes do hotspot não têm HTTPS antes de autenticar
+    scheme = 'https' if request.is_secure() else 'http'
     host   = request.get_host()
     submit_url = f'{scheme}://{host}/clientes/hotspot/portal/{hotspot.uuid}/conectar/'
 
@@ -767,11 +771,10 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
     titulo    = hotspot.portal_titulo or 'WiFi Grátis'
     subtitulo = hotspot.portal_subtitulo or 'Preencha seus dados para se conectar'
 
-    # Logo da empresa
+    # Logo — usa o mesmo scheme da requisição
     logo_url = f'{scheme}://{host}{hotspot.logo.url}' if hotspot.logo else None
 
-    # Cor derivada levemente mais escura para gradiente
-    cor_dark = cor  # usada no gradiente do botão
+    cor_dark = cor
 
     # Banners
     slides = []
@@ -781,6 +784,13 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
         slides.append(f'<div class="slide{active}" style="background-image:url(\'{img_url}\')"></div>')
     has_slides = bool(slides)
     slides_str = '\n'.join(slides) if slides else ''
+
+    # Valores dos campos ocultos devem ser HTML-escaped: URLs contêm & que
+    # seria interpretado como início de entidade HTML e quebraria o value=""
+    link_h = _html.escape(link, quote=True)
+    mac_h  = _html.escape(mac,  quote=True)
+    ip_h   = _html.escape(ip,   quote=True)
+    orig_h = _html.escape(orig, quote=True)
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -967,10 +977,10 @@ body{{
   <!-- Formulário -->
   <div class="form-area">
     <form id="hf" method="post" action="{submit_url}" onsubmit="return onSubmit()">
-      <input type="hidden" name="link"  value="{link}">
-      <input type="hidden" name="mac"   value="{mac}">
-      <input type="hidden" name="ip"    value="{ip}">
-      <input type="hidden" name="orig"  value="{orig}">
+      <input type="hidden" name="link"  value="{link_h}">
+      <input type="hidden" name="mac"   value="{mac_h}">
+      <input type="hidden" name="ip"    value="{ip_h}">
+      <input type="hidden" name="orig"  value="{orig_h}">
 
       <div class="field">
         <span class="field-icon">&#x1F464;</span>
@@ -1110,6 +1120,7 @@ def hotspot_portal_conectar(request, hotspot_uuid):
         return HttpResponse('Hotspot não encontrado.', status=404)
 
     link  = request.POST.get('link', '').strip()
+    orig  = request.POST.get('orig', '').strip()
     mac   = request.POST.get('mac', '').strip()
     ip_c  = request.POST.get('ip', '').strip()
     nome  = request.POST.get('nome', '').strip()
@@ -1135,8 +1146,12 @@ def hotspot_portal_conectar(request, hotspot_uuid):
             logger.debug('hotspot_portal_conectar lead error: %s', exc)
 
     # Página que auto-submete ao MikroTik para autenticar
-    # link = $(link-login) → já inclui dst= para redirect pós-auth
-    safe_link  = link.replace('"', '%22').replace("'", '%27')
+    # link = $(link-login) — inclui dst= para redirect pós-auth.
+    # Se vazio (captive portal browser não executou JS no login.html e o
+    # meta-refresh redirecionou sem parâmetros), cai para a URL padrão do
+    # gateway, que é sempre acessível pelo cliente hotspot.
+    raw_link = link if link else f'http://{h.gateway}/login'
+    safe_link  = raw_link.replace('"', '%22').replace("'", '%27')
     safe_orig  = orig.replace('"', '%22').replace("'", '%27') if orig else ''
     guest_user = h.guest_usuario.replace('"', '')
     guest_pass = h.guest_senha.replace('"', '')

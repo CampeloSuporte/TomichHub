@@ -55,13 +55,11 @@
                         <li><a class="dropdown-item" href="{% url 'wiki:dashboard' %}">
                             <i class="fas fa-book me-2" style="color:#8b949e"></i>Wiki
                         </a></li>
-                        {% if request.user.is_staff %}
-                            {% if request.user.id == 1 or request.user.id == 2 %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'dashboard_financeiro' %}">
-                                <i class="fas fa-chart-line me-2" style="color:#00c864"></i>Financeiro
-                            </a></li>
-                            {% endif %}
+                        {% if pode_ver_financeiro %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'dashboard_financeiro' %}">
+                            <i class="fas fa-chart-line me-2" style="color:#00c864"></i>Financeiro
+                        </a></li>
                         {% endif %}
                         {% if request.user.is_superuser %}
                         <li><hr class="dropdown-divider"></li>
@@ -237,12 +235,8 @@
     </script>
 
     <script>
-    // IDs DOS USUÁRIOS COM ACESSO AO FINANCEIRO
-    const USUARIOS_FINANCEIRO = [1, 2];
-    const USER_ID = {{ request.user.id }};
-    
     window.pode_acessar_financeiro = function() {
-        return {{ request.user.is_staff|lower }} && USUARIOS_FINANCEIRO.includes(USER_ID);
+        return {{ pode_ver_financeiro|lower }};
     };
     </script>
 

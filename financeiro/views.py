@@ -22,7 +22,7 @@ from django.core.files.base import ContentFile
 import datetime as dt
 
 from clientes.models import Cliente, BlocoIP
-from .models import Consultoria, AluguelIPv4, Fatura, ConfiguracaoFinanceira, Pagamento, Despesa, ContratoAluguel
+from .models import Consultoria, AluguelIPv4, Fatura, ConfiguracaoFinanceira, Pagamento, Despesa, ContratoAluguel, CartaLOA
 from .decorators import acesso_financeiro_restrito
 from django.db import transaction
 from django.db.models.functions import Substr, Cast
@@ -35,6 +35,12 @@ from django.db.models.functions import Substr, Cast
 @acesso_financeiro_restrito
 def listar_despesas_page(request):
     return render(request, 'financeiro/despesas.html')
+
+
+@login_required
+@acesso_financeiro_restrito
+def painel_blocos_ip(request):
+    return render(request, 'financeiro/blocos_ip.html')
 
 
 @login_required
@@ -957,8 +963,14 @@ def api_listar_alugueis(request):
                                 </a>
                                 <button class="btn btn-sm btn-outline-info"
                                     onclick="abrirContratosAluguel({a.id}, '{a.bloco_descricao}')"
-                                    title="Assinatura Digital">
-                                    <i class="fas fa-signature me-1"></i>Assinar
+                                    title="Assinatura Digital do Contrato">
+                                    <i class="fas fa-signature me-1"></i>Contrato
+                                </button>
+                                <button class="btn btn-sm btn-outline-purple"
+                                    style="border-color:#bc8cff;color:#bc8cff;"
+                                    onclick="abrirLoaAluguel({a.id}, '{a.bloco_descricao}')"
+                                    title="Carta de Autorização (LOA)">
+                                    <i class="fas fa-file-signature me-1"></i>LOA
                                 </button>
                                 <button class="btn btn-sm btn-outline-warning"
                                     onclick="abrirEditarAluguel({a.id}, '{a.bloco_descricao}', '{v6_esc}', {float(a.valor_mensal)}, {a.quantidade_ips}, '{data_inicio_iso}')"
@@ -1258,9 +1270,38 @@ def api_editar_venda(request, venda_id):
         from .models import VendaEquipamento
         venda = get_object_or_404(VendaEquipamento, id=venda_id)
         venda.descricao = request.POST.get('descricao', venda.descricao)
+
+        data_inicio_str = request.POST.get('data_inicio', '').strip()
+        faturas_atualizadas = 0
+        if data_inicio_str:
+            nova_data = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+            if nova_data != venda.data_inicio:
+                dia_antigo = venda.data_inicio.day
+                venda.data_inicio = nova_data
+                # Atualiza faturas em aberto do cliente deste tipo que tenham o dia antigo
+                faturas = Fatura.objects.filter(
+                    cliente=venda.cliente,
+                    tipo='VENDA_EQUIPAMENTO',
+                    status__in=['ABERTA', 'RASCUNHO'],
+                ).order_by('data_vencimento')
+                for fatura in faturas:
+                    if fatura.data_vencimento.day != dia_antigo:
+                        continue
+                    try:
+                        novo_venc = fatura.data_vencimento.replace(day=nova_data.day)
+                        if novo_venc != fatura.data_vencimento:
+                            fatura.data_vencimento = novo_venc
+                            fatura.save(update_fields=['data_vencimento'])
+                            faturas_atualizadas += 1
+                    except ValueError:
+                        pass
+
         venda.save()
 
-        return JsonResponse({'sucesso': True, 'mensagem': 'Venda atualizada com sucesso!'})
+        msg = 'Venda atualizada com sucesso!'
+        if faturas_atualizadas:
+            msg += f' {faturas_atualizadas} fatura(s) tiveram o vencimento ajustado.'
+        return JsonResponse({'sucesso': True, 'mensagem': msg})
 
     except Exception as e:
         return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
@@ -1327,7 +1368,7 @@ def api_listar_vendas_equipamentos(request):
                                 <div><small class="text-muted">valor total</small></div>
                             </div>
                             <div class="col-md-2 text-end">
-                                <button class="btn btn-sm btn-outline-warning me-1" onclick="abrirEditarVenda({v.id}, '{v.descricao}')" title="Editar">
+                                <button class="btn btn-sm btn-outline-warning me-1" onclick="abrirEditarVenda({v.id}, '{v.descricao}', '{v.data_inicio.strftime('%Y-%m-%d')}')" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="confirmarDeletarVenda({v.id}, '{v.descricao}')" title="Deletar">
@@ -2954,6 +2995,100 @@ def assinatura_locador(request):
 
 
 @login_required
+def api_painel_blocos_ip(request):
+    """Retorna todos os aluguéis de IP (todos os status) com dados de faturas por bloco."""
+    status_filtro = request.GET.get('status', '')
+    busca = request.GET.get('busca', '').strip()
+
+    qs = (
+        AluguelIPv4.objects
+        .select_related('cliente')
+        .order_by('cliente__nome_empresa', 'bloco_descricao')
+    )
+    if status_filtro:
+        qs = qs.filter(status=status_filtro)
+    if busca:
+        qs = qs.filter(
+            Q(cliente__nome_empresa__icontains=busca) |
+            Q(bloco_descricao__icontains=busca) |
+            Q(bloco_v6__icontains=busca) |
+            Q(cliente__cnpj__icontains=busca)
+        )
+
+    hoje = date.today()
+    aluguel_ids = list(qs.values_list('id', flat=True))
+
+    # Faturas abertas indexadas por aluguel_id
+    faturas_map = {}
+    if aluguel_ids:
+        faturas_abertas = (
+            Fatura.objects
+            .filter(alugueis_ipv4__id__in=aluguel_ids, status__in=['ABERTA', 'RASCUNHO'])
+            .prefetch_related('alugueis_ipv4')
+            .order_by('data_vencimento')
+        )
+        for f in faturas_abertas:
+            for aid in f.alugueis_ipv4.values_list('id', flat=True):
+                if aid not in faturas_map:
+                    faturas_map[aid] = []
+                faturas_map[aid].append({
+                    'id':         f.id,
+                    'numero':     f.numero_fatura,
+                    'valor':      float(f.valor_total),
+                    'vencimento': f.data_vencimento.strftime('%d/%m/%Y'),
+                    'vencida':    f.data_vencimento < hoje,
+                    'status':     f.status,
+                })
+
+    alugueis_list = []
+    clientes_ativos = set()
+    total_mensal = 0.0
+    counts = {'ATIVO': 0, 'PAUSADO': 0, 'CANCELADO': 0}
+    total_fat_abertas = 0
+    total_fat_valor = 0.0
+
+    for a in qs:
+        faturas = faturas_map.get(a.id, [])
+        total_fat_abertas += len(faturas)
+        total_fat_valor += sum(f['valor'] for f in faturas)
+        counts[a.status] = counts.get(a.status, 0) + 1
+        if a.status == 'ATIVO':
+            clientes_ativos.add(a.cliente_id)
+            total_mensal += float(a.valor_mensal)
+
+        alugueis_list.append({
+            'id':             a.id,
+            'cliente_id':     a.cliente_id,
+            'cliente_nome':   a.cliente.nome_empresa,
+            'cliente_cnpj':   a.cliente.cnpj,
+            'cliente_email':  a.cliente.email,
+            'bloco':          a.bloco_descricao,
+            'bloco_v6':       a.bloco_v6 or '',
+            'qtd_ips':        a.quantidade_ips,
+            'valor_mensal':   float(a.valor_mensal),
+            'data_inicio':    a.data_inicio.strftime('%d/%m/%Y'),
+            'status':         a.status,
+            'faturas':        faturas,
+            'tem_vencida':    any(f['vencida'] for f in faturas),
+        })
+
+    return JsonResponse({
+        'ok': True,
+        'alugueis': alugueis_list,
+        'resumo': {
+            'clientes_ativos':   len(clientes_ativos),
+            'blocos_ativos':     counts.get('ATIVO', 0),
+            'blocos_pausados':   counts.get('PAUSADO', 0),
+            'blocos_cancelados': counts.get('CANCELADO', 0),
+            'receita_mensal':    total_mensal,
+            'fat_abertas_qtd':   total_fat_abertas,
+            'fat_abertas_valor': total_fat_valor,
+        }
+    })
+
+
+@login_required
+@acesso_financeiro_restrito
 def api_clientes_aluguel_ativo(request):
     """Clientes com aluguel IPv4 ativo e suas faturas abertas."""
     alugueis = (
@@ -3006,3 +3141,621 @@ def api_clientes_aluguel_ativo(request):
 
     resultado = sorted(clientes_map.values(), key=lambda x: x['nome'])
     return JsonResponse({'ok': True, 'clientes': resultado})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CARTA LOA — Letter of Authorization para anúncio de bloco IP
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _whois_lookup(prefixo_v4: str) -> dict:
+    """
+    Consulta WHOIS/RDAP do prefixo e retorna dict com:
+      - asn:          'AS268024'
+      - responsavel:  nome do contato técnico/administrativo/registrante
+    """
+    try:
+        from ipwhois import IPWhois
+        ip_base = prefixo_v4.split('/')[0]
+        result  = IPWhois(ip_base).lookup_rdap(depth=1)
+
+        asn_raw = result.get('asn', '')
+        asn     = f'AS{asn_raw}' if asn_raw and not str(asn_raw).upper().startswith('AS') else str(asn_raw)
+
+        # Coleta nomes por papel
+        names_by_role: dict[str, str] = {}
+        for obj_data in result.get('objects', {}).values():
+            contact = obj_data.get('contact') or {}
+            name    = (contact.get('name') or '').strip()
+            if not name:
+                continue
+            for role in (obj_data.get('roles') or []):
+                if role not in names_by_role:
+                    names_by_role[role] = name
+
+        # Proprietária = dono registrado do bloco (registrant)
+        proprietaria = names_by_role.get('registrant', '')
+
+        # Responsável/representante = contato técnico ou administrativo (pessoa que assina)
+        responsavel = ''
+        for role in ('technical', 'administrative', 'abuse', 'noc', 'registrant'):
+            if role in names_by_role:
+                responsavel = names_by_role[role]
+                break
+
+        return {'asn': asn, 'proprietaria': proprietaria, 'responsavel': responsavel}
+    except Exception:
+        return {'asn': '', 'responsavel': ''}
+
+
+def _whois_asn(prefixo_v4: str) -> str:
+    """Compat: retorna apenas o ASN."""
+    return _whois_lookup(prefixo_v4)['asn']
+
+
+def _build_loa_story(loa):
+    """Constrói o story do ReportLab para a Carta LOA (sem bloco de assinatura)."""
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+
+    aluguel = loa.aluguel
+    cliente = aluguel.cliente
+
+    loc_nome = cliente.nome_empresa or ''
+    loc_cnpj = cliente.cnpj or ''
+    bloco_v4 = aluguel.bloco_descricao or ''
+    bloco_v6 = aluguel.bloco_v6 or ''
+    asn_up   = loa.asn_upstream or ''
+
+    # Proprietária = dono real do bloco (WHOIS registrant)
+    prop_nome = (loa.proprietaria_whois or '').strip()
+    if not prop_nome and aluguel.bloco_descricao:
+        # Fallback: busca WHOIS na hora e salva para uso futuro
+        wd = _whois_lookup(aluguel.bloco_descricao)
+        prop_nome = wd.get('proprietaria', '')
+        if prop_nome and loa.pk:
+            loa.proprietaria_whois = prop_nome
+            if not loa.responsavel_whois:
+                loa.responsavel_whois = wd.get('responsavel', '')
+            if not loa.asn_upstream:
+                loa.asn_upstream = wd.get('asn', '')
+            loa.save(update_fields=['proprietaria_whois', 'responsavel_whois', 'asn_upstream'])
+
+    styles = getSampleStyleSheet()
+    st_titulo = ParagraphStyle('LoaTitulo', parent=styles['Normal'],
+        fontSize=13, fontName='Helvetica-Bold', alignment=TA_CENTER, spaceAfter=24)
+    st_corpo = ParagraphStyle('LoaCorpo', parent=styles['Normal'],
+        fontSize=11, fontName='Helvetica', alignment=TA_JUSTIFY, leading=18, spaceAfter=12)
+    st_bloco = ParagraphStyle('LoaBloco', parent=styles['Normal'],
+        fontSize=12, fontName='Helvetica-Bold', alignment=TA_LEFT,
+        spaceBefore=4, spaceAfter=4, leftIndent=0)
+    st_assina = ParagraphStyle('LoaAssina', parent=styles['Normal'],
+        fontSize=11, fontName='Helvetica', alignment=TA_CENTER, leading=16)
+
+    blocos_linha = bloco_v4
+    if bloco_v6:
+        blocos_linha += f'    prefixo {bloco_v6}'
+
+    story = []
+    story.append(Paragraph('CARTA DE AUTORIZAÇÃO', st_titulo))
+    story.append(Paragraph('A quem possa interessar,', st_corpo))
+    story.append(Paragraph(
+        f'Esta carta serve como autorização para a <b>{loc_nome}</b> com CNPJ '
+        f'<b>{loc_cnpj}</b> anunciar o seguinte bloco de endereços IP:',
+        st_corpo
+    ))
+    story.append(Paragraph(f'[BLOCO / AS]  {blocos_linha}', st_bloco))
+    story.append(Spacer(1, 0.3*cm))
+    story.append(Paragraph(
+        'Esta carta serve como autorização para os seguintes Upstreams realizarem o '
+        'trânsito BGP do bloco acima:',
+        st_corpo
+    ))
+    story.append(Paragraph(f'<b>{asn_up}</b>', st_bloco))
+    story.append(Spacer(1, 0.5*cm))
+    story.append(Paragraph(
+        f'Como representante da empresa <b>{prop_nome}</b> proprietária da sub-rede e / '
+        f'ou ASN, declaro que estou autorizado por a representar e assinar esta LOA.',
+        st_corpo
+    ))
+
+    return story, st_assina, prop_nome
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_gerar_carta_loa(request, aluguel_id):
+    """Cria (ou retorna existente) uma CartaLOA com link único para assinatura."""
+    aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
+
+    dias   = int(request.POST.get('dias_validade', 30))
+    expira = timezone.now() + timedelta(days=dias)
+
+    # WHOIS: ASN + nome do responsável técnico
+    cfg       = ConfiguracaoFinanceira.objects.first()
+    asn_up    = (cfg.asn_proprio or '').strip() if cfg else ''
+    whois_data = {}
+    if aluguel.bloco_descricao:
+        whois_data = _whois_lookup(aluguel.bloco_descricao)
+    if not asn_up:
+        asn_up = whois_data.get('asn', '')
+    proprietaria = whois_data.get('proprietaria', '')
+    responsavel  = whois_data.get('responsavel', '')
+
+    loa = CartaLOA.objects.filter(aluguel=aluguel, status='pendente').first()
+    if not loa:
+        loa = CartaLOA.objects.create(
+            aluguel=aluguel,
+            asn_upstream=asn_up,
+            proprietaria_whois=proprietaria,
+            responsavel_whois=responsavel,
+            expira_em=expira,
+        )
+    else:
+        loa.expira_em          = expira
+        loa.asn_upstream       = asn_up or loa.asn_upstream
+        loa.proprietaria_whois = proprietaria or loa.proprietaria_whois
+        loa.responsavel_whois  = responsavel or loa.responsavel_whois
+        loa.save(update_fields=['expira_em', 'asn_upstream', 'proprietaria_whois', 'responsavel_whois'])
+
+    scheme = 'https' if request.is_secure() else 'http'
+    link   = f'{scheme}://{request.get_host()}/financeiro/loa/{loa.token}/assinar/'
+    return JsonResponse({
+        'ok': True, 'link': link,
+        'token': str(loa.token),
+        'asn_upstream':  loa.asn_upstream,
+        'proprietaria':  loa.proprietaria_whois,
+        'responsavel':   loa.responsavel_whois,
+        'expira_em':     loa.expira_em.strftime('%d/%m/%Y %H:%M'),
+    })
+
+
+def assinar_loa(request, token):
+    """Página pública onde o representante da locadora assina a LOA."""
+    loa = get_object_or_404(CartaLOA, token=token)
+
+    if loa.status == 'assinado':
+        return render(request, 'financeiro/loa_assinada.html', {'loa': loa})
+    if loa.esta_expirado():
+        loa.status = 'expirado'
+        loa.save(update_fields=['status'])
+        return render(request, 'financeiro/loa_expirada.html', {'loa': loa})
+
+    aluguel = loa.aluguel
+    cliente = aluguel.cliente
+    cfg     = ConfiguracaoFinanceira.objects.first()
+    return render(request, 'financeiro/loa_assinar.html', {
+        'loa': loa, 'aluguel': aluguel, 'cliente': cliente, 'cfg': cfg,
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def confirmar_assinatura_loa(request, token):
+    """Recebe assinatura do responsável da locadora, gera PDF e finaliza a LOA."""
+    import base64 as _b64
+    from reportlab.platypus import SimpleDocTemplate, Spacer, Table as RLTable, TableStyle as RLTableStyle, Image as RLImage
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+
+    loa = get_object_or_404(CartaLOA, token=token)
+    if loa.status == 'assinado':
+        return JsonResponse({'ok': False, 'erro': 'LOA já assinada.'}, status=400)
+    if loa.esta_expirado():
+        return JsonResponse({'ok': False, 'erro': 'Link expirado.'}, status=400)
+
+    try:
+        body           = json.loads(request.body)
+        assinatura_b64 = body.get('assinatura', '')
+        nome_assinante = (body.get('nome') or '').strip()
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'Dados inválidos.'}, status=400)
+
+    if not assinatura_b64 or not nome_assinante:
+        return JsonResponse({'ok': False, 'erro': 'Nome e assinatura são obrigatórios.'}, status=400)
+
+    loa.assinatura_img = assinatura_b64
+    loa.nome_assinante = nome_assinante
+    loa.ip_assinante   = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+    loa.assinado_em    = timezone.now()
+    loa.status         = 'assinado'
+
+    try:
+        story, st_assina, prop_nome = _build_loa_story(loa)
+        prop_cnpj = ''
+
+        img_data = assinatura_b64
+        if ',' in img_data:
+            img_data = img_data.split(',', 1)[1]
+        img_bytes = _b64.b64decode(img_data)
+
+        try:
+            from PIL import Image as _PILImage
+            _img = _PILImage.open(BytesIO(img_bytes))
+            if _img.mode in ('RGBA', 'LA', 'P'):
+                _img = _img.convert('RGBA')
+                _bg = _PILImage.new('RGBA', _img.size, (255, 255, 255, 255))
+                _bg.paste(_img, mask=_img.split()[3])
+                _img = _bg.convert('RGB')
+            else:
+                _img = _img.convert('RGB')
+            _buf = BytesIO(); _img.save(_buf, format='PNG'); _buf.seek(0)
+        except Exception:
+            _buf = BytesIO(img_bytes)
+
+        from reportlab.platypus import Paragraph, Spacer
+        assinado_em_fmt = loa.assinado_em.strftime('%d/%m/%Y %H:%M')
+        img_ass = RLImage(_buf, width=6*cm, height=2*cm)
+
+        from reportlab.lib.styles import ParagraphStyle as PS
+        st_hr = PS('LoaHR', fontName='Helvetica', fontSize=9,
+                   alignment=TA_CENTER, leading=13, textColor=(0.3, 0.3, 0.3))
+
+        cnpj_linha = f'CNPJ: {prop_cnpj}<br/>' if prop_cnpj else ''
+        tbl = RLTable([[
+            [img_ass,
+             Paragraph(
+                f'<b>{prop_nome}</b><br/>'
+                f'{cnpj_linha}'
+                f'Assinado em: {assinado_em_fmt}<br/>'
+                f'Locador(a) — Proprietário(a) do bloco',
+                st_assina
+             )],
+        ]], colWidths=[14*cm])
+        tbl.setStyle(RLTableStyle([
+            ('ALIGN',  (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LINEABOVE', (0, 0), (-1, 0), 0.5, (0.6, 0.6, 0.6)),
+            ('LINEBELOW', (0, -1), (-1, -1), 0.5, (0.6, 0.6, 0.6)),
+        ]))
+
+        story.append(Spacer(1, 1.2*cm))
+        story.append(tbl)
+        story.append(Spacer(1, 0.4*cm))
+
+        from reportlab.platypus import Paragraph as P2
+        st_footer = PS('LoaFooter', fontName='Helvetica', fontSize=7,
+                       alignment=TA_CENTER, textColor=(0.5, 0.5, 0.5))
+        story.append(P2(
+            f'Documento assinado digitalmente · Token: {loa.token} · '
+            f'IP: {loa.ip_assinante} · {assinado_em_fmt}',
+            st_footer
+        ))
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+                                rightMargin=2.5*cm, leftMargin=2.5*cm,
+                                topMargin=2.5*cm, bottomMargin=2*cm,
+                                title=f'Carta LOA — {loa.aluguel.bloco_descricao}')
+        doc.build(story)
+
+        bloco_safe = loa.aluguel.bloco_descricao.replace('/', '-')
+        loa.pdf_assinado.save(
+            f'loa_{bloco_safe}_{loa.token}.pdf',
+            ContentFile(buf.getvalue()), save=False
+        )
+    except Exception as exc:
+        import traceback as _tb
+        print(f'⚠️ Erro ao gerar PDF LOA: {exc}\n{_tb.format_exc()}')
+
+    loa.save()
+
+    try:
+        _enviar_loa_email(loa)
+    except Exception as exc:
+        print(f'⚠️ Erro ao enviar email LOA: {exc}')
+
+    return JsonResponse({'ok': True, 'mensagem': 'LOA assinada com sucesso!'})
+
+
+def _enviar_loa_email(loa):
+    """Envia PDF da LOA assinada por email ao cliente."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email.mime.text import MIMEText
+    from email import encoders as _enc
+    from clientes.models import ConfiguracaoSistema
+
+    cliente = loa.aluguel.cliente
+    email_destino = getattr(cliente, 'email', '') or ''
+    if not email_destino:
+        return False
+
+    smtp_cfg  = ConfiguracaoSistema.get()
+    smtp_host = smtp_cfg.smtp_host or ''
+    smtp_port = int(smtp_cfg.smtp_port or 587)
+    smtp_user = smtp_cfg.smtp_user or ''
+    smtp_pass = smtp_cfg.smtp_pass or ''
+    remetente = smtp_cfg.smtp_from or smtp_user
+    use_tls   = smtp_cfg.smtp_use_tls
+
+    if not smtp_host or not smtp_user:
+        return False
+
+    bloco_v4 = loa.aluguel.bloco_descricao
+    bloco_v6 = loa.aluguel.bloco_v6 or ''
+    blocos   = bloco_v4 + (f' / {bloco_v6}' if bloco_v6 else '')
+    asn      = loa.asn_upstream
+    assinado = loa.assinado_em.strftime('%d/%m/%Y às %H:%M') if loa.assinado_em else ''
+
+    corpo_html = f"""
+    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;">
+      <div style="background:#161b22;padding:24px;text-align:center;">
+        <h2 style="color:#e6edf3;margin:0;">Carta de Autorização (LOA) Assinada</h2>
+      </div>
+      <div style="padding:24px;background:#fff;">
+        <p>Olá, <b>{cliente.nome_empresa}</b>!</p>
+        <p>Segue em anexo a Carta de Autorização (LOA) assinada para o seu bloco IP.</p>
+        <div style="background:#f5f5f5;border-radius:6px;padding:16px;margin:16px 0;font-size:.9rem;">
+          <p style="margin:0 0 4px;"><b>Bloco(s):</b> {blocos}</p>
+          <p style="margin:0 0 4px;"><b>ASN Upstream:</b> {asn}</p>
+          <p style="margin:0 0 4px;"><b>Assinada em:</b> {assinado}</p>
+          <p style="margin:0;"><b>Token:</b> <code>{loa.token}</code></p>
+        </div>
+        <p style="font-size:.85rem;color:#555;">Apresente este documento ao seu upstream para liberar o anúncio BGP.</p>
+      </div>
+    </div>
+    """
+
+    msg = MIMEMultipart('mixed')
+    msg['Subject'] = f'Carta LOA — {blocos}'
+    msg['From']    = remetente
+    msg['To']      = email_destino
+    msg.attach(MIMEText(corpo_html, 'html', 'utf-8'))
+
+    if loa.pdf_assinado:
+        try:
+            pdf_bytes = loa.pdf_assinado.read()
+            part = MIMEBase('application', 'pdf')
+            part.set_payload(pdf_bytes)
+            _enc.encode_base64(part)
+            part.add_header('Content-Disposition',
+                            f'attachment; filename="loa_{bloco_v4.replace("/","-")}.pdf"')
+            msg.attach(part)
+        except Exception:
+            pass
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+        server.ehlo()
+        if use_tls:
+            server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(remetente, [email_destino], msg.as_string())
+    return True
+
+
+@login_required
+def preview_carta_loa(request, aluguel_id):
+    """Gera e retorna PDF de prévia da LOA (sem assinatura) para visualização."""
+    from reportlab.platypus import SimpleDocTemplate, Spacer, Paragraph
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+
+    aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
+
+    # Usa LOA pendente existente ou monta um objeto temporário com dados do aluguel
+    loa = CartaLOA.objects.filter(aluguel=aluguel).order_by('-criado_em').first()
+    if not loa:
+        # Objeto temporário (não salvo) só para gerar a prévia
+        cfg        = ConfiguracaoFinanceira.objects.first()
+        asn_up     = (cfg.asn_proprio or '').strip() if cfg else ''
+        whois_data = _whois_lookup(aluguel.bloco_descricao) if aluguel.bloco_descricao else {}
+        if not asn_up:
+            asn_up = whois_data.get('asn', '')
+        loa = CartaLOA(aluguel=aluguel, asn_upstream=asn_up,
+                       proprietaria_whois=whois_data.get('proprietaria', ''),
+                       responsavel_whois=whois_data.get('responsavel', ''))
+
+    story, st_assina, prop_nome = _build_loa_story(loa)
+    prop_cnpj = ''
+
+    # Bloco de assinatura em branco (prévia)
+    from reportlab.platypus import Table as RLTable, TableStyle as RLTableStyle, HRFlowable
+    st_previa = ParagraphStyle('Previa', fontName='Helvetica-Oblique', fontSize=9,
+                               alignment=TA_CENTER, textColor=(0.6, 0.6, 0.6))
+    tbl = RLTable([[
+        [Spacer(1, 1.8*cm),
+         Paragraph(f'<b>{prop_nome}</b><br/>{"CNPJ: "+prop_cnpj+"<br/>" if prop_cnpj else ""}Locador(a) — Proprietário(a) do bloco', st_assina)],
+    ]], colWidths=[14*cm])
+    tbl.setStyle(RLTableStyle([
+        ('ALIGN',     (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN',    (0, 0), (-1, -1), 'TOP'),
+        ('LINEABOVE', (0, 0), (-1, 0),  0.5, (0.6, 0.6, 0.6)),
+        ('LINEBELOW', (0, -1), (-1, -1), 0.5, (0.6, 0.6, 0.6)),
+    ]))
+    story.append(Spacer(1, 1.2*cm))
+    story.append(tbl)
+    story.append(Spacer(1, 0.5*cm))
+    story.append(Paragraph('[ PRÉVIA — Assinatura será inserida após a confirmação digital ]', st_previa))
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            rightMargin=2.5*cm, leftMargin=2.5*cm,
+                            topMargin=2.5*cm, bottomMargin=2*cm,
+                            title=f'Prévia LOA — {aluguel.bloco_descricao}')
+    doc.build(story)
+
+    bloco_safe = aluguel.bloco_descricao.replace('/', '-')
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="previa_loa_{bloco_safe}.pdf"'
+    return response
+
+
+@login_required
+def download_loa_assinada(request, token):
+    loa = get_object_or_404(CartaLOA, token=token, status='assinado')
+    if not loa.pdf_assinado:
+        return HttpResponse('PDF ainda não gerado.', status=404)
+    response = HttpResponse(loa.pdf_assinado.read(), content_type='application/pdf')
+    bloco_safe = loa.aluguel.bloco_descricao.replace('/', '-')
+    response['Content-Disposition'] = f'attachment; filename="loa_{bloco_safe}.pdf"'
+    return response
+
+
+@login_required
+def api_status_loa(request, aluguel_id):
+    """Retorna lista de LOAs de um aluguel."""
+    aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
+    loas = CartaLOA.objects.filter(aluguel=aluguel).order_by('-criado_em')
+    data = []
+    for loa in loas:
+        scheme = 'https' if request.is_secure() else 'http'
+        data.append({
+            'id':               loa.id,
+            'token':            str(loa.token),
+            'status':           loa.status,
+            'status_label':     dict(CartaLOA.STATUS_CHOICES).get(loa.status, loa.status),
+            'asn_upstream':     loa.asn_upstream,
+            'proprietaria':     loa.proprietaria_whois,
+            'responsavel':      loa.responsavel_whois,
+            'criado_em':        loa.criado_em.strftime('%d/%m/%Y %H:%M'),
+            'assinado_em':  loa.assinado_em.strftime('%d/%m/%Y %H:%M') if loa.assinado_em else None,
+            'expira_em':    loa.expira_em.strftime('%d/%m/%Y %H:%M') if loa.expira_em else None,
+            'link_assinatura': f'{scheme}://{request.get_host()}/financeiro/loa/{loa.token}/assinar/',
+            'link_download':   f'{scheme}://{request.get_host()}/financeiro/loa/{loa.token}/download/' if loa.status == 'assinado' else None,
+        })
+    return JsonResponse({'ok': True, 'loas': data})
+
+
+# ============================================
+# WhatsApp — Configuração e Cobranças
+# ============================================
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_salvar_config_whatsapp(request):
+    """Salva configuração da Evolution API financeira."""
+    cfg, _ = ConfiguracaoFinanceira.objects.get_or_create(pk=1)
+    data = json.loads(request.body)
+    cfg.wa_ativo         = bool(data.get('wa_ativo', False))
+    cfg.wa_evolution_url = data.get('wa_evolution_url', '').strip()
+    cfg.wa_api_key       = data.get('wa_api_key', '').strip()
+    cfg.wa_instance      = data.get('wa_instance', '').strip()
+    cfg.wa_dias_antes    = int(data.get('wa_dias_antes', 3) or 3)
+    cfg.wa_hora_envio    = data.get('wa_hora_envio', '09:00').strip()
+    cfg.wa_msg_aviso     = data.get('wa_msg_aviso', '').strip()
+    cfg.wa_msg_vencido   = data.get('wa_msg_vencido', '').strip()
+    cfg.wa_pix_chave     = data.get('wa_pix_chave', '').strip()
+    cfg.wa_pix_tipo      = data.get('wa_pix_tipo', '').strip()
+    cfg.save()
+    return JsonResponse({'ok': True, 'msg': 'Configuração WhatsApp salva.'})
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_testar_whatsapp(request):
+    """Testa a conexão com a Evolution API financeira."""
+    from .whatsapp import testar_conexao
+    ok, msg = testar_conexao()
+    return JsonResponse({'ok': ok, 'msg': msg})
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_enviar_cobranca_manual(request):
+    """Envia cobrança manual via WhatsApp para uma fatura específica (ignora wa_ativo)."""
+    from .whatsapp import montar_texto_cobranca, enviar_mensagem, _normalizar_telefone
+    data = json.loads(request.body)
+    fatura_id = data.get('fatura_id')
+    if not fatura_id:
+        return JsonResponse({'ok': False, 'erro': 'fatura_id obrigatório.'}, status=400)
+    try:
+        fatura = Fatura.objects.prefetch_related(
+            'consultorias', 'alugueis_ipv4'
+        ).select_related('cliente').get(pk=fatura_id)
+    except Fatura.DoesNotExist:
+        return JsonResponse({'ok': False, 'erro': 'Fatura não encontrada.'}, status=404)
+
+    jid = _normalizar_telefone(getattr(fatura.cliente, 'telefone', None))
+    if not jid:
+        return JsonResponse({'ok': False, 'erro': f'Telefone inválido ou ausente no cadastro do cliente: {fatura.cliente.telefone!r}'})
+
+    texto = montar_texto_cobranca(fatura)
+    ok, detalhe = enviar_mensagem(jid, texto)
+    return JsonResponse({'ok': ok, 'msg': detalhe if ok else None, 'erro': detalhe if not ok else None})
+
+
+@login_required
+@acesso_financeiro_restrito
+def api_config_whatsapp(request):
+    """Retorna a configuração atual do WhatsApp financeiro."""
+    try:
+        cfg = ConfiguracaoFinanceira.objects.get(pk=1)
+    except ConfiguracaoFinanceira.DoesNotExist:
+        return JsonResponse({'ok': True, 'config': {}})
+    return JsonResponse({'ok': True, 'config': {
+        'wa_ativo':         cfg.wa_ativo,
+        'wa_evolution_url': cfg.wa_evolution_url,
+        'wa_api_key':       cfg.wa_api_key,
+        'wa_instance':      cfg.wa_instance,
+        'wa_dias_antes':    cfg.wa_dias_antes,
+        'wa_hora_envio':    cfg.wa_hora_envio,
+        'wa_msg_aviso':     cfg.wa_msg_aviso,
+        'wa_msg_vencido':   cfg.wa_msg_vencido,
+        'wa_pix_chave':     cfg.wa_pix_chave,
+        'wa_pix_tipo':      cfg.wa_pix_tipo,
+    }})
+
+
+@login_required
+@acesso_financeiro_restrito
+@require_http_methods(['POST'])
+def api_preview_whatsapp(request):
+    """
+    Retorna preview da mensagem de cobrança usando uma fatura real.
+    Opcionalmente envia para um número de teste.
+    """
+    from .whatsapp import montar_texto_cobranca, enviar_mensagem, _normalizar_telefone
+    data = json.loads(request.body)
+    fatura_id  = data.get('fatura_id')
+    numero_teste = data.get('numero_teste', '').strip()
+
+    # Busca uma fatura aberta para usar como exemplo
+    if fatura_id:
+        try:
+            fatura = Fatura.objects.prefetch_related(
+                'consultorias', 'alugueis_ipv4', 'cliente'
+            ).get(pk=fatura_id)
+        except Fatura.DoesNotExist:
+            return JsonResponse({'ok': False, 'erro': 'Fatura não encontrada.'}, status=404)
+    else:
+        fatura = Fatura.objects.filter(
+            status__in=['ABERTA', 'RASCUNHO']
+        ).prefetch_related('consultorias', 'alugueis_ipv4', 'cliente').first()
+        if not fatura:
+            return JsonResponse({'ok': False, 'erro': 'Nenhuma fatura aberta encontrada para preview.'})
+
+    texto = montar_texto_cobranca(fatura)
+
+    resultado = {'ok': True, 'preview': texto, 'fatura': {
+        'id': fatura.id,
+        'numero': fatura.numero_fatura,
+        'cliente': fatura.cliente.nome_empresa,
+        'valor': float(fatura.valor_total),
+        'vencimento': fatura.data_vencimento.strftime('%d/%m/%Y'),
+        'status': fatura.status,
+    }}
+
+    # Se forneceu número de teste, envia agora
+    if numero_teste:
+        jid = _normalizar_telefone(numero_teste)
+        if not jid:
+            resultado['envio_erro'] = f'Número inválido: {numero_teste}'
+        else:
+            ok, detalhe = enviar_mensagem(jid, texto)
+            if ok:
+                resultado['envio_ok'] = f'Mensagem enviada para {numero_teste}!'
+            else:
+                resultado['envio_erro'] = detalhe
+
+    return JsonResponse(resultado)

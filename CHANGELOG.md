@@ -5,6 +5,61 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-06-13 (Monitor de Tráfego com Abas + Hotspot Captive Portal)
+
+### Adicionado
+
+- **Sistema de abas no Monitor de Tráfego**
+  (`monitoramento/templates/monitoramento/tab_monitoramento.html`,
+  `monitoramento/views.py`):
+  A aba de monitoramento ganhou uma barra de abas independentes. Cada aba tem seu próprio
+  conjunto de painéis de gráficos Zabbix. Funcionalidades:
+  - Criar nova aba (botão "+ Nova aba") — abre automaticamente input de renomeação
+  - Trocar de aba — destrói instâncias Chart.js anteriores para liberar memória/CPU
+  - Renomear aba por duplo-clique no nome ou pelo menu de contexto (clique direito)
+  - Fechar aba pelo botão × ou pelo menu de contexto; bloqueado quando há apenas 1 aba
+  - Badge com contador de gráficos por aba
+  - Persistência no banco no formato `{ "tabs": [...] }` com compatibilidade retroativa
+    (formato antigo de lista plana é migrado automaticamente para aba "Geral")
+  - Chave localStorage migrada de `grph_charts_v2_<id>` para `grph_tabs_v1_<id>`
+
+- **Menu de contexto (clique direito) nas abas do Monitor de Tráfego**
+  (`monitoramento/templates/monitoramento/tab_monitoramento.html`):
+  Clique direito em qualquer aba exibe menu com "Renomear aba" e "Fechar aba".
+  O menu é posicionado junto ao cursor, respeita os limites da janela e fecha ao clicar fora.
+
+### Corrigido
+
+- **Hotspot captive portal não redirecionava para login antes de liberar internet**
+  (`clientes/hotspot_views.py`): Quatro causas raiz identificadas e corrigidas:
+
+  1. **JS bloqueado em mini-browsers** — `_gerar_login_html` agora usa
+     `<meta http-equiv="refresh">` como redirecionamento primário (funciona sem JS).
+     O `window.location.replace()` é mantido como secundário e um link `<a>` como
+     último recurso.
+
+  2. **Injeção HTML via `&` em URLs** — `$(link-login)` e `$(link-orig)` do MikroTik
+     contêm `&` que quebravam atributos `value="..."`. Corrigido com
+     `html.escape(..., quote=True)` em todas as variáveis inseridas em HTML.
+
+  3. **Mixed content bloqueava POST do formulário** — `scheme` estava hardcoded como
+     `'http'`. Quando o portal era acessado via HTTPS, o browser bloqueava o POST.
+     Corrigido com `scheme = 'https' if request.is_secure() else 'http'`.
+
+  4. **`link` vazio quando meta-refresh era usado** — O redirect via `<meta>` não passa
+     parâmetros na URL, deixando o campo `link` do POST vazio. Adicionado fallback:
+     `raw_link = link if link else f'http://{h.gateway}/login'`.
+
+### Documentação
+
+- `docs/monitoramento.md` — Atualizado com sistema de abas, nova API, variáveis de estado
+  e histórico de alterações
+- `docs/HOTSPOT_CAPTIVE_PORTAL.md` — Criado: fluxo completo do captive portal, 4 bugs
+  corrigidos, compatibilidade com mini-browsers, configuração nginx e walled garden
+- `docs/INDEX.md` — Atualizado com sessão 3, novos arquivos e histórico
+
+---
+
 ## [Não publicado] — 2026-06-03 (WinBox Web VNC — Correções)
 
 ### Corrigido

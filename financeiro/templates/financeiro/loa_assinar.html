@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carta de Autorização (LOA) — {{ cliente.nome_empresa }}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh;}
+.page{max-width:820px;margin:0 auto;padding:32px 16px 80px;}
+.header{text-align:center;margin-bottom:28px;}
+.header h1{font-size:1.4rem;font-weight:700;color:#e6edf3;margin-bottom:4px;}
+.header p{font-size:.85rem;color:#7d8590;}
+.loa-box{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:36px;margin-bottom:24px;font-size:.95rem;line-height:1.8;color:#c9d1d9;}
+.loa-box h2{font-size:1.15rem;font-weight:700;text-align:center;letter-spacing:.06em;margin-bottom:28px;color:#e6edf3;}
+.loa-box p{margin-bottom:14px;text-align:justify;}
+.loa-bloco{font-size:1.05rem;font-weight:700;color:#58a6ff;margin:8px 0 16px;padding:10px 14px;background:rgba(88,166,255,.07);border-left:3px solid #58a6ff;border-radius:4px;}
+.loa-asn{font-size:1rem;font-weight:700;color:#3fb950;margin:4px 0 16px;padding:8px 14px;background:rgba(63,185,80,.07);border-left:3px solid #3fb950;border-radius:4px;}
+.sign-section{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px;margin-bottom:24px;}
+.sign-section h3{font-size:1rem;font-weight:600;color:#e6edf3;margin-bottom:16px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:.75rem;color:#7d8590;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.field input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px 12px;color:#e6edf3;font-size:.95rem;outline:none;transition:border-color .15s;}
+.field input:focus{border-color:#58a6ff;}
+.pad-wrap{border:1px solid #30363d;border-radius:8px;overflow:hidden;background:#fff;cursor:crosshair;}
+#signCanvas{display:block;width:100%;touch-action:none;}
+.pad-actions{display:flex;gap:8px;margin-top:8px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:background .15s,opacity .15s;}
+.btn-primary{background:#238636;color:#fff;}
+.btn-primary:hover{background:#2ea043;}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.btn-outline{background:transparent;color:#8b949e;border:1px solid #30363d;}
+.btn-outline:hover{border-color:#58a6ff;color:#58a6ff;}
+.checkbox-wrap{display:flex;align-items:flex-start;gap:10px;margin-bottom:20px;padding:14px;background:#0d1117;border-radius:8px;border:1px solid #30363d;}
+.checkbox-wrap input[type=checkbox]{width:18px;height:18px;margin-top:2px;cursor:pointer;flex-shrink:0;}
+.checkbox-wrap label{font-size:.85rem;color:#c9d1d9;cursor:pointer;line-height:1.5;}
+.alert{padding:14px 16px;border-radius:8px;font-size:.85rem;margin-bottom:16px;display:none;}
+.alert-err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:#f85149;}
+.alert-ok{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:#3fb950;}
+.info-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.75rem;font-weight:600;background:rgba(210,153,34,.12);color:#d29922;border:1px solid rgba(210,153,34,.25);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Carta de Autorização — LOA</h1>
+    <p>Leia o documento abaixo e assine como representante da empresa locadora</p>
+    <div class="info-row" style="justify-content:center;margin-top:10px;">
+      <span class="badge">⏳ Aguardando Assinatura</span>
+      {% if loa.expira_em %}
+      <span style="font-size:.8rem;color:#7d8590;">Expira em: {{ loa.expira_em|date:"d/m/Y H:i" }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Documento LOA -->
+  <div class="loa-box">
+    <h2>CARTA DE AUTORIZAÇÃO</h2>
+
+    <p>A quem possa interessar,</p>
+
+    <p>Esta carta serve como autorização para a <strong>{{ cliente.nome_empresa }}</strong>
+    com CNPJ <strong>{{ cliente.cnpj }}</strong> anunciar o seguinte bloco de endereços IP:</p>
+
+    <div class="loa-bloco">
+      [BLOCO / AS]&nbsp;&nbsp;{{ aluguel.bloco_descricao }}{% if aluguel.bloco_v6 %}&nbsp;&nbsp;&nbsp;&nbsp;prefixo {{ aluguel.bloco_v6 }}{% endif %}
+    </div>
+
+    <p>Esta carta serve como autorização para os seguintes Upstreams realizarem o trânsito BGP do bloco acima:</p>
+
+    <div class="loa-asn">{{ loa.asn_upstream|default:"(ASN não configurado)" }}</div>
+
+    <p>Como representante da empresa <strong>{{ loa.proprietaria_whois|default:cfg.empresa_nome }}</strong> proprietária da
+    sub-rede e / ou ASN, declaro que estou autorizado por a representar e assinar esta LOA.</p>
+  </div>
+
+  <!-- Área de assinatura -->
+  <div class="sign-section">
+    <h3>✍️ Assinatura do Responsável (Locador)</h3>
+    <div id="alertErro" class="alert alert-err"></div>
+
+    <div class="field">
+      <label>Nome completo do responsável</label>
+      <input type="text" id="nomeAssinante"
+             value="{{ loa.responsavel_whois }}"
+             placeholder="Nome de quem está assinando" autocomplete="name">
+      {% if loa.responsavel_whois %}
+      <small style="color:#3fb950;font-size:.75rem;margin-top:4px;display:block;">
+        ✓ Preenchido automaticamente via WHOIS
+      </small>
+      {% endif %}
+    </div>
+
+    <div class="field">
+      <label>Assinatura</label>
+      <div class="pad-wrap">
+        <canvas id="signCanvas" height="160"></canvas>
+      </div>
+      <div class="pad-actions">
+        <button class="btn btn-outline" onclick="limparPad()">Limpar</button>
+      </div>
+    </div>
+
+    <div class="checkbox-wrap">
+      <input type="checkbox" id="confirmCheck">
+      <label for="confirmCheck">
+        Declaro que sou o(a) representante legal da empresa <strong>{{ loa.proprietaria_whois|default:cfg.empresa_nome }}</strong>,
+        proprietária do bloco <strong>{{ aluguel.bloco_descricao }}</strong>{% if aluguel.bloco_v6 %} / <strong>{{ aluguel.bloco_v6 }}</strong>{% endif %},
+        e que estou autorizado(a) a emitir esta Carta de Autorização (LOA).
+      </label>
+    </div>
+
+    <button class="btn btn-primary" id="btnAssinar" onclick="assinar()" style="width:100%;justify-content:center;padding:14px;">
+      ✅ Assinar e Gerar LOA em PDF
+    </button>
+  </div>
+</div>
+
+<script>
+const TOKEN = '{{ loa.token }}';
+const canvas = document.getElementById('signCanvas');
+const ctx    = canvas.getContext('2d');
+let drawing  = false, hasDraw = false;
+
+function resizeCanvas() {
+  const w = canvas.parentElement.clientWidth;
+  canvas.width  = w;
+  canvas.height = 160;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth   = 2.2;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - r.left) * (canvas.width / r.width),
+           y: (src.clientY - r.top) * (canvas.height / r.height) };
+}
+canvas.addEventListener('mousedown',  e => { drawing=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x,p.y); });
+canvas.addEventListener('mousemove',  e => { if(!drawing) return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); hasDraw=true; });
+canvas.addEventListener('mouseup',    () => drawing=false);
+canvas.addEventListener('mouseleave', () => drawing=false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x,p.y); });
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); if(!drawing) return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); hasDraw=true; });
+canvas.addEventListener('touchend',   () => drawing=false);
+
+function limparPad() { resizeCanvas(); hasDraw=false; }
+
+function mostrarErro(msg) {
+  const el = document.getElementById('alertErro');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display='none', 5000);
+}
+
+async function assinar() {
+  const nome = document.getElementById('nomeAssinante').value.trim();
+  if (!nome)          return mostrarErro('Informe o nome do responsável.');
+  if (!hasDraw)       return mostrarErro('Por favor, desenhe sua assinatura.');
+  if (!document.getElementById('confirmCheck').checked)
+                      return mostrarErro('Confirme a declaração antes de assinar.');
+
+  const btn = document.getElementById('btnAssinar');
+  btn.disabled = true;
+  btn.textContent = 'Processando...';
+
+  try {
+    const assinatura = canvas.toDataURL('image/png');
+    const resp = await fetch(`/financeiro/loa/${TOKEN}/confirmar/`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nome, assinatura }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.querySelector('.page').innerHTML = `
+        <div style="text-align:center;padding:60px 20px;">
+          <div style="font-size:3rem;margin-bottom:16px;">✅</div>
+          <h2 style="color:#3fb950;font-size:1.5rem;margin-bottom:12px;">LOA Assinada com Sucesso!</h2>
+          <p style="color:#8b949e;margin-bottom:24px;">O PDF foi gerado e enviado por e-mail ao cliente.</p>
+          <p style="color:#7d8590;font-size:.8rem;">Você pode fechar esta janela.</p>
+        </div>`;
+    } else {
+      mostrarErro(data.erro || 'Erro ao assinar.');
+      btn.disabled = false; btn.textContent = '✅ Assinar e Gerar LOA em PDF';
+    }
+  } catch(e) {
+    mostrarErro('Erro de conexão. Tente novamente.');
+    btn.disabled = false; btn.textContent = '✅ Assinar e Gerar LOA em PDF';
+  }
+}
+</script>
+</body>
+</html>

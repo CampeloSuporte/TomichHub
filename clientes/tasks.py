@@ -576,6 +576,11 @@ def analisar_backups_ipam():
                 acesso.contexto_backup = contexto
                 acesso.contexto_backup_em = _tz.now()
                 acesso.save(update_fields=['contexto_backup', 'contexto_backup_em'])
+                # Atualiza snapshot de conhecimento do cliente imediatamente
+                try:
+                    _atualizar_snapshot_cliente(cliente, acesso, contexto)
+                except Exception as _e:
+                    logger.warning(f'analisar_backups_ipam: snapshot cliente {cliente.id}: {_e}')
 
             vlan_map = {}
             for v in parsed['vlans']:
@@ -1767,6 +1772,101 @@ def executar_troca_senhas_massa(self, job_id, acesso_ids=None):
 # ─────────────────────────────────────────────────────────────────────────────
 # Snapshot de conhecimento NOC — artigos automáticos por cliente
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _atualizar_snapshot_cliente(cliente, acesso, contexto_backup: str):
+    """
+    Atualiza (ou cria) imediatamente o artigo [INFRA] do cliente na base de
+    conhecimento do Agent NOC usando o contexto_backup recém-gerado.
+    Chamado após cada backup bem-sucedido que atualiza o contexto_backup.
+    """
+    from .backup_parser import parse_backup, formatar_artigo, formatar_artigo_bgp
+    from .models import AgentKnowledge
+    from django.utils import timezone as _tz
+
+    agora_str  = _tz.localtime(_tz.now()).strftime('%d/%m/%Y %H:%M')
+    nome_equip = acesso.tipo or acesso.host or f'acesso-{acesso.id}'
+
+    try:
+        parsed = parse_backup(contexto_backup, nome_equip)
+    except Exception:
+        parsed = {'ips': [], 'bgp': [], 'vlans': [], 'modelo': '', 'as_local': '', 'vendor': 'desconhecido'}
+
+    modelo = parsed.get('modelo', '')
+    if not modelo and acesso.modelo:
+        modelo = acesso.modelo.nome or ''
+
+    hosts_info = [{
+        'nome':     nome_equip,
+        'host':     acesso.host or '',
+        'porta':    acesso.porta or 22,
+        'vendor':   parsed.get('vendor', 'desconhecido'),
+        'modelo':   modelo,
+        'ips':      parsed.get('ips', []),
+        'bgp':      parsed.get('bgp', []),
+        'vlans':    parsed.get('vlans', []),
+        'ospf':     parsed.get('ospf', []),
+        'vsi':      parsed.get('vsi', []),
+        'l2vc':     parsed.get('l2vc', []),
+        'as_local': parsed.get('as_local', ''),
+    }]
+
+    nome_empresa = cliente.nome_empresa or f'Cliente {cliente.id}'
+
+    # Busca artigo INFRA existente para mesclar outros hosts que já estavam lá
+    titulo_infra = f'[INFRA] {nome_empresa} — Snapshot Automático'
+    existing = AgentKnowledge.objects.filter(cliente=cliente, titulo=titulo_infra).first()
+    if existing and existing.conteudo:
+        # Mesclagem simples: re-gerar com todos os acessos do cliente
+        acessos_cliente = Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao')
+        todos_hosts = []
+        for ac in acessos_cliente:
+            if not ac.contexto_backup:
+                continue
+            ne = ac.tipo or ac.host or f'acesso-{ac.id}'
+            try:
+                p = parse_backup(ac.contexto_backup, ne)
+            except Exception:
+                continue
+            m = p.get('modelo', '') or (ac.modelo.nome if ac.modelo else '')
+            todos_hosts.append({
+                'nome': ne, 'host': ac.host or '', 'porta': ac.porta or 22,
+                'vendor': p.get('vendor', 'desconhecido'), 'modelo': m,
+                'ips': p.get('ips', []), 'bgp': p.get('bgp', []),
+                'vlans': p.get('vlans', []), 'ospf': p.get('ospf', []),
+                'vsi': p.get('vsi', []), 'l2vc': p.get('l2vc', []),
+                'as_local': p.get('as_local', ''),
+            })
+        if todos_hosts:
+            hosts_info = todos_hosts
+
+    conteudo_md = formatar_artigo(nome_empresa, hosts_info, agora_str)
+    AgentKnowledge.objects.update_or_create(
+        cliente=cliente,
+        titulo=titulo_infra,
+        defaults={
+            'conteudo':   conteudo_md,
+            'categoria':  'topologia',
+            'fabricante': 'generico',
+            'tags':       ['snapshot', 'auto-gerado', 'infraestrutura'],
+            'ativo':      True,
+        },
+    )
+
+    # Artigo BGP dedicado
+    bgp_md = formatar_artigo_bgp(nome_empresa, hosts_info, agora_str)
+    if bgp_md:
+        AgentKnowledge.objects.update_or_create(
+            cliente=cliente,
+            titulo=f'[BGP] {nome_empresa} — Sessões e Peers',
+            defaults={
+                'conteudo':   bgp_md,
+                'categoria':  'topologia',
+                'fabricante': 'generico',
+                'tags':       ['bgp', 'peers', 'snapshot', 'auto-gerado'],
+                'ativo':      True,
+            },
+        )
+
 
 @shared_task
 def gerar_snapshots_conhecimento():

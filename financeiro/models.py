@@ -42,9 +42,40 @@ class ConfiguracaoFinanceira(models.Model):
         help_text="Multa fixa por atraso"
     )
 
+    # ASN próprio da empresa (usado na Carta LOA como upstream autorizado)
+    asn_proprio = models.CharField(max_length=20, blank=True, default='',
+        help_text='ASN da empresa locadora. Ex: AS268024. Usado na Carta LOA.')
+
     # Assinatura digital do locador (base64 PNG)
     assinatura_locador = models.TextField(blank=True, default='',
         help_text='Assinatura do locador em base64 (PNG). Usada automaticamente nos contratos.')
+
+    # ── WhatsApp / Evolution API ──────────────────────────────────────────────
+    wa_ativo         = models.BooleanField(default=False, verbose_name='Alertas WhatsApp ativos')
+    wa_evolution_url = models.CharField(max_length=300, blank=True, default='',
+                           verbose_name='URL Evolution API')
+    wa_api_key       = models.CharField(max_length=300, blank=True, default='',
+                           verbose_name='API Key')
+    wa_instance      = models.CharField(max_length=100, blank=True, default='',
+                           verbose_name='Nome da Instância')
+    wa_dias_antes    = models.IntegerField(default=3,
+                           verbose_name='Alertar X dias antes do vencimento')
+    wa_hora_envio    = models.CharField(max_length=5, default='09:00',
+                           verbose_name='Hora de envio (HH:MM)')
+    wa_msg_aviso     = models.TextField(blank=True, default='',
+                           verbose_name='Mensagem de aviso (antes do vencimento)',
+                           help_text='Variáveis: {nome}, {numero}, {valor}, {vencimento}, {dias}, {empresa}')
+    wa_msg_vencido   = models.TextField(blank=True, default='',
+                           verbose_name='Mensagem de cobrança (após vencimento)',
+                           help_text='Variáveis: {nome}, {numero}, {valor}, {vencimento}, {atraso}, {empresa}')
+
+    # PIX para pagamento
+    wa_pix_chave     = models.CharField(max_length=150, blank=True, default='',
+                           verbose_name='Chave PIX',
+                           help_text='Chave PIX para incluir na mensagem de cobrança')
+    wa_pix_tipo      = models.CharField(max_length=20, blank=True, default='',
+                           verbose_name='Tipo da chave PIX',
+                           help_text='Ex: CPF, CNPJ, E-mail, Telefone, Aleatória')
 
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
@@ -640,3 +671,51 @@ class ContratoAluguel(models.Model):
     @property
     def link_assinatura(self):
         return f'/financeiro/contrato/{self.token}/assinar/'
+
+
+class CartaLOA(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Aguardando assinatura'),
+        ('assinado', 'Assinado'),
+        ('expirado', 'Expirado'),
+    ]
+
+    aluguel     = models.ForeignKey(AluguelIPv4, on_delete=models.CASCADE, related_name='cartas_loa')
+    token       = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+
+    # Dados pré-preenchidos no momento da geração (via WHOIS)
+    asn_upstream = models.CharField(max_length=30, blank=True, default='',
+        help_text='ASN da locadora para trânsito BGP. Ex: AS268024')
+    proprietaria_whois = models.CharField(max_length=255, blank=True, default='',
+        help_text='Nome do proprietário do bloco (registrant WHOIS). Aparece como assinante da LOA.')
+    responsavel_whois = models.CharField(max_length=255, blank=True, default='',
+        help_text='Nome do contato técnico WHOIS. Pré-preenche o campo de assinatura.')
+
+    # Assinatura do representante da LOCADORA
+    assinatura_img  = models.TextField(blank=True, default='')
+    nome_assinante  = models.CharField(max_length=255, blank=True, default='')
+    ip_assinante    = models.GenericIPAddressField(null=True, blank=True)
+    assinado_em     = models.DateTimeField(null=True, blank=True)
+
+    pdf_assinado = models.FileField(upload_to='loa/assinadas/', null=True, blank=True)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name        = 'Carta LOA'
+        verbose_name_plural = 'Cartas LOA'
+        ordering            = ['-criado_em']
+
+    def __str__(self):
+        return f'LOA {self.token} — {self.aluguel}'
+
+    def esta_expirado(self):
+        if self.expira_em and timezone.now() > self.expira_em:
+            return True
+        return False
+
+    @property
+    def link_assinatura(self):
+        return f'/financeiro/loa/{self.token}/assinar/'

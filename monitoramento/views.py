@@ -668,9 +668,14 @@ def carregar_dash_config(request):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
     try:
         cfg = MonitorDashConfig.objects.get(cliente_id=cliente_id)
-        return JsonResponse({'charts': cfg.dados})
+        dados = cfg.dados
+        # Formato antigo: lista plana de charts → envolve em aba padrão
+        if isinstance(dados, list):
+            return JsonResponse({'tabs': [{'id': 1, 'nome': 'Geral', 'charts': dados}]})
+        # Formato novo: dict com chave 'tabs'
+        return JsonResponse(dados)
     except MonitorDashConfig.DoesNotExist:
-        return JsonResponse({'charts': []})
+        return JsonResponse({'tabs': []})
 
 
 @login_required
@@ -679,13 +684,15 @@ def salvar_dash_config(request):
     try:
         body = json.loads(request.body)
         cliente_id = body.get('cliente_id')
-        charts = body.get('charts', [])
     except Exception:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
+    tabs   = body.get('tabs')
+    charts = body.get('charts', [])
+    dados  = {'tabs': tabs} if tabs is not None else charts
     MonitorDashConfig.objects.update_or_create(
         cliente_id=cliente_id,
-        defaults={'dados': charts},
+        defaults={'dados': dados},
     )
     return JsonResponse({'success': True})

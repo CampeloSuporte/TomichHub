@@ -6,6 +6,7 @@ urlpatterns = [
     # ===== VIEWS RENDERIZADAS =====
     path('', views.dashboard_financeiro, name='dashboard_financeiro'),
     path('despesas/', views.listar_despesas_page, name='listar_despesas_page'),
+    path('blocos-ip/', views.painel_blocos_ip, name='painel_blocos_ip'),
 
     # ===== APIS: DASHBOARD =====
     path('api/dashboard/', views.api_dashboard_financeiro, name='api_dashboard_financeiro'),
@@ -69,6 +70,24 @@ urlpatterns = [
     # ===== ASSINATURA DO LOCADOR =====
     path('api/assinatura-locador/', views.assinatura_locador, name='assinatura_locador'),
 
+    # ===== PAINEL BLOCOS IP =====
+    path('api/painel-blocos-ip/', views.api_painel_blocos_ip, name='api_painel_blocos_ip'),
+
+    # ===== CARTA LOA =====
+    path('api/aluguel/<int:aluguel_id>/gerar-loa/',   views.api_gerar_carta_loa,      name='api_gerar_carta_loa'),
+    path('api/aluguel/<int:aluguel_id>/status-loa/',  views.api_status_loa,           name='api_status_loa'),
+    path('api/aluguel/<int:aluguel_id>/preview-loa/', views.preview_carta_loa,        name='preview_carta_loa'),
+    path('loa/<uuid:token>/assinar/',                 views.assinar_loa,              name='assinar_loa'),
+    path('loa/<uuid:token>/confirmar/',               views.confirmar_assinatura_loa, name='confirmar_assinatura_loa'),
+    path('loa/<uuid:token>/download/',                views.download_loa_assinada,    name='download_loa_assinada'),
+
     # ===== RELATÓRIO: CLIENTES COM ALUGUEL ATIVO =====
     path('api/clientes-aluguel-ativo/', views.api_clientes_aluguel_ativo, name='api_clientes_aluguel_ativo'),
+
+    # ===== WHATSAPP / COBRANÇA =====
+    path('api/whatsapp/config/',          views.api_config_whatsapp,        name='api_config_whatsapp'),
+    path('api/whatsapp/salvar/',          views.api_salvar_config_whatsapp,  name='api_salvar_config_whatsapp'),
+    path('api/whatsapp/testar/',          views.api_testar_whatsapp,         name='api_testar_whatsapp'),
+    path('api/whatsapp/enviar-cobranca/', views.api_enviar_cobranca_manual,  name='api_enviar_cobranca_manual'),
+    path('api/whatsapp/preview/',         views.api_preview_whatsapp,         name='api_preview_whatsapp'),
 ]

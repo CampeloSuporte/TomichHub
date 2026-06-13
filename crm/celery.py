@@ -49,7 +49,7 @@ app.conf.beat_schedule = {
     },
     'gerar-snapshots-conhecimento': {
         'task': 'clientes.tasks.gerar_snapshots_conhecimento',
-        'schedule': timedelta(days=4),
+        'schedule': crontab(hour=2, minute=30),  # diariamente às 02:30, após backups noturnos
     },
     'notificar-chamados-abertos': {
         'task': 'atendimento.tasks.notificar_chamados_abertos',
@@ -65,6 +65,11 @@ app.conf.beat_schedule = {
     'lembretes-pessoais-atendentes': {
         'task': 'atendimento.tasks.enviar_lembretes_pessoais',
         'schedule': timedelta(minutes=5),
+    },
+    # Alertas de cobrança via WhatsApp — seg a sex às 8:30
+    'alertas-whatsapp-cobranca': {
+        'task': 'financeiro.tasks.enviar_alertas_whatsapp',
+        'schedule': crontab(hour=8, minute=30, day_of_week='1-5'),
     },
 }
 

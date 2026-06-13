@@ -210,9 +210,6 @@
             <div class="dash-subtitle">{{ data_hoje|date:"d/m/Y" }} &nbsp;·&nbsp; Visão geral do sistema</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <button onclick="abrirClientesAluguelAtivo()" style="background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.35);color:#3fb950;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;letter-spacing:.5px;">
-                <i class="fas fa-network-wired" style="margin-right:5px;"></i> Aluguéis de IP Ativos
-            </button>
             <a href="{% url 'relatorio_backups' %}" class="content-card-link" style="font-size:13px;">
                 <i class="fas fa-database" style="margin-right:4px;"></i> Relatório de Backups
             </a>
@@ -507,109 +504,4 @@
 })();
 </script>
 
-<!-- MODAL: CLIENTES COM ALUGUEL ATIVO -->
-<div class="modal fade" id="modalClientesAluguelAtivo" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content" style="background:#161b22;border:1px solid #30363d;color:#e6edf3;">
-            <div class="modal-header" style="border-bottom:1px solid #21262d;">
-                <h5 class="modal-title" style="font-size:.95rem;font-weight:600;">
-                    <i class="fas fa-network-wired me-2" style="color:#3fb950;"></i>Clientes com Aluguel de IP Ativo
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" style="padding:0;">
-                <div id="clientesAtivosSummary" style="display:flex;gap:16px;flex-wrap:wrap;padding:16px 20px;background:#0d1117;border-bottom:1px solid #21262d;">
-                    <div style="font-size:.82rem;color:#7d8590;">Carregando...</div>
-                </div>
-                <div id="clientesAtivosLista" style="padding:16px 20px;max-height:65vh;overflow-y:auto;">
-                    <div style="text-align:center;padding:2rem;color:#7d8590;"><i class="fas fa-spinner fa-spin me-2"></i>Buscando...</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-function abrirClientesAluguelAtivo() {
-    new bootstrap.Modal(document.getElementById('modalClientesAluguelAtivo')).show();
-    document.getElementById('clientesAtivosSummary').innerHTML = '<div style="font-size:.82rem;color:#7d8590;">Carregando...</div>';
-    document.getElementById('clientesAtivosLista').innerHTML = '<div style="text-align:center;padding:2rem;color:#7d8590;"><i class="fas fa-spinner fa-spin me-2"></i>Buscando...</div>';
-
-    fetch('/financeiro/api/clientes-aluguel-ativo/')
-    .then(r => r.json())
-    .then(d => {
-        if (!d.ok) { document.getElementById('clientesAtivosLista').innerHTML = '<div style="color:#f85149;padding:1rem;">Erro ao carregar.</div>'; return; }
-
-        const clientes = d.clientes;
-        const totalClientes   = clientes.length;
-        const totalMensal     = clientes.reduce((s, c) => s + c.total_mensal, 0);
-        const totalFatAberta  = clientes.reduce((s, c) => s + c.faturas.length, 0);
-        const totalFatVencida = clientes.reduce((s, c) => s + c.faturas.filter(f => f.vencida).length, 0);
-
-        document.getElementById('clientesAtivosSummary').innerHTML = `
-            <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 18px;text-align:center;">
-                <div style="font-size:1.4rem;font-weight:700;color:#3fb950;">${totalClientes}</div>
-                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Clientes</div>
-            </div>
-            <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 18px;text-align:center;">
-                <div style="font-size:1.4rem;font-weight:700;color:#58a6ff;">R$ ${totalMensal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Receita Mensal</div>
-            </div>
-            <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 18px;text-align:center;">
-                <div style="font-size:1.4rem;font-weight:700;color:#d29922;">${totalFatAberta}</div>
-                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Faturas Abertas</div>
-            </div>
-            ${totalFatVencida ? `<div style="background:#161b22;border:1px solid #f8514966;border-radius:8px;padding:10px 18px;text-align:center;">
-                <div style="font-size:1.4rem;font-weight:700;color:#f85149;">${totalFatVencida}</div>
-                <div style="font-size:.72rem;color:#7d8590;text-transform:uppercase;letter-spacing:1px;">Faturas Vencidas</div>
-            </div>` : ''}
-        `;
-
-        if (!clientes.length) {
-            document.getElementById('clientesAtivosLista').innerHTML = '<div style="text-align:center;padding:2rem;color:#7d8590;">Nenhum cliente com aluguel ativo encontrado.</div>';
-            return;
-        }
-
-        document.getElementById('clientesAtivosLista').innerHTML = clientes.map(c => `
-        <div style="background:#0d1117;border:1px solid #21262d;border-radius:10px;margin-bottom:14px;overflow:hidden;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #21262d;flex-wrap:wrap;gap:8px;">
-                <div>
-                    <span style="font-size:.95rem;font-weight:600;color:#e6edf3;">${c.nome}</span>
-                    <span style="font-size:.75rem;color:#7d8590;margin-left:10px;">${c.cnpj}</span>
-                </div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                    ${c.telefone ? `<span style="font-size:.78rem;color:#8b949e;"><i class="fas fa-phone me-1"></i>${c.telefone}</span>` : ''}
-                    <span style="font-size:.78rem;color:#8b949e;"><i class="fas fa-envelope me-1"></i>${c.email}</span>
-                    <span style="font-size:.8rem;font-weight:600;color:#3fb950;">R$ ${c.total_mensal.toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês</span>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
-                <div style="padding:12px 16px;border-right:1px solid #21262d;">
-                    <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#58a6ff;margin-bottom:8px;"><i class="fas fa-network-wired me-1"></i>Blocos Ativos</p>
-                    ${c.blocos.map(b => `
-                    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 12px;margin-bottom:6px;">
-                        <div style="font-size:.85rem;font-weight:600;color:#c9d1d9;font-family:monospace;">${b.bloco}</div>
-                        ${b.bloco_v6 ? `<div style="font-size:.75rem;color:#8b949e;font-family:monospace;">${b.bloco_v6}</div>` : ''}
-                        <div style="font-size:.72rem;color:#7d8590;margin-top:3px;">${b.qtd_ips} IPs · Desde ${b.data_inicio} · <span style="color:#3fb950;">R$ ${b.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês</span></div>
-                    </div>`).join('')}
-                </div>
-                <div style="padding:12px 16px;">
-                    <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#d29922;margin-bottom:8px;"><i class="fas fa-file-invoice me-1"></i>Faturas Abertas</p>
-                    ${c.faturas.length ? c.faturas.map(f => `
-                    <div style="background:#161b22;border:1px solid ${f.vencida ? '#f8514944' : '#30363d'};border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                        <div>
-                            <div style="font-size:.82rem;font-weight:600;color:#c9d1d9;">${f.numero}</div>
-                            <div style="font-size:.72rem;color:${f.vencida ? '#f85149' : '#7d8590'};">${f.vencida ? '⚠️ Vencida em' : 'Vence em'} ${f.vencimento}</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:.85rem;font-weight:600;color:${f.vencida ? '#f85149' : '#e6edf3'};">R$ ${f.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-                            <span style="font-size:.68rem;padding:2px 7px;border-radius:20px;background:${f.status==='ABERTA'?'#d2992222':'#30363d'};color:${f.status==='ABERTA'?'#d29922':'#8b949e'};">${f.status_label}</span>
-                        </div>
-                    </div>`).join('') : '<div style="font-size:.82rem;color:#7d8590;padding:8px 0;">Nenhuma fatura aberta.</div>'}
-                </div>
-            </div>
-        </div>`).join('');
-    });
-}
-</script>
 {% endblock %}

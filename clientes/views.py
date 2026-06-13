@@ -164,9 +164,6 @@ def cadastrar_cliente(request):
             messages.error(request, 'Erro: Já existe um cliente com esse email cadastrado.')
             return redirect('cadastrar_cliente')
 
-        if Cliente.objects.filter(telefone=telefone).exists():
-            messages.error(request, 'Erro: Já existe um cliente com esse telefone cadastrado.')
-            return redirect('cadastrar_cliente')
 
         # ✅ NOVA VALIDAÇÃO: Verifica se o usuário já está vinculado a outro cliente
         if Cliente.objects.filter(usuario_id=usuario_id).exists():
@@ -306,10 +303,6 @@ def editar_cliente(request):
             messages.error(request, 'Erro: Já existe um cliente com esse email cadastrado.')
             return redirect('cadastrar_cliente')
 
-        # Verifica se telefone já existe em outro cliente
-        if Cliente.objects.filter(telefone=telefone).exclude(id=cliente_id).exists():
-            messages.error(request, 'Erro: Já existe um cliente com esse telefone cadastrado.')
-            return redirect('cadastrar_cliente')
 
         # Atualiza os dados
         cliente.nome_empresa = request.POST.get('nome_empresa')

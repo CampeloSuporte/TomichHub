@@ -2,6 +2,24 @@
 
 ## 🔥 Implementações Recentes (Junho 2026)
 
+### Sessão 3 — 13/06/2026: Monitor de Tráfego com Abas + Hotspot Captive Portal
+
+**O que foi implementado?**
+- ✅ Sistema de abas no Monitor de Tráfego (criar, renomear, fechar, trocar)
+- ✅ Menu de contexto (clique direito) nas abas com opções de renomear e fechar
+- ✅ Renomeação inline por duplo-clique no nome da aba
+- ✅ Backend atualizado para formato `{ "tabs": [...] }` com compatibilidade retroativa
+- ✅ Hotspot captive portal: 4 bugs corrigidos (JS bloqueado, HTML injection, mixed content, link vazio)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[monitoramento.md](monitoramento.md)** | Sistema de abas, API, variáveis de estado, comportamento JS |
+| **[HOTSPOT_CAPTIVE_PORTAL.md](HOTSPOT_CAPTIVE_PORTAL.md)** | Bugs corrigidos, fluxo de autenticação, compatibilidade mini-browsers |
+
+---
+
 ### Sessão 2 — 10/06/2026: Despesas Avançado + Hotspot Banda + Contratos Digitais
 
 **O que foi implementado?**
@@ -75,9 +93,17 @@
   - Preview em tempo real na interface
   - Como verificar no MikroTik
 
-- **[monitoramento.md](monitoramento.md)** — Dashboard de monitoramento
-  - Persistência de configuração
-  - Gráficos e widgets
+- **[monitoramento.md](monitoramento.md)** — Dashboard de monitoramento com abas
+  - Sistema de abas independentes por cliente
+  - Persistência de configuração no banco
+  - Menu de contexto, renomeação inline
+  - API e variáveis de estado do módulo GRAPH
+
+- **[HOTSPOT_CAPTIVE_PORTAL.md](HOTSPOT_CAPTIVE_PORTAL.md)** — Captive portal MikroTik
+  - Fluxo de autenticação completo
+  - 4 bugs corrigidos (JS, HTML injection, mixed content, link vazio)
+  - Compatibilidade com mini-browsers iOS/Android
+  - Configuração nginx e walled garden
 
 - **[backup_automatico.md](backup_automatico.md)** — Sistema de backup automático
   - Habilitação automática
@@ -160,8 +186,9 @@ docs/
 ├─ PRIVACIDADE_FINANCEIRA.md ............. 📌 Privacidade (detalhado)
 ├─ CONTRATOS_ASSINATURA_DIGITAL.md ....... 📌 Contratos com assinatura digital
 ├─ HOTSPOT_CONTROLE_BANDA.md ............. 📌 Hotspot: DHCP Queue Simple por IP
+├─ HOTSPOT_CAPTIVE_PORTAL.md ............. 📌 Hotspot: captive portal e bugs corrigidos
 ├─ IMPLEMENTACOES_JUNHO_2026.md .......... 📌 Checklist e resumo executivo
-├─ monitoramento.md
+├─ monitoramento.md ...................... 📌 Monitor de tráfego com sistema de abas
 ├─ backup_automatico.md
 ├─ envio_credenciais_email.md
 ├─ winbox_vnc.md
@@ -270,6 +297,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 13/06/2026 | Monitor de tráfego com abas; hotspot captive portal (4 bugs) | monitoramento.md, HOTSPOT_CAPTIVE_PORTAL.md |
 | 10/06/2026 | Parcelamento, bulk actions, contratos digitais, hotspot banda | DESPESAS_AVANCADO.md, CONTRATOS_ASSINATURA_DIGITAL.md, HOTSPOT_CONTROLE_BANDA.md |
 | 01/06/2026 | Recorrência + Privacidade (5 modelos) | FINANCEIRO.md, DESPESA_RECORRENCIA.md, PRIVACIDADE_FINANCEIRA.md, IMPLEMENTACOES_JUNHO_2026.md |
 | 27/05/2026 | Dashboard persistência, Backup automático | monitoramento.md, backup_automatico.md |
