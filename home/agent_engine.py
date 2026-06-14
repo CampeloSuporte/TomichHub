@@ -1034,6 +1034,7 @@ Com o nome da interface em mãos, execute o comando de transceiver:
 - Temperature, Voltage, Current: use como informação complementar para diagnosticar SFP com defeito
 
 **NUNCA pule o passo 1** — execute sempre o comando de sinal óptico com o nome correto da interface física encontrado no passo 1.
+**NUNCA pare no passo 1** — encontrar a interface é só o meio, não o fim. O objetivo é o sinal óptico: execute o passo 2 imediatamente após identificar o nome da interface.
 
 **Exemplo completo — switch Huawei VRP:**
 ```
@@ -1049,16 +1050,26 @@ Passo 2: execute_command(acesso_id=X, comando="display transceiver diagnosis int
 
 **Exemplo completo — switch Datacom DmOS:**
 ```
-Passo 1: execute_command(acesso_id=X, comando="show interface description")
-  → "1/1/4  up  up  CNX.OLT-ZTE-BAIXADINHA"  → interface: 1/1/4
-  ⚠️ Datacom usa formato slot/modulo/porta: 1/1/1, 1/1/4, 2/1/3 — NÃO usa gi0/1 nem GE nem XGE
+Passo 0: verifique o [Configuração conhecida do backup] do host no system prompt
+  → Se mostrar interfaces como "ten-gigabit-ethernet 1/1/4", você já sabe o formato
 
-Passo 2: execute_command(acesso_id=X, comando="show interface 1/1/4 transceiver")
+Passo 1: execute_command(acesso_id=X, comando="show interface description")
+  → Output: "ten-gigabit-ethernet 1/1/4   Up   10G   CNX.OLT-ZTE-BAIXADINHA"
+  → Nome completo da interface: ten-gigabit-ethernet 1/1/4
+  ⚠️ Datacom usa NOME COMPLETO com prefixo: "ten-gigabit-ethernet 1/1/4"
+     NÃO use só "1/1/4" — inclua sempre o prefixo no comando seguinte
+
+Passo 2: execute_command(acesso_id=X, comando="show interface ten-gigabit-ethernet 1/1/4 transceiver")
   ✅ Retorna Tx Power(dBm), Rx Power(dBm), Temp, Voltage, Current
+
+🚨 OBRIGATÓRIO: após o Passo 1 encontrar a interface, SEMPRE execute o Passo 2.
+   NUNCA responda "não há informações ópticas disponíveis" depois do Passo 1 —
+   isso significa que você usou o comando errado ou não executou o Passo 2.
 
 ❌ ERRADO: `show interfaces description` → Datacom usa singular "interface"
 ❌ ERRADO: `display interface description` → comando Huawei, não funciona no DmOS
-❌ ERRADO: `show interface gi0/1 transceiver` → gi0/1 não existe no Datacom; use 1/1/4
+❌ ERRADO: `show interface 1/1/4 transceiver` → falta o prefixo; use o nome completo
+❌ ERRADO: parar após o Passo 1 e dizer que não tem info óptica → execute o Passo 2
 ```
 
 ⚠️ **INTERCEPTAÇÃO AUTOMÁTICA**: Se você usar `| include <termo>`, o sistema executa automaticamente `display interface description` (sem filtro) e faz busca case-insensitive em Python. O resultado já vem filtrado com nomes de interface já expandidos (ex: `XGE0/0/2` → `XGigabitEthernet0/0/2`). Use o nome expandido retornado para o passo 2.
