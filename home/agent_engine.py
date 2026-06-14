@@ -1036,14 +1036,15 @@ Passo 2: execute_command(acesso_id=X, comando="display transceiver diagnosis int
 **Exemplo completo — switch Datacom DmOS:**
 ```
 Passo 1: execute_command(acesso_id=X, comando="show interface description")
-  → "gi0/1  up  up  BAIXADINHA"  → interface: gi0/1
+  → "1/1/4  up  up  CNX.OLT-ZTE-BAIXADINHA"  → interface: 1/1/4
+  ⚠️ Datacom usa formato slot/modulo/porta: 1/1/1, 1/1/4, 2/1/3 — NÃO usa gi0/1 nem GE nem XGE
 
-Passo 2: execute_command(acesso_id=X, comando="show interface gi0/1 transceiver")
-  ✅ Retorna Tx Power(dBm), Rx Power(dBm), Temp
+Passo 2: execute_command(acesso_id=X, comando="show interface 1/1/4 transceiver")
+  ✅ Retorna Tx Power(dBm), Rx Power(dBm), Temp, Voltage, Current
 
 ❌ ERRADO: `show interfaces description` → Datacom usa singular "interface"
 ❌ ERRADO: `display interface description` → comando Huawei, não funciona no DmOS
-❌ ERRADO: `show interface gi0/1 transceiver detail` → parâmetro extra pode retornar erro
+❌ ERRADO: `show interface gi0/1 transceiver` → gi0/1 não existe no Datacom; use 1/1/4
 ```
 
 ⚠️ **INTERCEPTAÇÃO AUTOMÁTICA**: Se você usar `| include <termo>`, o sistema executa automaticamente `display interface description` (sem filtro) e faz busca case-insensitive em Python. O resultado já vem filtrado com nomes de interface já expandidos (ex: `XGE0/0/2` → `XGigabitEthernet0/0/2`). Use o nome expandido retornado para o passo 2.
