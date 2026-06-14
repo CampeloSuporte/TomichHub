@@ -212,10 +212,19 @@ TOOLS_DEFINITION: list[dict] = [
     },
     {
         "name": "list_hosts",
-        "description": "Lista hosts disponíveis. Em modo global, filtre por cliente_nome para encontrar os hosts de um cliente específico.",
+        "description": (
+            "Lista e busca hosts disponíveis para este cliente. "
+            "Use quando o usuário mencionar um equipamento pelo nome/localidade (ex: 'switch de patos', 'OLT central norte') "
+            "e você não conseguir identificar o ID correto pelo system prompt. "
+            "Filtre por 'nome' para busca parcial no nome/tipo do host."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
+                "nome": {
+                    "type": "string",
+                    "description": "Texto parcial para buscar no nome/tipo do host (case-insensitive). Ex: 'patos', 'central norte', 'olt'.",
+                },
                 "protocolo": {
                     "type": "string",
                     "description": "Filtrar por protocolo: SSH, TELNET, HTTP, etc. Omitir para todos.",
@@ -357,18 +366,25 @@ TOOLS_OPENAI: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_hosts",
-            "description": "Lista hosts disponíveis. Em modo global, filtre por cliente_nome para encontrar os hosts de um cliente específico.",
+            "description": (
+                "Lista e busca hosts disponíveis para este cliente. "
+                "Use quando o usuário mencionar um equipamento pelo nome/localidade e você não conseguir identificar o ID."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "nome": {
+                        "type": "string",
+                        "description": "Texto parcial para buscar no nome/tipo do host (case-insensitive). Ex: 'patos', 'central norte'.",
+                    },
                     "protocolo": {
                         "type": "string",
-                        "description": "Filtrar por protocolo: SSH, TELNET, HTTP, etc. Omitir para todos.",
+                        "description": "Filtrar por protocolo: SSH, TELNET, HTTP, etc.",
                         "enum": ["SSH", "TELNET", "HTTP", "HTTPS", "WINBOX", "FTP"],
                     },
                     "cliente_nome": {
                         "type": "string",
-                        "description": "Nome (parcial) do cliente para filtrar hosts. Usar apenas em modo acesso global.",
+                        "description": "Nome (parcial) do cliente. Usar apenas em modo acesso global.",
                     },
                 },
                 "required": [],
@@ -1050,15 +1066,42 @@ Quando um host **não tiver contexto de backup** ou o usuário perguntar sobre i
 
 Use `fetch_host_config` **antes** de `execute_command` quando o contexto estiver ausente e você precisar conhecer a configuração do equipamento.
 
-## Comportamento — REGRA PRINCIPAL
+## Comportamento — REGRAS ABSOLUTAS
+
+### 1. Execute primeiro, pergunte depois
 **Quando pedido para acessar host, executar comando ou verificar algo: use `execute_command` IMEDIATAMENTE.**
 NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECUTE e apresente o resultado.
 
-- Use `list_hosts` para localizar o ID correto pelo nome
+### 2. Identificar host pelo nome — fluxo obrigatório
+Quando o usuário mencionar um equipamento por nome/localidade (ex: "switch de patos", "OLT norte", "roteador borda"):
+
+1. **Primeiro**: procure na lista de hosts do system prompt — campos `tipo` e `função` — qualquer substring que bata (case-insensitive). Ex: "patos" → procure `tipo` que contenha "patos".
+2. **Se não achar**: use `list_hosts(nome="patos")` — busca parcial automática no banco. Se ainda não achar, `list_hosts()` retorna a lista completa para você raciocinar.
+3. **Só pergunte** qual host usar se `list_hosts()` retornar múltiplos candidatos plausíveis e você realmente não conseguir identificar o correto.
+
+⚠️ **NUNCA** responda "preciso de mais informações sobre o host" sem antes chamar `list_hosts`. A lista já está no system prompt — se não bastar, chame a tool.
+
+### 3. Escalação é ÚLTIMO RECURSO — nunca use sem tentativas
+`escalate_to_noc` só pode ser chamado quando:
+- Você já tentou ao menos **2 chamadas de ferramenta** (`execute_command`, `list_hosts`, `search_knowledge`) sem sucesso, **E**
+- O problema realmente exige intervenção humana (falha de hardware, decisão de negócio, acesso bloqueado)
+
+🚫 **PROIBIDO escalate_to_noc**:
+- Na primeira mensagem do usuário sem ter executado nenhuma ferramenta
+- Apenas porque não encontrou o host pelo nome (use `list_hosts` primeiro)
+- Porque o usuário não deu o IP exato (derive-o da lista de hosts)
+- Em caso de dúvida sobre qual comando usar (tente, analise o output, ajuste)
+
+### 4. Contexto da sessão — não repita perguntas
+Se o usuário já informou qual host, qual interface ou qual problema nesta sessão, **não peça essa informação de novo**. Use o histórico da conversa.
+
+### 5. Output sempre visível
+- **SEMPRE inclua o output bruto do terminal**, dentro de bloco de código (``` ```). Nunca substitua por resumo — mostre o output real e adicione análise depois.
+- Responda em **português brasileiro**
+
+- Use `list_hosts(nome=<termo>)` para localizar o ID pelo nome parcial
 - Use `execute_command` com acesso_id e comando adequado ao equipamento
 - **Quando o backup tiver o mapeamento descrição→IP, use-o diretamente — não rode `display bgp peer` (todos) só para descobrir o IP**
-- **SEMPRE inclua o output bruto do terminal na resposta**, dentro de um bloco de código (``` ```). Nunca substitua o output por um resumo formatado — mostre o output real e depois adicione análise se necessário.
-- Responda em **português brasileiro**
 """
 
     # ── Execução de tools ─────────────────────────────────────────
@@ -1404,7 +1447,8 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
         )
 
     async def _tool_list_hosts(self, protocolo: str | None = None,
-                               cliente_nome: str | None = None) -> str:
+                               cliente_nome: str | None = None,
+                               nome: str | None = None) -> str:
         from clientes.models import Acesso
         sessao = await self._get_sessao()
         is_global = bool(sessao.wa_grupo_id and sessao.wa_grupo and sessao.wa_grupo.acesso_global)
@@ -1415,9 +1459,12 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
                 qs = qs.filter(cliente__nome_empresa__icontains=cliente_nome)
             if protocolo:
                 qs = qs.filter(protocolo__iexact=protocolo)
+            if nome:
+                qs = qs.filter(tipo__icontains=nome)
             acessos = await sync_to_async(list)(qs.order_by('cliente__nome_empresa', 'id'))
             if not acessos:
                 sufixo = f" para cliente '{cliente_nome}'" if cliente_nome else ''
+                sufixo += f" com nome '{nome}'" if nome else ''
                 return f"Nenhum host encontrado{sufixo}."
             linhas = [
                 f"[{a.cliente.nome_empresa if a.cliente else '?'}] "
@@ -1430,16 +1477,34 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
             qs = Acesso.objects.filter(cliente=sessao.cliente).select_related('modelo', 'funcao')
             if protocolo:
                 qs = qs.filter(protocolo__iexact=protocolo)
+            if nome:
+                qs = qs.filter(tipo__icontains=nome)
             acessos = await sync_to_async(list)(qs)
             if not acessos:
-                return "Nenhum host encontrado."
+                # Nenhum resultado com o filtro — retorna lista completa para o agent raciocinar
+                qs_all = Acesso.objects.filter(cliente=sessao.cliente).select_related('modelo', 'funcao')
+                if protocolo:
+                    qs_all = qs_all.filter(protocolo__iexact=protocolo)
+                todos = await sync_to_async(list)(qs_all)
+                if not todos:
+                    return "Nenhum host cadastrado para este cliente."
+                linhas_todas = [
+                    f"ID {a.id}: **{a.tipo}** — {a.host}:{a.porta} ({a.protocolo})"
+                    + (f" | {a.modelo.nome}" if a.modelo else "")
+                    + (f" | {a.funcao.descricao}" if a.funcao else "")
+                    for a in todos
+                ]
+                return (
+                    f"Nenhum host encontrado com nome '{nome}'. Lista completa:\n"
+                    + "\n".join(f"- {l}" for l in linhas_todas)
+                )
             linhas = [
                 f"ID {a.id}: **{a.tipo}** — {a.host}:{a.porta} ({a.protocolo})"
                 + (f" | {a.modelo.nome}" if a.modelo else "")
                 + (f" | {a.funcao.descricao}" if a.funcao else "")
                 for a in acessos
             ]
-        return "Hosts disponíveis:\n" + "\n".join(f"- {l}" for l in linhas)
+        return "Hosts encontrados:\n" + "\n".join(f"- {l}" for l in linhas)
 
     async def _tool_search_knowledge(self, query: str, fabricante: str = '',
                                      categoria: str = '') -> str:
@@ -1617,6 +1682,7 @@ NÃO responda com texto dizendo que não pode ou pedindo confirmação — EXECU
             return await self._tool_list_hosts(
                 tool_input.get('protocolo'),
                 tool_input.get('cliente_nome'),
+                tool_input.get('nome'),
             )
         elif tool_name == 'search_knowledge':
             return await self._tool_search_knowledge(
