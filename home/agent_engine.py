@@ -869,7 +869,7 @@ Antes de executar qualquer comando em um host, identifique:
    - `huawei` → comandos VRP: `display ip interface brief`, `display version`, `display alarm`
    - `zte` → comandos ZTE OLT: `show pon onu state`, `show gpon onu detail-info`
    - `cisco` → comandos IOS: `show ip interface brief`, `show version`, `show running-config`
-   - `datacom` → comandos Datacom/Linux: `show`, `display`
+   - `datacom` → comandos DmOS: `show interface description` (listar interfaces), `show interface <nome> transceiver` (sinal óptico), `show bgp summary`, `show ip route`
    - `generico` / Linux → comandos bash: `ip addr`, `df -h`, `free -m`, `systemctl status`
 2. **Função** — define o que o equipamento faz (OLT, roteador, switch, servidor, firewall, etc.) e quais comandos fazem sentido
 3. **Modelo** — detalhes adicionais de hardware que influenciam os comandos
@@ -958,8 +958,14 @@ Se existir tanto uma interface física quanto uma virtual com relação ao mesmo
   - Se achou por `name` → desativar: `/interface disable [find name~"<DESCRIÇÃO>"]`
 - Se ambos retornarem vazio, informe que a interface não foi encontrada
 
-**Huawei VRP / Datacom / Cisco (switches e roteadores):**
-- Buscar por descrição: **SEMPRE** use `display interface description` (Huawei) ou `show interfaces description` (Cisco/Datacom) **sem filtro** e leia TODAS as linhas do output retornado
+**Huawei VRP:**
+- Buscar por descrição: `display interface description` (sem filtro) — leia TODAS as linhas
+
+**Datacom DmOS:**
+- Buscar por descrição: `show interface description` (singular — NÃO "show interfaces") — leia TODAS as linhas
+
+**Cisco IOS/IOS-XE:**
+- Buscar por descrição: `show interfaces description` (plural) — leia TODAS as linhas
 - **NUNCA use `| include`** para busca por descrição, pois `SW-HU-NDD-P2` não casa com busca por "NDD P2"
 - A tabela retorna: Interface / PHY / Protocol / Description — leia cada linha e encontre qualquer uma que contenha o termo buscado (busca parcial, case-insensitive)
 - Exemplo: usuário pede "Dno" → varrer toda a tabela procurando linhas onde a coluna Description contenha "dno" (case-insensitive) → pode ser `XGigabitEthernet0/0/1` com description `SW-NDD-DNO-P1`
@@ -995,7 +1001,7 @@ Com o nome da interface em mãos, execute o comando de transceiver:
 | Fabricante | Comando |
 |-----------|---------|
 | Huawei VRP (switch/roteador) | `display transceiver diagnosis interface <NOME>` |
-| Datacom (DM switches) | `show interfaces <NOME> transceiver` ou `show transceiver <NOME>` |
+| Datacom DmOS | `show interface <NOME> transceiver` (singular "interface") |
 | Cisco IOS/IOS-XE | `show interfaces <NOME> transceiver` |
 | Cisco NX-OS | `show interface <NOME> transceiver details` |
 | MikroTik (SFP com DDM) | `/interface ethernet monitor <NOME> once` |
@@ -1015,21 +1021,29 @@ Com o nome da interface em mãos, execute o comando de transceiver:
 
 **NUNCA pule o passo 1** — execute sempre o comando de sinal óptico com o nome correto da interface física encontrado no passo 1.
 
-**Exemplo completo — "sinal óptico da interface com descrição dno" em switch Huawei:**
+**Exemplo completo — switch Huawei VRP:**
 ```
 Passo 1: execute_command(acesso_id=X, comando="display interface description")
-  → Output: "XGigabitEthernet0/0/2  up  up  SW-HU-DNO-P1"
-  → Interface encontrada: XGigabitEthernet0/0/2
+  → "XGigabitEthernet0/0/2  up  up  SW-HU-DNO-P1"  → interface: XGigabitEthernet0/0/2
 
 Passo 2: execute_command(acesso_id=X, comando="display transceiver diagnosis interface XGigabitEthernet0/0/2")
-  → Retorna: TxPower(dBm): 1.40 normal, RxPower(dBm): -16.90 normal, Temp: 50.74°C
-  ✅ CORRETO — contém dBm
+  ✅ Retorna TxPower(dBm), RxPower(dBm), Temp
 
-❌ ERRADO (não faça isso):
-Passo 2: execute_command(acesso_id=X, comando="display interface XGigabitEthernet0/0/2")
-  → Retorna: bandwidth, utilização, tipo do SFP — NÃO contém valores de potência óptica
-❌ ERRADO: `display interface XGigabitEthernet0/0/2 transceiver` → retorna "Too many parameters" no VRP
-❌ ERRADO: `display interface XGigabitEthernet0/0/2 | include Optical` → retorna vazio
+❌ ERRADO: `display interface XGigabitEthernet0/0/2 transceiver` → "Too many parameters" no VRP
+❌ ERRADO: `display interface XGigabitEthernet0/0/2` → NÃO contém dBm
+```
+
+**Exemplo completo — switch Datacom DmOS:**
+```
+Passo 1: execute_command(acesso_id=X, comando="show interface description")
+  → "gi0/1  up  up  BAIXADINHA"  → interface: gi0/1
+
+Passo 2: execute_command(acesso_id=X, comando="show interface gi0/1 transceiver")
+  ✅ Retorna Tx Power(dBm), Rx Power(dBm), Temp
+
+❌ ERRADO: `show interfaces description` → Datacom usa singular "interface"
+❌ ERRADO: `display interface description` → comando Huawei, não funciona no DmOS
+❌ ERRADO: `show interface gi0/1 transceiver detail` → parâmetro extra pode retornar erro
 ```
 
 ⚠️ **INTERCEPTAÇÃO AUTOMÁTICA**: Se você usar `| include <termo>`, o sistema executa automaticamente `display interface description` (sem filtro) e faz busca case-insensitive em Python. O resultado já vem filtrado com nomes de interface já expandidos (ex: `XGE0/0/2` → `XGigabitEthernet0/0/2`). Use o nome expandido retornado para o passo 2.
