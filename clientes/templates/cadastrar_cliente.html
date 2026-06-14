@@ -43,7 +43,7 @@
                                         <td>{{cliente.email}}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario.id}})" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario.id}}, '{{cliente.notas|escapejs}}')" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <button class="btn-action btn-delete" onclick="confirmarDelete({{cliente.id}})" title="Excluir">
@@ -215,6 +215,15 @@
                             <div class="custom-dropdown-menu" id="editDropdownMenu"></div>
                         </div>
                         <small class="form-text text-muted">Digite para pesquisar ou selecione um usuário existente</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_notas" class="form-label" style="font-size:.85rem;">
+                            <i class="fas fa-robot me-1" style="color:#3b82f6;"></i> Notas para o Agent NOC
+                        </label>
+                        <textarea class="form-control" id="edit_notas" name="notas" rows="3"
+                                  placeholder="Informações sobre o cliente para o Agent NOC: topologia, acordos, restrições, peculiaridades da rede…"
+                                  style="font-size:.85rem;resize:vertical;"></textarea>
+                        <small class="form-text text-muted">Essas notas são injetadas no contexto do Agent NOC a cada sessão.</small>
                     </div>
                 </form>
             </div>

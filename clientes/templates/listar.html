@@ -5492,7 +5492,11 @@ function getCsrfToken(){
                     console.log('✅ Backup automático:', checkboxAutomatico.checked);
                 }
 
-                // ✅ 5. Define o action do form
+                // ✅ 5. Notas do Agent NOC
+                const notasEl = document.getElementById('dup1_notas');
+                if (notasEl) notasEl.value = data.notas || '';
+
+                // ✅ 6. Define o action do form
                 document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;
 
                 // ✅ 6. Exibe o modal

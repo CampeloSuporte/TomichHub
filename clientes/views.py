@@ -314,6 +314,7 @@ def editar_cliente(request):
         cliente.telefone = telefone
         cliente.email = email
         cliente.usuario_id = request.POST.get('usuario')
+        cliente.notas = request.POST.get('notas', '').strip()
 
         cliente.save()
         messages.success(request, "Cliente atualizado com sucesso!")
@@ -377,6 +378,7 @@ def buscar_acesso(request, acesso_id):
             'backup_template_id': acesso.backup_template.id if acesso.backup_template else '',
             'backup_template_nome': acesso.backup_template.nome if acesso.backup_template else '',
             'backup_automatico': acesso.backup_automatico,
+            'notas': acesso.notas or '',
         }
 
         return JsonResponse(data)
@@ -406,6 +408,7 @@ def editar_acesso(request, acesso_id):
             template_id = request.POST.get('backup_template')
             acesso.backup_template_id = template_id if template_id else None
             acesso.backup_automatico = request.POST.get('backup_automatico') == 'on'
+            acesso.notas = request.POST.get('notas', '').strip()
 
             # ✅ Tratar WINBOX vazio ou inválido
             winbox = request.POST.get('winbox')

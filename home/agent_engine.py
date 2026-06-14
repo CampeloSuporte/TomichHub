@@ -644,6 +644,9 @@ class AgentNOCEngine:
             if modelo_nome:  parts.append(f'modelo={modelo_nome}')
             if fabricante:   parts.append(f'fabricante={fabricante}')
             linha = '  - ' + ' | '.join(parts)
+            if getattr(a, 'notas', ''):
+                nota_indent = '\n'.join('      ' + l for l in a.notas.strip().splitlines())
+                linha += f'\n    [Notas do operador]\n{nota_indent}'
             if a.contexto_backup:
                 if incluir_contexto:
                     ctx_raw = a.contexto_backup
@@ -715,6 +718,7 @@ class AgentNOCEngine:
             hosts_descricao = "Hosts organizados por cliente. Use o ID do host ao executar comandos."
             cliente_info    = "**Global NOC** (acesso a todos os clientes)"
             restricao_linha = "- Nunca misture dados de clientes diferentes na mesma resposta"
+            notas_cliente   = ''
 
         # ── Modo normal: apenas cliente vinculado ─────────────────
         else:
@@ -722,9 +726,10 @@ class AgentNOCEngine:
             cliente_nome   = cliente.nome_empresa if cliente else '(desconhecido)'
             cliente_cidade = getattr(cliente, 'cidade', '') or ''
             cliente_estado = getattr(cliente, 'estado', '') or ''
+            notas_cliente  = getattr(cliente, 'notas', '') or ''
             acessos = await sync_to_async(list)(
                 Acesso.objects.filter(cliente=cliente).select_related('modelo', 'funcao').only(
-                    'id', 'tipo', 'host', 'porta', 'protocolo', 'contexto_backup',
+                    'id', 'tipo', 'host', 'porta', 'protocolo', 'contexto_backup', 'notas',
                     'modelo__nome', 'modelo__fabricante', 'funcao__descricao',
                 )
             )
@@ -824,6 +829,10 @@ class AgentNOCEngine:
         else:  # admin
             canal_instrucao = "Canal WhatsApp nível ADMIN: execute QUALQUER comando automaticamente, exceto reboot/format/erase/factory reset que são destrutivos."
 
+        notas_cliente_section = ''
+        if not is_global and notas_cliente:
+            notas_cliente_section = f"\n\n## Notas do cliente (informadas pelo operador)\n{notas_cliente.strip()}"
+
         return f"""Você é o **Agent NOC Tomich**, assistente de inteligência artificial para operações de rede.
 
 ## Contexto desta sessão
@@ -831,6 +840,7 @@ class AgentNOCEngine:
 - **Escopo:** {cliente_info}
 - **Nível de permissão:** {nivel_permissao} — {nivel_desc}
 - **Sessão ID:** {self.sessao_id}
+{notas_cliente_section}
 
 {hosts_header}
 {hosts_descricao}

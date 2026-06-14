@@ -126,7 +126,7 @@ function confirmarDelete(id) {
 // ============================================
 // FUNÇÃO DE EDIÇÃO DE CLIENTE
 // ============================================
-function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, telefone, email, usuarioId) {
+function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, telefone, email, usuarioId, notas) {
     // Preenche os campos do modal com os dados do cliente
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_nome_empresa').value = nomeEmpresa;
@@ -137,14 +137,18 @@ function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, tel
     document.getElementById('edit_cidade').value = cidade;
     document.getElementById('edit_telefone').value = telefone;
     document.getElementById('edit_email').value = email;
-    
+
+    // Notas do Agent NOC
+    const notasEl = document.getElementById('edit_notas');
+    if (notasEl) notasEl.value = notas || '';
+
     // Preenche o dropdown de usuário
     document.getElementById('edit_usuario').value = usuarioId;
     const usuarioSelecionado = usuarios.find(u => u.id === usuarioId);
     if (usuarioSelecionado) {
         document.getElementById('edit_usuario_search').value = usuarioSelecionado.username;
     }
-    
+
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));
     modal.show();
@@ -189,7 +193,7 @@ function abrirModalEditarAcesso(acessoId) {
 
 // Fechar modal de edição
 function fecharModalEditarAcesso() {
-    document.getElementById('modalEditarAcesso').style.display = 'none';
+    _fecharOverlay('modalEditarAcesso');
 }
 
 // Adaptar filterOptions para funcionar com os campos de edição também

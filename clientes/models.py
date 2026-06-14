@@ -19,6 +19,11 @@ class Cliente(models.Model):
     cidade = models.CharField(max_length=100, blank=True, null=True)
     data_criacao = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(max_length=255, blank=True, null=True)
+    notas = models.TextField(
+        blank=True, default='',
+        verbose_name='Notas do Agent NOC',
+        help_text='Informações, peculiaridades e contexto do cliente para o Agent NOC (topologia, acordos, restrições).'
+    )
 
     def __str__(self):
         return self.nome_empresa
@@ -65,6 +70,11 @@ class Acesso(models.Model):
         default=False,
         verbose_name="Backup Automático",
         help_text="Executar backup automaticamente via agendamento"
+    )
+    notas = models.TextField(
+        blank=True, default='',
+        verbose_name='Notas do Agent NOC',
+        help_text='Notas sobre este host para o Agent NOC (senha ADM, restrições de horário, comportamentos especiais).'
     )
     contexto_backup = models.TextField(
         blank=True, default='',
