@@ -880,6 +880,12 @@ Se o host não tiver modelo/fabricante cadastrado, tente inferir pelo nome do ti
 
 Cada host pode ter um bloco `[Configuração conhecida do backup]` com dados extraídos do último backup. **USE esse contexto para resolver perguntas sem precisar de comandos extras de descoberta.**
 
+**O que extrair do contexto de backup antes de executar comandos:**
+- **Formato de interface** — as interfaces listadas no backup mostram o padrão exato deste equipamento (ex: `1/1/4` em Datacom, `sfp1` em MikroTik, `GigabitEthernet0/0/1` em Huawei). Use esse padrão nos comandos de transceiver, shutdown, etc.
+- **Fabricante e SO confirmados** — o backup indica `Fabricante detectado: datacom` ou similar, confirmando qual conjunto de comandos usar.
+- **Protocolos ativos** — BGP, OSPF, MPLS presentes no backup indicam quais comandos de verificação fazem sentido.
+- Se o bloco de backup estiver vazio → use `fetch_host_config` para populá-lo antes de prosseguir com qualquer diagnóstico.
+
 ### Consultar sessão BGP por descrição/nome
 
 **REGRA OBRIGATÓRIA**: Quando o usuário perguntar sobre uma sessão BGP pelo **nome/descrição** (ex: "wirelink", "IBGP DNO", "K2 LINK", "VIVO", "trânsito X"):
@@ -983,7 +989,15 @@ Se o switch alvo não estiver claro, pergunte antes de executar.
 
 Quando o usuário pedir "sinal óptico", "potência de sinal", "DDM", "transceiver", "dBm", "rx power", "tx power" de uma interface:
 
-**Fluxo obrigatório (2 passos):**
+**Fluxo obrigatório (3 passos):**
+
+**Passo 0 — Identificar o formato de interface a partir do contexto de backup:**
+Antes de executar qualquer comando, verifique o bloco `[Configuração conhecida do backup]` do host alvo no system prompt.
+- Se o backup listar interfaces (ex: `1/1/4`, `sfp1`, `GigabitEthernet0/0/1`, `xe-0/0/0`), você já sabe o formato exato deste equipamento — use-o nos comandos.
+- Se o backup tiver `Demais interfaces:` ou `Interfaces com IP:` com nomes reais, extraia o padrão de nomenclatura daí.
+- Se o backup estiver vazio ou não tiver interfaces listadas → use `fetch_host_config` para populá-lo antes de prosseguir.
+
+⚠️ **O backup é a fonte de verdade do formato de interface** — mais confiável do que regras genéricas por fabricante. Um Datacom pode usar `1/1/4`; outro pode usar `gi1/0/1`. Sempre verifique o backup real do host.
 
 **Passo 1 — Encontrar o nome da interface FÍSICA pela descrição:**
 Execute o comando de listagem de descrições e identifique o nome exato da interface física.
