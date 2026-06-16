@@ -203,3 +203,36 @@ https: dst-host=<DOMINIO-DO-CRM>
 ```
 
 Isso garante que o mini-browser consiga alcançar o portal do CRM antes da autenticação.
+
+---
+
+## Entrega do `login.html` via SFTP — Corrigido em 2026-06-16
+
+**Arquivo:** `clientes/hotspot_views.py`
+
+### Problema
+
+Ao aplicar as configurações do hotspot, o passo que envia o arquivo `login.html` para o
+MikroTik usava `/tool fetch` (o RouterBoard fazia o download via HTTP a partir do CRM).
+Isso falhava de duas formas em sequência:
+
+1. `/tool fetch failure: resolving error` — o MikroTik não conseguia resolver o DNS de
+   `crm.tomich.com.br`.
+2. Após resolver manualmente o IP do lado do CRM e passar o IP direto para o fetch:
+   `Idle timeout - connecting` — o MikroTik conseguia SSH (porta 22) no CRM, mas não
+   conseguia HTTP (porta 80), por alguma restrição de rede/firewall específica daquele
+   cliente.
+
+Também ocorria `expected end of command (line 1 column 51)` ao configurar o hotspot
+profile, porque os valores de parâmetros do comando RouterOS (`hotspot-address=...`,
+`html-directory=...`) não estavam entre aspas.
+
+### Correção
+
+- Todos os valores de parâmetro nos comandos RouterOS passaram a ser enviados entre aspas
+  (`hotspot-address="{{ gateway }}"`, `html-directory="{{ dir_name }}"`).
+- A entrega do `login.html` deixou de depender de HTTP: o CRM agora gera o HTML localmente
+  (`_gerar_login_html`) e o envia direto pelo canal SSH já aberto via **SFTP**
+  (`client.open_sftp()` + `sftp.putfo(...)`), sem depender de o MikroTik conseguir alcançar
+  o CRM por HTTP. O `/tool fetch` via IP resolvido continua como fallback caso o SFTP falhe
+  por algum motivo.

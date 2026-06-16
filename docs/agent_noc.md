@@ -167,3 +167,106 @@ O singleton `AgentConfig.get()` concentra todas as configurações:
 | `AgentLog`         | Registro de cada mensagem processada (com contagem de tokens)|
 | `AgentKnowledge`   | Base de conhecimento do agent (documentos internos)         |
 | `AgentKnowledgeDoc`| Documento individual da base de conhecimento                |
+| `WhatsAppGrupo`    | Grupo/contato WhatsApp vinculado a um cliente — desde 2026-06-16 tem `claude_api_key` próprio (ver seção abaixo) |
+
+---
+
+## Sinal Óptico Datacom (DmOS) — Corrigido em 2026-06-16
+
+**Arquivos:** `home/agent_engine.py`, `AgentKnowledge` (artigo "Datacom" no banco)
+
+### Problema
+
+O agent encontrava a interface física correta (ex.: `ten-gigabit-ethernet 1/1/4`,
+identificada pela descrição configurada no equipamento), mas respondia "o sinal óptico
+específico não foi fornecido" em vez de buscar o valor. A causa raiz: o comando que o
+agent tentava executar — `show interface <iface> transceiver` — **não existe** no DmOS da
+Datacom. O comando correto é:
+
+```
+show interface transceivers
+```
+
+(plural, **sem** especificar a interface — retorna uma tabela única com Temperature,
+Voltage, Current, Tx-Power e Rx-Power de **todos** os SFPs instalados no equipamento).
+
+### Correção
+
+- `_physical_prefixes` passou a reconhecer os prefixos de interface física da Datacom
+  (`ten-gigabit-ethernet`, `gigabit-ethernet`, `hundred-gigabit-ethernet`, `fast-ethernet`).
+- Quando o agent identifica uma interface física Datacom (seja via busca por descrição,
+  seja via `show interface <iface>` direto), o código agora **executa automaticamente**
+  `show interface transceivers` no host via SSH e filtra a saída apenas para as linhas da
+  interface em questão (mantendo cabeçalho da tabela), anexando o resultado à resposta
+  antes de devolver ao modelo.
+- O artigo da base de conhecimento (`AgentKnowledge`, Datacom) foi atualizado com o comando
+  correto e um exemplo de saída, para reforçar via system prompt.
+
+---
+
+## API Key Claude por Grupo WhatsApp — Adicionado em 2026-06-16
+
+**Arquivos:** `clientes/models.py` (campo `WhatsAppGrupo.claude_api_key`),
+`home/views.py` (`agent_grupo_salvar`), `home/templates/agent_grupos.html`,
+`home/agent_engine.py` (`processar_mensagem`)
+
+### Motivação
+
+O Agent NOC é compartilhado entre todos os clientes, mas cada cliente deve consumir os
+**próprios créditos** da API Anthropic ao usar o agent no seu grupo WhatsApp — em vez de
+tudo sair da chave global configurada em Sistema → Agent NOC → Configurações.
+
+### Como funciona
+
+- `WhatsAppGrupo` ganhou o campo `claude_api_key` (opcional, por grupo).
+- Na tela **Agent NOC → Grupos** (`agent_grupos.html`), o modal de edição de cada grupo
+  tem um campo de chave Claude dedicado:
+  - O campo **nunca é pré-preenchido** com a chave real (mesmo padrão de segurança da
+    config global) — mostra apenas o status `✓ configurada` / `○ não configurada`.
+  - Deixar o campo vazio ao salvar **preserva** a chave já gravada.
+  - Checkbox "Remover chave atual" permite limpar explicitamente.
+  - Ícone 🔑 aparece ao lado do nome do grupo na listagem quando há chave configurada.
+- Em `agent_engine.py`, `processar_mensagem()`:
+  - Para sessões com `canal == 'whatsapp'`, busca `sessao.wa_grupo.claude_api_key`.
+  - **Sem chave configurada no grupo → o agent fica em silêncio total** (retorna string
+    vazia; nenhuma mensagem de erro é enviada ao grupo — não deve haver spam para grupos
+    que ainda não configuraram a própria chave).
+  - Com chave configurada, uma cópia em memória da `AgentConfig` global é usada apenas
+    para essa chamada (`config.claude_api_key = chave_do_grupo`), sem nunca persistir a
+    chave do cliente na configuração global.
+  - Sessões via canal `terminal` (chat interno de teste no CRM) continuam usando a chave
+    global normalmente — a regra de "silêncio sem chave" vale **apenas** para WhatsApp.
+  - O provedor OpenAI **não** foi incluído nessa individualização (fora do escopo pedido) —
+    continua usando a chave global mesmo em grupos WhatsApp.
+
+### Migração
+
+`clientes/migrations/0073_whatsappgrupo_claude_api_key_alter_acesso_notas_and_more.py`
+
+---
+
+## Bug: salvar API Key na config global falhava com erro 500 — Corrigido em 2026-06-16
+
+**Arquivos:** `home/templates/agent_config.html`, `home/views.py`
+
+**Sintoma:** ao colar a API Key do Claude e clicar em salvar, nada parecia acontecer; o
+teste de conexão sempre respondia "API Key não configurada."
+
+**Causa raiz:** `USE_L10N=True` + `LANGUAGE_CODE='pt-BR'` fazia o Django renderizar o
+valor padrão `0.2` do campo `claude_temperature` como `0,2` (vírgula) no atributo
+`value` de um `<input type="number">`. Esse tipo de input HTML5 exige ponto decimal —
+com vírgula, o navegador considera o campo **inválido** e `.value` retorna string
+vazia. O JS enviava `claude_temperature: ''`, e o backend quebrava com
+`ValueError: could not convert string to float: ''` (HTTP 500), abortando a transação
+inteira **antes** de salvar a API Key.
+
+**Correção:**
+- Template: campos de temperatura (Claude e OpenAI) agora usam
+  `{{ valor|stringformat:'0.2f' }}` para forçar ponto decimal independente do locale.
+- Backend (`agent_config` view): todas as conversões `int()`/`float()` de campos do
+  formulário passaram a usar `data.get(campo) or valor_atual` em vez de
+  `data.get(campo, valor_atual)` — assim, um valor vazio por qualquer outro motivo cai
+  no valor já salvo em vez de derrubar a request com 500.
+- JS (`salvarClaude`, `salvarOpenAI`, `salvarEvolution`): adicionado tratamento de
+  erro visível (toast) para qualquer falha de rede/HTTP, evitando que uma falha de
+  salvamento passe silenciosamente sem feedback ao usuário.

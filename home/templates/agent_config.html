@@ -218,7 +218,7 @@
             <div class="form-grid mb-3">
                 <div>
                     <label class="cfg-label">Temperature (0 = preciso, 1 = criativo)</label>
-                    <input class="cfg-input" type="number" id="claude_temperature" value="{{ agent_cfg.claude_temperature }}" min="0" max="1" step="0.05">
+                    <input class="cfg-input" type="number" id="claude_temperature" value="{{ agent_cfg.claude_temperature|stringformat:'0.2f' }}" min="0" max="1" step="0.05">
                 </div>
                 <div>
                     <label class="cfg-label">Máx. comandos por sessão</label>
@@ -303,7 +303,7 @@
             <div class="form-grid mb-3">
                 <div>
                     <label class="cfg-label">Temperature (0 = preciso, 1 = criativo)</label>
-                    <input class="cfg-input" type="number" id="openai_temperature" value="{{ agent_cfg.openai_temperature }}" min="0" max="2" step="0.05">
+                    <input class="cfg-input" type="number" id="openai_temperature" value="{{ agent_cfg.openai_temperature|stringformat:'0.2f' }}" min="0" max="2" step="0.05">
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2">
@@ -416,11 +416,19 @@ async function salvarClaude() {
         wa_grupo_noc:        document.getElementById('wa_grupo_noc').value.trim(),
         wa_noc_numero:       document.getElementById('wa_noc_numero').value.trim(),
     };
-    const r = await fetch('{% url "agent_config" %}', {
-        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-    });
-    const d = await r.json();
-    mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+    try {
+        const r = await fetch('{% url "agent_config" %}', {
+            method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        if (!r.ok) {
+            mostrarToast(`✕ Erro HTTP ${r.status} ao salvar — sessão pode ter expirado, recarregue a página.`, 'erro');
+            return;
+        }
+        const d = await r.json();
+        mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+    } catch (e) {
+        mostrarToast(`✕ Falha ao salvar: ${e.message}`, 'erro');
+    }
 }
 
 async function salvarEvolution() {
@@ -431,11 +439,19 @@ async function salvarEvolution() {
         instance_name:    document.getElementById('evo_instance_name').value.trim(),
         webhook_secret:   document.getElementById('evo_webhook_secret').value.trim(),
     };
-    const r = await fetch('{% url "agent_config" %}', {
-        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-    });
-    const d = await r.json();
-    mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+    try {
+        const r = await fetch('{% url "agent_config" %}', {
+            method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        if (!r.ok) {
+            mostrarToast(`✕ Erro HTTP ${r.status} ao salvar — sessão pode ter expirado, recarregue a página.`, 'erro');
+            return;
+        }
+        const d = await r.json();
+        mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+    } catch (e) {
+        mostrarToast(`✕ Falha ao salvar: ${e.message}`, 'erro');
+    }
 }
 
 // ── Seletor de provedor ───────────────────────────────────────
@@ -485,11 +501,19 @@ async function salvarOpenAI() {
         openai_max_tokens: document.getElementById('openai_max_tokens').value,
         openai_temperature: document.getElementById('openai_temperature').value,
     };
-    const r = await fetch('{% url "agent_config" %}', {
-        method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-    });
-    const d = await r.json();
-    mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+    try {
+        const r = await fetch('{% url "agent_config" %}', {
+            method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        if (!r.ok) {
+            mostrarToast(`✕ Erro HTTP ${r.status} ao salvar — sessão pode ter expirado, recarregue a página.`, 'erro');
+            return;
+        }
+        const d = await r.json();
+        mostrarToast(d.ok ? `✓ ${d.msg}` : `✕ ${d.erro}`, d.ok ? 'ok' : 'erro');
+    } catch (e) {
+        mostrarToast(`✕ Falha ao salvar: ${e.message}`, 'erro');
+    }
 }
 
 async function testarOpenAI() {

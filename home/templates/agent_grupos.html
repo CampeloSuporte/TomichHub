@@ -205,7 +205,9 @@
                     data-vinculo="{{ g.cliente|yesno:'vinculado,sem' }}">
                     <td class="tipo-icon text-center">{{ g.tipo|yesno:'👥,👤' }}</td>
                     <td>
-                        <div style="color:#e6edf3;font-weight:600;font-size:.82rem">{{ g.nome }}</div>
+                        <div style="color:#e6edf3;font-weight:600;font-size:.82rem">{{ g.nome }}
+                            {% if g.claude_api_key %}<span title="API Key Claude configurada" style="color:var(--gr);font-size:.7rem">🔑</span>{% endif %}
+                        </div>
                         <div style="color:rgba(88,166,255,.4);font-size:.68rem;font-family:monospace">{{ g.jid }}</div>
                     </td>
                     <td>
@@ -244,7 +246,7 @@
                     </td>
                     <td>
                         <div class="d-flex gap-1">
-                            <button class="btn-sm-icon" title="Editar vínculo" onclick="abrirModal({{ g.id }}, '{{ g.nome|escapejs }}', '{{ g.jid|escapejs }}', {{ g.cliente.id|default:'null' }}, '{{ g.nivel_permissao }}', {{ g.ativo|yesno:'true,false' }}, {{ g.acesso_global|yesno:'true,false' }})">✎</button>
+                            <button class="btn-sm-icon" title="Editar vínculo" onclick="abrirModal({{ g.id }}, '{{ g.nome|escapejs }}', '{{ g.jid|escapejs }}', {{ g.cliente.id|default:'null' }}, '{{ g.nivel_permissao }}', {{ g.ativo|yesno:'true,false' }}, {{ g.acesso_global|yesno:'true,false' }}, {{ g.claude_api_key|yesno:'true,false' }})">✎</button>
                             <button class="btn-sm-icon" title="{{ g.ativo|yesno:'Desativar,Ativar' }}" style="color:{{ g.ativo|yesno:'var(--or),var(--gr)' }}" onclick="toggleAtivo({{ g.id }}, this)">{{ g.ativo|yesno:'⊘,●' }}</button>
                         </div>
                     </td>
@@ -315,6 +317,22 @@
                     <option value="operacional">⚙ Operacional — comandos pré-aprovados</option>
                     <option value="admin">🔑 Admin — aprovação inline via WhatsApp</option>
                 </select>
+            </div>
+
+            <!-- API Key Claude do cliente -->
+            <div class="mb-3" style="background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:10px 12px;">
+                <label class="ag-label">🔑 API Key Claude do cliente <span id="modal-claude-key-status" style="font-size:.7rem;font-weight:600"></span></label>
+                <div class="key-wrap" style="display:flex;gap:6px">
+                    <input class="ag-select" type="password" id="modal-claude-key" placeholder="sk-ant-api03-••••••••••••••••••" style="flex:1">
+                    <button class="btn-sm-icon" type="button" onclick="toggleRevealGrupo()">👁</button>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer">
+                    <input type="checkbox" id="modal-claude-key-clear" style="accent-color:var(--rd);width:14px;height:14px">
+                    <span style="font-size:.72rem;color:var(--rd)">Remover chave atual (agent fica silencioso neste grupo)</span>
+                </label>
+                <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">
+                    Chave própria deste cliente — consome os créditos dele. O Agent NOC <strong>só responde neste grupo</strong> se esta chave estiver configurada. Deixe o campo vazio para manter a chave já salva.
+                </div>
             </div>
 
             <!-- Hosts permitidos -->
@@ -492,7 +510,7 @@ function toggleGlobal(cb) {
     document.getElementById('secao-hosts').style.display   = isGlobal ? 'none' : '';
 }
 
-function abrirModal(id, nome, jid, clienteId, nivel, ativo, global) {
+function abrirModal(id, nome, jid, clienteId, nivel, ativo, global, temClaudeKey) {
     document.getElementById('modal-grupo-id').value = id;
     document.getElementById('modal-nome').textContent = nome;
     document.getElementById('modal-jid').textContent  = jid;
@@ -500,6 +518,13 @@ function abrirModal(id, nome, jid, clienteId, nivel, ativo, global) {
     document.getElementById('modal-ativo').checked = ativo;
     document.getElementById('modal-global').checked = !!global;
     toggleGlobal({checked: !!global});
+
+    // API Key Claude — nunca pré-preenche o valor real, só indica o status
+    document.getElementById('modal-claude-key').value = '';
+    document.getElementById('modal-claude-key-clear').checked = false;
+    const keyStatus = document.getElementById('modal-claude-key-status');
+    keyStatus.textContent = temClaudeKey ? '✓ configurada' : '○ não configurada — agent silencioso aqui';
+    keyStatus.style.color = temClaudeKey ? 'var(--gr)' : 'var(--or)';
 
     // Popula o search-select de cliente
     const clienteObj = clienteId ? CS_CLIENTES.find(c => c.id == clienteId) : null;
@@ -561,18 +586,31 @@ async function carregarHosts(grupoId) {
     }
 }
 
+function toggleRevealGrupo() {
+    const el = document.getElementById('modal-claude-key');
+    el.type = el.type === 'password' ? 'text' : 'password';
+}
+
 async function salvarGrupo() {
-    const id        = document.getElementById('modal-grupo-id').value;
-    const clienteId = csGetHidden().value;
-    const nivel     = document.getElementById('modal-nivel').value;
-    const ativo     = document.getElementById('modal-ativo').checked;
-    const hostsIds  = Array.from(document.querySelectorAll('#hosts-list input[type=checkbox]:checked')).map(c => parseInt(c.value));
+    const id          = document.getElementById('modal-grupo-id').value;
+    const clienteId   = csGetHidden().value;
+    const nivel       = document.getElementById('modal-nivel').value;
+    const ativo       = document.getElementById('modal-ativo').checked;
+    const hostsIds    = Array.from(document.querySelectorAll('#hosts-list input[type=checkbox]:checked')).map(c => parseInt(c.value));
+    const novaKey     = document.getElementById('modal-claude-key').value.trim();
+    const removerKey  = document.getElementById('modal-claude-key-clear').checked;
+
+    const payload = {cliente_id: clienteId || null, nivel_permissao: nivel, ativo, hosts_ids: hostsIds, acesso_global: document.getElementById('modal-global').checked};
+    // Só envia claude_api_key se o usuário digitou uma nova chave ou marcou "remover" —
+    // assim, deixar o campo vazio preserva a chave já salva.
+    if (novaKey) payload.claude_api_key = novaKey;
+    else if (removerKey) payload.claude_api_key = '';
 
     try {
         const r = await fetch(`{% url "agent_grupo_salvar" 0 %}`.replace('/0/', `/${id}/`), {
             method: 'POST',
             headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
-            body: JSON.stringify({cliente_id: clienteId || null, nivel_permissao: nivel, ativo, hosts_ids: hostsIds, acesso_global: document.getElementById('modal-global').checked})
+            body: JSON.stringify(payload)
         });
         const d = await r.json();
         if (d.ok) {

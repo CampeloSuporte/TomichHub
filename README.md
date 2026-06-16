@@ -282,6 +282,7 @@ Assistente de inteligência artificial integrado ao CRM:
 - Acesso a ferramentas: terminal SSH, consulta de equipamentos, logs
 - Grupos de discussão com múltiplos participantes
 - Integração com WhatsApp via Evolution API
+- **API Key Claude individual por grupo WhatsApp** — cada cliente consome os próprios créditos Anthropic; o agent fica em silêncio em grupos sem chave configurada
 - Controle de consumo de tokens com custo estimado em USD e BRL
 - Histórico de conversas e relatórios de uso
 
@@ -546,6 +547,8 @@ sudo -u postgres psql crm_db < backup_20260101.sql
 | [SISTEMA.md](SISTEMA.md) | Documentação técnica detalhada (modelos, APIs, arquitetura) |
 | [CHANGELOG.md](CHANGELOG.md) | Histórico de todas as alterações |
 | [AGENT_NOC.md](AGENT_NOC.md) | Documentação do Agent NOC com IA |
+| [docs/agent_noc.md](docs/agent_noc.md) | Agent NOC — API Key por grupo, monitor de tokens, fix Datacom |
+| [docs/ATENDIMENTO.md](docs/ATENDIMENTO.md) | Módulo de atendimento — tickets, tarefas, Sala Virtual (WebRTC) |
 | [docs/INDEX.md](docs/INDEX.md) | Índice de toda a documentação |
 | [docs/monitoramento.md](docs/monitoramento.md) | Monitor de tráfego com sistema de abas |
 | [docs/HOTSPOT_CAPTIVE_PORTAL.md](docs/HOTSPOT_CAPTIVE_PORTAL.md) | Captive portal e bugs corrigidos |

@@ -385,6 +385,63 @@ systemctl restart gunicorn daphne celery
 | 03/06/2026 | **Lembretes pessoais** manhã e meio-dia via WhatsApp |
 | 03/06/2026 | **Correção alerta diário** — bug crontab, guard anti-duplo-envio |
 | 03/06/2026 | **Relatórios** — campos Assunto e Categoria na tabela HTML e PDF |
+| 16/06/2026 | **Sala Virtual** — corrige queda de áudio após alguns minutos (ICE/negociação WebRTC) |
+
+---
+
+## Sala Virtual de Atendentes — WebRTC
+
+**Arquivo:** `atendimento/templates/atendimento/sala_virtual.html` (frontend),
+`atendimento/consumers.py` (`VirtualRoomConsumer`, sinalização via WebSocket)
+
+Chamada de voz/tela em malha completa (full mesh) entre atendentes conectados na sala —
+cada participante mantém uma `RTCPeerConnection` direta com todos os demais.
+
+### Bug 1 — candidatos ICE descartados (várias pessoas, um par não se ouve)
+
+**Sintoma:** com 3 ou 4 pessoas na sala, a maioria se ouvia normalmente, mas um par
+específico não se ouvia — de forma inconsistente, variando a cada entrada na sala.
+
+**Causa:** candidatos ICE (`ice_candidate`) que chegavam **antes** da
+`RTCPeerConnection` estar totalmente negociada (offer/answer ainda em trânsito) eram
+descartados silenciosamente (`catch(e){}`), sem nunca serem reaplicados. Com mais
+participantes, a janela de corrida da sinalização aumenta, tornando o problema mais
+frequente.
+
+**Correção (2026-06-16):** buffer de candidatos pendentes por peer
+(`pendingCandidates`). Candidatos que chegam antes da conexão estar pronta são
+guardados e aplicados (`flushPendingCandidates`) assim que `setRemoteDescription`
+é concluído — tanto no fluxo de quem oferta quanto no de quem responde.
+
+### Bug 2 — áudio cai sozinho após alguns minutos e não volta
+
+**Sintoma:** a sala funcionava normalmente por alguns minutos e depois o áudio parava
+de funcionar entre todos os participantes, sem nenhuma ação do usuário.
+
+**Causa:** o único mecanismo de recuperação existente era
+`pc.onconnectionstatechange` chamando `pc.restartIce()` quando a conexão caía para
+`failed`. Isso **não tinha efeito real**: `restartIce()` apenas agenda a renegociação
+e dispara o evento `negotiationneeded` — e não havia **nenhum listener** para esse
+evento no código. Sem alguém criando e enviando uma nova oferta, a renegociação nunca
+acontecia. Quando a conexão ICE expira (timeout comum de NAT/firewall após alguns
+minutos — a sala só usa servidores STUN, sem TURN de apoio), o áudio cai e nunca mais
+volta.
+
+**Correção (2026-06-16):** implementado o padrão **Perfect Negotiation**:
+- `pc.onnegotiationneeded` agora cria e envia a oferta de fato quando necessário —
+  fazendo `restartIce()` funcionar de verdade.
+- Cada par decide deterministicamente quem é "polite" (`myId < peerId`) para resolver
+  colisões de oferta simultânea sem precisar de um líder fixo.
+- Quem entra como ouvinte (sem microfone) cria um transceiver de áudio `recvonly`
+  explícito, garantindo que a negociação aconteça mesmo sem track de envio.
+- Bônus: corrige também um bug latente em que ligar o microfone ou compartilhar tela
+  *depois* de entrar na sala não notificava quem havia recebido a oferta original (a
+  mesma falta do `onnegotiationneeded`).
+
+**Limitação conhecida:** a sala usa apenas STUN público (Google), sem servidor TURN.
+Em redes com NAT simétrico/firewalls muito restritivos, a conexão direta pode não ser
+estabelecida mesmo com a renegociação corrigida — um TURN de apoio resolveria esse
+caso residual, mas está fora do escopo desta correção.
 
 ---
 

@@ -1174,6 +1174,13 @@ class WhatsAppGrupo(models.Model):
         help_text='Vazio = todos os hosts do cliente vinculado'
     )
 
+    # API Key individual do cliente (Agent NOC)
+    claude_api_key  = models.CharField(
+        max_length=300, blank=True, verbose_name='API Key Claude do cliente',
+        help_text='Chave Anthropic própria deste grupo/cliente — consome os créditos dele. '
+                   'O Agent NOC só responde neste grupo se esta chave estiver configurada.',
+    )
+
     # Estado
     ativo           = models.BooleanField(default=True, verbose_name='Ativo')
     sincronizado_em = models.DateTimeField(auto_now=True, verbose_name='Última sincronização')

@@ -304,12 +304,11 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             # Script simples: cria/remove queue por IP do lease
             # \" dentro do valor RouterOS → aspas literais no script
             lease_script = (
-                ':local t ($leaseActIP.\\"/32\\"); '
-                ':if ($leaseBound = \\"1\\") do={'
-                '/queue simple remove [find where target=$t]; '
-                f'/queue simple add target=$t max-limit={limit} comment=$leaseActMAC'
+                ':if ($leaseBound = 1) do={'
+                '/queue simple remove [find where comment=$leaseActMAC]; '
+                f'/queue simple add target=$leaseActIP max-limit={limit} comment=$leaseActMAC'
                 '} else={'
-                '/queue simple remove [find where target=$t]'
+                '/queue simple remove [find where comment=$leaseActMAC]'
                 '}'
             )
             ls_out, ls_err, ls_rc = _mt_exec(
@@ -339,11 +338,13 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         session_secs = hotspot.session_timeout * 60  # minutos → segundos
         idle_secs    = hotspot.idle_timeout    * 60
         rate         = f'{hotspot.rate_limit_down}/{hotspot.rate_limit_up}'
-        # Criar/atualizar perfil com parâmetros mínimos primeiro
+        # Criar/atualizar perfil com parâmetros mínimos primeiro.
+        # Aspas ao redor dos valores evitam "expected end of command" no RouterOS
+        # quando o comando ultrapassa certos limites de parsing via SSH exec_command.
         prof_base = (
-            f'hotspot-address={hotspot.gateway} '
+            f'hotspot-address="{hotspot.gateway}" '
             f'login-by=http-pap '
-            f'html-directory={dir_name}'
+            f'html-directory="{dir_name}"'
         )
         prof_exists = _mt_count(client, f'/ip hotspot profile print count-only where name="{profile_name}"')
         if prof_exists > 0:
@@ -437,28 +438,53 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         except Exception as _e:
             log.append(f'⚠️ Walled Garden HTTPS: não resolveu IP de {crm_host} — {_e}')
 
-        # ── 9. MikroTik baixa login.html do CRM via /tool fetch ──────────────
-        # Usa HTTP — nginx serve diretamente /clientes/hotspot/login-html/ sem HTTPS
-        # evitando problemas de CA bundle antigo no RouterOS
-        _crm_host = urlparse(pixel_url).hostname
-        login_html_url = f'http://{_crm_host}/clientes/hotspot/login-html/{hotspot.uuid}/'
+        # ── 9. Upload login.html via SFTP ────────────────────────────────────
+        # Usa SFTP (mesma conexão SSH já aberta) em vez de /tool fetch HTTP.
+        # Isso evita dependência de conectividade HTTP do MikroTik para o CRM
+        # (DNS, firewall, timeout) — o arquivo é empurrado diretamente pelo CRM.
+        import io as _io
 
         # Garante que html-directory aponte para o diretório padrão do hotspot
         _mt_exec(client,
-            f'/ip hotspot profile set [find name="{profile_name}"] html-directory={dir_name}')
+            f'/ip hotspot profile set [find name="{profile_name}"] html-directory="{dir_name}"')
 
-        # Faz download direto — sobrescreve o arquivo existente automaticamente
-        fetch_out, fetch_err, fetch_rc = _mt_exec(client,
-            f'/tool fetch url="{login_html_url}" '
-            f'dst-path="flash/{dir_name}/login.html" mode=http',
-            timeout=30)
-        fetch_combined = (fetch_out + fetch_err).strip()
-        fetch_ok = fetch_rc == 0 and not any(
-            k in fetch_combined.lower() for k in ('error', 'failure', 'failed', 'timed out'))
-        if fetch_ok:
-            log.append(f'✅ login.html baixado: {login_html_url}')
-        else:
-            log.append(f'⚠️ /tool fetch erro (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
+        # Deriva portal URL a partir do pixel_url (mesmo host/scheme)
+        portal_url_for_html = pixel_url.replace(
+            f'/clientes/hotspot/pixel/{hotspot.uuid}/',
+            f'/clientes/hotspot/portal/{hotspot.uuid}/'
+        )
+        html_content = _gerar_login_html(hotspot, portal_url_for_html)
+        html_bytes   = html_content.encode('utf-8')
+
+        sftp_ok = False
+        try:
+            sftp = client.open_sftp()
+            remote_path = f'/flash/{dir_name}/login.html'
+            sftp.putfo(_io.BytesIO(html_bytes), remote_path)
+            sftp.close()
+            sftp_ok = True
+            log.append(f'✅ login.html enviado via SFTP → {remote_path} ({len(html_bytes)} bytes)')
+        except Exception as _sftp_err:
+            log.append(f'⚠️ SFTP falhou: {_sftp_err} — tentando /tool fetch como fallback')
+            # Fallback: /tool fetch via IP direto
+            _crm_host = urlparse(pixel_url).hostname
+            try:
+                import socket as _sock2
+                _crm_ip = _sock2.gethostbyname(_crm_host)
+            except Exception:
+                _crm_ip = _crm_host
+            login_html_url = f'http://{_crm_ip}/clientes/hotspot/login-html/{hotspot.uuid}/'
+            fetch_out, fetch_err, fetch_rc = _mt_exec(client,
+                f'/tool fetch url="{login_html_url}" '
+                f'dst-path="flash/{dir_name}/login.html" mode=http',
+                timeout=30)
+            fetch_combined = (fetch_out + fetch_err).strip()
+            sftp_ok = fetch_rc == 0 and not any(
+                k in fetch_combined.lower() for k in ('error', 'failure', 'failed', 'timed out'))
+            if sftp_ok:
+                log.append(f'✅ login.html baixado via fetch: {login_html_url}')
+            else:
+                log.append(f'⚠️ /tool fetch também falhou (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
 
         # Aguarda RouterOS indexar o arquivo
         import time as _time
@@ -471,7 +497,7 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         if data_lines:
             log.append(f'   Arquivo confirmado: {data_lines[-1].strip()}')
         else:
-            log.append(f'   ⚠️ login.html não encontrado no flash após fetch')
+            log.append(f'   ⚠️ login.html não encontrado no flash após upload')
 
         # Reiniciar hotspot para carregar novo login.html
         _mt_exec(client, f'/ip hotspot set [find name="{server_name}"] disabled=yes')

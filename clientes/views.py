@@ -188,6 +188,441 @@ def cadastrar_cliente(request):
 
 
 @login_required(login_url='login')
+@require_http_methods(['POST'])
+def importar_acessos_crt(request, cliente_id):
+    """Importa hosts a partir de um arquivo XML de backup do SecureCRT."""
+    import xml.etree.ElementTree as ET
+
+    PROTO_MAP = {
+        'SSH2': 'SSH', 'SSH1': 'SSH', 'SSH': 'SSH',
+        'Telnet': 'TELNET', 'TELNET': 'TELNET',
+        'HTTP': 'HTTP', 'HTTPS': 'HTTPS',
+        'FTP': 'FTP', 'FTPS': 'FTPS',
+        'WINBOX': 'WINBOX',
+    }
+    DEFAULT_PORTS = {
+        'SSH': 22, 'TELNET': 23, 'HTTP': 80, 'HTTPS': 443,
+        'FTP': 21, 'FTPS': 990, 'WINBOX': 8291,
+    }
+
+    def _str(el, attr):
+        for ch in el:
+            if ch.tag == 'string' and ch.get('name') == attr:
+                return (ch.text or '').strip()
+        return None
+
+    def _dword(el, attr):
+        for ch in el:
+            if ch.tag == 'dword' and ch.get('name') == attr:
+                return (ch.text or '').strip()
+        return None
+
+    def _str_in(el, attr):
+        conn = el.find('key[@name="Connection"]')
+        return _str(conn, attr) if conn is not None else None
+
+    def _dword_in(el, attr):
+        conn = el.find('key[@name="Connection"]')
+        return _dword(conn, attr) if conn is not None else None
+
+    def _recurse(element, path, out):
+        for key in element.findall('key'):
+            name = key.get('name', '')
+            if name in ('Options',):
+                continue
+            hostname = _str(key, 'Hostname') or _str_in(key, 'Hostname')
+            if hostname:
+                proto_raw = _str(key, 'Protocol Name') or _str_in(key, 'Protocol Name') or 'SSH2'
+                protocolo = PROTO_MAP.get(proto_raw, 'SSH')
+                porta_str = _dword(key, 'Port') or _dword_in(key, 'Port') or ''
+                try:
+                    porta = int(porta_str)
+                except (ValueError, TypeError):
+                    porta = DEFAULT_PORTS.get(protocolo, 22)
+                usuario = _str(key, 'Username') or _str_in(key, 'Username') or ''
+                # path[0] = grupo (ignorar), path[1:] = função(ões), name = nome do host
+                grupo = path[0] if path else ''
+                funcao_nome = ' / '.join(path[1:]) if len(path) > 1 else ''
+                out.append({
+                    'nome': name,
+                    'grupo': grupo,
+                    'funcao_nome': funcao_nome,
+                    'host': hostname,
+                    'protocolo': protocolo,
+                    'porta': porta,
+                    'usuario': usuario,
+                })
+            else:
+                _recurse(key, path + [name] if name != 'Sessions' else [], out)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    is_json = 'application/json' in (request.content_type or '')
+
+    if is_json:
+        # ── IMPORT: body JSON com lista de sessões selecionadas ──────────
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'JSON inválido.'})
+
+        sessions = data.get('sessions', [])
+        created, skipped, errors = [], [], []
+
+        # Cache de funções para evitar N queries
+        funcao_cache = {}
+        def _resolve_funcao(nome_funcao):
+            if not nome_funcao:
+                return 13
+            key = nome_funcao.upper()
+            if key in funcao_cache:
+                return funcao_cache[key]
+            obj = Funcao_equipamento.objects.filter(descricao__iexact=nome_funcao).first()
+            fid = obj.id if obj else 13
+            funcao_cache[key] = fid
+            return fid
+
+        for s in sessions:
+            tipo = (s.get('nome') or '').strip()
+            host = (s.get('host') or '').strip()
+            protocolo = s.get('protocolo', 'SSH')
+            porta = s.get('porta') or DEFAULT_PORTS.get(protocolo, 22)
+            usuario = (s.get('usuario') or '').strip()
+            funcao_nome = (s.get('funcao_nome') or '').strip()
+            funcao_id_front = s.get('funcao_id')
+            if not tipo or not host:
+                errors.append('Sessão sem nome ou host ignorada.')
+                continue
+            if Acesso.objects.filter(tipo=tipo, cliente_id=cliente_id).exists():
+                skipped.append(tipo)
+                continue
+            # funcao_id escolhida pelo usuário tem prioridade; 0 = sem função → default 13
+            if funcao_id_front and int(funcao_id_front) > 0:
+                funcao_id_final = int(funcao_id_front)
+            else:
+                funcao_id_final = _resolve_funcao(funcao_nome)
+            senha = (s.get('senha') or '').strip()
+            try:
+                Acesso.objects.create(
+                    cliente_id=cliente_id,
+                    funcao_id=funcao_id_final,
+                    tipo=tipo,
+                    host=host,
+                    porta=porta,
+                    protocolo=protocolo,
+                    usuario=usuario,
+                    senha=senha,
+                )
+                created.append(tipo)
+            except Exception as e:
+                errors.append(f'{tipo}: {e}')
+
+        return JsonResponse({'success': True, 'created': len(created), 'skipped': len(skipped), 'errors': errors})
+
+    else:
+        # ── PARSE: multipart com arquivo XML ────────────────────────────
+        arquivo = request.FILES.get('arquivo')
+        if not arquivo:
+            return JsonResponse({'success': False, 'error': 'Nenhum arquivo enviado.'})
+        if not arquivo.name.lower().endswith('.xml'):
+            return JsonResponse({'success': False, 'error': 'Apenas arquivos .xml são aceitos.'})
+        try:
+            tree = ET.parse(arquivo)
+            root = tree.getroot()
+        except ET.ParseError as e:
+            return JsonResponse({'success': False, 'error': f'XML inválido: {e}'})
+
+        sessions = []
+        sessions_key = root.find('.//key[@name="Sessions"]')
+        _recurse(sessions_key if sessions_key is not None else root, [], sessions)
+
+        return JsonResponse({'success': True, 'sessions': sessions, 'total': len(sessions)})
+
+
+@login_required(login_url='login')
+def template_excel_acessos(request, cliente_id):
+    """Gera planilha Excel modelo para importação de acessos."""
+    import io
+    import openpyxl
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    funcoes = list(Funcao_equipamento.objects.all().order_by('descricao'))
+    modelos = list(Modelo_equipamento.objects.all().order_by('fabricante', 'nome'))
+
+    wb = openpyxl.Workbook()
+
+    # ── Aba principal ──────────────────────────────────────────────
+    ws = wb.active
+    ws.title = 'Acessos'
+
+    # Estilos
+    header_fill  = PatternFill('solid', fgColor='1e3a5f')
+    required_fill = PatternFill('solid', fgColor='2d1e0f')
+    optional_fill = PatternFill('solid', fgColor='1a2a1a')
+    header_font  = Font(bold=True, color='FFFFFF', size=10)
+    req_font     = Font(bold=True, color='ffa500', size=10)
+    opt_font     = Font(bold=True, color='90ee90', size=10)
+    center       = Alignment(horizontal='center', vertical='center')
+    thin         = Border(
+        left=Side(style='thin', color='2a3344'),
+        right=Side(style='thin', color='2a3344'),
+        top=Side(style='thin', color='2a3344'),
+        bottom=Side(style='thin', color='2a3344'),
+    )
+
+    COLUNAS = [
+        ('Nome do Host (tipo)',  'tipo',       True,  30),
+        ('IP / Hostname',        'host',        True,  22),
+        ('Protocolo',            'protocolo',   True,  12),
+        ('Porta',                'porta',        True,  8),
+        ('Usuário',              'usuario',      False, 16),
+        ('Senha',                'senha',        False, 16),
+        ('Senha ADM',            'senha_adm',    False, 16),
+        ('VLAN',                 'vlan',         False, 8),
+        ('Função',               'funcao',       False, 22),
+        ('Modelo',               'modelo',       False, 28),
+        ('Notas Agent NOC',      'notas',        False, 34),
+    ]
+
+    # Linha 1: legenda de cores
+    ws.merge_cells('A1:K1')
+    leg = ws['A1']
+    leg.value = (
+        f'Planilha de importação — {cliente.nome_empresa}  '
+        '|  Laranja = obrigatório  |  Verde = opcional'
+    )
+    leg.font     = Font(color='cccccc', italic=True, size=9)
+    leg.fill     = PatternFill('solid', fgColor='0d1117')
+    leg.alignment = center
+    ws.row_dimensions[1].height = 18
+
+    # Linha 2: cabeçalhos
+    for col_idx, (label, _field, required, width) in enumerate(COLUNAS, start=1):
+        cell = ws.cell(row=2, column=col_idx, value=label)
+        cell.fill      = required_fill if required else optional_fill
+        cell.font      = req_font if required else opt_font
+        cell.alignment = center
+        cell.border    = thin
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+    ws.row_dimensions[2].height = 20
+
+    # Linha 3: linha de exemplo
+    EXEMPLO = [
+        'SW-CLIENTE-01', '192.168.0.1', 'SSH', '22',
+        'admin', 'senha123', 'adm456', '',
+        funcoes[0].descricao if funcoes else '',
+        f'{modelos[0].fabricante} {modelos[0].nome}' if modelos else '',
+        'Observações extras para o Agent NOC',
+    ]
+    for col_idx, val in enumerate(EXEMPLO, start=1):
+        cell = ws.cell(row=3, column=col_idx, value=val)
+        cell.font      = Font(color='888888', italic=True, size=9)
+        cell.alignment = Alignment(vertical='center')
+        cell.border    = thin
+    ws.row_dimensions[3].height = 18
+
+    # Linhas de dados (4–203 = 200 linhas)
+    DATA_START = 4
+    DATA_END   = 203
+    for row in range(DATA_START, DATA_END + 1):
+        for col_idx in range(1, len(COLUNAS) + 1):
+            cell = ws.cell(row=row, column=col_idx)
+            cell.fill   = PatternFill('solid', fgColor='0d1520')
+            cell.font   = Font(color='e2e8f0', size=9)
+            cell.border = thin
+
+    # Congelar cabeçalho
+    ws.freeze_panes = 'A4'
+
+    # ── Validação: Protocolo (coluna C = 3) ───────────────────────
+    dv_proto = DataValidation(
+        type='list',
+        formula1='"SSH,TELNET,HTTP,HTTPS,WINBOX,FTP,FTPS"',
+        allow_blank=False,
+        showDropDown=False,
+    )
+    dv_proto.error       = 'Use: SSH, TELNET, HTTP, HTTPS, WINBOX, FTP, FTPS'
+    dv_proto.errorTitle  = 'Protocolo inválido'
+    dv_proto.showErrorMessage = True
+    ws.add_data_validation(dv_proto)
+    dv_proto.add(f'C{DATA_START}:C{DATA_END}')
+
+    # ── Aba auxiliar: Funções ──────────────────────────────────────
+    ws_func = wb.create_sheet('_Funcoes')
+    ws_func.sheet_state = 'hidden'
+    for i, f in enumerate(funcoes, start=1):
+        ws_func.cell(row=i, column=1, value=f.descricao)
+
+    if funcoes:
+        last_func = len(funcoes)
+        dv_func = DataValidation(
+            type='list',
+            formula1=f'_Funcoes!$A$1:$A${last_func}',
+            allow_blank=True,
+            showDropDown=False,
+        )
+        dv_func.showErrorMessage = False
+        ws.add_data_validation(dv_func)
+        dv_func.add(f'I{DATA_START}:I{DATA_END}')
+
+    # ── Aba auxiliar: Modelos ──────────────────────────────────────
+    ws_mod = wb.create_sheet('_Modelos')
+    ws_mod.sheet_state = 'hidden'
+    for i, m in enumerate(modelos, start=1):
+        ws_mod.cell(row=i, column=1, value=f'{m.fabricante} — {m.nome}')
+
+    if modelos:
+        last_mod = len(modelos)
+        dv_mod = DataValidation(
+            type='list',
+            formula1=f'_Modelos!$A$1:$A${last_mod}',
+            allow_blank=True,
+            showDropDown=False,
+        )
+        dv_mod.showErrorMessage = False
+        ws.add_data_validation(dv_mod)
+        dv_mod.add(f'J{DATA_START}:J{DATA_END}')
+
+    # ── Aba de referência: Funções visíveis ───────────────────────
+    ws_ref = wb.create_sheet('Referência')
+    ws_ref['A1'] = 'FUNÇÕES DISPONÍVEIS'
+    ws_ref['A1'].font = Font(bold=True, color='ffa500', size=11)
+    ws_ref['B1'] = 'MODELOS DISPONÍVEIS'
+    ws_ref['B1'].font = Font(bold=True, color='90ee90', size=11)
+    ws_ref['C1'] = 'FABRICANTE'
+    ws_ref['C1'].font = Font(bold=True, color='90ee90', size=11)
+    for i, f in enumerate(funcoes, start=2):
+        ws_ref.cell(row=i, column=1, value=f.descricao).font = Font(size=9)
+    for i, m in enumerate(modelos, start=2):
+        ws_ref.cell(row=i, column=2, value=m.nome).font = Font(size=9)
+        ws_ref.cell(row=i, column=3, value=m.fabricante).font = Font(size=9, color='888888')
+    ws_ref.column_dimensions['A'].width = 22
+    ws_ref.column_dimensions['B'].width = 26
+    ws_ref.column_dimensions['C'].width = 18
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    nome_arquivo = f'importar_acessos_{cliente.nome_empresa.replace(" ", "_")}.xlsx'
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+    return response
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def importar_acessos_excel(request, cliente_id):
+    """Importa acessos a partir de planilha Excel gerada pelo template."""
+    import io
+    import openpyxl
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+
+    PROTO_VALIDOS = {'SSH', 'TELNET', 'HTTP', 'HTTPS', 'WINBOX', 'FTP', 'FTPS'}
+    DEFAULT_PORTS = {
+        'SSH': 22, 'TELNET': 23, 'HTTP': 80, 'HTTPS': 443,
+        'FTP': 21, 'FTPS': 990, 'WINBOX': 8291,
+    }
+
+    arquivo = request.FILES.get('arquivo')
+    if not arquivo:
+        return JsonResponse({'success': False, 'error': 'Nenhum arquivo enviado.'})
+    if not arquivo.name.lower().endswith(('.xlsx', '.xls')):
+        return JsonResponse({'success': False, 'error': 'Apenas arquivos .xlsx são aceitos.'})
+
+    senha_padrao = request.POST.get('senha_padrao', '').strip()
+
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(arquivo.read()), data_only=True)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Arquivo inválido: {e}'})
+
+    ws = wb.active
+
+    # Cache de funções e modelos
+    funcao_cache = {f.descricao.upper(): f for f in Funcao_equipamento.objects.all()}
+    modelo_cache = {}
+    for m in Modelo_equipamento.objects.all():
+        modelo_cache[f'{m.fabricante} — {m.nome}'.upper()] = m
+        modelo_cache[m.nome.upper()] = m
+
+    created, skipped, errors = [], [], []
+
+    # Dados começam na linha 4 (1=legenda, 2=cabeçalho, 3=exemplo)
+    for row in ws.iter_rows(min_row=4, values_only=True):
+        tipo = str(row[0] or '').strip() if row[0] is not None else ''
+        host = str(row[1] or '').strip() if row[1] is not None else ''
+
+        if not tipo or not host:
+            continue
+        # Pula linha de exemplo (verificação pelo conteúdo)
+        if tipo == 'SW-CLIENTE-01' and host == '192.168.0.1':
+            continue
+
+        proto_raw = str(row[2] or 'SSH').strip().upper()
+        protocolo = proto_raw if proto_raw in PROTO_VALIDOS else 'SSH'
+
+        try:
+            porta = int(row[3]) if row[3] is not None else DEFAULT_PORTS.get(protocolo, 22)
+        except (ValueError, TypeError):
+            porta = DEFAULT_PORTS.get(protocolo, 22)
+
+        usuario  = str(row[4] or '').strip()
+        senha    = str(row[5] or '').strip() or senha_padrao
+        senha_adm = str(row[6] or '').strip()
+        vlan_raw = row[7]
+        try:
+            vlan = int(vlan_raw) if vlan_raw not in (None, '') else None
+        except (ValueError, TypeError):
+            vlan = None
+
+        funcao_str = str(row[8] or '').strip()
+        modelo_str = str(row[9] or '').strip()
+        notas      = str(row[10] or '').strip()
+
+        funcao = funcao_cache.get(funcao_str.upper())
+        funcao_id = funcao.id if funcao else 13
+
+        modelo = modelo_cache.get(modelo_str.upper())
+
+        if Acesso.objects.filter(tipo=tipo, cliente_id=cliente_id).exists():
+            skipped.append(tipo)
+            continue
+
+        try:
+            Acesso.objects.create(
+                cliente_id=cliente_id,
+                funcao_id=funcao_id,
+                modelo=modelo,
+                tipo=tipo,
+                host=host,
+                protocolo=protocolo,
+                porta=porta,
+                usuario=usuario,
+                senha=senha,
+                senha_adm=senha_adm,
+                vlan=vlan,
+                notas=notas,
+            )
+            created.append(tipo)
+        except Exception as e:
+            errors.append(f'{tipo}: {e}')
+
+    return JsonResponse({
+        'success': True,
+        'created': len(created),
+        'skipped': len(skipped),
+        'errors': errors,
+    })
+
+
+@login_required(login_url='login')
 def cadastrar_acesso(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
@@ -5379,6 +5814,13 @@ def vpn_wg_listar(request, cliente_id):
 @login_required
 @require_http_methods(["POST"])
 def vpn_wg_criar(request, cliente_id):
+    """
+    Cria uma VPN WireGuard em uma interface ISOLADA dedicada (wg5, wg6, ...)
+    — cada cliente tem sua própria interface/porta/sub-rede, nunca
+    compartilhando rotas de kernel com outro cliente. Isso evita a classe de
+    bug em que excluir a VPN de UM cliente apagava rotas de OUTRO (incidente
+    Conecta ISP, 2026-06-14 — ver docs/vpn_wireguard.md).
+    """
     cliente = get_object_or_404(Cliente, id=cliente_id)
     try:
         body = _json.loads(request.body)
@@ -5388,7 +5830,10 @@ def vpn_wg_criar(request, cliente_id):
         cfg           = _get_servidor_config()
         priv, pub     = wgm.gerar_par_chaves()
         psk           = wgm.gerar_preshared_key()
-        vpn_ip        = wgm.alocar_proximo_ip()
+
+        interface, porta, subnet_n = wgm.alocar_proxima_interface()
+        vpn_ip            = f'10.{subnet_n}.0.2'
+        servidor_ip_local = f'10.{subnet_n}.0.1'
 
         vpn = VPNWireGuard.objects.create(
             cliente=cliente,
@@ -5399,16 +5844,18 @@ def vpn_wg_criar(request, cliente_id):
             vpn_ip=vpn_ip,
             redes_privadas=redes_raw,
             ativo=True,
+            interface_nome=interface,
+            servidor_ip_local=servidor_ip_local,
         )
 
-        # Adicionar peer ao wg0 do servidor
+        # Criar interface dedicada e adicionar o peer só nela
         try:
-            wgm.adicionar_peer(pub, psk, vpn_ip, vpn.redes_lista())
-            wgm.salvar_config_persistente()
+            wgm.criar_interface_isolada(interface, porta, subnet_n, cfg.servidor_private_key)
+            wgm.adicionar_peer_isolado(interface, pub, psk, vpn_ip, vpn.redes_lista())
             vpn.peer_no_servidor = True
             vpn.save()
         except Exception as e:
-            logger.warning(f'Peer não adicionado ao wg0: {e}')
+            logger.warning(f'Peer não adicionado em {interface}: {e}')
 
         return JsonResponse({'ok': True, 'vpn_id': vpn.id, 'vpn_ip': vpn_ip})
 
@@ -5432,8 +5879,11 @@ def vpn_wg_deletar(request, vpn_id):
     vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
     try:
         if vpn.peer_no_servidor:
-            wgm.remover_peer(vpn.cliente_public_key, vpn.redes_lista())
-            wgm.salvar_config_persistente()
+            if wgm.vpn_e_isolada(vpn.vpn_ip):
+                wgm.remover_interface_isolada(vpn.interface_nome)
+            else:
+                wgm.remover_peer(vpn.cliente_public_key, vpn.redes_lista())
+                wgm.salvar_config_persistente()
         vpn.delete()
         return JsonResponse({'ok': True})
     except Exception as e:
@@ -5466,13 +5916,20 @@ def vpn_wg_status(request, cliente_id):
 @login_required
 @require_http_methods(["POST"])
 def vpn_wg_reativar_peer(request, vpn_id):
-    """Re-adiciona peer ao wg0 (útil após reboot do servidor)."""
+    """Re-adiciona peer ao servidor (útil após reboot ou falha pontual)."""
     vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
     cfg = _get_servidor_config()
     try:
-        wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
-                           vpn.vpn_ip, vpn.redes_lista())
-        wgm.salvar_config_persistente()
+        if wgm.vpn_e_isolada(vpn.vpn_ip):
+            porta    = wgm.ISOLATED_BASE_PORT + (wgm.interface_subnet_n(vpn.interface_nome) - wgm.ISOLATED_SUBNET_BASE)
+            subnet_n = wgm.interface_subnet_n(vpn.interface_nome)
+            wgm.criar_interface_isolada(vpn.interface_nome, porta, subnet_n, cfg.servidor_private_key)
+            wgm.adicionar_peer_isolado(vpn.interface_nome, vpn.cliente_public_key,
+                                       vpn.preshared_key, vpn.vpn_ip, vpn.redes_lista())
+        else:
+            wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
+                               vpn.vpn_ip, vpn.redes_lista())
+            wgm.salvar_config_persistente()
         vpn.peer_no_servidor = True
         vpn.save()
         return JsonResponse({'ok': True})
@@ -5498,10 +5955,14 @@ def vpn_wg_editar(request, vpn_id):
 
         if vpn.peer_no_servidor:
             # Remover rotas antigas e re-adicionar peer com novas redes
-            wgm.remover_peer(vpn.cliente_public_key, redes_antigas)
-            wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
-                               vpn.vpn_ip, vpn.redes_lista())
-            wgm.salvar_config_persistente()
+            if wgm.vpn_e_isolada(vpn.vpn_ip):
+                wgm.adicionar_peer_isolado(vpn.interface_nome, vpn.cliente_public_key,
+                                           vpn.preshared_key, vpn.vpn_ip, vpn.redes_lista())
+            else:
+                wgm.remover_peer(vpn.cliente_public_key, redes_antigas)
+                wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
+                                   vpn.vpn_ip, vpn.redes_lista())
+                wgm.salvar_config_persistente()
 
         return JsonResponse({'ok': True})
     except Exception as e:

@@ -15,6 +15,7 @@ Provedores de IA suportados:
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 import re
@@ -869,7 +870,7 @@ Antes de executar qualquer comando em um host, identifique:
    - `huawei` → comandos VRP: `display ip interface brief`, `display version`, `display alarm`
    - `zte` → comandos ZTE OLT: `show pon onu state`, `show gpon onu detail-info`
    - `cisco` → comandos IOS: `show ip interface brief`, `show version`, `show running-config`
-   - `datacom` → comandos DmOS: `show interface description` (listar interfaces), `show interface <nome> transceiver` (sinal óptico), `show bgp summary`, `show ip route`
+   - `datacom` → comandos DmOS: `show interface description` (listar interfaces), `show interface transceivers` (sinal óptico de TODOS os SFPs — depois filtre pela interface), `show bgp summary`, `show ip route`
    - `generico` / Linux → comandos bash: `ip addr`, `df -h`, `free -m`, `systemctl status`
 2. **Função** — define o que o equipamento faz (OLT, roteador, switch, servidor, firewall, etc.) e quais comandos fazem sentido
 3. **Modelo** — detalhes adicionais de hardware que influenciam os comandos
@@ -1015,7 +1016,7 @@ Com o nome da interface em mãos, execute o comando de transceiver:
 | Fabricante | Comando |
 |-----------|---------|
 | Huawei VRP (switch/roteador) | `display transceiver diagnosis interface <NOME>` |
-| Datacom DmOS | `show interface <NOME> transceiver` (singular "interface") |
+| Datacom DmOS | `show interface transceivers` → lista TODOS os SFPs com Tx/Rx Power; filtre pela interface desejada |
 | Cisco IOS/IOS-XE | `show interfaces <NOME> transceiver` |
 | Cisco NX-OS | `show interface <NOME> transceiver details` |
 | MikroTik (SFP com DDM) | `/interface ethernet monitor <NOME> once` |
@@ -1054,22 +1055,18 @@ Passo 0: verifique o [Configuração conhecida do backup] do host no system prom
   → Se mostrar interfaces como "ten-gigabit-ethernet 1/1/4", você já sabe o formato
 
 Passo 1: execute_command(acesso_id=X, comando="show interface description")
-  → Output: "ten-gigabit-ethernet 1/1/4   Up   10G   CNX.OLT-ZTE-BAIXADINHA"
+  → Output: "ten-gigabit-ethernet 1/1/4   Up   10G   CNX.OLT-ZTE-BAIXADINHA  [FÍSICA — tem SFP]"
   → Nome completo da interface: ten-gigabit-ethernet 1/1/4
-  ⚠️ Datacom usa NOME COMPLETO com prefixo: "ten-gigabit-ethernet 1/1/4"
-     NÃO use só "1/1/4" — inclua sempre o prefixo no comando seguinte
+  ⚠️ O sistema já executa o Passo 2 automaticamente — veja o bloco DDM no mesmo output
 
-Passo 2: execute_command(acesso_id=X, comando="show interface ten-gigabit-ethernet 1/1/4 transceiver")
-  ✅ Retorna Tx Power(dBm), Rx Power(dBm), Temp, Voltage, Current
+Passo 2 (executado automaticamente pelo sistema): show interface transceivers
+  → Retorna tabela com TODOS os SFPs: Temperature, Voltage, Current, Tx-Power, Rx-Power
+  → Localize a linha "ten-gigabit-ethernet 1/1/4" na tabela para obter o sinal óptico
 
-🚨 OBRIGATÓRIO: após o Passo 1 encontrar a interface, SEMPRE execute o Passo 2.
-   NUNCA responda "não há informações ópticas disponíveis" depois do Passo 1 —
-   isso significa que você usou o comando errado ou não executou o Passo 2.
-
+❌ ERRADO: `show interface ten-gigabit-ethernet 1/1/4 transceiver` → NÃO EXISTE no DmOS
 ❌ ERRADO: `show interfaces description` → Datacom usa singular "interface"
 ❌ ERRADO: `display interface description` → comando Huawei, não funciona no DmOS
-❌ ERRADO: `show interface 1/1/4 transceiver` → falta o prefixo; use o nome completo
-❌ ERRADO: parar após o Passo 1 e dizer que não tem info óptica → execute o Passo 2
+❌ ERRADO: `show interface 1/1/4` → falta o prefixo; o nome correto é "ten-gigabit-ethernet 1/1/4"
 ```
 
 ⚠️ **INTERCEPTAÇÃO AUTOMÁTICA**: Se você usar `| include <termo>`, o sistema executa automaticamente `display interface description` (sem filtro) e faz busca case-insensitive em Python. O resultado já vem filtrado com nomes de interface já expandidos (ex: `XGE0/0/2` → `XGigabitEthernet0/0/2`). Use o nome expandido retornado para o passo 2.
@@ -1276,6 +1273,9 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                     '40gigabitethernet', '100gigabitethernet', 'eth-trunk',
                     'xge', 'ge', '10ge', '40ge', '100ge',
                     'tengigabitethernet', 'fastethernet', 'ethernet',
+                    # Datacom DmOS (hifenizados)
+                    'ten-gigabit-ethernet', 'gigabit-ethernet',
+                    'hundred-gigabit-ethernet', 'fast-ethernet',
                 )
                 def _iface_type_tag(line: str) -> str:
                     first = line.split()[0].lower() if line.split() else ''
@@ -1302,6 +1302,45 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                         f"0 linhas encontradas]\n\n"
                         f"Output completo para análise:\n{output_full}"
                     )
+
+                # Auto-run transceiver para Datacom quando a busca encontra interface física.
+                # Sem isso, o agent vê o nome da interface mas não executa o passo 2.
+                _is_datacom_xcvr = (
+                    fabricante.lower() == 'datacom'
+                    or 'datacom' in (acesso.tipo or '').lower()
+                    or 'datacom' in (getattr(acesso.modelo, 'fabricante', '') or '').lower()
+                )
+                _dc_phys = (
+                    'ten-gigabit-ethernet', 'gigabit-ethernet',
+                    'hundred-gigabit-ethernet', 'fast-ethernet', 'ethernet',
+                )
+                if _is_datacom_xcvr and matches:
+                    for _m in matches:
+                        _tok = _m.strip().split()[0].lower() if _m.strip() else ''
+                        if any(_tok.startswith(p) for p in _dc_phys):
+                            _dc_iface = _m.strip().split()[0]
+                            _dc_cmd = 'show interface transceivers'
+                            try:
+                                _dc_out = await asyncio.get_event_loop().run_in_executor(
+                                    None, _ssh_exec_sync, acesso, _dc_cmd,
+                                )
+                                # Filtra apenas linhas da interface encontrada + cabeçalhos
+                                _dc_lines = [
+                                    l for l in _dc_out.splitlines()
+                                    if _dc_iface.lower() in l.lower()
+                                    or '---' in l
+                                    or 'Transceiver ID' in l
+                                    or 'Temperature' in l
+                                    or 'Rx-LOS' in l
+                                ]
+                                output += (
+                                    f'\n\n--- [Sinal Óptico — `{_dc_cmd}` filtrado para {_dc_iface}] ---\n'
+                                    + '\n'.join(_dc_lines)
+                                )
+                            except Exception:
+                                pass
+                            break
+
             elif acesso.protocolo == 'SSH':
                 output = await asyncio.get_event_loop().run_in_executor(
                     None, _ssh_exec_sync, acesso, comando,
@@ -1341,6 +1380,87 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                             )
                     except Exception:
                         pass
+
+                # Auto-annotate + força próximo passo para Datacom.
+                # Quando o agent roda "show interface description", o output mostra os
+                # nomes completos das interfaces mas NÃO o sinal óptico. Sem este bloco,
+                # o agent frequentemente para e diz "sinal óptico não disponível".
+                # A solução: anotar interfaces físicas com [FÍSICA] e injetar no
+                # output uma instrução obrigatória para rodar o transceiver.
+                _is_datacom_vendor = (
+                    fabricante.lower() == 'datacom'
+                    or 'datacom' in (acesso.tipo or '').lower()
+                    or 'datacom' in (getattr(acesso.modelo, 'fabricante', '') or '').lower()
+                )
+                _is_iface_desc_datacom = re.match(
+                    r'^show\s+interface\s+description\s*$',
+                    comando.strip(), re.IGNORECASE,
+                )
+                if _is_datacom_vendor and _is_iface_desc_datacom:
+                    _dc_physical = (
+                        'ten-gigabit-ethernet', 'gigabit-ethernet',
+                        'hundred-gigabit-ethernet', 'fast-ethernet', 'ethernet',
+                    )
+                    _dc_logical = ('vlan', 'loopback', 'tunnel', 'null', 'management')
+                    annotated = []
+                    physical_found = []
+                    for _ln in output.splitlines():
+                        _first = _ln.strip().split()[0].lower() if _ln.strip() else ''
+                        if any(_first.startswith(p) for p in _dc_physical):
+                            annotated.append(_ln + '  [FÍSICA — tem SFP]')
+                            physical_found.append(_ln.strip().split()[0])
+                        elif any(_first.startswith(p) for p in _dc_logical):
+                            annotated.append(_ln + '  [LÓGICA — sem SFP]')
+                        else:
+                            annotated.append(_ln)
+                    output = '\n'.join(annotated)
+                    if physical_found:
+                        _exemplo = physical_found[0]
+                        output += (
+                            '\n\n🔴 [INSTRUÇÃO DO SISTEMA — OBRIGATÓRIO]:\n'
+                            'O output acima lista interfaces. Para obter o sinal óptico,\n'
+                            'você DEVE executar o comando de transceiver na interface física desejada:\n'
+                            f'  show interface <NOME_FÍSICO> transceiver\n'
+                            f'Exemplo: show interface {_exemplo} transceiver\n'
+                            'NÃO responda ao usuário sem executar este comando de transceiver.'
+                        )
+
+                # Auto-append transceiver quando agent roda "show interface <iface>" sem "transceiver".
+                # O agent frequentemente encontra o nome da interface no backup e roda o comando
+                # sem o sufixo "transceiver", retornando apenas config/status mas não DDM.
+                # Solução: detectar o padrão e auto-executar o comando correto.
+                # Quando agent roda "show interface <iface>" (config/status, sem DDM),
+                # auto-append de "show interface transceivers" filtrado pela interface.
+                _dc_iface_no_xcvr = re.match(
+                    r'^show\s+interface\s+'
+                    r'((?:ten-|hundred-|fast-)?gigabit-ethernet\s+\S+)'
+                    r'\s*$',
+                    comando.strip(), re.IGNORECASE,
+                )
+                if _is_datacom_vendor and _dc_iface_no_xcvr:
+                    _dc_iface_full = _dc_iface_no_xcvr.group(1).strip()
+                    _dc_xcvr_cmd = 'show interface transceivers'
+                    try:
+                        _dc_xcvr_out = await asyncio.get_event_loop().run_in_executor(
+                            None, _ssh_exec_sync, acesso, _dc_xcvr_cmd,
+                        )
+                        if _dc_xcvr_out:
+                            _dc_filtered = [
+                                l for l in _dc_xcvr_out.splitlines()
+                                if _dc_iface_full.lower() in l.lower()
+                                or '---' in l
+                                or 'Transceiver ID' in l
+                                or 'Temperature' in l
+                                or 'Rx-LOS' in l
+                            ]
+                            output = (
+                                output
+                                + f'\n\n--- [DDM / Sinal Óptico: `{_dc_xcvr_cmd}` filtrado para {_dc_iface_full}] ---\n'
+                                + '\n'.join(_dc_filtered)
+                            )
+                    except Exception:
+                        pass
+
             elif acesso.protocolo == 'TELNET':
                 output = await self._telnet_exec(acesso, comando)
             else:
@@ -1770,7 +1890,22 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
             if not config.openai_api_key:
                 return "❌ Chave de API do OpenAI não configurada."
         else:
-            if not config.claude_api_key:
+            if self.canal == 'whatsapp':
+                # Cada grupo WhatsApp usa sua própria API key Claude (créditos do
+                # próprio cliente). Sem ela, o agent fica em silêncio — não envia
+                # nenhuma mensagem de erro ao grupo.
+                sessao = await self._get_sessao()
+                grupo = sessao.wa_grupo if sessao.wa_grupo_id else None
+                chave_grupo = (grupo.claude_api_key or '').strip() if grupo else ''
+                if not chave_grupo:
+                    await self._registrar_log(
+                        'system', 'Mensagem ignorada: grupo sem API key Claude configurada.'
+                    )
+                    return ''
+                # Cópia em memória — nunca persiste a chave do grupo na config global
+                config = copy.copy(config)
+                config.claude_api_key = chave_grupo
+            elif not config.claude_api_key:
                 return "❌ Chave de API do Claude não configurada."
 
         await self._registrar_log('user_msg', mensagem)

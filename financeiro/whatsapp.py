@@ -107,8 +107,9 @@ def _coletar_itens(fatura):
         })
     if hasattr(fatura, 'vendas_equipamentos'):
         for v in fatura.vendas_equipamentos.all():
+            inicio_fmt = v.data_inicio.strftime('%d/%m/%Y') if v.data_inicio else ''
             itens.append({
-                'descricao':  v.descricao,
+                'descricao':  f'{v.descricao} ({v.quantidade_parcelas}x — início {inicio_fmt})',
                 'tipo_label': 'Venda de Equipamento',
                 'valor':      float(v.get_valor_parcela()) if hasattr(v, 'get_valor_parcela') else float(v.valor_total),
             })

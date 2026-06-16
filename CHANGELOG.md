@@ -5,6 +5,97 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-06-16 (Agent NOC, Sala Virtual, Hotspot, Financeiro)
+
+### Adicionado
+
+- **API Key Claude individual por grupo WhatsApp** (`clientes/models.py`,
+  `home/views.py`, `home/templates/agent_grupos.html`, `home/agent_engine.py`):
+  cada grupo WhatsApp vinculado ao Agent NOC pode agora ter sua própria chave
+  Anthropic, consumindo os créditos do próprio cliente em vez da chave global do
+  sistema. Sem chave configurada, o agent fica em **silêncio total** naquele grupo
+  (nenhuma mensagem de erro é enviada). Campo nunca exibe a chave real na UI — só o
+  status configurada/não configurada — e o valor é mantido se o campo for deixado
+  em branco ao salvar. Ver `docs/agent_noc.md`.
+
+### Corrigido
+
+- **Agent NOC não buscava sinal óptico em equipamentos Datacom (DmOS)**
+  (`home/agent_engine.py`): o comando usado (`show interface <iface> transceiver`)
+  não existe no DmOS; o correto é `show interface transceivers` (plural, sem
+  interface). O agent agora executa esse comando automaticamente ao identificar uma
+  interface física Datacom e filtra a saída para a interface relevante. Ver
+  `docs/agent_noc.md`.
+- **Sala Virtual de atendentes (WebRTC) — áudio cai sozinho após alguns minutos**
+  (`atendimento/templates/atendimento/sala_virtual.html`): faltava o listener
+  `onnegotiationneeded`, então a tentativa de recuperação via `restartIce()` nunca
+  surtia efeito de fato. Implementado o padrão Perfect Negotiation (papéis
+  polite/impolite determinísticos) e buffer de candidatos ICE recebidos antes da
+  conexão estar pronta (corrige também o caso de "3 pessoas se ouvem, uma não" ao
+  entrar várias pessoas ao mesmo tempo). Ver `docs/ATENDIMENTO.md`.
+- **Hotspot — entrega do `login.html` ao MikroTik falhava** (`clientes/hotspot_views.py`):
+  `/tool fetch` via HTTP falhava por DNS e depois por timeout de conexão em redes
+  restritas; passou a usar SFTP pelo canal SSH já aberto, com fetch como fallback.
+  Também corrigido `expected end of command` por falta de aspas em parâmetros
+  RouterOS. Ver `docs/HOTSPOT_CAPTIVE_PORTAL.md`.
+- **Alerta de cobrança via WhatsApp "não enviava"**: não era bug — a flag
+  `ConfiguracaoFinanceira.wa_ativo` estava desativada (padrão de fábrica). A task
+  agendada (`financeiro.tasks.enviar_alertas_whatsapp`, seg–sex 8:30) sempre rodava e
+  sempre pulava silenciosamente.
+- **Mensagem de cobrança de venda de equipamento não informava qual serviço**
+  (`financeiro/models.py`, `financeiro/views.py`, `financeiro/whatsapp.py`): `Fatura`
+  nunca teve de fato o campo M2M `vendas_equipamentos` que o código já tentava usar
+  (`hasattr` sempre `False`), então a venda nunca era vinculada à fatura. Adicionado
+  o campo (migração `0019_fatura_vendas_equipamentos`), corrigida a montagem da
+  mensagem para incluir parcelas/data de início, e religadas retroativamente as 55
+  faturas já existentes sem vínculo. Ver `docs/FINANCEIRO.md`.
+- **Config do Agent NOC (API Key) não salvava — erro 500 silencioso**
+  (`home/templates/agent_config.html`, `home/views.py`): localização pt-BR
+  (`USE_L10N=True`) renderizava `0.2` como `0,2` no campo numérico de temperatura,
+  invalidando o `<input type="number">` no navegador e quebrando o salvamento
+  inteiro (incluindo a API Key) com `ValueError` no backend. Corrigido o
+  template (`stringformat`) e tornado o backend resiliente a campos numéricos
+  vazios. Ver `docs/agent_noc.md`.
+
+---
+
+## [Não publicado] — 2026-06-16 (VPN WireGuard — Isolamento por cliente)
+
+### Corrigido
+
+- **Conecta ISP perdeu acesso às redes internas após exclusão de outra VPN**
+  (`clientes/vpn_manager.py`): `remover_peer()` apagava do kernel rotas
+  (`ip route del <rede> dev wg0`) sem checar se **outro** cliente ainda
+  dependia da mesma rota. Em 14/06, excluir a VPN do cliente 41 (Sartor
+  Internet) apagou as rotas compartilhadas `10.0.0.0/8`, `172.16.0.0/12`,
+  `192.168.0.0/16`, `198.18.0.0/15` em `wg0`, das quais Conecta ISP (e outros
+  clientes legados) ainda dependiam — o túnel UDP continuava de pé, só o
+  roteamento interno parou. `remover_peer()` agora verifica
+  (`_outro_peer_usa_rede()`) se algum outro `VPNWireGuard` ativo ainda
+  declara a mesma rede antes de remover a rota.
+- Rotas compartilhadas de `wg0` restauradas manualmente e persistidas em
+  `/etc/wireguard/wg0.conf`.
+
+### Adicionado
+
+- **Interfaces isoladas por cliente** (`clientes/vpn_manager.py`,
+  `clientes/views.py`): toda VPN WireGuard criada a partir de agora ganha
+  sua própria interface dedicada (`wg5`, `wg6`, ...; porta e `/30` próprios)
+  em vez de compartilhar `wg0` — elimina por completo a classe de bug em que
+  criar/excluir a VPN de um cliente afeta as rotas de outro. Novas funções:
+  `alocar_proxima_interface()`, `criar_interface_isolada()`,
+  `adicionar_peer_isolado()`, `remover_interface_isolada()`,
+  `vpn_e_isolada()`. `gerar_script_mikrotik()` agora gera o script com a
+  porta/sub-rede corretas conforme o tipo de interface do cliente.
+  Clientes legados (ids 3, 7, 8, 9, todos em `wg0`) não foram migrados —
+  migração requer reconfigurar o WireGuard em cada MikroTik remotamente,
+  registrado como recomendação futura.
+- **Documentação** (`docs/vpn_wireguard.md`): arquitetura, causa raiz do
+  incidente, limitação conhecida de faixas amplas idênticas entre clientes,
+  e guia de diagnóstico rápido de roteamento.
+
+---
+
 ## [Não publicado] — 2026-06-13 (Monitor de Tráfego com Abas + Hotspot Captive Portal)
 
 ### Adicionado

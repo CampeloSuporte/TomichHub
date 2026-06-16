@@ -2,6 +2,27 @@
 
 ## 🔥 Implementações Recentes (Junho 2026)
 
+### Sessão 4 — 16/06/2026: API Key Claude por Grupo + Correções (Agent NOC, Sala Virtual, Hotspot, Financeiro)
+
+**O que foi implementado?**
+- ✅ API Key Claude individual por grupo WhatsApp — cada cliente consome seus próprios créditos; agent fica em silêncio se não configurada
+- ✅ Sinal óptico Datacom (DmOS): corrigido comando (`show interface transceivers`)
+- ✅ Sala Virtual (WebRTC): corrigida queda de áudio após alguns minutos (faltava `onnegotiationneeded`) e candidatos ICE perdidos com várias pessoas na sala
+- ✅ Hotspot: entrega do `login.html` via SFTP (substitui `/tool fetch` HTTP, que falhava por DNS/timeout)
+- ✅ Financeiro: alerta de cobrança WhatsApp (causa: flag `wa_ativo` desativada) e vínculo fatura↔venda de equipamento nunca funcionava (campo M2M inexistente)
+- ✅ Config do Agent NOC: corrigido erro 500 ao salvar API Key (bug de localização pt-BR em campo numérico)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[agent_noc.md](agent_noc.md)** | API Key por grupo, fix Datacom, fix erro 500 ao salvar config |
+| **[ATENDIMENTO.md](ATENDIMENTO.md)** | Sala Virtual — Perfect Negotiation, buffer de candidatos ICE |
+| **[HOTSPOT_CAPTIVE_PORTAL.md](HOTSPOT_CAPTIVE_PORTAL.md)** | Entrega de `login.html` via SFTP |
+| **[FINANCEIRO.md](FINANCEIRO.md)** | Diagnóstico cobrança WhatsApp, fix vínculo venda de equipamento |
+
+---
+
 ### Sessão 3 — 13/06/2026: Monitor de Tráfego com Abas + Hotspot Captive Portal
 
 **O que foi implementado?**
@@ -114,6 +135,12 @@
   - Task Celery
   - Geração de PDF
   - Agendamento
+
+- **[vpn_wireguard.md](vpn_wireguard.md)** — VPN WireGuard por cliente
+  - Arquitetura wg0 legado vs. interfaces isoladas (wg5+)
+  - Incidente Conecta ISP (rotas compartilhadas apagadas) e correção
+  - Limitação de faixas amplas idênticas entre clientes
+  - Diagnóstico rápido de roteamento
 
 - **[winbox_vnc.md](winbox_vnc.md)** — WinBox Web via VNC no browser
   - Arquitetura Xvfb + Openbox + x11vnc + noVNC
@@ -291,12 +318,28 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Qual é o checklist de implementação?"
 → [IMPLEMENTACOES_JUNHO_2026.md](IMPLEMENTACOES_JUNHO_2026.md) — Seção "Checklist de Implementação"
 
+### "Como configurar uma API Key Claude individual por cliente/grupo?"
+→ [agent_noc.md](agent_noc.md) — Seção "API Key Claude por Grupo WhatsApp"
+
+### "Por que o agent não responde em um grupo WhatsApp?"
+→ [agent_noc.md](agent_noc.md) — Seção "API Key Claude por Grupo WhatsApp" (sem chave configurada = silêncio)
+
+### "Como pegar o sinal óptico de um equipamento Datacom?"
+→ [agent_noc.md](agent_noc.md) — Seção "Sinal Óptico Datacom (DmOS)"
+
+### "Por que o áudio da sala virtual cai depois de um tempo?"
+→ [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "Sala Virtual de Atendentes — WebRTC"
+
+### "Por que o alerta de cobrança WhatsApp não está sendo enviado?"
+→ [FINANCEIRO.md](FINANCEIRO.md) — Seção "Cobrança via WhatsApp — Diagnóstico e Correção"
+
 ---
 
 ## 📅 Histórico
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 16/06/2026 | API Key Claude por grupo; fix Datacom; Sala Virtual WebRTC; Hotspot SFTP; Financeiro (cobrança + vínculo venda) | agent_noc.md, ATENDIMENTO.md, HOTSPOT_CAPTIVE_PORTAL.md, FINANCEIRO.md |
 | 13/06/2026 | Monitor de tráfego com abas; hotspot captive portal (4 bugs) | monitoramento.md, HOTSPOT_CAPTIVE_PORTAL.md |
 | 10/06/2026 | Parcelamento, bulk actions, contratos digitais, hotspot banda | DESPESAS_AVANCADO.md, CONTRATOS_ASSINATURA_DIGITAL.md, HOTSPOT_CONTROLE_BANDA.md |
 | 01/06/2026 | Recorrência + Privacidade (5 modelos) | FINANCEIRO.md, DESPESA_RECORRENCIA.md, PRIVACIDADE_FINANCEIRA.md, IMPLEMENTACOES_JUNHO_2026.md |
@@ -314,7 +357,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 10/06/2026  
-**Versão:** 1.2  
+**Última atualização:** 16/06/2026  
+**Versão:** 1.3  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

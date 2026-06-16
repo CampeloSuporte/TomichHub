@@ -238,6 +238,7 @@ class Fatura(models.Model):
     # Itens
     consultorias = models.ManyToManyField(Consultoria, blank=True, related_name='faturas')
     alugueis_ipv4 = models.ManyToManyField(AluguelIPv4, blank=True, related_name='faturas')
+    vendas_equipamentos = models.ManyToManyField('VendaEquipamento', blank=True, related_name='faturas')
     
     # Valores
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)

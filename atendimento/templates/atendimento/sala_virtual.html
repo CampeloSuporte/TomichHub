@@ -176,6 +176,17 @@ let unreadChat = 0;
 const peers = {};
 // peerId → {display_name, audio, screen}
 const peerInfo = {};
+// peerId → [RTCIceCandidate] recebidos antes da peer connection estar pronta
+const pendingCandidates = {};
+
+async function flushPendingCandidates(peerId) {
+  const list = pendingCandidates[peerId];
+  if (!list || !peers[peerId] || !peers[peerId].pc) return;
+  delete pendingCandidates[peerId];
+  for (const c of list) {
+    try { await peers[peerId].pc.addIceCandidate(c); } catch(e) {}
+  }
+}
 
 const ICE_SERVERS = {
   iceServers: [
@@ -226,7 +237,7 @@ async function handleSignal(msg) {
       for (const peer of msg.peers) {
         peerInfo[peer.channel_name] = peer;
         addPeerCard(peer);
-        await createOffer(peer.channel_name);
+        createPeerConnection(peer.channel_name);
       }
       updateCount();
       sendMediaState();
@@ -252,12 +263,22 @@ async function handleSignal(msg) {
       break;
 
     case 'answer':
-      if (peers[msg.from]) await peers[msg.from].pc.setRemoteDescription(msg.payload);
+      if (peers[msg.from]) {
+        await peers[msg.from].pc.setRemoteDescription(msg.payload);
+        await flushPendingCandidates(msg.from);
+      }
       break;
 
     case 'ice_candidate':
-      if (peers[msg.from] && msg.payload) {
-        try { await peers[msg.from].pc.addIceCandidate(msg.payload); } catch(e) {}
+      if (msg.payload) {
+        const p = peers[msg.from];
+        if (p && p.pc && p.pc.remoteDescription && p.pc.remoteDescription.type) {
+          try { await p.pc.addIceCandidate(msg.payload); } catch(e) {}
+        } else {
+          // Conexão ainda não pronta (offer/answer em trânsito) — guarda para aplicar depois
+          if (!pendingCandidates[msg.from]) pendingCandidates[msg.from] = [];
+          pendingCandidates[msg.from].push(msg.payload);
+        }
       }
       break;
 
@@ -288,8 +309,16 @@ async function handleSignal(msg) {
 }
 
 // ── WebRTC ────────────────────────────────────────────────────────
+// Padrão "Perfect Negotiation": cada lado decide deterministicamente quem é
+// "polite" (myId < peerId) para resolver colisões de oferta sem precisar de
+// um líder fixo. Isso permite renegociação automática (ex.: ICE restart após
+// queda de conexão) em vez de travar silenciosamente.
 function createPeerConnection(peerId) {
   const pc = new RTCPeerConnection(ICE_SERVERS);
+  const polite = myId < peerId;
+
+  if (!peers[peerId]) peers[peerId] = {};
+  Object.assign(peers[peerId], {pc, polite, makingOffer: false, ignoreOffer: false});
 
   pc.onicecandidate = ({candidate}) => {
     if (candidate) wsSend({type: 'ice_candidate', target: peerId, payload: candidate});
@@ -297,11 +326,10 @@ function createPeerConnection(peerId) {
 
   pc.ontrack = ({streams, track}) => {
     if (track.kind === 'audio') {
-      let audioEl = (peers[peerId] || {}).audioEl;
+      let audioEl = peers[peerId].audioEl;
       if (!audioEl) {
         audioEl = new Audio();
         audioEl.autoplay = true;
-        if (!peers[peerId]) peers[peerId] = {};
         peers[peerId].audioEl = audioEl;
       }
       audioEl.srcObject = streams[0];
@@ -316,37 +344,54 @@ function createPeerConnection(peerId) {
     }
   };
 
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'failed') {
-      pc.restartIce();
+  // Dispara automaticamente sempre que uma renegociação é necessária:
+  // conexão inicial, troca de tracks (mic/tela) e restartIce().
+  pc.onnegotiationneeded = async () => {
+    const p = peers[peerId];
+    if (!p) return;
+    try {
+      p.makingOffer = true;
+      await pc.setLocalDescription();
+      wsSend({type: 'offer', target: peerId, payload: pc.localDescription});
+    } catch (e) {
+      // ignore
+    } finally {
+      p.makingOffer = false;
     }
   };
 
-  // Add local audio tracks
-  if (localStream) {
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState === 'failed') pc.restartIce();
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') pc.restartIce();
+  };
+
+  // Garante que sempre exista pelo menos um transceiver de áudio — mesmo
+  // quem entra como ouvinte (sem mic) precisa negociar para RECEBER áudio.
+  if (localStream && localStream.getAudioTracks().length) {
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  } else {
+    pc.addTransceiver('audio', {direction: 'recvonly'});
   }
 
-  // Add screen tracks if sharing
   if (screenStream) {
     screenStream.getTracks().forEach(t => pc.addTrack(t, screenStream));
   }
 
-  if (!peers[peerId]) peers[peerId] = {};
-  peers[peerId].pc = pc;
   return pc;
 }
 
-async function createOffer(peerId) {
-  const pc = createPeerConnection(peerId);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  wsSend({type: 'offer', target: peerId, payload: offer});
-}
-
 async function handleOffer(peerId, offer) {
-  const pc = createPeerConnection(peerId);
+  const pc = peers[peerId]?.pc || createPeerConnection(peerId);
+  const p = peers[peerId];
+
+  const offerCollision = pc.signalingState !== 'stable' || p.makingOffer;
+  p.ignoreOffer = !p.polite && offerCollision;
+  if (p.ignoreOffer) return;
+
   await pc.setRemoteDescription(offer);
+  await flushPendingCandidates(peerId);
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
   wsSend({type: 'answer', target: peerId, payload: answer});
@@ -359,6 +404,7 @@ function removePeer(peerId) {
     if (p.audioEl) { p.audioEl.srcObject = null; }
   }
   delete peers[peerId];
+  delete pendingCandidates[peerId];
   const card = document.getElementById('peer-' + CSS.escape(peerId));
   if (card) card.remove();
   hideScreenIfFrom(peerId);

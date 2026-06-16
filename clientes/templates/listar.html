@@ -168,6 +168,9 @@
                     <button class="btn btn-sm btn-primary" onclick="abrirModalAcesso()">
                         <i class="fas fa-plus me-1"></i> Adicionar
                     </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalImportarCRT()" title="Importar hosts de backup SecureCRT (.xml)">
+                        <i class="fas fa-file-import me-1"></i> Importar Host
+                    </button>
                 </div>
 
                 <!-- Container flat de resultados de busca -->
@@ -7374,6 +7377,445 @@ function getCsrfToken(){
     {% endblock content %}
 
 {% block modals %}
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL IMPORTAR HOSTS – SecureCRT XML / Planilha Excel
+     ══════════════════════════════════════════════════════════ -->
+<div id="modalImportarCRT" class="modal-overlay" style="display:none;" onclick="if(event.target===this)fecharModalImportarCRT()">
+  <div class="modal-acesso" style="max-width:860px;width:95%;max-height:90vh;display:flex;flex-direction:column;">
+    <div class="modal-header-acesso" style="flex-shrink:0;">
+      <h2 class="modal-title"><i class="fas fa-file-import me-2"></i> Importar Hosts</h2>
+      <button class="btn-close-modal" onclick="fecharModalImportarCRT()"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Abas: SecureCRT | Planilha Excel -->
+    <div style="display:flex;border-bottom:1px solid var(--border-color,#2a3344);padding:0 16px;background:var(--bg-secondary,#141c2e);flex-shrink:0;">
+      <button id="tabCRT" onclick="importSwitchTab('crt')"
+              style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:.85rem;font-weight:600;
+                     border-bottom:2px solid var(--primary-blue,#3b82f6);color:var(--primary-blue,#3b82f6);margin-bottom:-1px;">
+        <i class="fas fa-file-code me-1"></i> SecureCRT (XML)
+      </button>
+      <button id="tabXLS" onclick="importSwitchTab('xls')"
+              style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:.85rem;font-weight:600;
+                     border-bottom:2px solid transparent;color:var(--text-muted,#64748b);margin-bottom:-1px;">
+        <i class="fas fa-file-excel me-1"></i> Planilha Excel
+      </button>
+    </div>
+
+    <!-- ── PAINEL SecureCRT ── -->
+    <div id="panelCRT" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+
+    <!-- STEP 1: upload -->
+    <div id="crtStep1" class="modal-body-acesso" style="flex:1;overflow-y:auto;">
+      <!-- Senha padrão -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid var(--border-color,#2a3344);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+        <label style="font-size:.82rem;color:var(--text-muted);display:block;margin-bottom:6px;font-weight:600;">
+          <i class="fas fa-key me-1" style="color:#f59e0b;"></i> Senha Padrão (aplicada em todos os hosts importados)
+        </label>
+        <input type="password" id="crtSenhaPadrao" placeholder="Deixe em branco para não definir senha"
+               style="width:100%;background:#0d1520;border:1px solid #2a3344;border-radius:6px;color:#e2e8f0;
+                      padding:8px 12px;font-size:.85rem;box-sizing:border-box;">
+      </div>
+      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:16px;">
+        Selecione o arquivo de exportação do SecureCRT <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:3px;">.xml</code>. O sistema extrairá todos os hosts automaticamente.
+      </p>
+      <div id="crtDropZone"
+           style="border:2px dashed var(--border-color,#2a3344);border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(255,255,255,.02);"
+           onclick="document.getElementById('crtFileInput').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--primary-green,#3fb950)'"
+           ondragleave="this.style.borderColor='var(--border-color,#2a3344)'"
+           ondrop="crtHandleDrop(event)">
+        <i class="fas fa-file-code" style="font-size:2.5rem;color:var(--text-muted);margin-bottom:12px;display:block;"></i>
+        <div style="font-size:.95rem;color:var(--text-muted);">Clique ou arraste o arquivo <strong>.xml</strong> aqui</div>
+        <div id="crtFileName" style="margin-top:10px;font-size:.82rem;color:var(--primary-green,#3fb950);display:none;"></div>
+      </div>
+      <input type="file" id="crtFileInput" accept=".xml" style="display:none;" onchange="crtFileSelected(this)">
+      <div id="crtStep1Error" style="display:none;color:#f87171;font-size:.83rem;margin-top:10px;"></div>
+      <div style="margin-top:18px;text-align:right;">
+        <button class="btn btn-sm btn-primary" id="crtBtnAnalisar" onclick="crtAnalisar()" disabled>
+          <i class="fas fa-search me-1"></i> Analisar Arquivo
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: preview -->
+    <div id="crtStep2" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border-color,#2a3344);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;">
+        <span id="crtTotalLabel" style="font-size:.83rem;color:var(--text-muted);"></span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer;margin-left:auto;">
+          <input type="checkbox" id="crtCheckAll" onchange="crtToggleAll(this.checked)" checked>
+          Selecionar todos
+        </label>
+        <button class="btn btn-sm btn-outline-secondary" onclick="crtVoltar()"><i class="fas fa-arrow-left me-1"></i> Voltar</button>
+        <button class="btn btn-sm btn-primary" id="crtBtnImportar" onclick="crtImportar()">
+          <i class="fas fa-download me-1"></i> Importar Selecionados
+        </button>
+      </div>
+      <div style="overflow-y:auto;flex:1;">
+        <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
+          <thead>
+            <tr style="background:rgba(255,255,255,.04);position:sticky;top:0;z-index:1;">
+              <th style="padding:8px 12px;text-align:center;width:36px;color:var(--text-muted);font-weight:600;"></th>
+              <th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Nome do Host</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Função</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Grupo</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Host / IP</th>
+              <th style="padding:8px 12px;text-align:center;color:var(--text-muted);font-weight:600;">Proto</th>
+              <th style="padding:8px 12px;text-align:center;color:var(--text-muted);font-weight:600;">Porta</th>
+            </tr>
+          </thead>
+          <tbody id="crtTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STEP 3: resultado -->
+    <div id="crtStep3" style="display:none;" class="modal-body-acesso">
+      <div id="crtResultContent" style="text-align:center;padding:20px 0;"></div>
+      <div style="text-align:right;margin-top:16px;">
+        <button class="btn btn-sm btn-primary" onclick="fecharModalImportarCRT();location.reload();">
+          <i class="fas fa-check me-1"></i> Concluir
+        </button>
+      </div>
+    </div>
+
+    </div><!-- /panelCRT -->
+
+    <!-- ── PAINEL Excel ── -->
+    <div id="panelXLS" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="modal-body-acesso" style="flex:1;overflow-y:auto;">
+
+        <!-- Baixar template -->
+        <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:14px 16px;margin-bottom:18px;">
+          <div style="font-size:.88rem;font-weight:700;color:#10b981;margin-bottom:6px;">
+            <i class="fas fa-download me-1"></i> Passo 1 — Baixar a planilha modelo
+          </div>
+          <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px;">
+            A planilha já vem com as opções de <strong>Função</strong> e <strong>Modelo</strong> do sistema como listas suspensas. Preencha e envie para importar.
+          </div>
+          <a href="/clientes/acessos/template-excel/{{ cliente.id }}/" target="_blank"
+             class="btn btn-sm" style="background:#10b981;color:#fff;border:none;">
+            <i class="fas fa-file-excel me-1"></i> Baixar Planilha Modelo (.xlsx)
+          </a>
+        </div>
+
+        <!-- Senha padrão -->
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--border-color,#2a3344);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+          <label style="font-size:.82rem;color:var(--text-muted);display:block;margin-bottom:6px;font-weight:600;">
+            <i class="fas fa-key me-1" style="color:#f59e0b;"></i> Senha Padrão
+            <span style="font-weight:400;margin-left:6px;">— aplicada em hosts que não tiverem senha preenchida na planilha</span>
+          </label>
+          <input type="password" id="xlsSenhaPadrao" placeholder="Deixe em branco para não definir senha"
+                 style="width:100%;background:#0d1520;border:1px solid #2a3344;border-radius:6px;color:#e2e8f0;
+                        padding:8px 12px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+
+        <!-- Upload da planilha preenchida -->
+        <div style="font-size:.88rem;font-weight:700;color:var(--text-secondary,#94a3b8);margin-bottom:8px;">
+          <i class="fas fa-upload me-1"></i> Passo 2 — Enviar planilha preenchida
+        </div>
+        <div id="xlsDropZone"
+             style="border:2px dashed var(--border-color,#2a3344);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(255,255,255,.02);"
+             onclick="document.getElementById('xlsFileInput').click()"
+             ondragover="event.preventDefault();this.style.borderColor='#10b981'"
+             ondragleave="this.style.borderColor='var(--border-color,#2a3344)'"
+             ondrop="xlsHandleDrop(event)">
+          <i class="fas fa-file-excel" style="font-size:2.5rem;color:#10b981;margin-bottom:12px;display:block;"></i>
+          <div style="font-size:.95rem;color:var(--text-muted);">Clique ou arraste a planilha <strong>.xlsx</strong> aqui</div>
+          <div id="xlsFileName" style="margin-top:10px;font-size:.82rem;color:#10b981;display:none;"></div>
+        </div>
+        <input type="file" id="xlsFileInput" accept=".xlsx,.xls" style="display:none;" onchange="xlsFileSelected(this)">
+        <div id="xlsError" style="display:none;color:#f87171;font-size:.83rem;margin-top:10px;"></div>
+
+        <div style="margin-top:18px;text-align:right;">
+          <button class="btn btn-sm btn-primary" id="xlsBtnImportar" onclick="xlsImportar()" disabled>
+            <i class="fas fa-download me-1"></i> Importar Planilha
+          </button>
+        </div>
+
+        <!-- Resultado Excel -->
+        <div id="xlsResultado" style="display:none;margin-top:18px;"></div>
+      </div>
+    </div><!-- /panelXLS -->
+
+  </div>
+</div>
+
+<script>
+(function(){
+  const CRT_FUNCOES = [
+    {id: 0, nome: '— sem função —'},
+    {% for f in funcao_equipamentos %}{id: {{f.id}}, nome: "{{f.descricao|escapejs}}"},
+    {% endfor %}
+  ];
+
+  const CRT = {
+    file: null,
+    sessions: [],
+    clienteId: {{ cliente.id }},
+
+    open() {
+      this.reset();
+      document.getElementById('modalImportarCRT').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    },
+
+    close() {
+      document.getElementById('modalImportarCRT').style.display = 'none';
+      document.body.style.overflow = 'auto';
+    },
+
+    reset() {
+      this.file = null;
+      this.sessions = [];
+      // Garantir que a aba CRT esteja visível ao abrir
+      if (window.importSwitchTab) importSwitchTab('crt');
+      document.getElementById('crtStep1').style.display = 'block';
+      document.getElementById('crtStep2').style.display = 'none';
+      document.getElementById('crtStep3').style.display = 'none';
+      document.getElementById('crtFileName').style.display = 'none';
+      document.getElementById('crtFileName').textContent = '';
+      document.getElementById('crtStep1Error').style.display = 'none';
+      document.getElementById('crtBtnAnalisar').disabled = true;
+      document.getElementById('crtFileInput').value = '';
+    },
+
+    setFile(f) {
+      this.file = f;
+      const el = document.getElementById('crtFileName');
+      el.textContent = f.name + ' (' + (f.size / 1024).toFixed(1) + ' KB)';
+      el.style.display = 'block';
+      document.getElementById('crtBtnAnalisar').disabled = false;
+      document.getElementById('crtStep1Error').style.display = 'none';
+    },
+
+    async analisar() {
+      if (!this.file) return;
+      const btn = document.getElementById('crtBtnAnalisar');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Analisando...';
+
+      const fd = new FormData();
+      fd.append('arquivo', this.file);
+      fd.append('action', 'parse');
+      fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+      try {
+        const r = await fetch(`/clientes/acessos/importar-crt/${this.clienteId}/`, {method:'POST',body:fd});
+        const d = await r.json();
+        if (!d.success) {
+          document.getElementById('crtStep1Error').textContent = d.error;
+          document.getElementById('crtStep1Error').style.display = 'block';
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-search me-1"></i> Analisar Arquivo';
+          return;
+        }
+        this.sessions = d.sessions;
+        this.renderPreview();
+      } catch(e) {
+        document.getElementById('crtStep1Error').textContent = 'Erro: ' + e.message;
+        document.getElementById('crtStep1Error').style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search me-1"></i> Analisar Arquivo';
+      }
+    },
+
+    renderPreview() {
+      const COLORS = {SSH:'#3b82f6',TELNET:'#f59e0b',HTTP:'#10b981',HTTPS:'#6366f1',FTP:'#8b5cf6',FTPS:'#a78bfa',WINBOX:'#ef4444'};
+      document.getElementById('crtTotalLabel').textContent = this.sessions.length + ' host' + (this.sessions.length !== 1 ? 's' : '') + ' encontrado' + (this.sessions.length !== 1 ? 's' : '');
+      const tbody = document.getElementById('crtTableBody');
+      tbody.innerHTML = '';
+      this.sessions.forEach((s, i) => {
+        const c = COLORS[s.protocolo] || '#94a3b8';
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid rgba(255,255,255,.05)';
+        tr.onmouseover = () => tr.style.background = 'rgba(255,255,255,.03)';
+        tr.onmouseout  = () => tr.style.background = '';
+        const grupoHtml = s.grupo ? `<span style="font-size:.74rem;color:#475569;">${s.grupo}</span>` : '<span style="color:#334155;">—</span>';
+
+        // Monta o <select> de função, pré-selecionando pelo nome detectado
+        const matchId = (() => {
+          if (!s.funcao_nome) return 0;
+          const found = CRT_FUNCOES.find(f => f.nome.toLowerCase() === s.funcao_nome.toLowerCase());
+          return found ? found.id : 0;
+        })();
+        const opts = CRT_FUNCOES.map(f =>
+          `<option value="${f.id}" ${f.id === matchId ? 'selected' : ''}>${f.nome}</option>`
+        ).join('');
+        const selectHtml = `<select class="crt-funcao-select"
+          style="background:#0d1117;border:1px solid #2a3344;border-radius:5px;color:#c9d1d9;
+                 font-size:.75rem;padding:3px 6px;width:100%;min-width:130px;">${opts}</select>`;
+
+        tr.innerHTML = `
+          <td style="padding:7px 12px;text-align:center;"><input type="checkbox" class="crt-row-cb" data-idx="${i}" checked></td>
+          <td style="padding:7px 12px;color:#e2e8f0;font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.nome}">${s.nome}</td>
+          <td style="padding:7px 12px;min-width:140px;">${selectHtml}</td>
+          <td style="padding:7px 12px;">${grupoHtml}</td>
+          <td style="padding:7px 12px;font-family:monospace;color:#7dd3fc;">${s.host}</td>
+          <td style="padding:7px 12px;text-align:center;"><span style="background:${c}22;color:${c};padding:2px 8px;border-radius:10px;font-weight:700;font-size:.74rem;">${s.protocolo}</span></td>
+          <td style="padding:7px 12px;text-align:center;color:#64748b;">${s.porta}</td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('crtCheckAll').checked = true;
+      document.getElementById('crtStep1').style.display = 'none';
+      document.getElementById('crtStep2').style.display = 'flex';
+    },
+
+    toggleAll(v) {
+      document.querySelectorAll('.crt-row-cb').forEach(cb => cb.checked = v);
+    },
+
+    voltar() {
+      document.getElementById('crtStep2').style.display = 'none';
+      document.getElementById('crtStep1').style.display = 'block';
+      const btn = document.getElementById('crtBtnAnalisar');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-search me-1"></i> Analisar Arquivo';
+    },
+
+    async importar() {
+      const selected = [];
+      document.querySelectorAll('.crt-row-cb:checked').forEach(cb => {
+        const idx = parseInt(cb.dataset.idx);
+        const sel = {...this.sessions[idx]};
+        const funcaoEl = cb.closest('tr').querySelector('.crt-funcao-select');
+        sel.funcao_id = funcaoEl ? (parseInt(funcaoEl.value) || null) : null;
+        sel.senha = document.getElementById('crtSenhaPadrao').value || '';
+        selected.push(sel);
+      });
+      if (!selected.length) { alert('Selecione ao menos um host.'); return; }
+      const btn = document.getElementById('crtBtnImportar');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Importando...';
+      try {
+        const r = await fetch(`/clientes/acessos/importar-crt/${this.clienteId}/`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+          body: JSON.stringify({action:'import', sessions: selected})
+        });
+        const d = await r.json();
+        this.showResult(d);
+      } catch(e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download me-1"></i> Importar Selecionados';
+        alert('Erro: ' + e.message);
+      }
+    },
+
+    showResult(d) {
+      document.getElementById('crtStep2').style.display = 'none';
+      document.getElementById('crtStep3').style.display = 'block';
+      const c = d.created || 0, sk = d.skipped || 0, errs = d.errors || [];
+      let html = `<i class="fas fa-check-circle" style="font-size:2.5rem;color:#3fb950;display:block;margin-bottom:14px;"></i>`;
+      html += `<div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:16px;">Importação concluída</div>`;
+      html += `<div style="display:inline-flex;gap:28px;justify-content:center;flex-wrap:wrap;">`;
+      html += `<div style="text-align:center;"><div style="font-size:1.8rem;font-weight:800;color:#3fb950;">${c}</div><div style="font-size:.78rem;color:#64748b;">Criado${c!==1?'s':''}</div></div>`;
+      html += `<div style="text-align:center;"><div style="font-size:1.8rem;font-weight:800;color:#f59e0b;">${sk}</div><div style="font-size:.78rem;color:#64748b;">Já existia${sk!==1?'m':''}</div></div>`;
+      if (errs.length) html += `<div style="text-align:center;"><div style="font-size:1.8rem;font-weight:800;color:#ef4444;">${errs.length}</div><div style="font-size:.78rem;color:#64748b;">Erro${errs.length!==1?'s':''}</div></div>`;
+      html += `</div>`;
+      if (errs.length) {
+        html += `<div style="margin-top:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:10px 14px;text-align:left;font-size:.78rem;color:#fca5a5;max-height:100px;overflow-y:auto;">`;
+        errs.forEach(e => { html += `<div>• ${e}</div>`; });
+        html += `</div>`;
+      }
+      document.getElementById('crtResultContent').innerHTML = html;
+    }
+  };
+
+  window.abrirModalImportarCRT  = () => CRT.open();
+  window.fecharModalImportarCRT = () => CRT.close();
+  window.crtFileSelected = (inp) => { if (inp.files[0]) CRT.setFile(inp.files[0]); };
+  window.crtHandleDrop   = (e)   => {
+    e.preventDefault();
+    document.getElementById('crtDropZone').style.borderColor = 'var(--border-color,#2a3344)';
+    if (e.dataTransfer.files[0]) CRT.setFile(e.dataTransfer.files[0]);
+  };
+  window.crtAnalisar   = () => CRT.analisar();
+  window.crtToggleAll  = (v) => CRT.toggleAll(v);
+  window.crtVoltar     = () => CRT.voltar();
+  window.crtImportar   = () => CRT.importar();
+
+  // ── Troca de abas CRT / Excel ──────────────────────────────────
+  window.importSwitchTab = function(tab) {
+    const isCRT = tab === 'crt';
+    document.getElementById('panelCRT').style.display = isCRT ? 'flex' : 'none';
+    document.getElementById('panelXLS').style.display = isCRT ? 'none' : 'flex';
+    document.getElementById('tabCRT').style.borderBottomColor = isCRT ? 'var(--primary-blue,#3b82f6)' : 'transparent';
+    document.getElementById('tabCRT').style.color = isCRT ? 'var(--primary-blue,#3b82f6)' : 'var(--text-muted,#64748b)';
+    document.getElementById('tabXLS').style.borderBottomColor = isCRT ? 'transparent' : '#10b981';
+    document.getElementById('tabXLS').style.color = isCRT ? 'var(--text-muted,#64748b)' : '#10b981';
+  };
+
+  // ── Upload Excel ───────────────────────────────────────────────
+  let _xlsFile = null;
+  window.xlsFileSelected = function(inp) {
+    if (!inp.files[0]) return;
+    _xlsFile = inp.files[0];
+    const el = document.getElementById('xlsFileName');
+    el.textContent = _xlsFile.name + ' (' + (_xlsFile.size / 1024).toFixed(1) + ' KB)';
+    el.style.display = 'block';
+    document.getElementById('xlsBtnImportar').disabled = false;
+    document.getElementById('xlsError').style.display = 'none';
+  };
+  window.xlsHandleDrop = function(e) {
+    e.preventDefault();
+    document.getElementById('xlsDropZone').style.borderColor = 'var(--border-color,#2a3344)';
+    if (e.dataTransfer.files[0]) {
+      document.getElementById('xlsFileInput').files = e.dataTransfer.files;
+      xlsFileSelected(document.getElementById('xlsFileInput'));
+    }
+  };
+  window.xlsImportar = async function() {
+    if (!_xlsFile) return;
+    const btn = document.getElementById('xlsBtnImportar');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Importando...';
+    document.getElementById('xlsResultado').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('arquivo', _xlsFile);
+    fd.append('senha_padrao', document.getElementById('xlsSenhaPadrao').value || '');
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    try {
+      const r = await fetch(`/clientes/acessos/importar-excel/{{ cliente.id }}/`, {method:'POST', body:fd});
+      const d = await r.json();
+      const c = d.created || 0, sk = d.skipped || 0, errs = d.errors || [];
+      let html = '';
+      if (d.success) {
+        html += `<div style="background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);border-radius:8px;padding:14px 16px;">`;
+        html += `<div style="font-weight:700;color:#3fb950;margin-bottom:10px;"><i class="fas fa-check-circle me-1"></i> Importação concluída</div>`;
+        html += `<div style="display:flex;gap:28px;">`;
+        html += `<div><span style="font-size:1.5rem;font-weight:800;color:#3fb950;">${c}</span><div style="font-size:.75rem;color:#64748b;">Criado${c!==1?'s':''}</div></div>`;
+        html += `<div><span style="font-size:1.5rem;font-weight:800;color:#f59e0b;">${sk}</span><div style="font-size:.75rem;color:#64748b;">Já existia${sk!==1?'m':''}</div></div>`;
+        if (errs.length) html += `<div><span style="font-size:1.5rem;font-weight:800;color:#ef4444;">${errs.length}</span><div style="font-size:.75rem;color:#64748b;">Erro${errs.length!==1?'s':''}</div></div>`;
+        html += `</div>`;
+        if (errs.length) {
+          html += `<div style="margin-top:10px;font-size:.77rem;color:#fca5a5;">`;
+          errs.forEach(e => { html += `<div>• ${e}</div>`; });
+          html += `</div>`;
+        }
+        html += `</div>`;
+        if (c > 0) {
+          html += `<div style="margin-top:10px;text-align:right;">`;
+          html += `<button class="btn btn-sm btn-primary" onclick="fecharModalImportarCRT();location.reload();">`;
+          html += `<i class="fas fa-check me-1"></i> Concluir</button></div>`;
+        }
+      } else {
+        html = `<div style="color:#f87171;font-size:.83rem;">${d.error}</div>`;
+      }
+      document.getElementById('xlsResultado').innerHTML = html;
+      document.getElementById('xlsResultado').style.display = 'block';
+    } catch(e) {
+      document.getElementById('xlsError').textContent = 'Erro: ' + e.message;
+      document.getElementById('xlsError').style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-download me-1"></i> Importar Planilha';
+  };
+})();
+</script>
+
 <!-- ── Modal Ping / Traceroute ───────────────────────────────────────────── -->
 <div id="modalPingResult" class="modal-overlay" style="display:none;" onclick="if(event.target===this)fecharModalPing()">
   <div class="modal-acesso" style="max-width:540px;">

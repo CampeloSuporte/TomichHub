@@ -464,5 +464,50 @@ python manage.py migrate financeiro
 
 ---
 
-**Última atualização:** 01/06/2026 - 11:02 UTC
+## Cobrança via WhatsApp — Diagnóstico e Correção (2026-06-16)
+
+**Arquivos:** `financeiro/tasks.py`, `financeiro/whatsapp.py`, `financeiro/models.py`
+
+### "Alerta de cobrança não está sendo enviado"
+
+Não era um bug de código: a task `financeiro.tasks.enviar_alertas_whatsapp` está
+agendada corretamente no Celery Beat (seg–sex às 8:30,
+`crm/celery.py`), mas a flag `ConfiguracaoFinanceira.wa_ativo` ("Alertas WhatsApp
+ativos", configurável no dashboard) estava desativada — valor padrão do campo é
+`False`. A task sempre executava e sempre pulava silenciosamente
+(`financeiro.tasks: alertas WhatsApp desativados, pulando.` no log), sem nunca
+verificar faturas. Ativada manualmente e disparo manual confirmou o fluxo completo
+funcionando (2 envios ok, 2 com erro transitório da Evolution API, resolvidos em
+nova tentativa).
+
+### Mensagem de cobrança não informava o serviço (venda de equipamento)
+
+**Causa raiz:** o model `Fatura` nunca teve, de fato, o campo M2M
+`vendas_equipamentos` que o código já tentava usar. Em
+`financeiro/views.py` (`gerar_faturas_venda_equipamento`), o código fazia:
+
+```python
+if hasattr(fatura, 'vendas_equipamentos'):
+    fatura.vendas_equipamentos.add(venda)
+```
+
+Como o campo nunca existiu em `Fatura`, `hasattr` sempre retornava `False` e a venda
+nunca era vinculada à fatura — `_coletar_itens()` em `financeiro/whatsapp.py`
+(usado para montar o detalhamento da mensagem de cobrança) nunca encontrava o item,
+e a cobrança saía sem nenhuma indicação de qual serviço/produto estava sendo cobrado.
+
+**Correção:**
+- Adicionado `vendas_equipamentos = models.ManyToManyField('VendaEquipamento', blank=True, related_name='faturas')`
+  em `Fatura` (migração `0019_fatura_vendas_equipamentos`).
+- `_coletar_itens()` agora formata o item como
+  `"{descrição} ({N}x — início {data_inicio})"`, deixando claro de qual contrato a
+  parcela cobrada faz parte.
+- **Backfill:** as 55 faturas de venda de equipamento já existentes e sem vínculo
+  foram religadas retroativamente à sua `VendaEquipamento` de origem, casando por
+  cliente + valor da parcela + data de vencimento esperada (todas resolvidas sem
+  ambiguidade).
+
+---
+
+**Última atualização:** 16/06/2026
 **Versão:** 2.0 (com recorrências e privacidade)

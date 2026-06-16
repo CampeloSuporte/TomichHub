@@ -1795,12 +1795,12 @@ def agent_config(request):
             if data.get('claude_api_key'):
                 agent_cfg.claude_api_key = data['claude_api_key']
             agent_cfg.claude_model        = data.get('claude_model', agent_cfg.claude_model)
-            agent_cfg.claude_max_tokens   = int(data.get('claude_max_tokens', agent_cfg.claude_max_tokens))
-            agent_cfg.claude_temperature  = float(data.get('claude_temperature', agent_cfg.claude_temperature))
+            agent_cfg.claude_max_tokens   = int(data.get('claude_max_tokens') or agent_cfg.claude_max_tokens)
+            agent_cfg.claude_temperature  = float(data.get('claude_temperature') or agent_cfg.claude_temperature)
             agent_cfg.aprovacao_padrao    = bool(data.get('aprovacao_padrao', agent_cfg.aprovacao_padrao))
-            agent_cfg.timeout_sessao_wa   = int(data.get('timeout_sessao_wa', agent_cfg.timeout_sessao_wa))
+            agent_cfg.timeout_sessao_wa   = int(data.get('timeout_sessao_wa') or agent_cfg.timeout_sessao_wa)
             agent_cfg.prefixo_wa          = data.get('prefixo_wa', agent_cfg.prefixo_wa).strip() or '@noc'
-            agent_cfg.max_comandos_sessao = int(data.get('max_comandos_sessao', agent_cfg.max_comandos_sessao))
+            agent_cfg.max_comandos_sessao = int(data.get('max_comandos_sessao') or agent_cfg.max_comandos_sessao)
             agent_cfg.wa_grupo_noc        = data.get('wa_grupo_noc', agent_cfg.wa_grupo_noc)
             agent_cfg.wa_noc_numero       = data.get('wa_noc_numero', agent_cfg.wa_noc_numero)
             agent_cfg.save()
@@ -1810,8 +1810,8 @@ def agent_config(request):
             if data.get('openai_api_key'):
                 agent_cfg.openai_api_key = data['openai_api_key']
             agent_cfg.openai_model       = data.get('openai_model', agent_cfg.openai_model)
-            agent_cfg.openai_max_tokens  = int(data.get('openai_max_tokens', agent_cfg.openai_max_tokens))
-            agent_cfg.openai_temperature = float(data.get('openai_temperature', agent_cfg.openai_temperature))
+            agent_cfg.openai_max_tokens  = int(data.get('openai_max_tokens') or agent_cfg.openai_max_tokens)
+            agent_cfg.openai_temperature = float(data.get('openai_temperature') or agent_cfg.openai_temperature)
             agent_cfg.save()
             return JsonResponse({'ok': True, 'msg': 'Configuração OpenAI salva.'})
 
@@ -2119,7 +2119,9 @@ def agent_grupo_salvar(request, grupo_id):
         grupo.cliente         = Cliente.objects.get(id=cliente_id) if cliente_id else None
         grupo.nivel_permissao = data.get('nivel_permissao', 'leitura')
         grupo.ativo           = bool(data.get('ativo', True))
-        grupo.save(update_fields=['cliente', 'nivel_permissao', 'ativo', 'acesso_global'])
+        if 'claude_api_key' in data:
+            grupo.claude_api_key = data.get('claude_api_key', '').strip()
+        grupo.save(update_fields=['cliente', 'nivel_permissao', 'ativo', 'acesso_global', 'claude_api_key'])
 
         # Atualiza restrição de hosts (grupos globais não têm restrição de hosts)
         if acesso_global:
