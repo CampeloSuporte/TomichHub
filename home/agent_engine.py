@@ -97,6 +97,261 @@ BLOCKED_COMMANDS: list[str] = [
     r'rm\s+-rf', r'format\s+', r'factory',
 ]
 
+
+# ─────────────────────────────────────────────────────────────────
+# Tool Output Normalizer — reduz tokens antes de enviar ao LLM
+# ─────────────────────────────────────────────────────────────────
+
+_MAX_TOOL_OUTPUT = 2000   # chars máx por tool result (era 3000)
+_MAX_OLD_RESULT  = 500    # chars máx em tool results antigos no mesmo turno
+
+
+def _noc_normalizar_output(comando: str, output: str, fabricante: str = '') -> str:
+    """
+    Filtra e comprime output de CLI antes de enviar ao LLM.
+    Para comandos reconhecidos extrai apenas informação relevante;
+    para desconhecidos aplica truncamento inteligente com contagem de linhas omitidas.
+    """
+    cmd = comando.strip().lower()
+    out = output.strip()
+    if not out:
+        return out
+
+    # ── BGP summary / peer table ─────────────────────────────────
+    if re.search(
+        r'(show\s+bgp\s+summary'
+        r'|display\s+bgp\s+peer\b'
+        r'|/routing\s+bgp\s+(peer|session|connection)\s+print'
+        r'|show\s+ip\s+bgp\s+summary)',
+        cmd,
+    ):
+        return _noc_parse_bgp(out)
+
+    # ── Interface brief (endereços/status) ───────────────────────
+    if re.search(
+        r'(show\s+ip\s+int(?:erface)?\s+brief'
+        r'|display\s+ip\s+int(?:erface)?\s+brief'
+        r'|/ip\s+address\s+print(?:\s|$))',
+        cmd,
+    ):
+        return _noc_parse_iface_brief(out)
+
+    # ── ONU state ZTE — filtrar apenas ONUs com problema ────────
+    if re.search(r'show\s+(pon\s+)?onu\s+state', cmd):
+        return _noc_parse_onu_state(out)
+
+    # ── Log — manter apenas as últimas 40 linhas ────────────────
+    if re.search(r'(show\s+log|/log\s+print|display\s+log|journalctl)', cmd):
+        lines = out.splitlines()
+        if len(lines) > 40:
+            return '\n'.join(lines[-40:]) + f'\n[...{len(lines)-40} linhas anteriores omitidas]'
+        return out
+
+    # ── Config dump — truncar agressivamente ────────────────────
+    if re.search(
+        r'(show\s+running-config(?!\s+interface)'
+        r'|display\s+current-configuration'
+        r'|/export)',
+        cmd,
+    ):
+        if len(out) > 800:
+            n = out.count('\n')
+            return (
+                out[:800]
+                + f'\n\n[...config truncada — {n} linhas totais. '
+                f'Use fetch_host_config para processar e salvar o contexto completo.]'
+            )
+        return out
+
+    # ── Default: truncamento inteligente ────────────────────────
+    return _noc_truncar(out)
+
+
+def _noc_parse_bgp(output: str) -> str:
+    """
+    Extrai estado dos peers BGP: contagem + lista de peers fora do ar.
+    Suporta Huawei VRP, Cisco IOS/IOS-XE, MikroTik ROS6/7, Datacom DmOS.
+    """
+    BAD_STATES = {'idle', 'active', 'connect', 'opensent', 'openconfirm',
+                  'down', 'disabled', 'error', 'deleted'}
+    lines = output.splitlines()
+    total = established = 0
+    down_peers: list[str] = []
+    summary: list[str] = []
+
+    for line in lines:
+        ls = line.strip()
+        if not ls:
+            continue
+        # Linhas de cabeçalho / totalizadores
+        if re.match(r'^(Peer\s+V|Neighbor\s+V|#\s+INSTANCE|Flags:|BGP\s|Local\s|Total\s|\-\-)', ls, re.I):
+            if any(kw in ls for kw in ('Total', 'Established', 'established')):
+                summary.append(ls[:100])
+            continue
+
+        parts = ls.split()
+        peer_ip = state = asn = updown = None
+
+        # Formato Huawei/Cisco/Datacom: primeiro campo é IP
+        if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', parts[0]):
+            peer_ip = parts[0]
+            state   = parts[-1].lower().rstrip('*')
+            if len(parts) >= 3:
+                asn = next((p for p in parts[1:4] if p.isdigit()), '')
+            updown = parts[-2] if len(parts) >= 3 else ''
+
+        # Formato MikroTik: índice [flags] nome IP AS uptime
+        elif re.match(r'^\d+\s', ls) and len(parts) >= 3:
+            for p in parts:
+                if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', p):
+                    peer_ip = p
+                    break
+            flags = parts[1] if len(parts) > 1 else ''
+            state = 'established' if 'E' in flags else 'idle'
+            asn   = next((p for p in parts if p.isdigit() and int(p) > 64000), '')
+
+        if not peer_ip:
+            continue
+
+        total += 1
+        bad = any(b in state for b in BAD_STATES) if state else False
+        if bad:
+            asn_s = f' AS{asn}' if asn else ''
+            down_peers.append(f'  ⚠ {peer_ip}{asn_s} — {state.title()}'
+                              + (f', up={updown}' if updown else ''))
+        else:
+            established += 1
+
+    if total == 0:
+        return _noc_truncar(output)
+
+    out_parts = [f'BGP: {total} peers, {established} estabelecidos, {len(down_peers)} com problema']
+    if summary:
+        out_parts.append('  ' + ' | '.join(s for s in summary[:2]))
+    if down_peers:
+        out_parts.append('Peers com problema:')
+        out_parts.extend(down_peers[:30])
+    else:
+        out_parts.append('  ✅ Todos os peers estabelecidos')
+    return '\n'.join(out_parts)
+
+
+def _noc_parse_iface_brief(output: str) -> str:
+    """
+    Filtra interface brief: exibe apenas interfaces DOWN + contagem de UP.
+    Suporta Huawei VRP, Cisco IOS, MikroTik.
+    """
+    lines = output.splitlines()
+    header: list[str] = []
+    up_count = 0
+    down_lines: list[str] = []
+    parsed = False
+
+    for line in lines:
+        ls = line.strip()
+        if not ls:
+            continue
+        # Cabeçalho (sem IP/número de porta)
+        if not re.search(r'\d{1,3}\.\d{1,3}|\bup\b|\bdown\b', line, re.I) and len(header) < 2:
+            header.append(line)
+            continue
+        parsed = True
+        ll = ls.lower()
+        if re.search(r'\bdown\b|\*down|\blower\b|\bdisabled\b', ll):
+            down_lines.append(line)
+        else:
+            up_count += 1
+
+    if not parsed:
+        return _noc_truncar(output)
+
+    result = header[:1]
+    result.append(f'[Resumo: {up_count} UP, {len(down_lines)} DOWN]')
+    if down_lines:
+        result.append('Interfaces DOWN:')
+        result.extend(down_lines[:30])
+    else:
+        result.append('  ✅ Nenhuma interface DOWN')
+    return '\n'.join(result)
+
+
+def _noc_parse_onu_state(output: str) -> str:
+    """Filtra ONU state ZTE: mantém cabeçalho + apenas ONUs não-online."""
+    lines = output.splitlines()
+    header: list[str] = []
+    online = 0
+    bad_lines: list[str] = []
+
+    for line in lines:
+        ls = line.strip()
+        if not ls:
+            continue
+        if re.match(r'^(pon|slot|onu\s+id|onuid|#|\-\-)', ls, re.I) or 'ONU' in ls[:20]:
+            if len(header) < 3:
+                header.append(line)
+            continue
+        if re.search(r'\bonline\b', ls, re.I):
+            online += 1
+        else:
+            bad_lines.append(line)
+
+    if online == 0 and not bad_lines:
+        return _noc_truncar(output)
+
+    result = header
+    result.append(f'[Resumo: {online} online, {len(bad_lines)} com problema]')
+    if bad_lines:
+        result.append('ONUs fora do ar:')
+        result.extend(bad_lines[:50])
+    else:
+        result.append('  ✅ Todas as ONUs online')
+    return '\n'.join(result)
+
+
+def _noc_truncar(output: str, max_chars: int = _MAX_TOOL_OUTPUT) -> str:
+    """Truncamento inteligente: preserva início e informa linhas omitidas."""
+    if len(output) <= max_chars:
+        return output
+    trunc = output[:max_chars]
+    n_total  = output.count('\n')
+    n_exibido = trunc.count('\n')
+    return trunc + f'\n[...{n_total - n_exibido} linhas omitidas ({len(output) - max_chars} chars a mais)]'
+
+
+def _noc_comprimir_messages(messages: list) -> list:
+    """
+    Comprime tool results antigos dentro de um turno (loop while do agent).
+    Mantém as 2 últimas mensagens intactas; trunca resultados anteriores
+    para _MAX_OLD_RESULT chars — Claude já processou esses outputs, não precisa
+    relê-los por completo nas chamadas seguintes do mesmo turno.
+    """
+    if len(messages) <= 4:
+        return messages
+
+    compressed = []
+    cutoff = len(messages) - 2   # últimas 2 mensagens intactas
+    for i, msg in enumerate(messages):
+        if i >= cutoff or msg.get('role') != 'user':
+            compressed.append(msg)
+            continue
+        content = msg.get('content')
+        if not isinstance(content, list):
+            compressed.append(msg)
+            continue
+        new_content = []
+        for bloco in content:
+            if (isinstance(bloco, dict)
+                    and bloco.get('type') == 'tool_result'
+                    and isinstance(bloco.get('content'), str)
+                    and len(bloco['content']) > _MAX_OLD_RESULT):
+                bloco = {**bloco,
+                         'content': (bloco['content'][:_MAX_OLD_RESULT]
+                                     + f'\n[...truncado — {len(bloco["content"])} chars totais]')}
+            new_content.append(bloco)
+        compressed.append({**msg, 'content': new_content})
+    return compressed
+
+
 # Comandos permitidos em nível "operacional" (escrita não-destrutiva)
 OPERATIONAL_COMMANDS: dict[str, list[str]] = {
     'mikrotik': [
@@ -1148,6 +1403,8 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         if not acesso:
             return f"❌ Erro: host ID {acesso_id} não encontrado ou não pertence ao cliente desta sessão."
 
+        _cmd_orig = comando   # preserva para o normalizer (antes de qualquer intercepção)
+
         # Verificar se precisa de aprovação
         fabricante = 'generico'
         if acesso.modelo:
@@ -1484,7 +1741,8 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
             "approved": True,
         })
 
-        return f"Output do comando `{comando}` em {acesso.host}:\n```\n{output[:3000]}\n```"
+        output_norm = _noc_normalizar_output(_cmd_orig, output, fabricante)
+        return f"Output do comando `{_cmd_orig}` em {acesso.host}:\n```\n{output_norm}\n```"
 
     async def _tool_fetch_host_config(self, acesso_id: int) -> str:
         """Coleta configuração completa do host via SSH e salva contexto_backup."""
@@ -1929,17 +2187,26 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         client   = anthropic.AsyncAnthropic(api_key=config.claude_api_key)
         messages = list(self._historico)
 
+        # System prompt com cache_control: Claude não cobra input tokens em cache hit
+        # (10% do custo normal após o 1º turno com o mesmo prompt — TTL 5 min)
+        system_com_cache = [{"type": "text", "text": system_prompt,
+                              "cache_control": {"type": "ephemeral"}}]
+
         t0 = time.monotonic()
         total_tokens_in = total_tokens_out = 0
         resposta_final  = ""
 
         while True:
             try:
+                # Comprime tool results antigos antes de cada chamada à API:
+                # Claude já processou esses outputs; não precisa relê-los completos
+                messages_api = _noc_comprimir_messages(messages)
+
                 response = await client.messages.create(
                     model=config.claude_model or 'claude-sonnet-4-6',
                     max_tokens=config.claude_max_tokens or 4096,
-                    system=system_prompt,
-                    messages=messages,
+                    system=system_com_cache,
+                    messages=messages_api,
                     tools=TOOLS_DEFINITION,
                 )
             except anthropic.APIError as exc:
@@ -1949,6 +2216,13 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
 
             total_tokens_in  += response.usage.input_tokens
             total_tokens_out += response.usage.output_tokens
+            # Registrar cache hits/writes quando disponíveis
+            if hasattr(response.usage, 'cache_read_input_tokens'):
+                await self.notify_cb({
+                    "type": "cache_stats",
+                    "cache_read":  getattr(response.usage, 'cache_read_input_tokens', 0),
+                    "cache_write": getattr(response.usage, 'cache_creation_input_tokens', 0),
+                })
             await self._atualizar_tokens(total_tokens_in, total_tokens_out)
 
             tool_calls_feitos = []
