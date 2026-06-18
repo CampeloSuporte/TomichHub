@@ -254,18 +254,27 @@ def _aplicar_mikrotik(hotspot, pixel_url):
                 + '\n'.join(f'      {l}' for l in ifaces_lines[:10])
             )
 
-        # ── 0b. Masquerade NAT para a rede do hotspot ────────────────────────
-        # Sem masquerade, os pacotes saem mas as respostas não voltam (sem internet)
+        # ── 0b. NAT src-nat para a rede do hotspot ───────────────────────────
+        # Usa src-nat com to-addresses=IP-do-acesso em vez de masquerade.
+        # Masquerade usa o IP da interface de saída (pode ser um IP interno de carrier
+        # como 198.18.x.x), que o upstream ISP não roteia de volta para a internet.
+        # Com src-nat to-addresses=acesso.host, o tráfego dos clientes aparece como
+        # originado do IP público do roteador — o mesmo que o CRM usa para SSH.
+        nat_public_ip = acesso.host
+        # Remove regras antigas (masquerade ou src-nat) para evitar duplicatas
+        _mt_exec(client,
+            f'/ip firewall nat remove [find chain=srcnat src-address="{hotspot.network}" comment="hs-crm-masq"]')
         nat_count = _mt_count(client,
-            f'/ip firewall nat print count-only where chain=srcnat action=masquerade '
-            f'src-address="{hotspot.network}"')
+            f'/ip firewall nat print count-only where chain=srcnat '
+            f'src-address="{hotspot.network}" action=src-nat to-addresses="{nat_public_ip}"')
         if nat_count == 0:
             _mt_exec(client,
-                f'/ip firewall nat add chain=srcnat action=masquerade '
+                f'/ip firewall nat add chain=srcnat action=src-nat '
+                f'to-addresses="{nat_public_ip}" '
                 f'src-address="{hotspot.network}" comment="hs-crm-masq"')
-            log.append(f'✅ NAT masquerade adicionado para {hotspot.network}')
+            log.append(f'✅ NAT src-nat adicionado ({hotspot.network} → {nat_public_ip})')
         else:
-            log.append(f'✅ NAT masquerade já existe para {hotspot.network}')
+            log.append(f'✅ NAT src-nat já existe ({hotspot.network} → {nat_public_ip})')
 
         # ── 1. IP Address na interface ────────────────────────────────────────
         ip_flt = f'interface="{bridge_name}" address~"{hotspot.gateway}"'
@@ -400,6 +409,17 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         # Perfil default: permite múltiplos dispositivos simultâneos com a conta guest
         _mt_exec(client, '/ip hotspot user profile set [find name="default"] shared-users=unlimited')
 
+        # ── 7b. DNS no MikroTik ───────────────────────────────────────────────
+        # O hotspot proxy precisa resolver hostnames (walled-garden, pixel).
+        # Se o roteador não tiver DNS configurado, as entradas hostname do
+        # walled-garden não funcionam — configura 8.8.8.8 se servers estiver vazio.
+        dns_out, _, _ = _mt_exec(client, '/ip dns print')
+        if '8.8.8.8' not in dns_out:
+            _mt_exec(client, '/ip dns set servers=8.8.8.8 allow-remote-requests=yes')
+            log.append('✅ DNS configurado (8.8.8.8)')
+        else:
+            log.append('✅ DNS já configurado')
+
         # ── 8. Walled Garden ──────────────────────────────────────────────────
         crm_host = urlparse(pixel_url).hostname or pixel_url.split('/')[2].split(':')[0]
 
@@ -417,26 +437,20 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         import socket as _sock
         try:
             crm_ip = _sock.gethostbyname(crm_host)
-            # RouterOS salva sem /32 → checar sem sufixo para evitar duplicatas
-            wg_https = _mt_count(client,
-                f'/ip hotspot walled-garden ip print count-only where dst-address="{crm_ip}"')
-            if wg_https == 0:
-                _mt_exec(client,
-                    f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
-                    f'dst-port=443 protocol=tcp action=accept')
-                log.append(f'✅ Walled Garden HTTPS liberado ({crm_ip}:443)')
-            elif wg_https > 1:
-                # Limpa duplicatas de runs anteriores
-                _mt_exec(client,
-                    f'/ip hotspot walled-garden ip remove [find where dst-address="{crm_ip}"]')
-                _mt_exec(client,
-                    f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
-                    f'dst-port=443 protocol=tcp action=accept')
-                log.append(f'✅ Walled Garden HTTPS deduplicado ({crm_ip}:443)')
-            else:
-                log.append(f'✅ Walled Garden HTTPS já configurado ({crm_ip}:443)')
+            # Garante walled-garden IP para HTTP (80) e HTTPS (443) — sem eles o
+            # mini-browser não alcança o portal antes da autenticação.
+            # Limpa TODAS as entradas existentes para este IP (evita duplicatas).
+            _mt_exec(client,
+                f'/ip hotspot walled-garden ip remove [find where dst-address="{crm_ip}/32"]')
+            _mt_exec(client,
+                f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
+                f'dst-port=80 protocol=tcp action=accept')
+            _mt_exec(client,
+                f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
+                f'dst-port=443 protocol=tcp action=accept')
+            log.append(f'✅ Walled Garden IP liberado ({crm_ip}:80 e :443)')
         except Exception as _e:
-            log.append(f'⚠️ Walled Garden HTTPS: não resolveu IP de {crm_host} — {_e}')
+            log.append(f'⚠️ Walled Garden IP: não resolveu IP de {crm_host} — {_e}')
 
         # ── 9. Upload login.html via SFTP ────────────────────────────────────
         # Usa SFTP (mesma conexão SSH já aberta) em vez de /tool fetch HTTP.
@@ -459,7 +473,14 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         sftp_ok = False
         try:
             sftp = client.open_sftp()
-            remote_path = f'/flash/{dir_name}/login.html'
+            # IMPORTANTE: caminho relativo (sem "/flash/" na frente). O protocolo SFTP
+            # não traduz "flash/" como alias da raiz (isso só acontece no parser do CLI
+            # do RouterOS) — um path absoluto "/flash/<dir>/login.html" cria uma pasta
+            # literalmente chamada "flash", que o módulo de Hotspot nunca lê. O
+            # html-directory do hotspot profile referencia "<dir>/login.html" relativo
+            # à raiz do sistema de arquivos, que é exatamente o working directory do
+            # SFTP do RouterOS.
+            remote_path = f'{dir_name}/login.html'
             sftp.putfo(_io.BytesIO(html_bytes), remote_path)
             sftp.close()
             sftp_ok = True
@@ -476,7 +497,7 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             login_html_url = f'http://{_crm_ip}/clientes/hotspot/login-html/{hotspot.uuid}/'
             fetch_out, fetch_err, fetch_rc = _mt_exec(client,
                 f'/tool fetch url="{login_html_url}" '
-                f'dst-path="flash/{dir_name}/login.html" mode=http',
+                f'dst-path="{dir_name}/login.html" mode=http',
                 timeout=30)
             fetch_combined = (fetch_out + fetch_err).strip()
             sftp_ok = fetch_rc == 0 and not any(
@@ -486,13 +507,17 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             else:
                 log.append(f'⚠️ /tool fetch também falhou (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
 
+        # Remove o arquivo órfão de uma versão anterior deste código, que gravava
+        # incorretamente em /flash/<dir>/ (caminho absoluto — nunca lido pelo hotspot)
+        _mt_exec(client, f'/file remove [find where name="flash/{dir_name}/login.html"]')
+
         # Aguarda RouterOS indexar o arquivo
         import time as _time
         _time.sleep(2)
 
         # Confirma arquivo no flash
         fcheck, _, _ = _mt_exec(client,
-            f'/file print where name~"flash/{dir_name}/login"')
+            f'/file print where name~"{dir_name}/login.html"')
         data_lines = [l for l in fcheck.strip().splitlines() if 'login' in l and '.html' in l]
         if data_lines:
             log.append(f'   Arquivo confirmado: {data_lines[-1].strip()}')
