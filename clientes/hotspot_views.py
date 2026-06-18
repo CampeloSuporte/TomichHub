@@ -232,15 +232,24 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         # Adicionar interface física ao bridge como bridge port (se configurada)
         if hotspot.interface_fisica:
             iface = hotspot.interface_fisica.strip()
-            port_exists = _mt_count(client,
+            port_in_hs = _mt_count(client,
                 f'/interface bridge port print count-only where bridge="{bridge_name}" interface="{iface}"')
-            if port_exists == 0:
+            if port_in_hs > 0:
+                log.append(f'✅ Bridge port {iface} já está em {bridge_name}')
+            else:
+                # Verifica se a interface está em OUTRA bridge.
+                # RouterOS não permite que uma interface seja membro de duas bridges;
+                # o "add" falharia silenciosamente e o hotspot não interceptaria tráfego.
+                other_count = _mt_count(client,
+                    f'/interface bridge port print count-only where interface="{iface}"')
+                if other_count > 0:
+                    _mt_exec(client,
+                        f'/interface bridge port remove [find interface="{iface}"]')
+                    log.append(f'   Removida {iface} de bridge anterior')
                 bp_out, bp_err, bp_rc = _mt_exec(client,
                     f'/interface bridge port add bridge="{bridge_name}" interface="{iface}"')
                 bp_ok = _mt_output_ok(bp_out, bp_err, bp_rc)
                 log.append(f'{"✅" if bp_ok else "⚠️"} Bridge port {iface} → {bridge_name}: {(bp_out+bp_err).strip() or "ok"}')
-            else:
-                log.append(f'✅ Bridge port {iface} já está em {bridge_name}')
         else:
             # Listar interfaces disponíveis para ajudar o usuário a configurar
             ifaces_out, _, _ = _mt_exec(client,
