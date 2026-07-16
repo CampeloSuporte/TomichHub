@@ -120,6 +120,15 @@ document.getElementById('convSearch').addEventListener('input', function() {
         ws.onmessage = function(e) {
             try {
                 var payload = JSON.parse(e.data);
+                /* Conversa encerrada/resolvida → remove de todas as listas/abas */
+                if (payload.type === 'conversation_status' && payload.conversation_id &&
+                    (payload.status === 'resolved' || payload.status === 'closed')) {
+                    var cid = String(payload.conversation_id);
+                    document.querySelectorAll('[href*="' + cid + '"].conv-item, .conv-item[data-conv-id="' + cid + '"]').forEach(function(el) {
+                        el.remove();
+                    });
+                    return;
+                }
                 if (payload.type !== 'new_message' || !payload.conversation) return;
                 var conv   = payload.conversation;
                 var convId = conv.id;

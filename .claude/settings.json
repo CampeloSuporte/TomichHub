@@ -78,7 +78,17 @@
       "Bash(journalctl -u daphne -n 3 --no-pager)",
       "Bash(journalctl -u daphne -n 5 --no-pager)",
       "Bash(python manage.py makemigrations atendimento --name=\"task_attendantcontact\")",
-      "Bash(python3 manage.py makemigrations atendimento --name=\"task_attendantcontact\")"
+      "Bash(python3 manage.py makemigrations atendimento --name=\"task_attendantcontact\")",
+      "Bash(curl -sk https://crm.tomich.com.br/static/css/css_login.css)",
+      "Bash(curl -sk https://crm.tomich.com.br/auth/login/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} -> %{redirect_url}\\\\n\" http://crm.tomich.com.br/static/css/css_login.css)",
+      "Bash(venv/bin/python -c ' *)",
+      "Bash(echo \"gunicorn: $\\(systemctl is-active gunicorn\\) | daphne: $\\(systemctl is-active daphne\\)\")",
+      "Bash(venv/bin/python -c \"import ast; ast.parse\\(open\\('clientes/consumers.py'\\).read\\(\\)\\); print\\('consumers.py OK'\\)\")",
+      "Bash(echo \"daphne: $\\(systemctl is-active daphne\\) | gunicorn: $\\(systemctl is-active gunicorn\\)\")",
+      "Bash(awk 'NR<=2058 && /def |class /{l=NR\": \"$0} END{}' clientes/consumers.py)",
+      "Bash(awk -F: '$1<2058')",
+      "Bash(curl -skI https://crm.tomich.com.br/atendimento/)"
     ],
     "additionalDirectories": [
       "/etc/nginx/sites-enabled"

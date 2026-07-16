@@ -2,7 +2,24 @@ from django.db import models
 from django.contrib.auth.models import User
 from clientes.models import Cliente
 from django.utils import timezone
+import re
 import uuid
+
+
+def normalizar_telefone_br(numero: str) -> str:
+    """
+    Normaliza um telefone BR para fins de COMPARAÇÃO (nunca para exibição/
+    envio — o nono dígito é obrigatório num JID de WhatsApp real). Mantém só
+    dígitos e, se for celular no formato 55+DDD+9+8dígitos (13 dígitos),
+    remove o nono dígito -> 55+DDD+8dígitos.
+    Torna a detecção de "atendente respondendo pelo pessoal" tolerante a
+    números cadastrados com ou sem o 9 — sem isso, um único dígito de
+    diferença faz a comparação exata nunca bater.
+    """
+    digits = re.sub(r'\D', '', numero or '')
+    if len(digits) == 13 and digits.startswith('55') and digits[4] == '9':
+        return digits[:4] + digits[5:]
+    return digits
 
 
 class WhatsAppConnection(models.Model):
@@ -132,6 +149,7 @@ class Tag(models.Model):
 class Conversation(models.Model):
     """Conversa/Ticket de atendimento"""
     STATUS_CHOICES = [
+        ('pre', 'Pré-abertura'),   # oculto: aguardando 2ª mensagem do cliente p/ abrir o chamado
         ('new', 'Novo'),
         ('open', 'Aberto'),
         ('pending', 'Aguardando'),
@@ -167,6 +185,35 @@ class Conversation(models.Model):
     closed_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     last_message_at = models.DateTimeField(null=True, blank=True)
+    # Guard: marca que a notificação de "chamado sem atendimento" já foi
+    # enviada para este chamado — garante que seja avisada uma única vez,
+    # em vez de repetir a cada execução da task.
+    notif_aberto_enviada = models.BooleanField(default=False)
+
+    # ── SLA (tempo de resposta/resolução) ──────────────────────────────
+    sla_response_due_at = models.DateTimeField(null=True, blank=True)
+    sla_resolution_due_at = models.DateTimeField(null=True, blank=True)
+    first_response_at = models.DateTimeField(null=True, blank=True)
+    # Guard: marca que a escalação (alerta/reatribuição por SLA estourado)
+    # já foi disparada para este chamado — evita repetir a cada ciclo.
+    escalated = models.BooleanField(default=False)
+
+    # ── CSAT (pesquisa de satisfação pós-atendimento) ──────────────────
+    csat_rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    csat_requested_at = models.DateTimeField(null=True, blank=True)
+    csat_comment = models.TextField(blank=True, default='')
+
+    # ── Mesclagem de chamados duplicados ───────────────────────────────
+    merged_into = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='merged_children',
+        help_text='Se preenchido, este chamado foi mesclado para outro (o destino).'
+    )
+
+    # Guard: marca que já avisamos o grupo do NOC que um atendente está
+    # respondendo este chamado pelo WhatsApp pessoal — evita repetir o
+    # alerta a cada mensagem enviada por esse número.
+    personal_wa_alert_sent = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-last_message_at', '-created_at']
@@ -184,6 +231,23 @@ class Conversation(models.Model):
             last = Conversation.objects.order_by('-conversation_id').first()
             self.conversation_id = (last.conversation_id + 1) if last else 1000
         super().save(*args, **kwargs)
+
+    @property
+    def sla_response_overdue(self):
+        """SLA de 1ª resposta estourado — ainda sem resposta do atendente e já passou do prazo."""
+        return bool(
+            self.sla_response_due_at and not self.first_response_at
+            and timezone.now() > self.sla_response_due_at
+            and self.status not in ('resolved', 'closed')
+        )
+
+    @property
+    def sla_resolution_overdue(self):
+        """SLA de resolução estourado — chamado ainda aberto e já passou do prazo de resolução."""
+        return bool(
+            self.sla_resolution_due_at and timezone.now() > self.sla_resolution_due_at
+            and self.status not in ('resolved', 'closed')
+        )
 
 
 class Message(models.Model):
@@ -341,6 +405,11 @@ class ChatFlowSession(models.Model):
     """Sessão ativa de um fluxo de auto atendimento"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     flow = models.ForeignKey(ChatFlow, on_delete=models.CASCADE, related_name='sessions')
+    # Conversa (chamado) já criada à qual este fluxo está vinculado — o auto
+    # atendimento agora roda sobre uma conversa existente para que todas as
+    # mensagens fiquem salvas e visíveis no chat.
+    conversation = models.ForeignKey('Conversation', on_delete=models.CASCADE,
+                                     null=True, blank=True, related_name='flow_sessions')
     group_jid = models.CharField(max_length=255, db_index=True)
     step = models.CharField(max_length=50, default='subject')
     subject = models.TextField(null=True, blank=True)

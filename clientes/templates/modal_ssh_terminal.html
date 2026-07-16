@@ -201,6 +201,18 @@
 .xterm-viewport {
     background: #0d1117 !important;
 }
+
+/* ─── Responsivo mobile ─── */
+@media (max-width: 640px) {
+    .modal-ssh { width: 100%; height: 100dvh; max-width: 100%; border-radius: 0; }
+    .ssh-header { padding: 10px 12px; }
+    .ssh-footer { padding: 6px 10px; gap: 6px; }
+    .btn-ssh { padding: 5px 8px; font-size: 10px; }
+    .xterm { font-size: 12px !important; }
+
+    /* Painel de Scripts: tela cheia no mobile (era 520px fixo, vazava da tela) */
+    #spInlinePainel { width: 100vw; }
+}
 </style>
 
 <script>
@@ -283,7 +295,15 @@ function abrirTerminalSSH(id, host, porta, tipo) {
     terminalData.fitAddon = new FitAddon.FitAddon();
     term.loadAddon(terminalData.fitAddon);
     term.open(container);
-    
+
+    // Avisa o backend a cada mudança de tamanho → redimensiona o PTY do host
+    // (sem isso, apps full-screen como nano desenham na largura errada).
+    term.onResize(({ cols, rows }) => {
+        const t = terminalData;
+        if (t && t.socket && t.socket.readyState === WebSocket.OPEN)
+            t.socket.send(JSON.stringify({ action: 'resize', cols: cols, rows: rows }));
+    });
+
     setTimeout(() => terminalData.fitAddon.fit(), 100);
     
     // ✅ Event listener para input (apenas UMA VEZ)
@@ -316,7 +336,12 @@ function conectar() {
     terminalData.socket = new WebSocket(wsUrl);
     
     terminalData.socket.onopen = () => {
-        terminalData.socket.send(JSON.stringify({ action: 'connect', acesso_id: terminalData.id }));
+        try { terminalData.fitAddon && terminalData.fitAddon.fit(); } catch(e){}
+        const t = terminalData.terminal;
+        terminalData.socket.send(JSON.stringify({
+            action: 'connect', acesso_id: terminalData.id,
+            cols: t ? t.cols : 80, rows: t ? t.rows : 24,
+        }));
     };
     
     terminalData.socket.onmessage = (e) => {
@@ -329,7 +354,12 @@ function conectar() {
             terminalData.isHuawei = data.message && data.message.includes('[HUAWEI]');
             terminalData.terminal.writeln('\x1b[36m' + data.message + '\x1b[0m\n');
             atualizarStatus();
-            
+            // Re-sincroniza o tamanho do PTY agora que o shell do host já existe
+            try { terminalData.fitAddon && terminalData.fitAddon.fit(); } catch(e){}
+            const _tt = terminalData.terminal;
+            if (_tt && terminalData.socket.readyState === WebSocket.OPEN)
+                terminalData.socket.send(JSON.stringify({ action: 'resize', cols: _tt.cols, rows: _tt.rows }));
+
         } else if (data.type === 'output' && data.data) {
             const colorido = colorirOutput(data.data);
             escreverComChunks(colorido, terminalData.terminal);

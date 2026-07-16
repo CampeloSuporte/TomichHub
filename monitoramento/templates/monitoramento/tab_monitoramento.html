@@ -721,7 +721,7 @@
 }
 .grph-modal {
   background: #0d1829; border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; width: 520px; max-width: 95vw; max-height: 92vh;
+  border-radius: 14px; width: 520px; max-width: 90vw; max-height: 92vh;
   display: flex; flex-direction: column;
   box-shadow: 0 32px 64px rgba(0,0,0,.5); overflow: hidden;
 }
@@ -769,6 +769,9 @@
 }
 .grph-hint { font-size: .7rem; color: #475569; margin: 5px 0 0; }
 .grph-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 768px) {
+  .grph-two-col { grid-template-columns: 1fr; }
+}
 .grph-badge { font-size: .62rem; background: #1e3a8a; color: #93c5fd; padding: 2px 7px; border-radius: 4px; margin-left: 6px; font-weight: 600; vertical-align: middle; }
 .grph-search-results {
   background: #080f1a; border: 1px solid #1e293b; border-radius: 8px;

@@ -560,6 +560,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 }
 .itp-wbx-btn.ssh:hover  { border-color: var(--itp-green); color: var(--itp-green); }
 .itp-wbx-btn.wbx:hover  { border-color: var(--itp-cyan); color: var(--itp-cyan); }
+.itp-wbx-btn.wbx3:hover { border-color: #d29922; color: #d29922; }
 
 /* Sidebar show-tab (visible when sidebar is hidden) */
 .itp-sidebar-tab {
@@ -581,6 +582,8 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
     .itp-sidebar { display: none; }
     .itp-wiki-resize-handle, .itp-wiki-size-presets, .itp-wiki-width-indicator { display: none; }
     .itp-btn-wiki-action.maximizar { display: none; }
+    /* Painel de Scripts: tela cheia no mobile (era 520px fixo, vazava da tela) */
+    #itpScriptsPainel { width: 100vw !important; }
 }
 </style>
 
@@ -737,6 +740,7 @@ body.itp-wiki-resizing .itp-wiki-width-indicator { color: var(--itp-green); bord
 <div id="itpCtxMenu">
     <div class="itp-ctx-item" onclick="itpCtxSSH()">&#9000; Conectar SSH</div>
     <div class="itp-ctx-item winbox" id="itpCtxWbxItem" onclick="itpCtxWinbox()">&#128187; Abrir Winbox</div>
+    <div class="itp-ctx-item winbox" id="itpCtxWbx3Item" onclick="itpCtxWinbox3()">&#128187; Abrir Winbox 3.43 (legado)</div>
 </div>
 
 <!-- Toast -->
@@ -774,6 +778,7 @@ const $wikiSidebar= document.getElementById('itpWikiSidebar');
 const $btnWiki    = document.getElementById('itpBtnWiki');
 const $ctxMenu    = document.getElementById('itpCtxMenu');
 const $ctxWbx     = document.getElementById('itpCtxWbxItem');
+const $ctxWbx3    = document.getElementById('itpCtxWbx3Item');
 
 // ─── Colorization ────────────────────────────────────
 function _colorize(t) {
@@ -880,7 +885,8 @@ function _renderHosts(lista) {
             ${a.winbox ? `
             <div class="itp-wbx-expand" id="itpWbxExp-${a.id}">
                 <button class="itp-wbx-btn ssh" onclick="event.stopPropagation();itpConectarAcesso(${a.id})">&#9000; SSH</button>
-                <button class="itp-wbx-btn wbx" onclick="event.stopPropagation();itpAbrirWinbox(${a.id})">&#128187; Winbox</button>
+                <button class="itp-wbx-btn wbx" onclick="event.stopPropagation();itpAbrirWinbox(${a.id})" title="Winbox 4.2">&#128187; Winbox</button>
+                <button class="itp-wbx-btn wbx3" onclick="event.stopPropagation();itpAbrirWinbox(${a.id},'3')" title="Winbox 3.43 (legado)">&#128187; 3.43</button>
             </div>` : ''}`;
         });
     });
@@ -924,9 +930,10 @@ window.abrirWinboxWeb = function(acessoId) {
     window.itpAbrirWinbox(parseInt(acessoId, 10));
 };
 
-window.itpAbrirWinbox = function(id) {
+window.itpAbrirWinbox = function(id, version) {
     id = parseInt(id, 10);
-    // If tab already open for this winbox, just activate it
+    version = version === '3' ? '3' : '4';
+    // If tab already open for this winbox (em qualquer vers\u00E3o), s\u00F3 ativa
     for (const [tid, tObj] of _terms) {
         if (tObj.tipo === 'winbox' && tObj.acesso && tObj.acesso.id === id) {
             _ativarTerminal(tid); _abrirPanel(); return;
@@ -944,7 +951,7 @@ window.itpAbrirWinbox = function(id) {
     const iframe = document.createElement('iframe');
     const _iw = $content.clientWidth || window.innerWidth;
     const _ih = $content.clientHeight || window.innerHeight;
-    iframe.src = `/clientes/winbox/${id}/?w=${_iw}&h=${_ih}`;
+    iframe.src = `/clientes/winbox/${id}/?w=${_iw}&h=${_ih}&v=${version}`;
     iframe.style.cssText = 'width:100%;height:100%;border:none;background:#0a0a0a;';
     pane.appendChild(iframe);
     $content.appendChild(pane);
@@ -956,9 +963,10 @@ window.itpAbrirWinbox = function(id) {
     // Create tab
     const tab = document.createElement('div');
     tab.className = 'itp-tab ativo'; tab.id = `itpTab-${tid}`;
+    const _label = version === '3' ? (a?.tipo || 'Winbox') + ' (3.43)' : (a?.tipo || 'Winbox');
     tab.innerHTML = `
         <div class="itp-tab-dot ok" id="itpTabDot-${tid}"></div>
-        <span class="itp-tab-label">\uD83D\uDDA5 ${_esc(a?.tipo || 'Winbox')}</span>
+        <span class="itp-tab-label">\uD83D\uDDA5 ${_esc(_label)}</span>
         <span class="itp-tab-close" onclick="event.stopPropagation();itpFecharTerminal('${tid}')">&#10005;</span>`;
     tab.onclick = () => _ativarTerminal(tid);
     $tabs.appendChild(tab);
@@ -972,6 +980,7 @@ window.itpCtxOpen = function(e, id) {
     _ctxId = id;
     const a = _acessos.find(x => x.id === id);
     if ($ctxWbx) $ctxWbx.style.display = (a && a.winbox) ? '' : 'none';
+    if ($ctxWbx3) $ctxWbx3.style.display = (a && a.winbox) ? '' : 'none';
     $ctxMenu.style.display = 'block';
     const x = Math.min(e.clientX, window.innerWidth - 185);
     const y = Math.min(e.clientY, window.innerHeight - 80);
@@ -991,6 +1000,10 @@ window.itpCtxSSH = function() {
 };
 window.itpCtxWinbox = function() {
     if (_ctxId) itpAbrirWinbox(_ctxId);
+    if ($ctxMenu) $ctxMenu.style.display = 'none';
+};
+window.itpCtxWinbox3 = function() {
+    if (_ctxId) itpAbrirWinbox(_ctxId, '3');
     if ($ctxMenu) $ctxMenu.style.display = 'none';
 };
 
@@ -1034,7 +1047,9 @@ window.itpAbrirTerminal = function(acessoData) {
             fontWeight: 400, fontWeightBold: 700, lineHeight: 1.2, letterSpacing: 0,
             theme: { background: '#000000', foreground: '#e0e0e0', cursor: '#3fb950',
                      cursorAccent: '#000000', selectionBackground: 'rgba(63,185,80,0.2)' },
-            scrollback: 8000, allowTransparency: true, convertEol: true,
+            // convertEol:false — a sessão já é um PTY real (envia \r\n); manter true
+            // duplicava quebras de linha e causava "pular linha" em output/digitação rápidos.
+            scrollback: 8000, allowTransparency: true, convertEol: false,
         });
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
@@ -1042,6 +1057,13 @@ window.itpAbrirTerminal = function(acessoData) {
 
         tObj.terminal = term;
         tObj.fitAddon = fitAddon;
+
+        // Sempre que o xterm mudar de tamanho (fit/resize), avisa o backend
+        // para redimensionar o PTY do host — evita texto sobreposto no nano etc.
+        term.onResize(({ cols, rows }) => {
+            if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN)
+                tObj.socket.send(JSON.stringify({ action: 'resize', cols: cols, rows: rows }));
+        });
 
         const _fit = () => { try { fitAddon.fit(); } catch(e){} };
         requestAnimationFrame(() => { _fit(); setTimeout(_fit,150); setTimeout(_fit,380); setTimeout(_fit,700); });
@@ -1063,7 +1085,16 @@ function _conectarWS(tid) {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${proto}//${location.host}/ws/ssh/`);
     tObj.socket = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ action: 'connect', acesso_id: tObj.acesso.id }));
+    ws.onopen = () => {
+        // Garante que o xterm já fez fit e envia o tamanho real no connect,
+        // para o PTY do host nascer com as dimensões corretas.
+        try { tObj.fitAddon && tObj.fitAddon.fit(); } catch(e){}
+        const t = tObj.terminal;
+        ws.send(JSON.stringify({
+            action: 'connect', acesso_id: tObj.acesso.id,
+            cols: t ? t.cols : 80, rows: t ? t.rows : 24,
+        }));
+    };
     ws.onmessage = e => {
         if (!_terms.has(tid)) return;
         const d = JSON.parse(e.data);
@@ -1072,6 +1103,10 @@ function _conectarWS(tid) {
             tObj.connected = true;
             _setTabStatus(tid, 'ok'); _highlightHost(tObj.acesso.id, 'conectado'); _updateStatusBar();
             if (t) t.writeln('\x1b[1;32m\u2713 ' + d.message + '\x1b[0m\n');
+            // Re-sincroniza o tamanho do PTY agora que o shell do host j\u00e1 existe
+            try { tObj.fitAddon && tObj.fitAddon.fit(); } catch(e){}
+            if (t && tObj.socket && tObj.socket.readyState === WebSocket.OPEN)
+                tObj.socket.send(JSON.stringify({ action: 'resize', cols: t.cols, rows: t.rows }));
         } else if (d.type === 'output' && d.data) {
             if (t) t.write(_colorize(d.data));
         } else if (d.type === 'error') {

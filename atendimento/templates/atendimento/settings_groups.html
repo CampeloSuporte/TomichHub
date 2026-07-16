@@ -1,6 +1,10 @@
 {% extends base_tpl %}
 {% load static %}
 
+{% block extra_css %}
+@media(max-width:768px){.connection-content>div[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}}
+{% endblock %}
+
 {% block atendimento_content %}
 <div class="atendimento-header">
     <div class="header-title">

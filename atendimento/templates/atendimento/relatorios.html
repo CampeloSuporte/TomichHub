@@ -8,7 +8,7 @@
 .stat-card.highlight { border-color:rgba(233,30,140,.3); }
 .stat-card.highlight .stat-value { color:var(--active); }
 .section-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-.bar-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.bar-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; flex-wrap:wrap; }
 .bar-label { width:160px; font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-shrink:0; }
 .bar-track { flex:1; background:rgba(255,255,255,0.06); border-radius:4px; height:14px; overflow:hidden; }
 .bar-fill { height:100%; border-radius:4px; transition:width .5s ease; }
@@ -135,13 +135,88 @@
     </div>
     {% endif %}
 
+    <!-- Por atendente -->
+    {% if desempenho_atendentes %}
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px;">
+        <div class="section-title"><i class="fas fa-user-friends" style="color:#6366f1;"></i> Por Atendente</div>
+        {% for a in desempenho_atendentes %}
+        <div class="bar-row">
+            <span class="bar-label" title="{{ a.nome }}">{{ a.nome }}</span>
+            <div class="bar-track">
+                <div class="bar-fill" style="width:{% widthratio a.total total_for_pct 100 %}%;background:#6366f1;"></div>
+            </div>
+            <span class="bar-count">{{ a.total }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- CSAT (satisfação do cliente) -->
+    {% if csat_total %}
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px;">
+        <div class="section-title"><i class="fas fa-star" style="color:#ffd54a;"></i> Satisfação do Cliente (CSAT)</div>
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-top:10px;">
+            <div style="text-align:center;flex-shrink:0;">
+                <div style="font-size:32px;font-weight:800;color:#ffd54a;">{{ csat_avg }}</div>
+                <div style="font-size:11px;color:var(--muted);">média de {{ csat_total }} avalia{% if csat_total == 1 %}ção{% else %}ções{% endif %}</div>
+            </div>
+            <div style="flex:1;min-width:220px;">
+                {% for item in csat_distribuicao %}
+                <div class="bar-row">
+                    <span class="bar-label">{{ item.nota }} ★</span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:{% widthratio item.total csat_total 100 %}%;background:#ffd54a;"></div>
+                    </div>
+                    <span class="bar-count">{{ item.total }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Desempenho por atendente -->
+    {% if desempenho_atendentes %}
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px;">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--border);">
+            <div class="section-title" style="margin:0;"><i class="fas fa-user-clock" style="color:var(--active);"></i> Desempenho por Atendente</div>
+        </div>
+        <div class="table-responsive" style="overflow-x:auto;">
+            <table class="hist-table">
+                <thead>
+                    <tr>
+                        <th>Atendente</th>
+                        <th>Total</th>
+                        <th>Resolvidos</th>
+                        <th>Em aberto</th>
+                        <th>Tempo médio 1ª resposta</th>
+                        <th>Tempo médio resolução</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in desempenho_atendentes %}
+                    <tr>
+                        <td>{{ a.nome }}</td>
+                        <td>{{ a.total }}</td>
+                        <td>{{ a.resolvidos }}</td>
+                        <td>{{ a.abertos }}</td>
+                        <td>{% if a.media_resposta_min %}{{ a.media_resposta_min }} min{% else %}—{% endif %}</td>
+                        <td>{% if a.media_resolucao_horas %}{{ a.media_resolucao_horas }} h{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Tabela de resolvidos recentes -->
     <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
         <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
             <div class="section-title" style="margin:0;"><i class="fas fa-check-circle" style="color:#22c55e;"></i> Resolvidos Recentes</div>
         </div>
         {% if recent_resolved %}
-        <div style="overflow-x:auto;">
+        <div class="table-responsive" style="overflow-x:auto;">
             <table class="hist-table">
                 <thead>
                     <tr>

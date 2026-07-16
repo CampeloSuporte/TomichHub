@@ -568,10 +568,17 @@ def gerar_faturas_consultoria(consultoria):
     faturas = []
     data_inicio = consultoria.data_inicio
 
+    # Mesma proteção contra duplicidade de gerar_faturas_aluguel_ipv4.
+    vencimentos_existentes = set(
+        consultoria.faturas.filter(status__in=['ABERTA', 'PAGA']).values_list('data_vencimento', flat=True)
+    )
+
     for mes in range(consultoria.quantidade_meses):
         # Vencimento preserva o dia de data_inicio
         # Ex: início 15/02 → vencimentos: 15/03, 15/04, 15/05...
         data_vencimento = data_inicio + relativedelta(months=mes + 1)
+        if data_vencimento in vencimentos_existentes:
+            continue
         numero_fatura = gerar_numero_fatura_unico()
 
         fatura = Fatura.objects.create(
@@ -804,10 +811,19 @@ def gerar_faturas_aluguel_ipv4(aluguel, quantidade_meses=1):
     faturas = []
     data_inicio = aluguel.data_inicio
 
+    # Vencimentos já cobertos por fatura aberta/paga deste aluguel — evita
+    # duplicar cobrança do mesmo mês se a função for chamada mais de uma vez
+    # (ex: reemissão manual depois que faturas foram apagadas por engano).
+    vencimentos_existentes = set(
+        aluguel.faturas.filter(status__in=['ABERTA', 'PAGA']).values_list('data_vencimento', flat=True)
+    )
+
     for mes in range(quantidade_meses):
         # Vencimento preserva o dia de data_inicio
         # Ex: início 10/02 → vencimentos: 10/03, 10/04, 10/05...
         data_vencimento = data_inicio + relativedelta(months=mes + 1)
+        if data_vencimento in vencimentos_existentes:
+            continue
         numero_fatura = gerar_numero_fatura_unico()
 
         fatura = Fatura.objects.create(
@@ -881,6 +897,44 @@ def api_editar_aluguel(request, aluguel_id):
 # ============================================
 # API: ALUGUEIS - DELETAR
 # ============================================
+
+@login_required
+@require_http_methods(["POST"])
+def api_gerar_fatura_aluguel(request, aluguel_id):
+    """Gera fatura(s) para um aluguel IPv4 já existente — usado tanto pra
+    emitir a próxima cobrança quanto pra reemitir faturas apagadas por
+    engano. gerar_faturas_aluguel_ipv4 já ignora vencimentos que já têm
+    fatura aberta/paga, então repetir a chamada não duplica cobrança."""
+    try:
+        if not request.user.is_staff:
+            return JsonResponse({'sucesso': False, 'erro': 'Acesso negado'}, status=403)
+
+        aluguel = get_object_or_404(AluguelIPv4, id=aluguel_id)
+        if aluguel.status != 'ATIVO':
+            return JsonResponse({'sucesso': False, 'erro': 'Este aluguel não está ativo.'}, status=400)
+
+        quantidade_meses = int(request.POST.get('quantidade_meses', 1) or 1)
+        if not 1 <= quantidade_meses <= 24:
+            return JsonResponse({'sucesso': False, 'erro': 'Quantidade de meses deve ser entre 1 e 24.'}, status=400)
+
+        faturas_geradas = gerar_faturas_aluguel_ipv4(aluguel, quantidade_meses)
+
+        if not faturas_geradas:
+            return JsonResponse({
+                'sucesso': True,
+                'mensagem': 'Nenhuma fatura nova — todos os vencimentos desse período já têm fatura.',
+                'faturas': [],
+            })
+
+        return JsonResponse({
+            'sucesso': True,
+            'mensagem': f'{len(faturas_geradas)} fatura(s) gerada(s).',
+            'faturas': faturas_geradas,
+        })
+
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
 
 @login_required
 @require_http_methods(["DELETE"])
@@ -957,6 +1011,11 @@ def api_listar_alugueis(request):
                             </div>
                             <div class="col-md-4 text-end d-flex gap-1 justify-content-end flex-wrap">
                                 {btn_pdf_assinado}
+                                {f'''<button class="btn btn-sm btn-outline-primary"
+                                    onclick="abrirGerarFaturaAluguel({a.id}, '{a.bloco_descricao}')"
+                                    title="Gerar fatura(s) para este aluguel">
+                                    <i class="fas fa-file-invoice-dollar me-1"></i>Gerar Fatura
+                                </button>''' if a.status == 'ATIVO' else ''}
                                 <a href="/financeiro/api/aluguel/{a.id}/contrato/" target="_blank"
                                    class="btn btn-sm btn-outline-success" title="Baixar Contrato PDF (sem assinatura)">
                                     <i class="fas fa-file-pdf me-1"></i>PDF

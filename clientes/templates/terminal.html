@@ -513,6 +513,9 @@
 
             /* Wiki: tela cheia no mobile */
             .wiki-sidebar { width: 100vw !important; min-width: unset; border-left: none; border-top: 1px solid #30363d; }
+
+            /* Painel de Scripts: tela cheia no mobile (era 540px fixo, vazava da tela) */
+            #scriptsPainel { width: 100vw !important; }
             .wiki-resize-handle { display: none; }
             .wiki-size-presets { display: none; }
             .wiki-width-indicator { display: none; }
@@ -527,7 +530,41 @@
 
             /* Terminal: fonte menor para caber mais */
             .xterm { font-size: 11px; }
+
+            /* ── Menu de hosts: vira um drawer sobreposto no mobile ──
+               Some ao invés de espremer o terminal contra a tela pequena. */
+            .host-sidebar {
+                position: absolute; top: 0; left: 0; bottom: 0; z-index: 3000;
+                width: 82vw; min-width: 0; max-width: 320px;
+                transform: translateX(0);
+                transition: transform .22s ease;
+                box-shadow: 6px 0 24px rgba(0,0,0,.55);
+            }
+            .host-sidebar.collapsed {
+                width: 82vw; max-width: 320px; min-width: 0;
+                transform: translateX(-100%);
+            }
+            .host-sidebar-tab { display: none !important; } /* usa o ☰ do header para reabrir */
+            .host-item { padding: 9px 10px; } /* alvo de toque maior */
+
+            /* ── Agent NOC também vira drawer sobreposto no mobile ── */
+            .agent-sidebar {
+                position: absolute; top: 0; right: 0; bottom: 0; z-index: 3000;
+                width: 0; min-width: 0; max-width: 0;
+            }
+            .agent-sidebar.aberto {
+                width: 88vw; min-width: 0; max-width: 360px;
+                box-shadow: -6px 0 24px rgba(0,0,0,.55);
+            }
+
+            /* Fundo escurecido atrás do drawer aberto (hosts ou agent) */
+            .mobile-drawer-backdrop.visivel {
+                display: block; position: absolute; inset: 0; z-index: 2999;
+                background: rgba(0,0,0,.55);
+            }
         }
+
+        .mobile-drawer-backdrop { display: none; }
 
         @media (max-width: 400px) {
             .terminal-tab { padding: 4px 8px; font-size: 10px; max-width: 130px; overflow: hidden; }
@@ -672,6 +709,9 @@
         <!-- Linha horizontal: sidebar de hosts + área do terminal -->
         <div style="display:flex;flex:1;min-height:0;overflow:hidden;position:relative;">
 
+            <!-- Fundo escurecido do drawer mobile (hosts / agent) -->
+            <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" onclick="fecharDrawersMobile()"></div>
+
             <!-- Sidebar de hosts -->
             <div class="host-sidebar" id="hostSidebar">
                 <div class="host-sidebar-header">
@@ -777,6 +817,9 @@
         <div class="mobile-menu-separator"></div>
         <div class="mobile-menu-item item-wiki" onclick="toggleWikiSidebar();fecharMenuMobile()">
             <span>📖</span><span>Wiki</span>
+        </div>
+        <div class="mobile-menu-item" onclick="abrirPainelScripts();fecharMenuMobile()" style="color:#ffa500">
+            <span>⚡</span><span>Scripts</span>
         </div>
         <div class="mobile-menu-item" onclick="toggleAgentPanel();fecharMenuMobile()" style="color:#cc66ff">
             <span>🤖</span><span>Agent NOC</span>
@@ -907,6 +950,25 @@
     // ============================================================
     const isMobile = () => window.matchMedia('(max-width: 640px)').matches
                         || ('ontouchstart' in window && window.innerWidth < 900);
+
+    // ============================================================
+    // DRAWERS MOBILE (hosts / agent) — fundo escurecido + fechar ao tocar fora
+    // ============================================================
+    window._syncMobileBackdrop = function() {
+        const bd = document.getElementById('mobileDrawerBackdrop');
+        if (!bd) return;
+        const hs = document.getElementById('hostSidebar');
+        const ag = document.getElementById('agentSidebar');
+        const hostAberto  = hs && !hs.classList.contains('collapsed');
+        const agentAberto = ag && ag.classList.contains('aberto');
+        bd.classList.toggle('visivel', isMobile() && (hostAberto || agentAberto));
+    };
+    window.fecharDrawersMobile = function() {
+        const hs = document.getElementById('hostSidebar');
+        if (hs && !hs.classList.contains('collapsed')) toggleHostSidebar();
+        const ag = document.getElementById('agentSidebar');
+        if (ag && ag.classList.contains('aberto')) toggleAgentPanel();
+    };
 
     // ============================================================
     // MENU MOBILE
@@ -1521,7 +1583,10 @@
                              selectionBackground:'rgba(88,166,255,0.25)',
                              black:'#0d1117', white:'#e6edf3', brightBlack:'#2a3a4a', brightWhite:'#ffffff' },
                     scrollback: 5000, rows: 24, cols: 120,
-                    allowTransparency: true, windowsMode: false, convertEol: true,
+                    // convertEol:false — a sessão SSH/Telnet já é um PTY real e envia \r\n
+                    // corretamente; forçar a conversão duplicava a quebra de linha e causava
+                    // "pular linha" em saídas/digitação rápidas (equipamento já manda \r\n).
+                    allowTransparency: true, windowsMode: false, convertEol: false,
                     // No mobile evita seleção indesejada por touch
                     disableStdin: false,
                     rightClickSelectsWord: false,
@@ -1848,13 +1913,17 @@
         const listEl    = document.getElementById('hostList');
         const searchEl  = document.getElementById('hostSearchInput');
         let allHosts    = [];   // [{id, tipo, host, porta, protocolo, cliente_nome, funcao}, ...]
-        let sidebarOpen = true;
+        // No celular o menu de hosts começa escondido — some espaço ao terminal
+        let sidebarOpen = !isMobile();
+        sidebar.classList.toggle('collapsed', !sidebarOpen);
+        tab.classList.toggle('visivel', !sidebarOpen);
 
         // ── Toggle visibilidade ──
         window.toggleHostSidebar = function() {
             sidebarOpen = !sidebarOpen;
             sidebar.classList.toggle('collapsed', !sidebarOpen);
             tab.classList.toggle('visivel', !sidebarOpen);
+            window._syncMobileBackdrop();
             setTimeout(refitTerminalAtivo, 220);
         };
 
@@ -2329,6 +2398,7 @@
             _agentAberto  = !_agentAberto;
             sidebar.classList.toggle('aberto', _agentAberto);
             if (btn) btn.classList.toggle('ativo', _agentAberto);
+            window._syncMobileBackdrop();
 
             if (_agentAberto && !_agentWs) {
                 _agentConectar();

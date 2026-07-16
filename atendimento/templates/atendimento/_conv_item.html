@@ -30,6 +30,11 @@
             {% endfor %}
         </div>
         {% endif %}{% endwith %}
+        {% if conv.sla_response_overdue or conv.sla_resolution_overdue %}
+        <div class="sla-badge-overdue" title="{% if conv.sla_response_overdue %}SLA de 1ª resposta estourado{% else %}SLA de resolução estourado{% endif %}">
+            <i class="fas fa-stopwatch"></i> SLA estourado
+        </div>
+        {% endif %}
     </div>
     <div class="conv-side">
         <i class="fab fa-whatsapp conv-wa"></i>

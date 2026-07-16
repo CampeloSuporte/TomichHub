@@ -663,6 +663,31 @@ def analisar_backups_ipam():
     }
 
 
+@shared_task
+def ipam_scan_subredes_automaticas():
+    """
+    Ping em lote (via _scan_subrede_hosts) em toda sub-rede com
+    scan_automatico=True. Roda a cada 30 min via Celery Beat — cada sub-rede
+    é isolada em seu próprio try/except pra uma falha (proxy fora do ar, etc)
+    não derrubar o scan das demais.
+    """
+    from .models import IPAMSubRede
+    from .ipam_views import _scan_subrede_hosts
+
+    total, ok, falhas = 0, 0, 0
+    for subrede in IPAMSubRede.objects.filter(scan_automatico=True, status='ativo').select_related('cliente'):
+        total += 1
+        try:
+            _scan_subrede_hosts(subrede)
+            ok += 1
+        except Exception as e:
+            falhas += 1
+            logger.warning(f'ipam_scan_subredes_automaticas: sub-rede {subrede.id} ({subrede.rede}) falhou: {e}')
+
+    logger.info(f'ipam_scan_subredes_automaticas: {ok}/{total} sub-redes escaneadas, {falhas} falhas.')
+    return {'total': total, 'ok': ok, 'falhas': falhas}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Habilitação automática de backup por modelo + protocolo
 # ─────────────────────────────────────────────────────────────────────────────

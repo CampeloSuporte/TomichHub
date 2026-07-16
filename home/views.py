@@ -2115,26 +2115,40 @@ def agent_grupo_salvar(request, grupo_id):
 
         cliente_id    = data.get('cliente_id')
         acesso_global = bool(data.get('acesso_global', False))
-        grupo.acesso_global   = acesso_global
-        grupo.cliente         = Cliente.objects.get(id=cliente_id) if cliente_id else None
-        grupo.nivel_permissao = data.get('nivel_permissao', 'leitura')
+
+        # Guard anti-acidente: um save SEM escopo (nem cliente nem global) NÃO
+        # deve zerar o vínculo de um grupo que já tinha escopo. Isso acontecia ao
+        # apenas trocar a API key numa página um pouco desatualizada → o grupo
+        # perdia o cliente e o agent ficava mudo. Para realmente "des-escopar",
+        # use acesso global ou desative o grupo.
+        preservar_escopo = (
+            not cliente_id and not acesso_global
+            and (grupo.cliente_id or grupo.acesso_global)
+        )
+        if not preservar_escopo:
+            grupo.acesso_global = acesso_global
+            grupo.cliente       = Cliente.objects.get(id=cliente_id) if cliente_id else None
+
+        grupo.nivel_permissao = data.get('nivel_permissao', grupo.nivel_permissao)
         grupo.ativo           = bool(data.get('ativo', True))
         if 'claude_api_key' in data:
             grupo.claude_api_key = data.get('claude_api_key', '').strip()
         grupo.save(update_fields=['cliente', 'nivel_permissao', 'ativo', 'acesso_global', 'claude_api_key'])
 
-        # Atualiza restrição de hosts (grupos globais não têm restrição de hosts)
-        if acesso_global:
-            grupo.hosts_permitidos.clear()
-        else:
-            hosts_ids = data.get('hosts_ids', [])
-            if hosts_ids:
-                hosts_validos = Acesso.objects.filter(id__in=hosts_ids)
-                if grupo.cliente:
-                    hosts_validos = hosts_validos.filter(cliente=grupo.cliente)
-                grupo.hosts_permitidos.set(hosts_validos)
-            else:
+        # Atualiza restrição de hosts apenas quando o escopo foi (re)definido
+        # neste save — preservando os hosts quando só a key mudou.
+        if not preservar_escopo:
+            if grupo.acesso_global:
                 grupo.hosts_permitidos.clear()
+            else:
+                hosts_ids = data.get('hosts_ids', [])
+                if hosts_ids:
+                    hosts_validos = Acesso.objects.filter(id__in=hosts_ids)
+                    if grupo.cliente:
+                        hosts_validos = hosts_validos.filter(cliente=grupo.cliente)
+                    grupo.hosts_permitidos.set(hosts_validos)
+                else:
+                    grupo.hosts_permitidos.clear()
 
         return JsonResponse({'ok': True, 'msg': f'Grupo "{grupo.nome}" salvo com sucesso.'})
     except Cliente.DoesNotExist:
@@ -2489,6 +2503,10 @@ def _processar_wa_webhook(payload: dict):
             logger.debug(f"Webhook WA (áudio): grupo {jid_lookup} não vinculado — ignorando")
             return
         if not grupo.cliente and not grupo.acesso_global:
+            logger.warning(
+                f"⚠️ @noc chamado no grupo {grupo.nome!r} mas ele não tem cliente "
+                f"vinculado nem acesso global — configure o escopo em Agent NOC → Grupos."
+            )
             return
 
         # Transcrever
@@ -2570,6 +2588,10 @@ def _processar_wa_webhook(payload: dict):
             logger.debug(f"Webhook WA: grupo {jid_lookup} não vinculado — ignorando")
             return
         if not grupo.cliente and not grupo.acesso_global:
+            logger.warning(
+                f"⚠️ @noc chamado no grupo {grupo.nome!r} mas ele não tem cliente "
+                f"vinculado nem acesso global — configure o escopo em Agent NOC → Grupos."
+            )
             return
 
     # Executar em thread separada para não bloquear

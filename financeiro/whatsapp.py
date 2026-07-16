@@ -29,6 +29,16 @@ def _normalizar_telefone(telefone: str) -> str | None:
         digitos = digitos[2:]
     if len(digitos) not in (10, 11):
         return None
+    local = digitos[2:]
+    # Plano de numeração ANATEL: fixo tem 8 dígitos e começa com 2-5; a faixa
+    # 6-9 é exclusiva de celular (que tem 9 dígitos, sempre com o 9 na
+    # frente). Um local de 8 dígitos começando com 6-9 tem a forma de fixo
+    # mas o prefixo de celular — quase sempre é um celular com o 9 faltando
+    # no cadastro (typo/truncamento), não um fixo válido. Rejeitar aqui
+    # evita mandar um número que não existe pra Evolution API e receber um
+    # 400 sem explicação nenhuma.
+    if len(local) == 8 and local[0] in '6789':
+        return None
     return f'55{digitos}@s.whatsapp.net'
 
 
@@ -82,6 +92,19 @@ def enviar_mensagem(jid: str, texto: str) -> tuple[bool, str]:
         )
         r.raise_for_status()
         return True, r.json().get('key', {}).get('id', 'enviado')
+    except requests.HTTPError as e:
+        # A Evolution API normalmente devolve um corpo explicando a rejeição
+        # (ex: número não existe no WhatsApp) — sem capturar r.text, só
+        # sobra "400 Bad Request" genérico e a causa real fica invisível.
+        detalhe = str(e)
+        try:
+            corpo = r.text.strip()
+            if corpo:
+                detalhe = f'{detalhe} — resposta da API: {corpo[:300]}'
+        except Exception:
+            pass
+        logger.error('WhatsApp financeiro: erro ao enviar para %s: %s', jid, detalhe)
+        return False, detalhe
     except Exception as e:
         logger.error('WhatsApp financeiro: erro ao enviar para %s: %s', jid, e)
         return False, str(e)

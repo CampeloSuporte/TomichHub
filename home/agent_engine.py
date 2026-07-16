@@ -826,6 +826,13 @@ class AgentNOCEngine:
 
     async def _registrar_log(self, tipo: str, conteudo: str, **kwargs):
         from clientes.models import AgentLog
+        # Remove bytes NUL (0x00) — saída de comandos SSH às vezes os contém e o
+        # PostgreSQL rejeita strings com NUL, derrubando todo o processamento do
+        # agent (ele gerava a resposta mas falhava ao gravar o log → sem resposta).
+        def _clean(v):
+            return v.replace('\x00', '') if isinstance(v, str) else v
+        conteudo = _clean(conteudo)
+        kwargs = {k: _clean(v) for k, v in kwargs.items()}
         await sync_to_async(AgentLog.objects.create)(
             sessao_id=self.sessao_id,
             tipo=tipo,

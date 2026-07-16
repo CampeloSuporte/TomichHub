@@ -23,6 +23,15 @@
 
 .ew { display:grid; grid-template-columns:1fr 340px; grid-template-rows:auto 1fr; height:calc(100vh - 70px); background:var(--bg); }
 
+/* Responsivo: abaixo de 900px o painel lateral (340px) esmaga o editor — empilha */
+@media (max-width: 900px) {
+    .ew { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: auto; min-height: calc(100vh - 70px); }
+    .ew-right { max-height: 60vh; }
+}
+@media (max-width: 480px) {
+    .modal-box { width: 92vw; padding: 16px; }
+}
+
 /* TOPBAR */
 .ew-top {
     grid-column:1/-1;

@@ -35,6 +35,10 @@ app.conf.beat_schedule = {
         'task': 'clientes.tasks.analisar_backups_ipam',
         'schedule': timedelta(days=3),
     },
+    'ipam-scan-subredes-automaticas': {
+        'task': 'clientes.tasks.ipam_scan_subredes_automaticas',
+        'schedule': timedelta(minutes=30),
+    },
     'detectar-modelos-via-backup': {
         'task': 'clientes.tasks.detectar_modelos_via_backup',
         'schedule': timedelta(days=3),
@@ -53,6 +57,10 @@ app.conf.beat_schedule = {
     },
     'notificar-chamados-abertos': {
         'task': 'atendimento.tasks.notificar_chamados_abertos',
+        'schedule': timedelta(minutes=10),
+    },
+    'escalar-chamados-sla': {
+        'task': 'atendimento.tasks.escalar_chamados_sla',
         'schedule': timedelta(minutes=10),
     },
     # Roda a cada 5 min; a task verifica internamente se é o horário certo

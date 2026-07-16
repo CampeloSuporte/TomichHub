@@ -6,15 +6,23 @@ import subprocess
 
 logger = logging.getLogger(__name__)
 
+WINBOX4_PATH   = "/opt/crm/static/winbox4/WinBox"
+WINBOX3_PATH   = "/opt/crm/static/winbox3/winbox.exe"
+WINE_PREFIX    = "/opt/crm/wine-prefix"
+
+
 class WinboxVNCManager:
     """Gerencia o ciclo de vida do Xvfb, Openbox, x11vnc e WinBox para uma sessão via Web."""
-    
-    def __init__(self, host, port, user, password, winbox_path="/opt/crm/static/winbox4/WinBox", width=1366, height=768):
+
+    def __init__(self, host, port, user, password, version='4', width=1366, height=768):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
-        self.winbox_path = winbox_path
+        # WinBox 3.43 nunca teve build nativo Linux (só Windows) — roda via Wine
+        # com um WINEPREFIX 32-bit pré-inicializado (ver docs/winbox_vnc.md).
+        # WinBox 4.x é nativo (ELF), sem Wine no caminho.
+        self.version = '3' if str(version) == '3' else '4'
 
         self.width = max(800, int(width))
         self.height = max(600, int(height))
@@ -27,10 +35,14 @@ class WinboxVNCManager:
         self.display_num = self._find_free_display()
         self.vnc_port = self._find_free_port()
         
-        logger.info(f"🚀 Iniciando ambiente WinBox Web no Display :{self.display_num} / VNC Port {self.vnc_port} / Resolução {self.width}x{self.height}")
+        logger.info(f"🚀 Iniciando ambiente WinBox {self.version} Web no Display :{self.display_num} / VNC Port {self.vnc_port} / Resolução {self.width}x{self.height}")
         
         # 1. Start Xvfb com resolucao dinamica baseada no tamanho do painel do cliente
-        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", f"{self.width}x{self.height}x24", "-nolisten", "tcp"]
+        # 16bpp em vez de 24bpp: metade dos bytes de pixel bruto por frame antes mesmo
+        # da compressao do x11vnc — WinBox é uma UI de linhas/texto, a perda de cor é
+        # imperceptível e o ganho de responsividade é real (menos dado pra codificar
+        # e transmitir a cada atualização de tela).
+        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", f"{self.width}x{self.height}x16", "-nolisten", "tcp"]
         try:
             p_xvfb = subprocess.Popen(xvfb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.processes.append(p_xvfb)
@@ -51,11 +63,20 @@ class WinboxVNCManager:
             logger.warning("Openbox não encontrado. WinBox rodará sem bordas/movimentação.")
             
         # 3. Start x11vnc
+        # -nonap: desliga o backoff de polling do x11vnc quando ocioso — sem isso,
+        #   a primeira interação após um período parado sofre um atraso perceptível
+        #   até o x11vnc "acordar" e voltar a pollar a tela na taxa normal.
+        # -threads: paraleliza a codificação de regiões da tela entre CPUs.
+        # -wait 10: reduz o intervalo de polling de tela de 20ms (padrão) para 10ms —
+        #   mais atualizações por segundo, ao custo de um pouco mais de CPU.
+        # NUNCA usar -ncache aqui — quebra o dimensionamento reportado ao noVNC
+        # (ver docs/winbox_vnc.md e memória do projeto).
         vnc_cmd = [
             "x11vnc", "-display", f":{self.display_num}",
             "-nopw", "-listen", "127.0.0.1",
             "-xkb", "-rfbport", str(self.vnc_port),
-            "-shared", "-forever", "-quiet"
+            "-shared", "-forever", "-quiet",
+            "-nonap", "-threads", "-wait", "10"
         ]
         try:
             p_vnc = subprocess.Popen(vnc_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -68,13 +89,23 @@ class WinboxVNCManager:
         
         # 4. Start WinBox
         target = f"{self.host}:{self.port}"
-        winbox_cmd = [self.winbox_path, target, self.user, self.password]
+        if self.version == '3':
+            # WinBox 3.43 (Windows .exe) via Wine, usando o prefixo 32-bit
+            # pré-inicializado — inicializar um prefixo novo a cada sessão seria
+            # lento (wineboot na primeira execução) e desnecessário.
+            winbox_path = WINBOX3_PATH
+            env["WINEPREFIX"] = WINE_PREFIX
+            env["WINEDEBUG"] = "-all"
+            winbox_cmd = ["wine", WINBOX3_PATH, target, self.user, self.password]
+        else:
+            winbox_path = WINBOX4_PATH
+            winbox_cmd = [WINBOX4_PATH, target, self.user, self.password]
         try:
             p_winbox = subprocess.Popen(winbox_cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.processes.append(p_winbox)
         except FileNotFoundError:
             self.stop()
-            raise Exception(f"Binário do WinBox não encontrado em {self.winbox_path}")
+            raise Exception(f"Binário do WinBox não encontrado em {winbox_path}")
 
         # 5. Espera a janela do WinBox aparecer, maximiza e loga o resultado
         disp = self.display_num

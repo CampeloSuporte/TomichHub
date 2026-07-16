@@ -33,7 +33,7 @@ def _pode_acessar_cliente(request, cliente_id: str) -> bool:
         return True
     try:
         from clientes.models import Cliente
-        c = Cliente.objects.get(usuario=request.user)
+        c = Cliente.objects.get_by_usuario_vinculado(request.user)
         return str(c.id) == str(cliente_id)
     except Exception:
         return False

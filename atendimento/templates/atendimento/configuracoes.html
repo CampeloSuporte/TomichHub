@@ -22,7 +22,7 @@
 .icon-btn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:4px;font-size:12px;color:var(--muted);transition:all .15s}
 .icon-btn:hover{color:var(--text);background:rgba(255,255,255,0.07)}
 .icon-btn.danger:hover{color:#ef4444;background:rgba(239,68,68,0.08)}
-.add-row{display:flex;gap:8px;margin-top:10px}
+.add-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .add-row .cfg-input{flex:1}
 .qm-item{padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;margin-bottom:6px}
 .qm-title{font-size:12px;font-weight:600;color:var(--active);margin-bottom:4px}
@@ -253,6 +253,37 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
         <button class="btn-cyber secondary" id="btnTestNotif" type="button"><i class="fas fa-paper-plane"></i> Testar agora</button>
       </div>
       <div class="cfg-fb" id="notifAbertoResult"></div>
+    </div>
+
+    <div class="cfg-section">
+      <h3><i class="fas fa-stopwatch" style="color:#ef4444"></i> Escalação por SLA</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+        Quando o prazo de 1ª resposta configurado por prioridade estourar, alerta o grupo abaixo
+        (uma única vez por chamado) e, se um atendente de fallback for definido, reatribui
+        automaticamente os chamados ainda sem atendente.
+      </p>
+      <div class="cfg-field" style="display:flex;align-items:center;gap:12px">
+        <label style="margin:0">Ativo</label>
+        <label class="toggle-switch"><input type="checkbox" id="escalacaoEnabled"{% if escalacao_enabled == 'true' %} checked{% endif %}><span class="toggle-slider"></span></label>
+      </div>
+      <div class="cfg-field">
+        <label>Grupo de alerta</label>
+        <select class="cfg-select" id="escalacaoGroup">
+          <option value="">-- Usa o mesmo de "Notificação de Chamados Abertos" --</option>
+          {% for group in groups %}{% if group.connection %}<option value="{{ group.id }}"{% if escalacao_group_id == group.id|stringformat:"s" %} selected{% endif %}>{{ group.name }} ({{ group.connection.name }})</option>{% endif %}{% endfor %}
+        </select>
+      </div>
+      <div class="cfg-field">
+        <label>Atendente de fallback (reatribuição automática)</label>
+        <select class="cfg-select" id="escalacaoReassignUser">
+          <option value="">-- Nenhum (só alerta, não reatribui) --</option>
+          {% for u in users %}<option value="{{ u.id }}"{% if escalacao_reassign_user_id == u.id|stringformat:"s" %} selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-cyber" id="btnSaveEscalacao" type="button"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+      <div class="cfg-fb" id="escalacaoResult"></div>
     </div>
   </div>
 
@@ -493,6 +524,17 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
     var btn=this; setLoading(btn,true);
     fetch(URL_TEST_NOTIF,{method:'POST',headers:{'X-CSRFToken':CSRF}}).then(function(r){return r.json();})
       .then(function(d){fb('notifAbertoResult',d.success,d.success?'Mensagem enviada!':'Erro: '+(d.error||''));})
+      .finally(function(){setLoading(btn,false);});
+  });
+
+  // ── Escalação por SLA ──
+  document.getElementById('btnSaveEscalacao').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    post(URL_SETTINGS,{
+      escalacao_enabled: document.getElementById('escalacaoEnabled').checked?'true':'false',
+      escalacao_group_id: document.getElementById('escalacaoGroup').value,
+      escalacao_reassign_user_id: document.getElementById('escalacaoReassignUser').value,
+    }).then(function(d){fb('escalacaoResult',d.success,d.success?'Configurações salvas!':'Erro: '+(d.error||''));})
       .finally(function(){setLoading(btn,false);});
   });
 

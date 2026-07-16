@@ -12,10 +12,42 @@ import struct
 import socket
 import paramiko
 from paramiko.message import Message
+from asgiref.sync import sync_to_async
+from channels.consumer import get_handler_name
 from channels.generic.websocket import WebsocketConsumer
+from django.db import close_old_connections
 from .models import Acesso, ProxyServer
 
 logger = logging.getLogger(__name__)
+
+
+class ThreadedDispatchMixin:
+    """
+    Channels despacha consumers síncronos via `database_sync_to_async`, que é
+    "thread sensitive": TODAS as conexões WebSocket síncronas do processo
+    Daphne (config atual = 1 worker) compartilham UMA única thread global.
+    SSHConsumer/WebSocketProxyConsumer fazem handshake bloqueante (paramiko,
+    pexpect, socket.create_connection) em connect()/receive() — um handshake
+    lento em um terminal travava teclas e conexões de TODOS os outros
+    terminais abertos ao mesmo tempo, e se a fila demorasse mais que o
+    application-close-timeout do Daphne (30s), a conexão morria com
+    "Socket is closed".
+    Aqui cada dispatch roda no thread pool padrão (não thread-sensitive),
+    permitindo terminais concorrentes de verdade.
+    """
+    async def dispatch(self, message):
+        handler = getattr(self, get_handler_name(message), None)
+        if handler is None:
+            raise ValueError("No handler for message type %s" % message["type"])
+
+        def _run():
+            close_old_connections()
+            try:
+                handler(message)
+            finally:
+                close_old_connections()
+
+        await sync_to_async(_run, thread_sensitive=False)()
 
 
 # ── Pool de conexões SSH com proxies ─────────────────────────────────────────
@@ -31,7 +63,12 @@ class _ProxyPool:
         return f"{proxy.usuario}@{proxy.host}:{proxy.porta}"
 
     def get(self, proxy):
-        """Retorna conexão ativa existente ou None."""
+        """Retorna conexão ativa existente ou None.
+        `is_active()` só checa uma flag interna — não detecta uma conexão
+        que morreu silenciosamente (NAT/firewall derrubou por ociosidade
+        sem FIN limpo). Fazemos um send_ignore() real para confirmar que o
+        socket ainda responde; se não, descarta e força reconexão aqui em
+        vez de deixar o open_channel() falhar depois com timeout de 10s."""
         key = self._key(proxy)
         with self._lock:
             client = self._conns.get(key)
@@ -40,6 +77,7 @@ class _ProxyPool:
             try:
                 t = client.get_transport()
                 if t and t.is_active():
+                    t.send_ignore()
                     return client
             except Exception:
                 pass
@@ -47,8 +85,17 @@ class _ProxyPool:
             return None
 
     def put(self, proxy, client):
-        """Armazena conexão no pool."""
+        """Armazena conexão no pool e liga keepalive SSH para que ela
+        sobreviva a NAT/firewalls que derrubam conexões TCP ociosas —
+        sem isso, um proxy sem uso por alguns minutos aparentava "vivo"
+        (is_active()==True) mas já estava morto na próxima sessão."""
         key = self._key(proxy)
+        try:
+            t = client.get_transport()
+            if t:
+                t.set_keepalive(30)
+        except Exception:
+            pass
         with self._lock:
             self._conns[key] = client
 
@@ -132,7 +179,7 @@ def _pty_req_with_modes(shell, term='vt100', width=80, height=24):
     shell._wait_for_event()
 
 
-class SSHConsumer(WebsocketConsumer):
+class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     def connect(self):
         self.accept()
         self.limpar_recursos()
@@ -168,6 +215,12 @@ class SSHConsumer(WebsocketConsumer):
         self.is_huawei        = False
         self.is_parks         = False
         self.acessoId         = None
+        # Tamanho do terminal (cols×rows) informado pelo frontend (xterm/fit).
+        # Mantém o PTY do host em sincronia com o que é exibido — sem isso,
+        # apps full-screen (nano, htop, vim) desenham na largura errada e o
+        # texto fica sobreposto.
+        self.term_cols        = 80
+        self.term_rows        = 24
 
     def disconnect(self, close_code):
         logger.info("🔌 WebSocket desconectando...")
@@ -191,18 +244,64 @@ class SSHConsumer(WebsocketConsumer):
                 acesso_id = data.get('acesso_id')
                 logger.info(f"📋 Conectar acesso {acesso_id}")
                 self.limpar_recursos()
-                time.sleep(0.1)
+                self._set_term_size(data.get('cols'), data.get('rows'))
                 self.conectar_acesso(acesso_id)
 
             elif action == 'command':
                 command = data.get('command', '')
                 self.enviar_comando(command)
 
+            elif action == 'resize':
+                # Frontend redimensionou o terminal — repassa ao PTY do host.
+                if self._set_term_size(data.get('cols'), data.get('rows')):
+                    self._resize_pty(self.term_cols, self.term_rows)
+
         except json.JSONDecodeError as e:
             self.send_error(f"Erro ao parsear JSON: {str(e)}")
         except Exception as e:
             logger.error(f"❌ Erro na função receive: {str(e)}")
             self.send_error(f"Erro: {str(e)}")
+
+    # =========================================================
+    # Tamanho do terminal (cols×rows) — mantém o PTY do host em
+    # sincronia com o xterm.js exibido no navegador.
+    # =========================================================
+    def _set_term_size(self, cols, rows):
+        """Armazena cols/rows válidos vindos do frontend. Retorna True se mudou."""
+        try:
+            c, r = int(cols), int(rows)
+        except (TypeError, ValueError):
+            return False
+        # Limites de sanidade
+        c = max(20, min(c, 500))
+        r = max(5, min(r, 200))
+        if c == self.term_cols and r == self.term_rows:
+            return False
+        self.term_cols, self.term_rows = c, r
+        return True
+
+    def _pty_dims(self):
+        """Dimensões a usar ao abrir o PTY. Parks/ZTE usam tamanho fixo
+        conservador (firmware embarcado é sensível); demais usam o real."""
+        if getattr(self, 'is_parks', False) and not getattr(self, 'is_huawei', False):
+            return 80, 24
+        return self.term_cols, self.term_rows
+
+    def _resize_pty(self, cols, rows):
+        """Aplica o novo tamanho ao canal/pty ativo (Paramiko ou pexpect)."""
+        sh = getattr(self, '_paramiko_shell', None)
+        if sh is not None:
+            try:
+                sh.resize_pty(width=cols, height=rows)
+                return
+            except Exception as e:
+                logger.debug(f"resize_pty (paramiko) falhou: {e}")
+        pex = getattr(self, 'ssh_process', None)
+        if pex is not None and hasattr(pex, 'setwinsize'):
+            try:
+                pex.setwinsize(rows, cols)   # pexpect: (linhas, colunas)
+            except Exception as e:
+                logger.debug(f"setwinsize (pexpect) falhou: {e}")
 
     def _vpn_cobre_ip(self, cliente, host):
         """
@@ -229,6 +328,33 @@ class SSHConsumer(WebsocketConsumer):
             logger.warning(f"⚠️ Erro ao verificar VPN: {e}")
         return None
 
+    def _tunel_ovpn_cobre_ip(self, cliente, host):
+        """
+        Verifica se existe túnel OpenVPN (aba Túneis) que cobre o IP do host.
+        Ao contrário do WireGuard isolado, não precisa de source-bind — é um
+        único daemon/interface compartilhado (tun-crm) com rota já correta
+        no kernel via iroute por cliente, então a conexão direta já sai pelo
+        caminho certo automaticamente.
+        """
+        try:
+            import ipaddress as _ipa
+            from .models import VPNOpenVPN
+
+            tuneis = VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
+            host_ip = _ipa.ip_address(host)
+
+            for tunel in tuneis:
+                for rede_str in tunel.redes_lista():
+                    try:
+                        if host_ip in _ipa.ip_network(rede_str, strict=False):
+                            logger.info(f"✅ Túnel OpenVPN cobre {host} via {tunel.nome}")
+                            return tunel
+                    except ValueError:
+                        pass
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao verificar túnel OpenVPN: {e}")
+        return None
+
     def conectar_acesso(self, acesso_id):
         try:
             self.acessoId = acesso_id
@@ -251,8 +377,9 @@ class SSHConsumer(WebsocketConsumer):
             is_cgnat   = getattr(acesso, 'tipo', '') == 'CGNAT'
 
             if is_private:
-                # IP privado: VPN WireGuard ou proxy
+                # IP privado: VPN WireGuard, túnel OpenVPN ou proxy
                 vpn = self._vpn_cobre_ip(acesso.cliente, acesso.host)
+                tunel_ovpn = None if vpn else self._tunel_ovpn_cobre_ip(acesso.cliente, acesso.host)
                 if vpn:
                     # Usa source bind da interface isolada SOMENTE se ela tiver
                     # handshake ativo (cliente já migrou). Caso contrário, usa
@@ -268,6 +395,14 @@ class SSHConsumer(WebsocketConsumer):
                     self.send_json({'type': 'info', 'message': f'🔒 Conectando via VPN WireGuard ({modo})...'})
                     if protocol == 'ssh':
                         self.connect_ssh(acesso, source_ip=src_ip)
+                    else:
+                        self.connect_telnet(acesso)
+                elif tunel_ovpn:
+                    # Servidor único compartilhado — rota já correta no kernel
+                    # via iroute do cliente, sem precisar de source-bind.
+                    self.send_json({'type': 'info', 'message': f'🔒 Conectando via Túnel OpenVPN ({tunel_ovpn.nome})...'})
+                    if protocol == 'ssh':
+                        self.connect_ssh(acesso)
                     else:
                         self.connect_telnet(acesso)
                 else:
@@ -359,19 +494,31 @@ class SSHConsumer(WebsocketConsumer):
     def _criar_tunel_paramiko(self, proxy, host_destino, porta_destino, timeout_conn=8):
         logger.info(f"⚡ [PARAMIKO] Conectando ao proxy {proxy.host}:{proxy.porta}...")
 
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh_client.connect(
-            hostname=proxy.host,
-            port=int(proxy.porta),
-            username=proxy.usuario,
-            password=proxy.senha,
-            timeout=timeout_conn,
-            look_for_keys=False,
-            allow_agent=False,
-            banner_timeout=timeout_conn,
-        )
-        logger.info("✅ [PARAMIKO] Proxy conectado!")
+        def _nova_conexao_proxy():
+            c = paramiko.SSHClient()
+            c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            c.connect(
+                hostname=proxy.host,
+                port=int(proxy.porta),
+                username=proxy.usuario,
+                password=proxy.senha,
+                timeout=timeout_conn,
+                look_for_keys=False,
+                allow_agent=False,
+                banner_timeout=timeout_conn,
+            )
+            _proxy_pool.put(proxy, c)
+            return c
+
+        # Reutiliza conexão já aberta com o proxy em vez de sempre negociar
+        # um handshake SSH novo (era o principal motivo do Winbox/VNC/telnet
+        # via proxy demorarem para conectar).
+        ssh_client = _proxy_pool.get(proxy)
+        if ssh_client:
+            logger.info(f"♻️ [PARAMIKO] Proxy reutilizado do pool: {proxy.host}:{proxy.porta}")
+        else:
+            ssh_client = _nova_conexao_proxy()
+            logger.info("✅ [PARAMIKO] Proxy conectado (novo)!")
         self._paramiko_client = ssh_client
 
         local_port  = self.find_available_port()
@@ -436,7 +583,11 @@ class SSHConsumer(WebsocketConsumer):
 
         threading.Thread(target=_accept_loop, daemon=True).start()
 
-        # Testar canal antes de retornar
+        # Testar canal antes de retornar. Se a conexão veio do pool e estava
+        # morta (ex: NAT derrubou por ociosidade), reconecta uma única vez
+        # em vez de falhar a sessão inteira — `_forward` acima referencia
+        # `transport` por closure, então a reatribuição abaixo é enxergada
+        # por qualquer conexão de cliente aceita depois deste ponto.
         try:
             test_channel = transport.open_channel(
                 'direct-tcpip',
@@ -447,10 +598,25 @@ class SSHConsumer(WebsocketConsumer):
             test_channel.close()
             logger.info(f"✅ [PARAMIKO] Canal testado — túnel OK na porta {local_port}")
         except Exception as e:
-            raise Exception(
-                f"Proxy conectou mas não conseguiu abrir canal para "
-                f"{host_destino}:{porta_destino} — {e}"
-            )
+            logger.warning(f"⚠️ [TUNNEL] Canal do pool falhou ({e}), reconectando ao proxy...")
+            _proxy_pool.remove(proxy)
+            try:
+                ssh_client = _nova_conexao_proxy()
+                self._paramiko_client = ssh_client
+                transport = ssh_client.get_transport()
+                test_channel = transport.open_channel(
+                    'direct-tcpip',
+                    (host_destino, int(porta_destino)),
+                    ('127.0.0.1', local_port),
+                    timeout=timeout_conn,
+                )
+                test_channel.close()
+                logger.info(f"✅ [PARAMIKO] Canal testado após reconexão — túnel OK na porta {local_port}")
+            except Exception as e2:
+                raise Exception(
+                    f"Proxy conectou mas não conseguiu abrir canal para "
+                    f"{host_destino}:{porta_destino} — {e2}"
+                )
 
         return local_port
 
@@ -589,8 +755,9 @@ class SSHConsumer(WebsocketConsumer):
 
         # 4. Abrir shell interativo
         terminal_type = "vt100" if (self.is_parks and not self.is_huawei) else "xterm-256color"
+        _pw, _ph = self._pty_dims()
         shell = transport.open_session()
-        shell.get_pty(term=terminal_type, width=220, height=50)
+        shell.get_pty(term=terminal_type, width=_pw, height=_ph)
         shell.invoke_shell()
         self._paramiko_shell = shell
 
@@ -714,7 +881,8 @@ class SSHConsumer(WebsocketConsumer):
             if self.is_parks and not self.is_huawei:
                 pty_term, pty_w, pty_h = "vt100", 80, 24
             else:
-                pty_term, pty_w, pty_h = "xterm-256color", 220, 50
+                pty_term = "xterm-256color"
+                pty_w, pty_h = self.term_cols, self.term_rows
             logger.info(f"🖥️ PTY: term={pty_term!r} size={pty_w}x{pty_h} is_parks={self.is_parks} remote_ver={remote_ver!r}")
             shell = dest_transport.open_session()
             if self.is_parks and not self.is_huawei:
@@ -1493,6 +1661,7 @@ class WinboxVNCConsumer(SSHConsumer):
             mode = params.get('mode', ['winbox'])[0]
             vnc_w = int(params.get('w', ['1366'])[0])
             vnc_h = int(params.get('h', ['768'])[0])
+            winbox_version = params.get('v', ['4'])[0]
             
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
@@ -1552,6 +1721,7 @@ class WinboxVNCConsumer(SSHConsumer):
                     port=target_port,
                     user=acesso.usuario,
                     password=acesso.senha,
+                    version=winbox_version,
                     width=vnc_w,
                     height=vnc_h
                 )
@@ -1599,7 +1769,7 @@ class WinboxVNCConsumer(SSHConsumer):
 # Rota: /ws/proxy/<acesso_id>/<porta>/<scheme>/<path>
 # ─────────────────────────────────────────────────────────────────────────────
 
-class WebSocketProxyConsumer(WebsocketConsumer):
+class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
     def connect(self):
         self.ws_sock     = None

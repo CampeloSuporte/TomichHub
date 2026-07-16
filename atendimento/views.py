@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 import json
 import logging
+import re
 
 def _is_staff(user):
     return user.is_active and user.is_staff
@@ -55,6 +56,7 @@ def _base_ctx(request):
     open_q = active.filter(assigned_to__isnull=True, status__in=['new', 'open'])
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
+    from .services import build_ice_servers
     return {
         'base_tpl': 'atendimento/base_partial.html' if is_ajax else 'atendimento/base.html',
         'sidebar_conversations': open_q.order_by('-last_message_at')[:30],
@@ -62,6 +64,7 @@ def _base_ctx(request):
         'open_count': open_q.count(),
         'mine_count': active.filter(assigned_to=request.user).count(),
         'ongoing_count': active.count(),
+        'ice_servers_json': json.dumps(build_ice_servers()),
     }
 
 
@@ -536,6 +539,38 @@ def api_update_conversation(request, conversation_id):
                     except Exception as _e:
                         logger.warning(f"Falha ao enviar msg de encerramento: {_e}")
 
+                # Mensagem de conclusão com número do protocolo
+                try:
+                    import uuid as _uuid
+                    texto_conclusao = (
+                        f"✅ Chamado concluído!\n"
+                        f"📋 Protocolo: #{conversation.conversation_id}"
+                    )
+                    ok_conclusao = EvolutionAPIClient(conversation.group.connection).send_text(
+                        conversation.group.jid, texto_conclusao)
+                    if ok_conclusao:
+                        Message.objects.create(
+                            conversation=conversation, sender_type='system',
+                            sender_name='Sistema', message_type='text', content=texto_conclusao,
+                            external_id=f'concluido_{_uuid.uuid4().hex}',
+                        )
+                except Exception as _e:
+                    logger.warning(f"Falha ao enviar mensagem de conclusão: {_e}")
+
+            # Notifica a caixa de entrada em tempo real para que a conversa
+            # encerrada/resolvida some das listas (bolhas "assumidas", sidebar)
+            # sem precisar atualizar a tela.
+            try:
+                from .services import _ws_send_inbox
+                _ws_send_inbox({
+                    'type': 'conversation_status',
+                    'conversation_id': str(conversation.id),
+                    'status': conversation.status,
+                    'assigned_to_id': conversation.assigned_to_id,
+                })
+            except Exception as _e:
+                logger.warning(f"Falha ao notificar inbox (status): {_e}")
+
         # Atualiza atribuição
         if 'assigned_to' in data:
             from django.contrib.auth.models import User
@@ -553,6 +588,11 @@ def api_update_conversation(request, conversation_id):
         # Atualiza priority
         if 'priority' in data:
             conversation.priority = data['priority']
+            # Recalcula o prazo de SLA para a nova prioridade — mantém o
+            # tempo já decorrido como base (a partir da criação do chamado),
+            # não reinicia a contagem do zero.
+            from .services import aplicar_sla
+            aplicar_sla(conversation, from_time=conversation.created_at)
             conversation.save()
 
         return JsonResponse({
@@ -565,6 +605,83 @@ def api_update_conversation(request, conversation_id):
             'success': False,
             'error': str(e)
         }, status=400)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_search_conversations(request):
+    """Busca chamados abertos/aguardando por nome do grupo ou da empresa —
+    usado para escolher o destino ao mesclar chamados duplicados."""
+    q = request.GET.get('q', '').strip()
+    exclude_id = request.GET.get('exclude_id', '')
+    qs = Conversation.objects.filter(
+        status__in=['new', 'open', 'pending'], is_task_conv=False,
+    ).select_related('group', 'cliente')
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    if q:
+        qs = qs.filter(Q(group__name__icontains=q) | Q(cliente__nome_empresa__icontains=q) | Q(conversation_id__icontains=q))
+    qs = qs.order_by('-last_message_at')[:15]
+    return JsonResponse({'results': [
+        {
+            'id': str(c.id),
+            'conversation_id': c.conversation_id,
+            'group_name': c.group.name if c.group else '—',
+            'cliente_nome': c.cliente.nome_empresa if c.cliente else '',
+            'status': c.status,
+        } for c in qs
+    ]})
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_merge_conversation(request, conversation_id):
+    """Mescla esta conversa (origem, duplicada) em outra (destino): move
+    todas as mensagens para o destino e fecha a origem apontando pra lá
+    (merged_into) — o histórico não se perde, só some da caixa de entrada."""
+    try:
+        source = get_object_or_404(Conversation, id=conversation_id)
+        data = json.loads(request.body)
+        target_id = data.get('target_id')
+        if not target_id:
+            return JsonResponse({'success': False, 'error': 'target_id obrigatório'}, status=400)
+        if str(target_id) == str(source.id):
+            return JsonResponse({'success': False, 'error': 'Não é possível mesclar um chamado com ele mesmo'}, status=400)
+        target = get_object_or_404(Conversation, id=target_id)
+
+        moved = Message.objects.filter(conversation=source).update(conversation=target)
+
+        now = timezone.now()
+        source.merged_into = target
+        source.status = 'closed'
+        source.closed_at = now
+        source.resolution = ((source.resolution or '') + f"\n\nMesclado com o chamado #{target.conversation_id}.").strip()
+        source.save(update_fields=['merged_into', 'status', 'closed_at', 'resolution'])
+
+        target.last_message_at = now
+        target.save(update_fields=['last_message_at'])
+
+        ConversationActivity.objects.create(
+            conversation=source, actor=request.user, action='closed',
+            description=f'Mesclado com o chamado #{target.conversation_id}',
+        )
+        ConversationActivity.objects.create(
+            conversation=target, actor=request.user, action='note_added',
+            description=f'Recebeu {moved} mensagem(ns) mescladas do chamado #{source.conversation_id}',
+        )
+
+        from .services import _ws_send_inbox
+        _ws_send_inbox({
+            'type': 'conversation_status',
+            'conversation_id': str(source.id),
+            'status': source.status,
+            'assigned_to_id': source.assigned_to_id,
+        })
+
+        return JsonResponse({'success': True, 'moved': moved, 'target_id': str(target.id)})
+    except Exception as e:
+        logger.error(f"Erro ao mesclar conversa: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @staff_required
@@ -649,7 +766,8 @@ def configuracoes(request):
     setting_keys = ['ai_api_key','ai_model','ai_system_prompt',
                     'daily_alert_enabled','daily_alert_time','daily_alert_group',
                     'notif_abertos_enabled','notif_abertos_group_id','msg_encerramento',
-                    'reminder_morning_time','reminder_noon_time']
+                    'reminder_morning_time','reminder_noon_time',
+                    'escalacao_enabled','escalacao_group_id','escalacao_reassign_user_id']
     settings_qs = {s.key: s.value for s in SystemSetting.objects.filter(key__in=setting_keys)}
 
     connections = list(WhatsAppConnection.objects.filter(is_active=True).order_by('name'))
@@ -680,6 +798,9 @@ def configuracoes(request):
         'msg_encerramento': settings_qs.get('msg_encerramento', ''),
         'reminder_morning_time': settings_qs.get('reminder_morning_time', '08:00'),
         'reminder_noon_time': settings_qs.get('reminder_noon_time', '12:00'),
+        'escalacao_enabled': settings_qs.get('escalacao_enabled', 'false'),
+        'escalacao_group_id': settings_qs.get('escalacao_group_id', ''),
+        'escalacao_reassign_user_id': settings_qs.get('escalacao_reassign_user_id', ''),
     }
     return render(request, 'atendimento/configuracoes.html', context)
 
@@ -1509,6 +1630,41 @@ def relatorios(request):
     for conv in resolved_qs.only('created_at', 'closed_at')[:500]:
         pass  # simple approach below
 
+    # ── CSAT (pesquisa de satisfação) ───────────────────────────────
+    csat_qs = qs.filter(csat_rating__isnull=False)
+    csat_total = csat_qs.count()
+    csat_avg = csat_qs.aggregate(avg=Avg('csat_rating'))['avg'] or 0
+    csat_distribuicao = [
+        {'nota': n, 'total': csat_qs.filter(csat_rating=n).count()} for n in range(5, 0, -1)
+    ]
+
+    # ── Desempenho por atendente ────────────────────────────────────
+    resposta_dur = ExpressionWrapper(F('first_response_at') - F('created_at'), output_field=DurationField())
+    resolucao_dur = ExpressionWrapper(F('closed_at') - F('created_at'), output_field=DurationField())
+
+    desempenho_atendentes = []
+    atendentes_ids = qs.filter(assigned_to__isnull=False).values_list('assigned_to', flat=True).distinct()
+    for atendente in User.objects.filter(id__in=atendentes_ids):
+        conv_atendente = qs.filter(assigned_to=atendente)
+        total_at = conv_atendente.count()
+        if not total_at:
+            continue
+        resolvidos_qs = conv_atendente.filter(status__in=['resolved', 'closed'], closed_at__isnull=False)
+        media_resposta = conv_atendente.filter(first_response_at__isnull=False).annotate(
+            _dur=resposta_dur
+        ).aggregate(m=Avg('_dur'))['m']
+        media_resolucao = resolvidos_qs.annotate(_dur=resolucao_dur).aggregate(m=Avg('_dur'))['m']
+
+        desempenho_atendentes.append({
+            'nome': atendente.get_full_name() or atendente.username,
+            'total': total_at,
+            'resolvidos': resolvidos_qs.count(),
+            'abertos': conv_atendente.filter(status__in=['new', 'open', 'pending']).count(),
+            'media_resposta_min': round(media_resposta.total_seconds() / 60, 1) if media_resposta else None,
+            'media_resolucao_horas': round(media_resolucao.total_seconds() / 3600, 1) if media_resolucao else None,
+        })
+    desempenho_atendentes.sort(key=lambda d: -d['total'])
+
     # Category breakdown
     by_category = list(
         qs.values('category__name', 'category__color')
@@ -1552,6 +1708,10 @@ def relatorios(request):
         'anos_disponiveis': anos_disponiveis,
         'ano_atual': _dt.date.today().year,
         'clientes_disponiveis': clientes_disponiveis,
+        'csat_total': csat_total,
+        'csat_avg': round(csat_avg, 2),
+        'csat_distribuicao': csat_distribuicao,
+        'desempenho_atendentes': desempenho_atendentes,
     }
     return render(request, 'atendimento/relatorios.html', context)
 
@@ -1669,8 +1829,14 @@ def api_conversation_messages(request, conversation_id):
 
     qs = Message.objects.filter(conversation=conversation).order_by('created_at').select_related('sender')
     if after_dt:
-        qs = qs.filter(created_at__gt=after_dt)
-    msgs = qs[:30]
+        # >= (não >): evita pular uma mensagem que compartilhe o microssegundo
+        # exato da última já vista. A mensagem da fronteira é reenviada, mas o
+        # front-end deduplica por id (_renderedIds), então não há duplicação.
+        qs = qs.filter(created_at__gte=after_dt)
+    # Limite alto (era 30): em rajadas de mensagens do cliente, 30 por ciclo de
+    # polling fazia parecer que havia um "limite de mensagem". 300 garante que
+    # todas apareçam mesmo após acúmulo.
+    msgs = qs[:300]
 
     data = []
     for m in msgs:
@@ -1680,6 +1846,7 @@ def api_conversation_messages(request, conversation_id):
             'sender_type': m.sender_type,
             'sender_name': m.sender_name or (m.sender.first_name if m.sender else 'Agente'),
             'created_at': timezone.localtime(m.created_at).strftime('%H:%M'),
+            'created_at_iso': m.created_at.isoformat(),
             'message_type': m.message_type,
             'attachment_url': m.attachment_url or '',
         })
@@ -2003,23 +2170,35 @@ def api_start_conversation_by_group(request):
 
         group = get_object_or_404(ContactGroup, id=group_id)
 
-        existing = Conversation.objects.filter(
-            group=group,
-            status__in=['new', 'open', 'pending']
-        ).order_by('-last_message_at').first()
+        now = timezone.now()
 
-        if existing:
-            return JsonResponse({
-                'success': True,
-                'url': f'/atendimento/conversation/{existing.id}/',
-                'created': False,
-            })
+        # Ao iniciar pela plataforma, queremos SEMPRE um chamado NOVO e limpo —
+        # não reaproveitar a conversa anterior (que arrastava as mensagens
+        # antigas). Encerra os chamados ativos anteriores deste grupo (o
+        # histórico fica preservado na conversa resolvida) e abre um novo.
+        anteriores = Conversation.objects.filter(
+            group=group,
+            status__in=['pre', 'new', 'open', 'pending'],
+            is_task_conv=False,
+        )
+        for c in anteriores:
+            old_status = c.status
+            c.status = 'resolved'
+            c.closed_at = now
+            if not c.resolution:
+                c.resolution = 'Encerrado automaticamente ao iniciar um novo atendimento.'
+            c.save(update_fields=['status', 'closed_at', 'resolution'])
+            ConversationActivity.objects.create(
+                conversation=c, actor=request.user, action='status_changed',
+                old_value=old_status, new_value='resolved',
+            )
 
         conv = Conversation.objects.create(
             group=group,
             status='open',
             assigned_to=request.user,
             cliente=group.cliente,
+            last_message_at=now,   # torna este o chamado ativo do grupo
         )
         ConversationActivity.objects.create(
             conversation=conv,
@@ -2068,9 +2247,11 @@ def api_display_name(request):
 
 @login_required
 def sala_virtual(request):
+    from .services import build_ice_servers
     display_name = request.user.get_full_name() or request.user.username
     return render(request, 'atendimento/sala_virtual.html', {
         'display_name': display_name,
+        'ice_servers_json': json.dumps(build_ice_servers()),
     })
 
 
@@ -2279,7 +2460,10 @@ def api_attendant_contacts(request):
 
     data = json.loads(request.body)
     user_id = data.get('user_id')
-    phone = data.get('phone', '').strip()
+    # Só dígitos — remove espaço/traço/parênteses/+ acidentais. Não mexe no
+    # nono dígito (isso é decidido por quem digita); a detecção de "atendente
+    # no pessoal" já tolera com/sem 9 via normalizar_telefone_br.
+    phone = re.sub(r'\D', '', data.get('phone', ''))
     connection_id = data.get('connection_id') or None
     reminders_enabled = data.get('reminders_enabled', True)
 
@@ -2382,3 +2566,45 @@ def api_attendant_contact_test(request, user_id):
         return JsonResponse({'success': False, 'error': f'Falha ao enviar via Evolution API para {jid}'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_my_conversations(request):
+    """Retorna conversas ativas atribuídas ao usuário logado."""
+    from datetime import timedelta as _td
+    cutoff = timezone.now() - _td(hours=48)
+    convs = Conversation.objects.filter(
+        assigned_to=request.user,
+        status__in=['new', 'open', 'pending'],
+    ).select_related('group', 'cliente').order_by('-last_message_at')[:30]
+
+    data = []
+    for c in convs:
+        # Mensagens de clientes recebidas nas últimas 24h como indicador de atividade
+        unread = Message.objects.filter(
+            conversation=c,
+            sender_type='customer',
+            created_at__gte=cutoff,
+        ).count()
+        last_msg = Message.objects.filter(conversation=c).order_by('-created_at').first()
+        last_customer_msg = Message.objects.filter(
+            conversation=c, sender_type='customer',
+        ).order_by('-created_at').first()
+        last_sender_name = (
+            last_customer_msg.sender_name or ''
+        ) if last_customer_msg else ''
+        data.append({
+            'id': str(c.id),
+            'conversation_id': c.conversation_id,
+            'group_name': c.group.name if c.group else '',
+            'status': c.status,
+            'unread_count': unread,
+            'last_message': (last_msg.content or '')[:80] if last_msg else '',
+            'last_message_type': last_msg.message_type if last_msg else 'text',
+            'last_message_at': timezone.localtime(c.last_message_at).strftime('%H:%M') if c.last_message_at else '',
+            'cliente': c.cliente.nome_empresa if c.cliente else '',
+            'last_sender_name': last_sender_name,
+        })
+
+    return JsonResponse({'conversations': data, 'total': len(data)})

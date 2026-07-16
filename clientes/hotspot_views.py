@@ -12,9 +12,12 @@ import html as _html
 import json
 import logging
 import os
+from datetime import datetime
 
 import paramiko
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models.functions import TruncDate
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -81,38 +84,32 @@ def _gerar_login_html(hotspot, portal_url):
     o portal hospedado no CRM. Usa HTTP para que o walled-garden permita o
     acesso antes da autenticação.
 
-    Estratégia de redirect em camadas (da mais compatível para a mais rica):
-      1. <meta http-equiv="refresh"> — funciona sem JS (captive portal browsers
-         do iOS/Android às vezes bloqueiam scripts na janela de detecção)
-      2. window.location.replace() — JS padrão, passa todos os parâmetros
-         URL-encoded para que o portal saiba o $(link-login) do MikroTik
-      3. <a> visível como último recurso
+    IMPORTANTE (sem <script>, sem $(link-login)/$(link-orig)): captive portal
+    browsers embutidos (iOS Captive Network Assistant, Android) são muito mais
+    restritos que um Safari/Chrome normal — historicamente falham silenciosamente
+    (tela em branco) em páginas que dependem de JS para redirecionar, e o
+    RouterOS precisa reescrever o arquivo em tempo real para substituir cada
+    $(...) pelo valor real, o que pode inflar bastante o tamanho da resposta
+    quando a variável é uma URL longa (ex: $(link-login), $(link-orig) — cada
+    uma pode ter 100+ caracteres com querystring própria). Um <meta refresh>
+    puro, sem JS e só com variáveis curtas ($(mac)/$(ip)), é a combinação mais
+    compatível. O hotspot_portal_conectar já tem fallback para gateway quando
+    "link"/"orig" não chegam (ver uso de h.gateway abaixo).
     """
     # Força HTTP: clientes não têm HTTPS no walled-garden antes de autenticar
     http_portal = portal_url.replace('https://', 'http://', 1).rstrip('/')
+    destino = http_portal + '/?mac=$(mac)&ip=$(ip)'
 
-    # Para o meta-refresh usamos o portal sem parâmetros — evita problemas com
-    # caracteres especiais em $(link-login) que é uma URL completa. O portal
-    # funciona sem esses params; o hotspot_portal_conectar usa h.gateway como
-    # fallback quando link= está vazio.
     return (
         '<!DOCTYPE html>\n'
         '<html>\n'
         '<head>\n'
         '<meta charset="UTF-8">\n'
-        '<meta http-equiv="refresh" content="0;url=' + http_portal + '/">\n'
-        '<script>\n'
-        'var p="' + http_portal + '/";\n'
-        'var q="?link="+encodeURIComponent("$(link-login)")\n'
-        '     +"&mac="+encodeURIComponent("$(mac)")\n'
-        '     +"&ip="+encodeURIComponent("$(ip)")\n'
-        '     +"&orig="+encodeURIComponent("$(link-orig)");\n'
-        'window.location.replace(p+q);\n'
-        '</script>\n'
+        '<meta http-equiv="refresh" content="1;url=' + destino + '">\n'
         '</head>\n'
         '<body>\n'
         '<p>Redirecionando para o portal...</p>\n'
-        '<p><a href="' + http_portal + '/">Clique aqui se não for redirecionado automaticamente</a></p>\n'
+        '<p><a href="' + destino + '">Clique aqui se não for redirecionado automaticamente</a></p>\n'
         '</body>\n'
         '</html>\n'
     )
@@ -341,12 +338,17 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             log.append('ℹ️ Controle de banda desativado — lease-script limpo')
 
         # ── 4. DHCP Network ───────────────────────────────────────────────────
+        # IMPORTANTE: o cliente do hotspot deve receber o GATEWAY (o próprio
+        # roteador) como DNS — NÃO um DNS externo (8.8.8.8). Antes do login o
+        # hotspot bloqueia o acesso externo; se o cliente tentar falar com 8.8.8.8
+        # a resolução falha (DNS_PROBE_FINISHED_NO_INTERNET) e o portal nem abre.
+        # Usando o gateway, o hotspot intercepta o DNS e redireciona para o login.
         ok, lbl, out = _set_or_add(
             f'/ip dhcp-server network print count-only where address="{hotspot.network}"',
             f'/ip dhcp-server network set [find address="{hotspot.network}"] '
-            f'gateway={hotspot.gateway} dns-server={hotspot.dns_servidor}',
+            f'gateway={hotspot.gateway} dns-server={hotspot.gateway}',
             f'/ip dhcp-server network add address={hotspot.network} '
-            f'gateway={hotspot.gateway} dns-server={hotspot.dns_servidor}',
+            f'gateway={hotspot.gateway} dns-server={hotspot.gateway}',
             'DHCP Network',
         )
         log.append(f'{"✅" if ok else "⚠️"} DHCP Network {lbl} ({hotspot.network}): {out}')
@@ -419,15 +421,26 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         _mt_exec(client, '/ip hotspot user profile set [find name="default"] shared-users=unlimited')
 
         # ── 7b. DNS no MikroTik ───────────────────────────────────────────────
-        # O hotspot proxy precisa resolver hostnames (walled-garden, pixel).
-        # Se o roteador não tiver DNS configurado, as entradas hostname do
-        # walled-garden não funcionam — configura 8.8.8.8 se servers estiver vazio.
+        # O roteador precisa RESPONDER DNS aos clientes do hotspot (eles recebem
+        # o gateway como DNS via DHCP) e ter um upstream para resolver. Sem
+        # allow-remote-requests o cliente não recebe resposta de DNS → o portal
+        # nem carrega (DNS_PROBE_FINISHED_NO_INTERNET).
         dns_out, _, _ = _mt_exec(client, '/ip dns print')
-        if '8.8.8.8' not in dns_out:
-            _mt_exec(client, '/ip dns set servers=8.8.8.8 allow-remote-requests=yes')
-            log.append('✅ DNS configurado (8.8.8.8)')
+        if 'allow-remote-requests: yes' not in dns_out:
+            _mt_exec(client, '/ip dns set allow-remote-requests=yes')
+            log.append('✅ DNS: allow-remote-requests habilitado')
+        # Garante um upstream (sem sobrescrever um já existente do cliente)
+        _srv = ''
+        for _l in dns_out.splitlines():
+            if _l.strip().startswith('servers:'):
+                _srv = _l.split(':', 1)[1].strip()
+                break
+        if not _srv:
+            _up = hotspot.dns_servidor or '8.8.8.8'
+            _mt_exec(client, f'/ip dns set servers={_up}')
+            log.append(f'✅ DNS upstream configurado ({_up})')
         else:
-            log.append('✅ DNS já configurado')
+            log.append(f'✅ DNS do roteador OK (upstream {_srv})')
 
         # ── 8. Walled Garden ──────────────────────────────────────────────────
         crm_host = urlparse(pixel_url).hostname or pixel_url.split('/')[2].split(':')[0]
@@ -449,13 +462,17 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             # Garante walled-garden IP para HTTP (80) e HTTPS (443) — sem eles o
             # mini-browser não alcança o portal antes da autenticação.
             # Limpa TODAS as entradas existentes para este IP (evita duplicatas).
+            # RouterOS normaliza dst-address de host único sem o sufixo /32 ao
+            # armazenar — um find com "/32" nunca casa com o valor salvo e a
+            # entrada nunca é removida, duplicando a cada aplicação. Usar o
+            # IP puro (sem /32) tanto para o find quanto para o add.
             _mt_exec(client,
-                f'/ip hotspot walled-garden ip remove [find where dst-address="{crm_ip}/32"]')
+                f'/ip hotspot walled-garden ip remove [find where dst-address="{crm_ip}"]')
             _mt_exec(client,
-                f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
+                f'/ip hotspot walled-garden ip add dst-address="{crm_ip}" '
                 f'dst-port=80 protocol=tcp action=accept')
             _mt_exec(client,
-                f'/ip hotspot walled-garden ip add dst-address="{crm_ip}/32" '
+                f'/ip hotspot walled-garden ip add dst-address="{crm_ip}" '
                 f'dst-port=443 protocol=tcp action=accept')
             log.append(f'✅ Walled Garden IP liberado ({crm_ip}:80 e :443)')
         except Exception as _e:
@@ -485,10 +502,10 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             # IMPORTANTE: caminho relativo (sem "/flash/" na frente). O protocolo SFTP
             # não traduz "flash/" como alias da raiz (isso só acontece no parser do CLI
             # do RouterOS) — um path absoluto "/flash/<dir>/login.html" cria uma pasta
-            # literalmente chamada "flash", que o módulo de Hotspot nunca lê. O
-            # html-directory do hotspot profile referencia "<dir>/login.html" relativo
-            # à raiz do sistema de arquivos, que é exatamente o working directory do
-            # SFTP do RouterOS.
+            # "flash" DIFERENTE e vazia, separada de "<dir>" (confirmado ao vivo em
+            # 2026-07-10: `/file print` mostra "hotspot" e "flash/hotspot" como duas
+            # árvores distintas — a segunda vazia). O html-directory do hotspot profile
+            # referencia "<dir>/login.html" relativo à raiz do filesystem.
             remote_path = f'{dir_name}/login.html'
             sftp.putfo(_io.BytesIO(html_bytes), remote_path)
             sftp.close()
@@ -516,15 +533,16 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             else:
                 log.append(f'⚠️ /tool fetch também falhou (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
 
-        # Remove o arquivo órfão de uma versão anterior deste código, que gravava
-        # incorretamente em /flash/<dir>/ (caminho absoluto — nunca lido pelo hotspot)
+        # Remove o arquivo órfão que uma versão anterior deste código gravava no
+        # caminho ERRADO: "flash/<dir>/login.html" — uma árvore separada e vazia
+        # que o hotspot nunca lê. O correto é "<dir>/login.html" (enviado acima).
         _mt_exec(client, f'/file remove [find where name="flash/{dir_name}/login.html"]')
 
         # Aguarda RouterOS indexar o arquivo
         import time as _time
         _time.sleep(2)
 
-        # Confirma arquivo no flash
+        # Confirma arquivo no diretório servido pelo hotspot
         fcheck, _, _ = _mt_exec(client,
             f'/file print where name~"{dir_name}/login.html"')
         data_lines = [l for l in fcheck.strip().splitlines() if 'login' in l and '.html' in l]
@@ -797,11 +815,40 @@ def hotspot_banner_deletar(request, cliente_id, hotspot_id, banner_id):
 # Leads
 # ─────────────────────────────────────────────────────────────────────────────
 
+LEADS_POR_PAGINA = 50
+
+
 @login_required
 def hotspot_leads(request, cliente_id, hotspot_id):
+    """
+    Lista os leads de UM dia por vez (padrão: hoje), paginado — antes trazia
+    tudo numa lista só, cortada em 500 registros sem paginação nem filtro;
+    com ~80 leads/dia num hotspot ativo isso estourava o corte em poucos
+    dias e escondia leads antigos silenciosamente (`total` mostrava a
+    contagem real, mas a tabela nunca passava de 500 linhas).
+    """
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
-    qs = h.leads.order_by('-criado_em')[:500]
+
+    data_str = (request.GET.get('data') or '').strip()
+    if data_str:
+        try:
+            dia = datetime.strptime(data_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'ok': False, 'erro': 'Data inválida.'}, status=400)
+    else:
+        dia = timezone.localdate()
+
+    qs = h.leads.filter(criado_em__date=dia).order_by('-criado_em')
+
+    try:
+        pagina = max(1, int(request.GET.get('pagina', 1)))
+    except (TypeError, ValueError):
+        pagina = 1
+
+    paginator = Paginator(qs, LEADS_POR_PAGINA)
+    page_obj = paginator.get_page(pagina)
+
     data = [
         {
             'id': lead.id,
@@ -812,9 +859,28 @@ def hotspot_leads(request, cliente_id, hotspot_id):
             'ip_cliente': lead.ip_cliente,
             'criado_em': lead.criado_em.strftime('%d/%m/%Y %H:%M'),
         }
-        for lead in qs
+        for lead in page_obj.object_list
     ]
-    return JsonResponse({'ok': True, 'leads': data, 'total': h.leads.count()})
+
+    # Dias com pelo menos 1 lead — alimenta o seletor de data no front
+    # (mostra só dias com dado, sem precisar adivinhar/rolar calendário à toa).
+    dias_disponiveis = list(
+        h.leads.annotate(_dia=TruncDate('criado_em'))
+        .values_list('_dia', flat=True).distinct().order_by('-_dia')
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'leads': data,
+        'data': dia.isoformat(),
+        'total_dia': paginator.count,
+        'pagina': page_obj.number,
+        'total_paginas': paginator.num_pages,
+        'tem_anterior': page_obj.has_previous(),
+        'tem_proxima': page_obj.has_next(),
+        'dias_disponiveis': [d.isoformat() for d in dias_disponiveis],
+        'total_geral': h.leads.count(),
+    })
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -836,7 +902,7 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
 
     cor_dark = cor
 
-    # Banners
+    # Banners → slideshow do splash (mostrado ANTES da página de login)
     slides = []
     for i, b in enumerate(hotspot.banners.filter(ativo=True).order_by('ordem', 'criado_em')):
         active = ' active' if i == 0 else ''
@@ -844,6 +910,29 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
         slides.append(f'<div class="slide{active}" style="background-image:url(\'{img_url}\')"></div>')
     has_slides = bool(slides)
     slides_str = '\n'.join(slides) if slides else ''
+
+    # Logo centralizada no topo do card (ou ícone de WiFi como fallback)
+    logo_html = (f'<img class="empresa-logo" src="{logo_url}" alt="Logo">'
+                 if logo_url else '<div class="wifi-ring">&#x1F4F6;</div>')
+
+    # Splash de banners (só existe se houver banner ativo). Card de login começa
+    # oculto enquanto o splash é exibido.
+    if has_slides:
+        splash_html = (
+            '<div class="splash" id="splash">\n'
+            '  <div class="splash-slides">\n'
+            f'{slides_str}\n'
+            '    <div class="splash-grad"></div>\n'
+            '  </div>\n'
+            '  <div class="splash-dots" id="dots"></div>\n'
+            '  <button class="splash-btn" type="button" id="splashBtn">'
+            'Continuar para o WiFi &#x2192;</button>\n'
+            '</div>'
+        )
+        card_style = ' style="display:none"'
+    else:
+        splash_html = ''
+        card_style = ''
 
     # Valores dos campos ocultos devem ser HTML-escaped: URLs contêm & que
     # seria interpretado como início de entidade HTML e quebraria o value=""
@@ -899,55 +988,66 @@ body{{
 }}
 @keyframes cardIn{{from{{opacity:0;transform:translateY(24px)}}to{{opacity:1;transform:none}}}}
 
-/* Banner slideshow */
-.banner{{
-  position:relative;height:200px;border-radius:24px 24px 0 0;overflow:hidden;
-  background:linear-gradient(135deg,{cor}44,#818cf844);
+/* ── Splash de banners (mostrado ANTES do login) ───────────────── */
+.splash{{
+  position:fixed;inset:0;z-index:10;
+  display:flex;flex-direction:column;
+  background:#0a0a0f;
+  animation:splashIn .4s ease both;
 }}
+.splash.hide{{animation:splashOut .5s ease forwards}}
+@keyframes splashIn{{from{{opacity:0}}to{{opacity:1}}}}
+@keyframes splashOut{{to{{opacity:0;visibility:hidden}}}}
+.splash-slides{{position:relative;flex:1;overflow:hidden}}
 .slide{{
   position:absolute;inset:0;opacity:0;
-  background-size:cover;background-position:center;
+  background-size:contain;background-repeat:no-repeat;background-position:center;
   transition:opacity .9s ease;
 }}
 .slide.active{{opacity:1}}
-.banner-overlay{{
-  position:absolute;inset:0;
-  background:linear-gradient(to bottom,rgba(0,0,0,.1) 0%,rgba(0,0,0,.5) 100%);
-  z-index:1;
+.splash-grad{{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom,transparent 60%,rgba(10,10,15,.9) 100%);
 }}
-.banner-logo{{
-  position:absolute;bottom:0;left:0;right:0;z-index:2;
-  padding:16px 20px;display:flex;align-items:flex-end;gap:12px;
-}}
-.wifi-ring{{
-  width:48px;height:48px;border-radius:14px;
-  background:rgba(255,255,255,0.12);
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,0.2);
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;flex-shrink:0;
-}}
-.empresa-logo{{
-  display:block;max-height:56px;max-width:140px;
-  object-fit:contain;
-  filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));
-  border-radius:8px;
-  margin-bottom:6px;
-}}
-.banner-text h2{{color:#fff;font-size:1.25rem;font-weight:700;line-height:1.2;text-shadow:0 1px 4px rgba(0,0,0,.4)}}
-.banner-text p{{color:rgba(255,255,255,.75);font-size:.8rem;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.3)}}
-.dots{{
-  position:absolute;top:12px;right:14px;z-index:3;
-  display:flex;gap:5px;
+.splash-dots{{
+  position:absolute;bottom:96px;left:0;right:0;z-index:2;
+  display:flex;justify-content:center;gap:6px;
 }}
 .dot{{
-  width:6px;height:6px;border-radius:50%;
+  width:7px;height:7px;border-radius:50%;
   background:rgba(255,255,255,.35);transition:all .3s;cursor:pointer;
 }}
-.dot.active{{width:18px;border-radius:3px;background:#fff}}
+.dot.active{{width:20px;border-radius:4px;background:#fff}}
+.splash-btn{{
+  position:absolute;left:20px;right:20px;bottom:28px;z-index:3;
+  height:54px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,{cor},{cor_dark});
+  color:#fff;font-size:1rem;font-weight:700;letter-spacing:.02em;cursor:pointer;
+  box-shadow:0 6px 24px {cor}55;
+}}
+.splash-btn:active{{transform:translateY(1px)}}
+
+/* ── Cabeçalho do card de login (logo centralizada no topo) ─────── */
+.slide{{background-color:#0a0a0f}}
+.login-header{{text-align:center;padding:34px 24px 6px}}
+.empresa-logo{{
+  display:block;margin:0 auto 18px;
+  max-height:100px;max-width:78%;
+  object-fit:contain;
+  filter:drop-shadow(0 4px 14px rgba(0,0,0,.55));
+}}
+.wifi-ring{{
+  width:76px;height:76px;border-radius:22px;margin:0 auto 18px;
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.16);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;
+}}
+.login-header h2{{color:#fff;font-size:1.5rem;font-weight:700;line-height:1.2}}
+.login-header p{{color:rgba(255,255,255,.6);font-size:.9rem;margin-top:6px}}
 
 /* Form area */
-.form-area{{padding:24px 20px 20px}}
+.form-area{{padding:20px 20px 20px}}
 
 /* Inputs com ícone flutuante */
 .field{{position:relative;margin-bottom:14px}}
@@ -1019,19 +1119,16 @@ body{{
 </head>
 <body>
 <div class="bg"></div>
-<div class="card">
-  <!-- Banner -->
-  <div class="banner" id="banner">
-{slides_str}
-    <div class="banner-overlay"></div>
-    <div class="banner-logo">
-      {'<img class="empresa-logo" src="' + logo_url + '" alt="Logo">' if logo_url else '<div class="wifi-ring">&#x1F4F6;</div>'}
-      <div class="banner-text">
-        <h2>{titulo}</h2>
-        <p>{subtitulo}</p>
-      </div>
-    </div>
-    {'<div class="dots" id="dots"></div>' if has_slides else ''}
+
+<!-- Banners exibidos ANTES da página de login (slideshow se >1) -->
+{splash_html}
+
+<div class="card" id="card"{card_style}>
+  <!-- Cabeçalho: logo centralizada no topo -->
+  <div class="login-header">
+    {logo_html}
+    <h2>{titulo}</h2>
+    <p>{subtitulo}</p>
   </div>
 
   <!-- Formulário -->
@@ -1106,6 +1203,19 @@ body{{
     if(ds[cur])ds[cur].classList.add('active');
   }}
   function restart(){{clearInterval(timer);timer=setInterval(function(){{goTo((cur+1)%slides.length);}},4500);}}
+
+  // Splash → revela o card de login ao continuar
+  var splash=document.getElementById('splash');
+  var card=document.getElementById('card');
+  var sb=document.getElementById('splashBtn');
+  if(sb&&splash&&card){{
+    sb.addEventListener('click',function(){{
+      clearInterval(timer);
+      splash.classList.add('hide');
+      card.style.display='';
+      setTimeout(function(){{splash.style.display='none';}},500);
+    }});
+  }}
 
   // Máscara telefone
   document.getElementById('f_tel').addEventListener('input',function(){{
@@ -1211,10 +1321,28 @@ def hotspot_portal_conectar(request, hotspot_uuid):
     # meta-refresh redirecionou sem parâmetros), cai para a URL padrão do
     # gateway, que é sempre acessível pelo cliente hotspot.
     raw_link = link if link else f'http://{h.gateway}/login'
-    safe_link  = raw_link.replace('"', '%22').replace("'", '%27')
-    safe_orig  = orig.replace('"', '%22').replace("'", '%27') if orig else ''
-    guest_user = h.guest_usuario.replace('"', '')
-    guest_pass = h.guest_senha.replace('"', '')
+
+    # Autentica no MikroTik por NAVEGAÇÃO (GET), não por form-submit.
+    # Motivo: no desktop o portal do CRM é carregado por HTTPS (crm.tomich.com.br
+    # sobe pra HTTPS). Enviar um FORMULÁRIO de uma página HTTPS para um destino
+    # HTTP (o login do MikroTik, http://gateway/login, que não tem TLS) dispara o
+    # aviso "As informações que você está prestes a enviar não estão protegidas".
+    # Uma navegação top-level HTTPS→HTTP (window.location) é permitida sem aviso —
+    # e o hotspot (login-by=http-pap) aceita username/password via query string.
+    from urllib.parse import urlsplit as _urlsplit, urlencode as _urlencode
+    _sp = _urlsplit(raw_link)
+    if _sp.netloc:
+        login_base = f'{_sp.scheme or "http"}://{_sp.netloc}{_sp.path or "/login"}'
+    else:
+        login_base = f'http://{h.gateway}/login'
+    login_full = login_base + '?' + _urlencode({
+        'username': h.guest_usuario,
+        'password': h.guest_senha,
+        'dst': orig or '',
+        'popup': 'true',
+    })
+    login_js   = login_full.replace('\\', '\\\\').replace("'", "\\'")
+    login_href = _html.escape(login_full, quote=True)
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -1228,22 +1356,20 @@ body{{font-family:sans-serif;display:flex;align-items:center;justify-content:cen
          border-top-color:{h.cor_primaria or '#1a73e8'};border-radius:50%;
          animation:spin .7s linear infinite;margin:0 auto 16px}}
 @keyframes spin{{to{{transform:rotate(360deg)}}}}
+a{{color:#93c5fd}}
 </style>
 </head>
 <body>
 <div class="msg">
   <div class="spinner"></div>
   <p>Conectando ao WiFi...</p>
+  <p><a id="mlink" href="{login_href}" style="display:none">Clique aqui se não conectar</a></p>
 </div>
-<form id="mt" method="post" action="{safe_link}" style="display:none">
-  <input type="hidden" name="username" value="{guest_user}">
-  <input type="hidden" name="password" value="{guest_pass}">
-  <input type="hidden" name="dst"      value="{safe_orig}">
-  <input type="hidden" name="popup"    value="true">
-</form>
 <script>
-setTimeout(function(){{document.getElementById('mt').submit();}},1200);
+setTimeout(function(){{ window.location.replace('{login_js}'); }}, 800);
+setTimeout(function(){{ var a=document.getElementById('mlink'); if(a) a.style.display='inline'; }}, 3500);
 </script>
+<noscript><a href="{login_href}">Clique aqui para conectar</a></noscript>
 </body>
 </html>"""
     return HttpResponse(html, content_type='text/html; charset=utf-8')

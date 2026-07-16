@@ -163,10 +163,30 @@ CHANNEL_LAYERS = {
         'CONFIG': {
             'hosts': [('127.0.0.1', 6379)],
             'capacity': 1500,
-            'expiry': 10,
+            # expiry: tempo (s) que uma mensagem vive no Redis antes de ser
+            # descartada se ainda não consumida. 10s era agressivo demais — em
+            # conversas movimentadas, mensagens do cliente eram perdidas no
+            # WebSocket. 60s (padrão) dá folga sem acumular lixo.
+            'expiry': 60,
         },
     }
 }
+
+# ========================================
+# WebRTC — Servidor TURN (coturn) para Sala Virtual e chamadas 1:1
+# ========================================
+# O coturn roda neste servidor (/etc/turnserver.conf). As credenciais são
+# temporárias (TURN REST API): geradas pelo Django via HMAC do segredo abaixo.
+# Usa o IP público bruto (não o domínio) porque TURN é UDP/TCP e não passa
+# por proxy/CDN.
+import os as _os
+TURN_HOST   = _os.environ.get('TURN_HOST', '45.235.72.10')
+TURN_REALM  = _os.environ.get('TURN_REALM', 'crm.tomich.com.br')
+TURN_SECRET = _os.environ.get(
+    'TURN_SECRET',
+    '6b5cdf609e30467cad14f12cadc3f754bf63149fc56afafd1918b7054ed7a3e4',
+)
+TURN_TTL    = int(_os.environ.get('TURN_TTL', 12 * 3600))  # validade das credenciais (s)
 
 # Limites de upload
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB

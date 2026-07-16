@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/aluguel/listar/', views.api_listar_alugueis, name='api_listar_alugueis'),
     path('api/aluguel/<int:aluguel_id>/editar/', views.api_editar_aluguel, name='api_editar_aluguel'),
     path('api/aluguel/<int:aluguel_id>/deletar/', views.api_deletar_aluguel, name='api_deletar_aluguel'),
+    path('api/aluguel/<int:aluguel_id>/gerar-fatura/', views.api_gerar_fatura_aluguel, name='api_gerar_fatura_aluguel'),
     path('api/aluguel/<int:aluguel_id>/contrato/',           views.gerar_contrato_aluguel,      name='gerar_contrato_aluguel'),
     path('api/aluguel/<int:aluguel_id>/link-assinatura/',   views.gerar_link_assinatura,       name='gerar_link_assinatura'),
     path('api/aluguel/<int:aluguel_id>/contratos/',         views.listar_contratos_aluguel,    name='listar_contratos_aluguel'),

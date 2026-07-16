@@ -73,6 +73,7 @@
         const _up = new URLSearchParams(location.search);
         const _initW = parseInt(_up.get('w')) || document.documentElement.clientWidth;
         const _initH = parseInt(_up.get('h')) || document.documentElement.clientHeight;
+        const _winboxVersion = _up.get('v') === '3' ? '3' : '4';
         let rfb;
 
         function setStatus(cls, txt) {
@@ -85,7 +86,7 @@
             setStatus('status-connecting', 'Conectando...');
 
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&w=' + _initW + '&h=' + _initH;
+            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&v=' + _winboxVersion + '&w=' + _initW + '&h=' + _initH;
             const container = document.getElementById('vnc-container');
 
             rfb = new RFB(container, wsUrl, {

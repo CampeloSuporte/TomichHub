@@ -1,6 +1,10 @@
 from django.contrib import admin
 from .models import Cliente, Acesso
 from .models import ProxyServer
+from .models import (
+    IPAMVlan, IPAMPrefixo, IPAMSubRede, IPAMEndereco, IPAMVpnDoc,
+    IPAMScanResultado, IPAMAuditLog,
+)
 
 
 from .models import BackupTemplate, BackupLog
@@ -22,6 +26,7 @@ class BackupLogAdmin(admin.ModelAdmin):
 class ClienteAdmin(admin.ModelAdmin):
     list_display = ('nome_empresa', 'usuario', 'cnpj', 'telefone')
     search_fields = ('nome_empresa', 'cnpj')
+    filter_horizontal = ('usuarios_adicionais',)
 
 @admin.register(Acesso)
 class AcessoAdmin(admin.ModelAdmin):
@@ -36,3 +41,47 @@ class ProxyServerAdmin(admin.ModelAdmin):
     list_display = ['nome', 'host', 'porta', 'ativo', 'data_criacao']
     list_filter = ['ativo', 'data_criacao']
     search_fields = ['nome', 'host']
+
+
+@admin.register(IPAMVlan)
+class IPAMVlanAdmin(admin.ModelAdmin):
+    list_display = ['numero', 'nome', 'cliente', 'status']
+    list_filter = ['status']
+    search_fields = ['nome', 'cliente__nome_empresa']
+
+@admin.register(IPAMPrefixo)
+class IPAMPrefixoAdmin(admin.ModelAdmin):
+    list_display = ['prefixo', 'tipo', 'status', 'pai', 'cliente', 'pool_cheia']
+    list_filter = ['tipo', 'status', 'pool_cheia']
+    search_fields = ['prefixo', 'cliente__nome_empresa']
+
+@admin.register(IPAMSubRede)
+class IPAMSubRedeAdmin(admin.ModelAdmin):
+    list_display = ['rede', 'gateway', 'vlan', 'status', 'cliente', 'scan_automatico', 'ultimo_scan']
+    list_filter = ['status', 'scan_automatico']
+    search_fields = ['rede', 'cliente__nome_empresa']
+
+@admin.register(IPAMEndereco)
+class IPAMEnderecoAdmin(admin.ModelAdmin):
+    list_display = ['ip', 'hostname', 'tipo', 'status', 'subrede', 'cliente']
+    list_filter = ['tipo', 'status']
+    search_fields = ['ip', 'hostname', 'mac_address', 'cliente__nome_empresa']
+
+@admin.register(IPAMVpnDoc)
+class IPAMVpnDocAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'tipo', 'status', 'cliente']
+    list_filter = ['tipo', 'status']
+    search_fields = ['nome', 'cliente__nome_empresa']
+
+@admin.register(IPAMScanResultado)
+class IPAMScanResultadoAdmin(admin.ModelAdmin):
+    list_display = ['ip', 'online', 'checado_em', 'cliente']
+    list_filter = ['online']
+    search_fields = ['ip', 'cliente__nome_empresa']
+
+@admin.register(IPAMAuditLog)
+class IPAMAuditLogAdmin(admin.ModelAdmin):
+    list_display = ['criado_em', 'modelo', 'acao', 'objeto_repr', 'usuario', 'cliente']
+    list_filter = ['modelo', 'acao']
+    search_fields = ['objeto_repr', 'cliente__nome_empresa']
+    readonly_fields = ['criado_em']

@@ -40,3 +40,7 @@ Thumbs.db
 # Celery
 celerybeat-schedule
 celerybeat.pid
+
+# Backups manuais e ambientes locais (nao versionar)
+*.bak
+wine-prefix/

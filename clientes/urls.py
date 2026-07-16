@@ -1,11 +1,6 @@
 from django.urls import path, re_path
 from . import views
-from .documentacao_views import (
-    salvar_doc_config,
-    buscar_doc_config,
-    proxy_documentacao,
-    proxy_ativo_cliente,
-)
+from .views import proxy_ativo_cliente
 from . import ipam_views as ipam
 from . import firmware_views as fw
 from . import script_views as sv
@@ -98,11 +93,6 @@ urlpatterns = [
     path('comentarios/<int:comentario_id>/deletar/', views.deletar_comentario_acesso, name='deletar_comentario_acesso'),
     path('comentarios/<int:comentario_id>/editar/', views.editar_comentario_acesso, name='editar_comentario_acesso'),
 
-    # Documentação de Rede (PHP IPAM / NetBox)
-    path('doc/config/salvar/', salvar_doc_config, name='salvar_doc_config'),
-    path('doc/config/buscar/<int:cliente_id>/', buscar_doc_config, name='buscar_doc_config'),
-    path('doc/proxy/<int:cliente_id>/<str:tipo>/', proxy_documentacao, {'path': ''}, name='proxy_doc_root'),
-    path('doc/proxy/<int:cliente_id>/<str:tipo>/<path:path>', proxy_documentacao, name='proxy_doc'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
 
@@ -114,6 +104,19 @@ urlpatterns = [
     path('vpn-wg/<int:vpn_id>/deletar/',             views.vpn_wg_deletar,       name='vpn_wg_deletar'),
     path('vpn-wg/<int:vpn_id>/reativar/',            views.vpn_wg_reativar_peer, name='vpn_wg_reativar'),
     path('vpn-wg/<int:vpn_id>/editar/',              views.vpn_wg_editar,        name='vpn_wg_editar'),
+
+    # ── Túnel OpenVPN (aba Túneis) ───────────────────────────────────────
+    path('<int:cliente_id>/vpn-ovpn/listar/',        views.vpn_ovpn_listar,          name='vpn_ovpn_listar'),
+    path('<int:cliente_id>/vpn-ovpn/criar/',         views.vpn_ovpn_criar,           name='vpn_ovpn_criar'),
+    path('vpn-ovpn/<int:vpn_id>/editar/',            views.vpn_ovpn_editar,          name='vpn_ovpn_editar'),
+    path('vpn-ovpn/<int:vpn_id>/deletar/',           views.vpn_ovpn_deletar,         name='vpn_ovpn_deletar'),
+    path('vpn-ovpn/<int:vpn_id>/reativar/',          views.vpn_ovpn_reativar,        name='vpn_ovpn_reativar'),
+    path('vpn-ovpn/<int:vpn_id>/bootstrap/',         views.vpn_ovpn_bootstrap,       name='vpn_ovpn_bootstrap'),
+    path('vpn-ovpn/<int:vpn_id>/token/regenerar/',   views.vpn_ovpn_regenerar_token, name='vpn_ovpn_regenerar_token'),
+
+    # Endpoints públicos (sem login) — o Mikrotik do cliente busca via /tool fetch
+    path('tunel-ovpn/setup/<str:token>/get_setup.rsc',        views.vpn_ovpn_setup_rsc,     name='vpn_ovpn_setup_rsc'),
+    path('tunel-ovpn/setup/<str:token>/<str:nome_arquivo>',   views.vpn_ovpn_setup_arquivo, name='vpn_ovpn_setup_arquivo'),
 
     # ── IPAM Nativo ──────────────────────────────────────────────────────
     path('<int:cliente_id>/ipam/vlans/',                 ipam.ipam_vlans_listar,    name='ipam_vlans_listar'),
@@ -132,6 +135,9 @@ urlpatterns = [
     path('ipam/subredes/<int:subrede_id>/deletar/',      ipam.ipam_subrede_deletar,   name='ipam_subrede_deletar'),
     path('ipam/subredes/<int:subrede_id>/pool-cheia/',   ipam.ipam_subrede_pool_cheia, name='ipam_subrede_pool_cheia'),
     path('ipam/subredes/<int:subrede_id>/ips/',          ipam.ipam_subrede_ips,     name='ipam_subrede_ips'),
+    path('ipam/subredes/<int:subrede_id>/grade/',         ipam.ipam_subrede_grade,   name='ipam_subrede_grade'),
+    path('ipam/subredes/<int:subrede_id>/scan/',          ipam.ipam_subrede_scan,    name='ipam_subrede_scan'),
+    path('ipam/subredes/<int:subrede_id>/scan-toggle/',   ipam.ipam_subrede_scan_toggle, name='ipam_subrede_scan_toggle'),
     path('<int:cliente_id>/ipam/ips/',                   ipam.ipam_ips_listar,      name='ipam_ips_listar'),
     path('<int:cliente_id>/ipam/ips/salvar/',            ipam.ipam_ip_salvar,       name='ipam_ip_salvar'),
     path('ipam/ips/<int:ip_id>/deletar/',                ipam.ipam_ip_deletar,      name='ipam_ip_deletar'),
@@ -139,6 +145,7 @@ urlpatterns = [
     path('<int:cliente_id>/ipam/vpns/salvar/',           ipam.ipam_vpn_salvar,      name='ipam_vpn_salvar'),
     path('ipam/vpns/<int:vpn_id>/deletar/',              ipam.ipam_vpn_deletar,     name='ipam_vpn_deletar'),
     path('<int:cliente_id>/ipam/importar/',              ipam.ipam_importar,        name='ipam_importar'),
+    path('<int:cliente_id>/ipam/historico/',             ipam.ipam_historico_listar, name='ipam_historico_listar'),
     path('<int:cliente_id>/ipam/analisar-backups/',      ipam.ipam_analisar_backups, name='ipam_analisar_backups'),
 
     # ── OpenVPN ──────────────────────────────────────────────────────────

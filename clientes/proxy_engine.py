@@ -124,6 +124,7 @@ class SSHConnectionPool:
 
     def invalidate(self, proxy_id: int):
         TunnelPortCache.invalidate(proxy_id)
+        _TunnelConnPool.invalidate_proxy(proxy_id)
         with self._lock:
             t = self._pool.pop(proxy_id, None)
             if t:
@@ -134,6 +135,7 @@ class SSHConnectionPool:
 
     def close_all(self):
         TunnelPortCache.close_all()
+        _TunnelConnPool.close_all()
         with self._lock:
             for t in self._pool.values():
                 try:
@@ -308,6 +310,88 @@ class TunnelPortCache:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# 2c. Pool de conexões HTTP(S) já estabelecidas com o equipamento
+# ──────────────────────────────────────────────────────────────────────────────
+
+class _TunnelConnPool:
+    """
+    Mantém sockets já conectados (e, no caso HTTPS, já com TLS completo) por
+    (proxy_id, host, porta, scheme), prontos para reuso.
+
+    Uma página de admin de OLT/roteador carrega dezenas de assets (CSS/JS/
+    imagens). Sem isto, CADA um deles abria um socket TCP novo e refazia o
+    handshake TLS completo do zero através do túnel SSH — essa é a causa
+    principal da demora ao logar via proxy em equipamentos HTTPS.
+
+    Reuso é seguro: só devolvemos ao pool um socket cuja resposta anterior
+    tinha Content-Length explícito (fronteira do corpo confiável, então
+    sabemos exatamente onde a próxima resposta começa) e que não pediu
+    Connection: close. Qualquer falha ao reaproveitar (broken pipe, timeout,
+    reset) é tratada em _via_tunnel como uma tentativa perdida, com fallback
+    automático para um socket novo — nunca pior que o comportamento anterior.
+    """
+    _lock     = threading.Lock()
+    _pool     = {}   # key -> [socket, ...]
+    MAX_IDLE  = 4
+
+    @classmethod
+    def acquire(cls, key):
+        with cls._lock:
+            bucket = cls._pool.get(key)
+            if bucket:
+                return bucket.pop()
+        return None
+
+    @classmethod
+    def release(cls, key, sock):
+        with cls._lock:
+            bucket = cls._pool.setdefault(key, [])
+            if len(bucket) < cls.MAX_IDLE:
+                bucket.append(sock)
+                return
+        try:
+            sock.close()
+        except Exception:
+            pass
+
+    @classmethod
+    def invalidate(cls, key):
+        with cls._lock:
+            bucket = cls._pool.pop(key, [])
+        for s in bucket:
+            try:
+                s.close()
+            except Exception:
+                pass
+
+    @classmethod
+    def invalidate_proxy(cls, proxy_id):
+        """Descarta todos os sockets pooled deste proxy — usado quando o
+        transport SSH subjacente morre (os canais sobre ele morrem junto)."""
+        with cls._lock:
+            dead = [k for k in cls._pool if k[0] == proxy_id]
+            buckets = [cls._pool.pop(k) for k in dead]
+        for bucket in buckets:
+            for s in bucket:
+                try:
+                    s.close()
+                except Exception:
+                    pass
+
+    @classmethod
+    def close_all(cls):
+        with cls._lock:
+            buckets = list(cls._pool.values())
+            cls._pool.clear()
+        for bucket in buckets:
+            for s in bucket:
+                try:
+                    s.close()
+                except Exception:
+                    pass
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # 3. Motor principal
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -415,6 +499,29 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 
             cls._ssl_ctx_cache = ctx
             return ctx
+
+    # ── Reuso de sessão TLS (handshake abreviado) ──────────────────────────────
+    # Mesmo quando não há socket pooled para reaproveitar (miss do
+    # _TunnelConnPool, ou primeira requisição), guardamos a sessão TLS por
+    # (host, porta) e a repassamos ao próximo wrap_socket(). O servidor pode
+    # então pular a troca de chaves assimétrica (a parte cara do handshake em
+    # CPUs fracas de equipamento embarcado) e fazer só o "abbreviated
+    # handshake". Se o equipamento não suportar retomada de sessão, o ssl
+    # simplesmente faz o handshake completo normalmente — sem risco.
+    _tls_session_cache: dict = {}
+    _tls_session_lock = threading.Lock()
+
+    @classmethod
+    def _get_cached_tls_session(cls, host: str, port: int):
+        with cls._tls_session_lock:
+            return cls._tls_session_cache.get((host, port))
+
+    @classmethod
+    def _save_tls_session(cls, host: str, port: int, session):
+        if session is None:
+            return
+        with cls._tls_session_lock:
+            cls._tls_session_cache[(host, port)] = session
 
     # ── Método principal ──────────────────────────────────────────────────────
 
@@ -557,7 +664,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                                 'Chrome/124.0 Safari/537.36'),
             'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-            'Connection':      'close',
+            'Connection':      'keep-alive',
         }
         for k, v in headers.items():
             kl = k.lower()
@@ -577,8 +684,16 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             )
             logger.debug("[TUNNEL] %s %s → local_port=%d", method, url, local_port)
 
+            pool_key = (self.proxy_server.id if self.proxy_server else None,
+                        target_host, target_port, scheme)
+
             def _open_socket():
-                """Abre (e opcionalmente envolve com SSL) um socket para o túnel."""
+                """Abre (e opcionalmente envolve com SSL) um socket novo para o túnel.
+                Reaproveita a sessão TLS do último handshake bem-sucedido com este
+                host:porta quando possível — o equipamento pode pular a troca de
+                chaves assimétrica (handshake abreviado), bem mais rápido em CPUs
+                fracas de equipamento embarcado. Se não suportar, cai para
+                handshake completo automaticamente."""
                 try:
                     # Porta local: timeout curto — é loopback, deve responder em ms
                     s = socket.create_connection(('127.0.0.1', local_port), timeout=3)
@@ -590,8 +705,26 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                 if scheme == 'https':
                     try:
                         ctx = self._make_ssl_context(target_host)
-                        cs = ctx.wrap_socket(s, server_hostname=target_host)
+                        cached_session = self._get_cached_tls_session(target_host, target_port)
+                        try:
+                            cs = ctx.wrap_socket(s, server_hostname=target_host,
+                                                  session=cached_session)
+                        except ssl.SSLError:
+                            # Sessão de retomada pode ter expirado no equipamento —
+                            # tenta de novo com handshake completo antes de desistir.
+                            s2 = socket.create_connection(('127.0.0.1', local_port), timeout=3)
+                            s2.settimeout(timeout[1])
+                            try:
+                                s.close()
+                            except Exception:
+                                pass
+                            s = s2
+                            cs = ctx.wrap_socket(s, server_hostname=target_host)
                         cs.settimeout(timeout[1])
+                        try:
+                            self._save_tls_session(target_host, target_port, cs.session)
+                        except Exception:
+                            pass
                         return cs
                     except Exception as e:
                         logger.error("[TUNNEL] SSL falhou (SNI=%s): %s", target_host, e)
@@ -613,18 +746,61 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                 ck = [v for n, v in r.headers.items() if n.lower() == 'set-cookie']
                 return r, c, ck
 
-            # ── 1ª tentativa ──────────────────────────────────────────────
-            conn_sock = _open_socket()
+            def _reusable(resp) -> bool:
+                """Só reaproveita a conexão se a fronteira do corpo da resposta
+                anterior é inequívoca (Content-Length presente) e o equipamento
+                não pediu para fechar — caso contrário fecha, sem risco."""
+                conn_hdr = (resp.getheader('Connection', '') or '').lower()
+                return (resp.getheader('Content-Length') is not None
+                        and 'close' not in conn_hdr)
+
+            # ── 1ª tentativa: reaproveita socket do pool, se houver ─────────
+            conn_sock = _TunnelConnPool.acquire(pool_key)
+            reused    = conn_sock is not None
             if conn_sock is None:
-                return None
+                conn_sock = _open_socket()
+                if conn_sock is None:
+                    return None
 
             try:
                 resp, content, cookies_raw = _do_request(conn_sock, req_headers)
-                logger.debug("[TUNNEL] status=%d size=%d", resp.status, len(content))
+                logger.debug("[TUNNEL] status=%d size=%d reused=%s",
+                             resp.status, len(content), reused)
             except Exception as e:
-                logger.error("[TUNNEL] Erro na requisição HTTP: %s", e)
-                return None
-            finally:
+                if reused:
+                    # Socket pooled pode ter morrido (idle timeout no equipamento) —
+                    # tenta 1x com conexão nova antes de desistir.
+                    logger.debug("[TUNNEL] Socket pooled morto (%s), reconectando...", e)
+                    try:
+                        conn_sock.close()
+                    except Exception:
+                        pass
+                    conn_sock = _open_socket()
+                    if conn_sock is None:
+                        return None
+                    reused = False
+                    try:
+                        resp, content, cookies_raw = _do_request(conn_sock, req_headers)
+                        logger.debug("[TUNNEL] status=%d size=%d (retry)",
+                                     resp.status, len(content))
+                    except Exception as e2:
+                        logger.error("[TUNNEL] Erro na requisição HTTP: %s", e2)
+                        try:
+                            conn_sock.close()
+                        except Exception:
+                            pass
+                        return None
+                else:
+                    logger.error("[TUNNEL] Erro na requisição HTTP: %s", e)
+                    try:
+                        conn_sock.close()
+                    except Exception:
+                        pass
+                    return None
+
+            if _reusable(resp):
+                _TunnelConnPool.release(pool_key, conn_sock)
+            else:
                 try:
                     conn_sock.close()
                 except Exception:

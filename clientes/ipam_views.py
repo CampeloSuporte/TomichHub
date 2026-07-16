@@ -8,18 +8,114 @@ import json
 import logging
 import os
 import re
+import subprocess
 
+import paramiko
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    Cliente, Acesso,
+    Cliente, Acesso, ProxyServer,
     IPAMVlan, IPAMPrefixo, IPAMSubRede, IPAMEndereco, IPAMVpnDoc,
+    IPAMScanResultado, IPAMAuditLog,
 )
+from .consumers import _proxy_pool
 
 logger = logging.getLogger(__name__)
+
+SCAN_MAX_HOSTS  = 1024
+SCAN_TIMEOUT_SEC = 60
+
+
+def _build_scan_cmd(hosts):
+    """Ping em lote: dispara todos em paralelo (&) e espera (wait) — um único
+    round-trip em vez de um exec/subprocess por IP, essencial pra varrer uma
+    /24 sem levar minutos. `hosts` só contém strings vindas de ipaddress.ip_network,
+    nunca input de usuário, então a interpolação direta no shell é segura."""
+    alvo = ' '.join(hosts)
+    return (
+        f'for ip in {alvo}; do '
+        f'( ping -c1 -W1 "$ip" >/dev/null 2>&1 && echo "$ip:1" || echo "$ip:0" ) & '
+        f'done; wait'
+    )
+
+
+def _parse_scan_output(output):
+    resultados = {}
+    for linha in output.splitlines():
+        linha = linha.strip()
+        if ':' not in linha:
+            continue
+        ip, flag = linha.rsplit(':', 1)
+        resultados[ip.strip()] = (flag.strip() == '1')
+    return resultados
+
+
+def _scan_subrede_hosts(subrede):
+    """
+    Ping em lote de todos os hosts de uma sub-rede, gravando o resultado em
+    IPAMScanResultado (existe mesmo sem IPAMEndereco cadastrado — permite
+    achar hosts respondendo mas não documentados). IP privado: via proxy SSH
+    do pool (_proxy_pool, mesmo usado pelos terminais — já tem keepalive e
+    health-check). IP público: ping local direto do servidor CRM.
+    """
+    net = ipaddress.ip_network(subrede.rede, strict=False)
+    hosts = [str(h) for h in net.hosts()] if net.num_addresses > 2 else [str(net.network_address)]
+    if not hosts:
+        return {'online': 0, 'offline': 0, 'total': 0}
+    if len(hosts) > SCAN_MAX_HOSTS:
+        raise ValueError(
+            f'Sub-rede grande demais para scan ({len(hosts)} hosts, limite {SCAN_MAX_HOSTS}). '
+            f'Divida em blocos menores primeiro.'
+        )
+
+    cmd = _build_scan_cmd(hosts)
+    is_private = ipaddress.ip_address(hosts[0]).is_private
+
+    if is_private:
+        proxy = ProxyServer.objects.filter(cliente=subrede.cliente, ativo=True).first()
+        if not proxy:
+            raise ValueError('Sub-rede privada sem proxy SSH ativo configurado para este cliente.')
+
+        client = _proxy_pool.get(proxy)
+        if client is None:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(
+                hostname=proxy.host, port=int(proxy.porta),
+                username=proxy.usuario, password=proxy.senha,
+                timeout=10, look_for_keys=False, allow_agent=False,
+                banner_timeout=10,
+            )
+            _proxy_pool.put(proxy, client)
+
+        try:
+            _stdin, stdout, _stderr = client.exec_command(cmd, timeout=SCAN_TIMEOUT_SEC)
+            output = stdout.read().decode('utf-8', errors='ignore')
+        except Exception:
+            _proxy_pool.remove(proxy)
+            raise
+    else:
+        proc = subprocess.run(['bash', '-c', cmd], capture_output=True, text=True,
+                               timeout=SCAN_TIMEOUT_SEC)
+        output = proc.stdout
+
+    resultados = _parse_scan_output(output)
+    online_count = 0
+    for ip, online in resultados.items():
+        IPAMScanResultado.objects.update_or_create(
+            cliente=subrede.cliente, ip=ip, defaults={'online': online},
+        )
+        if online:
+            online_count += 1
+
+    subrede.ultimo_scan = timezone.now()
+    subrede.save(update_fields=['ultimo_scan'])
+
+    return {'online': online_count, 'offline': len(resultados) - online_count, 'total': len(resultados)}
 
 
 def _cliente(request, cliente_id):
@@ -31,6 +127,78 @@ def _json(request):
         return json.loads(request.body)
     except Exception:
         return {}
+
+
+def _computar_pai_id(alvo_net, candidatos, excluir_id=None):
+    """
+    Acha o prefixo mais específico, dentre `candidatos`, que contém `alvo_net`.
+    candidatos: iterável de (id, cidr_str) do mesmo cliente.
+    Pure-python (só usa ipaddress) — importável tanto daqui quanto da migration
+    de backfill (0075) sem acoplar a migration ao estado atual dos models.
+    """
+    melhor_id, melhor_pl = None, -1
+    for cid, cidr_str in candidatos:
+        if excluir_id is not None and cid == excluir_id:
+            continue
+        try:
+            net = ipaddress.ip_network(cidr_str, strict=False)
+        except ValueError:
+            continue
+        if net.version != alvo_net.version or net.prefixlen >= alvo_net.prefixlen:
+            continue
+        if alvo_net.subnet_of(net) and net.prefixlen > melhor_pl:
+            melhor_id, melhor_pl = cid, net.prefixlen
+    return melhor_id
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Log de auditoria — quem mudou o quê
+# ─────────────────────────────────────────────────────────────────────────────
+
+_LOG_CAMPOS = {
+    'vlan':    ['numero', 'nome', 'descricao', 'status'],
+    'prefixo': ['prefixo', 'tipo', 'status', 'descricao', 'local', 'pool_cheia'],
+    'subrede': ['rede', 'gateway', 'descricao', 'local', 'status', 'pool_cheia', 'prefixo_id', 'vlan_id'],
+    'ip':      ['ip', 'tipo', 'status', 'hostname', 'descricao', 'mac_address', 'subrede_id'],
+    'vpn':     ['nome', 'tipo', 'endpoint_local', 'endpoint_remoto', 'rede_local', 'rede_remota',
+                'as_local', 'as_remoto', 'descricao', 'status'],
+}
+
+
+def _ipam_snapshot(modelo, obj):
+    """Dict raso dos campos relevantes do objeto — usado tanto pra capturar
+    o estado 'antes' quanto pra montar o snapshot de created/deleted."""
+    campos = _LOG_CAMPOS.get(modelo, [])
+    return {c: getattr(obj, c, None) for c in campos}
+
+
+def _ipam_log(request, cliente, modelo, obj, acao, antes=None):
+    """
+    Registra uma entrada de IPAMAuditLog. Em 'updated', só grava os campos
+    que de fato mudaram (diff entre `antes`, capturado pelo caller ANTES de
+    salvar, e o estado atual do objeto) — se nada mudou, não grava nada.
+    Nunca deve derrubar a operação principal se falhar (log é best-effort).
+    """
+    try:
+        if acao == 'updated' and antes is not None:
+            depois = _ipam_snapshot(modelo, obj)
+            mudancas = {
+                campo: {'antes': valor_antigo, 'depois': depois.get(campo)}
+                for campo, valor_antigo in antes.items()
+                if valor_antigo != depois.get(campo)
+            }
+            if not mudancas:
+                return
+        else:
+            mudancas = _ipam_snapshot(modelo, obj)
+
+        IPAMAuditLog.objects.create(
+            cliente=cliente, modelo=modelo, objeto_id=obj.id,
+            objeto_repr=str(obj)[:255], acao=acao, mudancas=mudancas,
+            usuario=request.user if request.user.is_authenticated else None,
+        )
+    except Exception as e:
+        logger.warning(f'_ipam_log falhou ({modelo}/{acao} #{getattr(obj, "id", "?")}): {e}')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -62,13 +230,16 @@ def ipam_vlan_salvar(request, cliente_id):
             raise ValueError('VLAN fora do range 1-4094')
         if vid:
             obj = get_object_or_404(IPAMVlan, id=vid, cliente=c)
+            antes = _ipam_snapshot('vlan', obj)
         else:
             obj = IPAMVlan(cliente=c)
+            antes = None
         obj.numero    = numero
         obj.nome      = body.get('nome', '').strip() or f'VLAN {numero}'
         obj.descricao = body.get('descricao', '').strip()
         obj.status    = body.get('status', 'ativo')
         obj.save()
+        _ipam_log(request, c, 'vlan', obj, 'updated' if vid else 'created', antes)
         return JsonResponse({'ok': True, 'id': obj.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -78,6 +249,7 @@ def ipam_vlan_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 def ipam_vlan_deletar(request, vlan_id):
     obj = get_object_or_404(IPAMVlan, id=vlan_id)
+    _ipam_log(request, obj.cliente, 'vlan', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
 
@@ -90,13 +262,24 @@ def ipam_vlan_deletar(request, vlan_id):
 def ipam_prefixos_listar(request, cliente_id):
     c  = _cliente(request, cliente_id)
     qs = IPAMPrefixo.objects.filter(cliente=c)
+    by_id = {p.id: p for p in qs}
+
+    def _nivel(p):
+        n, cursor, visto = 0, p.pai_id, {p.id}
+        while cursor and cursor in by_id and cursor not in visto:
+            n += 1
+            visto.add(cursor)
+            cursor = by_id[cursor].pai_id
+        return n
+
     data = []
-    for p in qs:
+    for p in by_id.values():
         sub_count = p.subredes.count()
         data.append({
             'id': p.id, 'prefixo': p.prefixo, 'tipo': p.tipo,
             'status': p.status, 'descricao': p.descricao,
             'local': p.local, 'subredes': sub_count, 'pool_cheia': p.pool_cheia,
+            'pai_id': p.pai_id, 'nivel': _nivel(p),
         })
     data.sort(key=lambda x: (ipaddress.ip_network(x['prefixo'], strict=False).version,
                               ipaddress.ip_network(x['prefixo'], strict=False)))
@@ -111,17 +294,39 @@ def ipam_prefixo_salvar(request, cliente_id):
     pid  = body.get('id')
     try:
         prefixo_str = body.get('prefixo', '').strip()
-        ipaddress.ip_network(prefixo_str, strict=False)  # valida CIDR
+        alvo_net = ipaddress.ip_network(prefixo_str, strict=False)  # valida CIDR
         if pid:
             obj = get_object_or_404(IPAMPrefixo, id=pid, cliente=c)
+            antes = _ipam_snapshot('prefixo', obj)
         else:
             obj = IPAMPrefixo(cliente=c)
+            antes = None
         obj.prefixo   = prefixo_str
         obj.tipo      = body.get('tipo', 'rede')
         obj.status    = body.get('status', 'ativo')
         obj.descricao = body.get('descricao', '').strip()
         obj.local     = body.get('local', '').strip()
+
+        candidatos = IPAMPrefixo.objects.filter(cliente=c).exclude(id=obj.id).values_list('id', 'prefixo')
+        obj.pai_id = _computar_pai_id(alvo_net, candidatos)
         obj.save()
+
+        # Prefixos que antes tinham outro pai podem agora ficar mais bem
+        # posicionados sob o que acabou de ser salvo (ex: criar um /16 depois
+        # de já existir um /24 dentro dele) — reancorar os filhos diretos.
+        outros = IPAMPrefixo.objects.filter(cliente=c).exclude(id=obj.id).values_list('id', 'prefixo')
+        for outro_id, outro_cidr in outros:
+            try:
+                outro_net = ipaddress.ip_network(outro_cidr, strict=False)
+            except ValueError:
+                continue
+            if outro_net.version == alvo_net.version and outro_net.prefixlen > alvo_net.prefixlen \
+                    and outro_net.subnet_of(alvo_net):
+                novo_pai = _computar_pai_id(outro_net, IPAMPrefixo.objects.filter(cliente=c)
+                                             .exclude(id=outro_id).values_list('id', 'prefixo'))
+                IPAMPrefixo.objects.filter(id=outro_id).exclude(pai_id=novo_pai).update(pai_id=novo_pai)
+
+        _ipam_log(request, c, 'prefixo', obj, 'updated' if pid else 'created', antes)
         return JsonResponse({'ok': True, 'id': obj.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -131,6 +336,7 @@ def ipam_prefixo_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 def ipam_prefixo_deletar(request, prefixo_id):
     obj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _ipam_log(request, obj.cliente, 'prefixo', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
 
@@ -479,8 +685,10 @@ def ipam_subrede_salvar(request, cliente_id):
         ipaddress.ip_network(rede_str, strict=False)
         if sid:
             obj = get_object_or_404(IPAMSubRede, id=sid, cliente=c)
+            antes = _ipam_snapshot('subrede', obj)
         else:
             obj = IPAMSubRede(cliente=c)
+            antes = None
         obj.rede      = rede_str
         obj.gateway   = body.get('gateway', '').strip()
         obj.descricao = body.get('descricao', '').strip()
@@ -492,6 +700,7 @@ def ipam_subrede_salvar(request, cliente_id):
         vid = body.get('vlan_id')
         obj.vlan = IPAMVlan.objects.filter(id=vid, cliente=c).first() if vid else None
         obj.save()
+        _ipam_log(request, c, 'subrede', obj, 'updated' if sid else 'created', antes)
         return JsonResponse({'ok': True, 'id': obj.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -501,6 +710,7 @@ def ipam_subrede_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 def ipam_subrede_deletar(request, subrede_id):
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _ipam_log(request, obj.cliente, 'subrede', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
 
@@ -516,12 +726,102 @@ def ipam_subrede_pool_cheia(request, subrede_id):
 
 
 @login_required
+@require_http_methods(['POST'])
+def ipam_subrede_scan(request, subrede_id):
+    """Dispara um scan (ping em lote) imediato da sub-rede."""
+    s = get_object_or_404(IPAMSubRede, id=subrede_id)
+    try:
+        resultado = _scan_subrede_hosts(s)
+        return JsonResponse({'ok': True, **resultado})
+    except Exception as e:
+        logger.error(f'ipam_subrede_scan: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(['POST'])
+def ipam_subrede_scan_toggle(request, subrede_id):
+    """Liga/desliga o scan automático periódico (Celery) desta sub-rede."""
+    obj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    obj.scan_automatico = not obj.scan_automatico
+    obj.save(update_fields=['scan_automatico'])
+    return JsonResponse({'ok': True, 'scan_automatico': obj.scan_automatico})
+
+
+@login_required
 def ipam_subrede_ips(request, subrede_id):
     """Lista IPs de uma sub-rede específica."""
     s  = get_object_or_404(IPAMSubRede, id=subrede_id)
     qs = IPAMEndereco.objects.filter(subrede=s).select_related('acesso')
     data = [_ip_dict(e) for e in qs]
     return JsonResponse({'ok': True, 'ips': data, 'subrede': s.rede})
+
+
+GRADE_MAX_ENDERECOS = 4096
+
+
+@login_required
+def ipam_subrede_grade(request, subrede_id):
+    """
+    Grade completa dos endereços de uma sub-rede (estilo phpIPAM): gera todo
+    o range CIDR e cruza com IPAMEndereco (documentado) + IPAMScanResultado
+    (online/offline do último scan) — mostra inclusive hosts que respondem
+    ping mas nunca foram cadastrados (achado de descoberta).
+    """
+    s = get_object_or_404(IPAMSubRede, id=subrede_id)
+    try:
+        net = ipaddress.ip_network(s.rede, strict=False)
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'erro': f'Rede inválida: {e}'}, status=400)
+
+    if net.num_addresses > GRADE_MAX_ENDERECOS:
+        return JsonResponse({
+            'ok': False,
+            'erro': (f'Sub-rede grande demais para grade visual ({net.num_addresses} endereços, '
+                     f'limite {GRADE_MAX_ENDERECOS}). Divida em blocos menores primeiro.'),
+        }, status=400)
+
+    enderecos = {e.ip: e for e in IPAMEndereco.objects.filter(subrede=s).select_related('acesso')}
+    scans     = {r.ip: r for r in IPAMScanResultado.objects.filter(cliente=s.cliente)}
+    gateway_ip = (s.gateway or '').split('/')[0].strip()
+    tem_rede_broadcast = (net.version == 4 and net.num_addresses > 2)
+
+    grade = []
+    for host in net:
+        ip_str = str(host)
+        especial = None
+        if tem_rede_broadcast:
+            if host == net.network_address:
+                especial = 'rede'
+            elif host == net.broadcast_address:
+                especial = 'broadcast'
+        if especial is None and gateway_ip and ip_str == gateway_ip:
+            especial = 'gateway'
+
+        e = enderecos.get(ip_str)
+        r = scans.get(ip_str)
+        grade.append({
+            'ip': ip_str,
+            'especial': especial,
+            'endereco_id': e.id if e else None,
+            'tipo': e.tipo if e else None,
+            'status': e.status if e else None,
+            'hostname': e.hostname if e else '',
+            'descricao': e.descricao if e else '',
+            'mac_address': e.mac_address if e else '',
+            'online': r.online if r else None,
+            'checado_em': r.checado_em.isoformat() if r else None,
+        })
+
+    return JsonResponse({
+        'ok': True,
+        'rede': str(net),
+        'gateway': gateway_ip,
+        'total': len(grade),
+        'grade': grade,
+        'ultimo_scan': s.ultimo_scan.isoformat() if s.ultimo_scan else None,
+        'scan_automatico': s.scan_automatico,
+    })
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -569,8 +869,10 @@ def ipam_ip_salvar(request, cliente_id):
         ipaddress.ip_address(ip_str)
         if eid:
             obj = get_object_or_404(IPAMEndereco, id=eid, cliente=c)
+            antes = _ipam_snapshot('ip', obj)
         else:
             obj = IPAMEndereco(cliente=c)
+            antes = None
         obj.ip          = ip_str
         obj.tipo        = body.get('tipo', 'fixo')
         obj.status      = body.get('status', 'ativo')
@@ -582,6 +884,7 @@ def ipam_ip_salvar(request, cliente_id):
         aid = body.get('acesso_id')
         obj.acesso = Acesso.objects.filter(id=aid, cliente=c).first() if aid else None
         obj.save()
+        _ipam_log(request, c, 'ip', obj, 'updated' if eid else 'created', antes)
         return JsonResponse({'ok': True, 'id': obj.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -591,6 +894,7 @@ def ipam_ip_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 def ipam_ip_deletar(request, ip_id):
     obj = get_object_or_404(IPAMEndereco, id=ip_id)
+    _ipam_log(request, obj.cliente, 'ip', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
 
@@ -624,8 +928,10 @@ def ipam_vpn_salvar(request, cliente_id):
     try:
         if vid:
             obj = get_object_or_404(IPAMVpnDoc, id=vid, cliente=c)
+            antes = _ipam_snapshot('vpn', obj)
         else:
             obj = IPAMVpnDoc(cliente=c)
+            antes = None
         obj.nome            = body.get('nome', '').strip()
         obj.tipo            = body.get('tipo', 'ipsec')
         obj.endpoint_local  = body.get('endpoint_local', '').strip()
@@ -637,6 +943,7 @@ def ipam_vpn_salvar(request, cliente_id):
         obj.descricao       = body.get('descricao', '').strip()
         obj.status          = body.get('status', 'ativo')
         obj.save()
+        _ipam_log(request, c, 'vpn', obj, 'updated' if vid else 'created', antes)
         return JsonResponse({'ok': True, 'id': obj.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -646,6 +953,7 @@ def ipam_vpn_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 def ipam_vpn_deletar(request, vpn_id):
     obj = get_object_or_404(IPAMVpnDoc, id=vpn_id)
+    _ipam_log(request, obj.cliente, 'vpn', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
 
@@ -881,6 +1189,7 @@ def _parse_mikrotik(content):
     Parseia backup MikroTik.
     Extrai VLANs de  /interface vlan add ... vlan-id=NN name="..."
     Extrai IPs de    /ip address add address=X/XX comment="DESC" interface="..."
+             e       /ipv6 address add address=X::X/XX comment="DESC" interface="..."
     """
     vlans = {}
     ips   = []
@@ -895,21 +1204,25 @@ def _parse_mikrotik(content):
         nome = nm.group(1) if nm else f'VLAN {vlan_id}'
         vlans.setdefault(vlan_id, nome)
 
-    for m in re.finditer(r'/ip address add\b[^\n]+', content, re.IGNORECASE):
-        line    = m.group(0)
-        ip_m    = re.search(r'\baddress=([\d./]+)', line)
-        if not ip_m:
-            continue
-        ip_cidr = ip_m.group(1)
-        cm      = re.search(r'comment="([^"]+)"', line)
-        desc    = cm.group(1) if cm else ''
-        ifm     = re.search(r'interface="([^"]+)"', line)
-        iface   = ifm.group(1) if ifm else ''
-        vlan_num = None
-        vm = re.search(r'[Vv][Ll][Aa][Nn][-_]?(\d+)', iface)
-        if vm:
-            vlan_num = int(vm.group(1))
-        ips.append((ip_cidr, desc, vlan_num))
+    def _extrai_enderecos(padrao_secao, padrao_endereco):
+        for m in re.finditer(padrao_secao, content, re.IGNORECASE):
+            line    = m.group(0)
+            ip_m    = re.search(padrao_endereco, line)
+            if not ip_m:
+                continue
+            ip_cidr = ip_m.group(1)
+            cm      = re.search(r'comment="([^"]+)"', line)
+            desc    = cm.group(1) if cm else ''
+            ifm     = re.search(r'interface="([^"]+)"', line)
+            iface   = ifm.group(1) if ifm else ''
+            vlan_num = None
+            vm = re.search(r'[Vv][Ll][Aa][Nn][-_]?(\d+)', iface)
+            if vm:
+                vlan_num = int(vm.group(1))
+            ips.append((ip_cidr, desc, vlan_num))
+
+    _extrai_enderecos(r'/ip address add\b[^\n]+', r'\baddress=([\d./]+)')
+    _extrai_enderecos(r'/ipv6 address add\b[^\n]+', r'\baddress=([0-9a-fA-F:]+/\d+)')
 
     return {
         'vlans': [{'numero': n, 'nome': v} for n, v in vlans.items()],
@@ -920,7 +1233,8 @@ def _parse_mikrotik(content):
 def _parse_huawei(content):
     """
     Parseia backup Huawei VRP.
-    Blocos de interface: description, ip address X.X.X.X MASK, vlan-type dot1q NN
+    Blocos de interface: description, ip address X.X.X.X MASK, ipv6 address X::X/XX,
+    vlan-type dot1q NN
     """
     vlans = {}
     ips   = []
@@ -934,7 +1248,9 @@ def _parse_huawei(content):
 
         iface_name = lines[0][len('interface'):].strip()
         desc       = ''
-        ip_cidr    = None
+        # Lista, não valor único — uma interface dual-stack tem IPv4 E IPv6
+        # (e às vezes IPv4 secundário) ao mesmo tempo.
+        ip_cidrs   = []
         vlan_num   = None
 
         for line in lines[1:]:
@@ -951,17 +1267,21 @@ def _parse_huawei(content):
             m = re.match(r'ip address\s+([\d.]+)\s+([\d.]+)', ls, re.IGNORECASE)
             if m:
                 try:
-                    net     = ipaddress.ip_network(f'{m.group(1)}/{m.group(2)}', strict=False)
-                    ip_cidr = f'{m.group(1)}/{net.prefixlen}'
+                    net = ipaddress.ip_network(f'{m.group(1)}/{m.group(2)}', strict=False)
+                    ip_cidrs.append(f'{m.group(1)}/{net.prefixlen}')
                 except Exception:
                     pass
+
+            m = re.match(r'ipv6 address\s+([0-9a-fA-F:]+/\d+)', ls, re.IGNORECASE)
+            if m:
+                ip_cidrs.append(m.group(1))
 
             m = re.match(r'vlan-type dot1q\s+(\d+)', ls, re.IGNORECASE)
             if m:
                 vlan_num = int(m.group(1))
                 vlans.setdefault(vlan_num, f'VLAN {vlan_num}')
 
-        if ip_cidr:
+        for ip_cidr in ip_cidrs:
             ips.append((ip_cidr, desc or iface_name, vlan_num))
 
     return {
@@ -973,7 +1293,8 @@ def _parse_huawei(content):
 def _parse_generic(content):
     """
     Parser genérico (Parks, Cisco IOS, etc.).
-    Procura blocos interface com ip address X/XX ou ip address X M.
+    Procura blocos interface com ip address X/XX, ip address X M ou
+    ipv6 address X::X/XX.
     """
     vlans = {}
     ips   = []
@@ -990,7 +1311,9 @@ def _parse_generic(content):
 
         iface_name = re.sub(r'^interface\s+', '', first, flags=re.IGNORECASE).strip()
         desc       = ''
-        ip_cidr    = None
+        # Lista, não valor único — uma interface dual-stack tem IPv4 E IPv6
+        # (e às vezes IPv4 secundário) ao mesmo tempo.
+        ip_cidrs   = []
         vlan_num   = None
 
         for line in lines[1:]:
@@ -1004,23 +1327,26 @@ def _parse_generic(content):
 
             m = re.match(r'ip(?:v4)? address\s+([\d]+\.[\d]+\.[\d]+\.[\d]+/\d+)', ls, re.IGNORECASE)
             if m:
-                ip_cidr = m.group(1)
-
-            if not ip_cidr:
+                ip_cidrs.append(m.group(1))
+            else:
                 m = re.match(r'ip(?:v4)? address\s+([\d.]+)\s+([\d.]+)', ls, re.IGNORECASE)
                 if m:
                     try:
-                        net     = ipaddress.ip_network(f'{m.group(1)}/{m.group(2)}', strict=False)
-                        ip_cidr = f'{m.group(1)}/{net.prefixlen}'
+                        net = ipaddress.ip_network(f'{m.group(1)}/{m.group(2)}', strict=False)
+                        ip_cidrs.append(f'{m.group(1)}/{net.prefixlen}')
                     except Exception:
                         pass
+
+            m = re.match(r'ipv6 address\s+([0-9a-fA-F:]+/\d+)', ls, re.IGNORECASE)
+            if m:
+                ip_cidrs.append(m.group(1))
 
             m = re.search(r'dot1[qQ]\s+(\d+)', ls)
             if m:
                 vlan_num = int(m.group(1))
                 vlans.setdefault(vlan_num, f'VLAN {vlan_num}')
 
-        if ip_cidr:
+        for ip_cidr in ip_cidrs:
             ips.append((ip_cidr, desc or iface_name, vlan_num))
 
     return {
@@ -1953,4 +2279,45 @@ def ipam_analisar_backups(request, cliente_id):
         'atualizados_ips': atualizados_ips,
         'erros': erros[:20],
         'total_erros': len(erros),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Histórico / auditoria
+# ─────────────────────────────────────────────────────────────────────────────
+
+HISTORICO_PAGE_SIZE = 50
+
+
+@login_required
+def ipam_historico_listar(request, cliente_id):
+    c = _cliente(request, cliente_id)
+    qs = IPAMAuditLog.objects.filter(cliente=c).select_related('usuario')
+
+    modelo = request.GET.get('modelo', '').strip()
+    if modelo:
+        qs = qs.filter(modelo=modelo)
+
+    try:
+        pagina = max(1, int(request.GET.get('pagina', 1)))
+    except (TypeError, ValueError):
+        pagina = 1
+    offset = (pagina - 1) * HISTORICO_PAGE_SIZE
+
+    total = qs.count()
+    itens = qs[offset:offset + HISTORICO_PAGE_SIZE]
+
+    data = [{
+        'id': log.id,
+        'criado_em': log.criado_em.isoformat(),
+        'modelo': log.modelo, 'modelo_label': log.get_modelo_display(),
+        'acao': log.acao, 'acao_label': log.get_acao_display(),
+        'objeto_id': log.objeto_id, 'objeto_repr': log.objeto_repr,
+        'mudancas': log.mudancas,
+        'usuario': log.usuario.get_username() if log.usuario else '—',
+    } for log in itens]
+
+    return JsonResponse({
+        'ok': True, 'historico': data, 'total': total,
+        'pagina': pagina, 'total_paginas': max(1, -(-total // HISTORICO_PAGE_SIZE)),
     })

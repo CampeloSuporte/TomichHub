@@ -17,6 +17,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 body.embed-mode #btn-fechar{display:none!important}
 /* ── Toolbar ── */
 #toolbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;flex-shrink:0;z-index:10}
+@media (max-width: 768px) {
+    #toolbar { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    #toolbar::-webkit-scrollbar { display: none; }
+    .tb-btn { flex-shrink: 0; }
+}
 .tb-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.8rem;display:flex;align-items:center;gap:6px;transition:all .15s}
 .tb-btn:hover{background:rgba(255,255,255,.1);border-color:var(--cyan);color:var(--cyan)}
 .tb-btn.active{background:rgba(0,217,255,.15);border-color:var(--cyan);color:var(--cyan)}
@@ -78,9 +83,9 @@ body.embed-mode #btn-fechar{display:none!important}
 #statusbar span{display:flex;align-items:center;gap:4px}
 /* ── Modals ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center}
-.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:380px;max-height:80vh;overflow-y:auto}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:380px;max-width:92vw;max-height:80vh;overflow-y:auto}
 .modal-title{font-size:1rem;font-weight:700;color:var(--cyan);margin-bottom:16px}
-.modal-footer{display:flex;gap:8px;margin-top:16px}
+.modal-footer{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
 .btn-ok{flex:1;padding:8px;background:rgba(63,185,80,.15);border:1px solid var(--green);color:var(--green);border-radius:6px;cursor:pointer;font-size:.85rem}
 .btn-cancel{flex:1;padding:8px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:.85rem}
 /* Link IP labels */

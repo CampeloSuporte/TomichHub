@@ -113,7 +113,7 @@ def redirect_user_by_role(user):
         return redirect('quadro_geral')
     
     try:
-        cliente = Cliente.objects.get(usuario=user)
+        cliente = Cliente.objects.get_by_usuario_vinculado(user)
         return redirect('cliente_dashboard')  # ← ALTERADO
     except Cliente.DoesNotExist:
         messages.error(None, 'Sua conta não possui acesso ao sistema.')

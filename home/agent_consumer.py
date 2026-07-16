@@ -100,7 +100,7 @@ class AgentNOCConsumer(AsyncWebsocketConsumer):
                 # Tentar pegar pelo perfil do usuário
                 try:
                     from clientes.models import Cliente
-                    cliente = await sync_to_async(Cliente.objects.get)(usuario=user)
+                    cliente = await sync_to_async(Cliente.objects.get_by_usuario_vinculado)(user)
                 except Exception:
                     pass
 

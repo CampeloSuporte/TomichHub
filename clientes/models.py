@@ -7,9 +7,43 @@ from django.contrib.auth.models import User
 from funcao_equipamento.models import Funcao_equipamento
 from modelo_equipamento.models import Modelo_equipamento
 
+class ClienteManager(models.Manager):
+    """
+    Um usuário pode acessar o painel do cliente como `usuario` (principal,
+    obrigatório) ou como um dos `usuarios_adicionais` (opcional). Os métodos
+    abaixo centralizam essa checagem para manter o mesmo contrato de
+    `Cliente.objects.get(usuario=x)` / `.filter(usuario=x)` usado em dezenas
+    de views — assim quem já chamava `.get()` continua recebendo o cliente
+    ou `Cliente.DoesNotExist`, sem precisar saber que agora existem 2 vínculos.
+    """
+
+    def get_by_usuario_vinculado(self, user):
+        cliente = self.filter(
+            models.Q(usuario=user) | models.Q(usuarios_adicionais=user)
+        ).distinct().first()
+        if cliente is None:
+            raise self.model.DoesNotExist(
+                f"Cliente matching query does not exist for usuario={user!r}"
+            )
+        return cliente
+
+    def filter_by_usuario_vinculado(self, user):
+        return self.filter(
+            models.Q(usuario=user) | models.Q(usuarios_adicionais=user)
+        ).distinct()
+
+
 # Extensão do User para armazenar dados específicos do cliente
 class Cliente(models.Model):
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE)
+    # Login do cliente no portal — opcional: um cliente pode ser cadastrado
+    # e gerenciado só pela equipe interna, sem acesso próprio ao portal,
+    # e vinculado a um usuário depois.
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    usuarios_adicionais = models.ManyToManyField(
+        User, related_name='clientes_adicionais', blank=True,
+        verbose_name='Usuários adicionais',
+        help_text='Outros usuários que também podem logar e acessar o painel deste cliente.'
+    )
     nome_empresa = models.CharField(max_length=255)
     cnpj = models.CharField(max_length=18, unique=True)
     endereco = models.CharField(max_length=200)
@@ -24,6 +58,8 @@ class Cliente(models.Model):
         verbose_name='Notas do Agent NOC',
         help_text='Informações, peculiaridades e contexto do cliente para o Agent NOC (topologia, acordos, restrições).'
     )
+
+    objects = ClienteManager()
 
     def __str__(self):
         return self.nome_empresa
@@ -334,6 +370,61 @@ class VPNWireGuard(models.Model):
         return [r.strip() for r in re.split(r'[,\n]+', self.redes_privadas) if r.strip()]
 
 
+def _ovpn_redes_padrao():
+    return (
+        '100.64.0.0/10\n'
+        '172.16.0.0/12\n'
+        '10.0.0.0/8\n'
+        '192.168.0.0/16\n'
+        '198.18.0.0/15'
+    )
+
+
+def _ovpn_token_default():
+    import secrets
+    return secrets.token_urlsafe(32)
+
+
+class VPNOpenVPN(models.Model):
+    """Túnel OpenVPN por cliente (MikroTik) — cada túnel roda em sua PRÓPRIA
+    instância de servidor (porta/interface/sub-rede dedicadas), igual ao
+    modelo já usado pelo WireGuard (VPNWireGuard.interface_nome). Isso evita
+    que dois clientes com as mesmas redes "alcançáveis" (o padrão CGNAT+
+    RFC1918) tenham tráfego roteado para o cliente errado quando ambos estão
+    conectados ao mesmo tempo — cada instância só aceita e só serve UM
+    cliente. Ver clientes/openvpn_tunnel_manager.py."""
+    cliente        = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='vpns_ovpn')
+    nome           = models.CharField(max_length=100, default='VPN MikroTik')
+    common_name    = models.CharField(max_length=100, unique=True, help_text='CN do certificado do cliente')
+    redes_privadas = models.TextField(blank=True, default=_ovpn_redes_padrao,
+                          help_text='Uma rede por linha, ex: 192.168.1.0/24')
+    vpn_ip         = models.GenericIPAddressField(unique=True, help_text='IP do cliente no túnel (10.91.N.2)')
+    porta          = models.IntegerField(unique=True, null=True, blank=True,
+                          help_text='Porta TCP dedicada desta instância (1195+N)')
+    interface_nome = models.CharField(max_length=30, blank=True, default='',
+                          help_text='Nome da instância/interface dedicada (ex: server-crm-1)')
+    subnet_n       = models.IntegerField(null=True, blank=True,
+                          help_text='N usado para compor a sub-rede dedicada 10.91.{N}.0/30')
+    token          = models.CharField(max_length=64, unique=True, default=_ovpn_token_default,
+                          help_text='Token do endpoint público de bootstrap — regenerar invalida o link antigo')
+    cert_emitido   = models.BooleanField(default=False)
+    ativo          = models.BooleanField(default=True)
+    criado_em      = models.DateTimeField(auto_now_add=True)
+    atualizado_em  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'VPN OpenVPN'
+        verbose_name_plural = 'VPNs OpenVPN'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.nome} — {self.cliente.nome_empresa} ({self.vpn_ip})'
+
+    def redes_lista(self):
+        import re
+        return [r.strip() for r in re.split(r'[,\n]+', self.redes_privadas) if r.strip()]
+
+
 class BackupTemplate(models.Model):
     """Templates de backup para diferentes fabricantes"""
     FABRICANTES_CHOICES = [
@@ -482,42 +573,6 @@ class ValidacaoRPKI_IRR_Log(models.Model):
         return f"Validação {self.bloco.bloco} - {self.data_validacao.strftime('%d/%m/%Y %H:%M')}"
 
 
-class DocumentacaoRedeConfig(models.Model):
-    """
-    Configuração de documentação de rede por cliente.
-    Armazena URLs do PHP IPAM e NetBox (podem ser IPs privados).
-    O acesso é feito via tunnel SSH do proxy configurado no cliente.
-    """
-    cliente = models.OneToOneField(
-        Cliente,
-        on_delete=models.CASCADE,
-        related_name='documentacao_config'
-    )
-    
-    # PHP IPAM
-    phpipam_habilitado   = models.BooleanField(default=False)
-    phpipam_url          = models.CharField(max_length=500, blank=True, null=True,
-                                             help_text='Ex: http://192.168.1.10/phpipam')
-    phpipam_usuario      = models.CharField(max_length=100, blank=True, null=True)
-    phpipam_senha        = models.CharField(max_length=200, blank=True, null=True)
-
-    # NetBox
-    netbox_habilitado    = models.BooleanField(default=False)
-    netbox_url           = models.CharField(max_length=500, blank=True, null=True,
-                                             help_text='Ex: http://192.168.1.20:8000')
-    netbox_token         = models.CharField(max_length=200, blank=True, null=True,
-                                             help_text='Token de API do NetBox (opcional)')
-
-    data_atualizacao = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Configuração de Documentação de Rede'
-        verbose_name_plural = 'Configurações de Documentação de Rede'
-
-    def __str__(self):
-        return f'DocConfig - {self.cliente.nome_empresa}'
-
-
 # =============================================================================
 # IPAM — Documentação Nativa de IPs, VLANs, Sub-redes e VPNs
 # =============================================================================
@@ -546,6 +601,11 @@ class IPAMPrefixo(models.Model):
 
     cliente      = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_prefixos')
     prefixo      = models.CharField(max_length=50)          # CIDR ex: 10.0.0.0/8
+    # Prefixo container mais específico que contém este (calculado por CIDR em
+    # _computar_pai_prefixo, ipam_views.py) — persiste a árvore em vez de
+    # recalculá-la a cada request, permitindo navegação hierárquica na UI.
+    pai          = models.ForeignKey('self', null=True, blank=True,
+                                     on_delete=models.SET_NULL, related_name='filhos')
     tipo         = models.CharField(max_length=15, choices=TIPO,   default='rede')
     status       = models.CharField(max_length=15, choices=STATUS, default='ativo')
     descricao    = models.TextField(blank=True)
@@ -575,6 +635,10 @@ class IPAMSubRede(models.Model):
     local        = models.CharField(max_length=150, blank=True)
     status       = models.CharField(max_length=15, choices=STATUS, default='ativo')
     pool_cheia   = models.BooleanField(default=False)
+    # Scan automático de disponibilidade (ping em lote) — opt-in por sub-rede
+    # pra não varrer a rede de todo cliente sem necessidade.
+    scan_automatico = models.BooleanField(default=False)
+    ultimo_scan     = models.DateTimeField(null=True, blank=True)
     criado_em    = models.DateTimeField(auto_now_add=True)
     atualizado_em= models.DateTimeField(auto_now=True)
 
@@ -652,6 +716,50 @@ class IPAMVpnDoc(models.Model):
 
     def __str__(self):
         return f'{self.nome} ({self.get_tipo_display()})'
+
+
+class IPAMScanResultado(models.Model):
+    """
+    Resultado do último ping (scan em lote) de um IP dentro do cliente.
+    Existe independente de haver um IPAMEndereco cadastrado — é o que permite
+    a grade visual mostrar "host respondendo mas não documentado" (descoberta,
+    como o scan de sub-rede do phpIPAM).
+    """
+    cliente    = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_scan_resultados')
+    ip         = models.CharField(max_length=45, db_index=True)
+    online     = models.BooleanField(default=False)
+    checado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('cliente', 'ip')
+
+    def __str__(self):
+        return f'{self.ip} ({"online" if self.online else "offline"})'
+
+
+class IPAMAuditLog(models.Model):
+    """Histórico de alterações nos objetos do IPAM — quem mudou o quê."""
+    MODELO  = [('vlan','VLAN'),('prefixo','Prefixo'),('subrede','Sub-rede'),
+               ('ip','Endereço IP'),('vpn','VPN')]
+    ACAO    = [('created','Criado'),('updated','Atualizado'),('deleted','Removido')]
+
+    cliente     = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='ipam_audit_logs')
+    modelo      = models.CharField(max_length=15, choices=MODELO)
+    objeto_id   = models.IntegerField()
+    # Snapshot do __str__ do objeto — continua legível mesmo se o registro for apagado depois.
+    objeto_repr = models.CharField(max_length=255, blank=True)
+    acao        = models.CharField(max_length=10, choices=ACAO)
+    # {"campo": {"antes": x, "depois": y}} — só os campos que mudaram (updated),
+    # ou snapshot relevante (created/deleted).
+    mudancas    = models.JSONField(default=dict, blank=True)
+    usuario     = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    criado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.get_acao_display()} {self.get_modelo_display()} #{self.objeto_id}'
 
 
 # ── OpenVPN Server — configuração automatizada ──────────────────────────────

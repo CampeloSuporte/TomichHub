@@ -15,7 +15,7 @@ Browser (noVNC)
     ↕ WebSocket (/ws/vnc/<id>/?mode=winbox&w=W&h=H)
 Django Channels Consumer (VncConsumer)
     ↕ TCP socket (127.0.0.1:PORT)
-x11vnc  →  Xvfb (display :N, WxHx24)
+x11vnc  →  Xvfb (display :N, WxHx16)
               ↑
            Openbox (maximiza janelas)
               ↑
@@ -168,11 +168,11 @@ journalctl -u daphne -n 30 | grep -E "VNC|Error|winbox"
 # Como www-data (igual ao daphne)
 sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin bash -c '
   DISPLAY=:199
-  Xvfb :199 -screen 0 1366x768x24 -nolisten tcp &
+  Xvfb :199 -screen 0 1366x768x16 -nolisten tcp &
   sleep 0.5
   DISPLAY=:199 openbox --config-file /opt/crm/clientes/openbox_rc.xml &
   sleep 0.5
-  DISPLAY=:199 x11vnc -display :199 -nopw -listen 127.0.0.1 -rfbport 5999 -shared -forever -quiet &
+  DISPLAY=:199 x11vnc -display :199 -nopw -listen 127.0.0.1 -rfbport 5999 -shared -forever -quiet -nonap -threads -wait 10 &
   sleep 0.5
   DISPLAY=:199 /opt/crm/static/winbox4/WinBox &
   sleep 5

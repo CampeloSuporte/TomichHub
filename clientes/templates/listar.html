@@ -228,12 +228,17 @@
                                                     title="Ping">
                                                 <i class="fas fa-globe"></i>
                                             </button>
-                                            <button class="icon-btn btn-sm" title="Acessar Terminal" onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}', {{ acesso.cliente_id }})"><i class="fas fa-code"></i></button>
+                                            <button class="icon-btn btn-sm" title="Acessar Terminal" onclick="acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }})"><i class="fas fa-code"></i></button>
                                             {% if acesso.winbox %}
-                                            <button class="icon-btn btn-sm" title="Winbox Web (porta {{ acesso.winbox }})"
+                                            <button class="icon-btn btn-sm" title="Winbox Web 4.2 (porta {{ acesso.winbox }})"
                                                     onclick="abrirWinboxWeb({{ acesso.id }})"
                                                     style="color: var(--warning-orange);">
                                                 <i class="fas fa-network-wired"></i>
+                                            </button>
+                                            <button class="icon-btn btn-sm" title="Winbox Web 3.43 (legado)"
+                                                    onclick="abrirWinboxWeb({{ acesso.id }}, '3')"
+                                                    style="color: #d29922; font-size: 10px; font-weight: 700;">
+                                                3.43
                                             </button>
                                             {% endif %}
                                             {% if acesso.backup_habilitado %}
@@ -307,21 +312,21 @@
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Usuário</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.usuario }}')">{{ acesso.usuario }}</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.usuario|escapejs }}')">{{ acesso.usuario }}</span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Senha</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.senha }}')">{{ acesso.senha }}</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.senha|escapejs }}')">{{ acesso.senha }}</span>
                                     </div>
                                     {% if is_admin %}
                                     <div class="info-row">
                                         <span class="info-label">Senha Root</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.senha_adm }}')">{{ acesso.senha_adm }}</span>
+                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.senha_adm|escapejs }}')">{{ acesso.senha_adm }}</span>
                                     </div>
                                     {% endif %}
                                 <div class="mt-4">
                                 <button class="btn btn-access mb-2" 
-                                        onclick="acessarEquipamento('{{ acesso.protocolo }}', '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.usuario }}', '{{ acesso.senha }}', {{ acesso.id }}, '{{ acesso.tipo }}', {{ acesso.cliente_id }})">
+                                        onclick="acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }})">
                                     <i class="fas fa-sign-in-alt me-2"></i> Acessar
                                 </button>
                                 {% if acesso.winbox %}
@@ -329,6 +334,12 @@
                                         onclick="abrirWinboxWeb({{ acesso.id }})"
                                         title="Abrir Winbox Web Terminal (porta {{ acesso.winbox }})">
                                     <i class="fas fa-network-wired me-2"></i> Winbox Web
+                                </button>
+                                <button class="btn btn-winbox mb-2"
+                                        onclick="abrirWinboxWeb({{ acesso.id }}, '3')"
+                                        title="Abrir Winbox Web 3.43 (legado)"
+                                        style="opacity:.85;">
+                                    <i class="fas fa-network-wired me-2"></i> Winbox Web 3.43 (legado)
                                 </button>
                                 {% endif %}
 
@@ -347,6 +358,26 @@
                 </div>
                 {% endfor %}
             </div>
+
+            <!-- Restaura a sub-aba de função ANTES da tela pintar (evita o
+                 "flash" da 1ª função aparecendo e trocando logo em seguida) -->
+            <script>
+            (function() {
+                var funcaoSalva = sessionStorage.getItem('funcaoAtiva');
+                var hash = window.location.hash; // ex: "#funcao-5"
+                var funcaoId = funcaoSalva || (hash.indexOf('#funcao-') === 0 ? hash.slice(8) : null);
+                if (!funcaoId) return;
+                var funcaoEl = document.getElementById('funcao-' + funcaoId);
+                if (funcaoEl) {
+                    document.querySelectorAll('.funcao-content').forEach(function(c) { c.style.display = 'none'; });
+                    document.querySelectorAll('#funcaoTabs .nav-link').forEach(function(l) { l.classList.remove('active'); });
+                    funcaoEl.style.display = 'block';
+                    var funcaoLink = document.querySelector('#funcaoTabs a[onclick*="\'' + funcaoId + '\'"]');
+                    if (funcaoLink) funcaoLink.classList.add('active');
+                }
+                sessionStorage.removeItem('funcaoAtiva');
+            })();
+            </script>
 
             <!-- OUTRAS ABAS -->
             
@@ -1003,7 +1034,7 @@
                                 src="about:blank"
                                 data-src="/clientes/{{ cliente.id }}/topologia/editor/?embed=1"
                                 data-loaded="0"
-                                style="width:100%;height:calc(100vh - 200px);min-height:600px;border:1px solid rgba(88,166,255,.15);border-radius:8px;display:block;background:#0d1117">
+                                style="width:100%;height:calc(100vh - 200px);min-height:320px;border:1px solid rgba(88,166,255,.15);border-radius:8px;display:block;background:#0d1117">
                             </iframe>
                         </div>
 
@@ -1258,11 +1289,11 @@
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Usuário</span>
-                                            <span class="info-value copyable" onclick="copiarTexto('{{ proxy.usuario }}')">{{ proxy.usuario }}</span>
+                                            <span class="info-value copyable" onclick="copiarTexto('{{ proxy.usuario|escapejs }}')">{{ proxy.usuario }}</span>
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Senha</span>
-                                            <span class="info-value copyable" onclick="copiarTexto('{{ proxy.senha }}')">{{ proxy.senha }}</span>
+                                            <span class="info-value copyable" onclick="copiarTexto('{{ proxy.senha|escapejs }}')">{{ proxy.senha }}</span>
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Cadastrado em</span>
@@ -1306,6 +1337,27 @@
                         </div>
                         <div id="wg-lista" style="min-height:60px">
                             <div style="color:rgba(88,166,255,.4);font-size:.85rem;text-align:center;padding:20px">
+                                <i class="fas fa-spinner fa-spin me-2"></i> Carregando...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Túnel OpenVPN ─────────────────────────────────── -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h5 class="mb-0"><i class="fas fa-shield-alt me-2" style="color:#e3b341"></i>Túnel OpenVPN — MikroTik</h5>
+                                <small style="color:rgba(227,179,65,.4)">Servidor OpenVPN próprio da CRM — o Mikrotik entra como cliente via script de bootstrap</small>
+                            </div>
+                            <button class="btn btn-sm" onclick="tovpnCriarVPN()"
+                                style="background:rgba(227,179,65,.15);border:1px solid #e3b341;color:#e3b341;font-size:.8rem">
+                                <i class="fas fa-plus me-1"></i> Novo Túnel OpenVPN
+                            </button>
+                        </div>
+                        <div id="tovpn-lista" style="min-height:60px">
+                            <div style="color:rgba(227,179,65,.4);font-size:.85rem;text-align:center;padding:20px">
                                 <i class="fas fa-spinner fa-spin me-2"></i> Carregando...
                             </div>
                         </div>
@@ -1985,11 +2037,25 @@
 
                     <!-- Sub-tab: Leads -->
                     <div id="hs-tab-leads" style="display:none;">
-                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <span id="hs-leads-count" style="color:var(--text-muted);font-size:.85rem;"></span>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="hsExportLeads()">
-                          <i class="fas fa-file-csv me-1"></i> Exportar CSV
-                        </button>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                          <button class="btn btn-sm btn-outline-secondary" onclick="hsLeadsDiaAnterior()" title="Dia anterior">
+                            <i class="fas fa-chevron-left"></i>
+                          </button>
+                          <input type="date" id="hs-leads-data" class="form-control form-control-sm"
+                                 style="width:150px;background:var(--surface);color:var(--text-light);border-color:var(--border);"
+                                 onchange="hsCarregarLeads()">
+                          <button class="btn btn-sm btn-outline-secondary" onclick="hsLeadsDiaSeguinte()" title="Próximo dia">
+                            <i class="fas fa-chevron-right"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-primary" onclick="hsLeadsHoje()">Hoje</button>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <span id="hs-leads-count" style="color:var(--text-muted);font-size:.85rem;"></span>
+                          <button class="btn btn-sm btn-outline-secondary" onclick="hsExportLeads()">
+                            <i class="fas fa-file-csv me-1"></i> Exportar CSV do dia
+                          </button>
+                        </div>
                       </div>
                       <div style="overflow-x:auto;">
                         <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
@@ -2005,9 +2071,10 @@
                           <tbody id="hs-leads-tbody"></tbody>
                         </table>
                         <div id="hs-leads-empty" style="text-align:center;padding:30px;color:var(--text-muted);display:none;">
-                          Nenhum lead capturado ainda.
+                          Nenhum lead capturado neste dia.
                         </div>
                       </div>
+                      <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:12px;" id="hs-leads-paginacao"></div>
                     </div>
                   </div><!-- /detail-pane -->
                 </div><!-- /two-pane -->
@@ -2060,6 +2127,7 @@
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans')"><i class="fas fa-layer-group me-1"></i>VLANs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vpns')"><i class="fas fa-shield-alt me-1"></i>VPNs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'importar')"><i class="fas fa-file-import me-1"></i>Importar</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'historico')"><i class="fas fa-history me-1"></i>Histórico</a></li>
         </ul>
 
         <!-- ─── PREFIXOS ─── -->
@@ -2250,6 +2318,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- ─── HISTÓRICO ─── -->
+        <div id="ipam-sub-historico" class="ipam-sub" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <select id="ipam-hist-filtro-modelo" class="form-select form-select-sm" style="max-width:200px;background:var(--surface);color:var(--text-light);border-color:var(--border);" onchange="ipamCarregarHistorico(1)">
+                        <option value="">Todos os tipos</option>
+                        <option value="vlan">VLAN</option>
+                        <option value="prefixo">Prefixo</option>
+                        <option value="subrede">Sub-rede</option>
+                        <option value="ip">Endereço IP</option>
+                        <option value="vpn">VPN</option>
+                    </select>
+                    <span style="color:var(--text-muted);font-size:.85rem;" id="ipam-hist-count"></span>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-sm mb-0" style="font-size:.83rem;">
+                    <thead><tr>
+                        <th style="width:150px">Data/Hora</th><th style="width:110px">Usuário</th>
+                        <th style="width:90px">Ação</th><th style="width:110px">Tipo</th>
+                        <th>Objeto</th><th>Alterações</th>
+                    </tr></thead>
+                    <tbody id="ipam-historico-tbody"><tr><td colspan="6" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-center gap-2 mt-3" id="ipam-hist-paginacao"></div>
+        </div>
     </div><!-- /ipam-page -->
     </div>
 
@@ -2360,6 +2456,7 @@ window.ipamAba = function(e, nome) {
     if(nome === 'ips')       ipamCarregarIPs();
     if(nome === 'vlans')     ipamCarregarVlans();
     if(nome === 'vpns')      ipamCarregarVpns();
+    if(nome === 'historico') ipamCarregarHistorico();
 };
 
 /* ── Helpers ── */
@@ -2383,6 +2480,30 @@ function tbEmpty(cols, msg){ return `<tr><td colspan="${cols}" class="text-cente
 /* ─────────────────────────────────────────────────
    PREFIXOS
 ───────────────────────────────────────────────── */
+/* Ordena prefixos em DFS (pai antes dos filhos, filhos por endereço de rede)
+   pra que a indentação da árvore faça sentido visualmente. */
+function _ordenarArvorePrefixos(prefixos){
+    const porPai = {};
+    prefixos.forEach(p => {
+        const k = p.pai_id || 'raiz';
+        (porPai[k] = porPai[k] || []).push(p);
+    });
+    Object.values(porPai).forEach(lista =>
+        lista.sort((a,b) => { const ka=_ipSortBigInt(a.prefixo.split('/')[0]), kb=_ipSortBigInt(b.prefixo.split('/')[0]); return ka<kb?-1:ka>kb?1:0; })
+    );
+    const out = [];
+    function _visit(pid){
+        (porPai[pid || 'raiz'] || []).forEach(p => { out.push(p); _visit(p.id); });
+    }
+    _visit(null);
+    // Sobra de segurança: prefixo cujo pai_id aponta pra algo fora da lista (não deveria acontecer)
+    const vistos = new Set(out.map(p => p.id));
+    prefixos.forEach(p => { if(!vistos.has(p.id)) out.push(p); });
+    return out;
+}
+
+IPAM._pfxCollapsed = {};
+
 window.ipamCarregarPrefixos = async function(){
     const tb = document.getElementById('ipam-prefixos-tbody');
     tb.innerHTML = tbEmpty(7,'<i class="fas fa-spinner fa-spin"></i>');
@@ -2396,14 +2517,32 @@ window.ipamCarregarPrefixos = async function(){
     }
     IPAM.prefixos = d.prefixos || [];
     if(!IPAM.prefixos.length){ tb.innerHTML = tbEmpty(7,'Nenhum prefixo cadastrado.'); return; }
-    tb.innerHTML = IPAM.prefixos.map(p => {
+
+    const ordenados = _ordenarArvorePrefixos(IPAM.prefixos);
+    const temFilhos = new Set(IPAM.prefixos.filter(p => p.pai_id).map(p => p.pai_id));
+
+    tb.innerHTML = ordenados.map(p => {
         const pfxLen  = parseInt((p.prefixo||'').split('/')[1]||'32', 10);
         const ver     = (p.prefixo||'').includes(':') ? 6 : 4;
         const maxPL   = ver === 6 ? 128 : 32;
         const podeDividir = pfxLen < maxPL - 1;
+        const nivel   = p.nivel || 0;
+        const ehGalho = temFilhos.has(p.id);
+        // Escondida se algum ancestral estiver colapsado
+        let ancestral = p.pai_id, escondida = false;
+        while(ancestral){
+            if(IPAM._pfxCollapsed[ancestral]){ escondida = true; break; }
+            const pai = IPAM.prefixos.find(x => x.id === ancestral);
+            ancestral = pai ? pai.pai_id : null;
+        }
+        const toggleArvore = ehGalho
+            ? `<i class="fas ${IPAM._pfxCollapsed[p.id] ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
+                 onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar filhos"></i>`
+            : `<span style="display:inline-block;width:14px;"></span>`;
         return `
-    <tr id="pfx-row-${p.id}" class="ipam-row-prefixo">
+    <tr id="pfx-row-${p.id}" class="ipam-row-prefixo" data-pai="${p.pai_id||''}" style="${escondida ? 'display:none;' : ''}">
         <td style="white-space:nowrap;">
+            <span style="display:inline-block;width:${nivel*18}px;"></span>${toggleArvore}
             <button class="btn btn-xs ipam-bd-btn me-1" id="ipam-bd-btn-${p.id}"
                 style="padding:2px 7px;font-size:.72rem;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.25);color:var(--accent-cyan);border-radius:4px;"
                 onclick="ipamToggleBreakdown(${p.id})" title="Ver breakdown / sub-redes">
@@ -2435,6 +2574,11 @@ window.ipamCarregarPrefixos = async function(){
     </tr>
     <tr id="pfx-bd-${p.id}" style="display:none;"><td colspan="7" style="padding:0;border:none;"></td></tr>`;
     }).join('');
+};
+
+window.ipamToggleArvorePrefixo = function(pid){
+    IPAM._pfxCollapsed[pid] = !IPAM._pfxCollapsed[pid];
+    ipamCarregarPrefixos();
 };
 
 /* ─── Breakdown inline ─── */
@@ -2891,6 +3035,138 @@ function _srSetDescendants(pid, visible){
     });
 }
 
+/* ─── Grade visual de IPs (estilo phpIPAM) ─── */
+IPAM._srGradeOpen = {};
+
+window.ipamToggleGradeSubrede = async function(sid){
+    const row = document.getElementById(`sr-grade-${sid}`);
+    const btn = document.getElementById(`ipam-grade-btn-${sid}`);
+    if(!row) return;
+
+    if(IPAM._srGradeOpen[sid]){
+        row.style.display = 'none';
+        IPAM._srGradeOpen[sid] = false;
+        if(btn) btn.classList.remove('active');
+        return;
+    }
+
+    IPAM._srGradeOpen[sid] = true;
+    if(btn) btn.classList.add('active');
+    row.style.display = '';
+    row.children[0].innerHTML = `<div style="padding:14px 18px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-2"></i>Carregando grade de IPs…</div>`;
+
+    let d;
+    try {
+        const resp = await fetch(`/clientes/ipam/subredes/${sid}/grade/`);
+        d = await resp.json();
+    } catch(e) {
+        row.children[0].innerHTML = `<div style="padding:12px 16px;color:#e06060;">Erro ao carregar grade: ${e.message}</div>`;
+        return;
+    }
+    if(!d.ok){
+        row.children[0].innerHTML = `<div style="padding:12px 16px;color:#e06060;"><i class="fas fa-exclamation-triangle me-2"></i>${d.erro}</div>`;
+        return;
+    }
+    row.children[0].innerHTML = _renderGradeIPs(d, sid);
+};
+
+function _renderGradeIPs(d, sid){
+    const cellColor = (item) => {
+        if(item.especial === 'rede')       return {bg:'rgba(88,166,255,.18)',  bd:'rgba(88,166,255,.4)',  fg:'#79c0ff'};
+        if(item.especial === 'broadcast')  return {bg:'rgba(88,166,255,.18)',  bd:'rgba(88,166,255,.4)',  fg:'#79c0ff'};
+        if(item.especial === 'gateway')    return {bg:'rgba(0,217,255,.18)',   bd:'rgba(0,217,255,.4)',   fg:'var(--accent-cyan)'};
+        if(item.endereco_id){
+            if(item.status === 'reservado') return {bg:'rgba(255,170,0,.16)',  bd:'rgba(255,170,0,.35)',  fg:'#ffaa00'};
+            if(item.status === 'inativo')   return {bg:'rgba(150,150,150,.14)',bd:'rgba(150,150,150,.3)', fg:'#999'};
+            return {bg:'rgba(63,185,80,.16)', bd:'rgba(63,185,80,.35)', fg:'#3fb950'};
+        }
+        if(item.online === true)  return {bg:'rgba(230,110,20,.16)', bd:'rgba(230,110,20,.4)', fg:'#e6820f'}; // descoberto, não documentado
+        return {bg:'rgba(255,255,255,.04)', bd:'rgba(255,255,255,.08)', fg:'var(--text-muted)'}; // livre
+    };
+
+    const cells = d.grade.map(item => {
+        const c = cellColor(item);
+        const lastOctet = item.ip.includes(':') ? item.ip.split(':').pop() : item.ip.split('.').pop();
+        const clickable = !item.especial;
+        const onlineDot = item.online === true
+            ? `<span style="position:absolute;top:1px;right:1px;width:6px;height:6px;border-radius:50%;background:#3fb950;"></span>`
+            : (item.online === false
+                ? `<span style="position:absolute;top:1px;right:1px;width:6px;height:6px;border-radius:50%;background:#e06060;"></span>`
+                : '');
+        const title = `${item.ip}${item.hostname ? ' — ' + item.hostname : ''}${item.especial ? ' (' + item.especial + ')' : ''}`
+            + (item.online !== null ? (item.online ? ' · online' : ' · offline (último scan)') : '');
+        const click = clickable
+            ? (item.endereco_id
+                ? `onclick="ipamAbrirModal('ip', ${JSON.stringify({id:item.endereco_id, ip:item.ip, hostname:item.hostname, descricao:item.descricao, mac_address:item.mac_address, tipo:item.tipo, status:item.status, subrede_id:sid}).replace(/"/g,'&quot;')})"`
+                : `onclick="ipamAbrirModal('ip', ${JSON.stringify({ip:item.ip, subrede_id:sid}).replace(/"/g,'&quot;')})"`)
+            : '';
+        return `<div title="${title}" ${click}
+            style="position:relative;width:34px;height:26px;display:flex;align-items:center;justify-content:center;
+                   font-family:'Courier New',monospace;font-size:.68rem;border-radius:3px;margin:1px;
+                   background:${c.bg};border:1px solid ${c.bd};color:${c.fg};${clickable ? 'cursor:pointer;' : ''}">
+            ${lastOctet}${onlineDot}
+        </div>`;
+    }).join('');
+
+    return `
+    <div style="padding:14px 18px;border-top:1px solid var(--border);">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div style="font-size:.8rem;color:var(--text-muted);">
+                <strong style="color:var(--text-light);">${d.rede}</strong> — ${d.total} endereços
+                ${d.ultimo_scan ? ` · último scan: ${new Date(d.ultimo_scan).toLocaleString('pt-BR')}` : ' · nunca escaneada'}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-check form-switch mb-0" title="Incluir no scan automático periódico">
+                    <input type="checkbox" class="form-check-input" id="grade-scan-auto-${sid}"
+                        ${d.scan_automatico ? 'checked' : ''} onchange="ipamToggleScanAutomatico(${sid}, this.checked)">
+                    <label class="form-check-label" style="font-size:.75rem;color:var(--text-muted);" for="grade-scan-auto-${sid}">Scan automático</label>
+                </div>
+                <button class="btn btn-xs" id="grade-scan-btn-${sid}" onclick="ipamScanAgora(${sid})"
+                    style="padding:3px 10px;font-size:.75rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);border-radius:4px;">
+                    <i class="fas fa-satellite-dish me-1"></i>Scan agora
+                </button>
+            </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;max-width:100%;">${cells}</div>
+        <div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:.7rem;color:var(--text-muted);">
+            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(63,185,80,.4);border:1px solid rgba(63,185,80,.6);border-radius:2px;vertical-align:middle;"></span> documentado</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(230,110,20,.4);border:1px solid rgba(230,110,20,.6);border-radius:2px;vertical-align:middle;"></span> responde ping, não documentado</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:2px;vertical-align:middle;"></span> livre</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:rgba(88,166,255,.3);border:1px solid rgba(88,166,255,.5);border-radius:2px;vertical-align:middle;"></span> rede/broadcast/gateway</span>
+            <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#3fb950;vertical-align:middle;"></span> / <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#e06060;vertical-align:middle;"></span> online/offline no último scan</span>
+        </div>
+    </div>`;
+}
+
+window.ipamScanAgora = async function(sid){
+    const btn = document.getElementById(`grade-scan-btn-${sid}`);
+    if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Escaneando…'; }
+    try {
+        const r = await fetch(`/clientes/ipam/subredes/${sid}/scan/`, {
+            method: 'POST', headers: {'X-CSRFToken': getCsrfToken()},
+        });
+        const d = await r.json();
+        if(!d.ok){ uiAlert('Erro no scan: ' + d.erro); }
+        else { showSuccess('SCAN CONCLUÍDO', `${d.online} online, ${d.offline} offline`, 3000); }
+    } catch(e) {
+        uiAlert('Erro no scan: ' + e.message);
+    } finally {
+        // Recarrega a grade pra refletir o resultado
+        IPAM._srGradeOpen[sid] = false;
+        await ipamToggleGradeSubrede(sid);
+    }
+};
+
+window.ipamToggleScanAutomatico = async function(sid, checked){
+    try {
+        await fetch(`/clientes/ipam/subredes/${sid}/scan-toggle/`, {
+            method: 'POST', headers: {'X-CSRFToken': getCsrfToken()},
+        });
+    } catch(e) {
+        uiAlert('Erro ao alterar scan automático: ' + e.message);
+    }
+};
+
 window.ipamCarregarSubRedes = async function(){
     const tb  = document.getElementById('ipam-subredes-tbody');
     const sel = document.getElementById('ipam-sr-filtro-prefixo');
@@ -2938,7 +3214,11 @@ window.ipamCarregarSubRedes = async function(){
         return `
     <tr class="ipam-row-subrede" id="sr-row-${s.id}" data-sr-id="${s.id}" data-sr-parent="${s._parentId||''}"${isChild ? ' style="display:none;"' : ''}>
         <td style="white-space:nowrap;">
-            ${indent}${expandBtn}<strong style="font-family:'Courier New',monospace;color:var(--text-light);">${s.rede}</strong>
+            ${indent}${expandBtn}<button class="btn btn-xs ipam-bd-btn me-1" id="ipam-grade-btn-${s.id}"
+                style="padding:2px 7px;font-size:.72rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--primary-green);border-radius:4px;"
+                onclick="ipamToggleGradeSubrede(${s.id})" title="Ver grade de IPs">
+                <i class="fas fa-th"></i>
+            </button><strong style="font-family:'Courier New',monospace;color:var(--text-light);">${s.rede}</strong>
         </td>
         <td style="font-family:'Courier New',monospace;color:var(--text-muted)">${s.gateway||'—'}</td>
         <td>${s.vlan ? `<span style="color:#ffaa00;">${s.vlan}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
@@ -2966,7 +3246,8 @@ window.ipamCarregarSubRedes = async function(){
             </button>
             ${acoes('ipamDeletarSubRede','ipamEditarSubRede',s.id)}
         </td>
-    </tr>`;
+    </tr>
+    <tr id="sr-grade-${s.id}" data-sr-parent="${s._parentId||''}" style="display:none;"><td colspan="9" style="padding:0;border:none;"></td></tr>`;
     }).join('');
 
     // Restaurar linhas expandidas antes do re-render
@@ -3486,6 +3767,70 @@ window.ipamAnalisarBackups = async function(){
     }
 };
 
+/* ─── Histórico / auditoria ─── */
+IPAM.histPagina = 1;
+
+function _fmtMudancas(mudancas){
+    const chaves = Object.keys(mudancas || {});
+    if(!chaves.length) return '<span style="color:var(--text-muted)">—</span>';
+    return chaves.map(campo => {
+        const v = mudancas[campo];
+        if(v && typeof v === 'object' && ('antes' in v || 'depois' in v)){
+            const antes  = v.antes === null || v.antes === undefined || v.antes === '' ? '<em>vazio</em>' : String(v.antes);
+            const depois = v.depois === null || v.depois === undefined || v.depois === '' ? '<em>vazio</em>' : String(v.depois);
+            return `<span style="display:inline-block;margin:1px 4px 1px 0;font-size:.75rem;">
+                <strong style="color:var(--text-light)">${campo}</strong>:
+                <span style="color:#e06060;text-decoration:line-through;">${antes}</span> →
+                <span style="color:#3fb950;">${depois}</span></span>`;
+        }
+        return `<span style="display:inline-block;margin:1px 4px 1px 0;font-size:.75rem;"><strong style="color:var(--text-light)">${campo}</strong>: ${v}</span>`;
+    }).join(' ');
+}
+
+window.ipamCarregarHistorico = async function(pagina){
+    if(pagina) IPAM.histPagina = pagina;
+    const tb = document.getElementById('ipam-historico-tbody');
+    tb.innerHTML = tbEmpty(6,'<i class="fas fa-spinner fa-spin"></i>');
+    const filtro = document.getElementById('ipam-hist-filtro-modelo')?.value || '';
+    let d;
+    try {
+        const r = await fetch(`/clientes/${CID}/ipam/historico/?pagina=${IPAM.histPagina}` + (filtro ? `&modelo=${filtro}` : ''));
+        d = await r.json();
+    } catch(e) {
+        tb.innerHTML = tbEmpty(6, `<span style="color:#e06060">Erro ao carregar histórico: ${e.message}</span>`);
+        return;
+    }
+    if(!d.ok){ tb.innerHTML = tbEmpty(6, `<span style="color:#e06060">${d.erro||'Erro'}</span>`); return; }
+
+    const cnt = document.getElementById('ipam-hist-count');
+    if(cnt) cnt.textContent = `${d.total} registro${d.total!==1?'s':''}`;
+
+    if(!d.historico.length){ tb.innerHTML = tbEmpty(6,'Nenhuma alteração registrada ainda.'); return; }
+
+    const acaoCor = {created:'#3fb950', updated:'#ffaa00', deleted:'#e06060'};
+    tb.innerHTML = d.historico.map(h => `
+    <tr>
+        <td style="color:var(--text-muted);white-space:nowrap;">${new Date(h.criado_em).toLocaleString('pt-BR')}</td>
+        <td>${h.usuario}</td>
+        <td><span style="color:${acaoCor[h.acao]||'#999'};font-weight:600;">${h.acao_label}</span></td>
+        <td style="color:var(--accent-cyan);">${h.modelo_label}</td>
+        <td style="font-family:'Courier New',monospace;">${h.objeto_repr || ('#'+h.objeto_id)}</td>
+        <td>${_fmtMudancas(h.mudancas)}</td>
+    </tr>`).join('');
+
+    const pagBox = document.getElementById('ipam-hist-paginacao');
+    if(pagBox){
+        if(d.total_paginas <= 1){ pagBox.innerHTML = ''; }
+        else {
+            let btns = '';
+            for(let p = 1; p <= d.total_paginas; p++){
+                btns += `<button class="btn btn-xs ${p===d.pagina?'btn-primary':'btn-outline-secondary'}" style="padding:2px 9px;font-size:.75rem;" onclick="ipamCarregarHistorico(${p})">${p}</button>`;
+            }
+            pagBox.innerHTML = btns;
+        }
+    }
+};
+
 /* ─── Importar CSV ─── */
 window.ipamImportar = async function(){
     const file  = document.getElementById('ipam-import-file').files[0];
@@ -3819,105 +4164,6 @@ function getCsrfToken(){
 
 
 
-    {% if not is_cliente %}
-    <div id="modalDocConfig" class="modal-overlay" style="display:none;">
-        <div class="modal-acesso" style="max-width:680px;">
-            <div class="modal-header-acesso">
-                <h2 class="modal-title">
-                    <span class="terminal-prefix">&gt;</span> Configurar Documentação de Rede
-                </h2>
-                <button class="btn-close-modal" onclick="fecharModalDocConfig()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body-acesso">
-
-                {# Info box #}
-                <div class="alert" style="background:rgba(88,166,255,.08);border-left:3px solid var(--accent-cyan);
-                                        color:var(--text-light);margin-bottom:20px;">
-                    <i class="fas fa-info-circle me-2"></i>
-                    URLs privadas (RFC-1918) são acessadas automaticamente via o <strong>tunnel SSH ativo</strong>
-                    configurado neste cliente. Endereços públicos são acessados diretamente.
-                </div>
-
-                {# PHP IPAM #}
-                <div style="border:1px solid rgba(63,185,80,.2);border-radius:6px;padding:16px;margin-bottom:20px;">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h6 style="color:var(--primary-green);margin:0;">
-                            <i class="fas fa-network-wired me-2"></i>PHP IPAM
-                        </h6>
-                        <div class="form-check form-switch mb-0">
-                            <input type="checkbox" class="form-check-input" id="cfg_phpipam_habilitado">
-                            <label class="form-check-label" for="cfg_phpipam_habilitado">Habilitado</label>
-                        </div>
-                    </div>
-                    <div class="form-group-modal">
-                        <label><span class="label-prefix">&gt;</span> URL de acesso</label>
-                        <input type="text" id="cfg_phpipam_url" class="form-control"
-                            placeholder="http://192.168.1.10/phpipam  ou  http://10.0.0.5:8080">
-                        <small class="text-muted">Pode ser IP privado — será tunelado via SSH</small>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">&gt;</span> Usuário (opcional)</label>
-                                <input type="text" id="cfg_phpipam_usuario" class="form-control"
-                                    placeholder="admin">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group-modal">
-                                <label><span class="label-prefix">&gt;</span> Senha (opcional)</label>
-                                <input type="password" id="cfg_phpipam_senha" class="form-control"
-                                    placeholder="••••••••">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {# NetBox #}
-                <div style="border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:16px;margin-bottom:20px;">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h6 style="color:var(--accent-cyan);margin:0;">
-                            <i class="fas fa-cubes me-2"></i>NetBox
-                        </h6>
-                        <div class="form-check form-switch mb-0">
-                            <input type="checkbox" class="form-check-input" id="cfg_netbox_habilitado">
-                            <label class="form-check-label" for="cfg_netbox_habilitado">Habilitado</label>
-                        </div>
-                    </div>
-                    <div class="form-group-modal">
-                        <label><span class="label-prefix">&gt;</span> URL de acesso</label>
-                        <input type="text" id="cfg_netbox_url" class="form-control"
-                            placeholder="http://192.168.1.20:8000  ou  https://netbox.empresa.com">
-                    </div>
-                    <div class="form-group-modal">
-                        <label><span class="label-prefix">&gt;</span> Token de API (opcional)</label>
-                        <input type="text" id="cfg_netbox_token" class="form-control"
-                            placeholder="abc123def456...">
-                        <small class="text-muted">Usado no header Authorization: Token …</small>
-                    </div>
-                </div>
-
-                {# Status do proxy #}
-                <div id="doc-proxy-status" class="terminal-status" style="margin-bottom:16px;">
-                    <span class="status-indicator"></span>
-                    <span class="status-text" id="doc-proxy-status-text">Verificando tunnel SSH…</span>
-                </div>
-
-                <div class="modal-footer-acesso">
-                    <button type="button" class="btn-cancel-modal" onclick="fecharModalDocConfig()">
-                        <i class="fas fa-times me-2"></i>Cancelar
-                    </button>
-                    <button type="button" class="btn-submit-modal" onclick="salvarDocConfig()">
-                        <i class="fas fa-save me-2"></i>Salvar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
     {% include 'modal_acessos.html'%}
 
 
@@ -3975,8 +4221,8 @@ function getCsrfToken(){
         <iframe id="webAcessoFrame"
                 src="about:blank"
                 style="flex:1; border:none; background:#fff;"
-                onload="webAcessoFrameLoaded()"
-                onerror="webAcessoFrameError()">
+                onload="if(typeof webAcessoFrameLoaded==='function')webAcessoFrameLoaded()"
+                onerror="if(typeof webAcessoFrameError==='function')webAcessoFrameError()">
         </iframe>
     </div>
     </div>
@@ -4084,139 +4330,6 @@ function getCsrfToken(){
         if (e.key === 'Escape' && _webAcessoId !== null) fecharWebAcesso();
     });
 
-    // ============================================================
-    // DOCUMENTAÇÃO DE REDE — JS
-    // ============================================================
-
-    const DOC_CLIENTE_ID = '{{ cliente.id }}';
-    let docSubAbaAtiva = 'phpipam';
-    let docConfigCache = null;
-
-    // ---- Trocar sub-aba ----
-    function trocarSubDocAba(event, aba) {
-        if (event) event.preventDefault();
-
-        docSubAbaAtiva = aba;
-
-        document.querySelectorAll('.doc-sub-content').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('#docSubTabs .nav-link').forEach(el => el.classList.remove('active'));
-
-        document.getElementById('doc-sub-' + aba).style.display = 'block';
-        if (event && event.target) event.target.closest('.nav-link').classList.add('active');
-
-        // Carregar iframe se ainda não carregou
-        const frame = document.getElementById('doc-' + aba + '-frame');
-        if (frame && frame.src === 'about:blank' && docConfigCache) {
-            _montarDocFrame(aba, docConfigCache);
-        }
-    }
-
-    function copiarTextoById(btn) {
-        const id = btn.getAttribute('data-copy-id');
-        const el = document.getElementById(id);
-        if (!el) return;
-        const texto = el.textContent.trim();
-        navigator.clipboard.writeText(texto).then(() => {
-            showSuccess('COPIADO', texto, 1500);
-        }).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = texto;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-        });
-    }
-
-    function recarregarDocFrame(tipo) {
-        const frame = document.getElementById('doc-' + tipo + '-frame');
-        if (frame) {
-            const current = frame.src;
-            frame.src = 'about:blank';
-            setTimeout(() => { frame.src = current; }, 100);
-        }
-    }
-
-    function abrirDocNovaAba(tipo) {
-        if (!docConfigCache) return;
-        const url = docConfigCache[tipo + '_url'];
-        if (url) window.open(url, '_blank');
-    }
-
-    // ---- Modal de configuração ----
-    function abrirModalDocConfig() {
-        // Carregar valores atuais
-        fetch(`/clientes/doc/config/buscar/${DOC_CLIENTE_ID}/`)
-            .then(r => r.json())
-            .then(cfg => {
-                document.getElementById('cfg_phpipam_habilitado').checked = cfg.phpipam_habilitado || false;
-                document.getElementById('cfg_phpipam_url').value          = cfg.phpipam_url || '';
-                document.getElementById('cfg_phpipam_usuario').value      = cfg.phpipam_usuario || '';
-                document.getElementById('cfg_phpipam_senha').value        = cfg.phpipam_senha || '';
-                document.getElementById('cfg_netbox_habilitado').checked  = cfg.netbox_habilitado || false;
-                document.getElementById('cfg_netbox_url').value           = cfg.netbox_url || '';
-                document.getElementById('cfg_netbox_token').value         = cfg.netbox_token || '';
-            })
-            .catch(() => {});
-
-        // Verificar proxy ativo
-        fetch(`/clientes/proxies/ativo/?cliente_id=${DOC_CLIENTE_ID}`)
-            .then(r => r.json())
-            .then(data => {
-                const el = document.getElementById('doc-proxy-status-text');
-                if (data.tem_proxy_ativo) {
-                    el.textContent = `✅ Tunnel SSH ativo: ${data.nome || 'configurado'}`;
-                    el.style.color = 'var(--primary-green)';
-                } else {
-                    el.textContent = '⚠️ Nenhum tunnel SSH ativo — IPs privados não funcionarão';
-                    el.style.color = 'var(--warning-yellow, #d29922)';
-                }
-            })
-            .catch(() => {
-                document.getElementById('doc-proxy-status-text').textContent =
-                    '⚠️ Não foi possível verificar o tunnel SSH';
-            });
-
-        document.getElementById('modalDocConfig').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function fecharModalDocConfig() {
-        document.getElementById('modalDocConfig').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    function salvarDocConfig() {
-        const formData = new FormData();
-        formData.append('cliente_id',          DOC_CLIENTE_ID);
-        formData.append('phpipam_habilitado',  document.getElementById('cfg_phpipam_habilitado').checked ? 'on' : '');
-        formData.append('phpipam_url',         document.getElementById('cfg_phpipam_url').value.trim());
-        formData.append('phpipam_usuario',     document.getElementById('cfg_phpipam_usuario').value.trim());
-        formData.append('phpipam_senha',       document.getElementById('cfg_phpipam_senha').value);
-        formData.append('netbox_habilitado',   document.getElementById('cfg_netbox_habilitado').checked ? 'on' : '');
-        formData.append('netbox_url',          document.getElementById('cfg_netbox_url').value.trim());
-        formData.append('netbox_token',        document.getElementById('cfg_netbox_token').value.trim());
-
-        fetch('/clientes/doc/config/salvar/', {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-CSRFToken': getCookie('csrftoken') }
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showSuccess('SUCESSO', 'Configuração salva com sucesso!', 3000);
-                fecharModalDocConfig();
-                docConfigCache = null;
-            } else {
-                showError('ERRO', data.error || 'Erro ao salvar', 4000);
-            }
-        })
-        .catch(() => showError('ERRO', 'Falha na requisição', 4000));
-    }
-
     </script>
 
     <!-- ✅ FUNÇÕES CRÍTICAS - ANTES DOS SCRIPTS EXTERNOS -->
@@ -4304,7 +4417,7 @@ function getCsrfToken(){
     <script src="{% static 'js/terminal_tab_manager.js' %}"></script>
 
 
-    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/main.js' %}?v=funcaotab3fix"></script>
     <script src="{% static 'js/listar_acesso.js' %}?v=2"></script>
 
 
@@ -5376,6 +5489,7 @@ function getCsrfToken(){
         }
         if (nomeAba === 'tuneis') {
             if (typeof wgCarregarLista   === 'function') wgCarregarLista();
+            if (typeof tovpnCarregarLista === 'function') tovpnCarregarLista();
         }
         if (nomeAba === 'vpn') {
             if (typeof ovpnCarregarLista === 'function') ovpnCarregarLista();
@@ -5411,7 +5525,9 @@ function getCsrfToken(){
                 document.getElementById('dup1_winbox').value = data.winbox || '';
                 document.getElementById('dup1_usuario').value = data.usuario;
                 document.getElementById('dup1_senha').value = data.senha;
-                document.getElementById('dup1_senha_adm').value = data.senha_adm || '';
+                // Campo só existe no DOM para is_admin — clientes não têm acesso à Senha Admin
+                const dup1SenhaAdm = document.getElementById('dup1_senha_adm');
+                if (dup1SenhaAdm) dup1SenhaAdm.value = data.senha_adm || '';
                 document.getElementById('dup1_vlan').value = data.vlan || '';
                 
                 // ✅ 3. Preenchimento de FUNÇÃO E MODELO
@@ -5593,7 +5709,9 @@ function getCsrfToken(){
                 document.getElementById('dup_winbox').value = data.winbox || '';
                 document.getElementById('dup_usuario').value = data.usuario;
                 document.getElementById('dup_senha').value = data.senha;
-                document.getElementById('dup_senha_adm').value = data.senha_adm || '';
+                // Campo só existe no DOM para is_admin — clientes não têm acesso à Senha Admin
+                const dupSenhaAdm = document.getElementById('dup_senha_adm');
+                if (dupSenhaAdm) dupSenhaAdm.value = data.senha_adm || '';
                 document.getElementById('dup_vlan').value = data.vlan || '';
                 
                 // ✅ 2. Preencher função e modelo
@@ -6122,7 +6240,257 @@ function getCsrfToken(){
     // Carrega ao abrir aba Tuneis
     document.querySelector('a[onclick*="tuneis"]')?.addEventListener('click', () => {
         setTimeout(wgCarregarLista, 200);
+        setTimeout(tovpnCarregarLista, 200);
     });
+
+    // ============================================
+    // Túnel OpenVPN (aba Túneis) — prefixo "tovpn" para não colidir com o
+    // "ovpn*" já usado abaixo (aquele é outra feature: MikroTik como
+    // SERVIDOR OpenVPN para acesso remoto do NOC — aba "vpn", não "tuneis").
+    // ============================================
+
+    const TOVPN_CLIENTE_ID = {{ cliente.id }};
+    const TOVPN_CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    async function tovpnCarregarLista() {
+        try {
+            const r = await fetch(`/clientes/${TOVPN_CLIENTE_ID}/vpn-ovpn/listar/`);
+            const d = await r.json();
+            const el = document.getElementById('tovpn-lista');
+            if (!el) return;
+
+            if (!d.vpns || !d.vpns.length) {
+                el.innerHTML = `<div style="color:rgba(227,179,65,.4);text-align:center;padding:20px;font-size:.85rem">
+                    <i class="fas fa-shield-alt me-2" style="opacity:.4"></i>
+                    Nenhum túnel OpenVPN configurado para este cliente.
+                </div>`;
+                return;
+            }
+
+            window._tovpnData = {};
+            d.vpns.forEach(v => { window._tovpnData[v.id] = v; });
+
+            el.innerHTML = d.vpns.map(v => {
+                const redes = v.redes.length ? v.redes.join(', ') : '—';
+                const statusCor = v.ativo ? '#e3b341' : '#666';
+                return `<div style="background:#161b22;border:1px solid rgba(227,179,65,.15);border-radius:8px;padding:14px;margin-bottom:10px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                        <div>
+                            <strong style="color:#e6edf3">${v.nome}</strong>
+                            <span style="margin-left:10px;font-size:.75rem;color:${statusCor}">${v.ativo ? 'Ativo' : 'Inativo'}</span>
+                            <div style="font-size:.78rem;color:rgba(227,179,65,.4);margin-top:2px">
+                                IP túnel: <span style="color:#e3b341">${v.vpn_ip}</span>
+                                &nbsp;|&nbsp; Redes: <span style="color:#58a6ff">${redes}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <button class="btn btn-sm" onclick="tovpnVerBootstrap(${v.id})"
+                                style="background:rgba(227,179,65,.1);border:1px solid #e3b341;color:#e3b341;font-size:.75rem">
+                                <i class="fas fa-terminal me-1"></i> Bootstrap Mikrotik
+                            </button>
+                            <button class="btn btn-sm" onclick="tovpnEditar(${v.id})"
+                                style="background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff;font-size:.75rem">
+                                <i class="fas fa-edit me-1"></i> Editar
+                            </button>
+                            <button class="btn btn-sm" onclick="tovpnDeletar(${v.id}, '${v.nome}')"
+                                style="background:rgba(248,81,73,.1);border:1px solid #f85149;color:#f85149;font-size:.75rem">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            document.getElementById('tovpn-lista').innerHTML =
+                `<div style="color:#f85149;font-size:.82rem">Erro ao carregar túneis OpenVPN: ${e.message}</div>`;
+        }
+    }
+
+    function tovpnCriarVPN() {
+        const html = `<div id="tovpn-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center">
+            <div style="background:#161b22;border:1px solid rgba(227,179,65,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
+                <h5 style="color:#e3b341;margin-bottom:20px"><i class="fas fa-shield-alt me-2"></i>Novo Túnel OpenVPN</h5>
+                <div style="margin-bottom:12px">
+                    <label style="color:rgba(227,179,65,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome</label>
+                    <input id="tovpnNome" class="form-control" value="VPN MikroTik" style="background:#0d1117;border-color:rgba(227,179,65,.15);color:#e6edf3">
+                </div>
+                <div style="margin-bottom:16px">
+                    <label style="color:rgba(227,179,65,.4);font-size:.82rem;display:block;margin-bottom:4px">
+                        Subredes alcançadas <small style="color:#666">(uma por linha)</small>
+                    </label>
+                    <textarea id="tovpnRedes" class="form-control" rows="6"
+                        style="background:#0d1117;border-color:rgba(227,179,65,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem">100.64.0.0/10
+172.16.0.0/12
+10.0.0.0/8
+192.168.0.0/16
+198.18.0.0/15</textarea>
+                    <small style="color:#666">Default: CGNAT + RFC1918 (cobre 99% dos ISP). Pode editar se o cliente tem faixa exótica.</small>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end">
+                    <button onclick="document.getElementById('tovpn-modal-overlay').remove()"
+                        style="background:transparent;border:1px solid rgba(227,179,65,.15);color:rgba(227,179,65,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
+                    <button onclick="tovpnConfirmarCriacao()"
+                        style="background:#e3b34118;border:1px solid #e3b341;color:#e3b341;padding:6px 16px;border-radius:6px;cursor:pointer">
+                        <i class="fas fa-plus me-1"></i> Criar Túnel
+                    </button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    async function tovpnConfirmarCriacao() {
+        const nome  = document.getElementById('tovpnNome').value.trim();
+        const redes = document.getElementById('tovpnRedes').value.trim();
+        document.getElementById('tovpn-modal-overlay')?.remove();
+        document.getElementById('tovpn-lista').innerHTML =
+            '<div style="color:rgba(227,179,65,.4);text-align:center;padding:20px"><i class="fas fa-spinner fa-spin me-2"></i>Criando túnel...</div>';
+        try {
+            const r = await fetch(`/clientes/${TOVPN_CLIENTE_ID}/vpn-ovpn/criar/`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','X-CSRFToken': TOVPN_CSRF},
+                body: JSON.stringify({nome, redes_privadas: redes})
+            });
+            const d = await r.json();
+            if (d.ok) {
+                tovpnCarregarLista();
+                tovpnVerBootstrap(d.vpn_id);
+            } else {
+                uiAlert('Erro: ' + (d.erro || 'Falha ao criar túnel'));
+                tovpnCarregarLista();
+            }
+        } catch(e) {
+            uiAlert('Erro: ' + e.message);
+            tovpnCarregarLista();
+        }
+    }
+
+    async function tovpnVerBootstrap(vpnId) {
+        try {
+            const r = await fetch(`/clientes/vpn-ovpn/${vpnId}/bootstrap/`);
+            const d = await r.json();
+            if (!d.ok) { uiAlert('Erro ao gerar script de bootstrap'); return; }
+
+            const html = `<div id="tovpn-boot-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center">
+                <div style="background:#0d1117;border:1px solid rgba(227,179,65,.15);border-radius:12px;padding:24px;width:640px;max-width:96vw">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                        <h5 style="color:#e3b341;margin:0"><i class="fas fa-terminal me-2"></i>Bootstrap Mikrotik</h5>
+                        <button onclick="document.getElementById('tovpn-boot-overlay').remove()"
+                            style="background:transparent;border:none;color:rgba(227,179,65,.4);font-size:1.4rem;cursor:pointer">✕</button>
+                    </div>
+                    <p style="color:rgba(227,179,65,.5);font-size:.8rem;margin-bottom:10px">
+                        Cole no terminal do roteador. Detecta a versão do RouterOS e faz o /tool fetch do setup completo
+                        (certificados + interface ovpn-client + NAT) via token único.
+                    </p>
+                    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:14px">
+                        <pre id="tovpn-boot-content" style="color:#e6edf3;font-family:'Inter', sans-serif;font-size:.76rem;margin:0;white-space:pre-wrap;word-break:break-all">${d.script.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:14px">
+                        <button onclick="tovpnRegenerarToken(${vpnId})"
+                            style="background:rgba(248,81,73,.1);border:1px solid #f85149;color:#f85149;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
+                            <i class="fas fa-sync me-1"></i> Novo
+                        </button>
+                        <button onclick="tovpnCopiarBootstrap()"
+                            style="background:rgba(227,179,65,.15);border:1px solid #e3b341;color:#e3b341;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
+                            <i class="fas fa-copy me-1"></i> Copiar
+                        </button>
+                        <button onclick="document.getElementById('tovpn-boot-overlay').remove()"
+                            style="margin-left:auto;background:transparent;border:1px solid rgba(227,179,65,.15);color:rgba(227,179,65,.4);padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
+        } catch(e) { uiAlert('Erro: ' + e.message); }
+    }
+
+    function tovpnCopiarBootstrap() {
+        const text = document.getElementById('tovpn-boot-content')?.textContent || '';
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = event.target.closest('button');
+            btn.innerHTML = '<i class="fas fa-check me-1"></i> Copiado!';
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy me-1"></i> Copiar'; }, 2000);
+        });
+    }
+
+    async function tovpnRegenerarToken(vpnId) {
+        if (!await uiConfirm({titulo:'Gerar novo link', msg:'O link/token de bootstrap atual deixa de funcionar. Continuar?', icone:'fas fa-sync', iconeCor:'#e3b341', btnLabel:'Gerar novo'})) return;
+        try {
+            const r = await fetch(`/clientes/vpn-ovpn/${vpnId}/token/regenerar/`, {
+                method: 'POST', headers: {'X-CSRFToken': TOVPN_CSRF}
+            });
+            const d = await r.json();
+            if (d.ok) {
+                document.getElementById('tovpn-boot-content').textContent = d.script;
+            } else {
+                uiAlert('Erro: ' + d.erro);
+            }
+        } catch(e) { uiAlert('Erro: ' + e.message); }
+    }
+
+    async function tovpnDeletar(vpnId, nome) {
+        if (!await uiConfirm({titulo:'Remover túnel', msg:`Remover o túnel OpenVPN "${nome}"?\n\nIsso revoga o certificado e remove o roteamento.`, icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Remover'})) return;
+        try {
+            const r = await fetch(`/clientes/vpn-ovpn/${vpnId}/deletar/`, {
+                method: 'POST', headers: {'X-CSRFToken': TOVPN_CSRF}
+            });
+            const d = await r.json();
+            if (d.ok) tovpnCarregarLista();
+            else uiAlert('Erro: ' + d.erro);
+        } catch(e) { uiAlert('Erro: ' + e.message); }
+    }
+
+    function tovpnEditar(vpnId) {
+        const v = (window._tovpnData || {})[vpnId] || {};
+        const nome = v.nome || '';
+        const redesStr = Array.isArray(v.redes) ? v.redes.join('\n') : '';
+        const html = `<div id="tovpn-edit-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center">
+            <div style="background:#161b22;border:1px solid rgba(227,179,65,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
+                <h5 style="color:#e3b341;margin-bottom:4px"><i class="fas fa-edit me-2"></i>Editar Túnel</h5>
+                <p style="color:rgba(227,179,65,.4);font-size:.8rem;margin-bottom:16px">${nome}</p>
+                <div style="margin-bottom:12px">
+                    <label style="color:rgba(227,179,65,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome</label>
+                    <input id="tovpnEditNome" class="form-control" value="${nome}" style="background:#0d1117;border-color:rgba(227,179,65,.15);color:#e6edf3">
+                </div>
+                <div style="margin-bottom:16px">
+                    <label style="color:rgba(227,179,65,.4);font-size:.82rem;display:block;margin-bottom:4px">
+                        Subredes alcançadas <small style="color:#666">(uma por linha)</small>
+                    </label>
+                    <textarea id="tovpnEditRedes" class="form-control" rows="6"
+                        style="background:#0d1117;border-color:rgba(227,179,65,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem">${redesStr}</textarea>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end">
+                    <button onclick="document.getElementById('tovpn-edit-overlay').remove()"
+                        style="background:transparent;border:1px solid rgba(227,179,65,.15);color:rgba(227,179,65,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
+                    <button onclick="tovpnConfirmarEdicao(${vpnId})"
+                        style="background:#e3b34118;border:1px solid #e3b341;color:#e3b341;padding:6px 16px;border-radius:6px;cursor:pointer">
+                        <i class="fas fa-save me-1"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    async function tovpnConfirmarEdicao(vpnId) {
+        const nome  = document.getElementById('tovpnEditNome').value.trim();
+        const redes = document.getElementById('tovpnEditRedes').value.trim();
+        try {
+            const r = await fetch(`/clientes/vpn-ovpn/${vpnId}/editar/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': TOVPN_CSRF},
+                body: JSON.stringify({nome, redes_privadas: redes}),
+            });
+            const d = await r.json();
+            if (d.ok) {
+                document.getElementById('tovpn-edit-overlay').remove();
+                tovpnCarregarLista();
+            } else {
+                uiAlert('Erro: ' + d.erro);
+            }
+        } catch(e) { uiAlert('Erro: ' + e.message); }
+    }
 
     // ============================================
     // OpenVPN — Configuração automatizada MikroTik
@@ -6489,22 +6857,12 @@ function getCsrfToken(){
             }
         }
 
-        // ✅ RESTAURAR SUB-ABA DE FUNÇÃO via URL hash (ex: #funcao-5)
-        // history.replaceState em mostrarFuncao grava o hash; location.reload() preserva a URL inteira
-        const hash = window.location.hash; // ex: "#funcao-5"
-        if (hash.startsWith('#funcao-')) {
-            const funcaoId = hash.slice(8); // "5"
-            const funcaoEl = document.getElementById('funcao-' + funcaoId);
-            if (funcaoEl) {
-                document.querySelectorAll('.funcao-content').forEach(c => c.style.display = 'none');
-                document.querySelectorAll('#funcaoTabs .nav-link').forEach(l => l.classList.remove('active'));
-                funcaoEl.style.display = 'block';
-                const funcaoLink = document.querySelector(`#funcaoTabs a[onclick*="'${funcaoId}'"]`);
-                if (funcaoLink) funcaoLink.classList.add('active');
-            }
-        }
+        // Restauração da sub-aba de função foi movida para um <script> síncrono
+        // logo após o HTML de #funcaoTabs/.funcao-content (roda antes da
+        // pintura da tela, evitando o "flash" da primeira função aparecendo
+        // antes de trocar pra função certa).
 
-        
+
         // ✅ ADICIONAR EVENTOS NOS FORMS DE DELETE
         
         // Acessos — funcaoAtiva já está no sessionStorage via mostrarFuncao
@@ -7138,9 +7496,10 @@ function getCsrfToken(){
 
     <script>
     // Winbox: abrir direto em popup
-    window.abrirWinboxWeb = function(acessoId) {
-        window.open('/clientes/winbox/' + acessoId + '/',
-            'winbox_' + acessoId,
+    window.abrirWinboxWeb = function(acessoId, version) {
+        version = version === '3' ? '3' : '4';
+        window.open('/clientes/winbox/' + acessoId + '/?v=' + version,
+            'winbox_' + acessoId + '_v' + version,
             'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no');
     };
     </script>
@@ -7353,24 +7712,69 @@ function getCsrfToken(){
             .then(function(r){return r.json();})
             .then(function(d){if(d.ok)hsAtualizarLogoPreview(null);});
     }
+    var _hsLeadsPagina = 1;
+
+    function _hsLeadsDataHoje(){
+        var d = new Date();
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    function hsLeadsHoje(){
+        document.getElementById('hs-leads-data').value = _hsLeadsDataHoje();
+        _hsLeadsPagina = 1;
+        hsCarregarLeads();
+    }
+    function _hsLeadsMudarDia(deltaDias){
+        var el = document.getElementById('hs-leads-data');
+        var atual = el.value ? new Date(el.value+'T00:00:00') : new Date();
+        atual.setDate(atual.getDate()+deltaDias);
+        el.value = atual.getFullYear()+'-'+String(atual.getMonth()+1).padStart(2,'0')+'-'+String(atual.getDate()).padStart(2,'0');
+        _hsLeadsPagina = 1;
+        hsCarregarLeads();
+    }
+    function hsLeadsDiaAnterior(){ _hsLeadsMudarDia(-1); }
+    function hsLeadsDiaSeguinte(){ _hsLeadsMudarDia(1); }
+
+    function hsIrParaPaginaLeads(p){ _hsLeadsPagina = p; hsCarregarLeads(); }
+
     function hsCarregarLeads(){
         if(!_hsId)return;
-        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/leads/').then(function(r){return r.json();}).then(function(d){
-            if(!d.ok)return;_hsLeads=d.leads;
-            document.getElementById('hs-leads-count').textContent=d.total+' leads capturados';
+        var elData = document.getElementById('hs-leads-data');
+        if(elData && !elData.value) elData.value = _hsLeadsDataHoje();
+        var dataParam = elData ? elData.value : '';
+        var url = '/clientes/'+HS_CID+'/hotspot/'+_hsId+'/leads/?data='+encodeURIComponent(dataParam)+'&pagina='+_hsLeadsPagina;
+        _hsFetch(url).then(function(r){return r.json();}).then(function(d){
+            if(!d.ok)return;
+            _hsLeads = d.leads;
+            _hsLeadsPagina = d.pagina;
+            if(elData) elData.value = d.data;
+            document.getElementById('hs-leads-count').textContent =
+                d.total_dia+' lead'+(d.total_dia!==1?'s':'')+' neste dia — '+d.total_geral+' no total';
             var tb=document.getElementById('hs-leads-tbody'),em=document.getElementById('hs-leads-empty');
-            if(!d.leads.length){tb.innerHTML='';em.style.display='';return;}
-            em.style.display='none';
-            tb.innerHTML=d.leads.map(function(l){return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text-light);">'+l.nome+'</td><td style="padding:7px 8px;color:var(--text-light);">'+l.telefone+'</td><td style="padding:7px 8px;color:var(--text-muted);">'+(l.data_nascimento||'—')+'</td><td style="padding:7px 8px;color:var(--text-muted);font-family:monospace;font-size:.78rem;">'+(l.mac||'—')+'</td><td style="padding:7px 8px;color:var(--text-muted);">'+l.criado_em+'</td></tr>';}).join('');
+            if(!d.leads.length){tb.innerHTML='';em.style.display='';}
+            else{
+                em.style.display='none';
+                tb.innerHTML=d.leads.map(function(l){return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text-light);">'+l.nome+'</td><td style="padding:7px 8px;color:var(--text-light);">'+l.telefone+'</td><td style="padding:7px 8px;color:var(--text-muted);">'+(l.data_nascimento||'—')+'</td><td style="padding:7px 8px;color:var(--text-muted);font-family:monospace;font-size:.78rem;">'+(l.mac||'—')+'</td><td style="padding:7px 8px;color:var(--text-muted);">'+l.criado_em+'</td></tr>';}).join('');
+            }
+            var pag = document.getElementById('hs-leads-paginacao');
+            if(pag){
+                if(d.total_paginas<=1){ pag.innerHTML=''; }
+                else{
+                    var btns = '<button class="btn btn-sm btn-outline-secondary" '+(d.tem_anterior?'':'disabled')+' onclick="hsIrParaPaginaLeads('+(d.pagina-1)+')"><i class="fas fa-chevron-left"></i></button>';
+                    btns += '<span style="color:var(--text-muted);font-size:.82rem;">página '+d.pagina+' de '+d.total_paginas+'</span>';
+                    btns += '<button class="btn btn-sm btn-outline-secondary" '+(d.tem_proxima?'':'disabled')+' onclick="hsIrParaPaginaLeads('+(d.pagina+1)+')"><i class="fas fa-chevron-right"></i></button>';
+                    pag.innerHTML = btns;
+                }
+            }
         });
     }
     function hsExportLeads(){
-        if(!_hsLeads.length){alert('Nenhum lead para exportar.');return;}
+        if(!_hsLeads.length){alert('Nenhum lead para exportar neste dia.');return;}
         var rows=[['Nome','Telefone','Nascimento','MAC','IP','Data']];
         _hsLeads.forEach(function(l){rows.push([l.nome,l.telefone,l.data_nascimento||'',l.mac||'',l.ip_cliente||'',l.criado_em]);});
         var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
         var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='leads_hotspot.csv';a.click();
+        var dataEl = document.getElementById('hs-leads-data');
+        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='leads_hotspot_'+(dataEl?dataEl.value:'dia')+'.csv';a.click();
     }
     </script>
 
@@ -7451,8 +7855,8 @@ function getCsrfToken(){
           <i class="fas fa-download me-1"></i> Importar Selecionados
         </button>
       </div>
-      <div style="overflow-y:auto;flex:1;">
-        <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
+      <div style="overflow-y:auto;overflow-x:auto;flex:1;">
+        <table style="width:100%;min-width:640px;border-collapse:collapse;font-size:.8rem;">
           <thead>
             <tr style="background:rgba(255,255,255,.04);position:sticky;top:0;z-index:1;">
               <th style="padding:8px 12px;text-align:center;width:36px;color:var(--text-muted);font-weight:600;"></th>

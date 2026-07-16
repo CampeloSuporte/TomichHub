@@ -55,7 +55,8 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         
         # Senão, retorna apenas chamados do cliente do usuário ou onde é responsável
         return Chamado.objects.filter(
-            models.Q(cliente__usuario=user) | 
+            models.Q(cliente__usuario=user) |
+            models.Q(cliente__usuarios_adicionais=user) |
             models.Q(responsavel=user) |
             models.Q(criado_por=user)
         ).select_related(
@@ -184,5 +185,5 @@ class ClienteViewSet(viewsets.ReadOnlyModelViewSet):
         if user.is_superuser:
             return Cliente.objects.all()
         
-        # Retorna apenas o cliente vinculado ao usuário
-        return Cliente.objects.filter(usuario=user)
+        # Retorna apenas o cliente vinculado ao usuário (principal ou adicional)
+        return Cliente.objects.filter_by_usuario_vinculado(user)

@@ -27,7 +27,7 @@ def cliente_login_required(view_func):
         
         # Verificar se o usuário é um cliente
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             return view_func(request, *args, **kwargs)
         except Cliente.DoesNotExist:
             messages.error(request, 'Você não está vinculado a um cliente.')
@@ -92,7 +92,7 @@ def cliente_or_admin_required(view_func):
         
         # Se for cliente (is_staff=False), verifica se está vinculado
         try:
-            Cliente.objects.get(usuario=request.user)
+            Cliente.objects.get_by_usuario_vinculado(request.user)
             return view_func(request, *args, **kwargs)
         except Cliente.DoesNotExist:
             messages.error(request, 'Você não está vinculado a um cliente.')
@@ -129,7 +129,7 @@ def cliente_can_view_cliente(view_func):
         print(f"   is_superuser: {request.user.is_superuser}")
         
         try:
-            cliente_request = Cliente.objects.get(usuario=request.user)
+            cliente_request = Cliente.objects.get_by_usuario_vinculado(request.user)
             cliente_target = Cliente.objects.get(id=cliente_id)
             
             print(f"   Seu cliente: ID {cliente_request.id} ({cliente_request.nome_empresa})")

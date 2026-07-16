@@ -77,8 +77,11 @@ body {
 
 /* ─── NAV SIDEBAR ───────────────────────────── */
 .nav-sidebar {
-    background: var(--nav-bg);
+    background:
+        radial-gradient(120% 60% at 0% 0%, rgba(88,166,255,0.05), transparent 55%),
+        linear-gradient(180deg, var(--dark-900) 0%, var(--dark-950) 100%);
     border-right: 1px solid var(--border);
+    box-shadow: 1px 0 0 rgba(88,166,255,0.04);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -87,49 +90,59 @@ body {
 
 /* ─── NAV BRAND ─────────────────────────── */
 .nav-brand {
-    padding: 14px 16px 12px;
+    padding: 16px 16px 14px;
     border-bottom: 1px solid var(--dark-600);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .nav-brand-top {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 11px;
 }
 
 .nav-brand-avatar {
-    width: 34px; height: 34px;
-    border-radius: 8px;
-    background: rgba(88,166,255,0.07);
-    border: 1px solid rgba(88,166,255,0.22);
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(155deg, rgba(88,166,255,0.16), rgba(88,166,255,0.03));
+    border: 1px solid rgba(88,166,255,0.28);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.05), 0 4px 10px rgba(0,0,0,0.25);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     overflow: hidden;
+    position: relative;
 }
 .nav-brand-avatar img {
     width: 20px; height: 20px;
     object-fit: contain;
-
+    position: relative; z-index: 1;
 }
 
 .nav-brand-info { flex: 1; min-width: 0; }
 .nav-brand-info h4 {
-    font-size: 12px; font-weight: 700; color: var(--brand-500);
+    font-size: 13px; font-weight: 800; letter-spacing: 0.2px;
+    background: linear-gradient(90deg, var(--text) 0%, var(--brand-500) 130%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1.2; letter-spacing: 0.3px;
+    line-height: 1.2;
 }
 .nav-brand-info span {
-    font-size: 9px; color: var(--muted); letter-spacing: 0.5px;
-    display: flex; align-items: center; gap: 5px; margin-top: 2px;
+    font-size: 9px; color: var(--muted); letter-spacing: 0.6px;
+    display: flex; align-items: center; gap: 5px; margin-top: 3px;
+    text-transform: uppercase;
 }
 .nav-brand-status-dot {
     width: 6px; height: 6px; border-radius: 50%;
     background: var(--accent-400);
-    box-shadow: 0 0 6px var(--accent-400);
+    box-shadow: 0 0 0 2px rgba(63,185,80,0.15), 0 0 8px var(--accent-400);
     flex-shrink: 0;
+    animation: navPulseDot 2.4s ease-in-out infinite;
+}
+@keyframes navPulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.55; transform: scale(0.82); }
 }
 
 .nav-brand-actions {
@@ -137,88 +150,119 @@ body {
 }
 
 .nav-icon-btn {
-    width: 30px; height: 30px; border-radius: 8px;
+    width: 30px; height: 30px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     color: var(--muted); cursor: pointer; font-size: 13px;
-    transition: all 0.15s; text-decoration: none; position: relative;
+    transition: transform 0.15s ease, background 0.15s, border-color 0.15s, color 0.15s;
+    text-decoration: none; position: relative;
     border: 1px solid transparent;
 }
 .nav-icon-btn:hover {
-    background: var(--panel-hover);
-    border-color: var(--border);
-    color: var(--text);
+    background: rgba(88,166,255,0.08);
+    border-color: rgba(88,166,255,0.22);
+    color: var(--brand-500);
+    transform: translateY(-1px);
 }
 .nav-icon-btn .nav-notif-badge {
-    position: absolute; top: -2px; right: -2px;
-    background: #f85149; color: #fff;
+    position: absolute; top: -3px; right: -3px;
+    background: linear-gradient(135deg, #ff6b6b, #f85149); color: #fff;
     font-size: 8px; font-weight: 700;
     min-width: 15px; height: 15px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; padding: 0 3px;
-    border: 1px solid var(--dark-900);
+    border: 2px solid var(--dark-900);
+    box-shadow: 0 0 6px rgba(248,81,73,0.5);
 }
 
 
 /* ─── NAV MENU ──────────────────────────── */
 .nav-menu {
-    flex: 1; overflow-y: auto; padding: 10px 10px;
-    display: flex; flex-direction: column; gap: 1px;
+    flex: 1; overflow-y: auto; padding: 12px 10px;
+    display: flex; flex-direction: column; gap: 2px;
 }
 
 .nav-section-label {
-    font-size: 9px; font-weight: 600;
-    color: var(--muted);
-    letter-spacing: 1.2px; text-transform: uppercase;
-    padding: 10px 8px 4px;
+    font-size: 9px; font-weight: 700;
+    color: rgba(125,133,144,0.75);
+    letter-spacing: 1.4px; text-transform: uppercase;
+    padding: 14px 8px 6px;
+    display: flex; align-items: center; gap: 7px;
 }
-.nav-section-label:first-child { padding-top: 4px; }
+.nav-section-label:first-child { padding-top: 2px; }
+.nav-section-label::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--dark-600), transparent);
+}
 
 .nav-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 10px; border-radius: 8px;
-    text-decoration: none; color: rgba(160,180,200,0.7);
+    padding: 8px 10px; border-radius: 10px;
+    text-decoration: none; color: rgba(180,196,212,0.72);
     font-size: 13px; font-weight: 500;
-    transition: all 0.15s ease; cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease, transform 0.12s ease, box-shadow 0.16s ease;
     border: 1px solid transparent; background: none; width: 100%; text-align: left;
     min-height: 38px;
+    position: relative;
 }
 
 .nav-item:hover {
-    background: var(--panel-hover);
-    border-color: var(--border);
+    background: rgba(255,255,255,0.035);
     color: var(--text);
+    transform: translateX(2px);
 }
 
 .nav-item.active {
-    background: rgba(0,200,216,0.1);
-    color: var(--brand-500);
+    background: linear-gradient(90deg, rgba(88,166,255,0.16), rgba(88,166,255,0.04));
+    color: #cfe4ff;
     font-weight: 600;
-    border-color: rgba(88,166,255,0.2);
-    box-shadow: inset 3px 0 0 var(--brand-600);
-    padding-left: 8px;
+    border-color: rgba(88,166,255,0.24);
+    box-shadow: inset 0 0 0 1px rgba(88,166,255,0.05), 0 2px 10px rgba(56,139,253,0.12);
 }
-.nav-item.active .nav-item-icon { color: var(--brand-500); }
+.nav-item.active::before {
+    content: '';
+    position: absolute; left: 1px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%; border-radius: 3px;
+    background: linear-gradient(180deg, var(--brand-500), var(--brand-700));
+    box-shadow: 0 0 8px rgba(88,166,255,0.6);
+}
+.nav-item.active .nav-item-icon {
+    color: #fff;
+    background: linear-gradient(155deg, var(--brand-600), var(--brand-700));
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(56,139,253,0.45);
+}
 .nav-item.active .nav-item-arrow {
     margin-left: auto;
     font-size: 10px;
-    opacity: 0.6;
+    opacity: 0.75;
     color: var(--brand-500);
 }
 .nav-item:not(.active) .nav-item-arrow { display: none; }
 
 .nav-item-icon {
-    width: 16px; text-align: center; font-size: 13px; flex-shrink: 0;
-    color: rgba(88,166,255,0.35);
-    transition: color 0.15s;
+    width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    color: rgba(148,163,184,0.65);
+    transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
 }
-.nav-item:hover .nav-item-icon { color: rgba(88,166,255,0.65); }
+.nav-item:hover .nav-item-icon {
+    color: var(--brand-500);
+    background: rgba(88,166,255,0.09);
+    border-color: rgba(88,166,255,0.18);
+    transform: scale(1.05);
+}
 
 .nav-badge {
     margin-left: auto;
-    background: rgba(88,166,255,0.12); color: var(--brand-500);
+    background: linear-gradient(135deg, rgba(88,166,255,0.22), rgba(88,166,255,0.08));
+    color: var(--brand-500);
     font-size: 9px; font-weight: 700;
     min-width: 18px; height: 18px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
-    border: 1px solid rgba(88,166,255,0.25);
+    border: 1px solid rgba(88,166,255,0.28);
 }
 
 /* ─── NAV BOTTOM ────────────────────────── */
@@ -226,18 +270,22 @@ body {
     padding: 10px;
     border-top: 1px solid var(--dark-600);
     display: flex; flex-direction: column; gap: 3px;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,0.12));
 }
 
 .unattended-pill {
     display: flex; align-items: center; gap: 8px;
-    padding: 7px 10px; border-radius: 7px;
-    background: rgba(210,153,34,0.08);
-    border: 1px solid rgba(210,153,34,0.2);
-    color: #d29922; font-size: 11px; font-weight: 500;
+    padding: 8px 10px; border-radius: 9px;
+    background: linear-gradient(90deg, rgba(210,153,34,0.12), rgba(210,153,34,0.03));
+    border: 1px solid rgba(210,153,34,0.25);
+    color: #e3a72e; font-size: 11px; font-weight: 600;
     cursor: pointer; text-decoration: none;
-    transition: all 0.15s; margin-bottom: 3px;
+    transition: all 0.15s; margin-bottom: 4px;
 }
-.unattended-pill:hover { background: rgba(234,179,8,0.13); }
+.unattended-pill:hover {
+    background: linear-gradient(90deg, rgba(234,179,8,0.18), rgba(234,179,8,0.04));
+    transform: translateX(2px);
+}
 .unattended-pill i { font-size: 11px; animation: ring 1.5s ease infinite; flex-shrink: 0; }
 
 @keyframes ring {
@@ -253,41 +301,44 @@ body {
 
 .user-profile {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: 8px;
-    background: var(--panel-hover);
+    padding: 9px 10px; border-radius: 11px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
     border: 1px solid var(--border);
-    margin-bottom: 3px; cursor: default;
+    margin-bottom: 4px; cursor: default;
+    transition: border-color 0.15s;
 }
+.user-profile:hover { border-color: rgba(88,166,255,0.2); }
 
 .user-avatar {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--active-bg);
-    border: 1px solid var(--border);
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(155deg, rgba(88,166,255,0.28), rgba(88,166,255,0.06));
+    border: 1px solid rgba(88,166,255,0.3);
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; color: var(--brand-600); flex-shrink: 0;
+    font-size: 11px; font-weight: 700; color: var(--brand-500); flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(88,166,255,0.06);
 }
 
 .user-info { flex: 1; min-width: 0; }
 .user-info h5 {
-    font-size: 12px; font-weight: 600; color: #c0d8e8;
+    font-size: 12px; font-weight: 600; color: #dbe8f5;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.user-info span { font-size: 10px; color: rgba(88,166,255,0.35); }
+.user-info span { font-size: 10px; color: rgba(88,166,255,0.45); }
 
 .user-actions {
     display: flex; gap: 2px;
 }
 .user-action-btn {
-    width: 26px; height: 26px; border-radius: 6px;
+    width: 26px; height: 26px; border-radius: 7px;
     display: flex; align-items: center; justify-content: center;
-    color: rgba(88,166,255,0.3); font-size: 11px;
+    color: rgba(148,163,184,0.45); font-size: 11px;
     cursor: pointer; transition: all 0.15s; text-decoration: none;
     border: 1px solid transparent;
 }
 .user-action-btn:hover {
-    background: var(--panel-hover);
-    border-color: var(--border);
-    color: var(--muted);
+    background: rgba(88,166,255,0.08);
+    border-color: rgba(88,166,255,0.2);
+    color: var(--brand-500);
 }
 .user-action-btn.danger { color: rgba(248,113,113,0.4); }
 .user-action-btn.danger:hover {
@@ -298,35 +349,36 @@ body {
 
 .user-link {
     display: flex; align-items: center; gap: 10px;
-    padding: 7px 10px; border-radius: 7px;
-    font-size: 12px; color: rgba(160,180,200,0.6);
+    padding: 8px 10px; border-radius: 8px;
+    font-size: 12px; color: rgba(160,180,200,0.65);
     text-decoration: none; transition: all 0.15s; cursor: pointer;
     border: 1px solid transparent;
 }
 .user-link:hover {
-    background: var(--panel-hover);
+    background: rgba(255,255,255,0.035);
     border-color: var(--border);
     color: var(--text);
+    transform: translateX(2px);
 }
-.user-link i { width: 14px; text-align: center; font-size: 11px; color: rgba(88,166,255,0.35); }
+.user-link i { width: 14px; text-align: center; font-size: 11px; color: rgba(88,166,255,0.4); }
 .user-link.danger { color: rgba(248,113,113,0.55); }
 .user-link.danger i { color: rgba(248,113,113,0.4); }
 .user-link.danger:hover {
-    background: rgba(248,113,113,0.06);
-    border-color: rgba(248,113,113,0.15);
+    background: rgba(248,113,113,0.07);
+    border-color: rgba(248,113,113,0.2);
     color: #fca5a5;
 }
 
 .nav-collapse {
     display: flex; align-items: center; gap: 8px;
-    padding: 7px 10px; font-size: 11px; color: rgba(88,166,255,0.2);
-    cursor: pointer; border-radius: 7px; transition: all 0.15s;
+    padding: 7px 10px; font-size: 11px; color: rgba(88,166,255,0.25);
+    cursor: pointer; border-radius: 8px; transition: all 0.15s;
     text-decoration: none; margin-top: 2px;
     border: 1px solid transparent;
     background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif;
 }
 .nav-collapse:hover {
-    background: var(--panel-hover);
+    background: rgba(255,255,255,0.03);
     border-color: var(--border);
     color: var(--muted);
 }
@@ -360,7 +412,9 @@ body {
 
 /* ─── CONV PANEL ────────────────────────────── */
 .conv-panel {
-    background: var(--dark-900);
+    background:
+        radial-gradient(120% 40% at 100% 0%, rgba(88,166,255,0.04), transparent 55%),
+        linear-gradient(180deg, var(--dark-900) 0%, var(--dark-950) 100%);
     border-right: 1px solid var(--dark-600);
     display: flex; flex-direction: column; overflow: hidden;
 }
@@ -376,17 +430,32 @@ body {
     margin-bottom: 12px;
 }
 
-.conv-panel-top h3 { font-size: 16px; font-weight: 700; color: var(--text); }
+.conv-panel-top h3 {
+    font-size: 16px; font-weight: 800; letter-spacing: 0.2px;
+    background: linear-gradient(90deg, var(--text) 0%, var(--brand-500) 140%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
 
-.conv-panel-icons { display: flex; align-items: center; gap: 8px; }
-.conv-panel-icons i { font-size: 14px; color: var(--muted); cursor: pointer; transition: color 0.15s; }
-.conv-panel-icons i:hover { color: var(--text); }
+.conv-panel-icons { display: flex; align-items: center; gap: 4px; }
+.conv-panel-icons i {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.15s ease, background 0.15s, border-color 0.15s, color 0.15s;
+}
+.conv-panel-icons i:hover {
+    background: rgba(88,166,255,0.08);
+    border-color: rgba(88,166,255,0.22);
+    color: var(--brand-500);
+    transform: translateY(-1px);
+}
 
 .btn-new-conv {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 9px; border-radius: 6px;
-    background: rgba(88,166,255,0.08);
-    border: 1px solid rgba(88,166,255,0.25);
+    padding: 5px 10px; border-radius: 7px;
+    background: linear-gradient(135deg, rgba(88,166,255,0.16), rgba(88,166,255,0.05));
+    border: 1px solid rgba(88,166,255,0.28);
     color: var(--brand-500); cursor: pointer;
     font-size: 11px; font-weight: 700;
     font-family: 'Inter', sans-serif;
@@ -395,20 +464,22 @@ body {
     white-space: nowrap;
 }
 .btn-new-conv:hover {
-    background: var(--active-bg);
+    background: linear-gradient(135deg, rgba(88,166,255,0.26), rgba(88,166,255,0.08));
     border-color: var(--brand-600);
+    box-shadow: 0 2px 10px rgba(56,139,253,0.25);
+    transform: translateY(-1px);
 }
 
 .conv-search {
-    background: var(--dark-800);
+    background: rgba(255,255,255,0.02);
     border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 12px;
+    border-radius: 9px; padding: 8px 12px;
     display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px; transition: border-color 0.15s;
+    margin-bottom: 12px; transition: border-color 0.15s, box-shadow 0.15s;
 }
 .conv-search:focus-within {
     border-color: var(--brand-600);
-    box-shadow: 0 0 0 2px rgba(56,139,253,0.08);
+    box-shadow: 0 0 0 3px rgba(56,139,253,0.1);
 }
 .conv-search i { font-size: 12px; color: var(--muted); flex-shrink: 0; }
 .conv-search input {
@@ -418,28 +489,41 @@ body {
 }
 .conv-search input::placeholder { color: var(--muted); }
 
-.conv-tabs { display: flex; }
+.conv-tabs { display: flex; gap: 3px; padding-bottom: 2px; }
 
 .conv-tab {
-    padding: 8px 12px; font-size: 12px; font-weight: 500;
-    color: var(--muted); cursor: pointer;
-    border-bottom: 2px solid transparent;
-    border-top: none; border-left: none; border-right: none;
+    padding: 7px 12px; font-size: 12px; font-weight: 600;
+    color: rgba(180,196,212,0.6); cursor: pointer;
+    border: 1px solid transparent; border-radius: 8px 8px 0 0;
     background: none; outline: none;
     font-family: 'Inter', sans-serif;
-    transition: all 0.15s; text-decoration: none;
+    transition: background 0.16s ease, color 0.16s ease;
+    text-decoration: none;
     display: flex; align-items: center; gap: 5px;
     white-space: nowrap;
+    position: relative;
 }
-.conv-tab:hover { color: var(--text); }
-.conv-tab.active { color: var(--brand-600); border-bottom-color: var(--brand-600); }
+.conv-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.conv-tab.active {
+    color: #cfe4ff;
+    background: linear-gradient(180deg, rgba(88,166,255,0.14), rgba(88,166,255,0.03));
+    border-color: rgba(88,166,255,0.22); border-bottom-color: transparent;
+}
+.conv-tab.active::after {
+    content: '';
+    position: absolute; left: 10%; right: 10%; bottom: 0;
+    height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--brand-500), var(--brand-700));
+    box-shadow: 0 0 8px rgba(88,166,255,0.6);
+}
 
 .conv-tab-badge {
-    background: rgba(88,166,255,0.12); color: var(--brand-500);
+    background: linear-gradient(135deg, rgba(88,166,255,0.22), rgba(88,166,255,0.08));
+    color: var(--brand-500);
     font-size: 10px; font-weight: 700;
     min-width: 17px; height: 17px; border-radius: 9px;
     display: inline-flex; align-items: center; justify-content: center; padding: 0 4px;
-    border: 1px solid rgba(88,166,255,0.25);
+    border: 1px solid rgba(88,166,255,0.28);
 }
 
 .conv-select-all {
@@ -455,33 +539,48 @@ body {
 .conv-item {
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--dark-600);
-    cursor: pointer; transition: background 0.15s;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    cursor: pointer; transition: background 0.16s ease, transform 0.12s ease;
     text-decoration: none; color: inherit;
     position: relative;
 }
-.conv-item:hover { background: var(--dark-700); }
+.conv-item:hover { background: rgba(255,255,255,0.03); }
 .conv-item.active {
-    background: rgba(56,139,253,0.06);
+    background: linear-gradient(90deg, rgba(88,166,255,0.1), rgba(88,166,255,0.02));
     border-left: 3px solid var(--brand-600);
+    box-shadow: inset 0 0 0 1px rgba(88,166,255,0.05), 2px 0 10px -4px rgba(56,139,253,0.4);
     padding-left: 13px;
 }
-.conv-item.unread { border-left: 3px solid var(--brand-600); padding-left: 13px; }
+.conv-item.unread {
+    border-left: 3px solid var(--brand-600);
+    box-shadow: 2px 0 10px -4px rgba(56,139,253,0.4);
+    padding-left: 13px;
+}
 
 .conv-avatar {
     width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 15px; font-weight: 700; color: #fff;
     flex-shrink: 0; position: relative;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.04), 0 3px 8px rgba(0,0,0,0.3);
 }
 
 .conv-status-dot {
     position: absolute; bottom: 1px; right: 1px;
     width: 10px; height: 10px; border-radius: 50%;
     border: 2px solid var(--panel-bg);
+    box-shadow: 0 0 6px currentColor;
 }
 
 .conv-meta { flex: 1; min-width: 0; }
+
+.sla-badge-overdue {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 4px; padding: 2px 7px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+    background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); color: #ef4444;
+    width: fit-content;
+}
 
 .conv-meta-top {
     display: flex; justify-content: space-between; align-items: center;
@@ -508,7 +607,12 @@ body {
 .conv-empty {
     padding: 48px 20px; text-align: center; color: var(--muted);
 }
-.conv-empty i { font-size: 36px; opacity: 0.25; display: block; margin-bottom: 10px; }
+.conv-empty i {
+    font-size: 34px; display: block; margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(88,166,255,0.35), rgba(88,166,255,0.08));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    opacity: 0.7;
+}
 .conv-empty p { font-size: 13px; }
 
 /* ─── MAIN CONTENT ──────────────────────────── */
@@ -863,6 +967,75 @@ body {
 .status-menu-item:hover { background:var(--panel-hover); }
 .status-menu-item .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
+/* Abas de conversa: nunca deixa cortar — rola em vez de vazar.
+   Vale em qualquer largura, não só mobile (já cortava em desktop estreito). */
+.conv-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.conv-tab { flex-shrink: 0; }
+
+.mobile-drawer-backdrop { display: none; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVO MOBILE (≤768px)
+   Padrão lista↔chat de tela única (como apps de chat mobile) e
+   nav-sidebar como drawer sobreposto — mesma linguagem visual já
+   usada em clientes/templates/terminal.html pros painéis dele.
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* iOS aplica zoom automático ao focar input com fonte <16px. */
+    input, textarea, select { font-size: 16px; }
+
+    /* Grid vira 1 coluna. O JS para de setar gridTemplateColumns inline
+       nesta largura (ver toggleAtendimentoSidebar), então esta regra
+       não precisa de !important pra vencer. */
+    .app-layout,
+    .app-layout[data-nav="open"] {
+        grid-template-columns: 1fr;
+    }
+
+    /* Lista de conversas e chat dividem a mesma célula do grid —
+       só um dos dois fica visível por vez. */
+    .conv-panel, .main-content {
+        grid-column: 1; grid-row: 1;
+        width: 100%;
+    }
+    .main-content { display: none; }
+    .app-layout.mchat-open .conv-panel { display: none; }
+    .app-layout.mchat-open .main-content { display: flex; }
+
+    /* Nav-sidebar: era coluna de grid de 220px, vira drawer sobreposto. */
+    .nav-sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        width: 82vw; max-width: 300px;
+        z-index: 300;
+        transform: translateX(-100%);
+        transition: transform .22s ease, opacity .18s ease;
+        box-shadow: 6px 0 24px rgba(0,0,0,.5);
+    }
+    .app-layout[data-nav="open"] .nav-sidebar {
+        transform: translateX(0);
+    }
+    .app-layout[data-nav="open"] .mobile-drawer-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 290;
+        background: rgba(0,0,0,.55);
+    }
+
+    /* Botões de ação do cabeçalho do chat (Assumir/Transferir/Mesclar/
+       Hosts/Tarefas): quebra em 2 linhas em vez de cortar da tela. */
+    .chat-header { flex-wrap: wrap; row-gap: 8px; }
+    .chat-header-actions { flex-wrap: wrap; }
+
+    /* Painéis de tarefas/terminal: tela cheia em vez de espremer o chat
+       (eram 340px/480px fixos, dominavam uma tela de celular). */
+    .task-panel.open, .chat-terminal-panel.open {
+        position: fixed !important; inset: 0 !important; z-index: 400;
+        width: 100vw !important; max-width: 100vw !important; height: 100vh !important;
+    }
+
+    /* Dropdowns com largura fixa (hosts, tags): não deixa vazar da tela. */
+    .hosts-panel { width: min(360px, 90vw); }
+    .tag-picker { max-width: 88vw; }
+}
+
 </style>
 <style>
 {% block extra_css %}{% endblock %}
@@ -870,6 +1043,9 @@ body {
 </head>
 <body>
 <div class="app-layout">
+
+    <!-- Fundo escurecido atrás do drawer de navegação no mobile -->
+    <div class="mobile-drawer-backdrop" onclick="toggleAtendimentoSidebar()"></div>
 
     <!-- ─── NAV SIDEBAR ─── -->
     <nav class="nav-sidebar">
@@ -997,6 +1173,9 @@ body {
                         <span>{% if request.user.is_superuser %}Administrador{% elif request.user.is_staff %}Supervisor{% else %}Agente{% endif %}</span>
                     </div>
                     <div class="user-actions">
+                        <a href="#" class="user-action-btn" id="btnToggleSom" onclick="toggleSomAlertas(event)" title="Ativar/desativar alertas sonoros">
+                            <i class="fas fa-volume-up" id="iconSomAlertas"></i>
+                        </a>
                         <a href="#" class="user-action-btn" onclick="openDisplayNameModal(event)" title="Nome de Exibição">
                             <i class="fas fa-signature"></i>
                         </a>
@@ -1116,8 +1295,28 @@ function _getAudioCtx() {
     return _audioCtx;
 }
 
+/* Preferência de som — persistida no navegador (por usuário/dispositivo) */
+var SOM_MUTADO_KEY = 'atendimento_som_mutado';
+function somEstaMutado() { return localStorage.getItem(SOM_MUTADO_KEY) === '1'; }
+function _atualizarIconeSom() {
+    var icon = document.getElementById('iconSomAlertas');
+    var btn  = document.getElementById('btnToggleSom');
+    if (!icon) return;
+    var mutado = somEstaMutado();
+    icon.className = mutado ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+    if (btn) btn.title = mutado ? 'Alertas sonoros desativados — clique para ativar' : 'Alertas sonoros ativados — clique para desativar';
+}
+window.toggleSomAlertas = function(e) {
+    if (e) e.preventDefault();
+    localStorage.setItem(SOM_MUTADO_KEY, somEstaMutado() ? '0' : '1');
+    _atualizarIconeSom();
+    if (!somEstaMutado()) playSoundMessage(); // feedback ao reativar
+};
+_atualizarIconeSom();
+
 /* Som suave — nova mensagem em conversa existente */
 window.playSoundMessage = function() {
+    if (somEstaMutado()) return;
     try {
         var ctx = _getAudioCtx();
         var osc = ctx.createOscillator();
@@ -1135,6 +1334,7 @@ window.playSoundMessage = function() {
 
 /* Som duplo mais urgente — novo chamado em aberto */
 window.playSoundTicket = function() {
+    if (somEstaMutado()) return;
     try {
         var ctx = _getAudioCtx();
         [0, 0.18].forEach(function(d) {
@@ -1148,6 +1348,26 @@ window.playSoundTicket = function() {
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 0.16);
             osc.start(ctx.currentTime + d);
             osc.stop(ctx.currentTime + d + 0.18);
+        });
+    } catch(e) {}
+};
+
+/* Som triplo grave — SLA estourado (mais sério que um chamado novo) */
+window.playSoundSLA = function() {
+    if (somEstaMutado()) return;
+    try {
+        var ctx = _getAudioCtx();
+        [0, 0.22, 0.44].forEach(function(d) {
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(340, ctx.currentTime + d);
+            osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + d + 0.16);
+            gain.gain.setValueAtTime(0.22, ctx.currentTime + d);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 0.2);
+            osc.start(ctx.currentTime + d);
+            osc.stop(ctx.currentTime + d + 0.22);
         });
     } catch(e) {}
 };
@@ -1259,6 +1479,18 @@ document.addEventListener('click', function() {
             notifWs.onmessage = function(e) {
                 try {
                     var p = JSON.parse(e.data);
+
+                    /* SLA de resposta estourado — alerta com som distinto */
+                    if (p.type === 'sla_breach') {
+                        var slaAssigned = p.assigned_to_id;
+                        if (slaAssigned && slaAssigned !== currentUserId) return;
+                        if (typeof playSoundSLA === 'function') playSoundSLA();
+                        showBrowserNotif('⏰ SLA estourado', (p.group_name || 'Chamado') + ' está sem resposta há mais tempo que o permitido.');
+                        showToast(p.group_name || 'Chamado', 'SLA de 1ª resposta estourado', p.conversation_id, (p.group_name || '??').substring(0, 2).toUpperCase(), true);
+                        pulseConvItem(p.conversation_id);
+                        return;
+                    }
+
                     if (p.type !== 'new_message' || !p.message || !p.conversation) return;
 
                     var conv = p.conversation;
@@ -1285,8 +1517,13 @@ document.addEventListener('click', function() {
                     /* 2. Notificação do navegador */
                     showBrowserNotif(titlePrefix + groupName, msgContent);
 
-                    /* 3. Toast na página */
-                    showToast(groupName, msgContent, convId, initials, isUnassigned);
+                    /* 3. Alerta: toast só para chamados SEM atendente;
+                          conversas assumidas por mim: pulse no ícone flutuante */
+                    if (isUnassigned) {
+                        showToast(groupName, msgContent, convId, initials, true);
+                    } else if (typeof window.pulseBubble === 'function') {
+                        window.pulseBubble(convId);
+                    }
 
                     /* 4. Pisca a conversa no sidebar */
                     pulseConvItem(convId);
@@ -1501,18 +1738,45 @@ function syncAllContacts(btn) {
 }
 </script>
 
-<!-- ── Sidebar Toggle ──────────────────────────────────────────── -->
+<!-- ── Sidebar Toggle + responsivo mobile ─────────────────────────── -->
 <script>
+function isMobileAtendimento() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+/* No mobile, lista de conversas e chat dividem a mesma célula do grid
+   (ver CSS) — esta função decide qual dos dois mostrar, checando se o
+   main-content tem um chat de verdade (.chat-header) ou só o placeholder
+   "Selecione um chamado". Chamada após toda troca de conteúdo via SPA
+   e uma vez no carregamento inicial da página. */
+function syncMobileChatView() {
+    if (!isMobileAtendimento()) return;
+    var layout = document.querySelector('.app-layout');
+    var mc     = document.querySelector('.main-content');
+    if (!layout || !mc) return;
+    layout.classList.toggle('mchat-open', !!mc.querySelector('.chat-header'));
+}
+
+/* Botão "voltar" do cabeçalho do chat, só visível no mobile. */
+function voltarParaListaMobile() {
+    var layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.remove('mchat-open');
+}
+
 function toggleAtendimentoSidebar() {
     var layout  = document.querySelector('.app-layout');
     var sidebar = document.querySelector('.nav-sidebar');
     var tab     = document.getElementById('navSidebarReopen');
     var icon    = document.getElementById('navCollapseIcon');
+    var mobile  = isMobileAtendimento();
 
     var collapsed = layout.getAttribute('data-nav') === 'collapsed';
 
     if (collapsed) {
-        layout.style.gridTemplateColumns = '220px 360px 1fr';
+        /* No mobile o grid não tem mais 3 colunas (vira 1fr fixo via CSS) —
+           setar gridTemplateColumns aqui teria prioridade sobre a media
+           query (estilo inline sempre vence) e quebraria o layout mobile. */
+        if (!mobile) layout.style.gridTemplateColumns = '220px 360px 1fr';
         layout.setAttribute('data-nav', 'open');
         sidebar.style.opacity = '1';
         sidebar.style.pointerEvents = 'auto';
@@ -1520,7 +1784,7 @@ function toggleAtendimentoSidebar() {
         if (icon) icon.className = 'fas fa-chevron-left';
         localStorage.setItem('atendimento_nav', 'open');
     } else {
-        layout.style.gridTemplateColumns = '0px 360px 1fr';
+        if (!mobile) layout.style.gridTemplateColumns = '0px 360px 1fr';
         layout.setAttribute('data-nav', 'collapsed');
         sidebar.style.opacity = '0';
         sidebar.style.pointerEvents = 'none';
@@ -1537,12 +1801,13 @@ function toggleAtendimentoSidebar() {
     var tab     = document.getElementById('navSidebarReopen');
     var icon    = document.getElementById('navCollapseIcon');
     if (!layout) return;
-    layout.style.gridTemplateColumns = '0px 360px 1fr';
+    if (!isMobileAtendimento()) layout.style.gridTemplateColumns = '0px 360px 1fr';
     layout.setAttribute('data-nav', 'collapsed');
     if (sidebar) { sidebar.style.opacity = '0'; sidebar.style.pointerEvents = 'none'; }
     if (tab)  tab.style.display  = 'flex';
     if (icon) icon.className = 'fas fa-chevron-right';
     localStorage.setItem('atendimento_nav', 'collapsed');
+    syncMobileChatView();
 })();
 </script>
 
@@ -1888,6 +2153,7 @@ document.addEventListener('keydown', function(e) {
 
             if (push) history.pushState({ href: href }, '', href);
             updateActiveNav(href);
+            if (typeof syncMobileChatView === 'function') syncMobileChatView();
         })
         .catch(function() {
             mainContent.innerHTML =
@@ -2036,16 +2302,19 @@ document.addEventListener('keydown', function(e) {
 /* ── Sala Virtual Widget ── */
 #sala-widget {
   position: fixed;
-  bottom: 16px;
-  left: 4px;
+  bottom: 78px;            /* acima do compositor de mensagens, fora da lista de conversas */
+  right: 16px;
   z-index: 900;
-  width: 352px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column-reverse;
+  align-items: flex-end;   /* pílula minimizada compacta encostada à direita */
   gap: 6px;
   font-family: 'Inter', sans-serif;
   pointer-events: none;
 }
+#sala-widget #sala-panel-body { width: 100%; }   /* painel aberto ocupa toda a largura */
 #sala-widget > * { pointer-events: all; }
 
 #sala-toggle-bar {
@@ -2064,7 +2333,10 @@ document.addEventListener('keydown', function(e) {
   font-weight: 500;
 }
 #sala-toggle-bar:hover { border-color: rgba(63,185,80,.6); box-shadow: 0 4px 20px rgba(63,185,80,.15); }
-#sala-toggle-bar.visible { display: flex; }
+/* A pílula flutuante da sala foi removida — ela sobrepunha o botão de parar
+   áudio do chat. A sala agora é controlada pelo item "Sala Virtual" no menu
+   lateral (abre/fecha o painel) e o atendente entra automaticamente. */
+#sala-toggle-bar, #sala-toggle-bar.visible { display: none !important; }
 #sala-toggle-bar.panel-open #sala-tb-chevron { transform: rotate(180deg); }
 
 #sala-panel-body {
@@ -2246,12 +2518,17 @@ document.addEventListener('keydown', function(e) {
 /* Janela flutuante de tela compartilhada */
 #sala-screen-win {
   display: none;
+  flex-direction: column;
   position: fixed;
   top: 60px;
   left: 50%;
   transform: translateX(-50%);
-  width: 640px;
-  max-width: 90vw;
+  width: 760px;
+  height: 480px;
+  max-width: 95vw;
+  max-height: 88vh;
+  min-width: 320px;
+  min-height: 220px;
   background: #161b22;
   border: 1px solid rgba(88,166,255,.3);
   border-radius: 10px;
@@ -2260,8 +2537,9 @@ document.addEventListener('keydown', function(e) {
   box-shadow: 0 12px 40px rgba(0,0,0,.6);
   resize: both;
 }
-#sala-screen-win.open { display: block; }
+#sala-screen-win.open { display: flex; }
 #sala-screen-win-header {
+  flex-shrink: 0;
   padding: 8px 12px;
   background: #1c2128;
   border-bottom: 1px solid #30363d;
@@ -2272,7 +2550,9 @@ document.addEventListener('keydown', function(e) {
   color: #e6edf3;
   cursor: move;
 }
-#sala-screen-video { width: 100%; display: block; background: #000; max-height: 60vh; }
+/* Vídeo preenche todo o espaço abaixo do cabeçalho e acompanha o redimensionamento
+   da janela (antes ficava pequeno com uma faixa preta embaixo). */
+#sala-screen-video { flex: 1; width: 100%; min-height: 0; object-fit: contain; background: #000; display: block; }
 </style>
 
 <script>
@@ -2280,8 +2560,11 @@ document.addEventListener('keydown', function(e) {
 "use strict";
 
 const SALA_ME = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+const SALA_USER_ID = "{{ request.user.id }}";
 const SALA_WS  = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/atendimento/sala/';
-const ICE_CFG  = { iceServers: [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}] };
+let salaKicked = false;   // true quando esta aba foi expulsa por outra conexão do mesmo usuário
+const ICE_CFG  = { iceServers: {{ ice_servers_json|default:"[]"|safe }} };
+if (!ICE_CFG.iceServers || !ICE_CFG.iceServers.length) ICE_CFG.iceServers = [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
 
 let ws = null, myId = null;
 let localStream = new MediaStream();
@@ -2294,11 +2577,10 @@ const peerInfo = {};    // channelName → {display_name, audio, screen}
 // ── Nav button ────────────────────────────────────────────────────
 window.salaTogglePanel = function() {
   if (!connected) {
-    // Já entrou automático — só abre o microfone se não tiver
-    if (!localStream.getAudioTracks().length) {
-      navigator.mediaDevices.getUserMedia({audio: true, video: false})
-        .then(s => { localStream = s; micOn = true; updateMicBtn(); salaSendState(); })
-        .catch(() => {});
+    // Ainda não está na sala (auto-join não concluiu ou caiu) → entra como
+    // ouvinte e abre o painel. O microfone é ativado pelo botão dentro do painel.
+    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+      salaOpenWsNoMic();
     }
     panelOpen = true;
   } else {
@@ -2337,23 +2619,27 @@ function salaConnect() {
 }
 
 function salaOpenWs() {
+  // Evita abrir 2 conexões ao mesmo tempo (duplicaria o atendente na sala)
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
   ws = new WebSocket(SALA_WS);
   ws.onmessage = e => salaHandleMsg(JSON.parse(e.data));
   ws.onclose   = () => {
     connected = false;
     document.getElementById('sala-toggle-bar').classList.remove('visible');
     salaRenderBar();
-    // Reconecta automaticamente se não foi saída manual
-    if (sessionStorage.getItem('sala_active') === '1') {
+    // Não reconecta se esta aba foi expulsa por outra conexão do mesmo usuário
+    // (evita ping-pong entre abas) nem se a saída foi manual.
+    if (!salaKicked && sessionStorage.getItem('sala_active') === '1') {
       setTimeout(salaOpenWs, 3000);
     }
   };
   ws.onerror   = () => {};
   ws.onopen    = () => {
     connected = true;
-    panelOpen = true;
+    // Entra "online" mas com o painel FECHADO — o atendente abre o chat da
+    // sala pelo item "Sala Virtual" no menu lateral quando quiser.
+    // (não força panelOpen=true para não cobrir o canto da tela ao entrar)
     sessionStorage.setItem('sala_active', '1');
-    document.getElementById('sala-toggle-bar').classList.add('visible');
     salaRenderBar();
     addMyPeer();
     salaRenderBar();
@@ -2363,21 +2649,46 @@ function salaOpenWs() {
 // ── Signaling ─────────────────────────────────────────────────────
 async function salaHandleMsg(msg) {
   switch(msg.type) {
+    case 'kicked':
+      // Outra aba/conexão do mesmo usuário assumiu a sala — não reconecta aqui.
+      salaKicked = true;
+      salaNotify && salaNotify('Sala aberta em outra aba/janela — esta desconectou.', true);
+      break;
     case 'room_joined':
       myId = msg.my_id;
-      for (const p of msg.peers) {
-        peerInfo[p.channel_name] = p;
-        addPeerTile(p);
-        await salaCreateOffer(p.channel_name);
+      // Reconstrói a lista do ZERO (fonte da verdade = servidor). Evita tiles
+      // acumuladas de reconexões anteriores e deduplica por usuário.
+      Object.keys(peers).forEach(ch => { try { peers[ch].pc && peers[ch].pc.close(); } catch(e){} });
+      Object.keys(peers).forEach(ch => delete peers[ch]);
+      Object.keys(peerInfo).forEach(ch => delete peerInfo[ch]);
+      document.getElementById('sala-peers-strip').innerHTML = '';
+      addMyPeer();
+      {
+        const vistos = new Set([String(SALA_USER_ID)]);  // não exibe a si mesmo
+        for (const p of msg.peers) {
+          if (p.channel_name === myId) continue;
+          const uid = String(p.user_id);
+          if (vistos.has(uid)) continue;    // 1 tile por usuário (dedupe)
+          vistos.add(uid);
+          peerInfo[p.channel_name] = p;
+          addPeerTile(p);
+          await salaCreateOffer(p.channel_name);
+        }
       }
       salaSendState();
       salaRenderBar();
       break;
-    case 'peer_joined':
+    case 'peer_joined': {
+      if (msg.peer.channel_name === myId) break;
+      const uid = String(msg.peer.user_id);
+      if (uid === String(SALA_USER_ID)) break;   // sou eu (conexão duplicada)
+      // Já existe uma tile desse usuário? não duplica.
+      if (Object.values(peerInfo).some(p => String(p.user_id) === uid)) break;
       peerInfo[msg.peer.channel_name] = msg.peer;
       addPeerTile(msg.peer);
       salaRenderBar();
       break;
+    }
     case 'peer_left':
       removePeerTile(msg.channel_name);
       delete peerInfo[msg.channel_name];
@@ -2464,12 +2775,55 @@ async function salaHandleOffer(peerId, offer) {
 }
 
 // ── Mic ───────────────────────────────────────────────────────────
-window.salaToggleMic = function() {
+// Notificação curta da sala (feedback de microfone / erros)
+function salaNotify(msg, isError) {
+  let el = document.getElementById('sala-notify');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sala-notify';
+    el.style.cssText = 'position:fixed;bottom:128px;right:16px;z-index:1000;max-width:320px;'
+      + 'background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:11px 14px;'
+      + 'border-radius:10px;font:500 13px/1.45 Inter,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.55);'
+      + 'opacity:0;transition:opacity .2s';
+    document.body.appendChild(el);
+  }
+  el.style.borderColor = isError ? '#f85149' : '#3fb950';
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 6000);
+}
+
+// Solicita o microfone com mensagens de erro claras (em vez de falhar em silêncio)
+async function salaRequestMic() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    salaNotify('Microfone indisponível: acesse o sistema por HTTPS (cadeado) para liberar o áudio.', true);
+    return null;
+  }
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    const n = e && e.name;
+    let m = 'Não foi possível acessar o microfone.';
+    if (n === 'NotAllowedError' || n === 'SecurityError')
+      m = 'Permissão negada. Clique no cadeado na barra de endereço → permita o Microfone e clique de novo.';
+    else if (n === 'NotFoundError' || n === 'OverconstrainedError')
+      m = 'Nenhum microfone encontrado neste dispositivo.';
+    else if (n === 'NotReadableError')
+      m = 'O microfone está sendo usado por outro aplicativo.';
+    salaNotify(m, true);
+    return null;
+  }
+}
+window.salaRequestMic = salaRequestMic;
+
+window.salaToggleMic = async function() {
   if (!localStream.getAudioTracks().length) {
-    navigator.mediaDevices.getUserMedia({audio:true}).then(s => {
-      s.getAudioTracks().forEach(t => { localStream.addTrack(t); Object.values(peers).forEach(p => p.pc && p.pc.addTrack(t, localStream)); });
-      micOn = true; updateMicBtn(); salaSendState();
-    }).catch(() => {});
+    const s = await salaRequestMic();
+    if (!s) return;
+    s.getAudioTracks().forEach(t => { localStream.addTrack(t); Object.values(peers).forEach(p => p.pc && p.pc.addTrack(t, localStream)); });
+    micOn = true; updateMicBtn(); salaSendState(); updateMyTile();
+    salaNotify('Microfone ativado.');
     return;
   }
   micOn = !micOn;
@@ -2578,6 +2932,7 @@ function initials(n) { return (n||'?').split(' ').map(p=>p[0]).join('').toUpperC
 
 function addMyPeer() {
   const strip = document.getElementById('sala-peers-strip');
+  if (document.getElementById('sala-peer-me')) return;   // já existe, não duplica
   const d = document.createElement('div');
   d.className = 'sala-peer me';
   d.id = 'sala-peer-me';
@@ -2903,6 +3258,409 @@ function showToast(msg){
 }
 })();
 </script>
+
+{% if request.user.is_authenticated %}
+<!-- ═══════════════════════════════════════════════════════════
+     WIDGET: Ícones individuais flutuantes por conversa + Modal
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+/* As bolhas flutuantes de conversa NÃO aparecem na tela de atendimento
+   (a lista lateral já mostra as conversas) — só no CRM. */
+#gchatBubbles {
+    display: none !important;
+}
+.gchat-bubble {
+    pointer-events: all; position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer;
+    animation: gcBubbleIn 0.22s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes gcBubbleIn {
+    from { opacity:0; transform: scale(0.5) translateY(12px); }
+    to   { opacity:1; transform: scale(1) translateY(0); }
+}
+.gchat-bubble-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.45), 0 0 0 2px rgba(255,255,255,0.12);
+    transition: transform 0.15s, box-shadow 0.15s; user-select: none;
+}
+.gchat-bubble:hover .gchat-bubble-avatar {
+    transform: scale(1.12) translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.55), 0 0 0 3px rgba(255,255,255,0.2);
+}
+.gchat-bubble-badge {
+    position: absolute; top: -3px; right: -3px;
+    background: #f85149; color: #fff; font-size: 9px; font-weight: 700;
+    border-radius: 50%; min-width: 18px; height: 18px;
+    display: none; align-items: center; justify-content: center; padding: 0 3px;
+    border: 2px solid #0d1117; font-family: Inter, sans-serif;
+}
+.gchat-bubble-badge.visible { display: flex; }
+.gchat-bubble-tip {
+    font-size: 10px; font-weight: 600; color: rgba(230,237,243,0.85);
+    background: rgba(13,17,23,0.9); border: 1px solid rgba(88,166,255,0.15);
+    border-radius: 5px; padding: 2px 7px; white-space: nowrap;
+    max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+    text-align: center; font-family: Inter, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.gchat-bubble.has-unread .gchat-bubble-avatar {
+    animation: gcBubblePulse 1.8s ease-in-out infinite;
+}
+@keyframes gcBubblePulse {
+    0%,100% { box-shadow: 0 3px 12px rgba(0,0,0,0.45), 0 0 0 2px rgba(255,255,255,0.12); }
+    50%      { box-shadow: 0 3px 12px rgba(0,0,0,0.45), 0 0 0 5px rgba(255,255,255,0.28); }
+}
+/* Modal */
+#gchatModal {
+    position: fixed; inset: 0; z-index: 9990;
+    background: rgba(0,0,0,0.82); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+}
+#gchatModal.open { display: flex; }
+#gchatModalBox {
+    background: #0d1117; border: 1px solid rgba(88,166,255,0.18);
+    border-radius: 12px; width: 92vw; max-width: 820px; height: 86vh; max-height: 780px;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    animation: gcModalIn 0.2s ease;
+}
+@keyframes gcModalIn { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
+.gcm-header {
+    background: #161b22; border-bottom: 1px solid rgba(88,166,255,0.1);
+    padding: 12px 16px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.gcm-avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: #388bfd;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+}
+.gcm-info { flex: 1; min-width: 0; }
+.gcm-name { font-size: 15px; font-weight: 700; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gcm-sub  { font-size: 11px; color: #7d8590; margin-top: 2px; }
+.gcm-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.gcm-btn-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.25);
+    color: #58a6ff; text-decoration: none; transition: all 0.15s; white-space: nowrap;
+}
+.gcm-btn-link:hover { background: rgba(88,166,255,0.15); color: #79c0ff; }
+.gcm-close {
+    width: 30px; height: 30px; border-radius: 8px; background: none;
+    border: 1px solid rgba(255,255,255,0.08); cursor: pointer;
+    color: #7d8590; font-size: 14px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+}
+.gcm-close:hover { background: rgba(248,81,73,0.1); border-color: rgba(248,81,73,0.3); color: #f85149; }
+.gcm-messages {
+    flex: 1; overflow-y: auto; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 4px; min-height: 0;
+    background-color: #0d1117;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+.gcm-msg { display: flex; margin-bottom: 4px; animation: gcMsgIn 0.18s ease; }
+@keyframes gcMsgIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
+.gcm-msg.customer { justify-content: flex-start; }
+.gcm-msg.agent    { justify-content: flex-end; }
+.gcm-msg.system   { justify-content: center; }
+.gcm-msg-block { max-width: 70%; display: flex; flex-direction: column; gap: 2px; }
+.gcm-msg.agent .gcm-msg-block { align-items: flex-end; }
+.gcm-sender { font-size: 11px; font-weight: 700; padding: 0 2px; color: #58a6ff; }
+.gcm-sender.agent-s { color: #3fb950; text-align: right; }
+.gcm-bubble {
+    background: rgba(20,28,46,0.9); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px; padding: 9px 13px; font-size: 13px; line-height: 1.55;
+    word-break: break-word; color: #e6edf3;
+}
+.gcm-msg.agent .gcm-bubble { background: rgba(0,200,216,0.1); border-color: rgba(88,166,255,0.15); }
+.gcm-time { font-size: 10px; color: rgba(255,255,255,0.28); padding: 0 2px; }
+.gcm-sys-text { font-size: 11px; color: #7d8590; background: rgba(255,255,255,0.04); border-radius: 20px; padding: 3px 12px; }
+.gcm-loading { flex: 1; display: flex; align-items: center; justify-content: center; color: #7d8590; font-size: 13px; gap: 8px; }
+.gcm-input-area {
+    background: #161b22; border-top: 1px solid rgba(88,166,255,0.1);
+    padding: 10px 14px; display: flex; align-items: flex-end; gap: 8px; flex-shrink: 0;
+}
+.gcm-textarea {
+    flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 8px 12px; color: #e6edf3; font-size: 13px;
+    resize: none; max-height: 120px; min-height: 36px;
+    font-family: Inter, sans-serif; line-height: 1.5; outline: none; transition: border-color 0.15s;
+}
+.gcm-textarea:focus { border-color: rgba(88,166,255,0.4); }
+.gcm-textarea::placeholder { color: rgba(255,255,255,0.25); }
+.gcm-send {
+    width: 36px; height: 36px; flex-shrink: 0;
+    background: rgba(56,139,253,0.12); border: 1px solid rgba(56,139,253,0.3);
+    border-radius: 8px; color: #58a6ff; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.gcm-send:hover { background: rgba(56,139,253,0.22); }
+.gcm-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.gcm-status { font-size: 10px; color: rgba(255,255,255,0.2); padding: 0 14px 8px; }
+.gcm-messages::-webkit-scrollbar { width: 4px; }
+.gcm-messages::-webkit-scrollbar-track { background: transparent; }
+.gcm-messages::-webkit-scrollbar-thumb { background: rgba(88,166,255,0.3); border-radius: 2px; }
+</style>
+
+<div id="gchatBubbles"></div>
+
+<div id="gchatModal" onclick="if(event.target===this)closeGlobalChat()">
+    <div id="gchatModalBox">
+        <div class="gcm-header">
+            <div class="gcm-avatar" id="gcmAvatar">?</div>
+            <div class="gcm-info">
+                <div class="gcm-name" id="gcmName">Conversa</div>
+                <div class="gcm-sub"  id="gcmSub"></div>
+            </div>
+            <div class="gcm-actions">
+                <a class="gcm-btn-link" id="gcmFullLink" href="#" target="_blank">
+                    <i class="fas fa-external-link-alt"></i> Abrir completo
+                </a>
+                <button class="gcm-close" onclick="closeGlobalChat()"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="gcm-messages" id="gcmMessages">
+            <div class="gcm-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+        </div>
+        <div class="gcm-input-area">
+            <textarea class="gcm-textarea" id="gcmInput" placeholder="Mensagem... (Enter para enviar)" rows="1"></textarea>
+            <button class="gcm-send" id="gcmSendBtn" onclick="gcmSend()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+        <div class="gcm-status" id="gcmStatus"></div>
+    </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+console.log('[gchat] init — usuário: {% if request.user.is_authenticated %}{{ request.user.username }}{% else %}anon{% endif %}');
+var _convs={}, _gcWs=null, _gcConvId=null, _gcRendered=new Set(), _gcSending=false, _gcPollTimer=null, _gcLastTs=null;
+
+var _pal=['#1abc9c','#16a085','#2ecc71','#27ae60','#3498db','#2980b9','#9b59b6','#8e44ad','#e67e22','#d35400','#e74c3c','#c0392b','#1dd1a1','#00b894','#fd79a8','#6c5ce7','#00cec9','#0984e3','#e17055','#fdcb6e'];
+function avatarColor(s){ var h=0; for(var i=0;i<s.length;i++){h=s.charCodeAt(i)+((h<<5)-h);h|=0;} return _pal[Math.abs(h)%_pal.length]; }
+function escG(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function ini(n){ return (n||'?').trim().split(/\s+/).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase()||'?'; }
+
+function renderBubbles(convs){
+    var c=document.getElementById('gchatBubbles'); if(!c)return;
+    var ex={};
+    c.querySelectorAll('.gchat-bubble').forEach(function(el){ex[el.dataset.convId]=el;});
+    var ids=convs.map(function(x){return x.id;});
+    Object.keys(ex).forEach(function(id){if(ids.indexOf(id)===-1)ex[id].remove();});
+    convs.forEach(function(v){
+        var key=v.last_sender_name||v.group_name||v.id, col=avatarColor(key), ig=ini(v.last_sender_name||v.group_name);
+        var tip=(v.last_sender_name||v.group_name||'').split(' ')[0];
+        if(ex[v.id]){
+            var b=ex[v.id].querySelector('.gchat-bubble-badge');
+            if(v.unread_count>0){b.textContent=v.unread_count;b.classList.add('visible');ex[v.id].classList.add('has-unread');}
+            else{b.classList.remove('visible');ex[v.id].classList.remove('has-unread');}
+            return;
+        }
+        var bubble=document.createElement('div');
+        bubble.className='gchat-bubble'+(v.unread_count>0?' has-unread':'');
+        bubble.dataset.convId=v.id;
+        bubble.title=(v.group_name||'')+(v.last_sender_name?' · '+v.last_sender_name:'');
+        bubble.innerHTML='<div class="gchat-bubble-badge'+(v.unread_count>0?' visible':'')+'">'+(v.unread_count>0?v.unread_count:'')+' </div><div class="gchat-bubble-avatar" style="background:'+col+';">'+ig+'</div><div class="gchat-bubble-tip">'+escG(tip)+'</div>';
+        bubble.addEventListener('click',function(){openGlobalChat(v.id,v.group_name);});
+        c.appendChild(bubble);
+    });
+}
+
+function loadMyConvs(){
+    fetch('/atendimento/api/my-conversations/',{credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(function(r){
+        console.log('[gchat] API status:', r.status, r.ok);
+        return r.ok?r.json():null;
+    })
+    .then(function(d){
+        if(!d){console.log('[gchat] API retornou null/vazio');return;}
+        var convs=d.conversations||[];
+        console.log('[gchat] conversas recebidas:', convs.length, convs.map(function(c){return c.id;}));
+        _convs={};convs.forEach(function(c){_convs[c.id]=c;});
+        renderBubbles(convs);
+    }).catch(function(err){console.error('[gchat] fetch error:', err);});
+}
+
+window.openGlobalChat=function(convId,groupName){
+    _gcConvId=convId;_gcRendered=new Set();_gcSending=false;_gcLastTs=new Date().toISOString();
+    var conv=_convs[convId]||{group_name:groupName||'Conversa'};
+    var ak=conv.last_sender_name||conv.group_name||convId;
+    document.getElementById('gcmAvatar').style.background=avatarColor(ak);
+    document.getElementById('gcmAvatar').textContent=ini(conv.last_sender_name||conv.group_name);
+    document.getElementById('gcmName').textContent=conv.group_name||'Conversa';
+    document.getElementById('gcmSub').textContent=conv.last_sender_name?(conv.last_sender_name+(conv.cliente?' · '+conv.cliente:'')):(conv.cliente||'');
+    document.getElementById('gcmFullLink').href='/atendimento/conversation/'+convId+'/';
+    document.getElementById('gcmInput').value='';document.getElementById('gcmStatus').textContent='';
+    document.getElementById('gchatModal').classList.add('open');
+    document.body.style.overflow='hidden';
+    gcmLoadMessages();gcmConnectWS(convId);
+    setTimeout(function(){document.getElementById('gcmInput').focus();},200);
+};
+
+window.closeGlobalChat=function(){
+    document.getElementById('gchatModal').classList.remove('open');
+    document.body.style.overflow='';
+    if(_gcWs){try{_gcWs.close();}catch(e){}_gcWs=null;}
+    if(_gcPollTimer){clearInterval(_gcPollTimer);_gcPollTimer=null;}
+    _gcConvId=null;
+};
+
+function gcmLoadMessages(){
+    var msgs=document.getElementById('gcmMessages');
+    msgs.innerHTML='<div class="gcm-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+    _gcRendered=new Set();
+    fetch('/atendimento/api/conversation/'+_gcConvId+'/messages/',{credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(d){
+        if(!d||!d.messages){msgs.innerHTML='<div class="gcm-loading" style="color:#f85149;">Erro ao carregar</div>';return;}
+        msgs.innerHTML='';
+        if(!d.messages.length){msgs.innerHTML='<div class="gcm-loading" style="opacity:.4;flex-direction:column;gap:6px;"><i class="fab fa-whatsapp" style="font-size:32px;"></i><span>Sem mensagens</span></div>';return;}
+        d.messages.forEach(function(m){gcmRenderMsg(m);});
+        msgs.scrollTop=msgs.scrollHeight;var _lm=d.messages[d.messages.length-1];_gcLastTs=(_lm&&_lm.created_at_iso)||_gcLastTs;
+    }).catch(function(){msgs.innerHTML='<div class="gcm-loading" style="color:#f85149;">Erro de conexão</div>';});
+}
+
+function gcmRenderMsg(msg){
+    var id=String(msg.id);if(_gcRendered.has(id))return;_gcRendered.add(id);
+    var msgs=document.getElementById('gcmMessages');if(!msgs)return;
+    var cls=msg.sender_type==='agent'?'agent':(msg.sender_type==='system'?'system':'customer');
+    var el=document.createElement('div');el.className='gcm-msg '+cls;el.dataset.msgId=id;
+    if(cls==='system'){
+        el.innerHTML='<div class="gcm-sys-text">'+escG(msg.content)+' · '+(msg.created_at||'')+'</div>';
+    }else{
+        var sn=cls==='agent'?(msg.sender_name||'Agente'):escG(msg.sender_name||'');
+        var sc=cls==='agent'?'gcm-sender agent-s':'gcm-sender';
+        var bc;
+        if(msg.message_type==='image'&&msg.attachment_url)bc='<img src="'+msg.attachment_url+'" style="max-width:220px;max-height:220px;border-radius:5px;display:block;object-fit:cover;">';
+        else if(msg.message_type==='audio'&&msg.attachment_url)bc='<audio controls style="width:200px;height:32px;" preload="none"><source src="'+msg.attachment_url+'"></audio>';
+        else if(msg.message_type==='document'&&msg.attachment_url)bc='<a href="'+msg.attachment_url+'" target="_blank" style="color:#58a6ff;display:flex;align-items:center;gap:6px;font-size:12px;"><i class="fas fa-file-alt"></i>'+escG(msg.content||'Documento')+'</a>';
+        else bc=escG(msg.content||'').replace(/\n/g,'<br>');
+        el.innerHTML='<div class="gcm-msg-block"><div class="'+sc+'">'+sn+'</div><div class="gcm-bubble">'+bc+'</div><div class="gcm-time">'+(msg.created_at||'')+'</div></div>';
+    }
+    msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;
+}
+
+function gcmConnectWS(convId){
+    if(_gcWs){try{_gcWs.close();}catch(e){}_gcWs=null;}
+    if(_gcPollTimer){clearInterval(_gcPollTimer);_gcPollTimer=null;}
+    var proto=location.protocol==='https:'?'wss':'ws';
+    try{
+        _gcWs=new WebSocket(proto+'://'+location.host+'/ws/atendimento/conversa/'+convId+'/');
+        _gcWs.onmessage=function(e){
+            try{
+                var p=JSON.parse(e.data);
+                if(p.type==='new_message'&&p.message&&_gcConvId===convId){
+                    gcmRenderMsg(p.message);
+                    if(p.message.sender_type==='customer'){
+                        try{
+                            var ctx=new(window.AudioContext||window.webkitAudioContext)(),o=ctx.createOscillator(),g=ctx.createGain();
+                            o.connect(g);g.connect(ctx.destination);o.type='sine';
+                            o.frequency.setValueAtTime(740,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(520,ctx.currentTime+.12);
+                            g.gain.setValueAtTime(.18,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.25);
+                            o.start();o.stop(ctx.currentTime+.25);
+                        }catch(se){}
+                    }
+                }
+            }catch(err){}
+        };
+        _gcWs.onclose=function(){_gcWs=null;};_gcWs.onerror=function(){if(_gcWs)_gcWs.close();_gcWs=null;};
+    }catch(err){}
+    _gcPollTimer=setInterval(function(){
+        if(!_gcConvId||_gcConvId!==convId){clearInterval(_gcPollTimer);return;}
+        fetch('/atendimento/api/conversation/'+convId+'/messages/?after_ts='+encodeURIComponent(_gcLastTs),{headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'})
+        .then(function(r){return r.ok?r.json():null;}).then(function(d){if(!d||!d.messages)return;d.messages.forEach(function(m){gcmRenderMsg(m);});if(d.messages.length){var _lm=d.messages[d.messages.length-1];_gcLastTs=(_lm&&_lm.created_at_iso)||_gcLastTs;}}).catch(function(){});
+    },20000);
+}
+
+window.gcmSend=function(){
+    if(_gcSending||!_gcConvId)return;
+    var input=document.getElementById('gcmInput'),text=input.value.trim();if(!text)return;
+    _gcSending=true;var btn=document.getElementById('gcmSendBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
+    var csrf=(document.cookie.split(';').map(function(c){return c.trim();}).find(function(c){return c.startsWith('csrftoken=');})||'').split('=')[1]||'';
+    fetch('/atendimento/api/conversation/'+_gcConvId+'/send-message/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify({message:text,is_internal:false})})
+    .then(function(r){return r.json();}).then(function(d){
+        if(d.success){input.value='';input.style.height='auto';var now=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});gcmRenderMsg({id:'local_'+Date.now(),content:text,sender_type:'agent',sender_name:'Eu',created_at:now,message_type:'text'});loadMyConvs();}
+        else{document.getElementById('gcmStatus').textContent='⚠ '+(d.error||'Erro ao enviar');}
+    }).catch(function(){document.getElementById('gcmStatus').textContent='⚠ Erro de conexão';})
+    .finally(function(){_gcSending=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>';});
+};
+
+document.getElementById('gcmInput').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();gcmSend();}});
+document.getElementById('gcmInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var m=document.getElementById('gchatModal');if(m&&m.classList.contains('open'))closeGlobalChat();}});
+
+/* Pulsa o ícone flutuante da conversa quando chega mensagem nova */
+window.pulseBubble = function(convId) {
+    var container = document.getElementById('gchatBubbles');
+    if (!container) { loadMyConvs(); return; }
+    var bubble = container.querySelector('[data-conv-id="' + convId + '"]');
+    if (!bubble) { loadMyConvs(); return; }
+
+    /* Incrementa badge */
+    var badge = bubble.querySelector('.gchat-bubble-badge');
+    var cur = parseInt(badge.textContent) || 0;
+    badge.textContent = cur + 1;
+    badge.classList.add('visible');
+    bubble.classList.add('has-unread');
+
+    /* Flash rápido: escala + anel luminoso */
+    var avatar = bubble.querySelector('.gchat-bubble-avatar');
+    avatar.style.transition = 'transform 0.15s, box-shadow 0.15s';
+    avatar.style.transform  = 'scale(1.3) translateY(-5px)';
+    avatar.style.boxShadow  = '0 0 0 5px rgba(255,255,255,0.45), 0 6px 20px rgba(0,0,0,0.5)';
+    setTimeout(function() {
+        avatar.style.transform = '';
+        avatar.style.boxShadow = '';
+    }, 380);
+};
+
+/* WebSocket inbox → mantém bolhas sincronizadas (atribuições, remoções) */
+(function(){
+    var proto=location.protocol==='https:'?'wss':'ws',ws2=null,d2=3000;
+    function conn(){
+        try{
+            ws2=new WebSocket(proto+'://'+location.host+'/ws/atendimento/inbox/');
+            ws2.onopen=function(){d2=3000;};
+            ws2.onmessage=function(e){
+                try{
+                    var p=JSON.parse(e.data);
+                    if(p.type==='new_message'&&p.conversation){
+                        var conv=p.conversation;
+                        /* Recarrega lista se a atribuição mudou (nova conversa assumida/transferida) */
+                        if(conv.assigned_to_id && !document.querySelector('[data-conv-id="'+conv.id+'"]')){
+                            loadMyConvs();
+                        }
+                    } else if(p.type==='conversation_status' && p.conversation_id &&
+                              (p.status==='resolved' || p.status==='closed')){
+                        /* Conversa encerrada/resolvida → remove a bolha "assumida"
+                           e fecha o mini-chat se estiver aberto nela */
+                        var cid=String(p.conversation_id);
+                        var bub=document.querySelector('#gchatBubbles [data-conv-id="'+cid+'"]');
+                        if(bub)bub.remove();
+                        if(typeof _gcConvId!=='undefined' && _gcConvId===cid &&
+                           typeof closeGlobalChat==='function'){ closeGlobalChat(); }
+                        /* Remove também da lista lateral (outras telas/atendentes) */
+                        var side=document.querySelector('#convList .conv-item[href*="/'+cid+'/"], #convList .conv-item[data-conv-id="'+cid+'"]');
+                        if(side)side.remove();
+                    }
+                }catch(err){}
+            };
+            ws2.onclose=function(){setTimeout(function(){d2=Math.min(d2*1.5,60000);conn();},d2);};
+            ws2.onerror=function(){ws2.close();};
+        }catch(err){}
+    }
+    conn();
+})();
+
+loadMyConvs();
+setInterval(loadMyConvs,60000);
+})();
+</script>
+{% endif %}
 
 </body>
 </html>

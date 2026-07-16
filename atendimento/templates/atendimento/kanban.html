@@ -218,6 +218,7 @@
 .kb-input::placeholder { color:var(--muted); }
 textarea.kb-input { resize:vertical; min-height:72px; line-height:1.5; }
 select.kb-input { background:var(--dark-700); cursor:pointer; }
+@media(max-width:640px){.kb-modal-body>div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
 
 /* ── Toast ── */
 .kb-toast-wrap { position:fixed; bottom:20px; right:20px; z-index:2000; display:flex; flex-direction:column; gap:6px; }

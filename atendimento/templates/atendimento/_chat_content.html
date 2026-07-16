@@ -3,6 +3,9 @@
 
     <!-- ── Header ── -->
     <div class="chat-header">
+        <button class="chat-back-btn" onclick="voltarParaListaMobile()" title="Voltar para a lista">
+            <i class="fas fa-arrow-left"></i>
+        </button>
         <div class="chat-header-avatar">{{ conversation.group.name|first|upper }}{% if conversation.group.name|length > 1 %}{{ conversation.group.name|slice:"1:2"|upper }}{% endif %}</div>
         <div class="chat-header-info">
             <div class="chat-header-name">{{ conversation.group.name|default:conversation.conversation_id }}</div>
@@ -17,6 +20,13 @@
                 <a href="/clientes/listar/?id={{ conversation.cliente.id }}" style="color:var(--accent-400);text-decoration:none;font-size:11px;">
                     <i class="fas fa-building" style="font-size:9px;margin-right:2px;"></i>{{ conversation.cliente.nome_empresa }}
                 </a>
+                {% endif %}
+                {% if conversation.sla_response_overdue or conversation.sla_resolution_overdue %}
+                <span class="chat-header-sep">·</span>
+                <span style="color:#ef4444;font-size:11px;font-weight:700;">
+                    <i class="fas fa-stopwatch"></i>
+                    {% if conversation.sla_response_overdue %}SLA de 1ª resposta estourado{% else %}SLA de resolução estourado{% endif %}
+                </span>
                 {% endif %}
             </div>
         </div>
@@ -60,6 +70,9 @@
                 <i class="fas fa-exchange-alt"></i> Transferir
             </button>
             {% endif %}
+            <button class="btn-cyber secondary" onclick="mergeModal.open()" style="font-size:10px;padding:5px 10px;" id="mergeBtn" title="Mesclar este chamado duplicado com outro">
+                <i class="fas fa-object-group"></i> Mesclar
+            </button>
             {% with cliente_atual=conversation.group.cliente|default:conversation.cliente %}
             {% if cliente_atual %}
             <button class="btn-cyber secondary" onclick="chatTerminal.toggle()" id="hostsBtn" style="font-size:10px;padding:5px 10px;" title="Abrir terminal de hosts">
@@ -344,6 +357,32 @@
                 <button class="btn-cyber secondary" onclick="transferModal.close()" style="font-size:11px;">Cancelar</button>
                 <button class="btn-cyber" id="transferConfirmBtn" onclick="transferModal.confirm()" disabled style="font-size:11px;">
                     <i class="fas fa-exchange-alt" style="margin-right:5px;"></i>Confirmar Transferência
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="transfer-modal-overlay" id="mergeModalOverlay" onclick="if(event.target===this)mergeModal.close()">
+        <div class="transfer-modal">
+            <div class="transfer-modal-header">
+                <div>
+                    <h3><i class="fas fa-object-group" style="margin-right:7px;"></i>Mesclar Chamado Duplicado</h3>
+                    <p>Busque o chamado que deve receber as mensagens deste (este será fechado)</p>
+                </div>
+                <button class="transfer-modal-close" onclick="mergeModal.close()"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding:0 16px 8px;">
+                <input type="text" id="mergeSearchInput" placeholder="Buscar por empresa, grupo ou protocolo..."
+                       autocomplete="off" oninput="mergeModal._search(this.value)"
+                       style="width:100%;background:var(--dark-800);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;">
+            </div>
+            <div class="transfer-agent-list" id="mergeResultsList">
+                <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">Digite para buscar o chamado destino.</div>
+            </div>
+            <div class="transfer-modal-footer">
+                <button class="btn-cyber secondary" onclick="mergeModal.close()" style="font-size:11px;">Cancelar</button>
+                <button class="btn-cyber" id="mergeConfirmBtn" onclick="mergeModal.confirm()" disabled style="font-size:11px;">
+                    <i class="fas fa-object-group" style="margin-right:5px;"></i>Confirmar Mesclagem
                 </button>
             </div>
         </div>
@@ -831,6 +870,7 @@
 }
 .chat-terminal-panel.open {
     width: 480px;
+    max-width: 94vw;
     border-left-width: 1px;
 }
 .chat-terminal-panel.expanded {
@@ -1023,6 +1063,19 @@
     color: var(--muted); font-size: 12px;
 }
 .hosts-empty i { font-size: 24px; opacity: 0.15; display: block; margin-bottom: 8px; }
+
+/* Botão "voltar pra lista" — só existe no mobile (ver base.html, padrão
+   lista↔chat de tela única); no desktop lista e chat ficam lado a lado. */
+.chat-back-btn {
+    display: none;
+    background: none; border: none; color: var(--muted);
+    font-size: 16px; padding: 6px 4px; cursor: pointer;
+    flex-shrink: 0;
+}
+.chat-back-btn:hover { color: var(--text); }
+@media (max-width: 768px) {
+    .chat-back-btn { display: flex; align-items: center; justify-content: center; }
+}
 </style>
 
 <script>
@@ -1438,6 +1491,9 @@
 
                 /* Remove do sidebar imediatamente ao resolver/encerrar */
                 if (s === 'resolved' || s === 'closed') {
+                    /* Remove a bolha flutuante "assumida" desta conversa */
+                    var myBubble = document.querySelector('#gchatBubbles [data-conv-id="' + CONV_ID + '"]');
+                    if (myBubble) myBubble.remove();
                     var activeItem = document.querySelector('#convList .conv-item.active');
                     if (activeItem) {
                         activeItem.style.transition = 'opacity 0.25s, transform 0.25s';
@@ -1470,8 +1526,12 @@
     /* ── WebSocket + polling de fallback ── */
     var WS_PROTO = location.protocol==='https:'?'wss':'ws';
     var ws=null,wsTimer=null,wsDelay=2000,wsOk=false;
-    /* Timestamp do ultimo msg visto — usado pelo polling de fallback */
-    var lastMsgTs = new Date().toISOString();
+    /* Timestamp do último msg visto — usado pelo polling de fallback.
+       IMPORTANTE: usa o relógio do SERVIDOR ({% now 'c' %}), não o do navegador.
+       Se usasse o relógio do cliente e ele estivesse adiantado, o filtro
+       after_ts ficaria no futuro e o polling nunca traria mensagens novas —
+       fazendo o cliente "parar de receber" mensagens depois de um tempo. */
+    var lastMsgTs = "{% now 'c' %}" || new Date().toISOString();
 
     function connectWS() {
         try {
@@ -1484,7 +1544,7 @@
                         var msgId = String(p.message.id);
                         if(!_renderedIds.has(msgId)) {
                             renderMessage(p.message);
-                            lastMsgTs = new Date().toISOString();
+                            lastMsgTs = p.message.created_at_iso || lastMsgTs;
                             /* Som apenas para mensagens do cliente */
                             if (p.message.sender_type === 'customer' && typeof playSoundMessage === 'function') {
                                 playSoundMessage();
@@ -1514,11 +1574,11 @@
             d.messages.forEach(function(msg){
                 if(!_renderedIds.has(String(msg.id))) {
                     renderMessage(msg);
-                    lastMsgTs = new Date().toISOString();
+                    lastMsgTs = msg.created_at_iso || lastMsgTs;
                 }
             });
         }).catch(function(){}).finally(function(){ _pollRunning = false; });
-    }, wsOk ? 20000 : 4000);
+    }, wsOk ? 8000 : 4000);
 
     /* Ajusta intervalo dinamicamente conforme status do WS */
     var _prevWsOk = wsOk;
@@ -1540,7 +1600,7 @@
                         }
                     });
                 }).catch(function(){}).finally(function(){ _pollRunning = false; });
-            }, wsOk ? 20000 : 4000);
+            }, wsOk ? 8000 : 4000);
         }
     }, 3000);
 
@@ -1624,6 +1684,90 @@
                 alert('Erro de conexão');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-exchange-alt" style="margin-right:5px;"></i>Confirmar Transferência';
+            });
+        }
+    };
+
+    var _mergeSelected = null, _mergeSearchTimer = null;
+    window.mergeModal = {
+        open: function() {
+            document.getElementById('mergeModalOverlay').classList.add('open');
+            _mergeSelected = null;
+            document.getElementById('mergeConfirmBtn').disabled = true;
+            document.getElementById('mergeSearchInput').value = '';
+            document.getElementById('mergeResultsList').innerHTML =
+                '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">Digite para buscar o chamado destino.</div>';
+        },
+        close: function() {
+            document.getElementById('mergeModalOverlay').classList.remove('open');
+            _mergeSelected = null;
+        },
+        _search: function(q) {
+            clearTimeout(_mergeSearchTimer);
+            var list = document.getElementById('mergeResultsList');
+            if (!q || q.trim().length < 2) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">Digite ao menos 2 caracteres.</div>';
+                return;
+            }
+            _mergeSearchTimer = setTimeout(function() {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;"><i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>Buscando...</div>';
+                fetch('/atendimento/api/conversations/search/?q=' + encodeURIComponent(q) + '&exclude_id=' + CONV_ID, { credentials: 'same-origin' })
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){
+                        if (!d.results || !d.results.length) {
+                            list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">Nenhum chamado encontrado.</div>';
+                            return;
+                        }
+                        var html = '';
+                        d.results.forEach(function(c) {
+                            html += '<div class="transfer-agent-item" data-id="' + c.id + '" onclick="mergeModal._select(this,\'' + c.id + '\')">' +
+                                '<div class="transfer-agent-avatar">#' + c.conversation_id + '</div>' +
+                                '<div>' +
+                                    '<div class="transfer-agent-name">' + (c.group_name || 'Sem grupo') + '</div>' +
+                                    '<div class="transfer-agent-role">' + (c.cliente_nome || 'Sem cliente') + '</div>' +
+                                '</div>' +
+                            '</div>';
+                        });
+                        list.innerHTML = html;
+                    })
+                    .catch(function(){
+                        list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--danger);font-size:12px;">Erro ao buscar</div>';
+                    });
+            }, 300);
+        },
+        _select: function(el, targetId) {
+            document.querySelectorAll('#mergeResultsList .transfer-agent-item').forEach(function(i){ i.classList.remove('selected'); });
+            el.classList.add('selected');
+            _mergeSelected = targetId;
+            document.getElementById('mergeConfirmBtn').disabled = false;
+        },
+        confirm: function() {
+            if (!_mergeSelected) return;
+            if (!confirm('Mesclar este chamado com o selecionado? As mensagens serão movidas e este chamado será fechado. Essa ação não pode ser desfeita.')) return;
+            var btn = document.getElementById('mergeConfirmBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:5px;"></i>Mesclando...';
+
+            fetch('/atendimento/api/conversation/' + CONV_ID + '/merge/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                credentials: 'same-origin',
+                body: JSON.stringify({ target_id: _mergeSelected })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.success) {
+                    window.location.href = '/atendimento/conversation/' + _mergeSelected + '/';
+                } else {
+                    alert('Erro: ' + (d.error || 'Falha ao mesclar'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-object-group" style="margin-right:5px;"></i>Confirmar Mesclagem';
+                }
+            })
+            .catch(function(){
+                alert('Erro de conexão');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-object-group" style="margin-right:5px;"></i>Confirmar Mesclagem';
             });
         }
     };

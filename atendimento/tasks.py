@@ -62,41 +62,134 @@ def _is_time_now(hour_cfg, min_cfg, window=5):
 
 @shared_task
 def notificar_chamados_abertos():
-    """A cada 10 min: notifica chamados sem atendente há mais de 10 min."""
+    """A cada 10 min: avisa, UMA ÚNICA VEZ por chamado, sobre chamados sem
+    atendente há mais de 10 min. Envia uma só mensagem consolidada ao grupo
+    configurado, marcando todos — sem repetir os mesmos chamados a cada ciclo."""
     from .models import Conversation, SystemSetting
 
     if SystemSetting.get('notif_abertos_enabled', 'false') != 'true':
         return {'skipped': True, 'reason': 'disabled'}
+
+    # Respeita snooze: "Reagendar lembrete" adia notificações ao próximo dia
+    snooze_until = SystemSetting.get('notif_abertos_snooze_until', '').strip()
+    if snooze_until:
+        today = timezone.localtime(timezone.now()).strftime('%Y-%m-%d')
+        if today < snooze_until:
+            return {'skipped': True, 'reason': f'snoozed until {snooze_until}'}
 
     client, notif_jid = _get_notif_client_and_jid()
     if not client:
         return {'skipped': True, 'reason': 'no group configured'}
 
     threshold = timezone.now() - timedelta(minutes=10)
-    convs = Conversation.objects.filter(
+    # Apenas chamados AINDA NÃO notificados (notif_aberto_enviada=False) →
+    # cada chamado é avisado uma única vez.
+    convs = list(Conversation.objects.filter(
         status__in=['new', 'open'],
         assigned_to__isnull=True,
         last_message_at__lt=threshold,
-    ).select_related('cliente', 'group')
+        notif_aberto_enviada=False,
+    ).select_related('cliente', 'group'))
 
-    if not convs.exists():
+    if not convs:
         return {'notified': 0}
 
-    notified = 0
+    # Monta UMA mensagem consolidada com todos os chamados pendentes
+    linhas = [f"⚠️ *{len(convs)} chamado(s) sem atendimento!*", ""]
     for conv in convs:
-        texto = (
-            f"⚠️ *Chamado sem atendimento!*\n\n"
-            f"📱 Grupo: *{conv.group.name}*\n"
-            f"⏰ Sem resposta há mais de 10 minutos\n\n"
-            f"Acesse o sistema para assumir o chamado."
-        )
-        ok = client.send_text(notif_jid, texto, everyone=True)
-        if ok:
-            notified += 1
-        else:
-            logger.warning(f"Falha ao notificar chamado {conv.conversation_id} ({conv.group.name})")
+        nome = conv.group.name if conv.group else 'Sem grupo'
+        linhas.append(f"• *{nome}* — sem resposta há +10 min")
+    linhas.append("")
+    linhas.append("Acessem o sistema para assumir os chamados.")
+    texto = "\n".join(linhas)
 
-    return {'notified': notified}
+    ok = client.send_text(notif_jid, texto, everyone=True)
+    if not ok:
+        logger.warning("Falha ao enviar notificação consolidada de chamados abertos")
+        return {'notified': 0, 'error': 'send_failed'}
+
+    # Marca todos como notificados para não repetir nos próximos ciclos
+    ids = [c.id for c in convs]
+    Conversation.objects.filter(id__in=ids).update(notif_aberto_enviada=True)
+    return {'notified': len(ids)}
+
+
+@shared_task
+def escalar_chamados_sla():
+    """A cada 10 min: verifica chamados com SLA de 1ª resposta estourado e
+    ainda não escalados. Alerta o grupo de escalação configurado e, se
+    houver um atendente de fallback configurado, reatribui automaticamente
+    chamados sem atendente. Cada chamado escala uma única vez (campo
+    `escalated`), assim como o mecanismo de `notificar_chamados_abertos`."""
+    from .models import Conversation, SystemSetting, ContactGroup
+    from django.contrib.auth.models import User
+
+    if SystemSetting.get('escalacao_enabled', 'false') != 'true':
+        return {'skipped': True, 'reason': 'disabled'}
+
+    now = timezone.now()
+    candidatos = list(Conversation.objects.filter(
+        status__in=['new', 'open', 'pending'],
+        sla_response_due_at__lt=now,
+        first_response_at__isnull=True,
+        escalated=False,
+    ).select_related('cliente', 'group', 'assigned_to'))
+
+    if not candidatos:
+        return {'escalated': 0}
+
+    # Reatribuição automática (opcional) — só para chamados sem atendente
+    fallback_user_id = SystemSetting.get('escalacao_reassign_user_id', '').strip()
+    fallback_user = User.objects.filter(id=fallback_user_id).first() if fallback_user_id else None
+
+    reassigned = 0
+    for conv in candidatos:
+        if fallback_user and not conv.assigned_to:
+            conv.assigned_to = fallback_user
+            conv.save(update_fields=['assigned_to'])
+            from .models import ConversationActivity
+            ConversationActivity.objects.create(
+                conversation=conv, actor=None, action='assigned',
+                description='Reatribuído automaticamente por estouro de SLA',
+                new_value=fallback_user.get_full_name() or fallback_user.username,
+            )
+            reassigned += 1
+
+    # Alerta consolidado ao grupo de escalação (reaproveita o grupo de
+    # "chamados abertos" se nenhum grupo específico de escalação foi definido)
+    group_id = SystemSetting.get('escalacao_group_id', '').strip() or SystemSetting.get('notif_abertos_group_id', '').strip()
+    if group_id:
+        group = ContactGroup.objects.filter(id=group_id).select_related('connection').first()
+        if group and group.connection and group.jid:
+            from .services import EvolutionAPIClient
+            linhas = [f"⏰ *{len(candidatos)} chamado(s) com SLA de resposta estourado!*", ""]
+            for conv in candidatos:
+                nome = conv.group.name if conv.group else 'Sem grupo'
+                linhas.append(f"• *{nome}* — prioridade {conv.get_priority_display()}")
+            linhas.append("")
+            linhas.append("Acessem o sistema para assumir os chamados.")
+            try:
+                EvolutionAPIClient(group.connection).send_text(group.jid, "\n".join(linhas), everyone=True)
+            except Exception as e:
+                logger.warning(f"Falha ao enviar alerta de escalação: {e}")
+
+    ids = [c.id for c in candidatos]
+    Conversation.objects.filter(id__in=ids).update(escalated=True)
+
+    # Avisa a tela em tempo real (toque de som distinto de SLA estourado)
+    from .services import _ws_send_inbox
+    for conv in candidatos:
+        try:
+            _ws_send_inbox({
+                'type': 'sla_breach',
+                'conversation_id': str(conv.id),
+                'group_name': conv.group.name if conv.group else 'Sem grupo',
+                'assigned_to_id': conv.assigned_to_id,
+            })
+        except Exception as e:
+            logger.warning(f"Falha ao notificar SLA estourado via WS: {e}")
+
+    return {'escalated': len(ids), 'reassigned': reassigned}
 
 
 @shared_task

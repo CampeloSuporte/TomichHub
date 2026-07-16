@@ -40,6 +40,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.http import FileResponse
+from django.http import Http404
 import time
 from .models import BackupTemplate
 from .models import BlocoIP, ValidacaoRPKI_IRR_Log
@@ -71,7 +72,7 @@ def listar_clientes(request):
     if not request.user.is_staff and not request.user.is_superuser:
         # Se é cliente, verificar se é o próprio cliente
         try:
-            cliente_auth = Cliente.objects.get(usuario=request.user)
+            cliente_auth = Cliente.objects.get_by_usuario_vinculado(request.user)
             if cliente_auth.id != cliente.id:
                 messages.error(request, 'Você não possui permissão para visualizar este cliente.')
                 return redirect('quadro_geral')
@@ -101,7 +102,7 @@ def listar_clientes(request):
     is_admin = request.user.is_staff or request.user.is_superuser
     is_superuser = request.user.is_superuser
     try:
-        if not is_admin and Cliente.objects.get(usuario=request.user).id == cliente.id:
+        if not is_admin and Cliente.objects.get_by_usuario_vinculado(request.user).id == cliente.id:
             is_cliente = True
     except:
         pass
@@ -139,11 +140,39 @@ def listar_clientes(request):
     response['Pragma'] = 'no-cache'
     return response
 
+def _validar_usuarios_adicionais(usuario_ids, cliente_id_atual=None):
+    """
+    Um usuário só pode estar vinculado a UM cliente por vez (seja como
+    principal ou como adicional) — isso mantém "para qual painel eu vou ao
+    logar" sem ambiguidade. Verifica cada id em `usuario_ids` contra
+    qualquer outro Cliente (excluindo `cliente_id_atual`, no caso de edição).
+    Retorna (lista_de_ids_validos, mensagem_de_erro_ou_None).
+    """
+    ids_validos = []
+    for uid in usuario_ids:
+        if not uid:
+            continue
+        uid = int(uid)
+        conflitos = Cliente.objects.filter(Q(usuario_id=uid) | Q(usuarios_adicionais__id=uid))
+        if cliente_id_atual:
+            conflitos = conflitos.exclude(id=cliente_id_atual)
+        cliente_conflitante = conflitos.first()
+        if cliente_conflitante:
+            usuario_obj = User.objects.filter(id=uid).first()
+            nome_usuario = usuario_obj.username if usuario_obj else uid
+            return None, (
+                f'Erro: O usuário "{nome_usuario}" já está vinculado ao cliente '
+                f'"{cliente_conflitante.nome_empresa}".'
+            )
+        ids_validos.append(uid)
+    return ids_validos, None
+
+
 @login_required(login_url='login')
 @admin_required  # ← ADICIONAR ESTA LINHA
 def cadastrar_cliente(request):
     if request.method == 'GET':
-        clientes = Cliente.objects.all()
+        clientes = Cliente.objects.all().prefetch_related('usuarios_adicionais')
         usuario = User.objects.all()
         return render(request, 'cadastrar_cliente.html', {
             'clientes': clientes, 'usuario': usuario})
@@ -157,17 +186,36 @@ def cadastrar_cliente(request):
         cidade = request.POST.get('cidade')
         estado = request.POST.get('estado')
         cep = request.POST.get('cep')
-        usuario_id = request.POST.get('usuario')
+        # Vincular um usuário de login é opcional — cliente pode ser cadastrado
+        # e gerido só pela equipe interna, sem acesso próprio ao portal.
+        # O campo "usuario" é um input hidden preenchido via JS (dropdown de
+        # busca); o atributo HTML `required` não é validado pelo navegador em
+        # inputs hidden, então tratamos '' explicitamente como "sem usuário"
+        # em vez de deixar chegar no ORM (que rejeitaria '' como PK inválida).
+        usuario_id = request.POST.get('usuario') or None
+        if usuario_id is not None and not usuario_id.isdigit():
+            messages.error(request, 'Erro: Usuário selecionado é inválido.')
+            return redirect('cadastrar_cliente')
+        usuarios_adicionais_ids = request.POST.getlist('usuarios_adicionais')
 
-        # Verifica se o email ou telefone já estão cadastrados 
+        # Verifica se o email ou telefone já estão cadastrados
         if Cliente.objects.filter(email=email).exists():
             messages.error(request, 'Erro: Já existe um cliente com esse email cadastrado.')
             return redirect('cadastrar_cliente')
 
-
         # ✅ NOVA VALIDAÇÃO: Verifica se o usuário já está vinculado a outro cliente
-        if Cliente.objects.filter(usuario_id=usuario_id).exists():
+        if usuario_id and Cliente.objects.filter(usuario_id=usuario_id).exists():
             messages.error(request, 'Erro: Este usuário já está vinculado a outro cliente.')
+            return redirect('cadastrar_cliente')
+
+        # Usuário principal não pode se repetir na lista de adicionais
+        usuarios_adicionais_ids = [
+            uid for uid in usuarios_adicionais_ids
+            if uid and (not usuario_id or int(uid) != int(usuario_id))
+        ]
+        ids_validos, erro = _validar_usuarios_adicionais(usuarios_adicionais_ids)
+        if erro:
+            messages.error(request, erro)
             return redirect('cadastrar_cliente')
 
         cliente = Cliente(
@@ -182,6 +230,7 @@ def cadastrar_cliente(request):
             usuario_id=usuario_id
         )
         cliente.save()
+        cliente.usuarios_adicionais.set(ids_validos)
         messages.success(request, 'Cliente cadastrado com sucesso!')
         return redirect('cadastrar_cliente')
 
@@ -635,7 +684,9 @@ def cadastrar_acesso(request):
         protocolo = request.POST.get('protocolo')
         usuario = request.POST.get('usuario')
         senha = request.POST.get('senha')
-        senha_adm = request.POST.get('senha_adm')
+        # Campo só existe no form para is_admin — se ausente (cliente cadastrando/duplicando),
+        # usa string vazia em vez de None (o campo não aceita NULL no banco)
+        senha_adm = request.POST.get('senha_adm', '')
         vlan = request.POST.get('vlan')
         winbox = request.POST.get('winbox')
         backup_habilitado = request.POST.get('backup_habilitado') == 'on'
@@ -738,6 +789,13 @@ def editar_cliente(request):
             messages.error(request, 'Erro: Já existe um cliente com esse email cadastrado.')
             return redirect('cadastrar_cliente')
 
+        # Vincular usuário de login é opcional (ver Cliente.usuario). O hidden
+        # "usuario" (dropdown de busca via JS) chega como '' quando nada foi
+        # selecionado — tratamos como "remover vínculo" em vez de rejeitar.
+        usuario_id = request.POST.get('usuario') or None
+        if usuario_id is not None and not usuario_id.isdigit():
+            messages.error(request, 'Erro: Usuário selecionado é inválido.')
+            return redirect('cadastrar_cliente')
 
         # Atualiza os dados
         cliente.nome_empresa = request.POST.get('nome_empresa')
@@ -748,10 +806,23 @@ def editar_cliente(request):
         cliente.cidade = request.POST.get('cidade')
         cliente.telefone = telefone
         cliente.email = email
-        cliente.usuario_id = request.POST.get('usuario')
+        cliente.usuario_id = usuario_id
         cliente.notas = request.POST.get('notas', '').strip()
 
+        # Usuários adicionais: mesma validação de vínculo único do cadastro
+        usuarios_adicionais_ids = request.POST.getlist('usuarios_adicionais')
+        usuario_principal_id = cliente.usuario_id
+        usuarios_adicionais_ids = [
+            uid for uid in usuarios_adicionais_ids
+            if uid and (not usuario_principal_id or int(uid) != int(usuario_principal_id))
+        ]
+        ids_validos, erro = _validar_usuarios_adicionais(usuarios_adicionais_ids, cliente_id_atual=cliente.id)
+        if erro:
+            messages.error(request, erro)
+            return redirect('cadastrar_cliente')
+
         cliente.save()
+        cliente.usuarios_adicionais.set(ids_validos)
         messages.success(request, "Cliente atualizado com sucesso!")
         return redirect('cadastrar_cliente')
 
@@ -789,7 +860,7 @@ def buscar_acesso(request, acesso_id):
 
         # ✅ Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if acesso.cliente.id != cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
 
@@ -838,7 +909,9 @@ def editar_acesso(request, acesso_id):
             acesso.porta = request.POST.get('porta')
             acesso.usuario = request.POST.get('usuario')
             acesso.senha = request.POST.get('senha')
-            acesso.senha_adm = request.POST.get('senha_adm')
+            # Campo só existe no form para is_admin — se ausente (cliente editando),
+            # preserva o valor atual em vez de apagar (o campo não aceita NULL no banco)
+            acesso.senha_adm = request.POST.get('senha_adm', acesso.senha_adm)
             acesso.backup_habilitado = request.POST.get('backup_habilitado') == 'on'
             template_id = request.POST.get('backup_template')
             acesso.backup_template_id = template_id if template_id else None
@@ -1066,7 +1139,7 @@ def editar_imagem_topologia(request, topologia_id):
         # ✅ Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                cliente = Cliente.objects.get(usuario=request.user)
+                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if cliente.id != cliente_id:
                     messages.error(request, 'Sem permissão para editar esta topologia.')
                     return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
@@ -1193,7 +1266,7 @@ def listar_chamados_cliente(request):
 
     # ✅ Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
-        cliente = Cliente.objects.get(usuario=request.user)
+        cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
         if str(cliente.id) != str(cliente_id):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
 
@@ -1496,11 +1569,11 @@ def editar_proxy(request, proxy_id):
         try:
             proxy = get_object_or_404(ProxyServer, id=proxy_id)
 
-            proxy.nome = request.POST.get('nome')
-            proxy.host = request.POST.get('host')
+            proxy.nome = request.POST.get('nome', proxy.nome)
+            proxy.host = request.POST.get('host', proxy.host)
             proxy.porta = int(request.POST.get('porta', 22))
-            proxy.usuario = request.POST.get('usuario')
-            proxy.senha = request.POST.get('senha')
+            proxy.usuario = request.POST.get('usuario', proxy.usuario)
+            proxy.senha = request.POST.get('senha', proxy.senha)
             proxy.ativo = request.POST.get('ativo') == 'on'
 
             proxy.save()
@@ -1611,7 +1684,7 @@ def cliente_dashboard(request):
 
     # Buscar cliente vinculado
     try:
-        cliente = Cliente.objects.get(usuario=request.user)
+        cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
     except Cliente.DoesNotExist:
         messages.error(request, 'Você não está vinculado a um cliente.')
         return redirect('login')
@@ -1639,7 +1712,7 @@ def executar_backup_acesso(request, acesso_id):
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                cliente = Cliente.objects.get(usuario=request.user)
+                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if acesso.cliente.id != cliente.id:
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
@@ -2970,14 +3043,26 @@ def is_private_ip(ip):
 
 
 def vpn_cobre_ip(cliente, host):
-    """Verifica se existe VPN WireGuard com peer configurado que cobre o IP do host."""
+    """Verifica se existe VPN WireGuard OU túnel OpenVPN (aba Túneis) com rota
+    que cobre o IP do host — em ambos os casos a rota já existe no kernel via
+    interface própria, então a conexão pode ser feita direto, sem SSH tunnel."""
     try:
         import ipaddress as _ipa
-        from .models import VPNWireGuard
-        vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
+        from .models import VPNWireGuard, VPNOpenVPN
         host_ip = _ipa.ip_address(host)
+
+        vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
         for vpn in vpns:
             for rede_str in vpn.redes_lista():
+                try:
+                    if host_ip in _ipa.ip_network(rede_str, strict=False):
+                        return True
+                except ValueError:
+                    pass
+
+        tuneis = VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
+        for tunel in tuneis:
+            for rede_str in tunel.redes_lista():
                 try:
                     if host_ip in _ipa.ip_network(rede_str, strict=False):
                         return True
@@ -3161,7 +3246,7 @@ def listar_backups_cliente(request):
     # Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if str(cliente.id) != str(cliente_id):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -3334,7 +3419,7 @@ def download_backup(request, backup_id):
 
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if backup.cliente.id != cliente.id:
                 messages.error(request, 'Sem permissão')
                 return redirect('listar_clientes')
@@ -3408,7 +3493,7 @@ def backup_conteudo(request, backup_id):
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                cliente = Cliente.objects.get(usuario=request.user)
+                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if backup.cliente.id != cliente.id:
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
@@ -3462,7 +3547,7 @@ def listar_acessos_terminal(request):
         cliente_obj = get_object_or_404(Cliente, id=cliente_id)
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                c = Cliente.objects.get(usuario=request.user)
+                c = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if c.id != cliente_obj.id:
                     return JsonResponse({'acessos': []})
             except Cliente.DoesNotExist:
@@ -3472,7 +3557,7 @@ def listar_acessos_terminal(request):
         acessos = base_qs.order_by('cliente__nome_empresa', 'tipo')
     else:
         try:
-            cliente_obj = Cliente.objects.get(usuario=request.user)
+            cliente_obj = Cliente.objects.get_by_usuario_vinculado(request.user)
             acessos = base_qs.filter(cliente=cliente_obj).order_by('tipo')
         except Cliente.DoesNotExist:
             return JsonResponse({'acessos': []})
@@ -3503,7 +3588,7 @@ def winbox_page(request, acesso_id):
     # Verificar permissões
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if acesso.cliente.id != cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -3533,7 +3618,7 @@ def webfig_vnc_page(request, acesso_id):
     # Verificar permissões
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if acesso.cliente.id != cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -3554,6 +3639,22 @@ def webfig_vnc_page(request, acesso_id):
 # ============================================
 
 @login_required(login_url='login')
+def proxy_ativo_cliente(request):
+    """Indica se o cliente tem um ProxyServer SSH ativo — usado para validar
+    backup/acesso a equipamentos com IP privado antes de tentar a operação."""
+    cliente_id = request.GET.get('cliente_id')
+    if not cliente_id:
+        return JsonResponse({'tem_proxy_ativo': False})
+
+    proxy = ProxyServer.objects.filter(cliente_id=cliente_id, ativo=True).first()
+    return JsonResponse({
+        'tem_proxy_ativo': bool(proxy),
+        'nome': proxy.nome if proxy else None,
+        'host': proxy.host if proxy else None,
+    })
+
+
+@login_required(login_url='login')
 def ping_acesso(request, acesso_id):
     """Realiza ping para um acesso (via proxy se necessário)"""
     try:
@@ -3562,7 +3663,7 @@ def ping_acesso(request, acesso_id):
         # ✅ Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                cliente = Cliente.objects.get(usuario=request.user)
+                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if acesso.cliente.id != cliente.id:
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
@@ -3808,7 +3909,7 @@ def traceroute_acesso(request, acesso_id):
 
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if acesso.cliente.id != cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -3940,7 +4041,7 @@ def buscar_bloco_ip(request, bloco_id):
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                cliente = Cliente.objects.get(usuario=request.user)
+                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if bloco.cliente.id != cliente.id:
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
@@ -3979,7 +4080,7 @@ def editar_bloco_ip(request, bloco_id):
             # Verificar permissão
             if not request.user.is_staff and not request.user.is_superuser:
                 try:
-                    cliente = Cliente.objects.get(usuario=request.user)
+                    cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                     if bloco.cliente.id != cliente.id:
                         messages.error(request, 'Sem permissão')
                         return redirect('listar_clientes')
@@ -4041,7 +4142,7 @@ def validar_bloco_rpki_irr(request, bloco_id):
         # Verificar permissão
         if not request.user.is_staff and not request.user.is_superuser:
             try:
-                cliente = Cliente.objects.get(usuario=request.user)
+                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
                 if bloco.cliente.id != cliente.id:
                     return JsonResponse({'error': 'Sem permissão'}, status=403)
             except Cliente.DoesNotExist:
@@ -4083,7 +4184,7 @@ def listar_blocos_cliente(request):
     # Verificar permissão
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if str(cliente.id) != str(cliente_id):
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -4715,7 +4816,7 @@ def listar_comentarios_acesso(request, acesso_id):
     # ✅ CORRIGIDO: Verificação de permissão CORRETA - staff/superuser são permitidos
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if cliente.id != acesso.cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -4747,7 +4848,7 @@ def adicionar_comentario_acesso(request, acesso_id):
     # ✅ CORRIGIDO: Verificação de permissão CORRETA
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente = Cliente.objects.get(usuario=request.user)
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
             if cliente.id != acesso.cliente.id:
                 return JsonResponse({'error': 'Sem permissão'}, status=403)
         except Cliente.DoesNotExist:
@@ -5369,7 +5470,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     # ── Permissão ─────────────────────────────────────────────────────
     if not request.user.is_staff and not request.user.is_superuser:
         try:
-            cliente_obj = Cliente.objects.get(usuario=request.user)
+            cliente_obj = Cliente.objects.get_by_usuario_vinculado(request.user)
             if acesso.cliente.id != cliente_obj.id:
                 return HttpResponse('Sem permissao', status=403)
         except Cliente.DoesNotExist:
@@ -5610,7 +5711,7 @@ def _topologia_perm(request, cliente):
     if request.user.is_staff or request.user.is_superuser:
         return True
     try:
-        return Cliente.objects.get(usuario=request.user).id == cliente.id
+        return Cliente.objects.get_by_usuario_vinculado(request.user).id == cliente.id
     except Exception:
         return False
 
@@ -5968,6 +6069,191 @@ def vpn_wg_editar(request, vpn_id):
     except Exception as e:
         logger.error(f'vpn_wg_editar: {e}')
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Túnel OpenVPN (aba Túneis) — servidor único da CRM, isolado por CN + CCD.
+# NÃO CONFUNDIR com a seção "OpenVPN — Configuração automatizada em MikroTik"
+# logo abaixo: aquela configura o MikroTik do CLIENTE como servidor OpenVPN
+# para acesso remoto do NOC; esta aqui é o terceiro tipo de túnel da aba
+# Túneis (ao lado de SSH e WireGuard) — a CRM É o servidor, o MikroTik do
+# cliente é o client, com rota isolada nativamente via client-config-dir.
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .models import VPNOpenVPN
+from . import openvpn_tunnel_manager as ovpnm
+
+
+@login_required
+@require_http_methods(["GET"])
+def vpn_ovpn_listar(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    vpns = VPNOpenVPN.objects.filter(cliente=cliente)
+    vpns_data = [{
+        'id':          v.id,
+        'nome':        v.nome,
+        'vpn_ip':      v.vpn_ip,
+        'redes':       v.redes_lista(),
+        'ativo':       v.ativo,
+        'cert_emitido': v.cert_emitido,
+        'criado_em':   v.criado_em.strftime('%d/%m/%Y %H:%M'),
+    } for v in vpns]
+    return JsonResponse({'vpns': vpns_data, 'endpoint': ovpnm.OVPN_ENDPOINT_HOST})
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_ovpn_criar(request, cliente_id):
+    """
+    Cria um túnel OpenVPN em uma instância DEDICADA (porta/interface/sub-rede
+    próprias) — mesmo padrão isolado já usado pelo WireGuard
+    (VPNWireGuard.interface_nome). Evita que dois clientes com as mesmas
+    redes "alcançáveis" (o padrão CGNAT+RFC1918) tenham tráfego roteado pro
+    cliente errado quando ambos estão conectados ao mesmo tempo.
+    """
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    try:
+        body = _json.loads(request.body)
+        nome      = body.get('nome', 'VPN MikroTik').strip() or 'VPN MikroTik'
+        redes_raw = body.get('redes_privadas', '').strip() or '\n'.join(ovpnm.REDES_PADRAO)
+
+        common_name = ovpnm.gerar_common_name(cliente)
+        interface_nome, porta, subnet_n = ovpnm.alocar_proxima_instancia()
+        vpn_ip = ovpnm._client_ip(subnet_n)
+
+        vpn = VPNOpenVPN.objects.create(
+            cliente=cliente,
+            nome=nome,
+            common_name=common_name,
+            redes_privadas=redes_raw,
+            vpn_ip=vpn_ip,
+            porta=porta,
+            interface_nome=interface_nome,
+            subnet_n=subnet_n,
+        )
+
+        try:
+            ovpnm.emitir_certificado_cliente(common_name)
+            ovpnm.criar_instancia_servidor(vpn)
+        except Exception:
+            # Qualquer falha no meio do provisionamento (cert, instância) não
+            # deve deixar um registro "pela metade" no banco — apaga o que já
+            # foi gerado e propaga o erro original.
+            for ext in ('key', 'crt'):
+                path = f'{ovpnm.PKI_DIR}/clients/{common_name}.{ext}'
+                if os.path.exists(path):
+                    os.remove(path)
+            ovpnm.remover_instancia_servidor(vpn)
+            vpn.delete()
+            raise
+
+        vpn.cert_emitido = True
+        vpn.save(update_fields=['cert_emitido'])
+
+        return JsonResponse({'ok': True, 'vpn_id': vpn.id, 'vpn_ip': vpn_ip})
+    except Exception as e:
+        logger.error(f'vpn_ovpn_criar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_ovpn_editar(request, vpn_id):
+    vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
+    try:
+        body = _json.loads(request.body)
+        vpn.nome           = body.get('nome', '').strip() or vpn.nome
+        vpn.redes_privadas = body.get('redes_privadas', '').strip()
+        vpn.save()
+
+        # Reescreve e reinicia SÓ a instância deste cliente — outros túneis
+        # rodam em processos separados, não são afetados.
+        ovpnm.atualizar_redes_instancia(vpn)
+
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        logger.error(f'vpn_ovpn_editar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_ovpn_deletar(request, vpn_id):
+    vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
+    try:
+        ovpnm.remover_instancia_servidor(vpn)
+        ovpnm.revogar_certificado(vpn.common_name)
+        vpn.delete()
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        logger.error(f'vpn_ovpn_deletar: {e}')
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_ovpn_reativar(request, vpn_id):
+    """Re-emite certificado e recria a instância (útil se os arquivos em disco
+    tiverem sido perdidos ou o serviço tiver sido derrubado manualmente)."""
+    vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
+    try:
+        ovpnm.emitir_certificado_cliente(vpn.common_name)
+        ovpnm.criar_instancia_servidor(vpn)
+        vpn.cert_emitido = True
+        vpn.ativo = True
+        vpn.save(update_fields=['cert_emitido', 'ativo'])
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["GET"])
+def vpn_ovpn_bootstrap(request, vpn_id):
+    """One-liner de bootstrap (fetch + import) para colar no terminal do Mikrotik."""
+    vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
+    return JsonResponse({'ok': True, 'script': ovpnm.gerar_oneliner_bootstrap(vpn.token)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def vpn_ovpn_regenerar_token(request, vpn_id):
+    """Invalida o link de bootstrap antigo e gera um novo (botão 'Novo')."""
+    import secrets
+    vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
+    vpn.token = secrets.token_urlsafe(32)
+    vpn.save(update_fields=['token'])
+    return JsonResponse({'ok': True, 'script': ovpnm.gerar_oneliner_bootstrap(vpn.token)})
+
+
+# ── Endpoints públicos (sem login) — o próprio Mikrotik do cliente busca ────
+# estes arquivos via /tool fetch. Protegidos só pelo token (32 bytes
+# aleatórios, igual ao padrão já usado em firmware_download/
+# FirmwareCompartilhamento.token) — nunca ficam listados/indexados, e
+# "Novo" no botão do bootstrap invalida o token antigo imediatamente.
+
+@require_http_methods(["GET"])
+def vpn_ovpn_setup_rsc(request, token):
+    vpn = get_object_or_404(VPNOpenVPN, token=token, ativo=True)
+    ros_version = request.GET.get('v', '')
+    script = ovpnm.gerar_setup_rsc(vpn, ros_version=ros_version)
+    return HttpResponse(script, content_type='text/plain; charset=utf-8')
+
+
+@require_http_methods(["GET"])
+def vpn_ovpn_setup_arquivo(request, token, nome_arquivo):
+    vpn = get_object_or_404(VPNOpenVPN, token=token, ativo=True)
+    if nome_arquivo == 'ca.crt':
+        with open(ovpnm.CA_CRT) as f:
+            conteudo = f.read()
+    elif nome_arquivo in ('client.crt', 'client.key'):
+        key_pem, crt_pem = ovpnm.ler_certificado_cliente(vpn.common_name)
+        if key_pem is None:
+            raise Http404('Certificado não encontrado')
+        conteudo = crt_pem if nome_arquivo == 'client.crt' else key_pem
+    else:
+        raise Http404('Arquivo desconhecido')
+    return HttpResponse(conteudo, content_type='text/plain; charset=utf-8')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

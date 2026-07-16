@@ -16,6 +16,7 @@
 .tk-columns{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;min-height:400px}
 @media(max-width:900px){.tk-columns{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.tk-columns{grid-template-columns:1fr}}
+@media(max-width:640px){.tk-modal-body>div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
 
 .tk-col{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;min-height:200px}
 .tk-col-header{padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}

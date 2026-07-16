@@ -1,6 +1,81 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+.page-header-banner {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px; margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.phb-icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: var(--cyan); flex-shrink: 0;
+}
+.phb-text { flex: 1; min-width: 200px; }
+.phb-text h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-light); }
+.phb-text p { margin: 2px 0 0; font-size: .8rem; color: var(--text-muted); }
+.phb-action { flex-shrink: 0; }
+
+/* Toolbar: busca + botão cadastrar */
+.table-header-container { flex-wrap: wrap; row-gap: 10px; }
+
+/* Avatar/inicial da empresa na tabela */
+.empresa-cell { display: flex; align-items: center; gap: 12px; }
+.empresa-avatar {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem; font-family: 'Courier New', monospace;
+    background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.3); color: var(--cyan);
+}
+.empresa-nome { font-weight: 600; color: var(--text-light); font-size: .85rem; }
+.empresa-cidade { font-size: .7rem; color: var(--text-muted); margin-top: 1px; }
+.cnpj-chip {
+    font-family: 'Courier New', monospace; font-size: .75rem; color: var(--text-muted);
+    background: rgba(255,255,255,.03); border: 1px solid var(--border);
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+}
+
+/* Tags de "usuários adicionais" selecionados */
+.selected-tags-row {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 10px;
+}
+.selected-tags-row:empty { margin-top: 0; }
+.user-tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3);
+    color: var(--green); border-radius: 20px; padding: 5px 8px 5px 12px;
+    font-size: .78rem; font-weight: 600;
+}
+.user-tag-remove {
+    background: transparent; border: none; color: var(--green);
+    opacity: .6; cursor: pointer; font-size: 1rem; line-height: 1;
+    padding: 0 2px; transition: opacity .15s;
+}
+.user-tag-remove:hover { opacity: 1; color: var(--red); }
+
+/* Seções dentro dos modais */
+.form-section { margin-bottom: 22px; }
+.form-section:last-child { margin-bottom: 0; }
+.form-section-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--cyan); margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(88,166,255,.15);
+}
+
+@media (max-width: 768px) {
+    .page-header-banner { padding: 16px 18px; }
+}
+@media (max-width: 560px) {
+    .phb-action { width: 100%; text-align: center; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 
@@ -8,27 +83,41 @@
    <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
+
+            <!-- Cabeçalho -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="page-header-banner">
+                        <div class="phb-icon"><i class="fas fa-building"></i></div>
+                        <div class="phb-text">
+                            <h2>Clientes</h2>
+                            <p id="phbSubtitle">Empresas cadastradas no sistema</p>
+                        </div>
+                        <button class="btn btn-primary phb-action" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                            <i class="fas fa-plus me-2"></i> Cadastrar Cliente
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Table Section -->
-            <div class="row mt-5">
+            <div class="row">
                 <div class="col-12">
                     <div class="card">
                         <div class="card-body">
                             <div class="table-header-container mb-4">
-                                <h4 class="mb-0">Usuários</h4>
+                                <h4 class="mb-0">Empresas</h4>
                                 <div class="search-container-center">
                                     <input type="text" id="searchInput" class="form-control search-input" placeholder="Pesquisar clientes...">
                                     <i class="fas fa-search search-icon"></i>
                                 </div>
-                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
-                                    <i class="fas fa-plus me-2"></i> Cadastrar usuário
-                                </button>
                             </div>
                             <div class="table-responsive">
                             <table class="table custom-table">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>Nome da Empresa</th>
+                                        <th>Empresa</th>
                                         <th>CNPJ</th>
                                         <th>Email</th>
                                         <th>Ações</th>
@@ -36,14 +125,24 @@
                                 </thead>
                                 <tbody>
                                     {% for cliente in clientes %}
-                                    <tr class="table-row-selectable" data-cliente-id="{{cliente.id}}">
+                                    <tr class="table-row-selectable" data-cliente-id="{{cliente.id}}" data-nome-empresa="{{cliente.nome_empresa}}">
                                         <td>{{cliente.id}}</td>
-                                        <td>{{cliente.nome_empresa}}</td>
-                                        <td>{{cliente.cnpj}}</td>
+                                        <td>
+                                            <div class="empresa-cell">
+                                                <div class="empresa-avatar">{{ cliente.nome_empresa|slice:":1"|upper }}</div>
+                                                <div>
+                                                    <div class="empresa-nome">{{cliente.nome_empresa}}</div>
+                                                    {% if cliente.cidade %}
+                                                    <div class="empresa-cidade">{{ cliente.cidade }}{% if cliente.estado %}/{{ cliente.estado }}{% endif %}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="cnpj-chip">{{cliente.cnpj}}</span></td>
                                         <td>{{cliente.email}}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario.id}}, '{{cliente.notas|escapejs}}')" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{{ u.id }}{% if not forloop.last %},{% endif %}{% endfor %}])" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <button class="btn-action btn-delete" onclick="confirmarDelete({{cliente.id}})" title="Excluir">
@@ -68,68 +167,92 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="cadastroModalLabel">Cadastro de Empresa</h5>
+                <h5 class="modal-title" id="cadastroModalLabel"><i class="fas fa-building me-2"></i>Cadastro de Empresa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="cadastroForm" method="post" action="{% url 'cadastrar_cliente' %}">
                     {% csrf_token %}
-                    
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label for="nome_empresa" class="form-label">Nome da Empresa</label>
-                            <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" placeholder="Digite o nome da empresa" required>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="cnpj" class="form-label">CNPJ</label>
-                            <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" required>
+
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-building"></i> Dados da empresa</div>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="nome_empresa" class="form-label">Nome da Empresa</label>
+                                <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" placeholder="Digite o nome da empresa" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="cnpj" class="form-label">CNPJ</label>
+                                <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-2 mb-3">
-                            <label for="cep" class="form-label">CEP</label>
-                            <input type="text" class="form-control" id="cep" name="cep" placeholder="00000-000" required>
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-map-marker-alt"></i> Endereço</div>
+                        <div class="row">
+                            <div class="col-md-2 mb-3">
+                                <label for="cep" class="form-label">CEP</label>
+                                <input type="text" class="form-control" id="cep" name="cep" placeholder="00000-000" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="endereco" class="form-label">Endereço</label>
+                                <input type="text" class="form-control" id="endereco" name="endereco" placeholder="Digite o endereço completo" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="estado" class="form-label">Estado</label>
+                                <input type="text" class="form-control" id="estado" name="estado" placeholder="Digite seu estado" required>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label for="endereco" class="form-label">Endereço</label>
-                            <input type="text" class="form-control" id="endereco" name="endereco" placeholder="Digite o endereço completo" required>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="estado" class="form-label">Estado</label>
-                            <input type="text" class="form-control" id="estado" name="estado" placeholder="Digite seu estado" required>
+                        <div class="mb-3">
+                            <label for="cidade" class="form-label">Cidade</label>
+                            <input type="text" class="form-control" id="cidade" name="cidade" placeholder="Digite a cidade" required>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="cidade" class="form-label">Cidade</label>
-                        <input type="text" class="form-control" id="cidade" name="cidade" placeholder="Digite a cidade" required>
-                    </div>
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-address-book"></i> Contato</div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="telefone" class="form-label">Telefone</label>
+                                <input type="tel" class="form-control" id="telefone" name="telefone" placeholder="(00) 00000-0000" required>
+                            </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="telefone" class="form-label">Telefone</label>
-                            <input type="tel" class="form-control" id="telefone" name="telefone" placeholder="(00) 00000-0000" required>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Digite o email" required>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Digite o email" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="usuario" class="form-label">Usuário</label>
-                        <div class="custom-dropdown-wrapper">
-                            <input type="hidden" id="usuario" name="usuario" required>
-                            <input type="text" class="custom-dropdown-input" id="usuario_search" placeholder="Pesquisar ou selecionar usuário" autocomplete="off">
-                            <span class="dropdown-icon">▼</span>
-                            <div class="custom-dropdown-menu" id="dropdownMenu"></div>
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-key"></i> Acesso ao painel</div>
+                        <div class="mb-3">
+                            <label for="usuario" class="form-label">Usuário principal (opcional)</label>
+                            <div class="custom-dropdown-wrapper">
+                                <input type="hidden" id="usuario" name="usuario">
+                                <input type="text" class="custom-dropdown-input" id="usuario_search" placeholder="Pesquisar ou selecionar usuário" autocomplete="off">
+                                <span class="dropdown-icon">▼</span>
+                                <div class="custom-dropdown-menu" id="dropdownMenu"></div>
+                            </div>
+                            <small class="form-text text-muted">Digite para pesquisar ou selecione um usuário existente — deixe em branco pra cadastrar sem acesso ao portal por enquanto</small>
                         </div>
-                        <small class="form-text text-muted">Digite para pesquisar ou selecione um usuário existente</small>
+
+                        <div class="mb-1">
+                            <label for="usuarios_adicionais_search" class="form-label">Usuários adicionais</label>
+                            <div class="custom-dropdown-wrapper">
+                                <input type="text" class="custom-dropdown-input" id="usuarios_adicionais_search" placeholder="Pesquisar usuário para adicionar..." autocomplete="off">
+                                <span class="dropdown-icon">▼</span>
+                                <div class="custom-dropdown-menu" id="usuariosAdicionaisDropdown"></div>
+                            </div>
+                            <div class="selected-tags-row" id="usuariosAdicionaisTags"></div>
+                            <div id="usuariosAdicionaisHiddenInputs"></div>
+                            <small class="form-text text-muted">Opcional — digite para pesquisar e clique para adicionar. Outros usuários que também podem logar e acessar o painel deste cliente.</small>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -152,78 +275,104 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="edicaoModalLabel">Editar Empresa</h5>
+                <h5 class="modal-title" id="edicaoModalLabel"><i class="fas fa-building me-2"></i>Editar Empresa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="edicaoForm" method="post" action="{% url 'editar_cliente' %}">
                     {% csrf_token %}
                     <input type="hidden" id="edit_id" name="id">
-                    
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label for="edit_nome_empresa" class="form-label">Nome da Empresa</label>
-                            <input type="text" class="form-control" id="edit_nome_empresa" name="nome_empresa" placeholder="Digite o nome da empresa" required>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="edit_cnpj" class="form-label">CNPJ</label>
-                            <input type="text" class="form-control" id="edit_cnpj" name="cnpj" placeholder="00.000.000/0000-00" required>
+
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-building"></i> Dados da empresa</div>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="edit_nome_empresa" class="form-label">Nome da Empresa</label>
+                                <input type="text" class="form-control" id="edit_nome_empresa" name="nome_empresa" placeholder="Digite o nome da empresa" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="edit_cnpj" class="form-label">CNPJ</label>
+                                <input type="text" class="form-control" id="edit_cnpj" name="cnpj" placeholder="00.000.000/0000-00" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-2 mb-3">
-                            <label for="edit_cep" class="form-label">CEP</label>
-                            <input type="text" class="form-control" id="edit_cep" name="cep" placeholder="00000-000" required>
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-map-marker-alt"></i> Endereço</div>
+                        <div class="row">
+                            <div class="col-md-2 mb-3">
+                                <label for="edit_cep" class="form-label">CEP</label>
+                                <input type="text" class="form-control" id="edit_cep" name="cep" placeholder="00000-000" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_endereco" class="form-label">Endereço</label>
+                                <input type="text" class="form-control" id="edit_endereco" name="endereco" placeholder="Digite o endereço completo" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="edit_estado" class="form-label">Estado</label>
+                                <input type="text" class="form-control" id="edit_estado" name="estado" placeholder="Digite seu estado" required>
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label for="edit_endereco" class="form-label">Endereço</label>
-                            <input type="text" class="form-control" id="edit_endereco" name="endereco" placeholder="Digite o endereço completo" required>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="edit_estado" class="form-label">Estado</label>
-                            <input type="text" class="form-control" id="edit_estado" name="estado" placeholder="Digite seu estado" required>
+                        <div class="mb-3">
+                            <label for="edit_cidade" class="form-label">Cidade</label>
+                            <input type="text" class="form-control" id="edit_cidade" name="cidade" placeholder="Digite a cidade" required>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="edit_cidade" class="form-label">Cidade</label>
-                        <input type="text" class="form-control" id="edit_cidade" name="cidade" placeholder="Digite a cidade" required>
-                    </div>
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-address-book"></i> Contato</div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_telefone" class="form-label">Telefone</label>
+                                <input type="tel" class="form-control" id="edit_telefone" name="telefone" placeholder="(00) 00000-0000" required>
+                            </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="edit_telefone" class="form-label">Telefone</label>
-                            <input type="tel" class="form-control" id="edit_telefone" name="telefone" placeholder="(00) 00000-0000" required>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label for="edit_email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="edit_email" name="email" placeholder="Digite o email" required>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="edit_email" name="email" placeholder="Digite o email" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="edit_usuario" class="form-label">Usuário</label>
-                        <div class="custom-dropdown-wrapper">
-                            <input type="hidden" id="edit_usuario" name="usuario" required>
-                            <input type="text" class="custom-dropdown-input" id="edit_usuario_search" placeholder="Pesquisar ou selecionar usuário" autocomplete="off">
-                            <span class="dropdown-icon">▼</span>
-                            <div class="custom-dropdown-menu" id="editDropdownMenu"></div>
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-key"></i> Acesso ao painel</div>
+                        <div class="mb-3">
+                            <label for="edit_usuario" class="form-label">Usuário principal (opcional)</label>
+                            <div class="custom-dropdown-wrapper">
+                                <input type="hidden" id="edit_usuario" name="usuario">
+                                <input type="text" class="custom-dropdown-input" id="edit_usuario_search" placeholder="Pesquisar ou selecionar usuário" autocomplete="off">
+                                <span class="dropdown-icon">▼</span>
+                                <div class="custom-dropdown-menu" id="editDropdownMenu"></div>
+                            </div>
+                            <small class="form-text text-muted">Digite para pesquisar ou selecione um usuário existente — deixe em branco pra remover o acesso ao portal</small>
                         </div>
-                        <small class="form-text text-muted">Digite para pesquisar ou selecione um usuário existente</small>
+
+                        <div class="mb-1">
+                            <label for="edit_usuarios_adicionais_search" class="form-label">Usuários adicionais</label>
+                            <div class="custom-dropdown-wrapper">
+                                <input type="text" class="custom-dropdown-input" id="edit_usuarios_adicionais_search" placeholder="Pesquisar usuário para adicionar..." autocomplete="off">
+                                <span class="dropdown-icon">▼</span>
+                                <div class="custom-dropdown-menu" id="editUsuariosAdicionaisDropdown"></div>
+                            </div>
+                            <div class="selected-tags-row" id="editUsuariosAdicionaisTags"></div>
+                            <div id="editUsuariosAdicionaisHiddenInputs"></div>
+                            <small class="form-text text-muted">Opcional — digite para pesquisar e clique para adicionar. Outros usuários que também podem logar e acessar o painel deste cliente.</small>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_notas" class="form-label" style="font-size:.85rem;">
-                            <i class="fas fa-robot me-1" style="color:#3b82f6;"></i> Notas para o Agent NOC
-                        </label>
-                        <textarea class="form-control" id="edit_notas" name="notas" rows="3"
-                                  placeholder="Informações sobre o cliente para o Agent NOC: topologia, acordos, restrições, peculiaridades da rede…"
-                                  style="font-size:.85rem;resize:vertical;"></textarea>
-                        <small class="form-text text-muted">Essas notas são injetadas no contexto do Agent NOC a cada sessão.</small>
+
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-robot"></i> Agent NOC</div>
+                        <div class="mb-1">
+                            <label for="edit_notas" class="form-label" style="font-size:.85rem;">Notas para o Agent NOC</label>
+                            <textarea class="form-control" id="edit_notas" name="notas" rows="3"
+                                      placeholder="Informações sobre o cliente para o Agent NOC: topologia, acordos, restrições, peculiaridades da rede…"
+                                      style="font-size:.85rem;resize:vertical;"></textarea>
+                            <small class="form-text text-muted">Essas notas são injetadas no contexto do Agent NOC a cada sessão.</small>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -317,9 +466,16 @@
                     }, 300);
                 {% endfor %}
             {% endif %}
+
+            // Subtítulo do cabeçalho com a contagem de empresas cadastradas
+            const total = document.querySelectorAll('.custom-table tbody tr').length;
+            const subtitle = document.getElementById('phbSubtitle');
+            if (subtitle) {
+                subtitle.textContent = total === 1 ? '1 empresa cadastrada no sistema' : total + ' empresas cadastradas no sistema';
+            }
         });
     </script>
-    
+
     <!-- ============================================= -->
     <!-- SISTEMA DE DROPDOWNS E MÁSCARAS -->
     <!-- ============================================= -->
@@ -338,7 +494,7 @@
         // ============================================
         // MODAL DE CADASTRO - DROPDOWN DE USUÁRIO
         // ============================================
-        
+
         const inputSearch = document.getElementById('usuario_search');
         const inputId = document.getElementById('usuario');
         const dropdownMenu = document.getElementById('dropdownMenu');
@@ -347,7 +503,7 @@
             // Renderizar dropdown
             function renderDropdown(filteredUsers) {
                 dropdownMenu.innerHTML = '';
-                
+
                 if (filteredUsers.length === 0) {
                     dropdownMenu.innerHTML = '<div class="no-results">Nenhum usuário encontrado</div>';
                     dropdownMenu.classList.add('show');
@@ -381,14 +537,14 @@
             // Input - filtrar ao digitar
             inputSearch.addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase().trim();
-                
+
                 if (searchTerm.length === 0) {
                     dropdownMenu.classList.remove('show');
                     inputId.value = '';
                     return;
                 }
 
-                const filtered = usuarios.filter(user => 
+                const filtered = usuarios.filter(user =>
                     user.username.toLowerCase().includes(searchTerm) ||
                     user.id.toString().includes(searchTerm)
                 );
@@ -406,7 +562,7 @@
             // Navegação por teclado
             inputSearch.addEventListener('keydown', (e) => {
                 const items = dropdownMenu.querySelectorAll('.dropdown-item-custom');
-                const currentIndex = Array.from(items).findIndex(item => 
+                const currentIndex = Array.from(items).findIndex(item =>
                     item.classList.contains('selected')
                 );
 
@@ -443,7 +599,7 @@
         // ============================================
         // MODAL DE EDIÇÃO - DROPDOWN DE USUÁRIO
         // ============================================
-        
+
         const editInputSearch = document.getElementById('edit_usuario_search');
         const editInputId = document.getElementById('edit_usuario');
         const editDropdownMenu = document.getElementById('editDropdownMenu');
@@ -452,7 +608,7 @@
             // Renderizar dropdown de edição
             function renderEditDropdown(filteredUsers) {
                 editDropdownMenu.innerHTML = '';
-                
+
                 if (filteredUsers.length === 0) {
                     editDropdownMenu.innerHTML = '<div class="no-results">Nenhum usuário encontrado</div>';
                     editDropdownMenu.classList.add('show');
@@ -486,14 +642,14 @@
             // Input - filtrar ao digitar
             editInputSearch.addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase().trim();
-                
+
                 if (searchTerm.length === 0) {
                     editDropdownMenu.classList.remove('show');
                     editInputId.value = '';
                     return;
                 }
 
-                const filtered = usuarios.filter(user => 
+                const filtered = usuarios.filter(user =>
                     user.username.toLowerCase().includes(searchTerm) ||
                     user.id.toString().includes(searchTerm)
                 );
@@ -511,7 +667,7 @@
             // Navegação por teclado no modal de edição
             editInputSearch.addEventListener('keydown', (e) => {
                 const items = editDropdownMenu.querySelectorAll('.dropdown-item-custom');
-                const currentIndex = Array.from(items).findIndex(item => 
+                const currentIndex = Array.from(items).findIndex(item =>
                     item.classList.contains('selected')
                 );
 
@@ -546,20 +702,161 @@
         }
 
         // ============================================
+        // USUÁRIOS ADICIONAIS — busca com tags (multi-seleção)
+        // ============================================
+
+        function criarSeletorMultiplo({ searchInputId, dropdownId, tagsContainerId, hiddenContainerId, hiddenName, excluirIdInputId }) {
+            const searchInput   = document.getElementById(searchInputId);
+            const dropdownEl    = document.getElementById(dropdownId);
+            const tagsContainer = document.getElementById(tagsContainerId);
+            const hiddenContainer = document.getElementById(hiddenContainerId);
+            if (!searchInput || !dropdownEl || !tagsContainer || !hiddenContainer) return null;
+
+            let selecionados = []; // [{id, username}]
+
+            function renderTags() {
+                tagsContainer.innerHTML = '';
+                selecionados.forEach(u => {
+                    const tag = document.createElement('span');
+                    tag.className = 'user-tag';
+                    tag.innerHTML = `<i class="fas fa-user"></i> ${u.username}`;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'user-tag-remove';
+                    btn.innerHTML = '&times;';
+                    btn.addEventListener('click', () => remover(u.id));
+                    tag.appendChild(btn);
+                    tagsContainer.appendChild(tag);
+                });
+            }
+
+            function renderHiddenInputs() {
+                hiddenContainer.innerHTML = '';
+                selecionados.forEach(u => {
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = hiddenName;
+                    inp.value = u.id;
+                    hiddenContainer.appendChild(inp);
+                });
+            }
+
+            function adicionar(user) {
+                if (selecionados.some(u => u.id === user.id)) return;
+                selecionados.push(user);
+                renderTags();
+                renderHiddenInputs();
+                searchInput.value = '';
+                dropdownEl.classList.remove('show');
+                searchInput.focus();
+            }
+
+            function remover(id) {
+                selecionados = selecionados.filter(u => u.id !== id);
+                renderTags();
+                renderHiddenInputs();
+            }
+
+            function idExcluidoAtual() {
+                if (!excluirIdInputId) return null;
+                const el = document.getElementById(excluirIdInputId);
+                const val = el && el.value ? parseInt(el.value) : null;
+                return isNaN(val) ? null : val;
+            }
+
+            function renderDropdown(lista) {
+                dropdownEl.innerHTML = '';
+                const jaSelecionados = selecionados.map(u => u.id);
+                const excluidoExtra = idExcluidoAtual();
+                const filtrados = lista.filter(u => !jaSelecionados.includes(u.id) && u.id !== excluidoExtra);
+
+                if (filtrados.length === 0) {
+                    dropdownEl.innerHTML = '<div class="no-results">Nenhum usuário disponível</div>';
+                    dropdownEl.classList.add('show');
+                    return;
+                }
+
+                filtrados.forEach(u => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item-custom';
+                    item.innerHTML = `<span class="user-id">${u.id}</span><span class="user-name">${u.username}</span>`;
+                    item.addEventListener('click', () => adicionar(u));
+                    dropdownEl.appendChild(item);
+                });
+                dropdownEl.classList.add('show');
+            }
+
+            searchInput.addEventListener('input', (e) => {
+                const termo = e.target.value.toLowerCase().trim();
+                if (termo.length === 0) {
+                    renderDropdown(usuarios);
+                    return;
+                }
+                const filtrados = usuarios.filter(u =>
+                    u.username.toLowerCase().includes(termo) || u.id.toString().includes(termo)
+                );
+                renderDropdown(filtrados);
+            });
+
+            searchInput.addEventListener('focus', () => renderDropdown(usuarios));
+
+            return {
+                setSelecionados(lista) {
+                    selecionados = lista.slice();
+                    renderTags();
+                    renderHiddenInputs();
+                },
+                limpar() {
+                    selecionados = [];
+                    renderTags();
+                    renderHiddenInputs();
+                },
+                dropdownEl,
+            };
+        }
+
+        const seletorAdicionaisCadastro = criarSeletorMultiplo({
+            searchInputId: 'usuarios_adicionais_search',
+            dropdownId: 'usuariosAdicionaisDropdown',
+            tagsContainerId: 'usuariosAdicionaisTags',
+            hiddenContainerId: 'usuariosAdicionaisHiddenInputs',
+            hiddenName: 'usuarios_adicionais',
+            excluirIdInputId: 'usuario',
+        });
+        const seletorAdicionaisEdicao = criarSeletorMultiplo({
+            searchInputId: 'edit_usuarios_adicionais_search',
+            dropdownId: 'editUsuariosAdicionaisDropdown',
+            tagsContainerId: 'editUsuariosAdicionaisTags',
+            hiddenContainerId: 'editUsuariosAdicionaisHiddenInputs',
+            hiddenName: 'usuarios_adicionais',
+            excluirIdInputId: 'edit_usuario',
+        });
+        // Expostos para editarCliente() (cadastrar_cliente.js) preencher as tags ao editar
+        window.seletorAdicionaisEdicao = seletorAdicionaisEdicao;
+
+        // Limpa as tags do modal de cadastro sempre que ele é reaberto do zero
+        const cadastroModalEl = document.getElementById('cadastroModal');
+        if (cadastroModalEl && seletorAdicionaisCadastro) {
+            cadastroModalEl.addEventListener('show.bs.modal', () => seletorAdicionaisCadastro.limpar());
+        }
+
+        // ============================================
         // FECHAR DROPDOWNS AO CLICAR FORA
         // ============================================
-        
+
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.custom-dropdown-wrapper')) {
                 if (dropdownMenu) dropdownMenu.classList.remove('show');
                 if (editDropdownMenu) editDropdownMenu.classList.remove('show');
+                if (seletorAdicionaisCadastro) seletorAdicionaisCadastro.dropdownEl.classList.remove('show');
+                if (seletorAdicionaisEdicao) seletorAdicionaisEdicao.dropdownEl.classList.remove('show');
             }
         });
 
         // ============================================
         // MÁSCARAS DE INPUT
         // ============================================
-        
+
         // Máscara CNPJ - Modal de Cadastro
         const cnpjInput = document.getElementById('cnpj');
         if (cnpjInput) {

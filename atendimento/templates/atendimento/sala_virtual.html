@@ -32,8 +32,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 #room-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
 #screen-area{flex:1;background:#0a0f14;position:relative;overflow:hidden;display:none}
 #screen-area.active{display:flex;align-items:center;justify-content:center}
-#screen-video{max-width:100%;max-height:100%;border-radius:8px;background:#000}
+#screen-video{width:100%;height:100%;object-fit:contain;border-radius:8px;background:#000;cursor:zoom-in}
+#screen-area:fullscreen{background:#000}
+#screen-area:fullscreen #screen-video{border-radius:0}
 #screen-label{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:var(--text);font-size:.75rem;padding:4px 12px;border-radius:12px;pointer-events:none}
+#screen-fs-btn{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:.85rem;z-index:2}
+#screen-area.active #screen-fs-btn{display:flex}
+#screen-fs-btn:hover{background:rgba(0,0,0,.85);color:var(--blue)}
 #peers-strip{display:flex;gap:12px;padding:16px;overflow-x:auto;flex-shrink:0;align-items:center;justify-content:center;flex:1}
 #screen-area.active ~ #peers-strip{flex:0 0 auto}
 
@@ -96,6 +101,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 /* Status toast */
 #status-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:6px 16px;border-radius:20px;font-size:.75rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50}
 #status-toast.show{opacity:1}
+
+@media (max-width: 768px) {
+  /* #topbar tinha altura fixa (52px) sem wrap — os botões (gravar,
+     compartilhar tela, sair etc) cortavam da tela num celular. */
+  #topbar { height: auto; min-height: 52px; flex-wrap: wrap; padding: 8px 12px; }
+  #topbar-right { flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
@@ -128,6 +140,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
     <!-- Screen share area (hidden by default) -->
     <div id="screen-area">
       <video id="screen-video" autoplay playsinline muted></video>
+      <button id="screen-fs-btn" title="Tela cheia"><i class="fas fa-expand"></i></button>
       <div id="screen-label"></div>
     </div>
     <!-- Participant cards -->
@@ -188,11 +201,12 @@ async function flushPendingCandidates(peerId) {
   }
 }
 
+// iceServers vindos do Django: STUN + TURN (coturn) com credenciais temporárias.
 const ICE_SERVERS = {
-  iceServers: [
-    {urls: 'stun:stun.l.google.com:19302'},
-    {urls: 'stun:stun1.l.google.com:19302'},
-  ]
+  iceServers: {{ ice_servers_json|safe }},
+  // Garante uso do relay TURN quando a conexão direta (P2P) falha — caso clássico
+  // de participantes em redes/NAT diferentes que não se enxergam só com STUN.
+  iceCandidatePoolSize: 4,
 };
 
 // ── Permission flow ───────────────────────────────────────────────
@@ -326,6 +340,11 @@ function createPeerConnection(peerId) {
 
   pc.ontrack = ({streams, track}) => {
     if (track.kind === 'audio') {
+      // Áudio que vem junto de um stream com vídeo é o áudio do compartilhamento
+      // de tela — ele já toca pelo <video> da tela. Só o áudio do microfone
+      // (stream sem vídeo) deve ir para o <audio> de voz do peer; caso contrário
+      // o áudio da tela sobrescreveria a voz da pessoa.
+      if (streams[0] && streams[0].getVideoTracks().length) return;
       let audioEl = peers[peerId].audioEl;
       if (!audioEl) {
         audioEl = new Audio();
@@ -507,12 +526,31 @@ function showScreenArea(peerId) {
 function hideScreenIfFrom(peerId) {
   if (screenSharer === peerId) {
     screenSharer = null;
-    document.getElementById('screen-area').classList.remove('active');
+    const area = document.getElementById('screen-area');
+    if (document.fullscreenElement === area) document.exitFullscreen?.();
+    area.classList.remove('active');
     const vid = document.getElementById('screen-video');
     vid.srcObject = null;
     document.getElementById('screen-label').textContent = '';
   }
 }
+
+// Tela cheia da área de compartilhamento (botão ou duplo-clique no vídeo)
+function toggleScreenFullscreen() {
+  const area = document.getElementById('screen-area');
+  if (!area.classList.contains('active')) return;
+  if (document.fullscreenElement === area) {
+    document.exitFullscreen?.();
+  } else {
+    (area.requestFullscreen || area.webkitRequestFullscreen)?.call(area);
+  }
+}
+document.getElementById('screen-fs-btn').onclick = toggleScreenFullscreen;
+document.getElementById('screen-video').addEventListener('dblclick', toggleScreenFullscreen);
+document.addEventListener('fullscreenchange', () => {
+  const icon = document.querySelector('#screen-fs-btn i');
+  if (icon) icon.className = document.fullscreenElement ? 'fas fa-compress' : 'fas fa-expand';
+});
 
 // ── Peer cards UI ─────────────────────────────────────────────────
 function initials(name) {

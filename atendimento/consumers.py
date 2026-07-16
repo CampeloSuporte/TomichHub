@@ -71,11 +71,30 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
             return
 
         self.display_name = user.get_full_name() or user.username
+        self.user_id = str(user.id)
 
         await self.channel_layer.group_add(self.GROUP, self.channel_name)
 
+        # Remove conexões antigas/duplicadas do MESMO usuário (reload ou 2 abas).
+        # Sem isso o atendente aparece 2x na sala e acaba ouvindo a si mesmo.
+        stale = [ch for ch, m in VirtualRoomConsumer._members.items()
+                 if m.get("user_id") == self.user_id]
+        for ch in stale:
+            VirtualRoomConsumer._members.pop(ch, None)
+            # Avisa os demais para removerem a tile antiga
+            await self.channel_layer.group_send(self.GROUP, {
+                "type": "room_peer_left",
+                "sender": self.channel_name,
+                "channel_name": ch,
+            })
+            # Pede para a conexão antiga se fechar (se ainda estiver viva)
+            try:
+                await self.channel_layer.send(ch, {"type": "room_kick"})
+            except Exception:
+                pass
+
         VirtualRoomConsumer._members[self.channel_name] = {
-            "user_id": str(user.id),
+            "user_id": self.user_id,
             "display_name": self.display_name,
             "channel_name": self.channel_name,
             "audio": False,
@@ -85,8 +104,17 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         # Envia lista de peers existentes para quem acabou de entrar
-        existing = [v for k, v in VirtualRoomConsumer._members.items()
-                    if k != self.channel_name]
+        # (deduplicado por usuário — no máx. 1 presença por atendente)
+        existing = []
+        _seen_users = {self.user_id}
+        for k, v in VirtualRoomConsumer._members.items():
+            if k == self.channel_name:
+                continue
+            uid = v.get("user_id")
+            if uid in _seen_users:
+                continue
+            _seen_users.add(uid)
+            existing.append(v)
         await self.send(text_data=json.dumps({
             "type": "room_joined",
             "my_id": self.channel_name,
@@ -174,3 +202,11 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
 
     async def room_media_state(self, event):
         await self.send(text_data=json.dumps(event["state"]))
+
+    async def room_kick(self, event):
+        """Conexão antiga do mesmo usuário — fecha para não duplicar na sala."""
+        try:
+            await self.send(text_data=json.dumps({"type": "kicked"}))
+        except Exception:
+            pass
+        await self.close()

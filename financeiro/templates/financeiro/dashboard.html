@@ -1145,6 +1145,37 @@
     </div>
 </div>
 
+<!-- MODAL: GERAR FATURA (ALUGUEL) -->
+<div class="modal fade" id="modalGerarFaturaAluguel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-invoice-dollar me-2"></i>Gerar Fatura — Aluguel IPv4</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formGerarFaturaAluguel" onsubmit="enviarGerarFaturaAluguel(event)">
+                {% csrf_token %}
+                <input type="hidden" id="gerarFaturaAluguelId">
+                <div class="modal-body">
+                    <p class="mb-3">Bloco: <strong id="gerarFaturaAluguelBloco"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label">Quantidade de meses</label>
+                        <input type="number" class="form-control" id="gerarFaturaQtdMeses" name="quantidade_meses" min="1" max="24" value="1" required>
+                        <small class="text-muted">Vencimentos que já têm fatura aberta ou paga são ignorados automaticamente — pode usar de novo sem duplicar cobrança.</small>
+                    </div>
+                    <div id="msgErroGerarFaturaAluguel" class="alert alert-danger d-none py-2 mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cy btn-cy-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-cy btn-cy-or btn-cy-sm">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>Gerar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL: NOVA VENDA -->
 <div class="modal fade" id="modalNovaVenda" tabindex="-1">
     <div class="modal-dialog">
@@ -2125,6 +2156,35 @@ function carregarAlugueis() {
     fetch(`{% url 'api_listar_alugueis' %}?cliente_id=${clienteId}`)
     .then(r => r.json())
     .then(data => { if (data.sucesso) document.getElementById('lista-alugueis').innerHTML = data.html; });
+}
+
+function abrirGerarFaturaAluguel(id, bloco) {
+    document.getElementById('gerarFaturaAluguelId').value = id;
+    document.getElementById('gerarFaturaAluguelBloco').textContent = bloco;
+    document.getElementById('gerarFaturaQtdMeses').value = 1;
+    document.getElementById('msgErroGerarFaturaAluguel').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('modalGerarFaturaAluguel')).show();
+}
+
+function enviarGerarFaturaAluguel(event) {
+    event.preventDefault();
+    const id  = document.getElementById('gerarFaturaAluguelId').value;
+    const qtd = document.getElementById('gerarFaturaQtdMeses').value;
+    const fd  = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf());
+    fd.append('quantidade_meses', qtd);
+    fetch(`/financeiro/api/aluguel/${id}/gerar-fatura/`, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            bootstrap.Modal.getInstance(document.getElementById('modalGerarFaturaAluguel')).hide();
+            mostrarToast(data.mensagem, 'success');
+            if (typeof carregarFaturas === 'function') carregarFaturas();
+        } else {
+            mostrarErro('msgErroGerarFaturaAluguel', data.erro);
+        }
+    })
+    .catch(e => mostrarErro('msgErroGerarFaturaAluguel', e.message));
 }
 
 // ===== ASSINATURA DIGITAL =====

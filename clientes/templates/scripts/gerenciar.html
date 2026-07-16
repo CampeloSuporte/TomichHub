@@ -95,6 +95,12 @@ body {
     overflow: hidden;
 }
 
+/* Responsivo: abaixo de 900px o painel lateral (300px) esmaga o conteúdo — empilha */
+@media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; height: auto; overflow: visible; }
+    .left-panel { max-height: 50vh; }
+}
+
 /* ── LEFT PANEL ── */
 .left-panel {
     background: var(--bg2);
@@ -274,6 +280,9 @@ body {
     border-bottom: 1px solid var(--border);
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+}
 .form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-group.full { grid-column: 1 / -1; }
 label {
@@ -334,6 +343,8 @@ textarea.code {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
 }
+@media (max-width: 768px) { .param-card-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .param-card-grid { grid-template-columns: 1fr; } }
 .param-card-grid .form-group.full { grid-column: 1 / -1; }
 .btn-remove-param {
     background: transparent;

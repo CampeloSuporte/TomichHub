@@ -2080,8 +2080,16 @@ function _acessoAjaxSubmit(formId, fecharFn) {
         .then(json => {
             if (json.success) {
                 fecharFn();
-                // Preservar aba principal; funcaoAtiva já está no sessionStorage via mostrarFuncao
+                // Preservar aba principal
                 sessionStorage.setItem('abaAtiva', 'acessos');
+                // Preservar a aba de função (CGNAT/BORDA/SWITCH L3/...) em que o
+                // usuário estava — captura direto do DOM no momento do reload,
+                // sem depender de já estar salvo de um clique anterior.
+                const funcaoLinkAtivo = document.querySelector('#funcaoTabs .nav-link.active');
+                if (funcaoLinkAtivo) {
+                    const m = (funcaoLinkAtivo.getAttribute('onclick') || '').match(/mostrarFuncao\(event,\s*'([^']+)'\)/);
+                    if (m) sessionStorage.setItem('funcaoAtiva', m[1]);
+                }
                 location.reload();
             } else {
                 uiAlert(json.error || 'Erro ao salvar acesso.');
@@ -2095,10 +2103,20 @@ function _acessoAjaxSubmit(formId, fecharFn) {
     });
 }
 
-// Attach immediately — forms are already in DOM at this point (inline include)
-_acessoAjaxSubmit('formCadastrarAcesso', fecharModalAcesso);
-_acessoAjaxSubmit('formEditarAcesso',    fecharModalEditarAcesso);
-_acessoAjaxSubmit('formDuplicarAcesso',  fecharModalDuplicarAcesso);
+// ⚠️ Adiado para DOMContentLoaded: os formulários já existem no DOM aqui
+// (inline include), mas fecharModalAcesso/fecharModalEditarAcesso/
+// fecharModalDuplicarAcesso são definidos em main.js/listar_acesso.js,
+// carregados DEPOIS deste include — chamar isso "imediatamente" lançava
+// "ReferenceError: fecharModalAcesso is not defined" e abortava as 3
+// chamadas seguintes, deixando os 3 formulários (cadastrar/editar/duplicar)
+// SEM o listener de AJAX — caindo no submit nativo do navegador (recarrega
+// a página inteira via redirect do Django, perdendo qualquer estado de UI
+// que só é preservado pelo fluxo de AJAX + location.reload()).
+document.addEventListener('DOMContentLoaded', function() {
+    _acessoAjaxSubmit('formCadastrarAcesso', fecharModalAcesso);
+    _acessoAjaxSubmit('formEditarAcesso',    fecharModalEditarAcesso);
+    _acessoAjaxSubmit('formDuplicarAcesso',  fecharModalDuplicarAcesso);
+});
 
 function _gerarSenha(inputId) {
     const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
