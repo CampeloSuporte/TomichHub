@@ -95,9 +95,28 @@ def _gerar_login_html(hotspot, portal_url):
     puro, sem JS e só com variáveis curtas ($(mac)/$(ip)), é a combinação mais
     compatível. O hotspot_portal_conectar já tem fallback para gateway quando
     "link"/"orig" não chegam (ver uso de h.gateway abaixo).
+
+    IMPORTANTE 2 (IP em vez de hostname): usar o nome de domínio aqui exige que
+    o cliente resolva DNS antes de conseguir navegar. Em Android isso costuma
+    ir por "DNS Privado" (DoH do Google/Cloudflare, ignorando totalmente o DNS
+    do roteador) — o domínio tem registro AAAA (IPv6), o aparelho tenta por
+    IPv6 mesmo sem rota de verdade, e o navegador cativo restrito não faz o
+    fallback pra IPv4 que um browser normal faria (net::ERR_CONNECTION_ABORTED).
+    Resolvendo pra IP aqui (uma vez, no servidor) e usando o IP puro na URL,
+    a navegação nunca depende de DNS do cliente — nginx tem crm.tomich.com.br
+    e esse IP como server_name válidos, então a rota até o Django funciona
+    igual em ambos os casos.
     """
     # Força HTTP: clientes não têm HTTPS no walled-garden antes de autenticar
     http_portal = portal_url.replace('https://', 'http://', 1).rstrip('/')
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+        import socket as _sock3
+        _parts = urlsplit(http_portal)
+        _ip_host = _sock3.gethostbyname(_parts.hostname)  # IPv4-only, evita AAAA
+        http_portal = urlunsplit(_parts._replace(netloc=_ip_host))
+    except Exception:
+        pass  # se a resolução falhar, mantém o hostname (comportamento anterior)
     destino = http_portal + '/?mac=$(mac)&ip=$(ip)'
 
     return (
@@ -475,6 +494,20 @@ def _aplicar_mikrotik(hotspot, pixel_url):
                 f'/ip hotspot walled-garden ip add dst-address="{crm_ip}" '
                 f'dst-port=443 protocol=tcp action=accept')
             log.append(f'✅ Walled Garden IP liberado ({crm_ip}:80 e :443)')
+
+            # DNS estático IPv4-only para o domínio do CRM: sem isso, um
+            # cliente cujo dispositivo prefira IPv6 (comum no Android) recebe
+            # o registro AAAA do CRM, tenta conectar por IPv6 e trava com
+            # net::ERR_CONNECTION_ABORTED — o walled-garden acima só cobre o
+            # IPv4. Uma entrada estática força o resolvedor do próprio
+            # roteador (usado pelo cliente via DHCP dns-server=gateway) a
+            # nunca oferecer AAAA para esse nome.
+            _mt_exec(client,
+                f'/ip dns static remove [find where name="{crm_host}"]')
+            _mt_exec(client,
+                f'/ip dns static add name="{crm_host}" address="{crm_ip}" '
+                f'comment="CRM-hotspot-force-ipv4"')
+            log.append(f'✅ DNS estático IPv4-only configurado para {crm_host}')
         except Exception as _e:
             log.append(f'⚠️ Walled Garden IP: não resolveu IP de {crm_host} — {_e}')
 
@@ -627,6 +660,10 @@ def hotspot_detalhe(request, cliente_id, hotspot_id):
         'portal_titulo': h.portal_titulo,
         'portal_subtitulo': h.portal_subtitulo,
         'cor_primaria': h.cor_primaria,
+        'cor_secundaria': h.cor_secundaria,
+        'estilo_fundo': h.estilo_fundo,
+        'cor_fundo': h.cor_fundo,
+        'imagem_fundo_url': h.imagem_fundo.url if h.imagem_fundo else None,
         'ativo': h.ativo,
         'uuid': str(h.uuid),
         'configurado_em': h.configurado_em.strftime('%d/%m/%Y %H:%M') if h.configurado_em else None,
@@ -666,6 +703,9 @@ def hotspot_salvar(request, cliente_id):
         'portal_titulo': body.get('portal_titulo', 'WiFi Grátis').strip(),
         'portal_subtitulo': body.get('portal_subtitulo', '').strip(),
         'cor_primaria': body.get('cor_primaria', '#1a73e8').strip(),
+        'cor_secundaria': body.get('cor_secundaria', '').strip(),
+        'estilo_fundo': body.get('estilo_fundo', 'gradiente').strip() or 'gradiente',
+        'cor_fundo': body.get('cor_fundo', '#0a0a0f').strip() or '#0a0a0f',
         'ativo': bool(body.get('ativo', True)),
         'dhcp_controle_banda': bool(body.get('dhcp_controle_banda', False)),
         'dhcp_banda_limit': body.get('dhcp_banda_limit', '10M/10M').strip() or '10M/10M',
@@ -755,6 +795,42 @@ def hotspot_logo_deletar(request, cliente_id, hotspot_id):
         pass
     h.logo = None
     h.save(update_fields=['logo'])
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_fundo_upload(request, cliente_id, hotspot_id):
+    c = _cliente(request, cliente_id)
+    h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
+    img = request.FILES.get('imagem_fundo')
+    if not img:
+        return JsonResponse({'ok': False, 'error': 'Nenhuma imagem enviada.'}, status=400)
+    ext = img.name.rsplit('.', 1)[-1].lower()
+    if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
+        return JsonResponse({'ok': False, 'error': 'Formato inválido. Use JPG, PNG, GIF ou WebP.'}, status=400)
+    try:
+        if h.imagem_fundo and os.path.isfile(h.imagem_fundo.path):
+            os.remove(h.imagem_fundo.path)
+    except Exception:
+        pass
+    h.imagem_fundo = img
+    h.save(update_fields=['imagem_fundo'])
+    return JsonResponse({'ok': True, 'url': h.imagem_fundo.url})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_fundo_deletar(request, cliente_id, hotspot_id):
+    c = _cliente(request, cliente_id)
+    h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
+    try:
+        if h.imagem_fundo and os.path.isfile(h.imagem_fundo.path):
+            os.remove(h.imagem_fundo.path)
+    except Exception:
+        pass
+    h.imagem_fundo = None
+    h.save(update_fields=['imagem_fundo'])
     return JsonResponse({'ok': True})
 
 
@@ -900,7 +976,32 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
     # Logo — usa o mesmo scheme da requisição
     logo_url = f'{scheme}://{host}{hotspot.logo.url}' if hotspot.logo else None
 
-    cor_dark = cor
+    cor_dark = hotspot.cor_secundaria or cor
+
+    # Fundo da página de login — 3 estilos: gradiente (padrão, comportamento
+    # histórico), solido, imagem. cor_fundo default reproduz o valor
+    # hardcoded anterior (#0a0a0f), então configs existentes ficam idênticas.
+    cor_fundo    = hotspot.cor_fundo or '#0a0a0f'
+    estilo_fundo = hotspot.estilo_fundo or 'gradiente'
+    imagem_fundo_url = f'{scheme}://{host}{hotspot.imagem_fundo.url}' if hotspot.imagem_fundo else None
+
+    if estilo_fundo == 'imagem' and imagem_fundo_url:
+        bg_css = (
+            f"background:url('{imagem_fundo_url}') center/cover no-repeat, {cor_fundo};"
+        )
+        bg_overlay_css = (
+            f"background:linear-gradient(180deg,{cor_fundo}99,{cor_fundo}cc);"
+        )
+    elif estilo_fundo == 'solido':
+        bg_css = f"background:{cor_fundo};"
+        bg_overlay_css = "background:none;"
+    else:
+        bg_css = f"background:{cor_fundo};"
+        bg_overlay_css = (
+            f"background:radial-gradient(ellipse at 20% 50%,{cor}22 0%,transparent 60%),"
+            f"radial-gradient(ellipse at 80% 20%,{cor}18 0%,transparent 55%),"
+            f"radial-gradient(ellipse at 50% 90%,{cor_dark}22 0%,transparent 60%);"
+        )
 
     # Banners → slideshow do splash (mostrado ANTES da página de login)
     slides = []
@@ -953,7 +1054,7 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
 html,body{{height:100%;overflow:hidden}}
 body{{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  background:#0a0a0f;
+  {bg_css}
   display:flex;align-items:center;justify-content:center;
   position:relative;
 }}
@@ -961,10 +1062,7 @@ body{{
 /* Fundo animado */
 .bg{{
   position:fixed;inset:0;z-index:0;
-  background:radial-gradient(ellipse at 20% 50%,{cor}22 0%,transparent 60%),
-             radial-gradient(ellipse at 80% 20%,{cor}18 0%,transparent 55%),
-             radial-gradient(ellipse at 50% 90%,#818cf822 0%,transparent 60%),
-             #0a0a0f;
+  {bg_overlay_css}
   animation:bgpulse 8s ease-in-out infinite alternate;
 }}
 @keyframes bgpulse{{

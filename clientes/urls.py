@@ -219,6 +219,8 @@ urlpatterns = [
     path('<int:cliente_id>/hotspot/<int:hotspot_id>/banner/<int:banner_id>/del/', hv.hotspot_banner_deletar, name='hotspot_banner_deletar'),
     path('<int:cliente_id>/hotspot/<int:hotspot_id>/logo/upload/',               hv.hotspot_logo_upload,    name='hotspot_logo_upload'),
     path('<int:cliente_id>/hotspot/<int:hotspot_id>/logo/deletar/',              hv.hotspot_logo_deletar,   name='hotspot_logo_deletar'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/fundo/upload/',              hv.hotspot_fundo_upload,   name='hotspot_fundo_upload'),
+    path('<int:cliente_id>/hotspot/<int:hotspot_id>/fundo/deletar/',             hv.hotspot_fundo_deletar,  name='hotspot_fundo_deletar'),
     path('<int:cliente_id>/hotspot/<int:hotspot_id>/leads/',                      hv.hotspot_leads,          name='hotspot_leads'),
     # Public — pixel for lead capture from MikroTik's login.html (no auth)
     path('hotspot/pixel/<uuid:hotspot_uuid>/',                                    hv.hotspot_lead_pixel,           name='hotspot_lead_pixel'),

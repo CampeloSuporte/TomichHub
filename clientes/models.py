@@ -1612,7 +1612,19 @@ class HotspotConfig(models.Model):
     portal_titulo    = models.CharField(max_length=100, default='WiFi Grátis')
     portal_subtitulo = models.CharField(max_length=200, blank=True)
     cor_primaria     = models.CharField(max_length=7, default='#1a73e8')
+    cor_secundaria   = models.CharField(max_length=7, blank=True, default='',
+                          help_text='Cor secundária para o gradiente dos botões/fundo (opcional — usa um tom da primária se vazio)')
     logo             = models.ImageField(upload_to='hotspot/logos/', null=True, blank=True)
+
+    # Fundo da página de login
+    ESTILO_FUNDO_CHOICES = [
+        ('gradiente', 'Gradiente (padrão)'),
+        ('solido', 'Cor sólida'),
+        ('imagem', 'Imagem'),
+    ]
+    estilo_fundo  = models.CharField(max_length=10, choices=ESTILO_FUNDO_CHOICES, default='gradiente')
+    cor_fundo     = models.CharField(max_length=7, default='#0a0a0f')
+    imagem_fundo  = models.ImageField(upload_to='hotspot/fundos/', null=True, blank=True)
 
     configurado_em = models.DateTimeField(null=True, blank=True)
     ativo          = models.BooleanField(default=True)

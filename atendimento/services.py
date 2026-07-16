@@ -767,13 +767,15 @@ class ConversationService:
 
             flow = ConversationService._flow_do_grupo(group)
             if flow and not atendente_pessoal:
-                # Auto-atendimento: cria a sessão e faz as perguntas
-                ChatFlowSession.objects.create(
-                    flow=flow, conversation=conv, group_jid=jid, step='subject',
-                    expires_at=now + timedelta(hours=1),
-                )
+                # Auto-atendimento simplificado: sem perguntas — só avisa que
+                # o chamado foi aberto (o chamado já está 'open' desde a
+                # linha acima, antes deste bloco rodar). Nada de sessão de
+                # fluxo aguardando resposta do cliente.
                 ConversationService._flow_enviar(conv, group, connection, flow.greeting_message)
-                ConversationService._flow_enviar(conv, group, connection, flow.subject_question)
+                if flow.completion_message:
+                    ConversationService._flow_enviar(conv, group, connection, flow.completion_message)
+                if not conv.assigned_to:
+                    _notify_new_open_conversation(conv, connection)
             elif not conv.assigned_to:
                 _notify_new_open_conversation(conv, connection)
             logger.info(f"Chamado aberto na 1ª msg: conversa #{conv.conversation_id}")
