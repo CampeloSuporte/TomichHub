@@ -119,6 +119,15 @@ def listar_clientes(request):
                 'data': ultimo_backup.data_backup.strftime('%d/%m/%Y %H:%M'),
             })
 
+    # ── Detectar blocos com erro de validação RPKI/IRR ───────────────────
+    blocos_rpki_invalidos_cliente = cliente.blocos_ip.filter(
+        Q(rpki_valido=False) | Q(rpki_status__in=['Invalid', 'Unknown', 'Error', 'NotChecked'])
+    )
+    blocos_irr_invalidos_cliente = cliente.blocos_ip.filter(
+        Q(irr_valido=False) | Q(irr_status__in=['NotFound', 'ASN_Mismatch', 'Error'])
+    )
+    total_blocos_rpki_irr_invalidos_cliente = blocos_rpki_invalidos_cliente.count() + blocos_irr_invalidos_cliente.count()
+
     response = render(request, 'listar.html', {
         'cliente': cliente,
         'funcoes': funcoes,
@@ -135,6 +144,9 @@ def listar_clientes(request):
         'is_superuser': is_superuser,
         'destinos_padrao': DESTINOS_PADRAO,
         'acessos_com_erro_backup': acessos_com_erro_backup,
+        'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,
+        'blocos_irr_invalidos_cliente': blocos_irr_invalidos_cliente,
+        'total_blocos_rpki_irr_invalidos_cliente': total_blocos_rpki_irr_invalidos_cliente,
     })
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response['Pragma'] = 'no-cache'
