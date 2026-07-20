@@ -5,6 +5,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-20 (Editor de Topologia — Design e Efeitos Visuais)
+
+### Adicionado
+
+- **Passe de design completo no editor de Topologia** (`clientes/templates/topologia_editor.html`,
+  `static/js/topo_main.js`, `static/js/topo_engine.js`): toolbar com sombra e botão "Salvar" em
+  destaque, paleta de dispositivos agrupada por categoria (Rede/Core, Acesso/FTTH, Servidores,
+  Outros, Anotações), grid de fundo "blueprint" (pontos + linhas a cada 100px), sheen sutil nos
+  nodes, painel de propriedades com transições suaves e campos com anel de foco, nova legenda de
+  interfaces (botão "Legenda" na toolbar) e dica de canvas vazio. Puramente visual/aditivo — não
+  muda o `dados_json` salvo nem o comportamento de nenhuma ação existente.
+- **Ícones de Roteador e Switch redesenhados** (`topo_engine.js`): roteador agora é um círculo
+  com 4 setas retas apontando pra fora (estilo AWS "VPC Router"/Cisco "Router"); switch virou uma
+  caixa de hardware física com porta uplink redonda + 4 portas RJ45, sem mais setas de
+  encaminhamento (uma primeira tentativa com setas de "exchange" foi refeita a pedido, por não
+  bater com a referência visual real).
+- **Efeitos animados:** brilho nos ícones dos nodes (mais forte no hover/seleção), anel pulsante
+  em nodes vinculados a um Acesso do CRM (indica "equipamento real monitorado"), tráfego
+  simulado nos links — tracejado correndo + 2 "pacotes" (`<circle>` com `<animateMotion>`)
+  viajando do Lado A pro Lado B na velocidade proporcional ao tamanho do link. Botão "Efeitos"
+  na toolbar (ligado por padrão) desliga tudo de uma vez para topologias muito grandes.
+- **IP de gerência em negrito** abaixo do nome de cada node, com o fundo do rótulo ligeiramente
+  mais largo para não cortar IPs longos.
+
+### Corrigido
+
+- **Regressão no rótulo "Interface Lado A/B"**: a correção anterior (sessão passada) só afastava
+  o *centro* do texto do node, sem considerar a própria largura — nomes de interface longos (ex.
+  `ten-gigabit-ethernet 1/1/5`) ainda ficavam com metade do texto em cima do node em links
+  horizontais. Corrigido somando `largura_do_rótulo/2` à distância mínima de afastamento.
+
+Ver `docs/topologia.md` para detalhes de cada item.
+
+---
+
 ## [Não publicado] — 2026-07-20 (Editor de Topologia, Backup)
 
 ### Adicionado

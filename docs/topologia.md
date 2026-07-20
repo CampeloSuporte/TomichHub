@@ -28,7 +28,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **v=15** (parâmetro de cache-busting no HTML).
+Versão atual: **v=23** (parâmetro de cache-busting no HTML).
 
 ---
 
@@ -38,9 +38,9 @@ Cada tipo tem `label`, `color` (hex) e `icon` (chave em `ICONS`).
 
 | Tipo | Label | Cor | Ícone |
 |---|---|---|---|
-| `router` | Roteador | `#00d9ff` | Caixa com 3 círculos + antenas |
-| `switch_l2` | Switch L2 | `#3fb950` | Rack com portas + label L2 |
-| `switch_l3` | Switch L3 | `#58a6ff` | Rack com portas + label L3 |
+| `router` | Roteador | `#00d9ff` | Círculo preenchido com 4 setas retas apontando pra fora (N/S/L/O) — estilo AWS/Cisco |
+| `switch_l2` | Switch L2 | `#3fb950` | Caixa física com porta uplink (jack redondo) + 4 portas RJ45 + badge "L2" |
+| `switch_l3` | Switch L3 | `#58a6ff` | Caixa física com porta uplink (jack redondo) + 4 portas RJ45 + badge "L3" |
 | `radio` | Rádio | `#ffa657` | Ondas de rádio |
 | `dwdm` | DWDM | `#bc8cff` | Caixa com elipses ópticas |
 | `olt` | OLT | `#e3b341` | Rack com slots + label OLT |
@@ -216,6 +216,31 @@ qualquer acesso; usuário comum só vê acessos do próprio cliente vinculado.
 incrementado em `_deselect()`) descarta respostas que chegam depois que o usuário já trocou de
 seleção — evita popular o datalist do link errado se duas buscas estiverem em voo ao mesmo tempo.
 
+### Preenchimento automático do IP P2P a partir da Interface — Adicionado em 2026-07-20
+
+Quando a interface escolhida em **Lado A** ou **Lado B** tem um endereço IP roteado configurado
+no backup (não é uma porta L2 pura/trunk), o campo **IP Local/Remoto (P2P)** correspondente é
+preenchido automaticamente com esse IP — só quando esse campo ainda está **vazio** (nunca
+sobrescreve um IP já digitado manualmente).
+
+- `_extrair_interfaces_backup` agora retorna `{'nome', 'descricao', 'ip'}` por interface. O `ip`
+  vem vazio quando a interface não tem endereçamento (a maioria das portas de switch/trunk).
+- Fonte do IP por fabricante:
+
+  | Fabricante | Fonte no backup |
+  |---|---|
+  | `MIKROTIK` | `/ip address add address=IP/CIDR interface=<nome>` |
+  | `JUNIPER` | `set interfaces <if> unit N family inet address IP/CIDR` |
+  | Todos os outros | linha `ip address IP MÁSCARA` (Cisco/Huawei/ZTE, máscara decimal convertida pra CIDR contando bits) ou `ipv4 address IP/CIDR` (Datacom), dentro do bloco da interface |
+
+- **Frontend:** `pl-ifa`/`pl-ifb` ganham um listener de `input` (`_sugerirIpPorInterface`) — ao
+  digitar/selecionar um valor que bate **exatamente** com o nome de uma interface do backup
+  (cache já populado pelo datalist), preenche `pl-ipl`/`pl-ipr` com o IP/CIDR encontrado e mostra
+  um toast. Só altera o valor do `<input>` — como todo o resto do painel, a mudança só é
+  persistida no link ao clicar em **Aplicar**.
+- Reaproveita o mesmo cache (`_ifaceCache`) do datalist de interfaces — não dispara uma chamada
+  de rede adicional.
+
 ---
 
 ### Waypoints — editar o caminho da linha
@@ -329,11 +354,126 @@ link** (`src.x + (tgt.x-src.x) * 0.09`). Isso funciona para links longos, mas o 
 grandes, 9% do comprimento cai dentro do raio visual do próprio node (~36px), e o texto do
 rótulo era desenhado por baixo do ícone/caixa do node, ficando parcial ou totalmente encoberto.
 
-**Correção:** a posição passou a ser uma **distância fixa em pixels a partir da borda de cada
-node** (`node.w/2 + 14`), na direção do link, em vez de uma porcentagem do comprimento —
+**Correção (1ª parte):** a posição passou a ser uma **distância fixa em pixels a partir da borda
+de cada node** (`node.w/2 + 14`), na direção do link, em vez de uma porcentagem do comprimento —
 garantindo que o rótulo sempre apareça fora do node. Um `Math.min(..., linkLen * 0.4)` protege
 links muito curtos para o rótulo não ultrapassar o meio da linha. O mesmo tratamento foi
 aplicado aos rótulos de IP P2P (`ip_local`/`ip_remote`), que tinham o mesmo problema em potencial.
+
+**Correção (2ª parte, 2026-07-20 — regressão vista em produção):** a 1ª parte só afastava o
+**centro** do rótulo (`text-anchor="middle"`), sem considerar a própria largura do texto. Nomes
+de interface longos (ex. `ten-gigabit-ethernet 1/1/5`, `Eth-Trunk10`) tinham metade do texto
+ainda caindo em cima do node, mesmo com a distância fixa aplicada — o texto ficava cortado pela
+borda/sombra do node em links horizontais. Corrigido calculando a largura do rótulo (`ifAW`/
+`ifBW`/`ipLocalW`/`ipRemoteW`) **antes** da posição e somando `largura/2` à distância — assim a
+borda do rótulo mais próxima do node (não o centro) é que respeita a distância mínima:
+
+```js
+const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
+```
+
+---
+
+## Passe de Design — 2026-07-20
+
+Ajustes visuais em `clientes/templates/topologia_editor.html` (CSS) e `topo_main.js`/`topo_engine.js`
+(pontos pontuais e aditivos — nenhum mudou o modelo de dados salvo em `dados_json` nem o
+comportamento de nenhuma ação existente):
+
+- **Toolbar:** sombra sutil, botão "Salvar" com destaque em gradiente (`.tb-btn.primary`), rótulo
+  de marca ("Topologia") à esquerda, badge do nome do cliente em pílula à direita.
+- **Paleta:** dispositivos agrupados por categoria (`Rede/Core`, `Acesso/FTTH`, `Servidores`,
+  `Outros`, `Anotações`) via novo campo `group` em `TOPO_DEVICES` (`topo_engine.js`) — só
+  metadado de exibição, não afeta `node.type` nem a importação de hosts. Itens da paleta com
+  leve elevação/deslocamento ao passar o mouse.
+- **Canvas:** leve gradiente radial de fundo (profundidade sem tirar contraste do grid), dica
+  "Arraste um dispositivo..." quando o diagrama está vazio (`#canvas-hint`, controlada por
+  `_updateStatus()` a partir de `this.nodes.length`).
+- **Nodes:** sombra sutil (`drop-shadow`) por trás de cada ícone para dar profundidade, mais
+  forte no hover; texto do nome/IP ganhou um fundo semi-transparente (`.node-label-bg`) atrás
+  para legibilidade sobre os pontos do grid.
+- **Links:** brilho leve no hover, sombra na cor do link quando selecionado.
+- **Painel de propriedades:** título com linha divisória, transição suave ao trocar de
+  seleção (`@keyframes props-fade`), campos com anel de foco (`box-shadow`) em vez de só borda,
+  botão "Aplicar" com destaque em gradiente (`.prop-btn.primary` — a classe existe no CSS, mas
+  os botões "Aplicar" não a usam por padrão para não mudar a hierarquia visual existente entre
+  Aplicar/Remover; disponível para uso futuro).
+- **Legenda de interfaces (novo):** botão "Legenda" na toolbar (`topo.toggleLegend()`) abre um
+  painel flutuante no canto inferior esquerdo do canvas com a cor de cada velocidade de
+  interface (`TOPO_IFACES`) — construído sob demanda na primeira vez que é aberto.
+
+**Segunda leva (mesmo dia, pedido de mais acabamento):**
+
+- **Grid "blueprint":** o pattern do fundo do canvas passou de só pontinhos a cada 20px para
+  pontinhos + linhas discretas a cada 100px (5 células) — dá a sensação de grade técnica de
+  ferramenta de diagrama profissional. Continua um único `<pattern>`/`<rect id="grid-bg">`, então
+  `toggleGrid()` (JS) não precisou mudar: esconde as duas camadas de uma vez, como antes.
+- **Sheen nos nodes:** gradiente branco bem sutil (`#node-gloss`, 12%→0% de opacidade) sobreposto
+  na metade de cima do corpo do node — dá uma leve sensação de profundidade/vidro sem exigir
+  gradiente por node (é um único `<linearGradient>` compartilhado nos `<defs>` do SVG).
+- **Toolbar:** borda inferior trocada de linha sólida para `border-image` em gradiente (ciano →
+  azul → transparente), reforçando a identidade visual sem pesar.
+
+**Terceira leva (mesmo dia — ícones e efeitos nos links):**
+
+- **Brilho nos ícones:** cada ícone de dispositivo (`.node-icon`) ganhou um `drop-shadow` sutil
+  na própria cor do node, mais forte no hover e na seleção — o ícone "acende" em vez de ficar
+  totalmente chapado.
+- **Anel pulsante em nodes do CRM:** nodes importados do CRM (`node.acesso_id` preenchido) têm o
+  anel de destaque (`.node-ring`) pulsando suavemente (`@keyframes pulse-ring`, 2.6s) mesmo sem
+  seleção — dá uma pista visual de "equipamento real monitorado" vs. um node desenhado à mão.
+  Ao selecionar o node, o `!important` da regra de seleção sempre vence a animação (mostra o
+  anel sólido, como antes).
+- **Fluxo animado nos links:** cada link ganhou uma segunda `<path>` sobreposta (`.link-flow`),
+  com traços curtos que "correm" do Lado A pro Lado B (`@keyframes link-flow` anima
+  `stroke-dashoffset`) — dá a sensação de tráfego passando pela conexão. É puramente decorativo:
+  `pointer-events:none`, não interfere no clique (`.link-hit` continua sendo a área de detecção)
+  nem é salvo no `dados_json`.
+- **Pacotes de tráfego simulado (2026-07-20, reforço a pedido):** além do tracejado correndo,
+  cada link ganhou 2 `<circle class="link-packet">` viajando ao longo do próprio path do link
+  via `<animateMotion path="${d}">` (SVG anima o círculo seguindo exatamente a curva/reta do
+  link, na direção em que ele foi desenhado: src→tgt, ou seja Lado A → Lado B) — o resultado lê
+  muito mais como "tráfego" do que só o tracejado. A duração da volta é proporcional ao
+  comprimento do link (`linkLen / 220`, entre 0.6s e 4s) para todo link parecer andar na mesma
+  velocidade visual, em vez de um link curto parecer mais lento/rápido que um comprido com
+  duração fixa. As 2 bolinhas têm início espaçado em meio ciclo (`begin="metade da duração"`)
+  para nunca viajarem "coladas". Cor = cor da interface (`TOPO_IFACES`), com leve brilho
+  (`drop-shadow`). Mesma regra de `effects-off`/`pointer-events:none` do item acima.
+- **Botão "Efeitos" (novo, ligado por padrão):** `topo.toggleEffects()` adiciona/remove a classe
+  `effects-off` no `<body>`, desligando o fluxo animado + pacotes dos links e o pulso dos nodes
+  do CRM de uma vez — útil em topologias muito grandes onde a animação pode distrair ou pesar
+  visualmente. É uma preferência de sessão (não é salva no diagrama).
+
+**Quarta leva (mesmo dia — ícones de Roteador e Switch redesenhados, 2 iterações):**
+
+Os ícones de `router`, `switch_l2` e `switch_l3` em `TOPO_ICONS` (`topo_engine.js`) foram
+redesenhados para lembrar mais os símbolos padrão usados em diagramas de rede reais.
+
+*1ª tentativa* — círculo com duas setas curvas opostas (estilo "exchange") pro roteador, e o
+rack de portas original com setas de encaminhamento acima/abaixo pro switch. **Rejeitada** —
+não bateu com a referência visual real de ferramentas de diagrama (AWS/Cisco Network Icons) nem
+com a aparência de hardware físico.
+
+*2ª tentativa (final)* — a partir de referências visuais concretas (ícones oficiais AWS Network
+Diagram e Cisco Network Diagram para roteador; ilustração de switch/hardware físico):
+
+- **Roteador:** círculo preenchido na cor do device com **4 setas retas apontando pra fora**
+  (N/S/L/O, em branco) — o mesmo padrão visual do "VPC Router" da AWS e do "Router" da Cisco
+  (ambos usam um círculo/cilindro com setas em cruz saindo do centro).
+- **Switch L2/L3:** deixou de ter qualquer seta de encaminhamento — virou uma **caixa de
+  hardware física**: porta uplink/SFP redonda à esquerda (jack escuro com centro branco) + 4
+  portas RJ45 (formato trapezoidal, lembrando o conector de rede visto de frente) à direita,
+  com o badge "L2"/"L3" abaixo da caixa.
+
+Só o conteúdo de `TOPO_ICONS[...]` mudou (paths SVG) — nenhuma chave, cor (`TOPO_DEVICES`) ou
+lógica de renderização (`_renderNode`) foi alterada, então o resto do editor (seleção, drag,
+importação de hosts, salvar/carregar) continua igual.
+
+**Quinta leva (mesmo dia — IP em negrito):** o texto do IP de gerência exibido abaixo do nome do
+node (`_renderNode`, `font-family:'Courier New'`) ganhou `font-weight="700"`. A largura do fundo
+atrás do texto (`.node-label-bg`) também foi ligeiramente aumentada (multiplicador de 6 para 6.4
+por caractere) porque texto em negrito ocupa um pouco mais de espaço horizontal que o mesmo texto
+normal — sem o ajuste, IPs mais longos ficariam com a última letra encostando na borda do fundo.
 
 ---
 

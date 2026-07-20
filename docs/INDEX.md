@@ -2,6 +2,27 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 7 — 20/07/2026: Editor de Topologia — Design, Ícones e Efeitos Visuais
+
+**O que foi implementado?**
+- ✅ Passe de design completo: toolbar, paleta agrupada por categoria, grid "blueprint", sheen
+  nos nodes, painel de propriedades com transições, legenda de interfaces (botão na toolbar)
+- ✅ Ícones de Roteador (círculo + 4 setas, estilo AWS/Cisco) e Switch (caixa física com portas
+  RJ45 + uplink) redesenhados a partir de referências visuais reais — 2 iterações
+- ✅ Efeitos animados: brilho nos ícones, anel pulsante em nodes do CRM, tráfego simulado nos
+  links (tracejado + pacotes viajando de Lado A pro Lado B), botão "Efeitos" pra desligar tudo
+- ✅ IP de gerência em negrito abaixo do node
+- ✅ Corrigida regressão no rótulo "Interface Lado A/B" (largura do texto não entrava na conta
+  da distância mínima até o node — nomes de interface longos ainda ficavam cortados)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[topologia.md](topologia.md)** | Design, ícones, efeitos animados, IP em negrito, fix de regressão |
+
+---
+
 ### Sessão 6 — 20/07/2026: Editor de Topologia (interfaces do backup, ícone manual) + fix de backup
 
 **O que foi implementado?**
@@ -406,6 +427,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 20/07/2026 | Editor de Topologia: passe de design, ícones de Router/Switch redesenhados, efeitos animados (brilho, pulso, tráfego simulado), IP em negrito, fix de regressão no rótulo Lado A/B | topologia.md |
 | 20/07/2026 | Editor de Topologia: interfaces do backup no Lado A/B, troca manual de ícone, velocidades 20/30/50G; fix XSS, atalhos com `<select>`, rótulo escondido; fix backup com `/` no tipo | topologia.md, backup_automatico.md |
 | 20/07/2026 | Auditoria de Acessos (comandos, transcript, gravação de vídeo); auth obrigatória no WS; fix vídeo 0 bytes; hotspot `flash/<dir>` e destino pós-login por SO; backup (fabricante + KEX) | AUDITORIA_ACESSOS.md, terminal_ssh.md, winbox_vnc.md, HOTSPOT_CAPTIVE_PORTAL.md, backup_automatico.md, frontend_acessos.md |
 | 16/06/2026 | API Key Claude por grupo; fix Datacom; Sala Virtual WebRTC; Hotspot SFTP; Financeiro (cobrança + vínculo venda) | agent_noc.md, ATENDIMENTO.md, HOTSPOT_CAPTIVE_PORTAL.md, FINANCEIRO.md |
@@ -427,6 +449,6 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ---
 
 **Última atualização:** 20/07/2026  
-**Versão:** 1.5  
+**Versão:** 1.6  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
