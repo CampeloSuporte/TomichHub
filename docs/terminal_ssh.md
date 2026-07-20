@@ -2,7 +2,7 @@
 
 **Arquivo:** `clientes/consumers.py`  
 **Classe principal:** `SSHConsumer` (Django Channels WebSocket Consumer)  
-**Atualizado em:** 2026-05-26
+**Atualizado em:** 2026-07-20
 
 ---
 
@@ -90,6 +90,16 @@ Ao colocar `group14-sha256` (DH 2048-bit) antes de `group16-sha512` (DH 4096-bit
 handshake com ZTEs e outros equipamentos de CPU limitada passa a ser concluído em ~1 s
 em vez de provocar timeout.
 
+### Extraído para constante compartilhada — 2026-07-20
+
+A tupla de KEX preferencial foi extraída para o módulo-nível `_ZTE_PREFERRED_KEX` em
+`clientes/consumers.py` e passou a ser reutilizada também em `_paramiko_proxy_exec` (execução de
+comando via proxy). Antes, só a conexão direta (`paramiko.Transport` do terminal interativo) tinha
+o fix — conexões de proxy para equipamentos ZTE podiam sofrer o mesmo timeout de KEX sem estar
+cobertas. `clientes/views.py::realizar_backup` também ganhou uma proteção equivalente via
+`disabled_algorithms={'kex': [...]}` no `SSHClient.connect()` do backup manual/automático (ver
+[backup_automatico.md](backup_automatico.md)).
+
 ---
 
 ## Outras Opções SSH Relevantes
@@ -121,3 +131,11 @@ de parsing de output e envio de comandos.
 | SSH       | `pexpect` + processo `ssh` |
 | Telnet    | `telnetlib`                |
 | SSH via Proxy | Paramiko + tunnel      |
+
+---
+
+## Autenticação e Auditoria — Adicionado em 2026-07-20
+
+`connect()` agora exige um usuário autenticado no `scope` (`self.close(code=4001)` caso contrário)
+e toda sessão passa a ser registrada — quem conectou, quando, de qual IP, comandos digitados e
+transcript completo da tela. Detalhes completos em [AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md).

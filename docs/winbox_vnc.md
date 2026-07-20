@@ -153,6 +153,26 @@ journalctl -u daphne -n 30 | grep -E "VNC|Error|winbox"
 
 ---
 
+## Gravação de Tela (Auditoria) — Adicionado em 2026-07-20
+
+Toda sessão WinBox/WebFig via VNC pode ser gravada em `.mp4` para auditoria — ver
+[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md) para a documentação completa (modelos, endpoints,
+frontend). Resumo do que muda em `winbox_vnc.py`/`browser_vnc.py`:
+
+- `WinboxVNCManager`/`BrowserVNCManager` ganham `record_path=` no construtor; se preenchido, um
+  processo `ffmpeg -f x11grab` é iniciado ~1.5s após o WinBox/navegador subir (evita disputa de
+  CPU durante o carregamento inicial da UI).
+- **`stop()` agora é idempotente** (`threading.Lock` + flag `_stopped`): antes, `limpar_recursos()`
+  podia ser chamado duas vezes concorrentemente (thread de leitura do VNC + thread de
+  `disconnect()` do WebSocket), enviando **dois `SIGTERM`** ao `ffmpeg`. No segundo `SIGTERM`, o
+  `ffmpeg` aborta sem finalizar o `.mp4` (trailer nunca escrito), gerando arquivo de **0 bytes**
+  mesmo em sessões de horas. O timeout de `p.wait()` após `terminate()` também subiu de 2s → 5s
+  só para o `ffmpeg` (precisa de mais tempo que os outros processos para o mux do mp4).
+- Falha ao iniciar o `ffmpeg` (ex: não instalado) não derruba a sessão — só desliga a gravação
+  com log de aviso.
+
+---
+
 ## Modos Suportados
 
 | Modo | URL | Descrição |
@@ -183,5 +203,5 @@ sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/s
 
 ---
 
-**Última atualização:** 03/06/2026  
+**Última atualização:** 20/07/2026  
 **Autor:** CampeloSuporte

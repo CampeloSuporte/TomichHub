@@ -5,7 +5,7 @@
 - `clientes/management/commands/rotina_backup.py` — management command
 - `crm/celery.py` — agendamento Celery Beat
 
-**Atualizado em:** 2026-05-27
+**Atualizado em:** 2026-07-20
 
 ---
 
@@ -198,6 +198,43 @@ python manage.py rotina_backup --apenas-templates
 | Por template A10 | 10 |
 | Por template Juniper | 3 |
 | Outros | 4 |
+
+---
+
+## Detecção de Fabricante e KEX SSH em `realizar_backup` — Melhorado em 2026-07-20
+
+**Arquivo:** `clientes/views.py` (`realizar_backup`, usada tanto pelo botão manual quanto pelas
+tasks Celery do pipeline automático).
+
+### Detecção de fabricante mais robusta
+
+Antes, a detecção de fabricante (`is_huawei`, `is_a10`, etc.) usava só `acesso.modelo.nome`. Se o
+`Modelo_equipamento` vinculado ao acesso estivesse cadastrado errado (ex: uma OLT ZTE com modelo
+"debian 12" por engano de cadastro), a detecção falhava silenciosamente. Agora a string de
+detecção combina `modelo.fabricante` + `modelo.nome` + `acesso.tipo`:
+
+```python
+_partes_deteccao = []
+if acesso.modelo:
+    if acesso.modelo.fabricante:
+        _partes_deteccao.append(str(acesso.modelo.fabricante))
+    if acesso.modelo.nome:
+        _partes_deteccao.append(str(acesso.modelo.nome))
+if acesso.tipo:
+    _partes_deteccao.append(acesso.tipo)
+modelo_nome = ' '.join(_partes_deteccao).lower()
+```
+
+`acesso.tipo` costuma estar correto mesmo quando o modelo cadastrado não está — mesmo fallback já
+usado em `consumers.py` para a detecção de fabricante do terminal interativo.
+
+### KEX para equipamentos de CPU limitada (ZTE etc.)
+
+A conexão `paramiko.SSHClient().connect()` usada pelo backup agora passa
+`disabled_algorithms={'kex': [...]}` desabilitando os KEX pesados (`group-exchange-sha256/sha1`,
+`group16-sha512`, `group18-sha512`), forçando o paramiko a negociar `curve25519`/`ecdh`/`group14`
+(rápidos, suportados por qualquer servidor SSH2 moderno). Mesmo problema e mesma causa raiz do fix
+de KEX do terminal interativo — ver [terminal_ssh.md](terminal_ssh.md).
 
 ---
 

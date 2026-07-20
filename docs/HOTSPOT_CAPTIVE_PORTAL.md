@@ -126,6 +126,39 @@ raw_link = link if link else f'http://{h.gateway}/login'
 safe_link = raw_link.replace('"', '%22').replace("'", '%27')
 ```
 
+### Bug 5 — Tela de status ("Hi, guest!") aparecia em vez de liberar a navegação
+
+**Sintoma:** Após autenticar, alguns dispositivos ficavam presos na página de status padrão do
+RouterOS ("Hi, guest! You are logged in as...") em vez de serem liberados direto para a internet.
+
+**Causa:** O parâmetro `dst` do link de login do MikroTik ficava vazio quando `orig`
+(`$(link-orig)`) não chegava — o que acontece na maior parte das vezes, já que `login.html` não
+captura esse parâmetro (ver Bug 1: o redirect via `<meta refresh>` não propaga query string).
+Sem um destino real, o RouterOS mostra a própria tela de status em vez de redirecionar.
+
+**Correção:** Quando `orig` está vazio, `hotspot_portal_conectar` monta um `dst` **por sistema
+operacional**, apontando para a própria URL de detecção de captive portal do SO — o SO reconhece
+a resposta como "conectividade OK", fecha o mini-browser sozinho e libera o usuário direto para a
+internet, sem mostrar tela nenhuma:
+
+```python
+_ua = request.META.get('HTTP_USER_AGENT', '').lower()
+if 'android' in _ua:
+    _default_dst = 'http://connectivitycheck.gstatic.com/generate_204'
+elif any(k in _ua for k in ('iphone', 'ipad', 'ipod', 'macintosh', 'cfnetwork')):
+    _default_dst = 'http://captive.apple.com/hotspot-detect.html'
+elif 'windows' in _ua:
+    _default_dst = 'http://www.msftconnecttest.com/redirect'
+else:
+    _default_dst = 'http://connectivitycheck.gstatic.com/generate_204'
+
+login_full = login_base + '?' + _urlencode({
+    ...
+    'dst': orig or _default_dst,
+    ...
+})
+```
+
 ---
 
 ## Detalhes de Implementação
@@ -236,3 +269,41 @@ profile, porque os valores de parâmetros do comando RouterOS (`hotspot-address=
   (`client.open_sftp()` + `sftp.putfo(...)`), sem depender de o MikroTik conseguir alcançar
   o CRM por HTTP. O `/tool fetch` via IP resolvido continua como fallback caso o SFTP falhe
   por algum motivo.
+
+---
+
+## `html-directory` resolve de forma inconsistente entre profiles — Corrigido em 2026-07-18
+
+**Arquivo:** `clientes/hotspot_views.py` (`_aplicar_mikrotik`)
+
+### Problema
+
+A correção anterior (seção acima) partia da premissa de que o caminho correto era sempre
+`<dir_name>/login.html` (relativo, sem `flash/` na frente) — confirmado ao vivo em 2026-06-10
+com `/file print`, que mostrava `flash/<dir>` como uma árvore separada e vazia.
+
+Em 2026-07-18, confirmado ao vivo na WTD, um cliente com hotspot configurado por um **profile
+diferente** (não o `default`, criado/recriado via SSH) apresentou o comportamento oposto: o
+RouterOS resolvia o `html-directory` do profile para `flash/<dir_name>` mesmo com o valor salvo
+como `<dir_name>` — e o hotspot passou a servir o `login.html` a partir de `flash/<dir_name>/`,
+não de `<dir_name>/`. Ou seja, **o RouterOS não é consistente entre profiles**: o `default`
+mantém o caminho como digitado, mas um profile recriado via SSH normaliza para `flash/<dir>`.
+
+### Correção
+
+Em vez de tentar adivinhar qual resolução vale para cada roteador, o CRM agora grava o mesmo
+`login.html` nos **dois caminhos possíveis**, tanto no envio via SFTP quanto no fallback via
+`/tool fetch`:
+
+```python
+remote_paths = [f'{dir_name}/login.html', f'flash/{dir_name}/login.html']
+
+sftp = client.open_sftp()
+for remote_path in remote_paths:
+    sftp.putfo(_io.BytesIO(html_bytes), remote_path)
+sftp.close()
+```
+
+O passo antigo que removia o arquivo "órfão" em `flash/<dir>/login.html` (da correção de
+2026-06-10) foi **removido** — esse caminho agora pode ser o que o hotspot efetivamente lê,
+dependendo do profile.

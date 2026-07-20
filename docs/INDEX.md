@@ -1,6 +1,34 @@
 # 📚 Índice de Documentação — CRM NOC
 
-## 🔥 Implementações Recentes (Junho 2026)
+## 🔥 Implementações Recentes
+
+### Sessão 5 — 20/07/2026: Auditoria de Acessos (gravação de sessão) + Correções (Hotspot, Backup)
+
+**O que foi implementado?**
+- ✅ Auditoria de Acessos: toda sessão SSH/Telnet/WinBox/WebFig passa a ser registrada — usuário
+  do CRM, IP de origem, duração; comandos digitados e transcript completo da tela para SSH/Telnet;
+  gravação `.mp4` via `ffmpeg` para sessões gráficas WinBox/WebFig via VNC
+- ✅ Novo modal "Auditoria de Acessos" na aba de Acessos (lista sessões, comandos e gravações)
+- ✅ WebSocket dos consumers de terminal agora exige usuário autenticado (antes dependia só da view HTTP)
+- ✅ Corrigido bug de gravação de vídeo com 0 bytes (`ffmpeg` recebendo `SIGTERM` duplicado)
+- ✅ Hotspot: `login.html` gravado em `<dir>/login.html` **e** `flash/<dir>/login.html` (RouterOS
+  resolve o `html-directory` do profile de forma inconsistente entre roteadores)
+- ✅ Hotspot: destino pós-login por sistema operacional evita tela de status "Hi, guest!" no MikroTik
+- ✅ Backup automático: detecção de fabricante mais robusta (combina `fabricante`+`nome`+`tipo`) e
+  fix de timeout de KEX SSH (ZTE) também na conexão de backup, não só no terminal interativo
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md)** | Modelos, endpoints, frontend, gravação de tela, transcript/comandos |
+| **[terminal_ssh.md](terminal_ssh.md)** | Autenticação obrigatória no WS, constante `_ZTE_PREFERRED_KEX` compartilhada |
+| **[winbox_vnc.md](winbox_vnc.md)** | Gravação de tela via `ffmpeg`, fix do `stop()` idempotente |
+| **[HOTSPOT_CAPTIVE_PORTAL.md](HOTSPOT_CAPTIVE_PORTAL.md)** | `html-directory` inconsistente entre profiles, destino pós-login por SO |
+| **[backup_automatico.md](backup_automatico.md)** | Detecção de fabricante e KEX em `realizar_backup` |
+| **[frontend_acessos.md](frontend_acessos.md)** | Botão e modal de auditoria |
+
+---
 
 ### Sessão 4 — 16/06/2026: API Key Claude por Grupo + Correções (Agent NOC, Sala Virtual, Hotspot, Financeiro)
 
@@ -107,6 +135,12 @@
   - Permissões
 
 ### Outros Módulos
+
+- **[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md)** — Auditoria de Acessos (sessões SSH/WinBox)
+  - Modelos `AcessoSessao`/`AcessoComando`
+  - Transcript e comandos digitados (SSH/Telnet)
+  - Gravação de tela via `ffmpeg` (WinBox/WebFig)
+  - Endpoints e modal de auditoria
 
 - **[HOTSPOT_CONTROLE_BANDA.md](HOTSPOT_CONTROLE_BANDA.md)** — Hotspot: controle de banda por IP
   - Queue Simple ativado via DHCP Lease Script
@@ -215,10 +249,12 @@ docs/
 ├─ HOTSPOT_CONTROLE_BANDA.md ............. 📌 Hotspot: DHCP Queue Simple por IP
 ├─ HOTSPOT_CAPTIVE_PORTAL.md ............. 📌 Hotspot: captive portal e bugs corrigidos
 ├─ IMPLEMENTACOES_JUNHO_2026.md .......... 📌 Checklist e resumo executivo
+├─ AUDITORIA_ACESSOS.md .................. 📌 Auditoria de sessões (comandos, transcript, vídeo)
 ├─ monitoramento.md ...................... 📌 Monitor de tráfego com sistema de abas
 ├─ backup_automatico.md
 ├─ envio_credenciais_email.md
 ├─ winbox_vnc.md
+├─ terminal_ssh.md
 └─ frontend_acessos.md
 ```
 
@@ -339,6 +375,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 20/07/2026 | Auditoria de Acessos (comandos, transcript, gravação de vídeo); auth obrigatória no WS; fix vídeo 0 bytes; hotspot `flash/<dir>` e destino pós-login por SO; backup (fabricante + KEX) | AUDITORIA_ACESSOS.md, terminal_ssh.md, winbox_vnc.md, HOTSPOT_CAPTIVE_PORTAL.md, backup_automatico.md, frontend_acessos.md |
 | 16/06/2026 | API Key Claude por grupo; fix Datacom; Sala Virtual WebRTC; Hotspot SFTP; Financeiro (cobrança + vínculo venda) | agent_noc.md, ATENDIMENTO.md, HOTSPOT_CAPTIVE_PORTAL.md, FINANCEIRO.md |
 | 13/06/2026 | Monitor de tráfego com abas; hotspot captive portal (4 bugs) | monitoramento.md, HOTSPOT_CAPTIVE_PORTAL.md |
 | 10/06/2026 | Parcelamento, bulk actions, contratos digitais, hotspot banda | DESPESAS_AVANCADO.md, CONTRATOS_ASSINATURA_DIGITAL.md, HOTSPOT_CONTROLE_BANDA.md |
@@ -357,7 +394,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 16/06/2026  
-**Versão:** 1.3  
+**Última atualização:** 20/07/2026  
+**Versão:** 1.4  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

@@ -1,7 +1,7 @@
 # Frontend — Aba de Acessos
 
 **Arquivos:** `clientes/templates/listar.html`, `templates/modal_acessos.html`, `clientes/views.py`  
-**Atualizado em:** 2026-05-27
+**Atualizado em:** 2026-07-20
 
 ---
 
@@ -10,6 +10,15 @@
 A aba de Acessos exibe todos os `Acesso` do cliente agrupados por função (ex: Roteadores,
 Switches, OLTs). Cada acesso é representado por um card com ações rápidas: terminal, ping,
 editar, duplicar, excluir, Winbox, etc.
+
+---
+
+## Botão de Auditoria de Acessos — Adicionado em 2026-07-20
+
+Novo ícone `fa-shield-halved` (roxo) em cada card de acesso, ao lado do botão de Comentários,
+abrindo o modal `#modalAuditoriaAcesso` (`templates/modal_acessos.html`) com o histórico de
+sessões (SSH/Telnet/WinBox), comandos digitados e gravações de tela. Documentação completa em
+[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md).
 
 ---
 

@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-20 (Auditoria de Acessos, Hotspot, Backup)
+
+### Adicionado
+
+- **Auditoria de Acessos** (`clientes/models.py`, `clientes/consumers.py`, `clientes/browser_vnc.py`,
+  `clientes/winbox_vnc.py`, `clientes/views.py`, `clientes/admin.py`, `templates/modal_acessos.html`,
+  migrações `0080`/`0081`): toda sessão SSH/Telnet/WinBox/WebFig passa a ser registrada —
+  usuário do CRM, IP de origem, duração. Para SSH/Telnet grava comandos digitados
+  (`AcessoComando`) e transcript completo da tela (ANSI removido). Para WinBox/WebFig via VNC
+  grava a tela em `.mp4` via `ffmpeg`. Novo modal "Auditoria de Acessos" na aba de Acessos lista
+  sessões, comandos e gravações. WebSocket dos consumers de terminal agora exige usuário
+  autenticado (`code=4001` se anônimo). Ver `docs/AUDITORIA_ACESSOS.md`.
+
+### Corrigido
+
+- **Gravação de vídeo de sessões WinBox/WebFig às vezes ficava com 0 bytes**
+  (`clientes/winbox_vnc.py`, `clientes/browser_vnc.py`): `stop()` podia ser chamado
+  concorrentemente (thread de leitura do VNC + `disconnect()` do WebSocket), enviando dois
+  `SIGTERM` ao `ffmpeg` em sequência — no segundo, o processo abortava sem finalizar o `.mp4`.
+  Corrigido com trava (`threading.Lock`) tornando `stop()` idempotente. Ver `docs/winbox_vnc.md`.
+- **Hotspot — `login.html` não aparecia em profiles recriados via SSH** (`clientes/hotspot_views.py`):
+  o RouterOS resolve o `html-directory` do hotspot profile de forma inconsistente entre profiles
+  (`<dir>` no profile `default`, `flash/<dir>` em profiles recriados via SSH). O CRM agora grava o
+  `login.html` nos dois caminhos possíveis via SFTP e `/tool fetch`. Ver `docs/HOTSPOT_CAPTIVE_PORTAL.md`.
+- **Hotspot — tela de status "Hi, guest!" aparecia em vez de liberar a navegação**
+  (`clientes/hotspot_views.py`): quando `$(link-orig)` chegava vazio (caso comum, ver bug do
+  `<meta refresh>` na sessão anterior), o `dst` do login ficava vazio e o RouterOS mostrava a
+  tela de status. Corrigido com destino padrão por sistema operacional (detecção de captive
+  portal nativa do Android/iOS/Windows), que fecha o mini-browser automaticamente. Ver
+  `docs/HOTSPOT_CAPTIVE_PORTAL.md`.
+- **Backup automático — detecção de fabricante falhava com modelo cadastrado errado**
+  (`clientes/views.py::realizar_backup`): detecção usava só `modelo.nome`; passou a combinar
+  `modelo.fabricante` + `modelo.nome` + `acesso.tipo`. Também adicionado
+  `disabled_algorithms={'kex': [...]}` para evitar timeout de KEX em equipamentos ZTE durante o
+  backup (mesmo problema já corrigido no terminal interativo). Ver `docs/backup_automatico.md`.
+
+---
+
 ## [Não publicado] — 2026-06-16 (Agent NOC, Sala Virtual, Hotspot, Financeiro)
 
 ### Adicionado
