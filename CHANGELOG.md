@@ -5,6 +5,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-20 (Editor de Topologia, Backup)
+
+### Adicionado
+
+- **Sugestão de interface a partir do backup no editor de Topologia**
+  (`clientes/views.py::interfaces_backup_acesso`, `static/js/topo_main.js`): os campos
+  "Interface Lado A/B" do painel de propriedades do link agora são `<input list="...">` ligados
+  a um `<datalist>` populado com os nomes de interface (+ descrição, quando o backup tiver) do
+  backup mais recente do host em cada ponta do link. Sem backup do host, o campo continua texto
+  livre normal, sem sugestões. Parser cobre MikroTik, Juniper e a sintaxe genérica
+  Cisco/Huawei/Datacom/ZTE/HP/Dell/Extreme. Ver `docs/topologia.md`.
+- **Troca manual do ícone do dispositivo** (`static/js/topo_main.js`): painel de propriedades do
+  node ganhou seletor de Ícone/Tipo. Nodes importados do CRM ganham a flag `type_manual` ao ter
+  o ícone trocado na mão, para a sincronização automática função→ícone não reverter a escolha do
+  usuário na próxima reimportação/recarregamento — com botão para voltar ao modo automático. Ver
+  `docs/topologia.md`.
+- **Velocidades de interface 20/30/50 Gbps** no editor de Topologia (`static/js/topo_engine.js`).
+
+### Corrigido
+
+- **XSS armazenado no editor de Topologia** (`clientes/templates/topologia_editor.html`): o JSON
+  da topologia era injetado no `<script>` de carregamento via `{{ dados_json|safe }}`, sem
+  escape — texto livre salvo pelo usuário (ex. um nó "Texto/Legenda") podia fechar a tag
+  `<script>` e executar JS arbitrário para quem abrisse aquela topologia depois. Corrigido para
+  `JSON.parse("{{ dados_json|escapejs }}")`, mesmo padrão já usado em `topologia_drawio.html`.
+- **Atalhos de teclado do editor de Topologia disparavam com foco em `<select>`**
+  (`static/js/topo_main.js`): o guard só excluía `INPUT`/`TEXTAREA`; `Delete`/`Backspace` com um
+  dropdown de propriedades focado apagava o nó/link selecionado sem intenção. Guard estendido
+  para incluir `SELECT`.
+- **Rótulo "Interface Lado A/B" escondido atrás do node em links curtos**
+  (`static/js/topo_main.js`): posição calculada como % do comprimento do link caía dentro do
+  raio visual do próprio node (desenhado por cima na camada SVG) em conexões curtas. Corrigido
+  para distância fixa em pixels a partir da borda de cada node.
+- **`FileNotFoundError` ao salvar backup de acesso com "/" no campo `tipo`**
+  (`clientes/views.py::realizar_backup`): o nome do arquivo de backup só sanitizava espaços;
+  `/` num `tipo` como `"BRAS/CGNAT/BORDA - JUNIPER"` virava separador de diretório inexistente
+  no `os.path.join()`. Agora qualquer caractere fora de letras/números/`-`/`_` vira `_`. Afeta
+  tanto o botão manual quanto o pipeline automático de backup. Ver `docs/backup_automatico.md`.
+
+---
+
 ## [Não publicado] — 2026-07-20 (Auditoria de Acessos, Hotspot, Backup)
 
 ### Adicionado

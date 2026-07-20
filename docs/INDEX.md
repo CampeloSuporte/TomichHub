@@ -2,6 +2,30 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 6 — 20/07/2026: Editor de Topologia (interfaces do backup, ícone manual) + fix de backup
+
+**O que foi implementado?**
+- ✅ Campos "Interface Lado A/B" do editor de topologia agora sugerem, via `<datalist>`, as
+  interfaces + descrição extraídas do backup mais recente do host em cada ponta do link — sem
+  backup, o campo continua texto livre normal
+- ✅ Painel de propriedades do node ganhou seletor de **Ícone/Tipo**, com trava (`type_manual`)
+  para a troca manual não ser revertida pela sincronização automática função→ícone do CRM
+- ✅ Novas velocidades de interface: 20 Gbps, 30 Gbps, 50 Gbps
+- ✅ 3 bugs corrigidos no editor: XSS armazenado via `dados_json|safe` no carregamento da página,
+  atalhos de teclado disparando com foco em `<select>`, rótulo "Interface Lado A/B" escondido
+  atrás do node em links curtos
+- ✅ Backup: corrigido `FileNotFoundError` ao salvar backup de acesso com `/` no campo `tipo`
+  (nome de arquivo sanitizado corretamente)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[topologia.md](topologia.md)** | Sugestão de interface via backup, troca manual de ícone, novas velocidades, bugs corrigidos |
+| **[backup_automatico.md](backup_automatico.md)** | Fix do nome de arquivo com `/` no tipo do acesso |
+
+---
+
 ### Sessão 5 — 20/07/2026: Auditoria de Acessos (gravação de sessão) + Correções (Hotspot, Backup)
 
 **O que foi implementado?**
@@ -187,6 +211,12 @@
   - Visibilidade de senhas
   - Gerador aleatório
 
+- **[topologia.md](topologia.md)** — Editor visual de topologia de rede (SVG)
+  - Sugestão de interface a partir do backup (`<datalist>` com nome + descrição)
+  - Troca manual de ícone com trava contra a sincronização automática do CRM
+  - Tipos de dispositivo, tipos/velocidades de interface, waypoints
+  - Bugs corrigidos (XSS, atalhos com `<select>` focado, rótulo escondido atrás do node)
+
 ---
 
 ## 🚀 Guias Rápidos
@@ -255,7 +285,8 @@ docs/
 ├─ envio_credenciais_email.md
 ├─ winbox_vnc.md
 ├─ terminal_ssh.md
-└─ frontend_acessos.md
+├─ frontend_acessos.md
+└─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
 ```
 
 ---
@@ -375,6 +406,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 20/07/2026 | Editor de Topologia: interfaces do backup no Lado A/B, troca manual de ícone, velocidades 20/30/50G; fix XSS, atalhos com `<select>`, rótulo escondido; fix backup com `/` no tipo | topologia.md, backup_automatico.md |
 | 20/07/2026 | Auditoria de Acessos (comandos, transcript, gravação de vídeo); auth obrigatória no WS; fix vídeo 0 bytes; hotspot `flash/<dir>` e destino pós-login por SO; backup (fabricante + KEX) | AUDITORIA_ACESSOS.md, terminal_ssh.md, winbox_vnc.md, HOTSPOT_CAPTIVE_PORTAL.md, backup_automatico.md, frontend_acessos.md |
 | 16/06/2026 | API Key Claude por grupo; fix Datacom; Sala Virtual WebRTC; Hotspot SFTP; Financeiro (cobrança + vínculo venda) | agent_noc.md, ATENDIMENTO.md, HOTSPOT_CAPTIVE_PORTAL.md, FINANCEIRO.md |
 | 13/06/2026 | Monitor de tráfego com abas; hotspot captive portal (4 bugs) | monitoramento.md, HOTSPOT_CAPTIVE_PORTAL.md |
@@ -395,6 +427,6 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ---
 
 **Última atualização:** 20/07/2026  
-**Versão:** 1.4  
+**Versão:** 1.5  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

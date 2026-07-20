@@ -238,6 +238,34 @@ de KEX do terminal interativo — ver [terminal_ssh.md](terminal_ssh.md).
 
 ---
 
+## Bug corrigido — `FileNotFoundError` ao salvar backup de acesso com "/" no tipo (2026-07-20)
+
+**Sintoma:**
+```
+Erro: [Errno 2] No such file or directory: '/opt/crm/media/backups/cliente_34/acesso_441/BRAS/CGNAT/BORDA_-_JUNIPER_20260720_110811.txt'
+```
+
+**Causa:** o nome do arquivo de backup era montado com `acesso.tipo.replace(' ', '_')` — só
+espaço virava `_`. O acesso 441 (cliente 34) tem `tipo = "BRAS/CGNAT/BORDA - JUNIPER"` (`/`
+usado como separador hierárquico no nome cadastrado). O `/` sobrevivia à sanitização e virava
+separador de diretório dentro de `os.path.join(backup_dir, nome_arquivo)` — os subdiretórios
+`BRAS/CGNAT/` resultantes nunca são criados (só `backup_dir` em si é, via
+`preparar_diretorio_backup`), e o `open(arquivo_path, 'w')` falhava.
+
+**Correção** (`clientes/views.py::realizar_backup`): qualquer caractere fora de
+letras/números/`-`/`_` no `tipo` agora vira `_` antes de compor o nome do arquivo:
+
+```python
+tipo_seguro = re.sub(r'[^A-Za-z0-9_-]+', '_', acesso.tipo).strip('_') or 'backup'
+nome_arquivo = f"{tipo_seguro}_{timestamp}.txt"
+```
+
+Resultado para o caso acima: `BRAS_CGNAT_BORDA_-_JUNIPER_20260720_110811.txt` (nome plano, sem
+criar subpastas). Afeta tanto o botão manual de backup quanto o pipeline automático (mesma
+função `realizar_backup`, chamada por `clientes/tasks.py`).
+
+---
+
 ## Observações Importantes
 
 - **Telnet não é suportado**: o sistema habilita backup apenas para `protocolo='SSH'`.
