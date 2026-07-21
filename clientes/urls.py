@@ -93,6 +93,14 @@ urlpatterns = [
     path('comentarios/<int:comentario_id>/deletar/', views.deletar_comentario_acesso, name='deletar_comentario_acesso'),
     path('comentarios/<int:comentario_id>/editar/', views.editar_comentario_acesso, name='editar_comentario_acesso'),
 
+    # Auditoria de Acessos (sessões SSH/WinBox + comandos digitados)
+    path('acessos/<int:acesso_id>/auditoria/', views.listar_sessoes_auditoria, name='listar_sessoes_auditoria'),
+    path('auditoria/sessao/<int:sessao_id>/comandos/', views.listar_comandos_sessao, name='listar_comandos_sessao'),
+    path('auditoria/sessao/<int:sessao_id>/transcript/', views.ver_transcript_sessao, name='ver_transcript_sessao'),
+
+    # Interfaces sugeridas a partir do backup (editor de Topologia)
+    path('acessos/<int:acesso_id>/interfaces-backup/', views.interfaces_backup_acesso, name='interfaces_backup_acesso'),
+
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
 

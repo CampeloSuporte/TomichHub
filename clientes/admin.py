@@ -8,6 +8,7 @@ from .models import (
 
 
 from .models import BackupTemplate, BackupLog
+from .models import AcessoSessao, AcessoComando
 
 @admin.register(BackupTemplate)
 class BackupTemplateAdmin(admin.ModelAdmin):
@@ -34,6 +35,21 @@ class AcessoAdmin(admin.ModelAdmin):
     list_filter = ('tipo', 'protocolo')
     search_fields = ('host', 'cliente__nome_empresa')
 
+
+
+class AcessoComandoInline(admin.TabularInline):
+    model = AcessoComando
+    extra = 0
+    readonly_fields = ['comando', 'executado_em']
+    can_delete = False
+
+@admin.register(AcessoSessao)
+class AcessoSessaoAdmin(admin.ModelAdmin):
+    list_display = ['tipo', 'acesso', 'usuario', 'ip_origem', 'status', 'iniciada_em', 'encerrada_em']
+    list_filter = ['tipo', 'status']
+    search_fields = ['acesso__tipo', 'acesso__host', 'usuario__username']
+    readonly_fields = ['iniciada_em']
+    inlines = [AcessoComandoInline]
 
 
 @admin.register(ProxyServer)

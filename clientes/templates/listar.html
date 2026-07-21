@@ -269,11 +269,17 @@
                                                 <i class="fas fa-database"></i>
                                             </button>
                                             {% endif %}
-                                            <button class="icon-btn btn-sm" 
-                                                    onclick="abrirModalComentariosAcesso({{ acesso.id }}, '{{ acesso.tipo }}')" 
+                                            <button class="icon-btn btn-sm"
+                                                    onclick="abrirModalComentariosAcesso({{ acesso.id }}, '{{ acesso.tipo }}')"
                                                     title="Comentários"
                                                     style="color: var(--accent-cyan);">
                                                 <i class="fas fa-comments"></i>
+                                            </button>
+                                            <button class="icon-btn btn-sm"
+                                                    onclick="abrirModalAuditoriaAcesso({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"
+                                                    title="Auditoria de Acessos"
+                                                    style="color: #a371f7;">
+                                                <i class="fas fa-shield-halved"></i>
                                             </button>
                                             <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
                                                 <i class="fas fa-file"></i>

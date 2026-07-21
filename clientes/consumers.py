@@ -1,4 +1,5 @@
 import json
+import re
 import select
 import pexpect
 import telnetlib
@@ -15,10 +16,41 @@ from paramiko.message import Message
 from asgiref.sync import sync_to_async
 from channels.consumer import get_handler_name
 from channels.generic.websocket import WebsocketConsumer
+from django.contrib.auth.models import AnonymousUser
 from django.db import close_old_connections
-from .models import Acesso, ProxyServer
+from django.utils import timezone
+from .models import Acesso, ProxyServer, AcessoSessao, AcessoComando
 
 logger = logging.getLogger(__name__)
+
+# Remove sequências ANSI (CSI, OSC, seleção de charset, etc.) do output do
+# equipamento antes de gravar no transcript de auditoria — sem isso o texto
+# fica ilegível (cores, posicionamento de cursor). Não é um emulador de
+# terminal completo (não reconstrói telas com cursor pulando pra trás), mas
+# cobre bem o caso comum de CLI de rede: eco de comando + saída linear.
+_ANSI_RE = re.compile(
+    r'\x1b(?:\[[0-9;?]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][A-Za-z0-9]|[=>NOM])'
+)
+
+# Priorizar KEX leve (group14 = 2048-bit DH) sobre group16 (4096-bit). ZTE
+# OLTs têm timeout de KEX curto — group16-sha512 demora 2-5s no CPU embarcado
+# e a conexão cai antes da auth (PuTTY usa group14 e funciona). group16/18
+# ficam por último para compatibilidade com outros vendors. Usado em toda
+# conexão paramiko.Transport direta a um equipamento (não a proxies).
+_ZTE_PREFERRED_KEX = (
+    'diffie-hellman-group14-sha256',
+    'diffie-hellman-group14-sha1',
+    'diffie-hellman-group1-sha1',
+    'curve25519-sha256',
+    'curve25519-sha256@libssh.org',
+    'ecdh-sha2-nistp256',
+    'ecdh-sha2-nistp384',
+    'ecdh-sha2-nistp521',
+    'diffie-hellman-group-exchange-sha256',
+    'diffie-hellman-group-exchange-sha1',
+    'diffie-hellman-group16-sha512',
+    'diffie-hellman-group18-sha512',
+)
 
 
 class ThreadedDispatchMixin:
@@ -181,10 +213,150 @@ def _pty_req_with_modes(shell, term='vt100', width=80, height=24):
 
 class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     def connect(self):
+        user = self.scope.get('user')
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            self.close(code=4001)
+            return
+        self._crm_user = user
         self.accept()
         self.limpar_recursos()
 
+    # Limite de tamanho do transcript por sessão em memória/DB — sessões que
+    # ficam horas abertas despejando "show run" repetidas vezes não podem
+    # crescer sem limite. Mantém a cauda (conteúdo mais recente).
+    _TRANSCRIPT_MAX = 3_000_000
+
+    def _registrar_saida(self, texto):
+        """Acumula o output do equipamento (stdout, ANSI removido) no
+        transcript da sessão. Só grava no banco no fechamento da sessão
+        (_encerrar_sessao_auditoria) — gravar a cada chunk seria uma UPDATE
+        por tecla ecoada, inviável dado o volume de tráfego do terminal."""
+        sessao = getattr(self, '_sessao_auditoria', None)
+        if not sessao:
+            return
+        limpo = _ANSI_RE.sub('', texto)
+        limpo = ''.join(ch for ch in limpo if ch in ('\t', '\n', '\r') or ch >= ' ')
+        if not limpo:
+            return
+        buf = getattr(self, '_transcript_buf', '') + limpo
+        if len(buf) > self._TRANSCRIPT_MAX + 200_000:
+            buf = '[...transcript truncado, mostrando o final da sessão...]\n' + buf[-self._TRANSCRIPT_MAX:]
+        self._transcript_buf = buf
+
+    def _encerrar_sessao_auditoria(self):
+        """Fecha a AcessoSessao ativa desta conexão, se houver. Chamado tanto
+        ao trocar de acesso quanto em disconnect() via limpar_recursos()."""
+        sessao = getattr(self, '_sessao_auditoria', None)
+        if sessao and sessao.status == 'ativa':
+            try:
+                sessao.encerrada_em = timezone.now()
+                sessao.status = 'encerrada'
+                sessao.transcript = getattr(self, '_transcript_buf', '')
+                sessao.save(update_fields=['encerrada_em', 'status', 'transcript'])
+            except Exception as e:
+                logger.error(f"❌ Erro ao encerrar sessão de auditoria: {e}")
+        self._sessao_auditoria = None
+        self._transcript_buf = ''
+
+    # Teclas de seta/home/end saem como CSI (`ESC [ letra`) por padrão, mas
+    # viram SS3 (`ESC O letra`) quando o equipamento coloca o terminal em
+    # "application cursor keys mode" (comum em paginadores tipo more/less
+    # dessas CLIs de rede) — os dois formatos precisam ser reconhecidos.
+    _ESC_CSI_LETRA = {'A': 'UP', 'B': 'DOWN', 'C': 'RIGHT', 'D': 'LEFT', 'H': 'HOME', 'F': 'END'}
+    _ESC_CSI_TIL   = {'1': 'HOME', '3': 'DELETE', '4': 'END', '7': 'HOME', '8': 'END'}
+    _ESC_SS3_LETRA = {'A': 'UP', 'B': 'DOWN', 'C': 'RIGHT', 'D': 'LEFT', 'H': 'HOME', 'F': 'END'}
+
+    def _parse_escape(self, raw, i):
+        """Interpreta a sequência ANSI que começa em raw[i]=='\\x1b'.
+        Retorna (nome_da_tecla_ou_None, índice_logo_após_a_sequência)."""
+        n = len(raw)
+        j = i + 1
+        if j >= n:
+            return None, j
+        if raw[j] == '[':
+            k = j + 1
+            while k < n and raw[k] != '~' and not raw[k].isalpha():
+                k += 1
+            if k >= n:
+                return None, n
+            final = raw[k]
+            params = raw[j + 1:k]
+            k += 1
+            if final == '~':
+                return self._ESC_CSI_TIL.get(params.split(';')[0]), k
+            return self._ESC_CSI_LETRA.get(final), k
+        elif raw[j] == 'O' and j + 1 < n:
+            return self._ESC_SS3_LETRA.get(raw[j + 1]), j + 2
+        else:
+            # ESC solto ou sequência não reconhecida — consome só o ESC
+            return None, j
+
+    def _registrar_digitacao(self, raw):
+        """Reconstrói linhas de comando a partir do stream de teclas cru
+        (mesmo texto que chega keystroke-a-keystroke pelo hot path binário
+        de receive()), rastreando a posição do cursor para que edições no
+        meio da linha (setas, home/end, delete) fiquem no lugar certo em
+        vez de grudar no final — e grava cada comando completo (Enter) na
+        auditoria."""
+        sessao = getattr(self, '_sessao_auditoria', None)
+        if not sessao:
+            return
+        buf = list(getattr(self, '_cmd_buffer', ''))
+        cur = getattr(self, '_cmd_cursor', len(buf))
+        cur = max(0, min(cur, len(buf)))
+
+        def _flush(sufixo=''):
+            nonlocal buf, cur
+            cmd = ''.join(buf).strip()
+            buf, cur = [], 0
+            if cmd:
+                try:
+                    AcessoComando.objects.create(sessao=sessao, comando=f'{cmd}{sufixo}')
+                except Exception as e:
+                    logger.error(f"❌ Erro ao gravar comando de auditoria: {e}")
+
+        i, n = 0, len(raw)
+        while i < n:
+            ch = raw[i]
+            if ch == '\x1b':
+                tecla, i = self._parse_escape(raw, i)
+                if tecla == 'LEFT':
+                    cur = max(0, cur - 1)
+                elif tecla == 'RIGHT':
+                    cur = min(len(buf), cur + 1)
+                elif tecla == 'HOME':
+                    cur = 0
+                elif tecla == 'END':
+                    cur = len(buf)
+                elif tecla == 'DELETE':
+                    if cur < len(buf):
+                        del buf[cur]
+                elif tecla in ('UP', 'DOWN'):
+                    # Recall de histórico do equipamento — o texto recuperado
+                    # vem via stdout (echo do device), não temos como
+                    # reconstruí-lo a partir do stdin. Descarta o que
+                    # tínhamos para não gravar um comando incompleto/errado.
+                    buf, cur = [], 0
+                continue
+            if ch in ('\x7f', '\x08'):
+                if cur > 0:
+                    del buf[cur - 1]
+                    cur -= 1
+            elif ch in ('\r', '\n'):
+                _flush()
+            elif ch == '\x03':
+                _flush(sufixo='  [Ctrl+C]')
+            elif ch == '\t' or ch >= ' ':
+                buf.insert(cur, ch)
+                cur += 1
+            i += 1
+        self._cmd_buffer = ''.join(buf)
+        self._cmd_cursor = cur
+
     def limpar_recursos(self):
+        self._encerrar_sessao_auditoria()
+        self._cmd_buffer = ''
+        self._cmd_cursor = 0
         self.is_reading = False
         if hasattr(self, 'read_thread') and self.read_thread and self.read_thread.is_alive():
             time.sleep(0.2)
@@ -362,6 +534,16 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             protocol      = self.detect_protocol(acesso.porta)
             self.protocol = protocol
 
+            self._sessao_auditoria = AcessoSessao.objects.create(
+                acesso=acesso,
+                usuario=getattr(self, '_crm_user', None),
+                tipo=protocol,
+                ip_origem=(self.scope.get('client') or [None])[0],
+            )
+            self._cmd_buffer = ''
+            self._cmd_cursor = 0
+            self._transcript_buf = ''
+
             _fab = ''
             if acesso.modelo and acesso.modelo.fabricante:
                 _fab = acesso.modelo.fabricante.lower()
@@ -448,6 +630,9 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         Usa os.write() direto no fd do pty para SSH direto, ou channel.send() para proxy.
         """
         try:
+            if self.protocol in ('ssh', 'telnet'):
+                self._registrar_digitacao(command)
+
             command = command.replace('\x7f', '\x08')
 
             if self.protocol == 'ssh':
@@ -717,20 +902,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         # ZTE OLTs têm timeout de KEX curto — group16-sha512 demora 2-5s no
         # CPU embarcado e a conexão cai antes da auth (PuTTY usa group14 e ok).
         # group16/group18 ficam por último para compatibilidade com outros vendors.
-        transport._preferred_kex = (
-            'diffie-hellman-group14-sha256',
-            'diffie-hellman-group14-sha1',
-            'diffie-hellman-group1-sha1',
-            'curve25519-sha256',
-            'curve25519-sha256@libssh.org',
-            'ecdh-sha2-nistp256',
-            'ecdh-sha2-nistp384',
-            'ecdh-sha2-nistp521',
-            'diffie-hellman-group-exchange-sha256',
-            'diffie-hellman-group-exchange-sha1',
-            'diffie-hellman-group16-sha512',
-            'diffie-hellman-group18-sha512',
-        )
+        transport._preferred_kex = _ZTE_PREFERRED_KEX
 
         transport.start_client(timeout=15)
         self._paramiko_dest_transport = transport
@@ -1490,6 +1662,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
     def send_output(self, text):
         """Envia output do terminal — bytes puros, sem JSON overhead."""
+        self._registrar_saida(text)
         try:
             self.send(bytes_data=text.encode('utf-8'))
         except Exception:
@@ -1507,6 +1680,11 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
 class WinboxConsumer(SSHConsumer):
     def connect(self):
+        user = self.scope.get('user')
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            self.close(code=4001)
+            return
+        self._crm_user = user
         self.accept()
         self.limpar_recursos()
         self.tcp_socket = None
@@ -1550,6 +1728,13 @@ class WinboxConsumer(SSHConsumer):
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
             porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
+
+            self._sessao_auditoria = AcessoSessao.objects.create(
+                acesso=acesso,
+                usuario=getattr(self, '_crm_user', None),
+                tipo='winbox_nativo',
+                ip_origem=(self.scope.get('client') or [None])[0],
+            )
 
             if self.is_private_ip(host):
                 proxy = self.get_active_proxy(acesso.cliente)
@@ -1604,6 +1789,12 @@ from .browser_vnc import BrowserVNCManager
 
 class WinboxVNCConsumer(SSHConsumer):
     def connect(self):
+        user = self.scope.get('user')
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            self.close(code=4001)
+            return
+        self._crm_user = user
+
         # Aceitar subprotocol 'binary' ou o primeiro que o cliente enviar
         try:
             subprotocols = self.scope.get('subprotocols', [])
@@ -1665,7 +1856,24 @@ class WinboxVNCConsumer(SSHConsumer):
             
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
-            
+
+            self._sessao_auditoria = AcessoSessao.objects.create(
+                acesso=acesso,
+                usuario=getattr(self, '_crm_user', None),
+                tipo=('webfig' if mode == 'browser' else 'winbox'),
+                ip_origem=(self.scope.get('client') or [None])[0],
+            )
+            record_path = None
+            try:
+                import os as _os, time as _time
+                from django.conf import settings as _settings
+                rel_path = f'gravacoes_acessos/{acesso.id}/{self._sessao_auditoria.id}_{int(_time.time())}.mp4'
+                record_path = _os.path.join(str(_settings.MEDIA_ROOT), rel_path)
+                _os.makedirs(_os.path.dirname(record_path), exist_ok=True)
+            except Exception as e:
+                logger.error(f"❌ Erro ao preparar caminho de gravação: {e}")
+                record_path = None
+
             if mode == 'browser':
                 # Se o protocolo for explicitamente HTTP/HTTPS, usar a porta configurada
                 if acesso.protocolo.upper() in ['HTTP', 'HTTPS']:
@@ -1709,7 +1917,7 @@ class WinboxVNCConsumer(SSHConsumer):
                     self.send_json({'type': 'info', 'message': f'❌ Falha no teste de túnel: {str(e)}'})
                     self.send_json({'type': 'info', 'message': f'💡 Verifique se o IP {host} e a porta {porta} estão corretos e acessíveis pelo Proxy.'})
 
-                self.vnc_manager = BrowserVNCManager(url=url)
+                self.vnc_manager = BrowserVNCManager(url=url, record_path=record_path)
 
 
 
@@ -1723,11 +1931,16 @@ class WinboxVNCConsumer(SSHConsumer):
                     password=acesso.senha,
                     version=winbox_version,
                     width=vnc_w,
-                    height=vnc_h
+                    height=vnc_h,
+                    record_path=record_path
                 )
-            
+
             vnc_port = self.vnc_manager.start()
-            
+
+            if getattr(self.vnc_manager, 'recording', False) and self._sessao_auditoria:
+                self._sessao_auditoria.arquivo_video = rel_path
+                self._sessao_auditoria.save(update_fields=['arquivo_video'])
+
             # Conecta o socket TCP interno ao x11vnc local
             self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.tcp_socket.settimeout(10)
@@ -2164,6 +2377,7 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
                 'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
             )
         dest_transport = paramiko.Transport(dest_sock)
+        dest_transport._preferred_kex = _ZTE_PREFERRED_KEX
         dest_transport.start_client(timeout=12)
         dest_transport.auth_password(acesso.usuario, acesso.senha)
         if not dest_transport.is_authenticated():

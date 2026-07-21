@@ -3,20 +3,25 @@ import time
 import socket
 import logging
 import subprocess
+import threading
 
 logger = logging.getLogger(__name__)
 
 class BrowserVNCManager:
     """Gerencia o ciclo de vida do Xvfb, Openbox, x11vnc e um Navegador para uma sessão via Web."""
     
-    def __init__(self, url, browser_path=None):
+    def __init__(self, url, browser_path=None, record_path=None):
         self.url = url
         self.browser_path = browser_path or self._find_browser()
-        
+
         self.display_num = None
         self.vnc_port = None
         self.processes = []
-        
+        self.record_path = record_path
+        self.recording = False
+        self._stop_lock = threading.Lock()
+        self._stopped = False
+
     def _find_browser(self):
         """Tenta encontrar um navegador instalado no sistema."""
         browsers = [
@@ -90,7 +95,7 @@ class BrowserVNCManager:
             raise Exception("x11vnc não está instalado no servidor.")
             
         time.sleep(0.5)
-        
+
         # 4. Start Browser
         # Comandos específicos para Chromium/Chrome para facilitar o uso em VNC
         browser_cmd = [self.browser_path]
@@ -127,20 +132,46 @@ class BrowserVNCManager:
         except FileNotFoundError:
             self.stop()
             raise Exception(f"Navegador não encontrado em {self.browser_path}")
-            
-        return self.vnc_port
-        
-    def stop(self):
-        """Mata todos os processos."""
-        logger.info(f"🛑 Encerrando Browser Web (Display :{self.display_num})")
-        for p in reversed(self.processes):
+
+        # 5. Start ffmpeg (gravação de tela para auditoria) — só depois do
+        # navegador subir, pra não disputar CPU durante o carregamento
+        # inicial da página. Falha aqui não derruba a sessão, só desliga a
+        # gravação com aviso.
+        if self.record_path:
+            time.sleep(1.5)
+            ffmpeg_cmd = [
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-f", "x11grab", "-video_size", "1366x768",
+                "-framerate", "8", "-i", f":{self.display_num}",
+                "-vcodec", "libx264", "-preset", "ultrafast", "-crf", "28",
+                "-pix_fmt", "yuv420p", self.record_path,
+            ]
             try:
-                p.terminate()
-                p.wait(timeout=2)
-            except:
-                try: p.kill()
-                except: pass
-        self.processes.clear()
+                p_ffmpeg = subprocess.Popen(ffmpeg_cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self.processes.append(p_ffmpeg)
+                self.recording = True
+            except FileNotFoundError:
+                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
+
+        return self.vnc_port
+
+    def stop(self):
+        """Mata todos os processos. Idempotente/thread-safe — ver comentário
+        equivalente em WinboxVNCManager.stop() sobre o duplo SIGTERM."""
+        with self._stop_lock:
+            if self._stopped:
+                return
+            self._stopped = True
+            logger.info(f"🛑 Encerrando Browser Web (Display :{self.display_num})")
+            for p in reversed(self.processes):
+                try:
+                    p.terminate()
+                    # ffmpeg precisa de mais tempo que 2s para finalizar o mux do mp4
+                    p.wait(timeout=5)
+                except:
+                    try: p.kill()
+                    except: pass
+            self.processes.clear()
         
     def _find_free_display(self, start=200, max_attempts=100):
         for i in range(start, start + max_attempts):

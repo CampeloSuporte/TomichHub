@@ -4,6 +4,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
+from django.utils import timezone
 from funcao_equipamento.models import Funcao_equipamento
 from modelo_equipamento.models import Modelo_equipamento
 
@@ -146,6 +147,68 @@ class ComentarioAcesso(models.Model):
 
     def __str__(self):
         return f"Comentário de {self.usuario} em {self.acesso.tipo}"
+
+
+class AcessoSessao(models.Model):
+    """Auditoria: uma sessão de acesso (SSH/Telnet/WinBox) a um host, com
+    o usuário do CRM que conectou, não o usuário/senha do equipamento."""
+
+    TIPOS = [
+        ('ssh', 'SSH'),
+        ('telnet', 'Telnet'),
+        ('winbox', 'WinBox Web'),
+        ('winbox_nativo', 'WinBox Nativo'),
+        ('webfig', 'WebFig'),
+    ]
+    STATUS = [
+        ('ativa', 'Ativa'),
+        ('encerrada', 'Encerrada'),
+    ]
+
+    acesso        = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='sessoes_auditoria')
+    usuario       = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='sessoes_acesso')
+    tipo          = models.CharField(max_length=20, choices=TIPOS)
+    ip_origem     = models.GenericIPAddressField(null=True, blank=True)
+    status        = models.CharField(max_length=20, choices=STATUS, default='ativa')
+    iniciada_em   = models.DateTimeField(auto_now_add=True)
+    encerrada_em  = models.DateTimeField(null=True, blank=True)
+    # Caminho relativo a MEDIA_ROOT do .mp4 gravado (só winbox/webfig via VNC)
+    arquivo_video = models.CharField(max_length=500, blank=True, default='')
+    # Transcript completo da tela (stdout, ANSI removido) — só ssh/telnet.
+    # Complementa AcessoComando: mostra o comando expandido/completo tal como
+    # o equipamento ecoou, incluindo o que ajuda contextual ('?')/tab
+    # completion revelam e que não dá pra saber só pelo que foi digitado.
+    transcript    = models.TextField(blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Sessão de Acesso (Auditoria)'
+        verbose_name_plural = 'Sessões de Acesso (Auditoria)'
+        ordering = ['-iniciada_em']
+
+    def __str__(self):
+        quem = self.usuario.get_username() if self.usuario else '?'
+        return f'[{self.tipo}] {quem} → {self.acesso} em {self.iniciada_em:%d/%m/%Y %H:%M}'
+
+    @property
+    def duracao_segundos(self):
+        fim = self.encerrada_em or timezone.now()
+        return int((fim - self.iniciada_em).total_seconds())
+
+
+class AcessoComando(models.Model):
+    """Um comando digitado (stdin) numa AcessoSessao SSH/Telnet."""
+
+    sessao       = models.ForeignKey(AcessoSessao, on_delete=models.CASCADE, related_name='comandos')
+    comando      = models.TextField()
+    executado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Comando de Sessão (Auditoria)'
+        verbose_name_plural = 'Comandos de Sessão (Auditoria)'
+        ordering = ['executado_em']
+
+    def __str__(self):
+        return self.comando[:80]
 
 
 class Documento(models.Model):

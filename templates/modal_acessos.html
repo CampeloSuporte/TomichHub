@@ -1371,6 +1371,29 @@
     </div>
 </div>
 
+<!-- MODAL AUDITORIA DE ACESSOS -->
+<div id="modalAuditoriaAcesso" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 800px; max-height: 85vh;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title">
+                <span class="terminal-prefix">&gt;</span> Auditoria de Acessos - <span id="nome_equipamento_auditoria"></span>
+            </h2>
+            <button class="btn-close-modal" onclick="fecharModalAuditoriaAcesso()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="modal-body-acesso" style="display: flex; flex-direction: column; height: 100%;">
+            <div id="listaSessoesAuditoria" style="flex: 1; overflow-y: auto;">
+                <div class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #a371f7; opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Carregando sessões...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <style>
 .input-senha-wrap {
@@ -2027,6 +2050,210 @@ async function deletarComentarioAcesso(comentarioId) {
         console.error('❌ Erro ao deletar comentário:', error);
         showError('ERRO', 'Erro na conexão ao deletar comentário', 4000);
     });
+}
+
+// ============================================
+// FUNÇÕES DE AUDITORIA DE ACESSOS
+// ============================================
+
+let acessoAtualAuditoria = null;
+
+function abrirModalAuditoriaAcesso(acessoId, nomeEquipamento) {
+    console.log('🛡️ Abrindo modal de auditoria para acesso ID:', acessoId);
+
+    acessoAtualAuditoria = acessoId;
+    document.getElementById('nome_equipamento_auditoria').textContent = nomeEquipamento;
+    document.getElementById('modalAuditoriaAcesso').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    carregarSessoesAuditoria(acessoId);
+}
+
+function fecharModalAuditoriaAcesso() {
+    document.getElementById('modalAuditoriaAcesso').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    acessoAtualAuditoria = null;
+}
+
+function formatarDuracaoAuditoria(segundos) {
+    if (segundos < 60) return `${segundos}s`;
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+    return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+}
+
+function carregarSessoesAuditoria(acessoId) {
+    const container = document.getElementById('listaSessoesAuditoria');
+
+    container.innerHTML = `
+        <div class="text-center py-5">
+            <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #a371f7; opacity: 0.3;"></i>
+            <p class="mt-3 text-muted">Carregando sessões...</p>
+        </div>
+    `;
+
+    fetch(`/clientes/acessos/${acessoId}/auditoria/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderizarSessoesAuditoria(data.sessoes);
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--error-red); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Erro ao carregar sessões</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar sessões de auditoria:', error);
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--error-red); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Erro na conexão</p>
+                </div>
+            `;
+        });
+}
+
+function renderizarSessoesAuditoria(sessoes) {
+    const container = document.getElementById('listaSessoesAuditoria');
+
+    if (sessoes.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-shield-halved" style="font-size: 48px; color: var(--text-muted); opacity: 0.3;"></i>
+                <p class="mt-3 text-muted" style="font-size: 13px;">Nenhuma sessão registrada ainda</p>
+            </div>
+        `;
+        return;
+    }
+
+    const temComandos = { ssh: true, telnet: true };
+
+    let html = `<div style="display: flex; flex-direction: column; gap: 12px;">`;
+
+    sessoes.forEach(s => {
+        const statusCor = s.status === 'ativa' ? 'var(--primary-green)' : 'var(--text-muted)';
+        html += `
+            <div class="sessao-item-auditoria" style="
+                padding: 12px;
+                background: rgba(163, 113, 247, 0.06);
+                border-left: 3px solid #a371f7;
+                border-radius: 4px;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <span style="color: var(--primary-green); font-weight: 700; font-family: 'Courier New', monospace; font-size: 12px;">
+                            👤 ${escapeHtml(s.usuario)}
+                        </span>
+                        <span style="color: #a371f7; font-size: 11px; margin-left: 8px; text-transform: uppercase;">${escapeHtml(s.tipo_display)}</span>
+                        <span style="color: ${statusCor}; font-size: 10px; margin-left: 8px;">● ${s.status === 'ativa' ? 'em andamento' : 'encerrada'}</span>
+                        <br>
+                        <span style="color: var(--text-muted); font-size: 11px; font-family: 'Courier New', monospace;">
+                            📅 ${s.iniciada_em}${s.encerrada_em ? ' → ' + s.encerrada_em : ''} · ⏱ ${formatarDuracaoAuditoria(s.duracao_segundos)}
+                            ${s.ip_origem ? ' · 🌐 ' + escapeHtml(s.ip_origem) : ''}
+                        </span>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap: wrap;">
+                        ${s.video_url ? `
+                            <button class="btn-submit-modal" style="padding:4px 10px; font-size:11px;"
+                                    onclick="window.open('${s.video_url}', '_blank')">
+                                <i class="fas fa-video me-1"></i> Assistir gravação
+                            </button>
+                        ` : ''}
+                        ${temComandos[s.tipo] ? `
+                            <button class="btn-submit-modal" style="padding:4px 10px; font-size:11px;"
+                                    onclick="toggleComandosSessao(${s.id}, this)">
+                                <i class="fas fa-terminal me-1"></i> Comandos (${s.total_comandos})
+                            </button>
+                        ` : ''}
+                        ${s.tem_transcript ? `
+                            <button class="btn-submit-modal" style="padding:4px 10px; font-size:11px;"
+                                    onclick="toggleTranscriptSessao(${s.id}, this)">
+                                <i class="fas fa-file-lines me-1"></i> Transcript completo
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                <div id="comandos-sessao-${s.id}" style="display:none; margin-top:10px; padding-top:10px; border-top: 1px dashed var(--border);"></div>
+                <div id="transcript-sessao-${s.id}" style="display:none; margin-top:10px; padding-top:10px; border-top: 1px dashed var(--border);"></div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function toggleComandosSessao(sessaoId, botao) {
+    const painel = document.getElementById(`comandos-sessao-${sessaoId}`);
+    if (!painel) return;
+
+    if (painel.style.display === 'block') {
+        painel.style.display = 'none';
+        return;
+    }
+
+    painel.style.display = 'block';
+    if (painel.dataset.carregado === '1') return;
+
+    painel.innerHTML = `<p class="text-muted" style="font-size:12px;"><i class="fas fa-spinner fa-spin me-1"></i> Carregando comandos...</p>`;
+
+    fetch(`/clientes/auditoria/sessao/${sessaoId}/comandos/`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || data.comandos.length === 0) {
+                painel.innerHTML = `<p class="text-muted" style="font-size:12px;">Nenhum comando registrado nesta sessão.</p>`;
+                return;
+            }
+            let html = `<div style="font-family:'Courier New',monospace; font-size:12px; background:#0d1829; border-radius:4px; padding:10px; max-height:260px; overflow-y:auto;">`;
+            data.comandos.forEach(c => {
+                html += `<div style="padding:2px 0; color: var(--text-muted);">
+                    <span style="color:#58a6ff;">${escapeHtml(c.executado_em)}</span>
+                    <span style="color:#c9d1d9;"> $ ${escapeHtml(c.comando)}</span>
+                </div>`;
+            });
+            html += `</div>`;
+            painel.innerHTML = html;
+            painel.dataset.carregado = '1';
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar comandos:', error);
+            painel.innerHTML = `<p class="text-muted" style="font-size:12px;">Erro ao carregar comandos.</p>`;
+        });
+}
+
+function toggleTranscriptSessao(sessaoId, botao) {
+    const painel = document.getElementById(`transcript-sessao-${sessaoId}`);
+    if (!painel) return;
+
+    if (painel.style.display === 'block') {
+        painel.style.display = 'none';
+        return;
+    }
+
+    painel.style.display = 'block';
+    if (painel.dataset.carregado === '1') return;
+
+    painel.innerHTML = `<p class="text-muted" style="font-size:12px;"><i class="fas fa-spinner fa-spin me-1"></i> Carregando transcript...</p>`;
+
+    fetch(`/clientes/auditoria/sessao/${sessaoId}/transcript/`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || !data.transcript) {
+                painel.innerHTML = `<p class="text-muted" style="font-size:12px;">Transcript vazio.</p>`;
+                return;
+            }
+            painel.innerHTML = `<pre style="font-family:'Courier New',monospace; font-size:12px; color:#c9d1d9; background:#0d1829; border-radius:4px; padding:10px; max-height:400px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin:0;">${escapeHtml(data.transcript)}</pre>`;
+            painel.dataset.carregado = '1';
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar transcript:', error);
+            painel.innerHTML = `<p class="text-muted" style="font-size:12px;">Erro ao carregar transcript.</p>`;
+        });
 }
 
 /**

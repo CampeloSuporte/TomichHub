@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import render,redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -13,6 +13,7 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import ProxyServer
+from .models import AcessoSessao, AcessoComando
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
 from .decorators import (
@@ -1907,10 +1908,20 @@ def realizar_backup(acesso, usuario=None):
         host_conexao = acesso.host
         porta_conexao = int(acesso.porta) if acesso.porta else 22
 
-        # ✅ Detectar fabricante
-        modelo_nome = ''
-        if acesso.modelo and hasattr(acesso.modelo, 'nome'):
-            modelo_nome = acesso.modelo.nome.lower()
+        # ✅ Detectar fabricante — combina modelo.fabricante + modelo.nome +
+        # acesso.tipo (não só modelo.nome) porque o Modelo_equipamento
+        # vinculado pode estar cadastrado errado (ex: OLT ZTE com modelo
+        # "debian 12" por engano); acesso.tipo costuma estar correto mesmo
+        # quando o modelo não está — mesmo fallback já usado em consumers.py.
+        _partes_deteccao = []
+        if acesso.modelo:
+            if getattr(acesso.modelo, 'fabricante', None):
+                _partes_deteccao.append(str(acesso.modelo.fabricante))
+            if getattr(acesso.modelo, 'nome', None):
+                _partes_deteccao.append(str(acesso.modelo.nome))
+        if acesso.tipo:
+            _partes_deteccao.append(acesso.tipo)
+        modelo_nome = ' '.join(_partes_deteccao).lower()
 
         is_huawei = 'huawei' in modelo_nome
         is_a10    = 'a10'    in modelo_nome
@@ -1992,6 +2003,17 @@ def realizar_backup(acesso, usuario=None):
                 look_for_keys=False,
                 allow_agent=False,
                 banner_timeout=30,
+                # ZTE OLTs (e outros com CPU embarcado fraco) têm timeout de KEX
+                # curto — group16/group18/group-exchange demoram 2-5s pra negociar
+                # e a conexão cai antes da auth. Desabilitar força o paramiko a
+                # usar curve25519/ecdh/group14 (rápidos), que todo servidor SSH2
+                # moderno já suporta (ver docs/winbox_vnc.md e memória do projeto).
+                disabled_algorithms={'kex': [
+                    'diffie-hellman-group-exchange-sha256',
+                    'diffie-hellman-group-exchange-sha1',
+                    'diffie-hellman-group16-sha512',
+                    'diffie-hellman-group18-sha512',
+                ]},
             )
             client.get_transport().set_keepalive(10)
             print(f"✅ Conectado!")
@@ -2051,7 +2073,13 @@ def realizar_backup(acesso, usuario=None):
         print(f"{'='*80}")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        nome_arquivo = f"{acesso.tipo.replace(' ', '_')}_{timestamp}.txt"
+        # Sanitiza acesso.tipo para uso como nome de arquivo: só espaço virava "_"
+        # antes, mas "/" (comum em nomes tipo "BRAS/CGNAT/BORDA - JUNIPER") vira
+        # separador de diretório no os.path.join — o(s) subdiretório(s) resultante(s)
+        # não existe(m) e o open() abaixo falha com FileNotFoundError. Qualquer
+        # caractere fora de letras/números/"-"/"_" vira "_".
+        tipo_seguro = re.sub(r'[^A-Za-z0-9_-]+', '_', acesso.tipo).strip('_') or 'backup'
+        nome_arquivo = f"{tipo_seguro}_{timestamp}.txt"
         arquivo_path = os.path.join(backup_dir, nome_arquivo)
 
         with open(arquivo_path, 'w', encoding='utf-8') as f:
@@ -3541,7 +3569,11 @@ def backup_conteudo(request, backup_id):
 @require_http_methods(["GET"])
 def terminal_page(request):
     """Renderiza a página de terminal SSH múltiplo"""
-    return render(request, 'terminal.html')
+    from wiki.models import ArtigoWiki, CategoriaWiki
+    return render(request, 'terminal.html', {
+        'wiki_categorias': CategoriaWiki.objects.all(),
+        'wiki_fabricantes': ArtigoWiki.FABRICANTES,
+    })
 
 
 @login_required(login_url='login')
@@ -4892,6 +4924,87 @@ def adicionar_comentario_acesso(request, acesso_id):
     })
 
 
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def listar_sessoes_auditoria(request, acesso_id):
+    """Lista sessões de acesso (SSH/Telnet/WinBox) de um Acesso, mais recentes primeiro."""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+            if cliente.id != acesso.cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    sessoes = acesso.sessoes_auditoria.select_related('usuario').annotate(
+        total_comandos=Count('comandos')
+    )
+
+    dados = []
+    for s in sessoes:
+        dados.append({
+            'id': s.id,
+            'tipo': s.tipo,
+            'tipo_display': s.get_tipo_display(),
+            'usuario': (s.usuario.get_full_name() or s.usuario.username) if s.usuario else '—',
+            'ip_origem': s.ip_origem,
+            'status': s.status,
+            'iniciada_em': s.iniciada_em.strftime('%d/%m/%Y %H:%M:%S'),
+            'encerrada_em': s.encerrada_em.strftime('%d/%m/%Y %H:%M:%S') if s.encerrada_em else None,
+            'duracao_segundos': s.duracao_segundos,
+            'video_url': (settings.MEDIA_URL + s.arquivo_video) if s.arquivo_video else None,
+            'total_comandos': s.total_comandos,
+            'tem_transcript': bool(s.transcript),
+        })
+
+    return JsonResponse({'success': True, 'sessoes': dados, 'total': len(dados)})
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def listar_comandos_sessao(request, sessao_id):
+    """Lista os comandos digitados (stdin) numa AcessoSessao SSH/Telnet."""
+    sessao = get_object_or_404(AcessoSessao, id=sessao_id)
+    acesso = sessao.acesso
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+            if cliente.id != acesso.cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    dados = [
+        {'comando': c.comando, 'executado_em': c.executado_em.strftime('%d/%m/%Y %H:%M:%S')}
+        for c in sessao.comandos.all()
+    ]
+
+    return JsonResponse({'success': True, 'comandos': dados, 'total': len(dados)})
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def ver_transcript_sessao(request, sessao_id):
+    """Retorna o transcript completo (stdout, ANSI removido) de uma
+    AcessoSessao SSH/Telnet — mostra o comando expandido/completo tal como
+    o equipamento ecoou, não só o que foi digitado."""
+    sessao = get_object_or_404(AcessoSessao, id=sessao_id)
+    acesso = sessao.acesso
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+            if cliente.id != acesso.cliente.id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    return JsonResponse({'success': True, 'transcript': sessao.transcript})
+
+
 @login_required(login_url="login")
 @require_http_methods(["POST", "DELETE"])
 def deletar_comentario_acesso(request, comentario_id):
@@ -5476,7 +5589,7 @@ def teste_dns_cliente(request, cliente_id):
 @csrf_exempt
 @login_required(login_url='login')
 def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
-    from urllib.parse import urlparse as _up
+    from urllib.parse import urlparse as _up, urljoin as _uj
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ── Permissão ─────────────────────────────────────────────────────
@@ -5626,7 +5739,12 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         # ── Tratar Redirects cross-port (ex: http→https) ─────────────
         if resp.status_code in (301, 302, 303, 307, 308):
             location = resp.headers.get('Location', '/')
-            p = _up(location)
+            # Location pode vir relativo (ex: "zabbix.php?action=..." sem "/" na
+            # frente) — resolver contra a URL real requisitada (target_url) garante
+            # um path absoluto normalizado. Sem isso, um Location relativo virava
+            # concatenação direta com o proxy_base (ex: ".../web/80/http" +
+            # "zabbix.php" = ".../web/80/httpzabbix.php", 404).
+            p = _up(_uj(target_url, location))
 
             redir_host   = p.hostname or target_host
             redir_scheme = p.scheme or scheme
@@ -5842,6 +5960,178 @@ def topologia_hosts(request, cliente_id):
             'modelo': (a.modelo.nome or '') if a.modelo else '',
         })
     return JsonResponse({'hosts': hosts, 'total': len(hosts)})
+
+
+def _mascara_para_prefixo(ip, mascara):
+    """Converte 'IP + máscara-ou-prefixo' pro formato 'IP/CIDR' usado nos
+    campos de IP P2P do editor de topologia. Aceita máscara decimal
+    (255.255.255.252, estilo Cisco/Huawei/ZTE) ou prefixo já numérico
+    (30, estilo Datacom/Juniper que já vem com "/"). Silencioso em entradas
+    inesperadas — melhor não sugerir IP do que sugerir um CIDR errado."""
+    mascara = (mascara or '').strip()
+    if mascara.isdigit():
+        return f'{ip}/{mascara}'
+    if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', mascara):
+        try:
+            prefixo = sum(bin(int(octeto)).count('1') for octeto in mascara.split('.'))
+            return f'{ip}/{prefixo}'
+        except Exception:
+            return ip
+    return ip
+
+
+def _extrair_interfaces_backup(conteudo, fabricante):
+    """Extrai as interfaces configuradas a partir do texto de um backup —
+    nome, descrição e (quando existir roteamento IP na interface) o IP/CIDR
+    configurado nela — de acordo com a sintaxe de cada fabricante. Usado
+    para sugerir 'Interface Lado A/B' no editor de topologia: a descrição
+    ajuda a identificar qual interface escolher (ex. "P2P-SW-CORE-P6"), e o
+    IP pode preencher automaticamente o campo "IP Local/Remoto (P2P)" do
+    link quando a interface escolhida tiver um endereço configurado. Cobre
+    os três formatos de config usados pelos templates de backup (ver
+    docs/backup_automatico.md):
+    - MikroTik (`/export`): nomes vêm de `name=` (renomeados — já funcionam
+      como descrição embutida, ex. "sfp-sfpplus2 - P2P-SW-CORE-P6") e
+      `interface=` (referências, inclusive nomes default nunca renomeados;
+      sem descrição própria). IP vem de `/ip address add address=IP/CIDR
+      interface=<nome>`.
+    - Juniper (`set interfaces ... | display set`): `set interfaces <if>
+      [unit N] description <texto>` / `... family inet address IP/CIDR`.
+    - Todo o resto (Cisco/Huawei/Datacom/ZTE/HP/Dell/Extreme/genérico —
+      `show running-config`/`display current-configuration`): bloco da
+      interface (da linha `interface <nome>` até a próxima linha
+      `interface ...`) é varrido por uma linha `description <texto>` e uma
+      linha `ip address IP MÁSCARA` (Cisco/Huawei/ZTE, máscara decimal) ou
+      `ipv4 address IP/CIDR` (Datacom).
+
+    Retorna lista de {'nome': str, 'descricao': str, 'ip': str}, ordenada
+    por nome. `ip` vem vazio quando a interface não tem endereço configurado
+    (porta L2 pura, trunk, etc.) — nesse caso o frontend não sugere nada.
+    """
+    fabricante = (fabricante or '').upper()
+    interfaces = {}  # nome -> {'descricao': str, 'ip': str}
+
+    def _add(nome, desc='', ip=''):
+        if not nome:
+            return
+        atual = interfaces.setdefault(nome, {'descricao': '', 'ip': ''})
+        if desc and not atual['descricao']:
+            atual['descricao'] = desc
+        if ip and not atual['ip']:
+            atual['ip'] = ip
+
+    if fabricante == 'MIKROTIK':
+        for m in re.finditer(r'^/interface\b.*?\bname=("([^"]+)"|(\S+))', conteudo, re.MULTILINE):
+            _add(m.group(2) or m.group(3))
+        for m in re.finditer(r'\binterface=("([^"]+)"|(\S+))', conteudo):
+            _add(m.group(2) or m.group(3))
+        for m in re.finditer(
+            r'^/ip address add .*?\baddress=(\d{1,3}(?:\.\d{1,3}){3}/\d{1,2})\b.*?\binterface=("([^"]+)"|(\S+))',
+            conteudo, re.MULTILINE,
+        ):
+            ip_cidr, nome = m.group(1), (m.group(3) or m.group(4))
+            _add(nome, ip=ip_cidr)
+
+    elif fabricante == 'JUNIPER':
+        for m in re.finditer(r'^set interfaces (\S+)(?:\s+unit\s+(\d+))?', conteudo, re.MULTILINE):
+            base, unit = m.group(1), m.group(2)
+            _add(base)
+            if unit:
+                _add(f'{base}.{unit}')
+        for m in re.finditer(r'^set interfaces (\S+) description (.+?)\s*$', conteudo, re.MULTILINE):
+            _add(m.group(1), desc=m.group(2).strip())
+        for m in re.finditer(r'^set interfaces (\S+) unit (\d+) description (.+?)\s*$', conteudo, re.MULTILINE):
+            _add(f'{m.group(1)}.{m.group(2)}', desc=m.group(3).strip())
+        for m in re.finditer(
+            r'^set interfaces (\S+) unit (\d+) family inet address (\d{1,3}(?:\.\d{1,3}){3}/\d{1,2})',
+            conteudo, re.MULTILINE,
+        ):
+            _add(f'{m.group(1)}.{m.group(2)}', ip=m.group(3))
+
+    else:
+        linhas = conteudo.splitlines()
+        n = len(linhas)
+        i = 0
+        while i < n:
+            m = re.match(r'^interface\s+(.+?)\s*$', linhas[i])
+            if not m:
+                i += 1
+                continue
+            nome = m.group(1).strip()
+            # Fim do bloco desta interface = próxima linha "interface <algo>".
+            j = i + 1
+            while j < n and not re.match(r'^interface\s+\S', linhas[j]):
+                j += 1
+            # Exclui sub-interface por ONU (ex. ZTE "gpon-onu_1/2/1:5" — uma
+            # linha "interface" por ONU registrada na porta GPON). Nunca é o
+            # lado de um link de topologia (isso é a porta física do OLT/PON,
+            # não a ONU do cliente), e em OLTs grandes ofusca as interfaces
+            # físicas relevantes (uplinks, PON) dentro do limite de 500.
+            if not nome or re.search(r':\d+$', nome):
+                i = j
+                continue
+            desc, ip = '', ''
+            for bloco_linha in linhas[i + 1:j]:
+                if not desc:
+                    dm = re.match(r'^\s*description\s+(.+?)\s*$', bloco_linha)
+                    if dm:
+                        desc = dm.group(1).strip()
+                if not ip:
+                    im = re.match(
+                        r'^\s*ip(?:v4)?\s+address\s+(\d{1,3}(?:\.\d{1,3}){3})[/\s]+(\S+)', bloco_linha)
+                    if im:
+                        ip = _mascara_para_prefixo(im.group(1), im.group(2))
+                if desc and ip:
+                    break
+            _add(nome, desc=desc, ip=ip)
+            i = j
+
+    itens = [{'nome': nome, **dados} for nome, dados in interfaces.items()]
+    itens.sort(key=lambda it: it['nome'].lower())
+    return itens[:500]
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+def interfaces_backup_acesso(request, acesso_id):
+    """Lista as interfaces (nome, descrição e IP/CIDR quando roteada)
+    encontradas no backup mais recente do acesso, para sugestão nos campos
+    'Interface Lado A/B' e preenchimento automático do IP P2P do editor de
+    topologia. Sem backup disponível (ou arquivo ausente no disco), retorna
+    lista vazia — o campo continua editável em texto livre."""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        try:
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+            if cliente.id != acesso.cliente_id:
+                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    backup = BackupLog.objects.filter(
+        acesso=acesso, status__in=['SUCESSO', 'PARCIAL'],
+    ).exclude(arquivo_path='').select_related('template').order_by('-data_backup').first()
+
+    if not backup:
+        return JsonResponse({'interfaces': [], 'tem_backup': False})
+
+    arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+    if not os.path.exists(arquivo_path):
+        return JsonResponse({'interfaces': [], 'tem_backup': False})
+
+    LIMITE = 2 * 1024 * 1024  # 2MB — suficiente para qualquer running-config
+    with open(arquivo_path, 'r', encoding='utf-8', errors='replace') as f:
+        conteudo = f.read(LIMITE)
+
+    fabricante = backup.template.fabricante if backup.template else ''
+    interfaces = _extrair_interfaces_backup(conteudo, fabricante)
+
+    return JsonResponse({
+        'interfaces': interfaces,
+        'tem_backup': True,
+        'data_backup': backup.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
+    })
 
 
 def _exec_migration_topologia(request):

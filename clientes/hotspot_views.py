@@ -529,21 +529,24 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         html_content = _gerar_login_html(hotspot, portal_url_for_html)
         html_bytes   = html_content.encode('utf-8')
 
+        # IMPORTANTE (confirmado ao vivo em 2026-07-18 na WTD): o html-directory do
+        # profile do hotspot pode normalizar/resolver para "flash/<dir>" mesmo
+        # quando setado como "<dir>" (RouterOS não é consistente entre profiles —
+        # o profile "default" mantém "<dir>" como digitado, mas um profile
+        # criado/recriado via SSH normaliza para "flash/<dir>"). O arquivo real
+        # que o hotspot serve para o cliente é o que estiver em QUALQUER que seja
+        # a resolução efetiva — então gravamos nos dois caminhos possíveis para
+        # cobrir ambos os comportamentos, em vez de adivinhar qual vale para
+        # cada roteador.
+        remote_paths = [f'{dir_name}/login.html', f'flash/{dir_name}/login.html']
         sftp_ok = False
         try:
             sftp = client.open_sftp()
-            # IMPORTANTE: caminho relativo (sem "/flash/" na frente). O protocolo SFTP
-            # não traduz "flash/" como alias da raiz (isso só acontece no parser do CLI
-            # do RouterOS) — um path absoluto "/flash/<dir>/login.html" cria uma pasta
-            # "flash" DIFERENTE e vazia, separada de "<dir>" (confirmado ao vivo em
-            # 2026-07-10: `/file print` mostra "hotspot" e "flash/hotspot" como duas
-            # árvores distintas — a segunda vazia). O html-directory do hotspot profile
-            # referencia "<dir>/login.html" relativo à raiz do filesystem.
-            remote_path = f'{dir_name}/login.html'
-            sftp.putfo(_io.BytesIO(html_bytes), remote_path)
+            for remote_path in remote_paths:
+                sftp.putfo(_io.BytesIO(html_bytes), remote_path)
             sftp.close()
             sftp_ok = True
-            log.append(f'✅ login.html enviado via SFTP → {remote_path} ({len(html_bytes)} bytes)')
+            log.append(f'✅ login.html enviado via SFTP → {", ".join(remote_paths)} ({len(html_bytes)} bytes)')
         except Exception as _sftp_err:
             log.append(f'⚠️ SFTP falhou: {_sftp_err} — tentando /tool fetch como fallback')
             # Fallback: /tool fetch via IP direto
@@ -554,22 +557,21 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             except Exception:
                 _crm_ip = _crm_host
             login_html_url = f'http://{_crm_ip}/clientes/hotspot/login-html/{hotspot.uuid}/'
-            fetch_out, fetch_err, fetch_rc = _mt_exec(client,
-                f'/tool fetch url="{login_html_url}" '
-                f'dst-path="{dir_name}/login.html" mode=http',
-                timeout=30)
-            fetch_combined = (fetch_out + fetch_err).strip()
-            sftp_ok = fetch_rc == 0 and not any(
-                k in fetch_combined.lower() for k in ('error', 'failure', 'failed', 'timed out'))
-            if sftp_ok:
-                log.append(f'✅ login.html baixado via fetch: {login_html_url}')
-            else:
-                log.append(f'⚠️ /tool fetch também falhou (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
-
-        # Remove o arquivo órfão que uma versão anterior deste código gravava no
-        # caminho ERRADO: "flash/<dir>/login.html" — uma árvore separada e vazia
-        # que o hotspot nunca lê. O correto é "<dir>/login.html" (enviado acima).
-        _mt_exec(client, f'/file remove [find where name="flash/{dir_name}/login.html"]')
+            fetch_all_ok = True
+            for remote_path in remote_paths:
+                fetch_out, fetch_err, fetch_rc = _mt_exec(client,
+                    f'/tool fetch url="{login_html_url}" '
+                    f'dst-path="{remote_path}" mode=http',
+                    timeout=30)
+                fetch_combined = (fetch_out + fetch_err).strip()
+                ok = fetch_rc == 0 and not any(
+                    k in fetch_combined.lower() for k in ('error', 'failure', 'failed', 'timed out'))
+                fetch_all_ok = fetch_all_ok and ok
+                if ok:
+                    log.append(f'✅ login.html baixado via fetch: {login_html_url} → {remote_path}')
+                else:
+                    log.append(f'⚠️ /tool fetch falhou para {remote_path} (rc={fetch_rc}): {fetch_combined or "sem detalhe"}')
+            sftp_ok = fetch_all_ok
 
         # Aguarda RouterOS indexar o arquivo
         import time as _time
@@ -1433,10 +1435,27 @@ def hotspot_portal_conectar(request, hotspot_uuid):
         login_base = f'{_sp.scheme or "http"}://{_sp.netloc}{_sp.path or "/login"}'
     else:
         login_base = f'http://{h.gateway}/login'
+
+    # dst vazio faz o MikroTik mostrar a tela de status ("Hi, guest!") em vez de
+    # liberar a navegação — orig quase nunca chega (login.html não captura
+    # $(link-orig), ver _gerar_login_html). Sem destino real, mandamos o
+    # cliente para a própria URL de detecção de captive portal do SO: ela
+    # responde com o "sucesso" esperado e o SO fecha o mini-browser sozinho,
+    # liberando o usuário direto pra internet sem tela nenhuma.
+    _ua = request.META.get('HTTP_USER_AGENT', '').lower()
+    if 'android' in _ua:
+        _default_dst = 'http://connectivitycheck.gstatic.com/generate_204'
+    elif any(k in _ua for k in ('iphone', 'ipad', 'ipod', 'macintosh', 'cfnetwork')):
+        _default_dst = 'http://captive.apple.com/hotspot-detect.html'
+    elif 'windows' in _ua:
+        _default_dst = 'http://www.msftconnecttest.com/redirect'
+    else:
+        _default_dst = 'http://connectivitycheck.gstatic.com/generate_204'
+
     login_full = login_base + '?' + _urlencode({
         'username': h.guest_usuario,
         'password': h.guest_senha,
-        'dst': orig or '',
+        'dst': orig or _default_dst,
         'popup': 'true',
     })
     login_js   = login_full.replace('\\', '\\\\').replace("'", "\\'")
