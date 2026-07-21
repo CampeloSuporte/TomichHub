@@ -1752,6 +1752,17 @@
                     }
                 });
 
+                // Avisa o backend a cada mudança de tamanho → redimensiona o PTY do host.
+                // Sem isso o PTY fica preso em 80x24 (default) enquanto o xterm.js exibe
+                // a largura real do painel, e o equipamento redesenha linhas (setas
+                // ↑/←, histórico de comando) assumindo a largura errada — causando
+                // sobreposição/desalinhamento do texto na tela.
+                terminal.onResize(({ cols, rows }) => {
+                    if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
+                        tObj.socket.send(JSON.stringify({ action: 'resize', cols, rows }));
+                    }
+                });
+
                 setTimeout(() => this.conectarWebSocket(terminalId), 200);
             } catch(e) { addDebug('❌ ' + e.message); console.error(e); }
         }
@@ -1842,7 +1853,13 @@
                 tObj.socket.onopen = () => {
                     tObj.terminal.writeln('\x1b[32m▶ WebSocket conectado\x1b[0m\n');
                     tObj.wsRetries = 0;
-                    tObj.socket.send(JSON.stringify({ action: 'connect', acesso_id: tObj.acesso.id }));
+                    // Ajusta o xterm.js ao tamanho real do painel ANTES de conectar,
+                    // para que o PTY do host já nasça com cols/rows corretos.
+                    try { tObj.fitAddon.fit(); } catch(e) {}
+                    tObj.socket.send(JSON.stringify({
+                        action: 'connect', acesso_id: tObj.acesso.id,
+                        cols: tObj.terminal.cols, rows: tObj.terminal.rows,
+                    }));
                 };
                 tObj.socket.onmessage = e => {
                     // Hot path: binary frame = terminal output puro
@@ -1857,6 +1874,14 @@
                         const tab = document.getElementById(`tab-${terminalId}`);
                         if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
                         tObj.terminal.writeln('\x1b[32m✓ ' + data.message + '\x1b[0m\n');
+                        // Re-sincroniza o tamanho do PTY agora que o shell do host já existe
+                        // (o fit no onopen pode ter rodado antes do painel ter layout final).
+                        try { tObj.fitAddon.fit(); } catch(e) {}
+                        if (tObj.socket.readyState === WebSocket.OPEN) {
+                            tObj.socket.send(JSON.stringify({
+                                action: 'resize', cols: tObj.terminal.cols, rows: tObj.terminal.rows,
+                            }));
+                        }
                     } else if (data.type === 'output' && data.data) {
                         writeToTerminal(tObj.terminal, data.data);
                     } else if (data.type === 'error') {
