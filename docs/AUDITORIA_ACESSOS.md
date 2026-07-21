@@ -116,6 +116,41 @@ timeout de `p.wait()` após o `terminate()` também subiu de 2s → **5s** espec
 processo `ffmpeg` — ele precisa de mais tempo que os outros processos (Xvfb, x11vnc, navegador)
 para finalizar o mux do `.mp4`.
 
+### Correções — 20/07/2026 (tarde)
+
+Três problemas relatados em produção na gravação/renderização do WinBox Web, todos em
+`clientes/winbox_vnc.py`:
+
+1. **Gravação de 0 bytes com dimensão ímpar.** A resolução do `ffmpeg -video_size` vem do
+   viewport do navegador do cliente (`?w=&h=`), que frequentemente é ímpar (ex: `1400x799`). O
+   `libx264`/`yuv420p` exige largura e altura pares — com dimensão ímpar o encoder falhava ao
+   abrir (`height not divisible by 2`) e o `.mp4` saía vazio, sem *moov atom*, sem tocar na
+   auditoria. Reproduzido rodando o `ffmpeg` manualmente contra uma sessão real. **Fix:** `width`/
+   `height` agora são arredondados pra baixo pro número par mais próximo (`& ~1`) antes de montar
+   tanto o Xvfb quanto o `ffmpeg`.
+2. **Ícones do WinBox 3.43 com fundo preto + tela lenta pra interagir.** A causa **não** é a
+   disputa de CPU no carregamento inicial (hipótese antiga, registrada acima) — é o **Xvfb rodando
+   a 16bpp**. Reproduzido conectando de verdade num MikroTik e comparando os dois depths lado a
+   lado no mesmo equipamento/sessão: só `16bpp` produz o quadrado preto atrás de cada ícone; em
+   `24bpp` os ícones renderizam limpos. O WinBox 3.43 faz alpha-blending dos ícones via GDI (Wine),
+   e isso quebra nesse depth. **Fix:** Xvfb agora sobe em `24bpp` em vez de `16bpp`.
+3. **CPU/IO do `ffmpeg` disputando com o Wine durante toda a sessão** (não só no carregamento
+   inicial) — o `ffmpeg` roda a sessão inteira fazendo `XGetImage` (via `x11grab`) contra o mesmo
+   Xvfb em que o Wine desenha a UI. **Fix:** o processo sobe com `nice -n 15 ionice -c 3`, cedendo
+   prioridade de CPU/IO pro Wine/WinBox sempre que houver disputa. Como `nice`/`ionice` fazem
+   `exec` (não `fork`), o PID rastreado em `self.processes` continua sendo o próprio `ffmpeg`, então
+   `stop()` (`terminate()`/`wait()` para fechar o `.mp4` direito) não precisou de nenhuma mudança.
+
+**Bug corrigido — redirect relativo quebra o proxy web (`proxy_web_acesso`,
+`clientes/views.py`):** quando o equipamento (ex: Zabbix) responde um redirect HTTP com `Location`
+**relativo** (ex: `zabbix.php?action=...`, sem `/` na frente — comum em fluxos pós-login), o código
+pegava `urlparse(location).path` cru e concatenava direto com o `proxy_base`, sem checar se sobrava
+uma barra entre os dois: `".../web/80/http" + "zabbix.php"` → `".../web/80/httpzabbix.php"` → 404.
+**Fix:** troca de `urlparse(location)` por `urlparse(urljoin(target_url, location))` — `urljoin`
+resolve o `Location` (relativo ou absoluto) contra a URL real requisitada e sempre devolve um path
+absoluto normalizado, cobrindo também casos mais complexos (`../pagina.html`) que a concatenação
+manual não tratava.
+
 ---
 
 ## Autenticação Obrigatória no WebSocket

@@ -161,7 +161,12 @@ frontend). Resumo do que muda em `winbox_vnc.py`/`browser_vnc.py`:
 
 - `WinboxVNCManager`/`BrowserVNCManager` ganham `record_path=` no construtor; se preenchido, um
   processo `ffmpeg -f x11grab` é iniciado ~1.5s após o WinBox/navegador subir (evita disputa de
-  CPU durante o carregamento inicial da UI).
+  CPU durante o carregamento inicial da UI) e roda com `nice -n 15 ionice -c 3` (prioridade baixa,
+  cede CPU/IO pro Wine/WinBox durante toda a sessão, não só no início).
+- Largura/altura são arredondadas pra número par (`& ~1`) antes de montar Xvfb e ffmpeg — o
+  `libx264`/`yuv420p` exige dimensões pares; como a resolução vem do painel do navegador do
+  cliente (frequentemente ímpar), sem isso o ffmpeg falhava ao abrir o encoder e gravava um
+  `.mp4` de 0 bytes (sem moov atom, não reproduz na auditoria).
 - **`stop()` agora é idempotente** (`threading.Lock` + flag `_stopped`): antes, `limpar_recursos()`
   podia ser chamado duas vezes concorrentemente (thread de leitura do VNC + thread de
   `disconnect()` do WebSocket), enviando **dois `SIGTERM`** ao `ffmpeg`. No segundo `SIGTERM`, o
@@ -170,6 +175,15 @@ frontend). Resumo do que muda em `winbox_vnc.py`/`browser_vnc.py`:
   só para o `ffmpeg` (precisa de mais tempo que os outros processos para o mux do mp4).
 - Falha ao iniciar o `ffmpeg` (ex: não instalado) não derruba a sessão — só desliga a gravação
   com log de aviso.
+
+### Ícones do WinBox 3.43 com fundo preto
+
+**Causa:** Xvfb rodando a `16bpp`. O WinBox 3.43 (via Wine) faz alpha-blending dos ícones via GDI,
+e isso quebra nesse depth — cada ícone renderiza com um quadrado preto atrás em vez de fundo
+transparente. Reproduzido comparando `16bpp` vs `24bpp` no mesmo equipamento/sessão: só o `16bpp`
+apresenta o defeito. **Não tem relação com CPU/gravação** (hipótese antiga, descartada).
+
+**Solução:** Xvfb sobe em `24bpp` (`xvfb_cmd` em `winbox_vnc.py`), não `16bpp`.
 
 ---
 

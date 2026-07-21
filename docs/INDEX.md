@@ -2,6 +2,32 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 8 — 20/07/2026: Correções em Gravação WinBox, Proxy Web + Wiki de Artigos
+
+**O que foi implementado?**
+- ✅ Gravação de tela WinBox: corrigido `.mp4` de 0 bytes quando a resolução do viewport do
+  cliente é ímpar (`libx264` exige dimensões pares)
+- ✅ Ícones do WinBox 3.43 com fundo preto + lentidão pra interagir: causa raiz era o Xvfb rodando
+  a 16bpp (não disputa de CPU, como se supunha antes) — corrigido para 24bpp
+- ✅ `ffmpeg` da gravação agora sobe com `nice`/`ionice` (prioridade baixa), cedendo CPU/IO pro
+  Wine/WinBox durante toda a sessão, não só no carregamento inicial
+- ✅ Proxy web de acessos (`proxy_web_acesso`): corrigido 404 em redirects HTTP relativos do
+  equipamento (ex: Zabbix `Location: zabbix.php?...`) que viravam concatenação sem barra com o
+  path do proxy
+- ✅ Wiki de Artigos Técnicos: anexo de PDF por artigo (upload/troca/remoção, visualizador com
+  zoom no painel do Terminal), templates de listagem (categoria/tag/fabricante) unificados em um
+  só, busca também pelo conteúdo do artigo, registro completo no Django Admin
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md)** | Seção "Correções — 20/07/2026 (tarde)": vídeo 0 bytes, ícone preto (16bpp), nice/ionice, redirect relativo no proxy |
+| **[winbox_vnc.md](winbox_vnc.md)** | Xvfb 24bpp, dimensões pares, nice/ionice no ffmpeg |
+| **[WIKI_ARTIGOS.md](WIKI_ARTIGOS.md)** | PDF anexado, templates unificados, admin, remoção do CRUD de blocos de código |
+
+---
+
 ### Sessão 7 — 20/07/2026: Editor de Topologia — Design, Ícones e Efeitos Visuais
 
 **O que foi implementado?**
@@ -238,6 +264,12 @@
   - Tipos de dispositivo, tipos/velocidades de interface, waypoints
   - Bugs corrigidos (XSS, atalhos com `<select>` focado, rótulo escondido atrás do node)
 
+- **[WIKI_ARTIGOS.md](WIKI_ARTIGOS.md)** — Wiki de artigos técnicos
+  - PDF anexado ao artigo (upload/troca/remoção, visualizador com zoom no Terminal)
+  - Templates de listagem (categoria/tag/fabricante) unificados
+  - Busca também pelo conteúdo, dedupe de categoria por slug
+  - Registro completo no Django Admin
+
 ---
 
 ## 🚀 Guias Rápidos
@@ -307,7 +339,8 @@ docs/
 ├─ winbox_vnc.md
 ├─ terminal_ssh.md
 ├─ frontend_acessos.md
-└─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
+├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
+└─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
 ```
 
 ---
@@ -427,6 +460,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 20/07/2026 | Gravação WinBox (fix vídeo 0 bytes, ícone preto/16bpp, nice/ionice); proxy web (fix redirect relativo); Wiki de Artigos (PDF, templates unificados, admin) | AUDITORIA_ACESSOS.md, winbox_vnc.md, WIKI_ARTIGOS.md |
 | 20/07/2026 | Editor de Topologia: passe de design, ícones de Router/Switch redesenhados, efeitos animados (brilho, pulso, tráfego simulado), IP em negrito, fix de regressão no rótulo Lado A/B | topologia.md |
 | 20/07/2026 | Editor de Topologia: interfaces do backup no Lado A/B, troca manual de ícone, velocidades 20/30/50G; fix XSS, atalhos com `<select>`, rótulo escondido; fix backup com `/` no tipo | topologia.md, backup_automatico.md |
 | 20/07/2026 | Auditoria de Acessos (comandos, transcript, gravação de vídeo); auth obrigatória no WS; fix vídeo 0 bytes; hotspot `flash/<dir>` e destino pós-login por SO; backup (fabricante + KEX) | AUDITORIA_ACESSOS.md, terminal_ssh.md, winbox_vnc.md, HOTSPOT_CAPTIVE_PORTAL.md, backup_automatico.md, frontend_acessos.md |
@@ -449,6 +483,6 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ---
 
 **Última atualização:** 20/07/2026  
-**Versão:** 1.6  
+**Versão:** 1.7  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
