@@ -1,3 +1,4 @@
+import os
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
@@ -69,6 +70,9 @@ class ArtigoWiki(models.Model):
     # Conteúdo
     descricao_curta = models.TextField(max_length=300, help_text='Resumo que aparece na busca')
     conteudo = models.TextField(help_text='Conteúdo em Markdown')
+
+    # PDF anexado (abre automaticamente na visualização do artigo)
+    pdf = models.FileField(upload_to='wiki/pdfs/%Y/%m/', null=True, blank=True)
     
     # Prioridade
     favorito = models.BooleanField(default=False)
@@ -101,6 +105,10 @@ class ArtigoWiki(models.Model):
     def incrementar_visualizacao(self):
         self.visualizacoes += 1
         self.save(update_fields=['visualizacoes'])
+
+    @property
+    def pdf_nome(self):
+        return os.path.basename(self.pdf.name) if self.pdf else ''
 
 
 class BlocoCodigoWiki(models.Model):

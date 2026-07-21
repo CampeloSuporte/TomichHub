@@ -320,6 +320,21 @@
         }
         .wiki-search-input:focus { border-color: #3fb950; }
         .wiki-search-input::placeholder { color: rgba(88,166,255,.18); }
+        .wiki-search-filters { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+        .wiki-filter-select {
+            flex: 1; min-width: 0; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+            color: #c9d1d9; padding: 6px 8px; border-radius: 3px; font-family: 'Inter',sans-serif;
+            font-size: 11px; outline: none; transition: border-color 0.2s; cursor: pointer;
+            -webkit-appearance: none; appearance: none;
+        }
+        .wiki-filter-select:focus { border-color: #58a6ff; }
+        .wiki-filter-select option { background: #161b22; color: #e6edf3; }
+        .wiki-filter-clear {
+            flex-shrink: 0; background: transparent; border: 1px solid rgba(255,68,68,.3); color: #ff6b6b;
+            width: 24px; height: 24px; border-radius: 3px; cursor: pointer; font-size: 11px;
+            display: flex; align-items: center; justify-content: center; transition: .15s;
+        }
+        .wiki-filter-clear:hover { background: rgba(255,68,68,.1); border-color: #ff4444; }
         .wiki-sidebar-results { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #30363d transparent; -webkit-overflow-scrolling: touch; }
         .wiki-sidebar-results::-webkit-scrollbar { width: 4px; }
         .wiki-sidebar-results::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
@@ -347,6 +362,34 @@
         .wiki-artigo-meta span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #7d8590; }
         .badge-cat { background: rgba(88,166,255,0.12); color: #58a6ff; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
         .badge-fab { background: rgba(63,185,80,0.12); color: #3fb950; padding: 2px 8px; border-radius: 2px; font-size: 10px; }
+
+        /* ── PDF inline (com zoom) ── */
+        .wiki-pdf-block { border-bottom: 1px solid rgba(255,255,255,.06); background: #0d1117; }
+        .wiki-pdf-toolbar {
+            display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+            background: rgba(255,68,85,.06); border-bottom: 1px solid rgba(255,68,85,.18);
+        }
+        .wiki-pdf-icon { font-size: 12px; flex-shrink: 0; }
+        .wiki-pdf-nome {
+            flex: 1; min-width: 0; color: #ff8a94; font-size: 11px; font-weight: 600;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .wiki-pdf-zoom { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+        .wiki-pdf-zoom-label { font-size: 10px; color: #7d8590; width: 34px; text-align: center; flex-shrink: 0; }
+        .wiki-pdf-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,.1); color: #7d8590;
+            width: 22px; height: 22px; border-radius: 3px; cursor: pointer; font-size: 12px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            transition: .15s; text-decoration: none; line-height: 1;
+        }
+        .wiki-pdf-btn:hover { border-color: #ff4444; color: #ff4444; }
+        .wiki-pdf-open { margin-left: 4px; }
+        .wiki-pdf-iframe {
+            display: block; width: 100%; height: 50vh; min-height: 320px;
+            border: none; background: #fff;
+        }
+        .wiki-sidebar.maximizado .wiki-pdf-iframe { height: 72vh; }
+
         .wiki-artigo-conteudo { padding: 16px; }
         .wiki-artigo-conteudo h2, .wiki-artigo-conteudo h3, .wiki-artigo-conteudo h4 {
             display: flex; align-items: stretch; margin: 20px 0 12px 0;
@@ -930,7 +973,22 @@
         <div class="wiki-sidebar-search">
             <input type="text" id="wikiSearchInput" class="wiki-search-input"
                 placeholder="Buscar artigos..."
-                oninput="debounceWikiBusca(this.value)">
+                oninput="debounceWikiBusca()">
+            <div class="wiki-search-filters">
+                <select id="wikiFiltroCategoria" class="wiki-filter-select" onchange="debounceWikiBusca()">
+                    <option value="">Categoria: todas</option>
+                    {% for cat in wiki_categorias %}
+                    <option value="{{ cat.id }}">{{ cat.nome }}</option>
+                    {% endfor %}
+                </select>
+                <select id="wikiFiltroFabricante" class="wiki-filter-select" onchange="debounceWikiBusca()">
+                    <option value="">Fabricante: todos</option>
+                    {% for fab_code, fab_nome in wiki_fabricantes %}
+                    <option value="{{ fab_code }}">{{ fab_nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="wiki-filter-clear" id="wikiFiltroClear" onclick="wikiLimparFiltros()" title="Limpar filtros" style="display:none;">✕</button>
+            </div>
         </div>
         <div class="wiki-sidebar-results" id="wikiResults">
             <div class="wiki-loading">Aguardando busca...</div>
@@ -1068,22 +1126,40 @@
         const sb = document.getElementById('wikiSidebar');
         if (sb.classList.toggle('aberto')) {
             document.getElementById('wikiSearchInput').focus();
-            buscarWikiArtigos('');
+            buscarWikiArtigos();
         }
     }
 
-    function debounceWikiBusca(q) {
+    function debounceWikiBusca() {
         clearTimeout(wikiDebounceTimer);
-        wikiDebounceTimer = setTimeout(() => buscarWikiArtigos(q), 300);
+        wikiDebounceTimer = setTimeout(() => buscarWikiArtigos(), 300);
     }
 
-    function buscarWikiArtigos(q) {
+    function buscarWikiArtigos() {
+        const q          = document.getElementById('wikiSearchInput').value;
+        const categoria  = document.getElementById('wikiFiltroCategoria').value;
+        const fabricante = document.getElementById('wikiFiltroFabricante').value;
+        const clearBtn   = document.getElementById('wikiFiltroClear');
+        clearBtn.style.display = (categoria || fabricante) ? 'flex' : 'none';
+
         const c = document.getElementById('wikiResults');
         c.innerHTML = '<div class="wiki-loading">Buscando...</div>';
-        fetch('/wiki/api/buscar/?q=' + encodeURIComponent(q))
+
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        if (categoria) params.set('categoria', categoria);
+        if (fabricante) params.set('fabricante', fabricante);
+
+        fetch('/wiki/api/buscar/?' + params.toString())
             .then(r => r.json())
             .then(d => { wikiUltimosResultados = d.artigos || []; renderizarResultadosWiki(wikiUltimosResultados); })
             .catch(() => { c.innerHTML = '<div class="wiki-error">Erro ao carregar artigos</div>'; });
+    }
+
+    function wikiLimparFiltros() {
+        document.getElementById('wikiFiltroCategoria').value = '';
+        document.getElementById('wikiFiltroFabricante').value = '';
+        buscarWikiArtigos();
     }
 
     function renderizarResultadosWiki(artigos) {
@@ -1095,7 +1171,7 @@
                     <span class="wiki-result-categoria">${esc(a.categoria)}</span>
                     ${a.favorito ? '<span class="wiki-favorito">★</span>' : ''}
                 </div>
-                <div class="wiki-result-titulo">${esc(a.titulo)}</div>
+                <div class="wiki-result-titulo">${esc(a.titulo)}${a.pdf ? ' <span title="Possui PDF">📄</span>' : ''}</div>
                 <div class="wiki-result-descricao">${esc(a.descricao || '')}</div>
                 <div class="wiki-result-footer"><span class="wiki-fabricante">${esc(a.fabricante)}</span></div>
             </div>`).join('');
@@ -1264,6 +1340,7 @@
                     ${tagsHtml}
                     <div style="color:rgba(88,166,255,.18);font-size:10px;margin-top:8px;">🕐 ${esc(artigo.data_atualizacao)}</div>
                 </div>
+                ${artigo.pdf_url ? renderWikiPdfBlock(artigo.pdf_url, artigo.pdf_nome) : ''}
                 <div class="wiki-artigo-conteudo">${bodyHtml}</div>
                 ${blocosHtml}
             </div>`;
@@ -1272,8 +1349,44 @@
             if (ed) { ed.value = codigo; autoResizeEditor(ed); }
             renderVariaveisPainel(parseInt(idx));
         });
+        if (artigo.pdf_url) { wikiPdfUrl = artigo.pdf_url; wikiPdfZoom = 100; }
         c.scrollTop = 0;
     }
+
+    // ============================================================
+    // PDF INLINE (visualizador com zoom dentro do painel)
+    // ============================================================
+    let wikiPdfUrl = '';
+    let wikiPdfZoom = 100;
+
+    function renderWikiPdfBlock(url, nome) {
+        return `
+            <div class="wiki-pdf-block">
+                <div class="wiki-pdf-toolbar">
+                    <span class="wiki-pdf-icon">📄</span>
+                    <span class="wiki-pdf-nome" title="${esc(nome || '')}">${esc(nome || 'documento.pdf')}</span>
+                    <div class="wiki-pdf-zoom">
+                        <button class="wiki-pdf-btn" onclick="wikiPdfZoomOut()" title="Diminuir zoom">−</button>
+                        <span class="wiki-pdf-zoom-label" id="wikiPdfZoomLabel">100%</span>
+                        <button class="wiki-pdf-btn" onclick="wikiPdfZoomIn()" title="Aumentar zoom">+</button>
+                        <button class="wiki-pdf-btn" onclick="wikiPdfZoomReset()" title="Redefinir zoom">⟲</button>
+                    </div>
+                    <a class="wiki-pdf-btn wiki-pdf-open" href="${esc(url)}" target="_blank" title="Abrir em nova aba">↗</a>
+                </div>
+                <iframe id="wikiPdfFrame" class="wiki-pdf-iframe" src="${esc(url)}#zoom=100"></iframe>
+            </div>`;
+    }
+
+    function wikiPdfApplyZoom() {
+        const frame = document.getElementById('wikiPdfFrame');
+        const label = document.getElementById('wikiPdfZoomLabel');
+        if (!frame || !wikiPdfUrl) return;
+        frame.src = wikiPdfUrl + '#zoom=' + wikiPdfZoom;
+        if (label) label.textContent = wikiPdfZoom + '%';
+    }
+    function wikiPdfZoomIn()    { wikiPdfZoom = Math.min(400, wikiPdfZoom + 25); wikiPdfApplyZoom(); }
+    function wikiPdfZoomOut()   { wikiPdfZoom = Math.max(50, wikiPdfZoom - 25); wikiPdfApplyZoom(); }
+    function wikiPdfZoomReset() { wikiPdfZoom = 100; wikiPdfApplyZoom(); }
 
     function toolbarBtns(idx) {
         return `

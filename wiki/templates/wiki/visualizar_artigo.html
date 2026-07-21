@@ -23,33 +23,33 @@
                 <!-- Metadados -->
                 <div class="artigo-meta mb-4">
                     <div class="d-flex flex-wrap gap-3 mb-3">
-                        <span class="badge badge-lg" style="background: rgba(0, 217, 255, 0.2); color: var(--accent-cyan);">
-                            <i class="fas fa-folder me-1"></i> {{ artigo.categoria.nome }}
-                        </span>
-                        <span class="badge badge-lg" style="background: rgba(0, 255, 136, 0.2); color: var(--primary-green);">
+                        <a href="{% url 'wiki:categoria' artigo.categoria.slug %}" class="badge badge-lg" style="background: rgba(88, 166, 255, 0.15); color: var(--cyan); text-decoration: none;">
+                            <i class="fas {{ artigo.categoria.icone }} me-1"></i> {{ artigo.categoria.nome }}
+                        </a>
+                        <a href="{% url 'wiki:fabricante' artigo.fabricante %}" class="badge badge-lg" style="background: rgba(63, 185, 80, 0.15); color: var(--green); text-decoration: none;">
                             <i class="fas fa-microchip me-1"></i> {{ artigo.get_fabricante_display }}
-                        </span>
+                        </a>
                         {% if artigo.modelo_especifico %}
-                        <span class="badge badge-lg" style="background: rgba(255, 255, 255, 0.1); color: #fff;">
+                        <span class="badge badge-lg" style="background: rgba(125, 133, 144, 0.15); color: var(--text-light);">
                             <i class="fas fa-server me-1"></i> {{ artigo.modelo_especifico }}
                         </span>
                         {% endif %}
                         {% if artigo.favorito %}
-                        <span class="badge badge-lg" style="background: rgba(255, 215, 0, 0.2); color: #ffd700;">
+                        <span class="badge badge-lg" style="background: rgba(210, 153, 34, 0.15); color: var(--yellow);">
                             <i class="fas fa-star me-1"></i> Favorito
                         </span>
                         {% endif %}
                     </div>
-                    
+
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         {% for tag in artigo.tags.all %}
-                        <a href="{% url 'wiki:tag' tag.slug %}" class="badge" style="background: rgba(255, 255, 255, 0.05); color: #aaa; text-decoration: none;">
+                        <a href="{% url 'wiki:tag' tag.slug %}" class="badge" style="background: rgba(125, 133, 144, 0.12); color: var(--text-muted); text-decoration: none;">
                             <i class="fas fa-tag me-1"></i>{{ tag.nome }}
                         </a>
                         {% endfor %}
                     </div>
 
-                    <div class="text-muted" style="font-size: 12px;">
+                    <div style="font-size: 12px; color: var(--text-muted);">
                         <i class="fas fa-user me-1"></i> Criado por {{ artigo.criado_por.get_full_name|default:artigo.criado_por.username }}
                         &nbsp;|&nbsp;
                         <i class="fas fa-clock me-1"></i> {{ artigo.data_atualizacao|date:"d/m/Y H:i" }}
@@ -59,6 +59,20 @@
                 </div>
 
                 <hr>
+
+                <!-- PDF Anexo -->
+                {% if artigo.pdf %}
+                <div class="pdf-viewer-wrap mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong style="color:var(--text-light);"><i class="fas fa-file-pdf me-1" style="color:var(--red);"></i> {{ artigo.pdf_nome }}</strong>
+                        <a href="{{ artigo.pdf.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-external-link-alt me-1"></i> Abrir em nova aba
+                        </a>
+                    </div>
+                    <iframe src="{{ artigo.pdf.url }}" class="pdf-viewer-frame"></iframe>
+                </div>
+                <hr>
+                {% endif %}
 
                 <!-- Conteúdo Principal -->
                 <div class="artigo-conteudo">
@@ -103,17 +117,29 @@
     line-height: 1.8;
 }
 
+.pdf-viewer-frame {
+    width: 100%;
+    height: 80vh;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+}
+
+@media (max-width: 700px) {
+    .pdf-viewer-frame { height: 60vh; }
+}
+
 .artigo-conteudo h1,
 .artigo-conteudo h2,
 .artigo-conteudo h3 {
-    color: var(--primary-green);
+    color: var(--green);
     margin-top: 30px;
     margin-bottom: 15px;
 }
 
 .artigo-conteudo h1 {
     font-size: 2rem;
-    border-bottom: 2px solid var(--primary-green);
+    border-bottom: 2px solid var(--green);
     padding-bottom: 10px;
 }
 
@@ -130,8 +156,8 @@
 }
 
 .artigo-conteudo code {
-    background: rgba(0, 255, 136, 0.1);
-    color: var(--primary-green);
+    background: rgba(63, 185, 80, 0.12);
+    color: var(--green);
     padding: 2px 6px;
     border-radius: 3px;
     font-family: 'Courier New', monospace;
@@ -139,18 +165,18 @@
 }
 
 .artigo-conteudo pre {
-    background: #0d0d0d;
-    border: 1px solid #222;
-    border-left: 3px solid var(--primary-green);
+    background: var(--dark-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
     padding: 15px;
-    border-radius: 4px;
+    border-radius: 6px;
     overflow-x: auto;
     margin: 20px 0;
 }
 
 .artigo-conteudo pre code {
     background: transparent;
-    color: #fff;
+    color: var(--text-light);
     padding: 0;
 }
 
@@ -172,54 +198,54 @@
 
 .artigo-conteudo table th,
 .artigo-conteudo table td {
-    border: 1px solid #333;
+    border: 1px solid var(--border);
     padding: 10px;
 }
 
 .artigo-conteudo table th {
-    background: rgba(0, 255, 136, 0.1);
-    color: var(--primary-green);
+    background: rgba(63, 185, 80, 0.1);
+    color: var(--green);
 }
 
 .bloco-codigo-card {
-    background: #0d0d0d;
-    border: 1px solid #222;
-    border-radius: 4px;
+    background: var(--dark-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
     overflow: hidden;
 }
 
 .bloco-codigo-header {
-    background: #111;
+    background: var(--card-bg);
     padding: 12px 15px;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .bloco-codigo-header strong {
-    color: var(--accent-cyan);
+    color: var(--cyan);
     font-size: 14px;
 }
 
 .bloco-codigo-descricao {
     padding: 12px 15px;
-    color: #aaa;
+    color: var(--text-muted);
     font-size: 13px;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border);
 }
 
 .bloco-codigo-pre {
     margin: 0;
     padding: 15px;
-    background: #0a0a0a;
+    background: var(--dark-bg);
 }
 
 .bloco-codigo-pre code {
     font-family: 'Courier New', monospace;
     font-size: 13px;
     line-height: 1.6;
-    color: #fff;
+    color: var(--text-light);
 }
 </style>
 
