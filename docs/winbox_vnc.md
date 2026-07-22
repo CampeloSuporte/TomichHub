@@ -15,7 +15,7 @@ Browser (noVNC)
     ↕ WebSocket (/ws/vnc/<id>/?mode=winbox&w=W&h=H)
 Django Channels Consumer (VncConsumer)
     ↕ TCP socket (127.0.0.1:PORT)
-x11vnc  →  Xvfb (display :N, WxHx16)
+x11vnc  →  Xvfb (display :N, WxHx24, resolução física via devicePixelRatio)
               ↑
            Openbox (maximiza janelas)
               ↑
@@ -54,16 +54,20 @@ x11vnc  →  Xvfb (display :N, WxHx16)
 
 ## Parâmetros de Resolução
 
-O browser envia `?w=` e `?h=` para o WebSocket com as dimensões do viewport:
+O browser envia `?w=` e `?h=` para o WebSocket com as dimensões do viewport, **já multiplicadas
+pelo `devicePixelRatio`** (desde 22/07/2026 — ver seção de qualidade de imagem abaixo):
 
 ```javascript
 // winbox.html
-const _initW = parseInt(_up.get('w')) || document.documentElement.clientWidth;
-const _initH = parseInt(_up.get('h')) || document.documentElement.clientHeight;
+const _dpr = Math.min(window.devicePixelRatio || 1, 2);
+const _initW = parseInt(_up.get('w')) || Math.round(document.documentElement.clientWidth * _dpr);
+const _initH = parseInt(_up.get('h')) || Math.round(document.documentElement.clientHeight * _dpr);
 const wsUrl = `.../ws/vnc/${acessoId}/?mode=winbox&w=${_initW}&h=${_initH}`;
 ```
 
-O consumer usa esses valores para criar o Xvfb na resolução exata do painel do usuário.
+O consumer usa esses valores para criar o Xvfb na resolução física do painel do usuário (não
+apenas na resolução CSS). Isso vale tanto para `mode=winbox` quanto para `mode=browser` (WebFig) —
+`BrowserVNCManager` também aceita `width=`/`height=` no construtor (antes era fixo em 1366×768).
 
 ---
 
@@ -72,8 +76,8 @@ O consumer usa esses valores para criar o Xvfb na resolução exata do painel do
 ```javascript
 rfb.scaleViewport  = true;   // escala client-side
 rfb.resizeSession  = false;  // NÃO pede resize ao servidor (evita desmaximizar WinBox)
-rfb.qualityLevel   = 6;
-rfb.compressionLevel = 2;
+rfb.qualityLevel   = 8;      // JPEG quase sem perda (subiu de 6 → 8 em 22/07/2026)
+rfb.compressionLevel = 4;    // subiu de 2 → 4 para compensar o ganho de qualidade
 ```
 
 **Importante:** `resizeSession` deve ficar `false`. Se `true`, o noVNC envia `SetDesktopSize` ao x11vnc após conectar, o que pode desmaximizar o WinBox.
@@ -187,6 +191,28 @@ apresenta o defeito. **Não tem relação com CPU/gravação** (hipótese antiga
 
 ---
 
+### Imagem borrada / texto sem nitidez em telas HiDPI — Corrigido em 22/07/2026
+
+**Causa:** O Xvfb era criado com a resolução em **pixels CSS** do viewport
+(`document.documentElement.clientWidth/clientHeight`), ignorando o `devicePixelRatio` do
+navegador. Em qualquer tela HiDPI (Retina, Windows com escala >100%), isso gerava um framebuffer
+com metade (ou um terço) da resolução física real, e o noVNC esticava esse conteúdo via CSS
+(`scaleViewport`) para preencher a tela — resultado: texto e ícones borrados, como assistir vídeo
+480p em tela 4K.
+
+**Solução:** `winbox.html` agora multiplica a largura/altura do viewport pelo `devicePixelRatio`
+antes de enviar `w`/`h` ao WebSocket (cap em 2x para não estourar CPU/gravação em telas 3x). O
+Xvfb passa a renderizar em resolução física, e o `scaleViewport` reduz de volta ao tamanho CSS —
+efeito equivalente a supersampling, deixando o conteúdo nítido mesmo sem o WinBox ser DPI-aware.
+Junto disso, `qualityLevel` subiu de `6` para `8` (ver seção "Configuração noVNC" acima) para
+reduzir o artefato de compressão JPEG no texto.
+
+**Efeito colateral aceito:** em telas 2x, o Xvfb/WinBox/ffmpeg passam a operar em ~4x mais pixels
+(2x largura × 2x altura). A gravação de auditoria já roda com `nice -n 15 ionice -c 3` (ver seção
+de Gravação de Tela), o que absorve esse custo extra sem competir com o Wine/WinBox pela CPU.
+
+---
+
 ## Modos Suportados
 
 | Modo | URL | Descrição |
@@ -202,7 +228,7 @@ apresenta o defeito. **Não tem relação com CPU/gravação** (hipótese antiga
 # Como www-data (igual ao daphne)
 sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin bash -c '
   DISPLAY=:199
-  Xvfb :199 -screen 0 1366x768x16 -nolisten tcp &
+  Xvfb :199 -screen 0 1366x768x24 -nolisten tcp &
   sleep 0.5
   DISPLAY=:199 openbox --config-file /opt/crm/clientes/openbox_rc.xml &
   sleep 0.5
@@ -217,5 +243,5 @@ sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/s
 
 ---
 
-**Última atualização:** 20/07/2026  
+**Última atualização:** 22/07/2026  
 **Autor:** CampeloSuporte

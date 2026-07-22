@@ -1,6 +1,7 @@
 import os
 import time
 import socket
+import shutil
 import logging
 import subprocess
 import threading
@@ -39,6 +40,30 @@ class WinboxVNCManager:
         self._stop_lock = threading.Lock()
         self._stopped = False
 
+    @staticmethod
+    def _wait_for_socket(path, timeout=3.0, interval=0.02):
+        """Poll até o socket X11 existir, em vez de um sleep fixo — Xvfb
+        normalmente sobe em poucas dezenas de ms, então isso troca ~500ms
+        de espera cega por ~20-50ms reais na maioria das sessões."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if os.path.exists(path):
+                return True
+            time.sleep(interval)
+        return False
+
+    @staticmethod
+    def _wait_for_port(port, timeout=3.0, interval=0.02):
+        """Poll até a porta VNC aceitar conexão, em vez de sleep fixo."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                with socket.create_connection(('127.0.0.1', port), timeout=0.2):
+                    return True
+            except OSError:
+                time.sleep(interval)
+        return False
+
     def start(self):
         """Inicia os processos e retorna a porta VNC local."""
         self.display_num = self._find_free_display()
@@ -58,8 +83,11 @@ class WinboxVNCManager:
         except FileNotFoundError:
             raise Exception("Xvfb não está instalado no servidor. Execute: apt-get install xvfb")
             
-        time.sleep(0.5) # Aguardar Xvfb subir
-        
+        # Espera ativa em vez de sleep(0.5) fixo: assim que o socket X11
+        # aparece a gente já segue, sem esperar o resto do meio segundo à toa.
+        if not self._wait_for_socket(f"/tmp/.X11-unix/X{self.display_num}"):
+            logger.warning(f"⏱️ Xvfb :{self.display_num} não respondeu a tempo, seguindo mesmo assim")
+
         # 2. Start Openbox (gerenciador de janelas)
         env = os.environ.copy()
         env["DISPLAY"] = f":{self.display_num}"
@@ -94,7 +122,10 @@ class WinboxVNCManager:
             self.stop()
             raise Exception("x11vnc não está instalado no servidor. Execute: apt-get install x11vnc")
             
-        time.sleep(0.5) # Aguardar VNC subir
+        # Idem: espera ativa até a porta do x11vnc aceitar conexão em vez de
+        # sleep(0.5) cego — some com esse atraso na maioria das sessões.
+        if not self._wait_for_port(self.vnc_port):
+            logger.warning(f"⏱️ x11vnc na porta {self.vnc_port} não respondeu a tempo, seguindo mesmo assim")
 
         # 4. Start WinBox
         target = f"{self.host}:{self.port}"
@@ -126,17 +157,35 @@ class WinboxVNCManager:
             env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
 
-        # 6. Start ffmpeg (gravação de tela para auditoria) — só depois do
-        # WinBox subir, pra não disputar CPU com o Wine/GDI durante o
-        # carregamento inicial da UI (o ícone com fundo preto era causado pelo
-        # depth 16bpp do Xvfb, não pela gravação — ver comentário no Xvfb acima).
-        # Falha aqui não derruba a sessão, só desliga a gravação com aviso.
-        # nice/ionice em prioridade baixa: o ffmpeg roda a sessão inteira (não só
-        # no início), e x11grab faz XGetImage contra o mesmo Xvfb que o Wine usa
-        # pra desenhar — sem ceder CPU/IO, a gravação compete com o GDI/Wine
-        # durante toda a interação, deixando a tela mais lenta pra mexer.
+        # 6. Start ffmpeg (gravação de tela para auditoria) — disparado numa
+        # thread à parte pra não segurar o retorno de start() (e, com isso,
+        # a conexão do cliente ao VNC) atrás do delay de 1.5s que dá tempo
+        # do WinBox terminar de desenhar a UI antes de começar a capturar
+        # (o ícone com fundo preto era causado pelo depth 16bpp do Xvfb, não
+        # pela gravação — ver comentário no Xvfb acima). `self.recording` é
+        # decidido de forma síncrona aqui (só checando se o binário existe),
+        # pra o chamador já saber na hora se a auditoria vai ter vídeo.
         if self.record_path:
-            time.sleep(1.5)  # dá tempo do WinBox terminar de desenhar a UI
+            if shutil.which("ffmpeg"):
+                self.recording = True
+                threading.Thread(target=self._start_recording, args=(env,), daemon=True).start()
+            else:
+                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
+
+        return self.vnc_port
+
+    def _start_recording(self, env):
+        """Roda em thread separada: espera a UI do WinBox assentar e só
+        então sobe o ffmpeg, sem bloquear a conexão do cliente ao VNC."""
+        time.sleep(1.5)  # dá tempo do WinBox terminar de desenhar a UI
+        with self._stop_lock:
+            if self._stopped:
+                return
+            # nice/ionice em prioridade baixa: o ffmpeg roda a sessão inteira
+            # (não só no início), e x11grab faz XGetImage contra o mesmo Xvfb
+            # que o Wine usa pra desenhar — sem ceder CPU/IO, a gravação
+            # compete com o GDI/Wine durante toda a interação, deixando a
+            # tela mais lenta pra mexer.
             ffmpeg_cmd = [
                 "nice", "-n", "15", "ionice", "-c", "3",
                 "ffmpeg", "-y", "-loglevel", "error",
@@ -148,11 +197,8 @@ class WinboxVNCManager:
             try:
                 p_ffmpeg = subprocess.Popen(ffmpeg_cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 self.processes.append(p_ffmpeg)
-                self.recording = True
             except FileNotFoundError:
-                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
-
-        return self.vnc_port
+                logger.warning("ffmpeg sumiu entre a checagem e o start — gravação desabilitada para esta sessão.")
 
     def stop(self):
         """Mata todos os processos iniciados por esta sessão.

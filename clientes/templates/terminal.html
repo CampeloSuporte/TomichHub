@@ -1587,8 +1587,6 @@
         const tab = document.getElementById(`tab-${id}`);
         if (tab) { const d = tab.querySelector('.terminal-tab-status'); if (d) d.classList.remove('connected'); }
         tObj.terminal.clear();
-        tObj.terminal.writeln('\x1b[36m▶ CONEXA Terminal SSH\x1b[0m');
-        tObj.terminal.writeln('\x1b[33m▶ Reconectando a ' + tObj.acesso.host + ':' + tObj.acesso.porta + '...\x1b[0m\n');
         setTimeout(() => terminalManager.conectarWebSocket(id), 500);
     }
 
@@ -1742,9 +1740,6 @@
                 this.criarAba(terminalId, acessoData);
                 this.ativarTerminal(terminalId);
 
-                terminal.writeln('\x1b[36m▶ CONEXA Terminal SSH\x1b[0m');
-                terminal.writeln('\x1b[36m▶ Conectando a ' + acessoData.host + ':' + acessoData.porta + '...\x1b[0m\n');
-
                 terminal.onData(input => {
                     if (tObj.socket && tObj.socket.readyState === WebSocket.OPEN) {
                         // Envia bytes puros — sem serialização JSON por tecla
@@ -1801,6 +1796,10 @@
             const iframe = document.createElement('iframe');
             // src set after panel is visible -- see below
             iframe.style.cssText = 'width:100%;height:100%;border:none;flex:1;';
+            // Sem isso o Permissions Policy do Chrome bloqueia navigator.clipboard
+            // dentro do iframe por padrao (mesmo sendo mesma origem), e o Ctrl+V/
+            // copiar-colar do WinBox web fica sempre negado silenciosamente.
+            iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
             pane.appendChild(iframe);
 
             const content = document.getElementById('terminalContent');
@@ -1851,7 +1850,6 @@
                 tObj.socket = new WebSocket(wsUrl);
                 tObj.socket.binaryType = 'arraybuffer';
                 tObj.socket.onopen = () => {
-                    tObj.terminal.writeln('\x1b[32m▶ WebSocket conectado\x1b[0m\n');
                     tObj.wsRetries = 0;
                     // Ajusta o xterm.js ao tamanho real do painel ANTES de conectar,
                     // para que o PTY do host já nasça com cols/rows corretos.
@@ -1873,7 +1871,6 @@
                         tObj.connected = true;
                         const tab = document.getElementById(`tab-${terminalId}`);
                         if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
-                        tObj.terminal.writeln('\x1b[32m✓ ' + data.message + '\x1b[0m\n');
                         // Re-sincroniza o tamanho do PTY agora que o shell do host já existe
                         // (o fit no onopen pode ter rodado antes do painel ter layout final).
                         try { tObj.fitAddon.fit(); } catch(e) {}

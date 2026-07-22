@@ -151,6 +151,21 @@ resolve o `Location` (relativo ou absoluto) contra a URL real requisitada e semp
 absoluto normalizado, cobrindo também casos mais complexos (`../pagina.html`) que a concatenação
 manual não tratava.
 
+### Correções — 22/07/2026 (qualidade de imagem do WinBox/WebFig Web)
+
+Detalhe completo em [winbox_vnc.md](winbox_vnc.md#imagem-borrada--texto-sem-nitidez-em-telas-hidpi--corrigido-em-22072026).
+Resumo do que muda na gravação de auditoria:
+
+1. **`BrowserVNCManager` (WebFig) ganhou `width=`/`height=` dinâmicos** — antes o Xvfb e o `ffmpeg`
+   do modo `browser` eram sempre fixos em `1366x768`, ignorando o tamanho real do painel do
+   cliente (o `WinboxVNCManager` já fazia isso). Agora ambos os managers recebem `vnc_w`/`vnc_h` do
+   consumer e a gravação sai na resolução real da sessão.
+2. **A resolução enviada por `winbox.html` passou a ser em pixels físicos** (`clientWidth *
+   devicePixelRatio`, cap em 2x), não mais pixels CSS — corrige a imagem borrada em telas HiDPI.
+   Efeito colateral na gravação: em telas 2x, o `.mp4` sai em ~4x mais pixels (2x largura × 2x
+   altura) que antes; o `nice -n 15 ionice -c 3` já existente absorve o custo extra sem competir
+   com o Wine/WinBox pela CPU.
+
 ---
 
 ## Autenticação Obrigatória no WebSocket

@@ -1,6 +1,7 @@
 import os
 import time
 import socket
+import shutil
 import logging
 import subprocess
 import threading
@@ -10,9 +11,14 @@ logger = logging.getLogger(__name__)
 class BrowserVNCManager:
     """Gerencia o ciclo de vida do Xvfb, Openbox, x11vnc e um Navegador para uma sessão via Web."""
     
-    def __init__(self, url, browser_path=None, record_path=None):
+    def __init__(self, url, browser_path=None, record_path=None, width=1366, height=768):
         self.url = url
         self.browser_path = browser_path or self._find_browser()
+
+        # mesmo tratamento do WinboxVNCManager: libx264/yuv420p exige dimensoes
+        # pares, e o ffmpeg falha silenciosamente (mp4 de 0 bytes) se nao forem.
+        self.width = max(800, int(width)) & ~1
+        self.height = max(600, int(height)) & ~1
 
         self.display_num = None
         self.vnc_port = None
@@ -21,6 +27,26 @@ class BrowserVNCManager:
         self.recording = False
         self._stop_lock = threading.Lock()
         self._stopped = False
+
+    @staticmethod
+    def _wait_for_socket(path, timeout=3.0, interval=0.02):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if os.path.exists(path):
+                return True
+            time.sleep(interval)
+        return False
+
+    @staticmethod
+    def _wait_for_port(port, timeout=3.0, interval=0.02):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                with socket.create_connection(('127.0.0.1', port), timeout=0.2):
+                    return True
+            except OSError:
+                time.sleep(interval)
+        return False
 
     def _find_browser(self):
         """Tenta encontrar um navegador instalado no sistema."""
@@ -56,18 +82,19 @@ class BrowserVNCManager:
         self.display_num = self._find_free_display()
         self.vnc_port = self._find_free_port()
         
-        logger.info(f"🚀 Iniciando Browser Web no Display :{self.display_num} / VNC Port {self.vnc_port} -> {self.url}")
-        
-        # 1. Start Xvfb
-        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", "1366x768x24", "-nolisten", "tcp"]
+        logger.info(f"🚀 Iniciando Browser Web no Display :{self.display_num} / VNC Port {self.vnc_port} / Resolução {self.width}x{self.height} -> {self.url}")
+
+        # 1. Start Xvfb com resolucao dinamica baseada no tamanho do painel do cliente
+        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", f"{self.width}x{self.height}x24", "-nolisten", "tcp"]
         try:
             p_xvfb = subprocess.Popen(xvfb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.processes.append(p_xvfb)
         except FileNotFoundError:
             raise Exception("Xvfb não está instalado no servidor.")
             
-        time.sleep(0.5)
-        
+        if not self._wait_for_socket(f"/tmp/.X11-unix/X{self.display_num}"):
+            logger.warning(f"⏱️ Xvfb :{self.display_num} não respondeu a tempo, seguindo mesmo assim")
+
         # 2. Start Openbox
         env = os.environ.copy()
         env["DISPLAY"] = f":{self.display_num}"
@@ -94,7 +121,8 @@ class BrowserVNCManager:
             self.stop()
             raise Exception("x11vnc não está instalado no servidor.")
             
-        time.sleep(0.5)
+        if not self._wait_for_port(self.vnc_port):
+            logger.warning(f"⏱️ x11vnc na porta {self.vnc_port} não respondeu a tempo, seguindo mesmo assim")
 
         # 4. Start Browser
         # Comandos específicos para Chromium/Chrome para facilitar o uso em VNC
@@ -133,15 +161,27 @@ class BrowserVNCManager:
             self.stop()
             raise Exception(f"Navegador não encontrado em {self.browser_path}")
 
-        # 5. Start ffmpeg (gravação de tela para auditoria) — só depois do
-        # navegador subir, pra não disputar CPU durante o carregamento
-        # inicial da página. Falha aqui não derruba a sessão, só desliga a
-        # gravação com aviso.
+        # 5. Start ffmpeg (gravação de tela para auditoria) — disparado numa
+        # thread à parte pra não segurar o retorno de start() (e a conexão
+        # do cliente ao VNC) atrás do delay que dá tempo da página assentar
+        # antes de começar a capturar.
         if self.record_path:
-            time.sleep(1.5)
+            if shutil.which("ffmpeg"):
+                self.recording = True
+                threading.Thread(target=self._start_recording, args=(env,), daemon=True).start()
+            else:
+                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
+
+        return self.vnc_port
+
+    def _start_recording(self, env):
+        time.sleep(1.5)  # dá tempo do navegador terminar de carregar a página
+        with self._stop_lock:
+            if self._stopped:
+                return
             ffmpeg_cmd = [
                 "ffmpeg", "-y", "-loglevel", "error",
-                "-f", "x11grab", "-video_size", "1366x768",
+                "-f", "x11grab", "-video_size", f"{self.width}x{self.height}",
                 "-framerate", "8", "-i", f":{self.display_num}",
                 "-vcodec", "libx264", "-preset", "ultrafast", "-crf", "28",
                 "-pix_fmt", "yuv420p", self.record_path,
@@ -149,11 +189,8 @@ class BrowserVNCManager:
             try:
                 p_ffmpeg = subprocess.Popen(ffmpeg_cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 self.processes.append(p_ffmpeg)
-                self.recording = True
             except FileNotFoundError:
-                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
-
-        return self.vnc_port
+                logger.warning("ffmpeg sumiu entre a checagem e o start — gravação desabilitada para esta sessão.")
 
     def stop(self):
         """Mata todos os processos. Idempotente/thread-safe — ver comentário

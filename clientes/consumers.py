@@ -1121,7 +1121,15 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 f"-o ServerAliveInterval=15 "
                 f"-o ServerAliveCountMax=3 "
                 f"-o LogLevel=ERROR "
-                f"-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+                # SEM "+": precisa vir na frente da lista, não só anexado no fim.
+                # ZTE tem timeout de KEX curto — group16-sha512 (default do
+                # OpenSSH atual) demora 2-5s no CPU embarcado e a conexão cai
+                # antes da auth (ver _ZTE_PREFERRED_KEX acima). Com "+" o
+                # group16 continua sendo tentado primeiro, e é exatamente
+                # isso que fazia esse path (proxy) travar em silêncio até o
+                # expect() estourar o timeout — mesmo bug já corrigido em
+                # _build_ssh_cmd para a conexão direta, mas nunca replicado aqui.
+                f"-o KexAlgorithms=diffie-hellman-group14-sha256,diffie-hellman-group14-sha1,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group1-sha1 "
                 f"-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
                 f"-o PubkeyAcceptedAlgorithms=+ssh-rsa "
                 f"-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "
@@ -1917,7 +1925,7 @@ class WinboxVNCConsumer(SSHConsumer):
                     self.send_json({'type': 'info', 'message': f'❌ Falha no teste de túnel: {str(e)}'})
                     self.send_json({'type': 'info', 'message': f'💡 Verifique se o IP {host} e a porta {porta} estão corretos e acessíveis pelo Proxy.'})
 
-                self.vnc_manager = BrowserVNCManager(url=url, record_path=record_path)
+                self.vnc_manager = BrowserVNCManager(url=url, record_path=record_path, width=vnc_w, height=vnc_h)
 
 
 
@@ -2258,7 +2266,9 @@ _SSH_FLAGS = (
     "-o ConnectTimeout=12 "
     "-o LogLevel=ERROR "
     "-o NumberOfPasswordPrompts=3 "
-    "-o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1 "
+    # SEM "+": precisa substituir a ordem padrão, não só anexar no fim (ver
+    # o mesmo ajuste em connect_ssh_parks_proxy / _ZTE_PREFERRED_KEX acima).
+    "-o KexAlgorithms=diffie-hellman-group14-sha256,diffie-hellman-group14-sha1,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group1-sha1 "
     "-o HostKeyAlgorithms=+ssh-rsa,ssh-dss "
     "-o PubkeyAcceptedAlgorithms=+ssh-rsa "
     "-o Ciphers=+aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc "

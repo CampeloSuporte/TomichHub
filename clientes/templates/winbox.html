@@ -64,15 +64,70 @@
         .splash-sub   { font-family: monospace; font-size: 11px; color: #555; }
 
         canvas { outline: none; display: block; }
+
+        /* Botao + painel de clipboard (copiar/colar entre o PC local e a sessao remota) */
+        #wb-clip-btn {
+            position: fixed;
+            bottom: 14px; right: 14px;
+            width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(10,10,10,0.82);
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 17px;
+            cursor: pointer;
+            z-index: 150;
+            user-select: none;
+            transition: background 0.15s, color 0.15s;
+        }
+        #wb-clip-btn:hover { background: rgba(30,30,30,0.9); color: #d29922; }
+        #wb-clip-btn.ativo { color: #d29922; border-color: #d29922; }
+
+        #wb-clip-panel {
+            position: fixed;
+            bottom: 60px; right: 14px;
+            width: 300px;
+            background: rgba(15,15,15,0.96);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 150;
+            display: none;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+        }
+        #wb-clip-panel.aberto { display: block; }
+        #wb-clip-panel .wb-clip-titulo {
+            font-size: 11px; color: #d29922; margin-bottom: 6px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #wb-clip-panel textarea {
+            width: 100%; height: 90px; resize: vertical;
+            background: #0a0a0a; color: #ddd;
+            border: 1px solid #333; border-radius: 4px;
+            font-family: inherit; font-size: 12px; padding: 6px;
+            outline: none;
+        }
+        #wb-clip-panel textarea:focus { border-color: #d29922; }
+        #wb-clip-panel .wb-clip-dica {
+            font-size: 10px; color: #666; margin-top: 6px; line-height: 1.4;
+        }
     </style>
     <script type="module">
         import RFB from '{% static "novnc/core/rfb.js" %}';
+        import KeyTable from '{% static "novnc/core/input/keysym.js" %}';
 
         const acessoId = "{{ acesso.id }}";
         const vncMode  = "{{ vnc_mode|default:'winbox' }}";
         const _up = new URLSearchParams(location.search);
-        const _initW = parseInt(_up.get('w')) || document.documentElement.clientWidth;
-        const _initH = parseInt(_up.get('h')) || document.documentElement.clientHeight;
+        // Xvfb é criado em pixels CSS, não físicos — em telas HiDPI (Retina, Windows
+        // com escala >100%) isso deixava o framebuffer com metade (ou 1/3) da resolução
+        // real e o noVNC esticava via CSS, borrando texto/ícones. Multiplicamos pelo
+        // devicePixelRatio (cap em 2x pra não estourar CPU/gravação em telas 3x) pra
+        // renderizar em resolução física e o scaleViewport reduzir de volta com nitidez.
+        const _dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const _initW = parseInt(_up.get('w')) || Math.round(document.documentElement.clientWidth * _dpr);
+        const _initH = parseInt(_up.get('h')) || Math.round(document.documentElement.clientHeight * _dpr);
         const _winboxVersion = _up.get('v') === '3' ? '3' : '4';
         let rfb;
 
@@ -97,8 +152,8 @@
             rfb.scaleViewport  = true;   // escala client-side
             rfb.resizeSession  = false;  // Xvfb ja criado com dimensoes corretas; resize dinamico desmaximiza o WinBox
             rfb.background     = '#000';
-            rfb.qualityLevel   = 6;      // qualidade/compressao equilibrada (0-9)
-            rfb.compressionLevel = 2;    // menor CPU no servidor (0-9)
+            rfb.qualityLevel   = 8;      // JPEG quase sem perda (0-9) — texto/icones nitidos
+            rfb.compressionLevel = 4;    // equilibrio CPU x banda com a qualidade maior acima
 
             rfb.addEventListener('connect', () => {
                 setStatus('status-connected', 'Conectado');
@@ -108,8 +163,8 @@
                 }, 2000);
                 // Envia tamanho real ao servidor VNC (com fallback se ainda 0)
                 function sendSize() {
-                    const w = document.documentElement.clientWidth;
-                    const h = document.documentElement.clientHeight;
+                    const w = Math.round(document.documentElement.clientWidth * _dpr);
+                    const h = Math.round(document.documentElement.clientHeight * _dpr);
                     if (w > 0 && h > 0) {
                         try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
                     }
@@ -119,6 +174,23 @@
                 setTimeout(sendSize, 300);
                 setTimeout(sendSize, 800);
                 setTimeout(sendSize, 1500);
+            });
+
+            // ── Clipboard local <-> sessao remota ──
+            // rfb.clipboardPasteFrom(texto) manda o texto pro "clipboard" X11
+            // dentro da sessao (via ClientCutText); o evento "clipboard" do RFB
+            // dispara quando algo e copiado LA DENTRO (ServerCutText do x11vnc).
+            // Continua precisando de um Ctrl+V manual dentro da janela remota —
+            // isso so garante que o texto certo esteja esperando la.
+            rfb.addEventListener('clipboard', (e) => {
+                const ta = document.getElementById('wb-clip-text');
+                ta.value = e.detail.text;
+                // Espelha no clipboard do SO tambem, quando o navegador permitir,
+                // pra colar direto fora do navegador sem precisar copiar do painel.
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(e.detail.text).catch(() => {});
+                }
+                abrirPainelClipboard();
             });
 
             rfb.addEventListener('disconnect', () => {
@@ -136,8 +208,8 @@
             window.addEventListener('resize', () => {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(() => {
-                    const w = document.documentElement.clientWidth;
-                    const h = document.documentElement.clientHeight;
+                    const w = Math.round(document.documentElement.clientWidth * _dpr);
+                    const h = Math.round(document.documentElement.clientHeight * _dpr);
                     if (rfb && w > 0 && h > 0) {
                         try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
                     }
@@ -145,7 +217,86 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', initVNC);
+        // ── Ctrl+V direto no canvas ──
+        // O canvas do noVNC so envia a TECLA pro host remoto — nao existe "clipboard
+        // do sistema" do lado de la. Sem isso, Ctrl+V so reproduzia o atalho dentro
+        // da sessao sem nenhum texto ter chegado no clipboard remoto antes.
+        //
+        // Interceptamos o keydown em fase de CAPTURA no document (antes do listener
+        // do proprio noVNC, que fica registrado no canvas) pra: 1) ler o clipboard
+        // do navegador, 2) mandar pro clipboard X11 remoto via clipboardPasteFrom
+        // (ClientCutText), e só ENTAO 3) sintetizar o Ctrl+V pro app remoto — nessa
+        // ordem, pela mesma conexao ordenada, o app remoto ja encontra o texto certo
+        // esperando quando processa o "colar". Se o navegador não expõe
+        // navigator.clipboard.readText() (ex: http sem TLS, ou o usuário negou a
+        // permissão), deixamos o evento seguir normal — o painel manual continua
+        // funcionando como alternativa.
+        document.addEventListener('keydown', (ev) => {
+            const isPaste = (ev.ctrlKey || ev.metaKey) && !ev.altKey &&
+                             (ev.code === 'KeyV' || ev.key === 'v' || ev.key === 'V');
+            if (!isPaste || !rfb) return;
+            // Dentro do proprio textarea do painel, deixa o paste nativo do navegador agir.
+            if (document.activeElement === document.getElementById('wb-clip-text')) return;
+            if (!navigator.clipboard || !navigator.clipboard.readText) return;
+
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            navigator.clipboard.readText().then(text => {
+                if (!rfb) return;
+                rfb.clipboardPasteFrom(text);
+                rfb.sendKey(KeyTable.XK_v, 'KeyV', true);
+                rfb.sendKey(KeyTable.XK_v, 'KeyV', false);
+                const ta = document.getElementById('wb-clip-text');
+                if (ta) ta.value = text;
+            }).catch(() => {
+                // Sem permissao de leitura do clipboard — usuario pode usar o painel manual.
+            });
+        }, true);
+
+        // ── Painel de clipboard ──
+        function abrirPainelClipboard() {
+            document.getElementById('wb-clip-panel').classList.add('aberto');
+            document.getElementById('wb-clip-btn').classList.add('ativo');
+        }
+        function fecharPainelClipboard() {
+            document.getElementById('wb-clip-panel').classList.remove('aberto');
+            document.getElementById('wb-clip-btn').classList.remove('ativo');
+        }
+        function toggleClipboard() {
+            const painel = document.getElementById('wb-clip-panel');
+            if (painel.classList.contains('aberto')) {
+                fecharPainelClipboard();
+            } else {
+                abrirPainelClipboard();
+                // Tenta pre-preencher com o clipboard do SO (navegador pode negar
+                // sem gesto do usuario; o clique no botao ja conta como gesto).
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(txt => {
+                        const ta = document.getElementById('wb-clip-text');
+                        if (txt) ta.value = txt;
+                        ta.focus(); ta.select();
+                    }).catch(() => document.getElementById('wb-clip-text').focus());
+                } else {
+                    document.getElementById('wb-clip-text').focus();
+                }
+            }
+        }
+        function enviarClipboardParaSessao() {
+            const texto = document.getElementById('wb-clip-text').value;
+            if (rfb) rfb.clipboardPasteFrom(texto);
+        }
+        window.toggleClipboard = toggleClipboard;
+        window.fecharPainelClipboard = fecharPainelClipboard;
+        window.enviarClipboardParaSessao = enviarClipboardParaSessao;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initVNC();
+            // Colar direto (Ctrl+V) manda o texto pro clipboard remoto sem precisar
+            // abrir o painel — so funciona quando o painel/textarea esta com foco
+            // (colar com o canvas focado ja e roteado como tecla pra sessao).
+            document.getElementById('wb-clip-text').addEventListener('input', enviarClipboardParaSessao);
+        });
     </script>
 </head>
 <body>
@@ -164,5 +315,16 @@
 
     <!-- Canvas noVNC - ocupa 100% da tela -->
     <div id="vnc-container"></div>
+
+    <!-- Clipboard: copiar/colar entre o PC local e a sessao remota -->
+    <div id="wb-clip-btn" onclick="toggleClipboard()" title="Área de transferência">📋</div>
+    <div id="wb-clip-panel">
+        <div class="wb-clip-titulo">
+            <span>ÁREA DE TRANSFERÊNCIA</span>
+            <span style="cursor:pointer;color:#666" onclick="fecharPainelClipboard()">✕</span>
+        </div>
+        <textarea id="wb-clip-text" placeholder="Cole aqui (Ctrl+V) para enviar à sessão remota, ou o texto copiado lá dentro aparece aqui..."></textarea>
+        <div class="wb-clip-dica">Cole aqui e depois Ctrl+V dentro da janela remota. O que for copiado lá dentro aparece aqui automaticamente.</div>
+    </div>
 </body>
 </html>
