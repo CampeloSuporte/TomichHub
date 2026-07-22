@@ -151,6 +151,16 @@ def _computar_pai_id(alvo_net, candidatos, excluir_id=None):
     return melhor_id
 
 
+def _rede_contida_em(rede_str, alvo_net):
+    """True se `rede_str` (CIDR de uma IPAMSubRede) está contida em `alvo_net`
+    (inclui o caso de ser igual a `alvo_net`)."""
+    try:
+        net = ipaddress.ip_network(rede_str, strict=False)
+    except ValueError:
+        return False
+    return net.version == alvo_net.version and net.subnet_of(alvo_net)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Log de auditoria — quem mudou o quê
 # ─────────────────────────────────────────────────────────────────────────────
@@ -645,7 +655,27 @@ def ipam_subredes_listar(request, cliente_id):
     filtro  = request.GET.get('prefixo_id')
     qs      = IPAMSubRede.objects.filter(cliente=c).select_related('prefixo', 'vlan')
     if filtro:
-        qs = qs.filter(prefixo_id=filtro)
+        # Filtra por CONTAINMENT real do CIDR, não pelo FK prefixo_id exato.
+        # A maioria das sub-redes do sistema nunca teve prefixo_id preenchido
+        # (import CSV não seta, análise de backup só vincula ao container /24
+        # mais específico) — filtrar só por FK igual escondia a imensa maioria
+        # das redes que visualmente pertencem à faixa selecionada.
+        pobj = IPAMPrefixo.objects.filter(id=filtro, cliente=c).first()
+        alvo_net = None
+        if pobj:
+            try:
+                alvo_net = ipaddress.ip_network(pobj.prefixo, strict=False)
+            except ValueError:
+                alvo_net = None
+        if alvo_net is not None:
+            # values_list em vez de qs.only(): só() nos mesmos campos do
+            # select_related já aplicado em `qs` acima quebra com FieldError
+            # ("cannot be both deferred and traversed using select_related").
+            candidatos = IPAMSubRede.objects.filter(cliente=c).values_list('id', 'rede')
+            ids = [cid for cid, rede in candidatos if _rede_contida_em(rede, alvo_net)]
+            qs = qs.filter(id__in=ids)
+        else:
+            qs = qs.filter(prefixo_id=filtro)
 
     data = []
     for s in qs:
