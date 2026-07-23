@@ -114,6 +114,60 @@
             {% endif %}
 
             <!-- Main Tabs -->
+            <style>
+                #mainTabs .modulo-tab-item {
+                    display: flex;
+                    align-items: center;
+                }
+                .modulo-toggle-switch {
+                    position: relative;
+                    display: inline-block;
+                    width: 26px;
+                    height: 14px;
+                    margin-left: 8px;
+                    flex-shrink: 0;
+                    cursor: pointer;
+                }
+                .modulo-toggle-switch input {
+                    position: absolute;
+                    opacity: 0;
+                    width: 0;
+                    height: 0;
+                }
+                .modulo-toggle-slider {
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(139, 148, 158, .2);
+                    border: 1px solid var(--border);
+                    border-radius: 20px;
+                    transition: background .15s ease, border-color .15s ease;
+                }
+                .modulo-toggle-slider::before {
+                    content: '';
+                    position: absolute;
+                    height: 8px;
+                    width: 8px;
+                    left: 2px;
+                    top: 2px;
+                    background: var(--text-muted);
+                    border-radius: 50%;
+                    transition: transform .15s ease, background .15s ease;
+                }
+                .modulo-toggle-input:checked + .modulo-toggle-slider {
+                    background: rgba(0, 255, 136, .15);
+                    border-color: var(--primary-green);
+                    box-shadow: 0 0 6px var(--glow-green);
+                }
+                .modulo-toggle-input:checked + .modulo-toggle-slider::before {
+                    transform: translateX(12px);
+                    background: var(--primary-green);
+                    box-shadow: 0 0 4px var(--primary-green);
+                }
+                .modulo-toggle-input:disabled + .modulo-toggle-slider {
+                    opacity: .5;
+                    cursor: wait;
+                }
+            </style>
             <ul class="nav nav-tabs mb-4" id="mainTabs">
                 {% if is_admin or modulos_habilitados.acessos %}
                 <li class="nav-item modulo-tab-item">
@@ -5658,8 +5712,10 @@ function getCsrfToken(){
         return window.MODULOS_BLOQUEADOS.indexOf(chave) !== -1;
     }
 
-    function toggleModuloCliente(btn) {
-        const modulo = btn.getAttribute('data-modulo');
+    function toggleModuloCliente(checkbox) {
+        const modulo = checkbox.getAttribute('data-modulo');
+        const estadoAnterior = !checkbox.checked;
+        checkbox.disabled = true;
         fetch(`/clientes/{{ cliente.id }}/modulos/toggle/`, {
             method: 'POST',
             headers: {
@@ -5670,24 +5726,25 @@ function getCsrfToken(){
         })
         .then(r => r.json())
         .then(data => {
-            if (!data.ok) { alert(data.erro || 'Erro ao atualizar módulo.'); return; }
-            btn.setAttribute('data-habilitado', data.habilitado ? 'true' : 'false');
-            const icone = btn.querySelector('i');
-            if (data.habilitado) {
-                icone.className = 'fas fa-toggle-on';
-                btn.style.borderColor = 'rgba(46,160,67,.5)';
-                btn.style.background = 'rgba(46,160,67,.15)';
-                btn.style.color = '#2ea043';
-                btn.title = 'Módulo contratado — clique para desabilitar para este cliente';
-            } else {
-                icone.className = 'fas fa-toggle-off';
-                btn.style.borderColor = 'rgba(110,118,129,.4)';
-                btn.style.background = 'rgba(110,118,129,.1)';
-                btn.style.color = '#6e7681';
-                btn.title = 'Módulo não contratado — clique para habilitar para este cliente';
+            checkbox.disabled = false;
+            if (!data.ok) {
+                checkbox.checked = estadoAnterior;
+                alert(data.erro || 'Erro ao atualizar módulo.');
+                return;
+            }
+            checkbox.checked = data.habilitado;
+            const label = checkbox.closest('.modulo-toggle-switch');
+            if (label) {
+                label.title = data.habilitado
+                    ? 'Módulo contratado — clique para desabilitar para este cliente'
+                    : 'Módulo não contratado — clique para habilitar para este cliente';
             }
         })
-        .catch(() => alert('Erro de conexão ao atualizar módulo.'));
+        .catch(() => {
+            checkbox.disabled = false;
+            checkbox.checked = estadoAnterior;
+            alert('Erro de conexão ao atualizar módulo.');
+        });
     }
 
     function trocarAba(event, nomeAba) {
