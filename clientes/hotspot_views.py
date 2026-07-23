@@ -1580,7 +1580,7 @@ body{{
 .login-header{{text-align:center;padding:34px 24px 6px}}
 .empresa-logo{{
   display:block;margin:0 auto 18px;
-  max-height:100px;max-width:78%;
+  max-height:100px;max-width:90%;
   object-fit:contain;
   filter:drop-shadow(0 4px 14px rgba(0,0,0,.55));
 }}
