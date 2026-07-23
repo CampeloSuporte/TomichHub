@@ -109,6 +109,29 @@ O JS de disparo vive no mesmo bloco `<script>` das outras abas do hotspot, com o
 `hsDisparoAddVariavelRow`/`hsDisparoColetarVariaveis` para a lista dinâmica). Segue o mesmo padrão
 de fetch (`_hsFetch`, JSON body, CSRF via cookie) já usado por `hsCarregarLeads`/`hsCarregarBanners`.
 
+### Painel de ajuda embutido (card Chatmix)
+
+Botão **"Onde acho Key/Token/ID do Template?"** (`hsDisparoToggleAjudaChatmix()`) dentro do card
+Chatmix abre/fecha um painel (`#hsd-chatmix-ajuda`) com um mini-guia visual recriando as telas do
+Chatmix — não são screenshots reais, são mockups em HTML/CSS que reproduzem a estrutura das telas:
+
+1. **Chaves para acesso**: mostra que o campo **Canais** aceita seleção múltipla (Ctrl/Cmd) e que
+   Key/Token só aparecem depois de marcar **"Ver opções avançadas"**. Destaca que o canal errado
+   selecionado nessa chave é a causa mais comum do erro `"Template nao encontrado"` (ver Bug 4).
+2. **Mensagens → Mensagens Templates → Acessar**: mostra que o ID do template fica no final da
+   URL do navegador ao abrir o template (ex: `.../templates/21606`).
+3. **Sugestão de corpo de mensagem** pronta para colar no template no Chatmix (boas-vindas +
+   oferta), com botão **"Copiar"** (`hsDisparoCopiarSugestao()`, via `navigator.clipboard`). O
+   texto usa `{{1}}` (sintaxe Meta/WhatsApp, inserida pelo botão "+ Variável" no editor deles) para
+   a única variável (nome) — o operador só precisa configurar 1 linha (`{nome}`) em "Variáveis do
+   template" para bater com esse modelo.
+
+**Detalhe de implementação:** escrever `{{1}}` literal no template Django quebraria, porque `{{ }}`
+é a sintaxe de variável do próprio Django (`{{1}}` seria interpretado como literal inteiro `1`,
+perdendo as chaves). A sugestão de mensagem usa
+`{% templatetag openvariable %}1{% templatetag closevariable %}` para escapar isso e imprimir
+`{{1}}` como texto puro — confirmado renderizando o fragmento isolado com `Template(...).render()`.
+
 ---
 
 ## Endpoints
@@ -300,6 +323,25 @@ nesse caso.
 (borda vermelha) já usado nos outros campos obrigatórios, com uma dica fixa abaixo do campo
 ("Com o 9: (DD) 9XXXX-XXXX").
 
+### Bug 4 — Diagnósticos de teste que não são bug do CRM
+
+Dois sintomas encontrados durante os testes reais que **não** eram falha do sistema — documentados
+aqui porque são fáceis de confundir com bug:
+
+- **`"success":true, "status":"queue"` mas a mensagem não chega:** a Chatmix aceitou e enfileirou
+  o envio (resposta genuína, sem o problema do Bug 2), mas a entrega real depende da Meta ter
+  **aprovado o template**. Enquanto "Pendente", a Meta bloqueia a entrega mesmo com a Chatmix
+  aceitando o envio na fila. Conferir o status do template em Mensagens → Templates no Chatmix.
+- **`"Template nao encontrado"` mesmo o template existindo** (confirmado pela URL do painel): a
+  causa mais comum é a **Key/Token usada não ter o canal certo marcado**. No Chatmix, cada "Chave
+  de acesso" (Integrações → Chaves para acesso) tem um campo **Canais** com seleção múltipla
+  (Ctrl/Cmd) — se o canal de WhatsApp onde o template está cadastrado não estiver marcado nessa
+  chave específica, a API não o encontra. Verificado no banco (`ClienteIntegracaoDisparo.template_id`)
+  que o valor salvo batia exatamente com o ID informado, descartando corrupção de dado no CRM.
+
+Esses dois casos motivaram o painel de ajuda visual descrito em "Onde fica na UI → Painel de ajuda
+embutido" — com destaque justamente para o campo Canais.
+
 ---
 
 ## Como Configurar (passo a passo)
@@ -319,9 +361,27 @@ nesse caso.
 
 ### Exemplo de corpo de template para cadastrar no Chatmix
 
-Exemplo com 4 variáveis (nome, telefone, nome do negócio, contato de suporte), usando a sintaxe
-`{{1}}`–`{{4}}` do editor de templates da Meta/Chatmix (inseridas automaticamente pelo botão
-"+ Variável" no editor deles).
+O próprio painel de ajuda do card Chatmix (botão "Onde acho Key/Token/ID do Template?") já traz
+uma sugestão pronta com botão "Copiar" — uma mensagem de boas-vindas + oferta, usando 1 variável
+(`{{1}}` = nome):
+
+```
+🎉 Parabéns, {{1}}!
+
+Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar um SUPER DESCONTO
+na contratação da internet da Conecta ISP! 🚀
+
+✅ Internet 100% fibra óptica
+⚡ Alta velocidade e estabilidade
+💰 Oferta exclusiva por tempo limitado
+
+📲 Responda esta mensagem e descubra o desconto especial que preparamos para você!
+```
+
+(troque "Conecta ISP" pelo nome do negócio do cliente sendo configurado). Para templates com mais
+variáveis, a sintaxe é a mesma (`{{1}}`–`{{N}}`, do editor de templates da Meta/Chatmix, inseridas
+automaticamente pelo botão "+ Variável" no editor deles) — só ajustar a quantidade de linhas em
+"Variáveis do template" no CRM para bater.
 
 ### Configurar o Opa Suite
 
