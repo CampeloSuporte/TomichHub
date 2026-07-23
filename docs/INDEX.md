@@ -2,6 +2,28 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 10 — 23/07/2026: Módulos do Cliente — Habilitar/Desabilitar Ferramentas por Contrato
+
+**O que foi implementado?**
+- ✅ Novo model `ClienteModulo`: habilita/desabilita, por cliente, cada ferramenta da tela
+  (Acessos, Backups, VPN, Topologia, Túneis SSH, Documentos, RPKI/IRR, Monitoramento,
+  Documentação de Rede, Hotspot, Testes de Rede)
+- ✅ Switch de toggle ao lado de cada aba em `listar.html`, visível só para admin (`is_staff`/`is_superuser`)
+- ✅ Módulo sem registro = habilitado (clientes já cadastrados não perdem acesso a nada)
+- ✅ Para o cliente final: aba some quando o módulo é desabilitado, com fallback automático
+  de aba padrão caso "Acessos" seja desabilitado
+- ✅ Decorator `modulo_habilitado_required` bloqueia acesso direto por URL (não só a aba
+  visual) em 89 endpoints de `clientes/views.py`
+- ✅ Fix de layout: menu do usuário-cliente colado no botão "Voltar ao Dashboard" (faltava `w-100`)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[MODULOS_CLIENTE.md](MODULOS_CLIENTE.md)** | Modelo de dados, UI, endpoint de toggle, decorator, lacunas conhecidas (Hotspot/IPAM/Monitoramento sem bloqueio de backend) |
+
+---
+
 ### Sessão 9 — 23/07/2026: Tela de Login do Hotspot — Sobrenome, Termos/LGPD e Dedup de Leads
 
 **O que foi implementado?**
@@ -360,7 +382,8 @@ docs/
 ├─ terminal_ssh.md
 ├─ frontend_acessos.md
 ├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
-└─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
+├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
+└─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
 ```
 
 ---
@@ -480,6 +503,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Módulos do Cliente: toggle por ferramenta (Acessos/Backups/VPN/Topologia/etc), admin-only, bloqueio de backend; fix menu do cliente colado no "Voltar ao Dashboard" | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: login com sobrenome, checkbox de aceite Termos/LGPD (modal), dedup de leads por telefone/nome | HOTSPOT_CAPTIVE_PORTAL.md |
 | 20/07/2026 | Gravação WinBox (fix vídeo 0 bytes, ícone preto/16bpp, nice/ionice); proxy web (fix redirect relativo); Wiki de Artigos (PDF, templates unificados, admin) | AUDITORIA_ACESSOS.md, winbox_vnc.md, WIKI_ARTIGOS.md |
 | 20/07/2026 | Editor de Topologia: passe de design, ícones de Router/Switch redesenhados, efeitos animados (brilho, pulso, tráfego simulado), IP em negrito, fix de regressão no rótulo Lado A/B | topologia.md |
