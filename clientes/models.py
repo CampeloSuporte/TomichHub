@@ -1763,6 +1763,7 @@ class HotspotLead(models.Model):
     cpf             = models.CharField(max_length=14, blank=True)
     mac             = models.CharField(max_length=17, blank=True)
     ip_cliente      = models.CharField(max_length=15, blank=True)
+    termos_aceitos  = models.BooleanField(default=False, help_text='Aceite dos Termos de Uso e Política de Privacidade no login')
     criado_em       = models.DateTimeField(auto_now_add=True)
 
     class Meta:
