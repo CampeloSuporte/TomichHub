@@ -2245,6 +2245,28 @@
                             </div>
                             4. Clique em <strong>Acessar</strong>, abra o template desejado e copie o número no <strong>final da URL</strong>
                             do navegador — esse número é o ID do Template.
+
+                            <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #25D36688;">
+                              <strong>Sugestão de mensagem para cadastrar no template</strong> (troque "Conecta ISP" pelo nome do seu negócio):
+                            </div>
+                            <textarea id="hsd_chatmix_sugestao_mensagem" readonly rows="9"
+                                      style="width:100%;margin-top:8px;background:var(--bg,#12161f);border:1px solid var(--border);border-radius:8px;
+                                             padding:10px 12px;color:var(--text-light);font-size:.78rem;line-height:1.5;resize:vertical;"
+                            >🎉 Parabéns, {% templatetag openvariable %}1{% templatetag closevariable %}!
+
+Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar um SUPER DESCONTO na contratação da internet da Conecta ISP! 🚀
+
+✅ Internet 100% fibra óptica
+⚡ Alta velocidade e estabilidade
+💰 Oferta exclusiva por tempo limitado
+
+📲 Responda esta mensagem e descubra o desconto especial que preparamos para você!</textarea>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                              <span style="font-size:.72rem;color:var(--text-muted);">Esse modelo usa <strong>1 variável</strong> (<code>{% templatetag openvariable %}1{% templatetag closevariable %}</code> = nome) — configure só 1 linha em "Variáveis do template" abaixo, com <code>{nome}</code>.</span>
+                              <button type="button" class="btn btn-sm btn-outline-secondary" style="flex-shrink:0;margin-left:8px;" onclick="hsDisparoCopiarSugestao()">
+                                <i class="fas fa-copy me-1"></i>Copiar
+                              </button>
+                            </div>
                           </div>
                           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                             <div>
@@ -8324,6 +8346,16 @@ function getCsrfToken(){
     function hsDisparoToggleAjudaChatmix(){
         var a=document.getElementById('hsd-chatmix-ajuda');
         if(a)a.style.display=(a.style.display==='none'?'':'none');
+    }
+    function hsDisparoCopiarSugestao(){
+        var ta=document.getElementById('hsd_chatmix_sugestao_mensagem');
+        if(!ta)return;
+        navigator.clipboard.writeText(ta.value).then(function(){
+            alert('Mensagem copiada! Cole no corpo do template no Chatmix.');
+        }).catch(function(){
+            ta.select();
+            alert('Não foi possível copiar automaticamente — o texto já está selecionado, use Ctrl+C.');
+        });
     }
     function hsCarregarDisparo(){
         _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/').then(function(r){return r.json();}).then(function(d){
