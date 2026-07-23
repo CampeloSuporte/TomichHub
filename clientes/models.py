@@ -1832,10 +1832,14 @@ class HotspotLead(models.Model):
 # Integração Disparo — envio automático de WhatsApp (HSM) para leads do Hotspot
 # ─────────────────────────────────────────────────────────────────────────────
 
-DISPARO_MENSAGEM_EXEMPLO = (
-    'Olá {nome}! Recebemos seu cadastro em nosso WiFi grátis e ficamos felizes em ter você por aqui. '
-    'Em breve podemos entrar em contato pelo número {telefone}. Bem-vindo(a)!'
-)
+# Templates HSM do Chatmix podem exigir qualquer quantidade de variáveis (não
+# só nome/telefone) — o padrão abaixo é só um ponto de partida com 2 posições;
+# o operador ajusta a quantidade de linhas para bater com o template dele.
+DISPARO_VARIAVEIS_EXEMPLO = ['{nome}', '{telefone}']
+
+
+def _disparo_variaveis_padrao():
+    return list(DISPARO_VARIAVEIS_EXEMPLO)
 
 
 class ClienteIntegracaoDisparo(models.Model):
@@ -1857,8 +1861,11 @@ class ClienteIntegracaoDisparo(models.Model):
     api_token   = models.CharField(max_length=255, blank=True, default='')
     template_id = models.CharField(max_length=20, blank=True, default='',
                       help_text='ID do template HSM (Mensagens → Templates → número no final da URL)')
-    mensagem_modelo = models.TextField(default=DISPARO_MENSAGEM_EXEMPLO,
-                      help_text='Use {nome} e {telefone} para indicar as variáveis do lead, na ordem esperada pelo template.')
+    # Lista ordenada de variáveis a enviar (1 posição por variável exigida
+    # pelo template no Chatmix). Cada item pode ser {nome}/{telefone}
+    # (substituído pelo dado do lead) ou um texto fixo.
+    variaveis_modelo = models.JSONField(default=_disparo_variaveis_padrao,
+                      help_text='Uma entrada por variável exigida pelo template, na mesma ordem. Use {nome}/{telefone} ou texto fixo.')
 
     criado_em     = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)

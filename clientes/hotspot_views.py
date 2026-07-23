@@ -26,7 +26,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    Acesso, Cliente, ClienteIntegracaoDisparo, DISPARO_MENSAGEM_EXEMPLO,
+    Acesso, Cliente, ClienteIntegracaoDisparo, DISPARO_VARIAVEIS_EXEMPLO,
     HotspotBanner, HotspotConfig, HotspotInterface, HotspotLead,
 )
 
@@ -1155,7 +1155,7 @@ def hotspot_disparo_config(request, cliente_id):
             'api_key': cfg.api_key if cfg else '',
             'api_token': cfg.api_token if cfg else '',
             'template_id': cfg.template_id if cfg else '',
-            'mensagem_modelo': cfg.mensagem_modelo if cfg else DISPARO_MENSAGEM_EXEMPLO,
+            'variaveis': cfg.variaveis_modelo if cfg else list(DISPARO_VARIAVEIS_EXEMPLO),
         })
 
     return JsonResponse({'ok': True, 'providers': providers})
@@ -1173,11 +1173,18 @@ def hotspot_disparo_salvar(request, cliente_id):
     if provider != 'chatmix':
         return JsonResponse({'ok': False, 'error': 'Esta integração ainda não está disponível.'}, status=400)
 
+    variaveis_raw = body.get('variaveis')
+    if not isinstance(variaveis_raw, list):
+        return JsonResponse({'ok': False, 'error': 'Lista de variáveis inválida.'}, status=400)
+    variaveis = [str(v).strip()[:255] for v in variaveis_raw if str(v).strip()]
+    if not variaveis:
+        return JsonResponse({'ok': False, 'error': 'Adicione ao menos uma variável (ex: {nome}).'}, status=400)
+
     cfg, _created = ClienteIntegracaoDisparo.objects.get_or_create(cliente=c, provider=provider)
     cfg.api_key = (body.get('api_key') or '').strip()[:255]
     cfg.api_token = (body.get('api_token') or '').strip()[:255]
     cfg.template_id = (body.get('template_id') or '').strip()[:20]
-    cfg.mensagem_modelo = (body.get('mensagem_modelo') or '').strip() or DISPARO_MENSAGEM_EXEMPLO
+    cfg.variaveis_modelo = variaveis
     cfg.save()
 
     return JsonResponse({'ok': True})
@@ -1226,7 +1233,7 @@ def hotspot_disparo_testar(request, cliente_id):
     from .services import ChatmixClient, montar_variaveis_mensagem, normalizar_numero_whatsapp
 
     lead_fake = HotspotLead(nome='Teste', telefone=numero)
-    variaveis = montar_variaveis_mensagem(cfg.mensagem_modelo, lead_fake)
+    variaveis = montar_variaveis_mensagem(cfg.variaveis_modelo, lead_fake)
     numero_fmt = normalizar_numero_whatsapp(numero)
     client = ChatmixClient(cfg.api_key, cfg.api_token)
     ok, detalhe = client.enviar_hsm(numero_fmt, variaveis, cfg.template_id)

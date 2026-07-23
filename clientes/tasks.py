@@ -2109,13 +2109,18 @@ def enviar_disparo_hotspot_lead(self, lead_id):
     if not numero:
         return {'status': 'ignorado', 'motivo': 'Lead sem telefone'}
 
-    variaveis = montar_variaveis_mensagem(config.mensagem_modelo, lead)
+    variaveis = montar_variaveis_mensagem(config.variaveis_modelo, lead)
     client = ChatmixClient(config.api_key, config.api_token)
     ok, detalhe = client.enviar_hsm(numero, variaveis, config.template_id)
 
     if not ok:
         logger.warning(f'⚠️ Disparo Chatmix falhou p/ lead {lead_id}: {detalhe}')
-        raise self.retry(exc=Exception(detalhe))
+        # Erro 4xx (ex: credenciais/template/variáveis incorretas) é config
+        # errada, não instabilidade de rede — retry não resolve, só some com
+        # as tentativas. Só reenfileira em falhas que podem ser transitórias.
+        if not detalhe.startswith('HTTP 4'):
+            raise self.retry(exc=Exception(detalhe))
+        return {'status': 'erro', 'detalhe': detalhe}
 
     logger.info(f'✅ Disparo Chatmix enviado p/ lead {lead_id} ({numero})')
     return {'status': 'ok', 'detalhe': detalhe}

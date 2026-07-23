@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 
 CHATMIX_API_URL = 'https://envios.bulkv2.chatmix.com.br/api'
 
-_PLACEHOLDER_RE = re.compile(r'\{(nome|telefone)\}')
-
 
 def normalizar_numero_whatsapp(numero):
     """Normaliza um telefone BR para o formato +55DDDNÚMERO exigido pela API."""
@@ -23,15 +21,22 @@ def normalizar_numero_whatsapp(numero):
     return '+' + digitos
 
 
-def montar_variaveis_mensagem(mensagem_modelo, lead):
-    """Extrai, na ordem em que aparecem no corpo configurado, os valores do
-    lead ({nome}/{telefone}) a enviar como `variables` da API de disparo HSM —
-    a ordem deve corresponder exatamente à esperada pelo template no Chatmix."""
-    campos = {'nome': lead.nome, 'telefone': lead.telefone}
-    ordem = _PLACEHOLDER_RE.findall(mensagem_modelo or '')
-    if not ordem:
-        ordem = ['nome']
-    return [campos.get(chave, '') for chave in ordem]
+def montar_variaveis_mensagem(variaveis_modelo, lead):
+    """Renderiza cada variável configurada (texto fixo e/ou {nome}/{telefone})
+    substituindo pelos dados do lead. A quantidade e a ordem das entradas em
+    `variaveis_modelo` devem corresponder exatamente ao que o template exige
+    no Chatmix — o Chatmix rejeita o envio se vier variável faltando/sobrando.
+    Remove `|` do resultado, já que é o delimitador do formato `variables=`."""
+    campos = {'nome': lead.nome or '', 'telefone': lead.telefone or ''}
+    valores = []
+    for item in (variaveis_modelo or []):
+        texto = str(item)
+        try:
+            texto = texto.format(**campos)
+        except (KeyError, IndexError, ValueError):
+            pass
+        valores.append(texto.replace('|', ' '))
+    return valores
 
 
 class ChatmixClient:
