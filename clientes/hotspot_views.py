@@ -24,7 +24,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Acesso, Cliente, HotspotBanner, HotspotConfig, HotspotLead
+from .models import Acesso, Cliente, HotspotBanner, HotspotConfig, HotspotInterface, HotspotLead
 
 logger = logging.getLogger(__name__)
 
@@ -201,20 +201,23 @@ def _aplicar_mikrotik(hotspot, pixel_url):
     except Exception as exc:
         return False, [f'❌ Falha SSH: {exc}']
 
-    pool_name    = 'hs-pool-crm'
-    dhcp_name    = 'hs-dhcp-crm'
-    profile_name = 'hs-prof-crm'
-    server_name  = 'hs-crm'
-    # Usar o diretório padrão do MikroTik — sempre existe no flash,
-    # evita qualquer problema de path com diretório customizado
-    dir_name     = 'hotspot'
-
-    # Calcular prefixo a partir do campo network (ex: 192.168.88.0/24 → /24)
-    try:
-        prefix = _ipmod.IPv4Network(hotspot.network, strict=False).prefixlen
-    except ValueError:
-        prefix = 24
-    gw_cidr = f'{hotspot.gateway}/{prefix}'
+    # Nomes por hotspot (não globais!) — dois hotspots no MESMO equipamento (ex:
+    # interfaces diferentes) usavam antes os mesmos nomes fixos "hs-pool-crm",
+    # "hs-dhcp-crm" etc. Aplicar o segundo hotspot reencontrava esses objetos já
+    # criados pelo primeiro e os reconfigurava (set) para a nova interface —
+    # na prática "roubando" DHCP server/pool/profile/hotspot server do primeiro
+    # hotspot, que ficava sem DHCP funcionando na sua própria interface mesmo com
+    # a bridge/IP dele intactos. Sufixo por `safe_nome` isola cada hotspot.
+    safe_nome    = hotspot.nome.lower().replace(' ', '-')
+    pool_name    = f'hs-pool-{safe_nome}'
+    dhcp_name    = f'hs-dhcp-{safe_nome}'
+    profile_name = f'hs-prof-{safe_nome}'
+    server_name  = f'hs-srv-{safe_nome}'
+    # Diretório do login.html também precisa ser por hotspot — com um único
+    # diretório "hotspot" compartilhado, o login.html do segundo hotspot
+    # sobrescrevia o do primeiro no mesmo equipamento (mesmo bug do parágrafo
+    # acima). Criado via SFTP mkdir logo abaixo, no passo 9.
+    dir_name     = f'hotspot-{safe_nome}'
 
     def _set_or_add(check_cmd, set_cmd, add_cmd, label_item):
         """Check existence, then set or add. Returns (ok, label, output)."""
@@ -229,150 +232,229 @@ def _aplicar_mikrotik(hotspot, pixel_url):
             return _mt_output_ok(o, e, rc), 'criado', f'rc={rc} {detail}'
 
     try:
-        # ── 0. Bridge interface ───────────────────────────────────────────────
-        bridge_comment = f'hotspot-{hotspot.nome}'
-        # Nome base para a nova bridge (sanitizado, ex: "hotspot-tomich")
-        safe_nome = hotspot.nome.lower().replace(' ', '-')
-        bridge_name = f'hs-{safe_nome}'
+        # ── -1. Migração: nomes globais antigos → por hotspot ────────────────
+        # Antes de 22/07/2026, pool/dhcp-server/profile/hotspot server usavam
+        # nomes fixos ("hs-pool-crm", "hs-dhcp-crm", "hs-prof-crm", "hs-crm")
+        # compartilhados por TODOS os hotspots do mesmo equipamento. Se este
+        # hotspot ainda não tem seus objetos com o nome novo mas o objeto com
+        # o nome antigo existe, renomeia em vez de criar do zero — evita
+        # duplicar (dois hotspot servers) ou deixar o objeto antigo órfão.
+        for _menu, _old, _new in (
+            ('/ip pool', 'hs-pool-crm', pool_name),
+            ('/ip dhcp-server', 'hs-dhcp-crm', dhcp_name),
+            ('/ip hotspot profile', 'hs-prof-crm', profile_name),
+            ('/ip hotspot', 'hs-crm', server_name),
+        ):
+            if (_new != _old
+                    and _mt_count(client, f'{_menu} print count-only where name="{_new}"') == 0
+                    and _mt_count(client, f'{_menu} print count-only where name="{_old}"') > 0):
+                _mt_exec(client, f'{_menu} set [find name="{_old}"] name="{_new}"')
+                log.append(f'   Migrado {_old} → {_new}')
 
-        if _mt_count(client, f'/interface bridge print count-only where name="{bridge_name}"') == 0:
-            out, err, rc = _mt_exec(client,
-                f'/interface bridge add name="{bridge_name}" comment="{bridge_comment}"')
-            ok = _mt_output_ok(out, err, rc)
-            log.append(f'{"✅" if ok else "⚠️"} Bridge criada ({bridge_name}): {out or err or "ok"}')
-        else:
-            # Reutiliza a bridge existente — NÃO cria nova para não perder as interfaces já configuradas
-            _mt_exec(client, f'/interface bridge set [find name="{bridge_name}"] comment="{bridge_comment}"')
-            log.append(f'✅ Bridge reutilizada ({bridge_name}) — interfaces existentes preservadas')
+        # `hotspot.interface` decide o modo da interface PRINCIPAL: vazio/"bridge"
+        # (default do model) usa a bridge de sempre; qualquer outro valor (ex:
+        # "ether5") é o nome literal de uma interface física, e o hotspot é
+        # configurado direto nela, sem criar bridge nenhuma. Interfaces adicionais
+        # (HotspotInterface) sempre usam bridge própria — modo direto só faz
+        # sentido para uma única interface.
+        modo_interface = (hotspot.interface or 'bridge').strip() or 'bridge'
+        usar_bridge_principal = modo_interface.lower() == 'bridge'
+        bridge_principal = f'hs-{safe_nome}' if usar_bridge_principal else modo_interface
 
-        # Adicionar interface física ao bridge como bridge port (se configurada)
-        if hotspot.interface_fisica:
-            iface = hotspot.interface_fisica.strip()
-            port_in_hs = _mt_count(client,
-                f'/interface bridge port print count-only where bridge="{bridge_name}" interface="{iface}"')
-            if port_in_hs > 0:
-                log.append(f'✅ Bridge port {iface} já está em {bridge_name}')
+        # Interfaces a aplicar: a principal (campos do próprio HotspotConfig, nomes
+        # já calculados acima) + as adicionais em HotspotInterface (nomes sufixados
+        # por id para não colidir entre si). Todas usam o mesmo Acesso/roteador e
+        # compartilham profile/portal — cada uma ganha sua própria pool/dhcp-server/
+        # hotspot-server (e bridge própria, exceto a principal em modo direto).
+        interfaces_aplicar = [{
+            'suffix': '',
+            'usar_bridge': usar_bridge_principal,
+            'bridge_name': bridge_principal,
+            'pool_name': pool_name,
+            'dhcp_name': dhcp_name,
+            'server_name': server_name,
+            'interface_fisica': hotspot.interface_fisica,
+            'network': hotspot.network,
+            'gateway': hotspot.gateway,
+            'pool_start': hotspot.pool_start,
+            'pool_end': hotspot.pool_end,
+        }]
+        for extra in hotspot.interfaces.filter(ativo=True).order_by('id'):
+            suf = f'-{extra.id}'
+            modo_extra = (extra.interface or 'bridge').strip() or 'bridge'
+            usar_bridge_extra = modo_extra.lower() == 'bridge'
+            bridge_extra = f'hs-{safe_nome}{suf}' if usar_bridge_extra else modo_extra
+            interfaces_aplicar.append({
+                'suffix': suf,
+                'usar_bridge': usar_bridge_extra,
+                'bridge_name': bridge_extra,
+                'pool_name': f'{pool_name}{suf}',
+                'dhcp_name': f'{dhcp_name}{suf}',
+                'server_name': f'{server_name}{suf}',
+                'interface_fisica': extra.interface_fisica,
+                'network': extra.network,
+                'gateway': extra.gateway,
+                'pool_start': extra.pool_start,
+                'pool_end': extra.pool_end,
+            })
+
+        for cfg in interfaces_aplicar:
+            iface_label = f' [{cfg["interface_fisica"] or cfg["bridge_name"]}]' if cfg['suffix'] else ''
+            bridge_name = cfg['bridge_name']
+
+            # ── 0. Interface: bridge (padrão) ou interface física direta ───────
+            if cfg['usar_bridge']:
+                bridge_comment = f'hotspot-{hotspot.nome}{cfg["suffix"]}'
+
+                if _mt_count(client, f'/interface bridge print count-only where name="{bridge_name}"') == 0:
+                    out, err, rc = _mt_exec(client,
+                        f'/interface bridge add name="{bridge_name}" comment="{bridge_comment}"')
+                    ok = _mt_output_ok(out, err, rc)
+                    log.append(f'{"✅" if ok else "⚠️"} Bridge criada ({bridge_name}){iface_label}: {out or err or "ok"}')
+                else:
+                    # Reutiliza a bridge existente — NÃO cria nova para não perder as interfaces já configuradas
+                    _mt_exec(client, f'/interface bridge set [find name="{bridge_name}"] comment="{bridge_comment}"')
+                    log.append(f'✅ Bridge reutilizada ({bridge_name}){iface_label} — interfaces existentes preservadas')
+
+                # Adicionar interface física ao bridge como bridge port (se configurada)
+                if cfg['interface_fisica']:
+                    iface = cfg['interface_fisica'].strip()
+                    port_in_hs = _mt_count(client,
+                        f'/interface bridge port print count-only where bridge="{bridge_name}" interface="{iface}"')
+                    if port_in_hs > 0:
+                        log.append(f'✅ Bridge port {iface} já está em {bridge_name}')
+                    else:
+                        # Verifica se a interface está em OUTRA bridge.
+                        # RouterOS não permite que uma interface seja membro de duas bridges;
+                        # o "add" falharia silenciosamente e o hotspot não interceptaria tráfego.
+                        other_count = _mt_count(client,
+                            f'/interface bridge port print count-only where interface="{iface}"')
+                        if other_count > 0:
+                            _mt_exec(client,
+                                f'/interface bridge port remove [find interface="{iface}"]')
+                            log.append(f'   Removida {iface} de bridge anterior')
+                        bp_out, bp_err, bp_rc = _mt_exec(client,
+                            f'/interface bridge port add bridge="{bridge_name}" interface="{iface}"')
+                        bp_ok = _mt_output_ok(bp_out, bp_err, bp_rc)
+                        log.append(f'{"✅" if bp_ok else "⚠️"} Bridge port {iface} → {bridge_name}: {(bp_out+bp_err).strip() or "ok"}')
+                else:
+                    # Listar interfaces disponíveis para ajudar o usuário a configurar
+                    ifaces_out, _, _ = _mt_exec(client,
+                        '/interface print where type="wlan" or type="ether" or type="vlan"')
+                    ifaces_lines = [l.strip() for l in ifaces_out.strip().splitlines() if l.strip()]
+                    log.append(
+                        f'   ⚠️ Interface física NÃO configurada{iface_label} — este hotspot não vai interceptar clientes!\n'
+                        f'   Interfaces disponíveis no roteador:\n'
+                        + '\n'.join(f'      {l}' for l in ifaces_lines[:10])
+                    )
             else:
-                # Verifica se a interface está em OUTRA bridge.
-                # RouterOS não permite que uma interface seja membro de duas bridges;
-                # o "add" falharia silenciosamente e o hotspot não interceptaria tráfego.
-                other_count = _mt_count(client,
-                    f'/interface bridge port print count-only where interface="{iface}"')
-                if other_count > 0:
-                    _mt_exec(client,
-                        f'/interface bridge port remove [find interface="{iface}"]')
-                    log.append(f'   Removida {iface} de bridge anterior')
-                bp_out, bp_err, bp_rc = _mt_exec(client,
-                    f'/interface bridge port add bridge="{bridge_name}" interface="{iface}"')
-                bp_ok = _mt_output_ok(bp_out, bp_err, bp_rc)
-                log.append(f'{"✅" if bp_ok else "⚠️"} Bridge port {iface} → {bridge_name}: {(bp_out+bp_err).strip() or "ok"}')
-        else:
-            # Listar interfaces disponíveis para ajudar o usuário a configurar
-            ifaces_out, _, _ = _mt_exec(client,
-                '/interface print where type="wlan" or type="ether" or type="vlan"')
-            ifaces_lines = [l.strip() for l in ifaces_out.strip().splitlines() if l.strip()]
-            ifaces_str = ' | '.join(ifaces_lines[:8]) if ifaces_lines else '(nenhuma listada)'
-            log.append(
-                f'   ⚠️ Interface física NÃO configurada — o hotspot não vai interceptar clientes!\n'
-                f'   Acesse Configurações do Hotspot e preencha o campo "Interface Física".\n'
-                f'   Interfaces disponíveis no roteador:\n'
-                + '\n'.join(f'      {l}' for l in ifaces_lines[:10])
-            )
+                # Modo direto: sem bridge — IP/DHCP/Hotspot Server vão direto na
+                # interface física informada no campo "Interface" (ex: "ether5").
+                log.append(f'ℹ️ Modo direto — hotspot configurado direto em {bridge_name}, sem bridge')
 
-        # ── 0b. NAT src-nat para a rede do hotspot ───────────────────────────
-        # Usa src-nat com to-addresses=IP-do-acesso em vez de masquerade.
-        # Masquerade usa o IP da interface de saída (pode ser um IP interno de carrier
-        # como 198.18.x.x), que o upstream ISP não roteia de volta para a internet.
-        # Com src-nat to-addresses=acesso.host, o tráfego dos clientes aparece como
-        # originado do IP público do roteador — o mesmo que o CRM usa para SSH.
-        nat_public_ip = acesso.host
-        # Remove regras antigas (masquerade ou src-nat) para evitar duplicatas
-        _mt_exec(client,
-            f'/ip firewall nat remove [find chain=srcnat src-address="{hotspot.network}" comment="hs-crm-masq"]')
-        nat_count = _mt_count(client,
-            f'/ip firewall nat print count-only where chain=srcnat '
-            f'src-address="{hotspot.network}" action=src-nat to-addresses="{nat_public_ip}"')
-        if nat_count == 0:
+            # ── 0b. NAT src-nat para a rede desta interface ─────────────────────
+            # Usa src-nat com to-addresses=IP-do-acesso em vez de masquerade.
+            # Masquerade usa o IP da interface de saída (pode ser um IP interno de carrier
+            # como 198.18.x.x), que o upstream ISP não roteia de volta para a internet.
+            # Com src-nat to-addresses=acesso.host, o tráfego dos clientes aparece como
+            # originado do IP público do roteador — o mesmo que o CRM usa para SSH.
+            nat_public_ip = acesso.host
+            nat_comment = f'hs-nat-{safe_nome}{cfg["suffix"]}'
+            # Remove regras antigas (nome antigo global ou por hotspot) para evitar duplicatas
             _mt_exec(client,
-                f'/ip firewall nat add chain=srcnat action=src-nat '
-                f'to-addresses="{nat_public_ip}" '
-                f'src-address="{hotspot.network}" comment="hs-crm-masq"')
-            log.append(f'✅ NAT src-nat adicionado ({hotspot.network} → {nat_public_ip})')
-        else:
-            log.append(f'✅ NAT src-nat já existe ({hotspot.network} → {nat_public_ip})')
+                f'/ip firewall nat remove [find chain=srcnat src-address="{cfg["network"]}" comment="hs-crm-masq"]')
+            _mt_exec(client,
+                f'/ip firewall nat remove [find chain=srcnat src-address="{cfg["network"]}" comment="{nat_comment}"]')
+            nat_count = _mt_count(client,
+                f'/ip firewall nat print count-only where chain=srcnat '
+                f'src-address="{cfg["network"]}" action=src-nat to-addresses="{nat_public_ip}"')
+            if nat_count == 0:
+                _mt_exec(client,
+                    f'/ip firewall nat add chain=srcnat action=src-nat '
+                    f'to-addresses="{nat_public_ip}" '
+                    f'src-address="{cfg["network"]}" comment="{nat_comment}"')
+                log.append(f'✅ NAT src-nat adicionado ({cfg["network"]} → {nat_public_ip})')
+            else:
+                log.append(f'✅ NAT src-nat já existe ({cfg["network"]} → {nat_public_ip})')
 
-        # ── 1. IP Address na interface ────────────────────────────────────────
-        ip_flt = f'interface="{bridge_name}" address~"{hotspot.gateway}"'
-        ok, lbl, out = _set_or_add(
-            f'/ip address print count-only where {ip_flt}',
-            f'/ip address set [find {ip_flt}] address={gw_cidr}',
-            f'/ip address add address={gw_cidr} interface={bridge_name}',
-            'IP Address',
-        )
-        log.append(f'{"✅" if ok else "⚠️"} IP Address {lbl} ({gw_cidr} → {bridge_name}): {out}')
+            # ── 1. IP Address na interface ──────────────────────────────────────
+            try:
+                prefix = _ipmod.IPv4Network(cfg['network'], strict=False).prefixlen
+            except ValueError:
+                prefix = 24
+            gw_cidr = f'{cfg["gateway"]}/{prefix}'
 
-        # ── 2. IP Pool ────────────────────────────────────────────────────────
-        ranges = f'{hotspot.pool_start}-{hotspot.pool_end}'
-        ok, lbl, out = _set_or_add(
-            f'/ip pool print count-only where name="{pool_name}"',
-            f'/ip pool set [find name="{pool_name}"] ranges={ranges}',
-            f'/ip pool add name="{pool_name}" ranges={ranges}',
-            'IP Pool',
-        )
-        log.append(f'{"✅" if ok else "⚠️"} IP Pool {lbl} ({ranges}): {out}')
-
-        # ── 3. DHCP Server ────────────────────────────────────────────────────
-        ok, lbl, out = _set_or_add(
-            f'/ip dhcp-server print count-only where name="{dhcp_name}"',
-            f'/ip dhcp-server set [find name="{dhcp_name}"] '
-            f'interface={bridge_name} address-pool="{pool_name}" disabled=no',
-            f'/ip dhcp-server add name="{dhcp_name}" '
-            f'interface={bridge_name} address-pool="{pool_name}" disabled=no',
-            'DHCP Server',
-        )
-        log.append(f'{"✅" if ok else "⚠️"} DHCP Server {lbl}: {out}')
-
-        # ── 3b. DHCP Lease Script (controle de banda via Queue Simple) ────────
-        if hotspot.dhcp_controle_banda:
-            limit = hotspot.dhcp_banda_limit or '10M/10M'
-            # Script simples: cria/remove queue por IP do lease
-            # \" dentro do valor RouterOS → aspas literais no script
-            lease_script = (
-                ':if ($leaseBound = 1) do={'
-                '/queue simple remove [find where comment=$leaseActMAC]; '
-                f'/queue simple add target=$leaseActIP max-limit={limit} comment=$leaseActMAC'
-                '} else={'
-                '/queue simple remove [find where comment=$leaseActMAC]'
-                '}'
+            ip_flt = f'interface="{bridge_name}" address~"{cfg["gateway"]}"'
+            ok, lbl, out = _set_or_add(
+                f'/ip address print count-only where {ip_flt}',
+                f'/ip address set [find {ip_flt}] address={gw_cidr}',
+                f'/ip address add address={gw_cidr} interface={bridge_name}',
+                'IP Address',
             )
-            ls_out, ls_err, ls_rc = _mt_exec(
-                client,
-                f'/ip dhcp-server set [find name="{dhcp_name}"] lease-script="{lease_script}"',
+            log.append(f'{"✅" if ok else "⚠️"} IP Address {lbl} ({gw_cidr} → {bridge_name}): {out}')
+
+            # ── 2. IP Pool ───────────────────────────────────────────────────────
+            ranges = f'{cfg["pool_start"]}-{cfg["pool_end"]}'
+            ok, lbl, out = _set_or_add(
+                f'/ip pool print count-only where name="{cfg["pool_name"]}"',
+                f'/ip pool set [find name="{cfg["pool_name"]}"] ranges={ranges}',
+                f'/ip pool add name="{cfg["pool_name"]}" ranges={ranges}',
+                'IP Pool',
             )
-            ls_ok = _mt_output_ok(ls_out, ls_err, ls_rc)
-            log.append(f'{"✅" if ls_ok else "⚠️"} DHCP Lease Script (banda {limit}): {ls_out or ls_err or "ok"}')
-        else:
-            # Garantir que não há script de banda ativo
-            _mt_exec(client, f'/ip dhcp-server set [find name="{dhcp_name}"] lease-script=""')
-            log.append('ℹ️ Controle de banda desativado — lease-script limpo')
+            log.append(f'{"✅" if ok else "⚠️"} IP Pool {lbl} ({ranges}): {out}')
 
-        # ── 4. DHCP Network ───────────────────────────────────────────────────
-        # IMPORTANTE: o cliente do hotspot deve receber o GATEWAY (o próprio
-        # roteador) como DNS — NÃO um DNS externo (8.8.8.8). Antes do login o
-        # hotspot bloqueia o acesso externo; se o cliente tentar falar com 8.8.8.8
-        # a resolução falha (DNS_PROBE_FINISHED_NO_INTERNET) e o portal nem abre.
-        # Usando o gateway, o hotspot intercepta o DNS e redireciona para o login.
-        ok, lbl, out = _set_or_add(
-            f'/ip dhcp-server network print count-only where address="{hotspot.network}"',
-            f'/ip dhcp-server network set [find address="{hotspot.network}"] '
-            f'gateway={hotspot.gateway} dns-server={hotspot.gateway}',
-            f'/ip dhcp-server network add address={hotspot.network} '
-            f'gateway={hotspot.gateway} dns-server={hotspot.gateway}',
-            'DHCP Network',
-        )
-        log.append(f'{"✅" if ok else "⚠️"} DHCP Network {lbl} ({hotspot.network}): {out}')
+            # ── 3. DHCP Server ───────────────────────────────────────────────────
+            ok, lbl, out = _set_or_add(
+                f'/ip dhcp-server print count-only where name="{cfg["dhcp_name"]}"',
+                f'/ip dhcp-server set [find name="{cfg["dhcp_name"]}"] '
+                f'interface={bridge_name} address-pool="{cfg["pool_name"]}" disabled=no',
+                f'/ip dhcp-server add name="{cfg["dhcp_name"]}" '
+                f'interface={bridge_name} address-pool="{cfg["pool_name"]}" disabled=no',
+                'DHCP Server',
+            )
+            log.append(f'{"✅" if ok else "⚠️"} DHCP Server {lbl}: {out}')
 
-        # ── 5. Hotspot Profile ────────────────────────────────────────────────
+            # ── 3b. DHCP Lease Script (controle de banda via Queue Simple) ──────
+            if hotspot.dhcp_controle_banda:
+                limit = hotspot.dhcp_banda_limit or '10M/10M'
+                # Script simples: cria/remove queue por IP do lease
+                # \" dentro do valor RouterOS → aspas literais no script
+                lease_script = (
+                    ':if ($leaseBound = 1) do={'
+                    '/queue simple remove [find where comment=$leaseActMAC]; '
+                    f'/queue simple add target=$leaseActIP max-limit={limit} comment=$leaseActMAC'
+                    '} else={'
+                    '/queue simple remove [find where comment=$leaseActMAC]'
+                    '}'
+                )
+                ls_out, ls_err, ls_rc = _mt_exec(
+                    client,
+                    f'/ip dhcp-server set [find name="{cfg["dhcp_name"]}"] lease-script="{lease_script}"',
+                )
+                ls_ok = _mt_output_ok(ls_out, ls_err, ls_rc)
+                log.append(f'{"✅" if ls_ok else "⚠️"} DHCP Lease Script (banda {limit}): {ls_out or ls_err or "ok"}')
+            else:
+                # Garantir que não há script de banda ativo
+                _mt_exec(client, f'/ip dhcp-server set [find name="{cfg["dhcp_name"]}"] lease-script=""')
+                log.append('ℹ️ Controle de banda desativado — lease-script limpo')
+
+            # ── 4. DHCP Network ──────────────────────────────────────────────────
+            # IMPORTANTE: o cliente do hotspot deve receber o GATEWAY (o próprio
+            # roteador) como DNS — NÃO um DNS externo (8.8.8.8). Antes do login o
+            # hotspot bloqueia o acesso externo; se o cliente tentar falar com 8.8.8.8
+            # a resolução falha (DNS_PROBE_FINISHED_NO_INTERNET) e o portal nem abre.
+            # Usando o gateway, o hotspot intercepta o DNS e redireciona para o login.
+            ok, lbl, out = _set_or_add(
+                f'/ip dhcp-server network print count-only where address="{cfg["network"]}"',
+                f'/ip dhcp-server network set [find address="{cfg["network"]}"] '
+                f'gateway={cfg["gateway"]} dns-server={cfg["gateway"]}',
+                f'/ip dhcp-server network add address={cfg["network"]} '
+                f'gateway={cfg["gateway"]} dns-server={cfg["gateway"]}',
+                'DHCP Network',
+            )
+            log.append(f'{"✅" if ok else "⚠️"} DHCP Network {lbl} ({cfg["network"]}): {out}')
+
+        # ── 5. Hotspot Profile (compartilhado por todas as interfaces) ─────────
         # RouterOS aceita inteiros em segundos para timeout (0 = ilimitado)
         session_secs = hotspot.session_timeout * 60  # minutos → segundos
         idle_secs    = hotspot.idle_timeout    * 60
@@ -404,34 +486,35 @@ def _aplicar_mikrotik(hotspot, pixel_url):
                 f'session-timeout={session_secs} idle-timeout={idle_secs} rate-limit="{rate}"')
             log.append(f'   Rate-limit/timeout: {rate}, session={session_secs}s, idle={idle_secs}s')
 
-        # ── 6. Hotspot Server ─────────────────────────────────────────────────
-        srv_params = (
-            f'interface="{bridge_name}" '
-            f'address-pool="{pool_name}" '
-            f'profile="{profile_name}" '
-            f'disabled=no'
-        )
-        srv_exists = _mt_count(client, f'/ip hotspot print count-only where name="{server_name}"')
-        if srv_exists > 0:
-            cmd_srv = f'/ip hotspot set [find name="{server_name}"] {srv_params}'
-            srv_out, srv_err, srv_rc = _mt_exec(client, cmd_srv)
-            srv_lbl = 'atualizado'
-        else:
-            cmd_srv = f'/ip hotspot add name="{server_name}" {srv_params}'
-            srv_out, srv_err, srv_rc = _mt_exec(client, cmd_srv)
-            srv_lbl = 'criado'
-        srv_ok = _mt_output_ok(srv_out, srv_err, srv_rc)
-        srv_detail = (srv_out + ' ' + srv_err).strip() or 'ok'
-        log.append(f'{"✅" if srv_ok else "⚠️"} Hotspot Server {srv_lbl}: {srv_detail}')
+        # ── 6. Hotspot Server (um por interface, todos usando o profile acima) ─
+        for cfg in interfaces_aplicar:
+            srv_params = (
+                f'interface="{cfg["bridge_name"]}" '
+                f'address-pool="{cfg["pool_name"]}" '
+                f'profile="{profile_name}" '
+                f'disabled=no'
+            )
+            srv_exists = _mt_count(client, f'/ip hotspot print count-only where name="{cfg["server_name"]}"')
+            if srv_exists > 0:
+                cmd_srv = f'/ip hotspot set [find name="{cfg["server_name"]}"] {srv_params}'
+                srv_out, srv_err, srv_rc = _mt_exec(client, cmd_srv)
+                srv_lbl = 'atualizado'
+            else:
+                cmd_srv = f'/ip hotspot add name="{cfg["server_name"]}" {srv_params}'
+                srv_out, srv_err, srv_rc = _mt_exec(client, cmd_srv)
+                srv_lbl = 'criado'
+            srv_ok = _mt_output_ok(srv_out, srv_err, srv_rc)
+            srv_detail = (srv_out + ' ' + srv_err).strip() or 'ok'
+            log.append(f'{"✅" if srv_ok else "⚠️"} Hotspot Server {cfg["server_name"]} {srv_lbl}: {srv_detail}')
 
-        # ── 7. Usuário guest ──────────────────────────────────────────────────
-        g_flt = f'name="{hotspot.guest_usuario}" server="{server_name}"'
+        # ── 7. Usuário guest (server=all → funciona em todos os servers deste hotspot) ─
+        g_flt = f'name="{hotspot.guest_usuario}"'
         ok, lbl, out = _set_or_add(
             f'/ip hotspot user print count-only where {g_flt}',
             f'/ip hotspot user set [find {g_flt}] '
-            f'password="{hotspot.guest_senha}" profile=default',
+            f'password="{hotspot.guest_senha}" profile=default server=all',
             f'/ip hotspot user add name="{hotspot.guest_usuario}" '
-            f'password="{hotspot.guest_senha}" server="{server_name}" profile=default',
+            f'password="{hotspot.guest_senha}" server=all profile=default',
             'Usuário guest',
         )
         log.append(f'{"✅" if ok else "⚠️"} Usuário guest {lbl} ({hotspot.guest_usuario}): {out}')
@@ -468,9 +551,8 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         # (evita duplicatas causadas por múltiplos applies ou referências por ID *N)
         _mt_exec(client,
             f'/ip hotspot walled-garden remove [find where dst-host="{crm_host}"]')
-        # Adiciona uma entrada para o servidor específico e uma global (sem server)
-        _mt_exec(client,
-            f'/ip hotspot walled-garden add dst-host="{crm_host}" server="{server_name}"')
+        # Entrada sem 'server' → libera em TODOS os hotspot servers deste hotspot,
+        # cobrindo a interface principal e as adicionais
         _mt_exec(client,
             f'/ip hotspot walled-garden add dst-host="{crm_host}"')
         log.append(f'✅ Walled Garden HTTP configurado ({crm_host})')
@@ -542,6 +624,16 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         sftp_ok = False
         try:
             sftp = client.open_sftp()
+            # dir_name agora é único por hotspot (ver comentário no início da
+            # função) — ao contrário do antigo "hotspot" fixo, esse diretório
+            # não existe de fábrica no roteador, então precisa ser criado.
+            # IOError = já existe (ou caminho "flash/<dir>" é só um alias do
+            # mesmo diretório, mesma incerteza do comentário acima) — ignora.
+            for _dir in (dir_name, f'flash/{dir_name}'):
+                try:
+                    sftp.mkdir(_dir)
+                except IOError:
+                    pass
             for remote_path in remote_paths:
                 sftp.putfo(_io.BytesIO(html_bytes), remote_path)
             sftp.close()
@@ -586,10 +678,11 @@ def _aplicar_mikrotik(hotspot, pixel_url):
         else:
             log.append(f'   ⚠️ login.html não encontrado no flash após upload')
 
-        # Reiniciar hotspot para carregar novo login.html
-        _mt_exec(client, f'/ip hotspot set [find name="{server_name}"] disabled=yes')
-        _mt_exec(client, f'/ip hotspot set [find name="{server_name}"] disabled=no')
-        log.append('✅ Hotspot reiniciado — novo portal ativo')
+        # Reiniciar todos os hotspot servers (principal + adicionais) para carregar novo login.html
+        for cfg in interfaces_aplicar:
+            _mt_exec(client, f'/ip hotspot set [find name="{cfg["server_name"]}"] disabled=yes')
+            _mt_exec(client, f'/ip hotspot set [find name="{cfg["server_name"]}"] disabled=no')
+        log.append(f'✅ Hotspot(s) reiniciado(s) ({len(interfaces_aplicar)}) — novo portal ativo')
 
         hotspot.configurado_em = timezone.now()
         hotspot.save(update_fields=['configurado_em'])
@@ -632,6 +725,7 @@ def hotspot_listar(request, cliente_id):
             'acesso_host': h.acesso.host if h.acesso else '',
             'banners_count': h.banners.filter(ativo=True).count(),
             'leads_count': h.leads.count(),
+            'interfaces_count': h.interfaces.filter(ativo=True).count(),
             'configurado_em': h.configurado_em.strftime('%d/%m/%Y %H:%M') if h.configurado_em else None,
             'uuid': str(h.uuid),
         })
@@ -732,6 +826,80 @@ def hotspot_deletar(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
     h.delete()
+    return JsonResponse({'ok': True})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Interfaces adicionais — mais de uma pool/DHCP no mesmo Hotspot
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def hotspot_interfaces(request, cliente_id, hotspot_id):
+    c = _cliente(request, cliente_id)
+    h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
+    data = [
+        {
+            'id': i.id,
+            'nome': i.nome,
+            'interface': i.interface,
+            'interface_fisica': i.interface_fisica,
+            'network': i.network,
+            'gateway': i.gateway,
+            'pool_start': i.pool_start,
+            'pool_end': i.pool_end,
+            'dns_servidor': i.dns_servidor,
+            'ativo': i.ativo,
+        }
+        for i in h.interfaces.all()
+    ]
+    return JsonResponse({'ok': True, 'interfaces': data})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_interface_salvar(request, cliente_id, hotspot_id):
+    c = _cliente(request, cliente_id)
+    h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
+    body = _json(request)
+    iid = body.get('id')
+
+    interface = body.get('interface', 'bridge').strip() or 'bridge'
+    interface_fisica = body.get('interface_fisica', '').strip()
+    if interface.lower() == 'bridge' and not interface_fisica:
+        return JsonResponse({'ok': False, 'error': 'Informe a interface física (bridge port) ou o nome da interface para modo direto.'}, status=400)
+
+    defaults = {
+        'nome': body.get('nome', '').strip(),
+        'interface': interface,
+        'interface_fisica': interface_fisica,
+        'network': body.get('network', '192.168.89.0/24').strip(),
+        'gateway': body.get('gateway', '192.168.89.1').strip(),
+        'pool_start': body.get('pool_start', '192.168.89.10').strip(),
+        'pool_end': body.get('pool_end', '192.168.89.254').strip(),
+        'dns_servidor': body.get('dns_servidor', '8.8.8.8').strip(),
+        'ativo': bool(body.get('ativo', True)),
+    }
+
+    if iid:
+        i = get_object_or_404(HotspotInterface, id=iid, hotspot=h)
+        for k, v in defaults.items():
+            setattr(i, k, v)
+        i.save()
+        created = False
+    else:
+        i = HotspotInterface.objects.create(hotspot=h, **defaults)
+        created = True
+
+    return JsonResponse({'ok': True, 'id': i.id, 'created': created})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_interface_deletar(request, cliente_id, hotspot_id, interface_id):
+    c = _cliente(request, cliente_id)
+    h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
+    i = get_object_or_404(HotspotInterface, id=interface_id, hotspot=h)
+    i.delete()
     return JsonResponse({'ok': True})
 
 

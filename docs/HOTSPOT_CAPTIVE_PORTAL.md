@@ -307,3 +307,110 @@ sftp.close()
 O passo antigo que removia o arquivo "órfão" em `flash/<dir>/login.html` (da correção de
 2026-06-10) foi **removido** — esse caminho agora pode ser o que o hotspot efetivamente lê,
 dependendo do profile.
+
+---
+
+## Campo "Interface" era ignorado — hotspot sempre subia em bridge — Corrigido em 22/07/2026
+
+**Arquivo:** `clientes/hotspot_views.py` (`_aplicar_mikrotik`), `clientes/templates/listar.html`
+
+### Problema
+
+O formulário de hotspot tem dois campos parecidos: **"Interface"** (`hs_interface` /
+`hotspot.interface`, default `"bridge"`) e **"Interface Física (bridge port)"**
+(`hs_interface_fisica`). Só o segundo era lido dentro de `_aplicar_mikrotik` — e mesmo
+assim apenas para adicionar a interface física como **porta** de uma bridge própria do
+hotspot (`hs-<nome>`, ex: `hs-teste`), criada/reutilizada incondicionalmente. O IP address,
+DHCP server e hotspot server sempre apontavam para essa bridge, **nunca** para a interface
+física escolhida. Preencher "Interface" com qualquer valor (ex: `ether5`) não mudava nada —
+o campo era gravado no banco e devolvido pela API, mas nunca consultado na hora de aplicar a
+configuração. Resultado: usuário seleciona uma interface esperando que o hotspot suba direto
+nela, mas o IP/DHCP sobem na bridge, com a interface física só como bridge port.
+
+### Correção
+
+`hotspot.interface` agora decide o modo de fato:
+
+```python
+modo_interface = (hotspot.interface or 'bridge').strip() or 'bridge'
+usar_bridge = modo_interface.lower() == 'bridge'
+```
+
+- `"bridge"` (padrão, mantém compatibilidade) → comportamento de sempre: cria/reutiliza
+  `hs-<nome>` e adiciona `interface_fisica` como bridge port.
+- Qualquer outro valor (ex: `ether5`, `wlan1`) → **modo direto**: pula toda a criação de
+  bridge/bridge-port e usa a interface física informada diretamente como alvo do IP
+  address, DHCP server e hotspot server — sem bridge nenhuma. Nesse modo o campo
+  "Interface Física" não é usado. Só faz sentido com uma única interface por hotspot; se
+  precisar agrupar mais de uma, use `"bridge"`.
+
+---
+
+## Múltiplas interfaces por hotspot — adicionado em 23/07/2026
+
+**Arquivos:** `clientes/models.py` (`HotspotInterface`), `clientes/hotspot_views.py`
+(`_aplicar_mikrotik` + CRUD), `clientes/urls.py`, `clientes/templates/listar.html`
+
+### Motivação
+
+Até então, 1 `HotspotConfig` = exatamente 1 interface + 1 pool + 1 DHCP server. Para atender
+clientes com mais de uma interface física querendo cair no **mesmo** hotspot/portal (ex: uma
+rede cabeada em `ether1` e uma rede Wi-Fi em `ether5`, ambas com o mesmo login/branding), era
+preciso criar um `HotspotConfig` inteiro separado — duplicando portal, banners, credenciais
+guest e leads.
+
+### Modelagem
+
+Novo model `HotspotInterface` (FK `hotspot`, `related_name='interfaces'`), com os mesmos
+campos de rede do `HotspotConfig` principal — `interface`, `interface_fisica`, `network`,
+`gateway`, `pool_start`, `pool_end`, `dns_servidor`, `ativo` — mais um `nome` opcional para
+identificação na UI. Migrations `0082_hotspotinterface` e
+`0083_hotspotinterface_interface_and_more` (esta última adiciona o campo `interface` de
+modo bridge/direto, replicando a mesma semântica do `HotspotConfig.interface` documentada na
+seção acima — inclusive para as interfaces adicionais).
+
+Os campos de rede do `HotspotConfig` continuam representando a interface **principal**
+(retrocompatível com hotspots já configurados); cada `HotspotInterface` é uma interface
+**adicional** do mesmo hotspot.
+
+### Aplicação no MikroTik
+
+`_aplicar_mikrotik` monta uma lista `interfaces_aplicar` = [principal] + [adicionais ativas],
+cada uma com nomes de objetos RouterOS sufixados por id para não colidir entre si:
+
+```python
+interfaces_aplicar = [{
+    'suffix': '', 'bridge_name': f'hs-{safe_nome}', 'pool_name': pool_name,
+    'dhcp_name': dhcp_name, 'server_name': server_name, ...  # campos do HotspotConfig
+}]
+for extra in hotspot.interfaces.filter(ativo=True).order_by('id'):
+    suf = f'-{extra.id}'
+    interfaces_aplicar.append({
+        'suffix': suf, 'bridge_name': f'hs-{safe_nome}{suf}',
+        'pool_name': f'{pool_name}{suf}', 'dhcp_name': f'{dhcp_name}{suf}',
+        'server_name': f'{server_name}{suf}', ...  # campos do HotspotInterface
+    })
+```
+
+Por interface (`for cfg in interfaces_aplicar`): bridge (ou modo direto, conforme
+`cfg['usar_bridge']`) + bridge port, NAT src-nat, IP address, IP pool, DHCP server + lease
+script de banda, DHCP network, e um Hotspot Server próprio (`/ip hotspot add`) ligado ao
+profile compartilhado. **Compartilhado entre todas as interfaces** (aplicado uma única vez,
+fora do loop): Hotspot Profile, DNS do roteador, Walled Garden, e o upload do `login.html` —
+ou seja, todas as interfaces de um hotspot servem o **mesmo portal**.
+
+O usuário guest (`/ip hotspot user`) passou a ser criado com `server=all` em vez de fixo no
+`server_name` da interface principal, para autenticar em qualquer um dos hotspot servers do
+hotspot. Ao final, todos os hotspot servers (`for cfg in interfaces_aplicar`) são
+desabilitados/reabilitados para recarregar o `login.html`.
+
+### UI
+
+Sub-aba "Configuração" do hotspot ganhou uma seção "Interfaces Adicionais": lista das
+interfaces já cadastradas (nome, interface física ou modo direto, rede, pool) com editar/
+remover, e um botão "Adicionar Interface" que abre um modal com os mesmos campos de rede da
+interface principal. CRUD via `hotspot/<id>/interfaces/`,
+`hotspot/<id>/interface/salvar/`, `hotspot/<id>/interface/<iface_id>/deletar/` — mesmo
+padrão mestre-detalhe já usado para os banners do portal. Interfaces adicionais só podem ser
+criadas depois que o hotspot em si foi salvo (precisa de um `hotspot_id`), igual à aba de
+Banners.

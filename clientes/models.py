@@ -1647,9 +1647,14 @@ class HotspotConfig(models.Model):
     nome          = models.CharField(max_length=100)
 
     # MikroTik network
+    # "bridge" (default) cria/usa a bridge própria do hotspot (hs-<nome>), usando
+    # `interface_fisica` como bridge port. Qualquer outro valor (ex: "ether5") ativa
+    # o modo direto: IP/DHCP/hotspot server vão direto nessa interface, sem bridge
+    # (ver _aplicar_mikrotik em hotspot_views.py).
     interface       = models.CharField(max_length=50, default='bridge')
-    # Interface física (ex: wlan1, ether2) adicionada como bridge port — deixar vazio
-    # se a interface já está no bridge ou se a bridge foi criada manualmente
+    # Interface física (ex: wlan1, ether2) adicionada como bridge port — só usada
+    # quando `interface` = "bridge". Deixar vazio se a interface já está no bridge
+    # ou se a bridge foi criada manualmente.
     interface_fisica = models.CharField(max_length=50, blank=True, default='')
     network       = models.CharField(max_length=18, default='192.168.88.0/24')
     gateway       = models.CharField(max_length=15, default='192.168.88.1')
@@ -1701,6 +1706,35 @@ class HotspotConfig(models.Model):
 
     def __str__(self):
         return f'{self.nome} — {self.cliente.nome_empresa}'
+
+
+class HotspotInterface(models.Model):
+    """Interface adicional de um Hotspot: outra pool/DHCP (ex: ether2) além da
+    interface principal do HotspotConfig, servindo o mesmo portal de login."""
+    hotspot          = models.ForeignKey(HotspotConfig, on_delete=models.CASCADE, related_name='interfaces')
+    nome             = models.CharField(max_length=100, blank=True, default='')
+    # "bridge" (padrão) cria/usa uma bridge própria desta interface, usando
+    # `interface_fisica` como bridge port. Qualquer outro valor (ex: "ether5")
+    # ativa o modo direto: IP/DHCP/hotspot server vão direto nessa interface,
+    # sem bridge (mesma semântica de HotspotConfig.interface).
+    interface        = models.CharField(max_length=50, default='bridge')
+    interface_fisica = models.CharField(max_length=50, blank=True, default='',
+                          help_text='Só usada quando "Interface" = bridge')
+    network          = models.CharField(max_length=18, default='192.168.89.0/24')
+    gateway          = models.CharField(max_length=15, default='192.168.89.1')
+    pool_start       = models.CharField(max_length=15, default='192.168.89.10')
+    pool_end         = models.CharField(max_length=15, default='192.168.89.254')
+    dns_servidor     = models.CharField(max_length=15, default='8.8.8.8')
+    ativo            = models.BooleanField(default=True)
+    criado_em        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Interface Adicional — Hotspot'
+        verbose_name_plural = 'Interfaces Adicionais — Hotspot'
+        ordering            = ['id']
+
+    def __str__(self):
+        return f'{self.nome or self.interface_fisica} — {self.hotspot.nome}'
 
 
 class HotspotBanner(models.Model):

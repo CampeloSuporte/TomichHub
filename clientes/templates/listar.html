@@ -1899,21 +1899,27 @@
                         </div>
                         <div class="hs-field" style="grid-column:1/-1;">
                           <label class="hs-label">Acesso MikroTik</label>
-                          <select id="hs_acesso" class="hs-input">
-                            <option value="">— selecione —</option>
-                            {% for acesso in acessos %}
-                              <option value="{{ acesso.id }}">{{ acesso.host }} ({{ acesso.tipo }})</option>
-                            {% endfor %}
-                          </select>
+                          <div class="hs-combo" id="hs_acesso_combo">
+                            <input type="text" id="hs_acesso_busca" class="hs-input" placeholder="Buscar por host ou nome..."
+                                   autocomplete="off" onfocus="hsAcessoAbrir()" oninput="hsAcessoFiltrar()">
+                            <input type="hidden" id="hs_acesso" value="">
+                            <div class="hs-combo-lista" id="hs_acesso_lista"></div>
+                          </div>
                         </div>
+                        <script>
+                          var HS_ACESSOS = [
+                            {% for acesso in acessos %}{id:{{ acesso.id }}, label:"{{ acesso.host|escapejs }} ({{ acesso.tipo|escapejs }})"},{% endfor %}
+                          ];
+                        </script>
                         <div class="hs-field">
                           <label class="hs-label">Interface</label>
                           <input type="text" id="hs_interface" class="hs-input" placeholder="bridge">
+                          <small class="text-muted">"bridge" (padrão) cria/usa uma bridge própria do hotspot; digite o nome de uma interface física (ex: ether5) para configurar IP/DHCP direto nela, sem bridge</small>
                         </div>
                         <div class="hs-field">
                           <label class="hs-label">Interface Física (bridge port)</label>
                           <input type="text" id="hs_interface_fisica" class="hs-input" placeholder="ex: wlan1, ether2 (opcional)">
-                          <small class="text-muted">Interface do roteador que receberá os clientes do hotspot</small>
+                          <small class="text-muted">Só usado quando "Interface" = bridge: interface do roteador adicionada como porta da bridge</small>
                         </div>
                         <div class="hs-field">
                           <label class="hs-label">Gateway</label>
@@ -1935,6 +1941,23 @@
                           <label class="hs-label">DNS</label>
                           <input type="text" id="hs_dns" class="hs-input" placeholder="8.8.8.8">
                         </div>
+
+                        <!-- Interfaces adicionais (mais de uma pool/DHCP no mesmo hotspot) -->
+                        <div class="hs-field" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+                          <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <label class="hs-label" style="margin:0;color:var(--primary-green);">Interfaces Adicionais</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="hsAbrirModalInterface()">
+                              <i class="fas fa-plus me-1"></i> Adicionar Interface
+                            </button>
+                          </div>
+                          <small class="text-muted" style="display:block;margin-top:4px;">
+                            Cada interface adicional ganha sua própria pool de IPs e DHCP server, usando o mesmo portal/login deste hotspot.
+                          </small>
+                        </div>
+                        <div id="hs-interfaces-list" style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;">
+                          <div style="color:var(--text-muted);font-size:.82rem;">Nenhuma interface adicional.</div>
+                        </div>
+
                         <div class="hs-field">
                           <label class="hs-label">Download Máx.</label>
                           <input type="text" id="hs_down" class="hs-input" placeholder="10M">
@@ -2164,6 +2187,73 @@
          style="flex:1;overflow-y:auto;padding:16px 20px;background:#0a0f1a;
                 font-family:monospace;font-size:.82rem;color:#a3e635;
                 white-space:pre-wrap;min-height:200px;border-radius:0 0 14px 14px;"></div>
+  </div>
+</div>
+
+<!-- Modal: Adicionar/Editar Interface Adicional do Hotspot -->
+<div id="hs-modal-interface-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;
+            align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;
+              width:min(560px,95vw);max-height:90vh;display:flex;flex-direction:column;
+              box-shadow:0 30px 80px rgba(0,0,0,.6);">
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:16px 20px;border-bottom:1px solid var(--border);">
+      <h3 id="hs-interface-modal-titulo" style="margin:0;font-size:1rem;color:var(--text-light);">
+        <i class="fas fa-network-wired me-2" style="color:var(--primary-green);"></i>Nova Interface
+      </h3>
+      <button onclick="hsFecharModalInterface()"
+              style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <input type="hidden" id="hsi_id">
+      <div class="hs-field" style="grid-column:1/-1;">
+        <label class="hs-label">Nome / Identificação <small style="color:var(--text-muted);font-weight:400;">(opcional)</small></label>
+        <input type="text" id="hsi_nome" class="hs-input" placeholder="Ex: WiFi Convidados">
+      </div>
+      <div class="hs-field" style="grid-column:1/-1;">
+        <label class="hs-label">Interface</label>
+        <input type="text" id="hsi_interface" class="hs-input" placeholder="bridge">
+        <small class="text-muted">"bridge" (padrão) cria/usa uma bridge própria para esta interface; digite o nome de uma interface física (ex: ether5) para configurar IP/DHCP direto nela, sem bridge</small>
+      </div>
+      <div class="hs-field" style="grid-column:1/-1;">
+        <label class="hs-label">Interface Física (bridge port)</label>
+        <input type="text" id="hsi_interface_fisica" class="hs-input" placeholder="ex: wlan2, ether3">
+        <small class="text-muted">Só usada quando "Interface" = bridge</small>
+      </div>
+      <div class="hs-field">
+        <label class="hs-label">Gateway</label>
+        <input type="text" id="hsi_gateway" class="hs-input" placeholder="192.168.89.1">
+      </div>
+      <div class="hs-field">
+        <label class="hs-label">Rede (CIDR)</label>
+        <input type="text" id="hsi_network" class="hs-input" placeholder="192.168.89.0/24">
+      </div>
+      <div class="hs-field">
+        <label class="hs-label">Pool Início</label>
+        <input type="text" id="hsi_pool_start" class="hs-input" placeholder="192.168.89.10">
+      </div>
+      <div class="hs-field">
+        <label class="hs-label">Pool Fim</label>
+        <input type="text" id="hsi_pool_end" class="hs-input" placeholder="192.168.89.254">
+      </div>
+      <div class="hs-field">
+        <label class="hs-label">DNS</label>
+        <input type="text" id="hsi_dns" class="hs-input" placeholder="8.8.8.8">
+      </div>
+      <div class="hs-field" style="display:flex;align-items:center;gap:8px;padding-top:20px;">
+        <label class="hs-label" style="margin:0;">Ativa</label>
+        <input type="checkbox" id="hsi_ativo" checked style="width:18px;height:18px;cursor:pointer;">
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);">
+      <button class="btn btn-sm btn-secondary" onclick="hsFecharModalInterface()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="hsSalvarInterface()">
+        <i class="fas fa-save me-1"></i> Salvar Interface
+      </button>
+    </div>
   </div>
 </div>
 
@@ -7601,6 +7691,16 @@ function getCsrfToken(){
             +'.hs-input{background:var(--surface);border:1.5px solid var(--border);color:var(--text-light);border-radius:8px;padding:8px 10px;font-size:.875rem;outline:none;transition:border-color .2s;}'
             +'.hs-input:focus{border-color:var(--primary-green);}'
             +'.hs-input option{background:var(--surface);}'
+            +'.hs-combo{position:relative;}'
+            // var(--surface) não existe no tema (style.css só define --card-bg/--panel-bg/
+            // --dark-bg) — nos outros campos isso já era transparente "por acidente" sem
+            // ninguém notar (o modal inteiro já é escuro por trás), mas aqui a lista flutua
+            // SOBRE os campos abaixo, então precisa de um fundo sólido de verdade.
+            +'.hs-combo-lista{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;max-height:230px;overflow-y:auto;background:var(--card-bg);border:1.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;}'
+            +'.hs-combo-lista.aberta{display:block;}'
+            +'.hs-combo-item{padding:8px 10px;font-size:.875rem;color:var(--text-light);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+            +'.hs-combo-item:hover{background:var(--primary-green);color:#0a0a0f;}'
+            +'.hs-combo-empty{padding:8px 10px;font-size:.8rem;color:var(--text-muted);}'
             +'.hs-banner-thumb{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/7;}'
             +'.hs-banner-thumb img{width:100%;height:100%;object-fit:cover;}'
             +'.hs-banner-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:6px;padding:3px 6px;cursor:pointer;font-size:.75rem;}';
@@ -7617,6 +7717,59 @@ function getCsrfToken(){
         if(opts&&opts.body&&typeof opts.body==='object'&&!(opts.body instanceof FormData)){opts.body=JSON.stringify(opts.body);d.headers['Content-Type']='application/json';}
         return fetch(url,Object.assign(d,opts||{}));
     }
+    // ── Combobox "Acesso MikroTik" (busca + lista) ──
+    // Antes era um <select> nativo; o dropdown de opções é renderizado pelo SO
+    // (não pelo nosso CSS), e em alguns browsers/temas escuros as options saíam
+    // com texto branco em fundo branco (nomes "em branco"). Um combo totalmente
+    // custom (input + lista própria) elimina essa dependência do render nativo.
+    function hsAcessoFiltrar(){
+        var termo=(document.getElementById('hs_acesso_busca').value||'').toLowerCase();
+        var lista=document.getElementById('hs_acesso_lista');
+        var itens=HS_ACESSOS.filter(function(a){return a.label.toLowerCase().indexOf(termo)!==-1;});
+        lista.innerHTML='';
+        if(!itens.length){
+            var vazio=document.createElement('div');
+            vazio.className='hs-combo-empty';
+            vazio.textContent='Nenhum acesso encontrado';
+            lista.appendChild(vazio);
+        }else{
+            itens.forEach(function(a){
+                var item=document.createElement('div');
+                item.className='hs-combo-item';
+                item.textContent=a.label;
+                // mousedown (não click) dispara ANTES do blur do input — com
+                // preventDefault, o input nem perde foco, então a lista nunca
+                // fecha antes do clique ser processado.
+                item.addEventListener('mousedown',function(ev){
+                    ev.preventDefault();
+                    hsAcessoSelecionar(a.id);
+                });
+                lista.appendChild(item);
+            });
+        }
+        lista.classList.add('aberta');
+    }
+    function hsAcessoAbrir(){ hsAcessoFiltrar(); }
+    function hsAcessoFechar(){
+        var lista=document.getElementById('hs_acesso_lista');
+        if(lista)lista.classList.remove('aberta');
+    }
+    function hsAcessoSelecionar(id){
+        hsAcessoSetById(id);
+        hsAcessoFechar();
+    }
+    function hsAcessoSetById(id){
+        var hid=document.getElementById('hs_acesso'),busca=document.getElementById('hs_acesso_busca');
+        if(!hid||!busca)return;
+        id=id?String(id):'';
+        hid.value=id;
+        var a=HS_ACESSOS.find(function(x){return String(x.id)===id;});
+        busca.value=a?a.label:'';
+    }
+    document.addEventListener('click',function(ev){
+        var combo=document.getElementById('hs_acesso_combo');
+        if(combo&&!combo.contains(ev.target))hsAcessoFechar();
+    });
     function hsAba(ev,aba){
         if(ev)ev.preventDefault();
         ['config','banners','leads'].forEach(function(a){var el=document.getElementById('hs-tab-'+a);if(el)el.style.display=a===aba?'':'none';});
@@ -7635,7 +7788,7 @@ function getCsrfToken(){
                 +'<div style="display:flex;justify-content:space-between;align-items:flex-start;"><span class="hs-card-name">'+h.nome+'</span>'+badge+'</div>'
                 +'<div class="hs-card-meta">'+(h.acesso_host||'—')+' · '+h.rate_limit_down+'/'+h.rate_limit_up+'</div>'
                 +'<div class="hs-card-meta" style="margin-top:4px;">'+cfg+'</div>'
-                +'<div class="hs-card-meta" style="margin-top:4px;"><i class="fas fa-images" style="margin-right:3px;"></i>'+h.banners_count+' banners · <i class="fas fa-users" style="margin-left:6px;margin-right:3px;"></i>'+h.leads_count+' leads</div></div>';
+                +'<div class="hs-card-meta" style="margin-top:4px;"><i class="fas fa-images" style="margin-right:3px;"></i>'+h.banners_count+' banners · <i class="fas fa-users" style="margin-left:6px;margin-right:3px;"></i>'+h.leads_count+' leads'+(h.interfaces_count?' · <i class="fas fa-network-wired" style="margin-left:6px;margin-right:3px;"></i>'+h.interfaces_count+' iface(s)':'')+'</div></div>';
         }).join('');
     }
     function hsCarregarLista(){
@@ -7648,7 +7801,7 @@ function getCsrfToken(){
         _hsFetch('/clientes/'+HS_CID+'/hotspot/'+id+'/detalhe/').then(function(r){return r.json();}).then(function(d){
             if(!d.ok)return;
             var h=d.hotspot;
-            function sv(i,v){var e=document.getElementById(i);if(e)e.value=v;}
+            function sv(i,v){if(i==='hs_acesso'){hsAcessoSetById(v);return;}var e=document.getElementById(i);if(e)e.value=v;}
             sv('hs_nome',h.nome||'');sv('hs_acesso',h.acesso_id||'');sv('hs_interface',h.interface||'bridge');sv('hs_interface_fisica',h.interface_fisica||'');
             sv('hs_gateway',h.gateway||'192.168.88.1');sv('hs_pool_start',h.pool_start||'192.168.88.10');
             sv('hs_pool_end',h.pool_end||'192.168.88.254');sv('hs_network',h.network||'192.168.88.0/24');
@@ -7669,6 +7822,7 @@ function getCsrfToken(){
             var pn=document.getElementById('hs-detail-pane');if(pn){pn.style.removeProperty('display');pn.style.display='block';}
             hsAba(null,'config');
             document.querySelectorAll('#hsSubTabs .nav-link').forEach(function(el,i){el.classList.toggle('active',i===0);});
+            hsCarregarInterfaces();
         });
     }
     function hsNovoConfig(){
@@ -7690,6 +7844,7 @@ function getCsrfToken(){
         document.querySelectorAll('.hs-card').forEach(function(el){el.classList.remove('selected');});
         hsAba(null,'config');
         document.querySelectorAll('#hsSubTabs .nav-link').forEach(function(el,i){el.classList.toggle('active',i===0);});
+        hsRenderInterfaces([]);
         var nm=document.getElementById('hs_nome');if(nm)nm.focus();
     }
     function toggleHsBanda(cb){
@@ -7764,6 +7919,77 @@ function getCsrfToken(){
     function hsDeletarBanner(bid){
         if(!confirm('Remover este banner?'))return;
         _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/banner/'+bid+'/del/',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.ok){hsCarregarBanners();hsCarregarLista();}});
+    }
+    var _hsInterfaces=[];
+    function hsRenderInterfaces(interfaces){
+        _hsInterfaces=interfaces||[];
+        var el=document.getElementById('hs-interfaces-list');
+        if(!el)return;
+        if(!_hsInterfaces.length){el.innerHTML='<div style="color:var(--text-muted);font-size:.82rem;">Nenhuma interface adicional.</div>';return;}
+        el.innerHTML=_hsInterfaces.map(function(i){
+            var badge=i.ativo?'<span class="hs-badge hs-badge-green"><i class="fas fa-circle" style="font-size:.5rem;"></i> Ativa</span>':'<span class="hs-badge hs-badge-gray">Inativa</span>';
+            var modo=(i.interface&&i.interface.toLowerCase()!=='bridge')?('direto em '+i.interface):('bridge via '+(i.interface_fisica||'—'));
+            return '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">'
+                +'<div><div style="font-weight:600;font-size:.85rem;color:var(--text-light);">'+(i.nome||i.interface_fisica||i.interface)+' '+badge+'</div>'
+                +'<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">'+modo+' · '+i.network+' · pool '+i.pool_start+'-'+i.pool_end+'</div></div>'
+                +'<div style="display:flex;gap:6px;">'
+                +'<button class="btn btn-sm btn-outline-secondary" onclick="hsAbrirModalInterface('+i.id+')" title="Editar"><i class="fas fa-pen"></i></button>'
+                +'<button class="btn btn-sm btn-outline-danger" onclick="hsDeletarInterface('+i.id+')" title="Remover"><i class="fas fa-trash"></i></button>'
+                +'</div></div>';
+        }).join('');
+    }
+    function hsCarregarInterfaces(){
+        if(!_hsId){hsRenderInterfaces([]);return;}
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/interfaces/').then(function(r){return r.json();}).then(function(d){if(d.ok)hsRenderInterfaces(d.interfaces);});
+    }
+    function hsAbrirModalInterface(iid){
+        if(!_hsId){alert('Salve o hotspot antes de adicionar interfaces adicionais.');return;}
+        function sv(i,v){var e=document.getElementById(i);if(e)e.value=v;}
+        var titulo=document.getElementById('hs-interface-modal-titulo');
+        if(iid){
+            var it=_hsInterfaces.find(function(x){return x.id===iid;});
+            if(!it)return;
+            sv('hsi_id',it.id);sv('hsi_nome',it.nome||'');sv('hsi_interface',it.interface||'bridge');sv('hsi_interface_fisica',it.interface_fisica||'');
+            sv('hsi_gateway',it.gateway||'192.168.89.1');sv('hsi_network',it.network||'192.168.89.0/24');
+            sv('hsi_pool_start',it.pool_start||'192.168.89.10');sv('hsi_pool_end',it.pool_end||'192.168.89.254');
+            sv('hsi_dns',it.dns_servidor||'8.8.8.8');
+            var at=document.getElementById('hsi_ativo');if(at)at.checked=it.ativo;
+            if(titulo)titulo.innerHTML='<i class="fas fa-network-wired me-2" style="color:var(--primary-green);"></i>Editar Interface';
+        }else{
+            sv('hsi_id','');sv('hsi_nome','');sv('hsi_interface','bridge');sv('hsi_interface_fisica','');sv('hsi_gateway','192.168.89.1');
+            sv('hsi_network','192.168.89.0/24');sv('hsi_pool_start','192.168.89.10');sv('hsi_pool_end','192.168.89.254');
+            sv('hsi_dns','8.8.8.8');
+            var at2=document.getElementById('hsi_ativo');if(at2)at2.checked=true;
+            if(titulo)titulo.innerHTML='<i class="fas fa-network-wired me-2" style="color:var(--primary-green);"></i>Nova Interface';
+        }
+        document.getElementById('hs-modal-interface-overlay').style.display='flex';
+    }
+    function hsFecharModalInterface(){
+        document.getElementById('hs-modal-interface-overlay').style.display='none';
+    }
+    function hsSalvarInterface(){
+        var modoInterface=document.getElementById('hsi_interface').value.trim()||'bridge';
+        var interfaceFisica=document.getElementById('hsi_interface_fisica').value.trim();
+        if(modoInterface.toLowerCase()==='bridge'&&!interfaceFisica){alert('Informe a interface física (bridge port) ou o nome da interface para modo direto.');return;}
+        var p={
+            id:document.getElementById('hsi_id').value||null,
+            nome:document.getElementById('hsi_nome').value.trim(),
+            interface:modoInterface,
+            interface_fisica:interfaceFisica,
+            gateway:document.getElementById('hsi_gateway').value.trim(),
+            network:document.getElementById('hsi_network').value.trim(),
+            pool_start:document.getElementById('hsi_pool_start').value.trim(),
+            pool_end:document.getElementById('hsi_pool_end').value.trim(),
+            dns_servidor:document.getElementById('hsi_dns').value.trim(),
+            ativo:document.getElementById('hsi_ativo').checked,
+        };
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/interface/salvar/',{method:'POST',body:p}).then(function(r){return r.json();}).then(function(d){
+            if(d.ok){hsFecharModalInterface();hsCarregarInterfaces();hsCarregarLista();}else alert('Erro: '+(d.error||''));
+        });
+    }
+    function hsDeletarInterface(iid){
+        if(!confirm('Remover esta interface adicional?'))return;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/'+_hsId+'/interface/'+iid+'/deletar/',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.ok){hsCarregarInterfaces();hsCarregarLista();}});
     }
     function hsAtualizarLogoPreview(url){
         var prev=document.getElementById('hs-logo-preview');
