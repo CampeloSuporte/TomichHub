@@ -2,6 +2,31 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 11 — 23/07/2026: Hotspot — Integração Disparo (WhatsApp HSM via Chatmix)
+
+**O que foi implementado?**
+- ✅ Nova aba "Integração Disparo" ao lado de "Leads" no painel do Hotspot — dispara automaticamente
+  uma mensagem WhatsApp (HSM) quando um novo lead se cadastra no portal cativo
+- ✅ Novo model `ClienteIntegracaoDisparo` (por cliente × empresa de integração): Chatmix funcional,
+  Opa Suit listado como "Em breve"
+- ✅ `ChatmixClient` (`clientes/services.py`) e task Celery `enviar_disparo_hotspot_lead`
+  (`clientes/tasks.py`), disparada via sinal `post_save` em `HotspotLead`
+- ✅ Lista dinâmica de variáveis do template (adicionar/remover linha) — corrige limitação inicial
+  que só suportava 2 variáveis (`{nome}`/`{telefone}`), enquanto templates HSM reais podem exigir
+  qualquer quantidade
+- ✅ Fix: `success: false` da Chatmix com HTTP 200 era tratado como envio bem-sucedido
+- ✅ Fix: formulário do portal cativo agora exige o 9º dígito do telefone (sem ele, o número fica
+  incompleto para o WhatsApp)
+- ✅ Botão "Enviar teste" — valida key/token/template sem precisar de um lead real
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** | Modelo de dados, endpoints, `ChatmixClient`, disparo automático via Celery, bugs corrigidos, passo a passo de configuração |
+
+---
+
 ### Sessão 10 — 23/07/2026: Módulos do Cliente — Habilitar/Desabilitar Ferramentas por Contrato
 
 **O que foi implementado?**
@@ -306,6 +331,12 @@
   - Tipos de dispositivo, tipos/velocidades de interface, waypoints
   - Bugs corrigidos (XSS, atalhos com `<select>` focado, rótulo escondido atrás do node)
 
+- **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** — Hotspot: disparo automático de WhatsApp (Chatmix HSM)
+  - Model `ClienteIntegracaoDisparo`, `ChatmixClient`, task Celery `enviar_disparo_hotspot_lead`
+  - Lista dinâmica de variáveis do template (N variáveis, não só nome/telefone)
+  - Bugs corrigidos: `success:false` com HTTP 200, telefone sem o 9º dígito
+  - Passo a passo de configuração (key/token/template/variáveis/teste)
+
 - **[WIKI_ARTIGOS.md](WIKI_ARTIGOS.md)** — Wiki de artigos técnicos
   - PDF anexado ao artigo (upload/troca/remoção, visualizador com zoom no Terminal)
   - Templates de listagem (categoria/tag/fabricante) unificados
@@ -384,6 +415,7 @@ docs/
 ├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
 ├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
 └─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
+└─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix HSM)
 ```
 
 ---
@@ -497,12 +529,19 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Por que o alerta de cobrança WhatsApp não está sendo enviado?"
 → [FINANCEIRO.md](FINANCEIRO.md) — Seção "Cobrança via WhatsApp — Diagnóstico e Correção"
 
+### "Como configurar o disparo de WhatsApp (Chatmix) para leads do Hotspot?"
+→ [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Como Configurar (passo a passo)"
+
+### "Chatmix disse que enviou mas a mensagem não chegou no WhatsApp, por quê?"
+→ [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Bugs Corrigidos" (Bug 2: `success:false` com HTTP 200) e "Limitações Conhecidas" (template pendente de aprovação da Meta)
+
 ---
 
 ## 📅 Histórico
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Hotspot: Integração Disparo (WhatsApp HSM via Chatmix) disparado automaticamente no cadastro do lead; lista dinâmica de variáveis do template; fix `success:false` com HTTP 200; fix telefone sem o 9º dígito | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos do Cliente: toggle por ferramenta (Acessos/Backups/VPN/Topologia/etc), admin-only, bloqueio de backend; fix menu do cliente colado no "Voltar ao Dashboard" | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: login com sobrenome, checkbox de aceite Termos/LGPD (modal), dedup de leads por telefone/nome | HOTSPOT_CAPTIVE_PORTAL.md |
 | 20/07/2026 | Gravação WinBox (fix vídeo 0 bytes, ícone preto/16bpp, nice/ionice); proxy web (fix redirect relativo); Wiki de Artigos (PDF, templates unificados, admin) | AUDITORIA_ACESSOS.md, winbox_vnc.md, WIKI_ARTIGOS.md |
@@ -527,7 +566,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 20/07/2026  
-**Versão:** 1.7  
+**Última atualização:** 23/07/2026  
+**Versão:** 1.8  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
