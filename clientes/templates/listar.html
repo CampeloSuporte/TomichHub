@@ -2196,7 +2196,7 @@
                         <div id="hsd-chatmix-painel" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
                           <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hsDisparoToggleAjudaChatmix()">
-                              <i class="fas fa-circle-question me-1"></i>Onde acho a Key/Token?
+                              <i class="fas fa-circle-question me-1"></i>Onde acho Key/Token/ID do Template?
                             </button>
                           </div>
                           <div id="hsd-chatmix-ajuda" style="display:none;background:rgba(37,211,102,.06);border:1px dashed #25D366;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:.8rem;color:var(--text-light);">
@@ -2225,6 +2225,26 @@
                             (se não estiver, é por isso que a Chatmix responde "Template não encontrado").<br>
                             2. Marque <strong>"Ver opções avançadas"</strong> — os campos Key e Token aparecem embaixo.<br>
                             3. Copie os dois exatamente como estão e cole nos campos abaixo.
+
+                            <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #25D36688;">
+                              <strong>Para pegar o ID do Template:</strong> menu lateral do Chatmix → ícone de balão (💬) <strong>Mensagens</strong>.
+                            </div>
+                            <div style="background:var(--bg,#12161f);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:10px 0;">
+                              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                <span style="width:20px;height:20px;border-radius:5px;background:#25D36633;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;">💬</span>
+                                <span style="color:var(--text-muted);font-size:.72rem;">Mensagens</span>
+                              </div>
+                              <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+                                <div style="font-size:.78rem;font-weight:600;">Mensagens Templates</div>
+                                <div style="font-size:.7rem;color:var(--text-muted);margin:2px 0 4px;">Gerencie templates de mensagens e ações rápidas</div>
+                                <span style="font-size:.72rem;color:#4dabf7;">Acessar →</span>
+                              </div>
+                              <div style="margin-top:8px;font-size:.72rem;font-family:monospace;background:rgba(255,255,255,.05);border-radius:4px;padding:4px 8px;word-break:break-all;">
+                                srv5.chatmix.com.br/v3/mensagens/templates/<strong style="color:#25D366;">21606</strong>
+                              </div>
+                            </div>
+                            4. Clique em <strong>Acessar</strong>, abra o template desejado e copie o número no <strong>final da URL</strong>
+                            do navegador — esse número é o ID do Template.
                           </div>
                           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                             <div>
