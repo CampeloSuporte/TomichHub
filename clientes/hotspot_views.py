@@ -1552,6 +1552,8 @@ body{{
   box-shadow:0 0 0 3px {cor}2e;
 }}
 .field.error input{{border-color:#f87171;background:rgba(248,113,113,.08)}}
+.field-hint{{font-size:.72rem;color:rgba(255,255,255,.38);margin:-10px 2px 14px;padding-left:4px;transition:color .2s}}
+.field-hint.error{{color:#f87171}}
 .field-label{{
   position:absolute;left:44px;top:50%;transform:translateY(-50%);
   font-size:.85rem;color:rgba(255,255,255,.38);
@@ -1700,6 +1702,7 @@ body{{
                placeholder=" " required inputmode="tel" autocomplete="tel">
         <label class="field-label" for="f_tel">WhatsApp / Telefone</label>
       </div>
+      <div class="field-hint" id="f_tel_hint">Com o 9: (DD) 9XXXX-XXXX</div>
 
       <label class="terms-check" id="termsCheck">
         <input type="checkbox" name="termos" id="f_termos" required>
@@ -1822,11 +1825,24 @@ function onSubmit(){{
   var tel=document.getElementById('f_tel');
   var termos=document.getElementById('f_termos');
   var ok=true;
-  [nome,sobrenome,tel].forEach(function(inp){{
+  [nome,sobrenome].forEach(function(inp){{
     var field=inp.closest('.field');
     if(!inp.value.trim()){{field.classList.add('error');ok=false;}}
     else field.classList.remove('error');
   }});
+  // Exige DDD + 9º dígito + 8 números (11 dígitos) — sem o 9, o número não
+  // bate no formato do WhatsApp e a mensagem de disparo não é entregue.
+  var telField=tel.closest('.field');
+  var telHint=document.getElementById('f_tel_hint');
+  var telDigits=tel.value.replace(/[^0-9]/g,'');
+  if(telDigits.length!==11){{
+    telField.classList.add('error');
+    if(telHint)telHint.classList.add('error');
+    ok=false;
+  }}else{{
+    telField.classList.remove('error');
+    if(telHint)telHint.classList.remove('error');
+  }}
   var termsRow=document.getElementById('termsCheck');
   if(!termos.checked){{termsRow.classList.add('error');ok=false;}}
   else termsRow.classList.remove('error');
