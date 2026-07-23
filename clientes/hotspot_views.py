@@ -17,6 +17,7 @@ from datetime import datetime
 import paramiko
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -1100,7 +1101,7 @@ def hotspot_leads(request, cliente_id, hotspot_id):
             'id': lead.id,
             'nome': lead.nome,
             'telefone': lead.telefone,
-            'data_nascimento': lead.data_nascimento.strftime('%d/%m/%Y') if lead.data_nascimento else '',
+            'termos_aceitos': lead.termos_aceitos,
             'mac': lead.mac,
             'ip_cliente': lead.ip_cliente,
             'criado_em': lead.criado_em.strftime('%d/%m/%Y %H:%M'),
@@ -1127,6 +1128,100 @@ def hotspot_leads(request, cliente_id, hotspot_id):
         'dias_disponiveis': [d.isoformat() for d in dias_disponiveis],
         'total_geral': h.leads.count(),
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Termos de Uso / Política de Privacidade (LGPD) — conteúdo estático exibido
+# no modal de aceite da tela de login do hotspot.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_TERMOS_CONTEUDO_HTML = """
+<div class="m-tabcontent active" id="mc-resumo">
+  <p class="m-lead">Este documento define como coletamos, usamos e protegemos seus dados quando você usa nosso serviço de WiFi grátis, e as regras para uso do serviço.</p>
+  <ul>
+    <li>Coletamos seu <strong>nome</strong> e <strong>telefone</strong> para liberar seu acesso;</li>
+    <li>Registramos dados técnicos de conexão por <strong>12 meses</strong> (exigência legal do Marco Civil da Internet);</li>
+    <li>Você pode solicitar a exclusão dos seus dados, mas alguns registros serão mantidos pelo período legal;</li>
+    <li>Você é responsável por usar o serviço de forma legal e adequada;</li>
+    <li>Não compartilhamos seus dados com terceiros, exceto quando exigido por lei.</li>
+  </ul>
+  <p>Para detalhes completos, consulte as abas "Privacidade" e "Termos" acima.</p>
+</div>
+
+<div class="m-tabcontent" id="mc-privacidade">
+  <p>Esta Política de Privacidade descreve como coletamos, usamos, armazenamos, compartilhamos e protegemos seus dados pessoais ao utilizar este serviço de WiFi gratuito ("Serviço"), em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e o Marco Civil da Internet (Lei nº 12.965/2014).</p>
+
+  <h4>1. Dados que coletamos</h4>
+  <ul>
+    <li><strong>Dados cadastrais</strong>: nome, sobrenome e telefone para autenticação;</li>
+    <li><strong>Dados de conexão</strong>: data e hora de início e término, duração, IP utilizado, endereço MAC do dispositivo e registros de acesso;</li>
+    <li><strong>Dados de navegação</strong>: volume de dados trafegados (sem conteúdo das comunicações).</li>
+  </ul>
+
+  <h4>2. Finalidades do tratamento</h4>
+  <ul>
+    <li>Autenticar seu acesso ao Serviço;</li>
+    <li>Cumprir obrigações legais e regulatórias;</li>
+    <li>Proteger a segurança da rede e identificar usos inadequados ou ilícitos;</li>
+    <li>Melhorar a qualidade do Serviço.</li>
+  </ul>
+
+  <h4>3. Bases legais</h4>
+  <p>Execução de contrato, consentimento, cumprimento de obrigação legal (Marco Civil da Internet) e legítimo interesse na segurança da rede.</p>
+
+  <h4>4. Compartilhamento de dados</h4>
+  <ul>
+    <li>Com autoridades públicas, mediante ordem judicial ou requisição legal;</li>
+    <li>Com prestadores de serviço que nos auxiliam na operação do Serviço, sob contrato de confidencialidade;</li>
+    <li>Em caso de reorganização societária, fusão ou aquisição.</li>
+  </ul>
+
+  <h4>5. Período de retenção</h4>
+  <ul>
+    <li><strong>Registros de conexão</strong>: 12 meses, conforme exigido pelo Marco Civil da Internet;</li>
+    <li><strong>Dados cadastrais</strong>: enquanto você for usuário do Serviço e pelo período necessário ao cumprimento de obrigações legais.</li>
+  </ul>
+
+  <h4>6. Seus direitos (LGPD)</h4>
+  <p>Você pode confirmar a existência de tratamento, acessar, corrigir, solicitar anonimização/bloqueio/eliminação de dados desnecessários, solicitar portabilidade e revogar o consentimento a qualquer momento.</p>
+  <p class="m-important">Em caso de solicitação de exclusão, alguns dados poderão ser mantidos pelo período legal (registros de conexão) ou para cumprimento de outras obrigações legais.</p>
+
+  <h4>7. Medidas de segurança</h4>
+  <p>Adotamos criptografia, controle de acesso, firewalls e políticas internas de proteção de dados.</p>
+
+  <h4>8. Alterações</h4>
+  <p>Esta Política pode ser atualizada periodicamente; a versão mais recente estará sempre disponível nesta tela de login.</p>
+</div>
+
+<div class="m-tabcontent" id="mc-termos">
+  <p>Estes Termos de Uso estabelecem as condições para utilização deste serviço de WiFi gratuito ("Serviço"). Ao utilizar o Serviço, você concorda com estes Termos.</p>
+
+  <h4>1. Descrição do Serviço</h4>
+  <p>O Serviço consiste no fornecimento de acesso gratuito à internet via WiFi. É oferecido "como está", sem garantias de velocidade ou disponibilidade contínua.</p>
+
+  <h4>2. Condições de uso</h4>
+  <ul>
+    <li>Utilizar o Serviço apenas para finalidades lícitas;</li>
+    <li>Não prejudicar o funcionamento do Serviço ou da rede;</li>
+    <li>Não enviar spam, vírus ou outros códigos maliciosos;</li>
+    <li>Não acessar ou distribuir conteúdos ilegais;</li>
+    <li>Não violar direitos de propriedade intelectual;</li>
+    <li>Não utilizar ferramentas para burlar limitações do Serviço ou ocultar sua identidade.</li>
+  </ul>
+
+  <h4>3. Limitações do Serviço</h4>
+  <p>Limite de velocidade e de tempo de uso, bloqueio de determinados conteúdos, interrupções para manutenção e priorização de tráfego, conforme definido pelo provedor do Serviço.</p>
+
+  <h4>4. Responsabilidades</h4>
+  <p>Você é o único responsável pelas atividades realizadas durante sua sessão e pelo conteúdo que acessar. Não nos responsabilizamos por perda de dados, danos a dispositivos ou interrupções do Serviço.</p>
+
+  <h4>5. Monitoramento e suspensão</h4>
+  <p>Reservamo-nos o direito de monitorar o uso do Serviço para fins de segurança, suspender o acesso em caso de violação destes Termos e reportar atividades ilegais às autoridades competentes.</p>
+
+  <h4>6. Legislação aplicável</h4>
+  <p>Estes Termos são regidos pelas leis da República Federativa do Brasil.</p>
+</div>
+"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1315,40 +1410,60 @@ body{{
 .login-header p{{color:rgba(255,255,255,.6);font-size:.9rem;margin-top:6px}}
 
 /* Form area */
-.form-area{{padding:20px 20px 20px}}
+.form-area{{padding:22px 22px 22px}}
+
+/* Linha com dois campos lado a lado (Nome / Sobrenome) */
+.field-row{{display:flex;gap:10px}}
+.field-row .field{{flex:1 1 0;min-width:0}}
 
 /* Inputs com ícone flutuante */
-.field{{position:relative;margin-bottom:14px}}
+.field{{position:relative;margin-bottom:16px}}
 .field-icon{{
-  position:absolute;left:14px;top:50%;transform:translateY(-50%);
-  font-size:16px;opacity:.45;pointer-events:none;
+  position:absolute;left:16px;top:50%;transform:translateY(-50%);
+  font-size:17px;opacity:.5;pointer-events:none;
 }}
 .field input{{
-  width:100%;height:52px;
-  padding:0 14px 0 42px;
-  background:rgba(255,255,255,0.05);
-  border:1.5px solid rgba(255,255,255,0.1);
+  width:100%;height:54px;
+  padding:0 14px 0 44px;
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(255,255,255,0.14);
   border-radius:14px;
-  color:#f1f5f9;font-size:.95rem;
-  outline:none;transition:border-color .2s,background .2s;
+  color:#f8fafc;font-size:.95rem;
+  outline:none;transition:border-color .2s,background .2s,box-shadow .2s;
   -webkit-appearance:none;appearance:none;
 }}
+.field.no-icon input{{padding-left:16px}}
 .field input::placeholder{{color:rgba(255,255,255,.3)}}
+.field input:hover{{border-color:rgba(255,255,255,.22)}}
 .field input:focus{{
   border-color:{cor};
-  background:rgba(255,255,255,0.08);
-  box-shadow:0 0 0 3px {cor}22;
+  background:rgba(255,255,255,0.09);
+  box-shadow:0 0 0 3px {cor}2e;
 }}
-.field input[type=date]{{color-scheme:dark}}
+.field.error input{{border-color:#f87171;background:rgba(248,113,113,.08)}}
 .field-label{{
-  position:absolute;left:42px;top:50%;transform:translateY(-50%);
-  font-size:.85rem;color:rgba(255,255,255,.3);
+  position:absolute;left:44px;top:50%;transform:translateY(-50%);
+  font-size:.85rem;color:rgba(255,255,255,.38);
   pointer-events:none;transition:all .2s;
 }}
+.field.no-icon .field-label{{left:16px}}
 .field input:focus ~ .field-label,
 .field input:not(:placeholder-shown) ~ .field-label{{
-  top:8px;font-size:.68rem;color:{cor};letter-spacing:.03em;transform:none;
+  top:9px;font-size:.68rem;color:{cor};letter-spacing:.03em;transform:none;
 }}
+
+/* Aceite de termos */
+.terms-check{{
+  display:flex;align-items:flex-start;gap:10px;
+  margin:4px 2px 18px;cursor:pointer;user-select:none;
+}}
+.terms-check input{{
+  margin-top:2px;width:18px;height:18px;flex:none;
+  accent-color:{cor};cursor:pointer;
+}}
+.terms-check span{{font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.55)}}
+.terms-check a{{color:{cor};text-decoration:underline;font-weight:600}}
+.terms-check.error span{{color:#f87171}}
 
 /* Botão */
 .btn-wrap{{margin-top:6px}}
@@ -1383,6 +1498,53 @@ body{{
   font-size:.72rem;color:rgba(255,255,255,.2);line-height:1.5;
 }}
 .footer a{{color:rgba(255,255,255,.35);text-decoration:none}}
+
+/* ── Modal de Termos de Uso / Política de Privacidade ────────────── */
+.modal-overlay{{
+  position:fixed;inset:0;z-index:20;display:none;
+  background:rgba(5,5,10,.72);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;padding:16px;
+}}
+.modal-overlay.open{{display:flex}}
+.modal{{
+  width:min(480px,100%);max-height:88vh;
+  display:flex;flex-direction:column;
+  background:#12121c;border-radius:20px;
+  border:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 32px 80px rgba(0,0,0,.6);
+  animation:cardIn .3s cubic-bezier(.22,1,.36,1) both;
+}}
+.modal-head{{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);
+}}
+.modal-head h3{{color:#fff;font-size:1.02rem;font-weight:700}}
+.modal-close{{
+  background:rgba(255,255,255,.08);border:none;color:#fff;
+  width:30px;height:30px;border-radius:50%;font-size:18px;line-height:1;
+  cursor:pointer;flex:none;
+}}
+.modal-tabs{{display:flex;gap:6px;padding:12px 20px 0}}
+.m-tab{{
+  padding:8px 14px;border-radius:10px;font-size:.78rem;font-weight:600;
+  color:rgba(255,255,255,.5);background:rgba(255,255,255,.05);cursor:pointer;
+}}
+.m-tab.active{{color:#fff;background:{cor}}}
+.modal-body{{
+  padding:16px 20px 4px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  color:rgba(255,255,255,.72);font-size:.82rem;line-height:1.6;
+}}
+.m-tabcontent{{display:none}}
+.m-tabcontent.active{{display:block}}
+.m-tabcontent h4{{color:#fff;font-size:.86rem;margin:16px 0 6px}}
+.m-tabcontent h4:first-child{{margin-top:0}}
+.m-tabcontent p{{margin-bottom:8px}}
+.m-tabcontent ul{{margin:0 0 10px 18px}}
+.m-tabcontent li{{margin-bottom:4px}}
+.m-lead{{color:rgba(255,255,255,.85)}}
+.m-important{{color:#fbbf24;font-weight:600}}
+.modal-foot{{padding:16px 20px 20px}}
+.modal-foot .btn{{height:48px;font-size:.9rem}}
 </style>
 </head>
 <body>
@@ -1407,11 +1569,18 @@ body{{
       <input type="hidden" name="ip"    value="{ip_h}">
       <input type="hidden" name="orig"  value="{orig_h}">
 
-      <div class="field">
-        <span class="field-icon">&#x1F464;</span>
-        <input type="text" name="nome" id="f_nome"
-               placeholder=" " required autocomplete="name">
-        <label class="field-label" for="f_nome">Nome completo</label>
+      <div class="field-row">
+        <div class="field">
+          <span class="field-icon">&#x1F464;</span>
+          <input type="text" name="nome" id="f_nome"
+                 placeholder=" " required autocomplete="given-name">
+          <label class="field-label" for="f_nome">Nome</label>
+        </div>
+        <div class="field no-icon">
+          <input type="text" name="sobrenome" id="f_sobrenome"
+                 placeholder=" " required autocomplete="family-name">
+          <label class="field-label" for="f_sobrenome">Sobrenome</label>
+        </div>
       </div>
 
       <div class="field">
@@ -1421,12 +1590,10 @@ body{{
         <label class="field-label" for="f_tel">WhatsApp / Telefone</label>
       </div>
 
-      <div class="field">
-        <span class="field-icon">&#x1F382;</span>
-        <input type="date" name="data_nascimento" id="f_nasc"
-               placeholder=" ">
-        <label class="field-label" for="f_nasc">Data de nascimento</label>
-      </div>
+      <label class="terms-check" id="termsCheck">
+        <input type="checkbox" name="termos" id="f_termos" required>
+        <span>Li e aceito os <a href="#" id="termsLink">Termos de Uso e a Política de Privacidade</a></span>
+      </label>
 
       <div class="btn-wrap">
         <button class="btn" type="submit" id="btn">
@@ -1437,18 +1604,34 @@ body{{
     </form>
 
     <div class="footer">
-      Ao conectar você concorda com os termos de uso desta rede.<br>
-      Seus dados são protegidos e não serão compartilhados.
+      Seus dados são protegidos e não serão compartilhados com terceiros.
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Termos de Uso / Política de Privacidade -->
+<div class="modal-overlay" id="termsOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Termos e Privacidade</h3>
+      <button type="button" class="modal-close" id="termsClose">&times;</button>
+    </div>
+    <div class="modal-tabs">
+      <div class="m-tab active" data-tab="resumo">Resumo</div>
+      <div class="m-tab" data-tab="privacidade">Privacidade</div>
+      <div class="m-tab" data-tab="termos">Termos</div>
+    </div>
+    <div class="modal-body">
+      {_TERMOS_CONTEUDO_HTML}
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="termsAccept">Li e aceito</button>
     </div>
   </div>
 </div>
 
 <script>
 (function(){{
-  // Limite data de nascimento
-  var dn=document.getElementById('f_nasc');
-  if(dn)dn.max=new Date().toISOString().split('T')[0];
-
   // Slideshow
   var slides=document.querySelectorAll('.slide');
   var dotsEl=document.getElementById('dots');
@@ -1493,12 +1676,50 @@ body{{
     else if(v.length>2)v='('+v.slice(0,2)+') '+v.slice(2);
     this.value=v;
   }});
+
+  // Modal de Termos de Uso / Política de Privacidade
+  var overlay=document.getElementById('termsOverlay');
+  var link=document.getElementById('termsLink');
+  var closeBtn=document.getElementById('termsClose');
+  var acceptBtn=document.getElementById('termsAccept');
+  var termsChk=document.getElementById('f_termos');
+  var termsRow=document.getElementById('termsCheck');
+  function openModal(e){{if(e)e.preventDefault();overlay.classList.add('open');}}
+  function closeModal(){{overlay.classList.remove('open');}}
+  if(link)link.addEventListener('click',openModal);
+  if(closeBtn)closeBtn.addEventListener('click',closeModal);
+  if(overlay)overlay.addEventListener('click',function(e){{if(e.target===overlay)closeModal();}});
+  if(acceptBtn)acceptBtn.addEventListener('click',function(){{
+    termsChk.checked=true;
+    if(termsRow)termsRow.classList.remove('error');
+    closeModal();
+  }});
+  var mtabs=document.querySelectorAll('.m-tab');
+  mtabs.forEach(function(t){{
+    t.addEventListener('click',function(){{
+      mtabs.forEach(function(x){{x.classList.remove('active');}});
+      document.querySelectorAll('.m-tabcontent').forEach(function(c){{c.classList.remove('active');}});
+      t.classList.add('active');
+      document.getElementById('mc-'+t.dataset.tab).classList.add('active');
+    }});
+  }});
 }})();
 
 function onSubmit(){{
-  var nome=document.getElementById('f_nome').value.trim();
-  var tel=document.getElementById('f_tel').value.trim();
-  if(!nome||!tel)return false;
+  var nome=document.getElementById('f_nome');
+  var sobrenome=document.getElementById('f_sobrenome');
+  var tel=document.getElementById('f_tel');
+  var termos=document.getElementById('f_termos');
+  var ok=true;
+  [nome,sobrenome,tel].forEach(function(inp){{
+    var field=inp.closest('.field');
+    if(!inp.value.trim()){{field.classList.add('error');ok=false;}}
+    else field.classList.remove('error');
+  }});
+  var termsRow=document.getElementById('termsCheck');
+  if(!termos.checked){{termsRow.classList.add('error');ok=false;}}
+  else termsRow.classList.remove('error');
+  if(!ok)return false;
   var btn=document.getElementById('btn');
   btn.disabled=true;
   document.getElementById('btn-txt').textContent='Conectando...';
@@ -1557,31 +1778,40 @@ def hotspot_portal_conectar(request, hotspot_uuid):
     except HotspotConfig.DoesNotExist:
         return HttpResponse('Hotspot não encontrado.', status=404)
 
-    link  = request.POST.get('link', '').strip()
-    orig  = request.POST.get('orig', '').strip()
-    mac   = request.POST.get('mac', '').strip()
-    ip_c  = request.POST.get('ip', '').strip()
-    nome  = request.POST.get('nome', '').strip()
-    tel   = request.POST.get('telefone', '').strip()
-    nasc  = request.POST.get('data_nascimento', '').strip() or None
+    link      = request.POST.get('link', '').strip()
+    orig      = request.POST.get('orig', '').strip()
+    mac       = request.POST.get('mac', '').strip()
+    ip_c      = request.POST.get('ip', '').strip()
+    nome      = request.POST.get('nome', '').strip()
+    sobrenome = request.POST.get('sobrenome', '').strip()
+    tel       = request.POST.get('telefone', '').strip()
+    termos    = request.POST.get('termos', '').strip().lower() in ('on', 'true', '1')
 
-    if nome or tel:
-        try:
-            from datetime import date
-            nasc_date = date.fromisoformat(nasc) if nasc else None
-        except ValueError:
-            nasc_date = None
-        try:
-            HotspotLead.objects.create(
-                hotspot=h,
-                nome=nome[:100],
-                telefone=tel[:20],
-                data_nascimento=nasc_date,
-                mac=mac[:17],
-                ip_cliente=ip_c[:15],
-            )
-        except Exception as exc:
-            logger.debug('hotspot_portal_conectar lead error: %s', exc)
+    nome_completo = f'{nome} {sobrenome}'.strip()
+
+    if nome_completo or tel:
+        # Evita salvar lead duplicado: mesmo hotspot + mesmo telefone ou mesmo
+        # nome completo (case-insensitive) já cadastrado não gera novo registro.
+        dup_filter = Q()
+        if tel:
+            dup_filter |= Q(telefone=tel)
+        if nome_completo:
+            dup_filter |= Q(nome__iexact=nome_completo)
+
+        ja_existe = bool(dup_filter) and HotspotLead.objects.filter(hotspot=h).filter(dup_filter).exists()
+
+        if not ja_existe:
+            try:
+                HotspotLead.objects.create(
+                    hotspot=h,
+                    nome=nome_completo[:100],
+                    telefone=tel[:20],
+                    mac=mac[:17],
+                    ip_cliente=ip_c[:15],
+                    termos_aceitos=termos,
+                )
+            except Exception as exc:
+                logger.debug('hotspot_portal_conectar lead error: %s', exc)
 
     # Página que auto-submete ao MikroTik para autenticar
     # link = $(link-login) — inclui dst= para redirect pós-auth.
@@ -1687,14 +1917,26 @@ def hotspot_lead_pixel(request, hotspot_uuid):
         ip_cli    = request.GET.get('ip', '').strip()
 
         if nome or telefone:
-            HotspotLead.objects.create(
-                hotspot=h,
-                nome=nome[:100],
-                telefone=telefone[:20],
-                cpf=cpf[:14],
-                mac=mac[:17],
-                ip_cliente=ip_cli[:15],
-            )
+            # Mesma checagem de duplicidade do portal: mesmo hotspot + mesmo
+            # telefone ou mesmo nome (case-insensitive) já cadastrado não gera
+            # um novo lead.
+            dup_filter = Q()
+            if telefone:
+                dup_filter |= Q(telefone=telefone)
+            if nome:
+                dup_filter |= Q(nome__iexact=nome)
+
+            ja_existe = bool(dup_filter) and HotspotLead.objects.filter(hotspot=h).filter(dup_filter).exists()
+
+            if not ja_existe:
+                HotspotLead.objects.create(
+                    hotspot=h,
+                    nome=nome[:100],
+                    telefone=telefone[:20],
+                    cpf=cpf[:14],
+                    mac=mac[:17],
+                    ip_cliente=ip_cli[:15],
+                )
     except Exception as exc:
         logger.debug('hotspot_lead_pixel error: %s', exc)
 
