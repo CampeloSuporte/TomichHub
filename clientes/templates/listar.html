@@ -8405,10 +8405,13 @@ function getCsrfToken(){
         var numero=document.getElementById('hsd_'+provider+'_teste_numero').value.trim();
         var status=document.getElementById('hsd_'+provider+'_status');
         if(!numero){alert('Informe um número para o teste.');return;}
-        if(status)status.innerHTML='Enviando...';
+        if(status){status.textContent='Enviando...';status.style.color='';}
         _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/testar/',{method:'POST',body:{provider:provider,numero:numero}}).then(function(r){return r.json();}).then(function(d){
-            if(status)status.innerHTML=d.ok?'<span style="color:#22c55e;">Teste enviado!</span>':'<span style="color:#ef4444;">'+(d.detalhe||d.error||'Falha no envio.')+'</span>';
-        }).catch(function(){if(status)status.innerHTML='<span style="color:#ef4444;">Falha no envio.</span>';});
+            if(!status)return;
+            var resposta=d.detalhe||d.error||(d.ok?'':'Falha no envio.');
+            status.style.color=d.ok?'#22c55e':'#ef4444';
+            status.textContent=(d.ok?'Aceito pela API — ':'Recusado — ')+resposta;
+        }).catch(function(){if(status){status.style.color='#ef4444';status.textContent='Falha no envio (erro de rede).';}});
     }
     </script>
 

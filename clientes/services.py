@@ -52,7 +52,14 @@ class ChatmixClient:
 
     def enviar_hsm(self, numero, variaveis, template_id, timeout=20):
         """Envia um disparo HSM. `variaveis` é uma lista de valores, na ordem
-        exigida pelo template configurado no Chatmix. Retorna (ok, detalhe)."""
+        exigida pelo template configurado no Chatmix. Retorna (ok, detalhe).
+
+        A Chatmix pode responder HTTP 200 e ainda assim sinalizar falha no
+        corpo (`"success": false`) — por exemplo template pendente de
+        aprovação da Meta, número sem WhatsApp, etc. Só olhar o status HTTP
+        (como antes) fazia o teste reportar "enviado" mesmo quando a Chatmix
+        recusou o envio internamente.
+        """
         mensagem = 'variables=' + '|'.join(str(v) for v in variaveis) + '||template=' + str(template_id)
         payload = {
             'key': self.key,
@@ -63,7 +70,16 @@ class ChatmixClient:
         try:
             r = self.session.post(CHATMIX_API_URL, json=payload, timeout=timeout)
             r.raise_for_status()
-            return True, r.text[:500]
+            detalhe = r.text[:500]
+            try:
+                data = r.json()
+            except ValueError:
+                data = None
+            if isinstance(data, dict) and data.get('success') is False:
+                msg = data.get('message') or detalhe
+                logger.error('Chatmix HSM recusou (HTTP 200, success=false): %s', msg)
+                return False, msg
+            return True, detalhe
         except requests.HTTPError as e:
             detalhe = f'HTTP {e.response.status_code}: {e.response.text[:200]}'
             logger.error('Chatmix HSM erro: %s', detalhe)
