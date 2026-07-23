@@ -2,7 +2,32 @@
 
 ## 🔥 Implementações Recentes
 
-### Sessão 11 — 23/07/2026: Módulos do Cliente — Seleção movida para o Cadastro/Edição
+### Sessão 14 — 23/07/2026: Módulos por Usuário — de Cliente (empresa) pra Login individual
+
+**O que mudou?**
+- ✅ Descoberto que a seleção de ferramentas deveria ser por **login individual** (`User`),
+  não por empresa (`Cliente`) — dois usuários da mesma empresa podem precisar ver coisas
+  diferentes (ex: financeiro não vê VPN, técnico de rede vê)
+- ✅ Removido `ClienteModulo` (model, migração `0086_delete_clientemodulo`, checkboxes em
+  `cadastrar_cliente.html`)
+- ✅ Novo model `UsuarioModulo` (`usuario/models.py`), primeira migração do app `usuario`
+- ✅ Checkboxes "Ferramentas habilitadas" movidos para **Sistema → Usuário**
+  (`cadastrar_usuario.html`), visíveis só quando o tipo selecionado é "Cliente"
+  (administradores sempre veem tudo)
+- ✅ `modulo_habilitado_required` simplificado: checa `request.user` diretamente, sem
+  precisar resolver qual `Cliente` está por trás da URL
+- ✅ `listar_clientes` calcula `modulos_habilitados` a partir do usuário logado, não do
+  cliente sendo visualizado
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[MODULOS_CLIENTE.md](MODULOS_CLIENTE.md)** | Reescrito — arquitetura atual (por usuário), histórico das 2 versões anteriores descartadas |
+
+---
+
+### Sessão 13 — 23/07/2026: Módulos do Cliente — Seleção movida para o Cadastro/Edição
 
 **O que mudou?**
 - ✅ Removidos os switches de toggle inline nas abas de `listar.html` (feedback: melhor
@@ -21,6 +46,59 @@
 | Documentação | Tema |
 |--------------|------|
 | **[MODULOS_CLIENTE.md](MODULOS_CLIENTE.md)** | Seção "Interface — Seleção no Cadastro/Edição do Cliente" |
+
+---
+
+### Sessão 12 — 23/07/2026: Hotspot — Integração Disparo: Opa Suite
+
+**O que foi implementado?**
+- ✅ Segunda empresa de integração funcional: **Opa Suite** (endpoint
+  `POST {dominio}/api/v1/template/send`, auth `Bearer <token>`), lendo a coleção Postman pública
+  em https://api.opasuite.com.br/
+- ✅ Novo cliente `OpaSuiteClient` (`clientes/services.py`) — mesmo padrão do `ChatmixClient`,
+  mas multi-tenant por domínio próprio (`api_dominio`) e exigindo `canal_id` (ID do canal de
+  comunicação que faz o envio)
+- ✅ Modelo `ClienteIntegracaoDisparo` ganhou `api_dominio`/`canal_id`; `template_id` ampliado de
+  20 para 64 caracteres (Opa Suite usa ObjectId Mongo, 24 caracteres, maior que o ID numérico
+  curto do Chatmix)
+- ✅ `enviar_disparo_hotspot_lead` (Celery) generalizada para disparar em **todos** os providers
+  habilitados do cliente, não só Chatmix — um cliente pode ter Chatmix e Opa Suite habilitados ao
+  mesmo tempo
+- ✅ Card "Opa Suite" na UI virou funcional (era um placeholder "Em breve"): campos Domínio/Token/
+  Canal/Template + a mesma lista dinâmica de variáveis já usada no Chatmix
+- ✅ Correção de nomenclatura: "Opa Suit" → "Opa Suite" (nome correto da empresa, conforme a
+  própria documentação deles)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** | Seções "Serviços — ChatmixClient e OpaSuiteClient", "Por que os providers têm campos diferentes", "Configurar o Opa Suite" |
+
+---
+
+### Sessão 11 — 23/07/2026: Hotspot — Integração Disparo (WhatsApp HSM via Chatmix)
+
+**O que foi implementado?**
+- ✅ Nova aba "Integração Disparo" ao lado de "Leads" no painel do Hotspot — dispara automaticamente
+  uma mensagem WhatsApp (HSM) quando um novo lead se cadastra no portal cativo
+- ✅ Novo model `ClienteIntegracaoDisparo` (por cliente × empresa de integração): Chatmix funcional,
+  Opa Suit listado como "Em breve"
+- ✅ `ChatmixClient` (`clientes/services.py`) e task Celery `enviar_disparo_hotspot_lead`
+  (`clientes/tasks.py`), disparada via sinal `post_save` em `HotspotLead`
+- ✅ Lista dinâmica de variáveis do template (adicionar/remover linha) — corrige limitação inicial
+  que só suportava 2 variáveis (`{nome}`/`{telefone}`), enquanto templates HSM reais podem exigir
+  qualquer quantidade
+- ✅ Fix: `success: false` da Chatmix com HTTP 200 era tratado como envio bem-sucedido
+- ✅ Fix: formulário do portal cativo agora exige o 9º dígito do telefone (sem ele, o número fica
+  incompleto para o WhatsApp)
+- ✅ Botão "Enviar teste" — valida key/token/template sem precisar de um lead real
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** | Modelo de dados, endpoints, `ChatmixClient`, disparo automático via Celery, bugs corrigidos, passo a passo de configuração |
 
 ---
 
@@ -328,6 +406,13 @@
   - Tipos de dispositivo, tipos/velocidades de interface, waypoints
   - Bugs corrigidos (XSS, atalhos com `<select>` focado, rótulo escondido atrás do node)
 
+- **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** — Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
+  - Model `ClienteIntegracaoDisparo`, `ChatmixClient`/`OpaSuiteClient`, task Celery `enviar_disparo_hotspot_lead` (dispara em todos os providers habilitados)
+  - Lista dinâmica de variáveis do template (N variáveis, não só nome/telefone)
+  - Tabela comparativa Chatmix × Opa Suite (endpoint, auth, canal, formato do ID de template)
+  - Bugs corrigidos: `success:false` com HTTP 200, telefone sem o 9º dígito
+  - Passo a passo de configuração de cada provider (credenciais/domínio/canal/template/variáveis/teste)
+
 - **[WIKI_ARTIGOS.md](WIKI_ARTIGOS.md)** — Wiki de artigos técnicos
   - PDF anexado ao artigo (upload/troca/remoção, visualizador com zoom no Terminal)
   - Templates de listagem (categoria/tag/fabricante) unificados
@@ -406,6 +491,7 @@ docs/
 ├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
 ├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
 └─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
+└─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
 ```
 
 ---
@@ -519,13 +605,22 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Por que o alerta de cobrança WhatsApp não está sendo enviado?"
 → [FINANCEIRO.md](FINANCEIRO.md) — Seção "Cobrança via WhatsApp — Diagnóstico e Correção"
 
+### "Como configurar o disparo de WhatsApp (Chatmix) para leads do Hotspot?"
+→ [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Como Configurar (passo a passo)"
+
+### "Chatmix disse que enviou mas a mensagem não chegou no WhatsApp, por quê?"
+→ [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Bugs Corrigidos" (Bug 2: `success:false` com HTTP 200) e "Limitações Conhecidas" (template pendente de aprovação da Meta)
+
 ---
 
 ## 📅 Histórico
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 23/07/2026 | Hotspot: Integração Disparo — Opa Suite funcional (`OpaSuiteClient`, `api_dominio`/`canal_id`), task generalizada p/ disparar em todos os providers habilitados, fix nomenclatura "Opa Suit"→"Opa Suite" | HOTSPOT_INTEGRACAO_DISPARO.md |
+| 23/07/2026 | Hotspot: Integração Disparo (WhatsApp HSM via Chatmix) disparado automaticamente no cadastro do lead; lista dinâmica de variáveis do template; fix `success:false` com HTTP 200; fix telefone sem o 9º dígito | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos do Cliente: toggle por ferramenta (Acessos/Backups/VPN/Topologia/etc), admin-only, bloqueio de backend; fix menu do cliente colado no "Voltar ao Dashboard" | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: login com sobrenome, checkbox de aceite Termos/LGPD (modal), dedup de leads por telefone/nome | HOTSPOT_CAPTIVE_PORTAL.md |
 | 20/07/2026 | Gravação WinBox (fix vídeo 0 bytes, ícone preto/16bpp, nice/ionice); proxy web (fix redirect relativo); Wiki de Artigos (PDF, templates unificados, admin) | AUDITORIA_ACESSOS.md, winbox_vnc.md, WIKI_ARTIGOS.md |
@@ -550,7 +645,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 20/07/2026  
-**Versão:** 1.7  
+**Última atualização:** 23/07/2026  
+**Versão:** 1.9  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

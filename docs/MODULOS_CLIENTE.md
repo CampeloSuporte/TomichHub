@@ -1,9 +1,9 @@
-# Módulos do Cliente — Habilitar/Desabilitar Ferramentas por Contrato
+# Módulos por Usuário — Habilitar/Desabilitar Ferramentas por Login
 
 **Data de Implementação:** 2026-07-23
-**Arquivos principais:** `clientes/models.py` (`ClienteModulo`), `clientes/decorators.py`
-(`modulo_habilitado_required`), `clientes/views.py`, `clientes/templates/listar.html`,
-`clientes/templates/cadastrar_cliente.html`, `staticfiles/js/cadastrar_cliente.js`
+**Arquivos principais:** `usuario/models.py` (`UsuarioModulo`), `clientes/decorators.py`
+(`modulo_habilitado_required`), `clientes/views.py` (`listar_clientes`), `usuario/views.py`,
+`usuario/templates/cadastrar_usuario.html`, `clientes/templates/listar.html`
 **Status:** ✅ Produção
 
 ---
@@ -12,36 +12,46 @@
 
 Cada aba da tela do cliente (Acessos, Backups, VPN, Topologia, Túneis SSH, Documentos,
 RPKI/IRR, Monitoramento, Documentação de Rede, Hotspot, Testes de Rede) pode ser habilitada
-ou desabilitada **por cliente**, para refletir o que foi contratado. A seleção acontece no
-cadastro/edição do cliente (checkboxes), não mais na própria tela de ferramentas:
+ou desabilitada **por login individual** (`User`), não por empresa — dois usuários vinculados
+à mesma `Cliente` podem ver conjuntos diferentes de ferramentas (ex: o financeiro da empresa
+não precisa ver VPN, mas o técnico de rede precisa). A seleção acontece em
+**Sistema → Usuário**, no cadastro/edição do login:
 
 ```
-Admin cadastra ou edita um cliente
+Admin abre Sistema → Usuário → edita um login do tipo "Cliente"
   └─ Marca/desmarca checkboxes em "Ferramentas habilitadas"
-     └─ Desmarca, por exemplo, "VPN" (cliente não contratou)
-        └─ Submit do form grava ClienteModulo(cliente, modulo='vpn', habilitado=False)
-           └─ Para o cliente final: a aba "VPN" some da tela
+     └─ Desmarca, por exemplo, "VPN"
+        └─ Submit do form grava UsuarioModulo(usuario, modulo='vpn', habilitado=False)
+           └─ Quando ESSE usuário loga: a aba "VPN" some da tela do cliente
               └─ Acesso direto por URL às views de VPN é bloqueado (redirect com aviso)
+              └─ Outro usuário da mesma empresa, sem essa restrição, continua vendo "VPN"
 ```
 
-Módulo **sem registro** em `ClienteModulo` = **habilitado**. Isso é proposital: nenhum
-cliente já cadastrado perde acesso a nada com o deploy dessa feature — desabilitar é sempre
-uma ação explícita do admin, não um estado padrão.
+Módulo **sem registro** em `UsuarioModulo` = **habilitado**. Isso é proposital: nenhum
+usuário já cadastrado perde acesso a nada com o deploy dessa feature — desabilitar é sempre
+uma ação explícita do admin, não um estado padrão. A seção de checkboxes só se aplica a
+usuários do tipo **Cliente** — administradores (`is_staff`) sempre veem tudo, então a seção
+some no formulário quando o tipo selecionado é "Administrador".
 
-> **Nota de histórico:** a primeira versão desta feature (mesmo dia) colocava um switch de
-> toggle ao lado de cada aba, dentro da própria tela do cliente (`listar.html`). Foi trocado
-> por checkboxes no cadastro/edição do cliente a pedido do usuário — o admin já define o
-> pacote contratado no mesmo lugar onde cadastra os dados da empresa, em vez de precisar abrir
-> a tela de ferramentas de cada cliente pra configurar isso. Ver seção "Migração da UI" abaixo.
+> **Nota de histórico:** esta feature passou por duas versões no mesmo dia, ambas descartadas
+> antes desta terceira:
+> 1. Um switch de toggle ao lado de cada aba, dentro da própria tela do cliente
+>    (`listar.html`) — trocado porque fazia mais sentido configurar isso no cadastro, não na
+>    tela de uso.
+> 2. Checkboxes no cadastro/edição do **Cliente** (empresa) — modelo `ClienteModulo`. Foi
+>    descoberto que o usuário queria controle por **login individual**, não por empresa (dois
+>    funcionários da mesma empresa podem precisar ver coisas diferentes). `ClienteModulo` foi
+>    removido (migração `clientes/migrations/0086_delete_clientemodulo.py`) e substituído pelo
+>    `UsuarioModulo` documentado aqui.
 
 ---
 
 ## Modelo de Dados
 
-`clientes/models.py`:
+`usuario/models.py`:
 
 ```python
-class ClienteModulo(models.Model):
+class UsuarioModulo(models.Model):
     MODULO_CHOICES = [
         ('acessos', 'Acessos'), ('backups', 'Backups'), ('vpn', 'VPN'),
         ('topologia', 'Topologia'), ('tuneis', 'Túneis SSH'),
@@ -49,26 +59,34 @@ class ClienteModulo(models.Model):
         ('monitoramento', 'Monitoramento'), ('documentacao', 'Documentação de Rede'),
         ('hotspot', 'Hotspot'), ('testes_rede', 'Testes de Rede'),
     ]
-    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='modulos')
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='modulos')
     modulo = models.CharField(max_length=30, choices=MODULO_CHOICES)
     habilitado = models.BooleanField(default=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('cliente', 'modulo')
+        unique_together = ('usuario', 'modulo')
+
+
+def modulo_habilitado(user, modulo_key):
+    """Módulo sem registro para esse usuário = habilitado."""
+    registro = UsuarioModulo.objects.filter(usuario=user, modulo=modulo_key).values_list('habilitado', flat=True).first()
+    return True if registro is None else registro
+
+
+def modulos_habilitados_dict(user):
+    """Dict {modulo_key: bool} para todos os módulos conhecidos, pra uso no template."""
+    estado = {m.modulo: m.habilitado for m in UsuarioModulo.objects.filter(usuario=user)}
+    return {chave: estado.get(chave, True) for chave, _ in UsuarioModulo.MODULO_CHOICES}
 ```
 
-`Cliente` ganhou dois métodos auxiliares:
+`modulo_habilitado`/`modulos_habilitados_dict` são **funções de módulo**, não métodos de
+instância — `User` é o model nativo do Django (`django.contrib.auth.models.User`) e não dá
+pra adicionar métodos nele sem monkeypatch, então o padrão adotado foi `from usuario.models
+import modulo_habilitado; modulo_habilitado(request.user, 'vpn')`.
 
-- `modulo_habilitado(modulo_key)` — retorna `True`/`False` para um módulo específico
-  (consulta única, usada pelo decorator).
-- `modulos_habilitados_dict()` — retorna `{modulo_key: bool}` para todos os módulos
-  conhecidos de uma vez (usado no contexto da view para renderizar o template); também
-  popula um cache de instância (`self._modulos_cache`) para não repetir a query se
-  `modulo_habilitado()` for chamado depois no mesmo request.
-
-Migração: `clientes/migrations/0085_clientemodulo.py` (`CREATE TABLE`, sem alterar nada
-existente).
+Migração: `usuario/migrations/0001_initial.py` (primeira migração do app `usuario`, que até
+então não tinha nenhum model).
 
 ### Mapeamento aba → módulo
 
@@ -84,15 +102,14 @@ diferentes na mesma aba antes desta feature existir:
 
 ---
 
-## Interface — Seleção no Cadastro/Edição do Cliente
+## Interface — Sistema → Usuário
 
-`clientes/templates/cadastrar_cliente.html` ganhou uma seção **"Ferramentas habilitadas"**
-em cada um dos dois modais (Cadastro e Edição), com um checkbox por módulo
-(`name="modulos" value="{{ chave }}"`), mais um marcador oculto
-`<input type="hidden" name="modulos_form_present" value="1">`:
+`usuario/templates/cadastrar_usuario.html` ganhou uma seção **"Ferramentas habilitadas"**
+em cada um dos dois modais (Cadastro e Edição de Usuário), logo abaixo do toggle "Tipo de
+usuário" (Cliente/Administrador):
 
 ```html
-<div class="form-section">
+<div class="form-section modulos-section">
     <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
     <input type="hidden" name="modulos_form_present" value="1">
     {% for chave, rotulo in modulos_disponiveis %}
@@ -102,68 +119,75 @@ em cada um dos dois modais (Cadastro e Edição), com um checkbox por módulo
 </div>
 ```
 
-- **Cadastro:** todos os checkboxes vêm marcados por padrão (reflete o "sem registro =
-  habilitado"); o JS reseta pra todos marcados sempre que o modal reabre do zero
-  (`show.bs.modal` em `#cadastroModal`).
-- **Edição:** os checkboxes começam desmarcados no HTML e são marcados via JS quando o
-  admin clica em "Editar" — `editarCliente(...)` (em `staticfiles/js/cadastrar_cliente.js`)
-  ganhou um parâmetro `modulosHabilitados` (objeto `{modulo_key: bool}`) e aplica:
+- **Visibilidade condicional ao tipo:** `setRole(el, isAdmin)` (JS que já controlava o toggle
+  visual Cliente/Administrador) ganhou uma linha a mais — esconde `.modulos-section` quando
+  "Administrador" é selecionado:
   ```js
-  document.querySelectorAll('#edicaoForm input[name="modulos"]').forEach(function(cb) {
-      cb.checked = !!(modulosHabilitados && modulosHabilitados[cb.value]);
-  });
+  const modulosSection = form.querySelector('.modulos-section');
+  if (modulosSection) modulosSection.style.display = isAdmin ? 'none' : '';
   ```
-  O objeto chega via `onclick="editarCliente(..., JSON.parse('{{ cliente.modulos_json|escapejs }}'))"`,
-  onde `cliente.modulos_json` é montado na view (`json.dumps(cliente.modulos_habilitados_dict())`)
-  para cada linha da tabela — `|escapejs` (não `|safe`) porque o JSON tem aspas duplas e o
-  atributo `onclick="..."` também usa aspas duplas; embutir sem escapar quebraria o HTML.
+- **Cadastro:** todos os checkboxes vêm marcados por padrão (reflete "sem registro =
+  habilitado"), seção visível por padrão (tipo padrão é "Cliente").
+- **Edição:** `editarUsuario(id, username, email, isStaff, modulosHabilitados)` ganhou o
+  parâmetro `modulosHabilitados` (objeto `{modulo_key: bool}`), aplica nos checkboxes e
+  ajusta a visibilidade inicial da seção conforme `isStaff`. O objeto chega via
+  `onclick="editarUsuario(..., JSON.parse('{{ usuarios.modulos_json|escapejs }}'))"`, com
+  `usuarios.modulos_json` montado na view (`json.dumps(modulos_habilitados_dict(u))`) —
+  `|escapejs` (não `|safe`) porque o JSON tem aspas duplas e o atributo `onclick="..."`
+  também usa aspas duplas; embutir sem escapar quebraria o HTML.
 
-**Efeito na tela do cliente** (`listar.html`) continua igual: cada `<li>` de aba só é
-renderizado se `is_admin` ou `modulos_habilitados.xxx` for verdadeiro. A aba "Acessos"
-(antes sempre `display:block` fixo) respeita o mesmo flag, com fallback em JS que ativa a
-primeira aba disponível caso "Acessos" esteja desabilitada. `window.MODULOS_BLOQUEADOS` +
-`moduloBloqueado(nomeAba)` seguem impedindo que `trocarAba()` abra uma aba desabilitada por
+**Efeito na tela do cliente** (`clientes/templates/listar.html`): `listar_clientes` agora
+calcula `modulos_habilitados = modulos_habilitados_dict(request.user)` — ou seja, reflete o
+usuário **logado no momento**, não a empresa. Cada `<li>` de aba só é renderizado se
+`is_admin` ou `modulos_habilitados.xxx` for verdadeiro. A aba "Acessos" (antes sempre
+`display:block` fixo) respeita o mesmo flag, com fallback em JS que ativa a primeira aba
+disponível caso "Acessos" esteja desabilitada para aquele usuário. `window.MODULOS_BLOQUEADOS`
++ `moduloBloqueado(nomeAba)` seguem impedindo que `trocarAba()` abra uma aba desabilitada por
 qualquer caminho (inclusive `sessionStorage` de uma sessão anterior).
 
 ### Persistência (views)
 
-`cadastrar_cliente` (POST) e `editar_cliente` (POST) só gravam/atualizam `ClienteModulo`
-se `modulos_form_present` estiver no POST — proteção contra um form incompleto (por bug ou
-por um client externo que não manda esse campo) desabilitar **todos** os módulos por engano,
-já que checkboxes desmarcados simplesmente não aparecem no POST e são indistinguíveis de
-"campo ausente":
+`usuario/views.py` ganhou `_sincronizar_modulos_usuario(request, usuario)`, chamada tanto em
+`cadastrar_usuario` (POST) quanto em `editar_usuario` (POST) — só grava/atualiza
+`UsuarioModulo` se `modulos_form_present` estiver no POST, proteção contra um form incompleto
+desabilitar **todos** os módulos por engano (checkbox desmarcado não aparece no POST, então
+"nada marcado" é indistinguível de "campo ausente" sem esse marcador):
 
 ```python
-if request.POST.get('modulos_form_present'):
+def _sincronizar_modulos_usuario(request, usuario):
+    if not request.POST.get('modulos_form_present'):
+        return
     modulos_marcados = set(request.POST.getlist('modulos'))
-    for chave, _ in ClienteModulo.MODULO_CHOICES:
-        ClienteModulo.objects.update_or_create(
-            cliente=cliente, modulo=chave,
+    for chave, _ in UsuarioModulo.MODULO_CHOICES:
+        UsuarioModulo.objects.update_or_create(
+            usuario=usuario, modulo=chave,
             defaults={'habilitado': chave in modulos_marcados},
         )
 ```
-
-No cadastro usa `bulk_create` (cliente é novo, sem risco de conflito); na edição usa
-`update_or_create` por módulo (cliente já pode ter registros de antes).
 
 ---
 
 ## Bloqueio no Backend — `modulo_habilitado_required`
 
-`clientes/decorators.py`:
+`clientes/decorators.py` — simplificado nesta versão: como a checagem agora é sobre o
+usuário logado (não sobre um Cliente específico), não precisa mais resolver `cliente_id` da
+URL nem cair para `get_by_usuario_vinculado` como caminho de leitura — só usa isso pro
+redirect de erro:
 
 ```python
-def modulo_habilitado_required(modulo_key, cliente_kwarg='cliente_id'):
+def modulo_habilitado_required(modulo_key):
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             if request.user.is_staff or request.user.is_superuser:
                 return view_func(request, *args, **kwargs)
-            cliente_id = kwargs.get(cliente_kwarg)
-            cliente = Cliente.objects.get(id=cliente_id) if cliente_id else Cliente.objects.get_by_usuario_vinculado(request.user)
-            if not cliente.modulo_habilitado(modulo_key):
-                messages.error(request, 'Este módulo não está disponível no seu contrato. Fale com o suporte.')
-                return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
+            if not usuario_modulo_habilitado(request.user, modulo_key):
+                messages.error(request, 'Este módulo não está disponível para o seu usuário. Fale com o suporte.')
+                try:
+                    cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+                    return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
+                except Cliente.DoesNotExist:
+                    return redirect('login')
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
@@ -173,20 +197,18 @@ Pontos importantes:
 
 - **Admin sempre passa.** O bloqueio existe só para o portal do cliente final — nunca afeta
   `is_staff`/`is_superuser`.
-- **Resolução do cliente:** se a view recebe `cliente_id` na URL (ex: `topologia_editor(request, cliente_id)`),
-  usa esse id. Se não recebe (ex: `cadastrar_acesso(request)`, que lê o cliente do `POST`),
-  cai para `Cliente.objects.get_by_usuario_vinculado(request.user)` — que resolve
-  corretamente para um cliente-portal, já que esse tipo de usuário só pode agir dentro do
-  próprio tenant (mesma premissa usada em `cliente_can_view_cliente`).
+- **Checagem é 100% sobre `request.user`** — não importa qual `cliente_id` está na URL, o
+  que importa é se aquele login específico tem o módulo habilitado.
 - Aplicado a **89 endpoints** em `clientes/views.py` (todas as ações de Acessos, Backups,
-  VPN, Topologia, Documentos, Túneis, RPKI/IRR e Testes de Rede).
+  VPN, Topologia, Documentos, Túneis, RPKI/IRR e Testes de Rede) — nenhum desses call sites
+  precisou mudar, o decorator só teve a implementação interna trocada.
 
 ### Lacuna conhecida
 
 Os módulos **Hotspot** (`clientes/hotspot_views.py`) e **Documentação de Rede**
 (`clientes/ipam_views.py`) estão protegidos **só na interface** (a aba some) — as views de
 ação desses dois arquivos ainda não têm `@modulo_habilitado_required` aplicado. O mesmo vale
-para **Monitoramento**, que vive na app `monitoramento` (fora de `clientes`). Um cliente que
+para **Monitoramento**, que vive na app `monitoramento` (fora de `clientes`). Um usuário que
 souber a URL exata ainda conseguiria usar essas três ferramentas por acesso direto mesmo
 desabilitadas — risco baixo (uso do próprio tenant, não vazamento entre clientes), mas vale
 uma passada futura se for necessário fechar 100%.
@@ -197,7 +219,7 @@ uma passada futura se for necessário fechar 100%.
 from .decorators import modulo_habilitado_required
 
 @login_required(login_url='login')
-@modulo_habilitado_required('vpn')   # mesma chave usada em ClienteModulo.MODULO_CHOICES
+@modulo_habilitado_required('vpn')   # mesma chave usada em UsuarioModulo.MODULO_CHOICES
 def minha_view_nova(request, cliente_id):
     ...
 ```
@@ -233,25 +255,27 @@ canto direito da tela.
 
 Via `python manage.py shell` (`RequestFactory`), sem servidor rodando:
 
-- Render como cliente (usuário `is_staff=False` vinculado ao `Cliente`): aba presente por
-  padrão, some quando o módulo é desabilitado.
-- Acesso direto a `upload_vpn` como cliente com módulo desabilitado → redirect 302 para
-  `listar_clientes` (bloqueado, não executa a view).
-- GET de `cadastrar_cliente`: checkboxes de módulos e marcador `modulos_form_present`
+- GET de `cadastrar_usuario`: checkboxes de módulos e marcador `modulos_form_present`
   presentes no HTML.
-- POST de criação desmarcando `vpn`/`hotspot` → `ClienteModulo` gravado corretamente
-  (`habilitado=False` só nesses dois).
-- POST de edição alterando a seleção (reabilita `vpn`, desabilita `backups`) → `ClienteModulo`
-  atualizado corretamente via `update_or_create`.
-- POST de edição **sem** `modulos_form_present` (simulando form incompleto) → nenhum
-  `ClienteModulo` alterado (guard funcionando).
-- `python manage.py check` sem apontar problemas.
-- Templates `listar.html` e `cadastrar_cliente.html` compilam sem erro de sintaxe.
+- POST de criação de usuário desmarcando `vpn`/`hotspot` → `UsuarioModulo` gravado
+  corretamente (`habilitado=False` só nesses dois, resto `True`).
+- Usuário criado vinculado como `usuario` principal de um `Cliente` real → render de
+  `listar_clientes` **logado como esse usuário**: aba "VPN" ausente, aba "Backups" presente.
+- Acesso direto a `upload_vpn` logado como esse usuário → redirect 302 para `listar_clientes`
+  (bloqueado, não executa a view) — a checagem é do usuário, não do cliente.
+- POST de edição reabilitando `vpn` → `UsuarioModulo` atualizado via `update_or_create`.
+- `python manage.py check` sem apontar problemas; templates `listar.html`,
+  `cadastrar_cliente.html` e `cadastrar_usuario.html` compilam sem erro de sintaxe.
 
 ---
 
 ## Deploy
 
-Migração `0085_clientemodulo` já aplicada em `crm_db` (banco compartilhado entre o worktree
-de desenvolvimento e produção). Merge feito via fast-forward `claude/system-tools-modularization-d70813` → `main`,
+- `clientes/migrations/0086_delete_clientemodulo.py` — remove a tabela `ClienteModulo`
+  (versão anterior desta feature, descartada).
+- `usuario/migrations/0001_initial.py` — cria a tabela `UsuarioModulo` (primeira migração do
+  app `usuario`).
+
+Ambas aplicadas em `crm_db` (banco compartilhado entre o worktree de desenvolvimento e
+produção). Merge feito via fast-forward `claude/system-tools-modularization-d70813` → `main`,
 gunicorn reiniciado.

@@ -188,7 +188,7 @@
                                             </td>
                                             <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}', {{usuarios.is_staff|lower}})" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}', {{usuarios.is_staff|lower}}, JSON.parse('{{ usuarios.modulos_json|escapejs }}'))" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                             </div>
@@ -249,6 +249,22 @@
                             <strong>Administrador:</strong> acesso total ao sistema.
                         </small>
                     </div>
+
+                    <div class="form-section modulos-section">
+                        <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
+                        <input type="hidden" name="modulos_form_present" value="1">
+                        <div class="row">
+                            {% for chave, rotulo in modulos_disponiveis %}
+                            <div class="col-md-4 col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="modulos" value="{{ chave }}" id="modulo_{{ chave }}" checked>
+                                    <label class="form-check-label" for="modulo_{{ chave }}" style="font-size:.82rem;">{{ rotulo }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text text-muted">Só vale para usuários do tipo Cliente — desmarque o que este login não deve ver. Administradores sempre veem tudo.</small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -303,6 +319,22 @@
                                 <i class="fas fa-shield-alt"></i> Administrador
                             </div>
                         </div>
+                    </div>
+
+                    <div class="form-section modulos-section">
+                        <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
+                        <input type="hidden" name="modulos_form_present" value="1">
+                        <div class="row">
+                            {% for chave, rotulo in modulos_disponiveis %}
+                            <div class="col-md-4 col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="modulos" value="{{ chave }}" id="edit_modulo_{{ chave }}">
+                                    <label class="form-check-label" for="edit_modulo_{{ chave }}" style="font-size:.82rem;">{{ rotulo }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text text-muted">Só vale para usuários do tipo Cliente — desmarque o que este login não deve ver. Administradores sempre veem tudo.</small>
                     </div>
                 </form>
             </div>
@@ -370,11 +402,17 @@ function setRole(el, isAdmin) {
     checkbox.checked = isAdmin;
     wrapper.querySelectorAll('.role-option').forEach(o => o.classList.remove('active'));
     el.classList.add('active');
+
+    // Administrador vê tudo por definição — a seleção de ferramentas só faz
+    // sentido pra usuário do tipo Cliente.
+    const form = el.closest('form');
+    const modulosSection = form ? form.querySelector('.modulos-section') : null;
+    if (modulosSection) modulosSection.style.display = isAdmin ? 'none' : '';
 }
 </script>
 
 <script>
-function editarUsuario(id, username, email, isStaff) {
+function editarUsuario(id, username, email, isStaff, modulosHabilitados) {
     // Preenche os campos do modal com os dados do usuário
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_username').value = username;
@@ -388,6 +426,13 @@ function editarUsuario(id, username, email, isStaff) {
     wrapper.querySelectorAll('.role-option').forEach(o => {
         o.classList.toggle('active', (o.dataset.role === 'admin') === !!isStaff);
     });
+
+    // Ferramentas habilitadas — só relevante pra usuário do tipo Cliente
+    document.querySelectorAll('#edicaoForm input[name="modulos"]').forEach(function(cb) {
+        cb.checked = !!(modulosHabilitados && modulosHabilitados[cb.value]);
+    });
+    const modulosSection = document.querySelector('#edicaoForm .modulos-section');
+    if (modulosSection) modulosSection.style.display = isStaff ? 'none' : '';
 
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));

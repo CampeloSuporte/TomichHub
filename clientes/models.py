@@ -65,58 +65,6 @@ class Cliente(models.Model):
     def __str__(self):
         return self.nome_empresa
 
-    def modulo_habilitado(self, modulo_key):
-        """
-        Módulos sem registro em ClienteModulo são tratados como habilitados —
-        preserva o acesso de clientes já cadastrados antes desta feature existir.
-        Desabilitar é sempre uma ação explícita do admin (ver ClienteModulo).
-        """
-        registro = self._modulos_cache.get(modulo_key) if hasattr(self, '_modulos_cache') else None
-        if registro is not None:
-            return registro
-        registro = self.modulos.filter(modulo=modulo_key).values_list('habilitado', flat=True).first()
-        return True if registro is None else registro
-
-    def modulos_habilitados_dict(self):
-        """Dict {modulo_key: bool} para todos os módulos conhecidos, para uso no template."""
-        estado = {modulo.modulo: modulo.habilitado for modulo in self.modulos.all()}
-        self._modulos_cache = {chave: estado.get(chave, True) for chave, _ in ClienteModulo.MODULO_CHOICES}
-        return self._modulos_cache
-
-
-class ClienteModulo(models.Model):
-    """
-    Controla, por cliente, se uma ferramenta do sistema (aba da tela do
-    cliente) está contratada/habilitada. Ausência de registro = habilitado
-    (ver Cliente.modulo_habilitado) para não quebrar clientes já existentes.
-    """
-    MODULO_CHOICES = [
-        ('acessos', 'Acessos'),
-        ('backups', 'Backups'),
-        ('vpn', 'VPN'),
-        ('topologia', 'Topologia'),
-        ('tuneis', 'Túneis SSH'),
-        ('documentos', 'Documentos'),
-        ('rpki_irr', 'RPKI/IRR'),
-        ('monitoramento', 'Monitoramento'),
-        ('documentacao', 'Documentação de Rede'),
-        ('hotspot', 'Hotspot'),
-        ('testes_rede', 'Testes de Rede'),
-    ]
-
-    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='modulos')
-    modulo = models.CharField(max_length=30, choices=MODULO_CHOICES)
-    habilitado = models.BooleanField(default=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('cliente', 'modulo')
-        verbose_name = 'Módulo do Cliente'
-        verbose_name_plural = 'Módulos do Cliente'
-
-    def __str__(self):
-        return f"{self.cliente.nome_empresa} - {self.get_modulo_display()}: {'ON' if self.habilitado else 'OFF'}"
-
 
 # Modelo para armazenar acessos vinculados ao cliente
 

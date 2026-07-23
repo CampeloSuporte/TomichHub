@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render,redirect,get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -7,13 +8,38 @@ from clientes.decorators import admin_required  # ← ADICIONAR ESTA LINHA
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
+from .models import UsuarioModulo, modulos_habilitados_dict
+
+
+def _sincronizar_modulos_usuario(request, usuario):
+    """
+    Grava UsuarioModulo a partir dos checkboxes 'modulos' do POST — só se o
+    form realmente enviou a seção (marcador oculto 'modulos_form_present'),
+    pra nunca desabilitar tudo por um form incompleto (checkbox desmarcado
+    não aparece no POST, então "nada marcado" é indistinguível de "campo
+    ausente" sem esse marcador).
+    """
+    if not request.POST.get('modulos_form_present'):
+        return
+    modulos_marcados = set(request.POST.getlist('modulos'))
+    for chave, _ in UsuarioModulo.MODULO_CHOICES:
+        UsuarioModulo.objects.update_or_create(
+            usuario=usuario, modulo=chave,
+            defaults={'habilitado': chave in modulos_marcados},
+        )
+
 
 @login_required(login_url='login')
 @admin_required  # ← ADICIONAR ESTA LINHA
 def cadastrar_usuario(request):
         if request.method == 'GET':
             usuario = User.objects.all()
-            return render(request, 'cadastrar_usuario.html', {'usuario': usuario})
+            for u in usuario:
+                u.modulos_json = json.dumps(modulos_habilitados_dict(u))
+            return render(request, 'cadastrar_usuario.html', {
+                'usuario': usuario,
+                'modulos_disponiveis': UsuarioModulo.MODULO_CHOICES,
+            })
         else:
             username = request.POST.get('username')
             email = request.POST.get('email')
@@ -23,16 +49,17 @@ def cadastrar_usuario(request):
             if User.objects.filter(username=username).exists():
                 messages.error(request, "Nome de usuário já existe.")
                 return redirect('cadastrar_usuario')
-            
+
             # ✅ NOVO: Criar usuário com flag de staff
             user = User.objects.create_user(
-                username=username, 
-                email=email, 
+                username=username,
+                email=email,
                 password=password,
                 is_staff=is_staff  # Define se é administrador ou cliente
             )
             user.save()
-            
+            _sincronizar_modulos_usuario(request, user)
+
             tipo_usuario = "Administrador" if is_staff else "Cliente"
             messages.success(request, f"Usuário '{username}' cadastrado com sucesso como {tipo_usuario}.")
             return redirect('cadastrar_usuario')
@@ -70,7 +97,8 @@ def editar_usuario(request):
             usuario.set_password(nova_senha)
         
         usuario.save()
-        
+        _sincronizar_modulos_usuario(request, usuario)
+
         tipo_usuario = "Administrador" if is_staff else "Cliente"
         messages.success(request, f'Usuário atualizado com sucesso como {tipo_usuario}!')
         return redirect('cadastrar_usuario')
