@@ -13,9 +13,11 @@ import json
 import logging
 import os
 from datetime import datetime
+from io import BytesIO
 
 import paramiko
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models.functions import TruncDate
@@ -24,6 +26,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from PIL import Image, ImageChops
 
 from .models import (
     Acesso, Cliente, ClienteIntegracaoDisparo, DISPARO_VARIAVEIS_EXEMPLO,
@@ -70,6 +73,62 @@ def _pixel_url(request, hotspot):
     scheme = 'https' if request.is_secure() else 'http'
     host = request.get_host()
     return f'{scheme}://{host}/clientes/hotspot/pixel/{hotspot.uuid}/'
+
+
+def _autocrop_logo(img_file, ext):
+    """Recorta a margem vazia (transparente ou de cor sólida) ao redor do
+    conteúdo real do logo antes de salvar.
+
+    O cabeçalho do portal exibe o logo com `object-fit:contain` dentro de
+    uma caixa de altura fixa (~100px) — se o arquivo enviado tiver uma
+    "moldura" grande de espaço em branco/transparente em volta do símbolo
+    (comum em exports de ferramentas de design), esse espaço vazio também
+    é encaixado na caixa, sobrando pouquíssima altura pro logo em si, que
+    aparece minúsculo mesmo com a caixa de tamanho normal.
+
+    Retorna um `ContentFile` PNG já recortado, ou `None` se não for
+    possível/necessário recortar (SVG, GIF animado, erro ao processar, ou
+    o conteúdo já ocupa quase toda a imagem).
+    """
+    if ext not in ('png', 'jpg', 'jpeg', 'webp'):
+        return None
+    try:
+        img_file.seek(0)
+        im = Image.open(img_file)
+        im.load()
+
+        if im.mode in ('RGBA', 'LA') or (im.mode == 'P' and 'transparency' in im.info):
+            im = im.convert('RGBA')
+            bbox = im.split()[-1].getbbox()  # bbox do canal alpha (área visível)
+        else:
+            im = im.convert('RGB')
+            fundo = Image.new('RGB', im.size, im.getpixel((0, 0)))
+            bbox = ImageChops.difference(im, fundo).getbbox()
+
+        if not bbox:
+            return None
+
+        largura, altura = im.size
+        bx0, by0, bx1, by1 = bbox
+        # Recorte já ocupa quase tudo — não vale o esforço/risco de reprocessar.
+        if (bx1 - bx0) >= largura * 0.97 and (by1 - by0) >= altura * 0.97:
+            return None
+
+        # Margem de respiro em volta do conteúdo recortado.
+        margem = int(max(bx1 - bx0, by1 - by0) * 0.06)
+        bx0 = max(0, bx0 - margem)
+        by0 = max(0, by0 - margem)
+        bx1 = min(largura, bx1 + margem)
+        by1 = min(altura, by1 + margem)
+
+        recortada = im.crop((bx0, by0, bx1, by1))
+        buf = BytesIO()
+        recortada.save(buf, format='PNG')
+        buf.seek(0)
+        return ContentFile(buf.read(), name='logo_recortado.png')
+    except Exception:
+        logger.debug('Falha ao recortar logo automaticamente — mantendo arquivo original', exc_info=True)
+        return None
 
 
 def _portal_url(request, hotspot):
@@ -946,6 +1005,11 @@ def hotspot_logo_upload(request, cliente_id, hotspot_id):
     ext = img.name.rsplit('.', 1)[-1].lower()
     if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'):
         return JsonResponse({'ok': False, 'error': 'Formato inválido. Use JPG, PNG, WebP ou SVG.'}, status=400)
+
+    recortada = _autocrop_logo(img, ext)
+    if recortada:
+        img = recortada
+
     # Remove logo anterior
     try:
         if h.logo and os.path.isfile(h.logo.path):
