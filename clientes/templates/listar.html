@@ -2194,6 +2194,38 @@
                           </label>
                         </div>
                         <div id="hsd-chatmix-painel" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+                          <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hsDisparoToggleAjudaChatmix()">
+                              <i class="fas fa-circle-question me-1"></i>Onde acho a Key/Token?
+                            </button>
+                          </div>
+                          <div id="hsd-chatmix-ajuda" style="display:none;background:rgba(37,211,102,.06);border:1px dashed #25D366;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:.8rem;color:var(--text-light);">
+                            <strong>No painel do Chatmix:</strong> menu lateral → <strong>Integrações → Chaves para acesso</strong> →
+                            clique numa chave existente (ou crie uma nova).
+                            <div style="background:var(--bg,#12161f);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:10px 0;">
+                              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.74rem;">
+                                <div><span style="color:var(--text-muted);">Nome</span><div style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;margin-top:2px;">disparo</div></div>
+                                <div><span style="color:var(--text-muted);">Validade (opcional)</span><div style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;margin-top:2px;">—</div></div>
+                              </div>
+                              <div style="margin-top:8px;font-size:.74rem;">
+                                <span style="color:var(--text-muted);">Canais <em>(Ctrl/Cmd para selecionar vários)</em></span>
+                                <div style="border:1px solid var(--border);border-radius:4px;padding:4px 6px;margin-top:2px;">
+                                  <div style="padding:2px 4px;">Conecta isp - API Oficial</div>
+                                  <div style="padding:2px 4px;background:#25D36633;border-radius:3px;">✓ suporte cansanção</div>
+                                  <div style="padding:2px 4px;">suporte nordestina</div>
+                                </div>
+                              </div>
+                              <div style="margin-top:8px;font-size:.74rem;"><input type="checkbox" checked disabled> Ver opções avançadas</div>
+                              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.74rem;margin-top:6px;">
+                                <div><span style="color:var(--text-muted);">Key</span><div style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;margin-top:2px;font-family:monospace;">DISPARO-XXXX</div></div>
+                                <div><span style="color:var(--text-muted);">Token</span><div style="border:1px solid var(--border);border-radius:4px;padding:3px 6px;margin-top:2px;font-family:monospace;">XXX-XXXXXXXX-XXXX-XXX</div></div>
+                              </div>
+                            </div>
+                            1. Confira em <strong>Canais</strong> se o canal do WhatsApp onde está o seu template está marcado
+                            (se não estiver, é por isso que a Chatmix responde "Template não encontrado").<br>
+                            2. Marque <strong>"Ver opções avançadas"</strong> — os campos Key e Token aparecem embaixo.<br>
+                            3. Copie os dois exatamente como estão e cole nos campos abaixo.
+                          </div>
                           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                             <div>
                               <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Key</label>
@@ -8268,6 +8300,10 @@ function getCsrfToken(){
     function hsDisparoToggleCard(provider){
         var p=document.getElementById('hsd-'+provider+'-painel');
         if(p)p.style.display=(p.style.display==='none'?'':'none');
+    }
+    function hsDisparoToggleAjudaChatmix(){
+        var a=document.getElementById('hsd-chatmix-ajuda');
+        if(a)a.style.display=(a.style.display==='none'?'':'none');
     }
     function hsCarregarDisparo(){
         _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/').then(function(r){return r.json();}).then(function(d){
