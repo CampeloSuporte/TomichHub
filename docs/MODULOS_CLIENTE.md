@@ -3,7 +3,7 @@
 **Data de Implementação:** 2026-07-23
 **Arquivos principais:** `clientes/models.py` (`ClienteModulo`), `clientes/decorators.py`
 (`modulo_habilitado_required`), `clientes/views.py`, `clientes/templates/listar.html`,
-`clientes/templates/_modulo_toggle_btn.html`
+`clientes/templates/cadastrar_cliente.html`, `staticfiles/js/cadastrar_cliente.js`
 **Status:** ✅ Produção
 
 ---
@@ -11,16 +11,15 @@
 ## Visão Geral
 
 Cada aba da tela do cliente (Acessos, Backups, VPN, Topologia, Túneis SSH, Documentos,
-RPKI/IRR, Monitoramento, Documentação de Rede, Hotspot, Testes de Rede) agora pode ser
-habilitada ou desabilitada **por cliente**, para refletir o que foi contratado. O toggle
-aparece como um switch pequeno ao lado do nome de cada aba e só é visível para administradores
-do sistema (`is_staff`/`is_superuser`).
+RPKI/IRR, Monitoramento, Documentação de Rede, Hotspot, Testes de Rede) pode ser habilitada
+ou desabilitada **por cliente**, para refletir o que foi contratado. A seleção acontece no
+cadastro/edição do cliente (checkboxes), não mais na própria tela de ferramentas:
 
 ```
-Admin abre a tela do cliente
-  └─ Vê um switch ao lado de cada aba
-     └─ Desliga, por exemplo, "VPN" (cliente não contratou)
-        └─ AJAX salva em ClienteModulo(cliente, modulo='vpn', habilitado=False)
+Admin cadastra ou edita um cliente
+  └─ Marca/desmarca checkboxes em "Ferramentas habilitadas"
+     └─ Desmarca, por exemplo, "VPN" (cliente não contratou)
+        └─ Submit do form grava ClienteModulo(cliente, modulo='vpn', habilitado=False)
            └─ Para o cliente final: a aba "VPN" some da tela
               └─ Acesso direto por URL às views de VPN é bloqueado (redirect com aviso)
 ```
@@ -28,6 +27,12 @@ Admin abre a tela do cliente
 Módulo **sem registro** em `ClienteModulo` = **habilitado**. Isso é proposital: nenhum
 cliente já cadastrado perde acesso a nada com o deploy dessa feature — desabilitar é sempre
 uma ação explícita do admin, não um estado padrão.
+
+> **Nota de histórico:** a primeira versão desta feature (mesmo dia) colocava um switch de
+> toggle ao lado de cada aba, dentro da própria tela do cliente (`listar.html`). Foi trocado
+> por checkboxes no cadastro/edição do cliente a pedido do usuário — o admin já define o
+> pacote contratado no mesmo lugar onde cadastra os dados da empresa, em vez de precisar abrir
+> a tela de ferramentas de cada cliente pra configurar isso. Ver seção "Migração da UI" abaixo.
 
 ---
 
@@ -79,57 +84,67 @@ diferentes na mesma aba antes desta feature existir:
 
 ---
 
-## Interface (toggle)
+## Interface — Seleção no Cadastro/Edição do Cliente
 
-`clientes/templates/_modulo_toggle_btn.html` — um switch estilo iOS (checkbox + label),
-incluído ao lado de cada `<li class="nav-item modulo-tab-item">` em
-`clientes/templates/listar.html`, só quando `is_admin` é verdadeiro:
+`clientes/templates/cadastrar_cliente.html` ganhou uma seção **"Ferramentas habilitadas"**
+em cada um dos dois modais (Cadastro e Edição), com um checkbox por módulo
+(`name="modulos" value="{{ chave }}"`), mais um marcador oculto
+`<input type="hidden" name="modulos_form_present" value="1">`:
 
 ```html
-{% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="vpn" habilitado=modulos_habilitados.vpn %}{% endif %}
+<div class="form-section">
+    <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
+    <input type="hidden" name="modulos_form_present" value="1">
+    {% for chave, rotulo in modulos_disponiveis %}
+    <input type="checkbox" name="modulos" value="{{ chave }}" id="modulo_{{ chave }}" checked>
+    <label for="modulo_{{ chave }}">{{ rotulo }}</label>
+    {% endfor %}
+</div>
 ```
 
-CSS do switch fica num `<style>` inline logo acima da `<ul id="mainTabs">` em `listar.html`
-(cores usam as variáveis do tema: `--primary-green`, `--glow-green`, `--border`,
-`--text-muted`). O `<li>` de cada aba ganhou `display:flex; align-items:center` (classe
-`.modulo-tab-item`) — sem isso o switch cai pra linha de baixo do texto da aba, porque o
-`<a class="nav-link">` é um elemento de bloco.
+- **Cadastro:** todos os checkboxes vêm marcados por padrão (reflete o "sem registro =
+  habilitado"); o JS reseta pra todos marcados sempre que o modal reabre do zero
+  (`show.bs.modal` em `#cadastroModal`).
+- **Edição:** os checkboxes começam desmarcados no HTML e são marcados via JS quando o
+  admin clica em "Editar" — `editarCliente(...)` (em `staticfiles/js/cadastrar_cliente.js`)
+  ganhou um parâmetro `modulosHabilitados` (objeto `{modulo_key: bool}`) e aplica:
+  ```js
+  document.querySelectorAll('#edicaoForm input[name="modulos"]').forEach(function(cb) {
+      cb.checked = !!(modulosHabilitados && modulosHabilitados[cb.value]);
+  });
+  ```
+  O objeto chega via `onclick="editarCliente(..., JSON.parse('{{ cliente.modulos_json|escapejs }}'))"`,
+  onde `cliente.modulos_json` é montado na view (`json.dumps(cliente.modulos_habilitados_dict())`)
+  para cada linha da tabela — `|escapejs` (não `|safe`) porque o JSON tem aspas duplas e o
+  atributo `onclick="..."` também usa aspas duplas; embutir sem escapar quebraria o HTML.
 
-**Para o cliente final** (não-admin), cada `<li>` só é renderizado se o módulo estiver
-habilitado: `{% if is_admin or modulos_habilitados.xxx %}`. A aba "Acessos" (que antes
-sempre vinha com `display:block` fixo por ser a aba padrão) agora respeita o mesmo flag.
-Se a aba padrão estiver desabilitada, um fallback em JS (`trocarAba`/`DOMContentLoaded`)
-ativa automaticamente a primeira aba disponível — sem isso o cliente veria a página em
-branco caso "Acessos" fosse desabilitado.
+**Efeito na tela do cliente** (`listar.html`) continua igual: cada `<li>` de aba só é
+renderizado se `is_admin` ou `modulos_habilitados.xxx` for verdadeiro. A aba "Acessos"
+(antes sempre `display:block` fixo) respeita o mesmo flag, com fallback em JS que ativa a
+primeira aba disponível caso "Acessos" esteja desabilitada. `window.MODULOS_BLOQUEADOS` +
+`moduloBloqueado(nomeAba)` seguem impedindo que `trocarAba()` abra uma aba desabilitada por
+qualquer caminho (inclusive `sessionStorage` de uma sessão anterior).
 
-Bloqueio também no lado do JS: `window.MODULOS_BLOQUEADOS` (lista gerada no template a
-partir de `modulos_habilitados`) e a função `moduloBloqueado(nomeAba)` impedem que
-`trocarAba()` abra uma aba desabilitada mesmo que algo tente ativá-la programaticamente
-(ex: `sessionStorage` de uma sessão anterior, antes do módulo ser desabilitado).
+### Persistência (views)
 
----
-
-## Endpoint de Toggle
-
-`clientes/views.py` → `toggle_modulo_cliente(request, cliente_id)`:
+`cadastrar_cliente` (POST) e `editar_cliente` (POST) só gravam/atualizam `ClienteModulo`
+se `modulos_form_present` estiver no POST — proteção contra um form incompleto (por bug ou
+por um client externo que não manda esse campo) desabilitar **todos** os módulos por engano,
+já que checkboxes desmarcados simplesmente não aparecem no POST e são indistinguíveis de
+"campo ausente":
 
 ```python
-@login_required(login_url='login')
-@admin_required
-@require_http_methods(["POST"])
-def toggle_modulo_cliente(request, cliente_id):
-    cliente = get_object_or_404(Cliente, id=cliente_id)
-    modulo_key = request.POST.get('modulo')
-    registro, _ = ClienteModulo.objects.get_or_create(cliente=cliente, modulo=modulo_key, defaults={'habilitado': True})
-    registro.habilitado = not registro.habilitado
-    registro.save(update_fields=['habilitado', 'atualizado_em'])
-    return JsonResponse({'ok': True, 'modulo': modulo_key, 'habilitado': registro.habilitado})
+if request.POST.get('modulos_form_present'):
+    modulos_marcados = set(request.POST.getlist('modulos'))
+    for chave, _ in ClienteModulo.MODULO_CHOICES:
+        ClienteModulo.objects.update_or_create(
+            cliente=cliente, modulo=chave,
+            defaults={'habilitado': chave in modulos_marcados},
+        )
 ```
 
-Rota: `POST /clientes/<cliente_id>/modulos/toggle/` (`clientes/urls.py`). O endpoint sempre
-**inverte** o estado atual (não recebe o estado desejado) — o switch no frontend já reflete
-o estado anterior antes do clique, então "inverter" é semanticamente igual a "definir para o
-novo valor".
+No cadastro usa `bulk_create` (cliente é novo, sem risco de conflito); na edição usa
+`update_or_create` por módulo (cliente já pode ter registros de antes).
 
 ---
 
@@ -218,14 +233,20 @@ canto direito da tela.
 
 Via `python manage.py shell` (`RequestFactory`), sem servidor rodando:
 
-- Render como admin: 11 switches aparecem (um por módulo), todos com estado correto.
-- Render como cliente (usuário `is_staff=False` vinculado ao `Cliente`): 0 switches, aba
-  presente por padrão.
-- Toggle do módulo `vpn` via `toggle_modulo_cliente` → aba "VPN" some do render do cliente
-  na sequência.
+- Render como cliente (usuário `is_staff=False` vinculado ao `Cliente`): aba presente por
+  padrão, some quando o módulo é desabilitado.
 - Acesso direto a `upload_vpn` como cliente com módulo desabilitado → redirect 302 para
   `listar_clientes` (bloqueado, não executa a view).
-- `python manage.py check` e `makemigrations --check` sem apontar problemas.
+- GET de `cadastrar_cliente`: checkboxes de módulos e marcador `modulos_form_present`
+  presentes no HTML.
+- POST de criação desmarcando `vpn`/`hotspot` → `ClienteModulo` gravado corretamente
+  (`habilitado=False` só nesses dois).
+- POST de edição alterando a seleção (reabilita `vpn`, desabilita `backups`) → `ClienteModulo`
+  atualizado corretamente via `update_or_create`.
+- POST de edição **sem** `modulos_form_present` (simulando form incompleto) → nenhum
+  `ClienteModulo` alterado (guard funcionando).
+- `python manage.py check` sem apontar problemas.
+- Templates `listar.html` e `cadastrar_cliente.html` compilam sem erro de sintaxe.
 
 ---
 

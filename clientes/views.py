@@ -189,10 +189,13 @@ def _validar_usuarios_adicionais(usuario_ids, cliente_id_atual=None):
 @admin_required  # ← ADICIONAR ESTA LINHA
 def cadastrar_cliente(request):
     if request.method == 'GET':
-        clientes = Cliente.objects.all().prefetch_related('usuarios_adicionais')
+        clientes = Cliente.objects.all().prefetch_related('usuarios_adicionais', 'modulos')
+        for c in clientes:
+            c.modulos_json = json.dumps(c.modulos_habilitados_dict())
         usuario = User.objects.all()
         return render(request, 'cadastrar_cliente.html', {
-            'clientes': clientes, 'usuario': usuario})
+            'clientes': clientes, 'usuario': usuario,
+            'modulos_disponiveis': ClienteModulo.MODULO_CHOICES})
 
     elif request.method == 'POST':
         nome_empresa = request.POST.get('nome_empresa')
@@ -248,6 +251,16 @@ def cadastrar_cliente(request):
         )
         cliente.save()
         cliente.usuarios_adicionais.set(ids_validos)
+
+        # Ferramentas habilitadas — só grava se o form realmente enviou a seção
+        # (marcador oculto), pra nunca desabilitar tudo por um form incompleto.
+        if request.POST.get('modulos_form_present'):
+            modulos_marcados = set(request.POST.getlist('modulos'))
+            ClienteModulo.objects.bulk_create([
+                ClienteModulo(cliente=cliente, modulo=chave, habilitado=(chave in modulos_marcados))
+                for chave, _ in ClienteModulo.MODULO_CHOICES
+            ])
+
         messages.success(request, 'Cliente cadastrado com sucesso!')
         return redirect('cadastrar_cliente')
 
@@ -844,6 +857,17 @@ def editar_cliente(request):
 
         cliente.save()
         cliente.usuarios_adicionais.set(ids_validos)
+
+        # Ferramentas habilitadas — só grava se o form realmente enviou a seção
+        # (marcador oculto), pra nunca desabilitar tudo por um form incompleto.
+        if request.POST.get('modulos_form_present'):
+            modulos_marcados = set(request.POST.getlist('modulos'))
+            for chave, _ in ClienteModulo.MODULO_CHOICES:
+                ClienteModulo.objects.update_or_create(
+                    cliente=cliente, modulo=chave,
+                    defaults={'habilitado': chave in modulos_marcados},
+                )
+
         messages.success(request, "Cliente atualizado com sucesso!")
         return redirect('cadastrar_cliente')
 
@@ -868,24 +892,6 @@ def deletar_cliente(request):
 
     messages.error(request, 'Método não permitido.')
     return redirect('cadastrar_cliente')
-
-
-@login_required(login_url='login')
-@admin_required
-@require_http_methods(["POST"])
-def toggle_modulo_cliente(request, cliente_id):
-    """Liga/desliga um módulo (aba) para o cliente. Só admin do sistema."""
-    cliente = get_object_or_404(Cliente, id=cliente_id)
-    modulo_key = request.POST.get('modulo')
-    chaves_validas = dict(ClienteModulo.MODULO_CHOICES)
-    if modulo_key not in chaves_validas:
-        return JsonResponse({'ok': False, 'erro': 'Módulo inválido.'}, status=400)
-
-    registro, _ = ClienteModulo.objects.get_or_create(cliente=cliente, modulo=modulo_key, defaults={'habilitado': True})
-    registro.habilitado = not registro.habilitado
-    registro.save(update_fields=['habilitado', 'atualizado_em'])
-
-    return JsonResponse({'ok': True, 'modulo': modulo_key, 'habilitado': registro.habilitado})
 
 
 @login_required(login_url='login')
