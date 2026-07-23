@@ -414,3 +414,66 @@ interface principal. CRUD via `hotspot/<id>/interfaces/`,
 padrão mestre-detalhe já usado para os banners do portal. Interfaces adicionais só podem ser
 criadas depois que o hotspot em si foi salvo (precisa de um `hotspot_id`), igual à aba de
 Banners.
+
+---
+
+## Tela de login: sobrenome, aceite de Termos/LGPD e dedup de leads — 23/07/2026
+
+**Arquivos:** `clientes/hotspot_views.py` (`_portal_page_html`, `hotspot_portal_conectar`,
+`hotspot_lead_pixel`, `hotspot_leads`), `clientes/models.py` (`HotspotLead`),
+`clientes/templates/listar.html`, migração `0084_hotspotlead_termos_aceitos`.
+
+### Motivação
+
+O formulário de captação (`_portal_page_html`) pedia Nome completo, WhatsApp/Telefone e Data
+de nascimento, sem qualquer aceite formal de termos — um problema de conformidade com a LGPD,
+já que dados pessoais eram coletados sem base legal explícita registrada. Além disso, o mesmo
+visitante reconectando ao WiFi gerava um novo `HotspotLead` a cada submissão, duplicando a
+base de leads.
+
+### Mudanças no formulário
+
+- **Nome completo** virou dois campos lado a lado: `nome` e `sobrenome` (concatenados como
+  `f'{nome} {sobrenome}'.strip()` antes de salvar).
+- **Data de nascimento removida** do formulário e do JS (o campo `data_nascimento` continua
+  existindo no model `HotspotLead` por compatibilidade com leads antigos e com o endpoint
+  `hotspot_lead_pixel`, que ainda pode recebê-lo via querystring, mas o portal principal não
+  o envia mais).
+- **Checkbox obrigatório** "Li e aceito os Termos de Uso e a Política de Privacidade",
+  vinculado a um modal (`#termsOverlay`) com três abas (Resumo/Privacidade/Termos) — conteúdo
+  estático em `_TERMOS_CONTEUDO_HTML`. `onSubmit()` bloqueia o envio e destaca em vermelho
+  os campos vazios e o checkbox desmarcado.
+- Ajustes visuais gerais nos campos (mais contraste de borda/fundo, mais espaçamento, estado
+  de erro) — o design anterior tinha os inputs quase sem contraste com o fundo do card.
+
+### `HotspotLead.termos_aceitos`
+
+Novo campo booleano (`default=False`) que registra se o aceite foi marcado no momento do
+envio — evidência de consentimento exigida pela LGPD. Migração `0084_hotspotlead_termos_aceitos`.
+
+### Deduplicação de leads
+
+Antes de criar um `HotspotLead`, tanto `hotspot_portal_conectar` quanto `hotspot_lead_pixel`
+agora checam se já existe um lead do **mesmo hotspot** com o mesmo `telefone` OU o mesmo
+`nome` completo (case-insensitive, `nome__iexact`):
+
+```python
+dup_filter = Q()
+if tel:
+    dup_filter |= Q(telefone=tel)
+if nome_completo:
+    dup_filter |= Q(nome__iexact=nome_completo)
+
+ja_existe = bool(dup_filter) and HotspotLead.objects.filter(hotspot=h).filter(dup_filter).exists()
+if not ja_existe:
+    HotspotLead.objects.create(...)
+```
+
+Ex.: um visitante que já se cadastrou como "Lucas Campelo" nesse hotspot não gera um segundo
+registro ao reconectar e preencher o formulário de novo.
+
+### Admin — listagem de leads
+
+A coluna "Nasc." da tabela de leads (sub-aba do hotspot em `listar.html`) virou "Termos"
+(✓ Aceito / — ), refletindo `termos_aceitos` em vez de `data_nascimento`; o export CSV
+(`hsExportLeads`) segue o mesmo padrão (`Termos Aceitos` no lugar de `Nascimento`).

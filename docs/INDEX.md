@@ -2,6 +2,26 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 9 — 23/07/2026: Tela de Login do Hotspot — Sobrenome, Termos/LGPD e Dedup de Leads
+
+**O que foi implementado?**
+- ✅ Campo "Nome completo" separado em "Nome" + "Sobrenome" (dois campos lado a lado)
+- ✅ Campo "Data de nascimento" removido do formulário de login do hotspot
+- ✅ Checkbox obrigatório de aceite dos Termos de Uso/Política de Privacidade (LGPD), com modal
+  de 3 abas (Resumo/Privacidade/Termos); aceite gravado em `HotspotLead.termos_aceitos`
+- ✅ Deduplicação de leads: mesmo hotspot + mesmo telefone ou mesmo nome completo
+  (case-insensitive) já cadastrado não gera um novo `HotspotLead`
+- ✅ Ajustes visuais nos campos do formulário (contraste, espaçamento, estado de erro)
+- ✅ Admin: coluna "Nasc." da listagem de leads virou "Termos" (✓ Aceito/—); CSV export ajustado
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_CAPTIVE_PORTAL.md](HOTSPOT_CAPTIVE_PORTAL.md)** | Sobrenome, aceite de Termos/LGPD, dedup de leads |
+
+---
+
 ### Sessão 8 — 20/07/2026: Correções em Gravação WinBox, Proxy Web + Wiki de Artigos
 
 **O que foi implementado?**
@@ -460,6 +480,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Hotspot: login com sobrenome, checkbox de aceite Termos/LGPD (modal), dedup de leads por telefone/nome | HOTSPOT_CAPTIVE_PORTAL.md |
 | 20/07/2026 | Gravação WinBox (fix vídeo 0 bytes, ícone preto/16bpp, nice/ionice); proxy web (fix redirect relativo); Wiki de Artigos (PDF, templates unificados, admin) | AUDITORIA_ACESSOS.md, winbox_vnc.md, WIKI_ARTIGOS.md |
 | 20/07/2026 | Editor de Topologia: passe de design, ícones de Router/Switch redesenhados, efeitos animados (brilho, pulso, tráfego simulado), IP em negrito, fix de regressão no rótulo Lado A/B | topologia.md |
 | 20/07/2026 | Editor de Topologia: interfaces do backup no Lado A/B, troca manual de ícone, velocidades 20/30/50G; fix XSS, atalhos com `<select>`, rótulo escondido; fix backup com `/` no tipo | topologia.md, backup_automatico.md |
