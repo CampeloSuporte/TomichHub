@@ -2085,13 +2085,16 @@ def remover_usuarios_antigos_task(self, job_id):
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def enviar_disparo_hotspot_lead(self, lead_id):
     """
-    Envia uma mensagem WhatsApp (HSM) via integração de disparo do cliente
-    (ex: Chatmix) quando um novo lead é capturado no Hotspot. Roda em
-    background (Celery) para não atrasar a resposta do portal cativo ao
-    usuário conectando no WiFi.
+    Envia uma mensagem WhatsApp (HSM) via cada integração de disparo
+    habilitada do cliente (Chatmix, Opa Suite) quando um novo lead é
+    capturado no Hotspot. Roda em background (Celery) para não atrasar a
+    resposta do portal cativo ao usuário conectando no WiFi. Se o cliente
+    tiver mais de um provider habilitado ao mesmo tempo, dispara em todos.
     """
     from .models import ClienteIntegracaoDisparo, HotspotLead
-    from .services import ChatmixClient, montar_variaveis_mensagem, normalizar_numero_whatsapp
+    from .services import (
+        ChatmixClient, OpaSuiteClient, montar_variaveis_mensagem, normalizar_numero_whatsapp,
+    )
 
     try:
         lead = HotspotLead.objects.select_related('hotspot__cliente').get(id=lead_id)
@@ -2099,28 +2102,49 @@ def enviar_disparo_hotspot_lead(self, lead_id):
         return {'status': 'ignorado', 'motivo': 'Lead não encontrado'}
 
     cliente = lead.hotspot.cliente
-    config = ClienteIntegracaoDisparo.objects.filter(
-        cliente=cliente, provider='chatmix', habilitado=True,
-    ).first()
-    if not config or not config.api_key or not config.api_token or not config.template_id:
-        return {'status': 'ignorado', 'motivo': 'Integração Chatmix não habilitada/configurada'}
+    configs = list(ClienteIntegracaoDisparo.objects.filter(cliente=cliente, habilitado=True))
+    if not configs:
+        return {'status': 'ignorado', 'motivo': 'Nenhuma integração de disparo habilitada'}
 
     numero = normalizar_numero_whatsapp(lead.telefone)
     if not numero:
         return {'status': 'ignorado', 'motivo': 'Lead sem telefone'}
 
-    variaveis = montar_variaveis_mensagem(config.variaveis_modelo, lead)
-    client = ChatmixClient(config.api_key, config.api_token)
-    ok, detalhe = client.enviar_hsm(numero, variaveis, config.template_id)
+    resultados = []
+    tem_falha_transitoria = False
 
-    if not ok:
-        logger.warning(f'⚠️ Disparo Chatmix falhou p/ lead {lead_id}: {detalhe}')
-        # Erro 4xx (ex: credenciais/template/variáveis incorretas) é config
-        # errada, não instabilidade de rede — retry não resolve, só some com
-        # as tentativas. Só reenfileira em falhas que podem ser transitórias.
-        if not detalhe.startswith('HTTP 4'):
-            raise self.retry(exc=Exception(detalhe))
-        return {'status': 'erro', 'detalhe': detalhe}
+    for config in configs:
+        variaveis = montar_variaveis_mensagem(config.variaveis_modelo, lead)
 
-    logger.info(f'✅ Disparo Chatmix enviado p/ lead {lead_id} ({numero})')
-    return {'status': 'ok', 'detalhe': detalhe}
+        if config.provider == 'chatmix':
+            if not (config.api_key and config.api_token and config.template_id):
+                resultados.append({'provider': 'chatmix', 'status': 'ignorado', 'motivo': 'não configurado'})
+                continue
+            client = ChatmixClient(config.api_key, config.api_token)
+            ok, detalhe = client.enviar_hsm(numero, variaveis, config.template_id)
+        elif config.provider == 'opa_suit':
+            if not (config.api_dominio and config.api_token and config.canal_id and config.template_id):
+                resultados.append({'provider': 'opa_suit', 'status': 'ignorado', 'motivo': 'não configurado'})
+                continue
+            client = OpaSuiteClient(config.api_dominio, config.api_token)
+            ok, detalhe = client.enviar_template(numero, config.canal_id, config.template_id, variaveis)
+        else:
+            continue
+
+        if not ok:
+            logger.warning(f'⚠️ Disparo {config.provider} falhou p/ lead {lead_id}: {detalhe}')
+            resultados.append({'provider': config.provider, 'status': 'erro', 'detalhe': detalhe})
+            # Erro 4xx (ex: credenciais/template/variáveis incorretas) é config
+            # errada, não instabilidade de rede — retry não resolve, só some
+            # com as tentativas. Só reenfileira em falhas que podem ser
+            # transitórias (rede, 5xx).
+            if not detalhe.startswith('HTTP 4'):
+                tem_falha_transitoria = True
+        else:
+            logger.info(f'✅ Disparo {config.provider} enviado p/ lead {lead_id} ({numero})')
+            resultados.append({'provider': config.provider, 'status': 'ok', 'detalhe': detalhe})
+
+    if tem_falha_transitoria:
+        raise self.retry(exc=Exception(str(resultados)))
+
+    return {'status': 'concluido', 'resultados': resultados}

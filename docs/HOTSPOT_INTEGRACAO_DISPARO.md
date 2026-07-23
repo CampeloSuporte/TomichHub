@@ -1,10 +1,11 @@
-# Hotspot — Integração Disparo (WhatsApp HSM via Chatmix)
+# Hotspot — Integração Disparo (WhatsApp HSM via Chatmix / Opa Suite)
 
 **Data de Implementação:** 2026-07-23
 **Arquivos principais:** `clientes/models.py` (`ClienteIntegracaoDisparo`), `clientes/services.py`
-(`ChatmixClient`), `clientes/tasks.py` (`enviar_disparo_hotspot_lead`), `clientes/hotspot_views.py`,
-`clientes/templates/listar.html`, `clientes/hotspot_views.py` (formulário público do portal)
-**Status:** ✅ Produção (Chatmix); Opa Suit listado na UI como "Em breve" (sem integração real ainda)
+(`ChatmixClient`, `OpaSuiteClient`), `clientes/tasks.py` (`enviar_disparo_hotspot_lead`),
+`clientes/hotspot_views.py`, `clientes/templates/listar.html`
+**Status:** ✅ Produção — Chatmix e Opa Suite funcionais; ambos podem ficar habilitados ao mesmo
+tempo para o mesmo cliente (a task dispara em todos os providers habilitados)
 
 ---
 
@@ -12,26 +13,29 @@
 
 Quando um lead se cadastra no portal cativo do Hotspot (preenche nome + telefone para liberar o
 WiFi), o CRM pode disparar automaticamente uma mensagem de WhatsApp (template HSM aprovado pela
-Meta) via API de terceiros. A primeira empresa de integração suportada é a **Chatmix**; **Opa
-Suit** já aparece na tela como opção, mas ainda sem client/endpoint implementado.
+Meta) via API de terceiros. Duas empresas de integração são suportadas: **Chatmix** e
+**Opa Suite**.
 
 ```
 Lead se cadastra no portal do hotspot (nome + telefone)
   └─ HotspotLead.objects.create(...)
      └─ sinal post_save (clientes/models.py)
         └─ enviar_disparo_hotspot_lead.delay(lead.id)   [Celery, background]
-           └─ Busca ClienteIntegracaoDisparo(cliente, provider='chatmix', habilitado=True)
-              └─ Se não existe/desabilitado → ignora silenciosamente
-              └─ Se existe → monta variables=... e faz POST em envios.bulkv2.chatmix.com.br/api
+           └─ Busca todos os ClienteIntegracaoDisparo(cliente, habilitado=True)
+              └─ Nenhum habilitado → ignora silenciosamente
+              └─ Para cada provider habilitado (chatmix e/ou opa_suit):
+                 ├─ chatmix    → ChatmixClient.enviar_hsm(...)    → POST envios.bulkv2.chatmix.com.br/api
+                 └─ opa_suit   → OpaSuiteClient.enviar_template(...) → POST {dominio}/api/v1/template/send
 ```
 
 A configuração fica na aba **"Integração Disparo"**, ao lado de "Leads", dentro do painel de
 detalhe de cada Hotspot (`clientes/templates/listar.html` → `#hsSubTabs`). A configuração é
 **por Cliente** (tenant), não por Hotspot individual — um cliente com vários hotspots físicos usa
-a mesma conta Chatmix para todos.
+a mesma conta (Chatmix e/ou Opa Suite) para todos.
 
-Doc oficial da API usada:
-https://wiki.vmixsolucoes.com.br/chatmix-documentacao/integracoes/integracao-disparo/api-de-disparos-hsm
+Docs oficiais das APIs usadas:
+- Chatmix: https://wiki.vmixsolucoes.com.br/chatmix-documentacao/integracoes/integracao-disparo/api-de-disparos-hsm
+- Opa Suite: https://api.opasuite.com.br/ (coleção Postman pública — "Templates de mensagem → Enviar template")
 
 ---
 
@@ -43,16 +47,18 @@ https://wiki.vmixsolucoes.com.br/chatmix-documentacao/integracoes/integracao-dis
 class ClienteIntegracaoDisparo(models.Model):
     PROVIDER_CHOICES = [
         ('chatmix', 'Chatmix'),
-        ('opa_suit', 'Opa Suit'),
+        ('opa_suit', 'Opa Suite'),
     ]
 
     cliente    = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='integracoes_disparo')
     provider   = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
     habilitado = models.BooleanField(default=False)
 
-    api_key     = models.CharField(max_length=255, blank=True, default='')
-    api_token   = models.CharField(max_length=255, blank=True, default='')
-    template_id = models.CharField(max_length=20, blank=True, default='')
+    api_key     = models.CharField(max_length=255, blank=True, default='')  # Chatmix
+    api_token   = models.CharField(max_length=255, blank=True, default='')  # Chatmix (token) / Opa Suite (Bearer)
+    api_dominio = models.CharField(max_length=255, blank=True, default='')  # só Opa Suite (multi-tenant por domínio)
+    canal_id    = models.CharField(max_length=64, blank=True, default='')   # só Opa Suite (id do canal de comunicação)
+    template_id = models.CharField(max_length=64, blank=True, default='')
     variaveis_modelo = models.JSONField(default=_disparo_variaveis_padrao)  # ex: ['{nome}', '{telefone}']
 
     criado_em     = models.DateTimeField(auto_now_add=True)
@@ -63,11 +69,13 @@ class ClienteIntegracaoDisparo(models.Model):
 ```
 
 - `variaveis_modelo` é uma **lista ordenada** (JSONField) — uma entrada por variável exigida pelo
-  template no Chatmix, na mesma ordem. Cada entrada pode ser `{nome}`/`{telefone}` (substituído
-  pelo dado do lead) ou um texto fixo (ex: nome do negócio, contato de suporte). Ver seção
-  "Variáveis do Template" abaixo — templates HSM reais costumam exigir mais de 2 variáveis.
+  template, na mesma ordem, independente do provider. Cada entrada pode ser `{nome}`/`{telefone}`
+  (substituído pelo dado do lead) ou um texto fixo (ex: nome do negócio, contato de suporte).
+  Templates HSM reais costumam exigir mais de 2 variáveis.
+- `api_dominio`/`canal_id` só são usados pelo Opa Suite (ficam vazios para Chatmix, que tem 1
+  endpoint fixo e não usa "canal") — ver seção "Por que os providers têm campos diferentes" abaixo.
 - `unique_together (cliente, provider)` — um cliente tem no máximo 1 configuração por empresa de
-  integração.
+  integração, mas **pode ter as duas habilitadas ao mesmo tempo** (a task dispara em ambas).
 
 ### Migrações
 
@@ -75,6 +83,7 @@ class ClienteIntegracaoDisparo(models.Model):
 |---|---|
 | `0086_clienteintegracaodisparo.py` | Cria a tabela (versão inicial, com campo `mensagem_modelo` de texto livre) |
 | `0087_remove_clienteintegracaodisparo_mensagem_modelo_and_more.py` | Substitui `mensagem_modelo` (texto livre) por `variaveis_modelo` (lista JSON) — inclui `RunPython` que converte configs já salvas, extraindo `{nome}`/`{telefone}` do texto antigo na mesma ordem em que apareciam (ver "Bug 1" abaixo) |
+| `0088_clienteintegracaodisparo_api_dominio_and_more.py` | Adiciona `api_dominio`/`canal_id` (Opa Suite), amplia `template_id` de 20 para 64 caracteres (Chatmix usa ID numérico curto; Opa Suite usa ObjectId Mongo de 24 caracteres) e corrige o label do choice `opa_suit` de "Opa Suit" para "Opa Suite" |
 
 ---
 
@@ -84,12 +93,16 @@ Sub-aba **"Integração Disparo"** (`#hs-tab-disparo`), irmã de Configuração/
 painel de detalhe do Hotspot em `clientes/templates/listar.html`. Cada empresa de integração é um
 card:
 
-- **Chatmix** (funcional): toggle habilitar/desabilitar (reaproveita a classe CSS
-  `.modulo-toggle-switch` já usada no toggle de [Módulos do Cliente](MODULOS_CLIENTE.md)), campos
-  Key/Token/ID do Template, lista dinâmica de variáveis (botão "Adicionar variável"/remover linha),
-  botão "Salvar" e botão "Enviar teste" (dispara um HSM de verdade para um número informado, sem
-  precisar de um lead real).
-- **Opa Suit** (placeholder): card com opacidade reduzida, toggle `disabled`, texto "Em breve".
+- **Chatmix**: toggle habilitar/desabilitar (reaproveita a classe CSS `.modulo-toggle-switch` já
+  usada no toggle de [Módulos do Cliente](MODULOS_CLIENTE.md)), campos Key/Token/ID do Template,
+  lista dinâmica de variáveis (botão "Adicionar variável"/remover linha), botão "Salvar" e botão
+  "Enviar teste" (dispara um HSM de verdade para um número informado, sem precisar de um lead
+  real).
+- **Opa Suite**: mesmo layout, mas com campos Domínio da conta/Token (Bearer)/ID do Canal/ID do
+  Template + a mesma lista dinâmica de variáveis.
+
+Cada card é independente — um cliente pode ter só Chatmix, só Opa Suite, ou os dois habilitados
+ao mesmo tempo (nesse caso todo lead novo dispara duas mensagens, uma por provider).
 
 O JS de disparo vive no mesmo bloco `<script>` das outras abas do hotspot, com o prefixo `hsDisparo*`
 (`hsCarregarDisparo`, `hsDisparoToggle`, `hsDisparoSalvar`, `hsDisparoTestar`,
@@ -106,14 +119,14 @@ telas de administração do hotspot — não há `@admin_required` extra aqui, i
 
 | Endpoint | Método | Descrição |
 |---|---|---|
-| `/clientes/<cliente_id>/hotspot/disparo/` | GET | Retorna config de todos os providers (Chatmix + Opa Suit) para o cliente |
-| `/clientes/<cliente_id>/hotspot/disparo/salvar/` | POST | Salva key/token/template/variáveis de um provider |
+| `/clientes/<cliente_id>/hotspot/disparo/` | GET | Retorna config de todos os providers (Chatmix + Opa Suite) para o cliente |
+| `/clientes/<cliente_id>/hotspot/disparo/salvar/` | POST | Salva credenciais/domínio/canal/template/variáveis de um provider |
 | `/clientes/<cliente_id>/hotspot/disparo/toggle/` | POST | Inverte `habilitado` (mesmo padrão do `toggle_modulo_cliente`) |
-| `/clientes/<cliente_id>/hotspot/disparo/testar/` | POST | Envia um HSM de teste com os dados salvos, sem lead real |
+| `/clientes/<cliente_id>/hotspot/disparo/testar/` | POST | Envia um disparo de teste com os dados salvos, sem lead real (branch por `provider` no backend) |
 
 ---
 
-## Serviço — `ChatmixClient`
+## Serviços — `ChatmixClient` e `OpaSuiteClient`
 
 `clientes/services.py`, seguindo o mesmo padrão do `EvolutionAPIClient` (`atendimento/services.py`):
 `requests.Session()`, timeout explícito, retorno em tupla `(ok, detalhe)`.
@@ -127,18 +140,30 @@ class ChatmixClient:
         mensagem = 'variables=' + '|'.join(variaveis) + '||template=' + str(template_id)
         payload = {'key': self.key, 'token': self.token, 'numero': numero, 'mensagem': mensagem}
         ...
+
+class OpaSuiteClient:
+    def __init__(self, dominio, token): ...  # Authorization: Bearer <token>
+    def enviar_template(self, numero, canal_id, template_id, variaveis, timeout=20):
+        payload = {
+            'contato': {'canalCliente': numero},
+            'template': {'_id': template_id, 'variaveis': list(variaveis)},
+            'canal': canal_id,
+        }
+        # POST {dominio}/api/v1/template/send
+        ...
 ```
 
-Funções auxiliares:
+Funções auxiliares (compartilhadas pelos dois providers):
 
 - `normalizar_numero_whatsapp(numero)` — normaliza qualquer telefone BR (com ou sem `+55`, com ou
   sem formatação) para `+55DDDNÚMERO`. **O `+55` é sempre implícito** — nem o lead no portal, nem
   o operador no teste do CRM, precisam digitá-lo.
 - `montar_variaveis_mensagem(variaveis_modelo, lead)` — renderiza cada entrada de
   `variaveis_modelo`, substituindo `{nome}`/`{telefone}` pelos dados do lead (texto fixo passa
-  direto); remove `|` do resultado (delimitador do formato `variables=`).
+  direto); remove `|` do resultado (delimitador do `variables=` do Chatmix — inofensivo para o
+  Opa Suite, que usa JSON puro e não tem esse delimitador).
 
-### Formato da API (doc Chatmix)
+### Formato da API — Chatmix
 
 ```
 POST https://envios.bulkv2.chatmix.com.br/api
@@ -151,6 +176,40 @@ POST https://envios.bulkv2.chatmix.com.br/api
 - `|` separa variáveis; `||` separa variáveis de configurações; `template=ID` define o template.
 - O ID do template é o número no final da URL em Mensagens → Templates no Chatmix
   (ex: `.../templates/181` → ID `181`).
+- Resposta de sucesso pode vir com HTTP 200 e `"success": false` no corpo — ver "Bug 2".
+
+### Formato da API — Opa Suite
+
+```
+POST {dominio}/api/v1/template/send
+Authorization: Bearer <token>
+
+{
+  "contato": {"canalCliente": "+5511999999999"},
+  "template": {"_id": "624c358355802dbdd2eb944a", "variaveis": ["valor1", "valor2"]},
+  "canal": "622f8e310d7149ee66bb654c"
+}
+```
+
+Resposta de sucesso documentada:
+```json
+{"status": "success", "code": 200, "data": {"message": "Template has been succesfully sent.", "messageSentId": "..."}}
+```
+
+### Por que os providers têm campos diferentes
+
+| Campo | Chatmix | Opa Suite |
+|---|---|---|
+| Endpoint base | Fixo global (`envios.bulkv2.chatmix.com.br`) | **Por conta** — cada cliente Opa Suite tem seu próprio domínio (`api_dominio`) |
+| Autenticação | `key` + `token` no corpo JSON | `Authorization: Bearer <token>` (só `api_token`, `api_key` fica vazio) |
+| Identificador do canal | Não existe — 1 conta = 1 canal implícito | Obrigatório (`canal_id`) — uma conta Opa Suite pode ter vários canais de comunicação (WhatsApp/Telegram/etc), então o envio precisa dizer qual usar |
+| ID do template | Numérico curto (ex: `181`) | ObjectId Mongo, 24 caracteres hex (ex: `624c358355802dbdd2eb944a`) — por isso `template_id` foi ampliado para `max_length=64` na migração `0088` |
+| Formato de `variables` | String posicional (`variables=v1\|v2\|\|template=ID`) | Array JSON (`template.variaveis: [v1, v2]`) |
+
+Onde conseguir cada dado no Opa Suite: **Token** → cadastro de usuários, criando um perfil de
+permissões do tipo "API". **Canal** → listagem de canais de comunicação (endpoint `GET
+/api/v1/canal-comunicacao/`, ou direto no painel). **Template `_id`** → tela de Templates de
+Mensagem (endpoint `GET /api/v1/template` para listar, ou o `_id` visível ao abrir o template).
 
 ---
 
@@ -180,13 +239,21 @@ cadastro do lead nem travar a liberação de acesso.
 max_retries=2, default_retry_delay=30)`):
 
 1. Busca o `HotspotLead` (se não existir mais, `status: ignorado`).
-2. Busca `ClienteIntegracaoDisparo(cliente=lead.hotspot.cliente, provider='chatmix',
-   habilitado=True)` — se não existir ou estiver desabilitado, `status: ignorado` (nenhum erro,
-   nenhum envio; é o comportamento esperado enquanto o operador ainda está configurando).
-3. Normaliza o telefone, monta as variáveis, chama `ChatmixClient.enviar_hsm(...)`.
-4. Em falha: se for erro `HTTP 4xx` (config errada — credenciais/template/variáveis), **não
-   reenfileira** (retry não resolve um erro de configuração, só gasta as tentativas). Em qualquer
-   outra falha (rede, 5xx), reenfileira até 2 vezes.
+2. Busca **todas** as `ClienteIntegracaoDisparo(cliente=lead.hotspot.cliente, habilitado=True)` —
+   se nenhuma, `status: ignorado` (nenhum erro, nenhum envio; é o comportamento esperado enquanto
+   o operador ainda está configurando).
+3. Para **cada** config habilitada (podem ser Chatmix e Opa Suite ao mesmo tempo): normaliza o
+   telefone, monta as variáveis, e chama o client certo (`ChatmixClient.enviar_hsm(...)` ou
+   `OpaSuiteClient.enviar_template(...)`) conforme `config.provider`. Se os campos obrigatórios
+   daquele provider não estiverem preenchidos, pula com `status: ignorado` para aquele provider
+   específico (sem travar os outros).
+4. Em falha de qualquer provider: se for erro `HTTP 4xx` (config errada — credenciais/template/
+   variáveis/canal), **não reenfileira aquele resultado** (retry não resolve um erro de
+   configuração, só gasta as tentativas). Se **algum** provider teve falha não-4xx (rede, 5xx), a
+   task inteira é reenfileirada (até 2 vezes) — os providers que já enviaram com sucesso não são
+   reenviados na prática, pois o retry reprocessa a lista inteira; para o volume/latência baixos
+   desse fluxo isso é aceitável, mas é bom saber que um retry pode reenviar um provider que já
+   tinha ido bem se outro falhou.
 
 ---
 
@@ -252,30 +319,52 @@ nesse caso.
 
 ### Exemplo de corpo de template para cadastrar no Chatmix
 
-Ver seção "Variáveis do Template" — exemplo com 4 variáveis (nome, telefone, nome do negócio,
-contato de suporte), usando a sintaxe `{{1}}`–`{{4}}` do editor de templates da Meta/Chatmix
-(inseridas automaticamente pelo botão "+ Variável" no editor deles).
+Exemplo com 4 variáveis (nome, telefone, nome do negócio, contato de suporte), usando a sintaxe
+`{{1}}`–`{{4}}` do editor de templates da Meta/Chatmix (inseridas automaticamente pelo botão
+"+ Variável" no editor deles).
+
+### Configurar o Opa Suite
+
+1. Mesma aba, card **Opa Suite**.
+2. **Domínio da conta**: URL base do seu Opa Suite (ex: `https://minhaempresa.opasuite.com.br`).
+3. **Token**: gerado em Cadastro de Usuários → criar um usuário com perfil de permissões do tipo
+   "API" → o token fica disponível nesse cadastro.
+4. **ID do Canal**: liste os canais de comunicação (`GET /api/v1/canal-comunicacao/`, ou no
+   painel do Opa Suite) e copie o `_id` do canal WhatsApp que vai fazer o envio.
+5. **ID do Template**: liste os templates (`GET /api/v1/template`, ou abrindo o template no
+   painel) e copie o `_id` (formato ObjectId Mongo, 24 caracteres).
+6. Ajustar as **variáveis** (mesma lógica do Chatmix), Salvar, Enviar teste, e só então habilitar
+   o toggle.
+
+**Nota:** por padrão o Opa Suite **bloqueia** o envio de template para um contato que já está em
+atendimento em andamento (a API tem um parâmetro `allowSendingToStartedCustomerService` para
+liberar isso, mas o CRM não expõe esse campo hoje — se for necessário, é uma extensão pequena no
+`OpaSuiteClient.enviar_template` e no card de configuração).
 
 ---
 
 ## Limitações Conhecidas
 
-- **Opa Suit** aparece na UI mas não tem client/endpoint implementado — `hotspot_disparo_salvar`
-  recusa qualquer `provider != 'chatmix'` com erro claro ("Esta integração ainda não está
-  disponível").
 - Configuração é **por Cliente**, não por Hotspot — todos os hotspots do mesmo cliente
-  compartilham a mesma conta Chatmix. Se um cliente precisar de contas diferentes por hotspot,
-  o modelo precisaria de FK para `HotspotConfig` em vez de `Cliente` (não implementado).
+  compartilham a mesma conta (Chatmix e/ou Opa Suite). Se um cliente precisar de contas
+  diferentes por hotspot, o modelo precisaria de FK para `HotspotConfig` em vez de `Cliente`
+  (não implementado).
 - Sem retry infinito: falhas de configuração (HTTP 4xx) não são reenfileiradas — o operador
   precisa corrigir e reenviar manualmente (ou aguardar o próximo lead).
+- Quando os dois providers estão habilitados e só um falha com erro transitório (rede/5xx), o
+  retry reprocessa **os dois** — o provider que já tinha enviado com sucesso pode receber uma
+  segunda mensagem no reenvio. Baixo risco na prática (falha transitória + 2 providers habilitados
+  ao mesmo tempo é uma combinação rara), mas é uma limitação conhecida do design atual.
 - Sem persistência de log de disparos enviados/falhados por lead (fica só no log do Celery/logger
   padrão do Django) — não há tela de histórico de envios no CRM.
+- Opa Suite: o parâmetro `allowSendingToStartedCustomerService` da API (permite reenviar template
+  para contato já em atendimento) não é exposto na configuração do CRM.
 
 ---
 
 ## Deploy
 
-Migrações `0086` e `0087` aplicadas em `crm_db` (banco compartilhado entre os worktrees de
+Migrações `0086`, `0087` e `0088` aplicadas em `crm_db` (banco compartilhado entre os worktrees de
 desenvolvimento e produção). Merge feito via fast-forward `claude/chatmix-integration-config-1bcbba`
 → `main`, `gunicorn` e `celery` reiniciados a cada alteração (`services.py`/`tasks.py` exigem
 restart do `celery` também, não só do `gunicorn`, já que o worker mantém os módulos Python

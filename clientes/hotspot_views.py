@@ -1139,7 +1139,7 @@ def hotspot_leads(request, cliente_id, hotspot_id):
 
 @login_required
 def hotspot_disparo_config(request, cliente_id):
-    """Config de disparo por empresa de integração (Chatmix, Opa Suit, ...)
+    """Config de disparo por empresa de integração (Chatmix, Opa Suite, ...)
     para o cliente — compartilhada entre todos os hotspots dele."""
     c = _cliente(request, cliente_id)
     salvos = {cfg.provider: cfg for cfg in ClienteIntegracaoDisparo.objects.filter(cliente=c)}
@@ -1150,10 +1150,12 @@ def hotspot_disparo_config(request, cliente_id):
         providers.append({
             'key': key,
             'nome': nome,
-            'disponivel': key == 'chatmix',
+            'disponivel': True,
             'habilitado': cfg.habilitado if cfg else False,
             'api_key': cfg.api_key if cfg else '',
             'api_token': cfg.api_token if cfg else '',
+            'api_dominio': cfg.api_dominio if cfg else '',
+            'canal_id': cfg.canal_id if cfg else '',
             'template_id': cfg.template_id if cfg else '',
             'variaveis': cfg.variaveis_modelo if cfg else list(DISPARO_VARIAVEIS_EXEMPLO),
         })
@@ -1170,8 +1172,6 @@ def hotspot_disparo_salvar(request, cliente_id):
 
     if provider not in dict(ClienteIntegracaoDisparo.PROVIDER_CHOICES):
         return JsonResponse({'ok': False, 'error': 'Empresa de integração inválida.'}, status=400)
-    if provider != 'chatmix':
-        return JsonResponse({'ok': False, 'error': 'Esta integração ainda não está disponível.'}, status=400)
 
     variaveis_raw = body.get('variaveis')
     if not isinstance(variaveis_raw, list):
@@ -1183,7 +1183,9 @@ def hotspot_disparo_salvar(request, cliente_id):
     cfg, _created = ClienteIntegracaoDisparo.objects.get_or_create(cliente=c, provider=provider)
     cfg.api_key = (body.get('api_key') or '').strip()[:255]
     cfg.api_token = (body.get('api_token') or '').strip()[:255]
-    cfg.template_id = (body.get('template_id') or '').strip()[:20]
+    cfg.api_dominio = (body.get('api_dominio') or '').strip()[:255]
+    cfg.canal_id = (body.get('canal_id') or '').strip()[:64]
+    cfg.template_id = (body.get('template_id') or '').strip()[:64]
     cfg.variaveis_modelo = variaveis
     cfg.save()
 
@@ -1211,14 +1213,14 @@ def hotspot_disparo_toggle(request, cliente_id):
 @require_http_methods(['POST'])
 def hotspot_disparo_testar(request, cliente_id):
     """Envia um disparo de teste com os dados salvos, sem depender de um
-    lead real — útil para validar key/token/template antes de habilitar."""
+    lead real — útil para validar as credenciais/template antes de habilitar."""
     c = _cliente(request, cliente_id)
     body = _json(request)
     provider = (body.get('provider') or '').strip()
     numero = (body.get('numero') or '').strip()
 
-    if provider != 'chatmix':
-        return JsonResponse({'ok': False, 'error': 'Teste disponível apenas para Chatmix no momento.'}, status=400)
+    if provider not in dict(ClienteIntegracaoDisparo.PROVIDER_CHOICES):
+        return JsonResponse({'ok': False, 'error': 'Empresa de integração inválida.'}, status=400)
     if not numero:
         return JsonResponse({'ok': False, 'error': 'Informe um número para o teste.'}, status=400)
 
@@ -1227,16 +1229,24 @@ def hotspot_disparo_testar(request, cliente_id):
     except ClienteIntegracaoDisparo.DoesNotExist:
         return JsonResponse({'ok': False, 'error': 'Configure e salve a integração antes de testar.'}, status=400)
 
-    if not cfg.api_key or not cfg.api_token or not cfg.template_id:
-        return JsonResponse({'ok': False, 'error': 'Preencha key, token e ID do template antes de testar.'}, status=400)
-
-    from .services import ChatmixClient, montar_variaveis_mensagem, normalizar_numero_whatsapp
+    from .services import (
+        ChatmixClient, OpaSuiteClient, montar_variaveis_mensagem, normalizar_numero_whatsapp,
+    )
 
     lead_fake = HotspotLead(nome='Teste', telefone=numero)
     variaveis = montar_variaveis_mensagem(cfg.variaveis_modelo, lead_fake)
     numero_fmt = normalizar_numero_whatsapp(numero)
-    client = ChatmixClient(cfg.api_key, cfg.api_token)
-    ok, detalhe = client.enviar_hsm(numero_fmt, variaveis, cfg.template_id)
+
+    if provider == 'chatmix':
+        if not cfg.api_key or not cfg.api_token or not cfg.template_id:
+            return JsonResponse({'ok': False, 'error': 'Preencha key, token e ID do template antes de testar.'}, status=400)
+        client = ChatmixClient(cfg.api_key, cfg.api_token)
+        ok, detalhe = client.enviar_hsm(numero_fmt, variaveis, cfg.template_id)
+    else:  # opa_suit
+        if not cfg.api_dominio or not cfg.api_token or not cfg.canal_id or not cfg.template_id:
+            return JsonResponse({'ok': False, 'error': 'Preencha domínio, token, canal e ID do template antes de testar.'}, status=400)
+        client = OpaSuiteClient(cfg.api_dominio, cfg.api_token)
+        ok, detalhe = client.enviar_template(numero_fmt, cfg.canal_id, cfg.template_id, variaveis)
 
     return JsonResponse({'ok': ok, 'detalhe': detalhe})
 

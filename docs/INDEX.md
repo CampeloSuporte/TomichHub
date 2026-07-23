@@ -2,6 +2,34 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 12 — 23/07/2026: Hotspot — Integração Disparo: Opa Suite
+
+**O que foi implementado?**
+- ✅ Segunda empresa de integração funcional: **Opa Suite** (endpoint
+  `POST {dominio}/api/v1/template/send`, auth `Bearer <token>`), lendo a coleção Postman pública
+  em https://api.opasuite.com.br/
+- ✅ Novo cliente `OpaSuiteClient` (`clientes/services.py`) — mesmo padrão do `ChatmixClient`,
+  mas multi-tenant por domínio próprio (`api_dominio`) e exigindo `canal_id` (ID do canal de
+  comunicação que faz o envio)
+- ✅ Modelo `ClienteIntegracaoDisparo` ganhou `api_dominio`/`canal_id`; `template_id` ampliado de
+  20 para 64 caracteres (Opa Suite usa ObjectId Mongo, 24 caracteres, maior que o ID numérico
+  curto do Chatmix)
+- ✅ `enviar_disparo_hotspot_lead` (Celery) generalizada para disparar em **todos** os providers
+  habilitados do cliente, não só Chatmix — um cliente pode ter Chatmix e Opa Suite habilitados ao
+  mesmo tempo
+- ✅ Card "Opa Suite" na UI virou funcional (era um placeholder "Em breve"): campos Domínio/Token/
+  Canal/Template + a mesma lista dinâmica de variáveis já usada no Chatmix
+- ✅ Correção de nomenclatura: "Opa Suit" → "Opa Suite" (nome correto da empresa, conforme a
+  própria documentação deles)
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** | Seções "Serviços — ChatmixClient e OpaSuiteClient", "Por que os providers têm campos diferentes", "Configurar o Opa Suite" |
+
+---
+
 ### Sessão 11 — 23/07/2026: Hotspot — Integração Disparo (WhatsApp HSM via Chatmix)
 
 **O que foi implementado?**
@@ -331,11 +359,12 @@
   - Tipos de dispositivo, tipos/velocidades de interface, waypoints
   - Bugs corrigidos (XSS, atalhos com `<select>` focado, rótulo escondido atrás do node)
 
-- **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** — Hotspot: disparo automático de WhatsApp (Chatmix HSM)
-  - Model `ClienteIntegracaoDisparo`, `ChatmixClient`, task Celery `enviar_disparo_hotspot_lead`
+- **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** — Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
+  - Model `ClienteIntegracaoDisparo`, `ChatmixClient`/`OpaSuiteClient`, task Celery `enviar_disparo_hotspot_lead` (dispara em todos os providers habilitados)
   - Lista dinâmica de variáveis do template (N variáveis, não só nome/telefone)
+  - Tabela comparativa Chatmix × Opa Suite (endpoint, auth, canal, formato do ID de template)
   - Bugs corrigidos: `success:false` com HTTP 200, telefone sem o 9º dígito
-  - Passo a passo de configuração (key/token/template/variáveis/teste)
+  - Passo a passo de configuração de cada provider (credenciais/domínio/canal/template/variáveis/teste)
 
 - **[WIKI_ARTIGOS.md](WIKI_ARTIGOS.md)** — Wiki de artigos técnicos
   - PDF anexado ao artigo (upload/troca/remoção, visualizador com zoom no Terminal)
@@ -415,7 +444,7 @@ docs/
 ├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
 ├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
 └─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
-└─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix HSM)
+└─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
 ```
 
 ---
@@ -541,6 +570,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Hotspot: Integração Disparo — Opa Suite funcional (`OpaSuiteClient`, `api_dominio`/`canal_id`), task generalizada p/ disparar em todos os providers habilitados, fix nomenclatura "Opa Suit"→"Opa Suite" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo (WhatsApp HSM via Chatmix) disparado automaticamente no cadastro do lead; lista dinâmica de variáveis do template; fix `success:false` com HTTP 200; fix telefone sem o 9º dígito | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos do Cliente: toggle por ferramenta (Acessos/Backups/VPN/Topologia/etc), admin-only, bloqueio de backend; fix menu do cliente colado no "Voltar ao Dashboard" | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: login com sobrenome, checkbox de aceite Termos/LGPD (modal), dedup de leads por telefone/nome | HOTSPOT_CAPTIVE_PORTAL.md |
@@ -567,6 +597,6 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ---
 
 **Última atualização:** 23/07/2026  
-**Versão:** 1.8  
+**Versão:** 1.9  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

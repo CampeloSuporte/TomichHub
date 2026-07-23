@@ -1844,12 +1844,12 @@ def _disparo_variaveis_padrao():
 
 class ClienteIntegracaoDisparo(models.Model):
     """Configuração de disparo de WhatsApp (HSM) por empresa de integração
-    (Chatmix, Opa Suit, ...), usada para notificar automaticamente novos
+    (Chatmix, Opa Suite, ...), usada para notificar automaticamente novos
     leads capturados no Hotspot deste cliente."""
 
     PROVIDER_CHOICES = [
         ('chatmix', 'Chatmix'),
-        ('opa_suit', 'Opa Suit'),
+        ('opa_suit', 'Opa Suite'),
     ]
 
     cliente    = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='integracoes_disparo')
@@ -1859,11 +1859,18 @@ class ClienteIntegracaoDisparo(models.Model):
     # Credenciais (Chatmix: menu "Chaves para Acesso" — key + token)
     api_key     = models.CharField(max_length=255, blank=True, default='')
     api_token   = models.CharField(max_length=255, blank=True, default='')
-    template_id = models.CharField(max_length=20, blank=True, default='',
-                      help_text='ID do template HSM (Mensagens → Templates → número no final da URL)')
+    # Opa Suite é multi-tenant por domínio próprio (ex: https://minhaempresa.opasuite.com.br) —
+    # cada cliente tem um domínio diferente, diferente do Chatmix que tem 1 endpoint fixo global.
+    api_dominio = models.CharField(max_length=255, blank=True, default='',
+                      help_text='Domínio da conta (só Opa Suite), ex: https://minhaempresa.opasuite.com.br')
+    # Opa Suite exige o ID do canal de comunicação (WhatsApp) que fará o envio.
+    canal_id    = models.CharField(max_length=64, blank=True, default='',
+                      help_text='ID do canal de comunicação (só Opa Suite)')
+    template_id = models.CharField(max_length=64, blank=True, default='',
+                      help_text='ID do template (Chatmix: número no final da URL do template; Opa Suite: campo _id do template)')
     # Lista ordenada de variáveis a enviar (1 posição por variável exigida
-    # pelo template no Chatmix). Cada item pode ser {nome}/{telefone}
-    # (substituído pelo dado do lead) ou um texto fixo.
+    # pelo template). Cada item pode ser {nome}/{telefone} (substituído pelo
+    # dado do lead) ou um texto fixo.
     variaveis_modelo = models.JSONField(default=_disparo_variaveis_padrao,
                       help_text='Uma entrada por variável exigida pelo template, na mesma ordem. Use {nome}/{telefone} ou texto fixo.')
 

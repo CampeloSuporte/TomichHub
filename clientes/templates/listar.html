@@ -2297,18 +2297,57 @@
                         </div>
                       </div>
 
-                      <!-- Opa Suit (em breve) -->
-                      <div class="hs-disparo-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;opacity:.55;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <!-- Opa Suite -->
+                      <div class="hs-disparo-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="hsDisparoToggleCard('opa_suit')">
                           <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-comment-dots" style="color:var(--text-muted);font-size:1.1rem;"></i>
-                            <span style="font-weight:600;color:var(--text-light);">Opa Suit</span>
-                            <span style="font-size:.72rem;color:var(--text-muted);">Em breve</span>
+                            <i class="fas fa-comment-dots" style="color:#6C2BD9;font-size:1.1rem;"></i>
+                            <span style="font-weight:600;color:var(--text-light);">Opa Suite</span>
+                            <span style="font-size:.72rem;color:var(--text-muted);">Disparo de template via WhatsApp</span>
                           </div>
-                          <label class="modulo-toggle-switch" title="Integração ainda não disponível">
-                            <input type="checkbox" class="modulo-toggle-input" disabled>
+                          <label class="modulo-toggle-switch" title="Habilitar/desabilitar disparo automático" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="modulo-toggle-input" id="hsd_opa_suit_habilitado" onchange="hsDisparoToggle('opa_suit', this)">
                             <span class="modulo-toggle-slider"></span>
                           </label>
+                        </div>
+                        <div id="hsd-opa_suit-painel" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+                          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div style="grid-column:1 / -1;">
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Domínio da conta Opa Suite</label>
+                              <input type="text" id="hsd_opa_suit_dominio" class="form-control form-control-sm" placeholder="https://minhaempresa.opasuite.com.br">
+                            </div>
+                            <div>
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Token (Bearer)</label>
+                              <input type="text" id="hsd_opa_suit_token" class="form-control form-control-sm" placeholder="Gerado no cadastro de usuário, perfil API">
+                            </div>
+                            <div>
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">ID do Canal</label>
+                              <input type="text" id="hsd_opa_suit_canal" class="form-control form-control-sm" placeholder="ID do canal de comunicação">
+                            </div>
+                            <div style="grid-column:1 / -1;">
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">ID do Template</label>
+                              <input type="text" id="hsd_opa_suit_template" class="form-control form-control-sm" placeholder="Ex: 624c358355802dbdd2eb944a" style="max-width:280px;">
+                              <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">
+                                Campo <code>_id</code> do template, em Templates de Mensagem no Opa Suite.
+                              </div>
+                            </div>
+                          </div>
+                          <div style="margin-top:12px;">
+                            <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Variáveis do template (na ordem exigida pelo Opa Suite)</label>
+                            <div id="hsd_opa_suit_variaveis_lista" style="display:flex;flex-direction:column;gap:6px;"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" style="margin-top:8px;" onclick="hsDisparoAddVariavel('opa_suit')">
+                              <i class="fas fa-plus me-1"></i>Adicionar variável
+                            </button>
+                            <div style="font-size:.72rem;color:var(--text-muted);margin-top:6px;">
+                              Uma linha por variável exigida pelo template, na ordem correta. Use <code>{nome}</code> ou <code>{telefone}</code> ou texto fixo.
+                            </div>
+                          </div>
+                          <div style="display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-primary" onclick="hsDisparoSalvar('opa_suit')"><i class="fas fa-save me-1"></i>Salvar</button>
+                            <input type="text" id="hsd_opa_suit_teste_numero" class="form-control form-control-sm" placeholder="DDD9NÚMERO (com o 9)" title="Só o número nacional, com o 9 — o +55 é adicionado automaticamente" style="max-width:190px;">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="hsDisparoTestar('opa_suit')"><i class="fas fa-paper-plane me-1"></i>Enviar teste</button>
+                            <span id="hsd_opa_suit_status" style="font-size:.78rem;"></span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -8338,6 +8377,8 @@ function getCsrfToken(){
                 var k=document.getElementById('hsd_'+p.key+'_key');if(k)k.value=p.api_key||'';
                 var t=document.getElementById('hsd_'+p.key+'_token');if(t)t.value=p.api_token||'';
                 var tp=document.getElementById('hsd_'+p.key+'_template');if(tp)tp.value=p.template_id||'';
+                var dom=document.getElementById('hsd_'+p.key+'_dominio');if(dom)dom.value=p.api_dominio||'';
+                var cn=document.getElementById('hsd_'+p.key+'_canal');if(cn)cn.value=p.canal_id||'';
                 hsDisparoRenderVariaveis(p.key,p.variaveis);
             });
         }).catch(function(){});
@@ -8387,12 +8428,18 @@ function getCsrfToken(){
             checkbox.checked=d.habilitado;
         }).catch(function(){checkbox.disabled=false;checkbox.checked=estadoAnterior;});
     }
+    function hsDisparoCampo(provider,sufixo){
+        var el=document.getElementById('hsd_'+provider+'_'+sufixo);
+        return el?el.value.trim():'';
+    }
     function hsDisparoSalvar(provider){
         var p={
             provider:provider,
-            api_key:document.getElementById('hsd_'+provider+'_key').value.trim(),
-            api_token:document.getElementById('hsd_'+provider+'_token').value.trim(),
-            template_id:document.getElementById('hsd_'+provider+'_template').value.trim(),
+            api_key:hsDisparoCampo(provider,'key'),
+            api_token:hsDisparoCampo(provider,'token'),
+            template_id:hsDisparoCampo(provider,'template'),
+            api_dominio:hsDisparoCampo(provider,'dominio'),
+            canal_id:hsDisparoCampo(provider,'canal'),
             variaveis:hsDisparoColetarVariaveis(provider),
         };
         var status=document.getElementById('hsd_'+provider+'_status');
