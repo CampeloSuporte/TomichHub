@@ -25,7 +25,10 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Acesso, Cliente, HotspotBanner, HotspotConfig, HotspotInterface, HotspotLead
+from .models import (
+    Acesso, Cliente, ClienteIntegracaoDisparo, DISPARO_MENSAGEM_EXEMPLO,
+    HotspotBanner, HotspotConfig, HotspotInterface, HotspotLead,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1128,6 +1131,107 @@ def hotspot_leads(request, cliente_id, hotspot_id):
         'dias_disponiveis': [d.isoformat() for d in dias_disponiveis],
         'total_geral': h.leads.count(),
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Integração Disparo — envio automático de WhatsApp (HSM) para novos leads
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def hotspot_disparo_config(request, cliente_id):
+    """Config de disparo por empresa de integração (Chatmix, Opa Suit, ...)
+    para o cliente — compartilhada entre todos os hotspots dele."""
+    c = _cliente(request, cliente_id)
+    salvos = {cfg.provider: cfg for cfg in ClienteIntegracaoDisparo.objects.filter(cliente=c)}
+
+    providers = []
+    for key, nome in ClienteIntegracaoDisparo.PROVIDER_CHOICES:
+        cfg = salvos.get(key)
+        providers.append({
+            'key': key,
+            'nome': nome,
+            'disponivel': key == 'chatmix',
+            'habilitado': cfg.habilitado if cfg else False,
+            'api_key': cfg.api_key if cfg else '',
+            'api_token': cfg.api_token if cfg else '',
+            'template_id': cfg.template_id if cfg else '',
+            'mensagem_modelo': cfg.mensagem_modelo if cfg else DISPARO_MENSAGEM_EXEMPLO,
+        })
+
+    return JsonResponse({'ok': True, 'providers': providers})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_disparo_salvar(request, cliente_id):
+    c = _cliente(request, cliente_id)
+    body = _json(request)
+    provider = (body.get('provider') or '').strip()
+
+    if provider not in dict(ClienteIntegracaoDisparo.PROVIDER_CHOICES):
+        return JsonResponse({'ok': False, 'error': 'Empresa de integração inválida.'}, status=400)
+    if provider != 'chatmix':
+        return JsonResponse({'ok': False, 'error': 'Esta integração ainda não está disponível.'}, status=400)
+
+    cfg, _created = ClienteIntegracaoDisparo.objects.get_or_create(cliente=c, provider=provider)
+    cfg.api_key = (body.get('api_key') or '').strip()[:255]
+    cfg.api_token = (body.get('api_token') or '').strip()[:255]
+    cfg.template_id = (body.get('template_id') or '').strip()[:20]
+    cfg.mensagem_modelo = (body.get('mensagem_modelo') or '').strip() or DISPARO_MENSAGEM_EXEMPLO
+    cfg.save()
+
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_disparo_toggle(request, cliente_id):
+    c = _cliente(request, cliente_id)
+    body = _json(request)
+    provider = (body.get('provider') or '').strip()
+
+    if provider not in dict(ClienteIntegracaoDisparo.PROVIDER_CHOICES):
+        return JsonResponse({'ok': False, 'error': 'Empresa de integração inválida.'}, status=400)
+
+    cfg, _created = ClienteIntegracaoDisparo.objects.get_or_create(cliente=c, provider=provider)
+    cfg.habilitado = not cfg.habilitado
+    cfg.save(update_fields=['habilitado', 'atualizado_em'])
+
+    return JsonResponse({'ok': True, 'provider': provider, 'habilitado': cfg.habilitado})
+
+
+@login_required
+@require_http_methods(['POST'])
+def hotspot_disparo_testar(request, cliente_id):
+    """Envia um disparo de teste com os dados salvos, sem depender de um
+    lead real — útil para validar key/token/template antes de habilitar."""
+    c = _cliente(request, cliente_id)
+    body = _json(request)
+    provider = (body.get('provider') or '').strip()
+    numero = (body.get('numero') or '').strip()
+
+    if provider != 'chatmix':
+        return JsonResponse({'ok': False, 'error': 'Teste disponível apenas para Chatmix no momento.'}, status=400)
+    if not numero:
+        return JsonResponse({'ok': False, 'error': 'Informe um número para o teste.'}, status=400)
+
+    try:
+        cfg = ClienteIntegracaoDisparo.objects.get(cliente=c, provider=provider)
+    except ClienteIntegracaoDisparo.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Configure e salve a integração antes de testar.'}, status=400)
+
+    if not cfg.api_key or not cfg.api_token or not cfg.template_id:
+        return JsonResponse({'ok': False, 'error': 'Preencha key, token e ID do template antes de testar.'}, status=400)
+
+    from .services import ChatmixClient, montar_variaveis_mensagem, normalizar_numero_whatsapp
+
+    lead_fake = HotspotLead(nome='Teste', telefone=numero)
+    variaveis = montar_variaveis_mensagem(cfg.mensagem_modelo, lead_fake)
+    numero_fmt = normalizar_numero_whatsapp(numero)
+    client = ChatmixClient(cfg.api_key, cfg.api_token)
+    ok, detalhe = client.enviar_hsm(numero_fmt, variaveis, cfg.template_id)
+
+    return JsonResponse({'ok': ok, 'detalhe': detalhe})
 
 
 # ─────────────────────────────────────────────────────────────────────────────

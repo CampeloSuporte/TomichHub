@@ -1962,6 +1962,7 @@
                       <li class="nav-item"><a class="nav-link active" href="#" onclick="hsAba(event,'config')"><i class="fas fa-cog me-1"></i>Configuração</a></li>
                       <li class="nav-item"><a class="nav-link" href="#" onclick="hsAba(event,'banners')"><i class="fas fa-images me-1"></i>Banners</a></li>
                       <li class="nav-item"><a class="nav-link" href="#" onclick="hsAba(event,'leads')"><i class="fas fa-users me-1"></i>Leads</a></li>
+                      <li class="nav-item"><a class="nav-link" href="#" onclick="hsAba(event,'disparo')"><i class="fas fa-paper-plane me-1"></i>Integração Disparo</a></li>
                     </ul>
 
                     <!-- Sub-tab: Configuração -->
@@ -2234,6 +2235,78 @@
                         </div>
                       </div>
                       <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:12px;" id="hs-leads-paginacao"></div>
+                    </div>
+
+                    <!-- Sub-tab: Integração Disparo -->
+                    <div id="hs-tab-disparo" style="display:none;">
+                      <div style="color:var(--text-muted);font-size:.82rem;margin-bottom:14px;">
+                        <i class="fas fa-circle-info me-1"></i>
+                        Envia automaticamente uma mensagem via WhatsApp (HSM) quando um novo lead se cadastra no hotspot,
+                        usando o nome e telefone informados no formulário. A configuração vale para todos os hotspots deste cliente.
+                      </div>
+
+                      <!-- Chatmix -->
+                      <div class="hs-disparo-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="hsDisparoToggleCard('chatmix')">
+                          <div style="display:flex;align-items:center;gap:10px;">
+                            <i class="fas fa-comment-dots" style="color:#25D366;font-size:1.1rem;"></i>
+                            <span style="font-weight:600;color:var(--text-light);">Chatmix</span>
+                            <span style="font-size:.72rem;color:var(--text-muted);">Disparo de HSM via WhatsApp</span>
+                          </div>
+                          <label class="modulo-toggle-switch" title="Habilitar/desabilitar disparo automático" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="modulo-toggle-input" id="hsd_chatmix_habilitado" onchange="hsDisparoToggle('chatmix', this)">
+                            <span class="modulo-toggle-slider"></span>
+                          </label>
+                        </div>
+                        <div id="hsd-chatmix-painel" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+                          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Key</label>
+                              <input type="text" id="hsd_chatmix_key" class="form-control form-control-sm" placeholder="Key do usuário">
+                            </div>
+                            <div>
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Token</label>
+                              <input type="text" id="hsd_chatmix_token" class="form-control form-control-sm" placeholder="Token do usuário">
+                            </div>
+                            <div style="grid-column:1 / -1;">
+                              <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">ID do Template</label>
+                              <input type="text" id="hsd_chatmix_template" class="form-control form-control-sm" placeholder="Ex: 181" style="max-width:200px;">
+                              <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">
+                                Encontrado na URL do template, em Mensagens → Templates no Chatmix (ex: .../templates/<strong>181</strong>).
+                              </div>
+                            </div>
+                          </div>
+                          <div style="margin-top:12px;">
+                            <label class="form-label" style="font-size:.78rem;color:var(--text-muted);">Corpo da mensagem (variáveis do template)</label>
+                            <textarea id="hsd_chatmix_mensagem" class="form-control form-control-sm" rows="3" style="font-family:inherit;"></textarea>
+                            <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">
+                              Use <code>{nome}</code> e <code>{telefone}</code> para indicar as variáveis do lead — a ordem em que aparecem aqui
+                              deve corresponder exatamente à ordem esperada pelo template no Chatmix.
+                            </div>
+                          </div>
+                          <div style="display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-primary" onclick="hsDisparoSalvar('chatmix')"><i class="fas fa-save me-1"></i>Salvar</button>
+                            <input type="text" id="hsd_chatmix_teste_numero" class="form-control form-control-sm" placeholder="+55DDDNÚMERO" style="max-width:170px;">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="hsDisparoTestar('chatmix')"><i class="fas fa-paper-plane me-1"></i>Enviar teste</button>
+                            <span id="hsd_chatmix_status" style="font-size:.78rem;"></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Opa Suit (em breve) -->
+                      <div class="hs-disparo-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;opacity:.55;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <div style="display:flex;align-items:center;gap:10px;">
+                            <i class="fas fa-comment-dots" style="color:var(--text-muted);font-size:1.1rem;"></i>
+                            <span style="font-weight:600;color:var(--text-light);">Opa Suit</span>
+                            <span style="font-size:.72rem;color:var(--text-muted);">Em breve</span>
+                          </div>
+                          <label class="modulo-toggle-switch" title="Integração ainda não disponível">
+                            <input type="checkbox" class="modulo-toggle-input" disabled>
+                            <span class="modulo-toggle-slider"></span>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div><!-- /detail-pane -->
                 </div><!-- /two-pane -->
@@ -7916,11 +7989,12 @@ function getCsrfToken(){
     });
     function hsAba(ev,aba){
         if(ev)ev.preventDefault();
-        ['config','banners','leads'].forEach(function(a){var el=document.getElementById('hs-tab-'+a);if(el)el.style.display=a===aba?'':'none';});
+        ['config','banners','leads','disparo'].forEach(function(a){var el=document.getElementById('hs-tab-'+a);if(el)el.style.display=a===aba?'':'none';});
         document.querySelectorAll('#hsSubTabs .nav-link').forEach(function(el){el.classList.remove('active');});
         if(ev&&ev.target)ev.target.classList.add('active');
         if(aba==='banners')hsCarregarBanners();
         if(aba==='leads')hsCarregarLeads();
+        if(aba==='disparo')hsCarregarDisparo();
     }
     function hsRenderList(hotspots){
         var el=document.getElementById('hs-list');
@@ -8247,6 +8321,54 @@ function getCsrfToken(){
         var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
         var dataEl = document.getElementById('hs-leads-data');
         var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='leads_hotspot_'+(dataEl?dataEl.value:'dia')+'.csv';a.click();
+    }
+    function hsDisparoToggleCard(provider){
+        var p=document.getElementById('hsd-'+provider+'-painel');
+        if(p)p.style.display=(p.style.display==='none'?'':'none');
+    }
+    function hsCarregarDisparo(){
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/').then(function(r){return r.json();}).then(function(d){
+            if(!d.ok)return;
+            d.providers.forEach(function(p){
+                var chk=document.getElementById('hsd_'+p.key+'_habilitado');if(chk)chk.checked=!!p.habilitado;
+                var k=document.getElementById('hsd_'+p.key+'_key');if(k)k.value=p.api_key||'';
+                var t=document.getElementById('hsd_'+p.key+'_token');if(t)t.value=p.api_token||'';
+                var tp=document.getElementById('hsd_'+p.key+'_template');if(tp)tp.value=p.template_id||'';
+                var m=document.getElementById('hsd_'+p.key+'_mensagem');if(m)m.value=p.mensagem_modelo||'';
+            });
+        }).catch(function(){});
+    }
+    function hsDisparoToggle(provider,checkbox){
+        var estadoAnterior=!checkbox.checked;
+        checkbox.disabled=true;
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/toggle/',{method:'POST',body:{provider:provider}}).then(function(r){return r.json();}).then(function(d){
+            checkbox.disabled=false;
+            if(!d.ok){checkbox.checked=estadoAnterior;alert(d.error||'Erro ao atualizar integração.');return;}
+            checkbox.checked=d.habilitado;
+        }).catch(function(){checkbox.disabled=false;checkbox.checked=estadoAnterior;});
+    }
+    function hsDisparoSalvar(provider){
+        var p={
+            provider:provider,
+            api_key:document.getElementById('hsd_'+provider+'_key').value.trim(),
+            api_token:document.getElementById('hsd_'+provider+'_token').value.trim(),
+            template_id:document.getElementById('hsd_'+provider+'_template').value.trim(),
+            mensagem_modelo:document.getElementById('hsd_'+provider+'_mensagem').value,
+        };
+        var status=document.getElementById('hsd_'+provider+'_status');
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/salvar/',{method:'POST',body:p}).then(function(r){return r.json();}).then(function(d){
+            if(status)status.innerHTML=d.ok?'<span style="color:#22c55e;">Salvo!</span>':'<span style="color:#ef4444;">'+(d.error||'Erro ao salvar.')+'</span>';
+            if(!d.ok)alert(d.error||'Erro ao salvar.');
+        });
+    }
+    function hsDisparoTestar(provider){
+        var numero=document.getElementById('hsd_'+provider+'_teste_numero').value.trim();
+        var status=document.getElementById('hsd_'+provider+'_status');
+        if(!numero){alert('Informe um número para o teste.');return;}
+        if(status)status.innerHTML='Enviando...';
+        _hsFetch('/clientes/'+HS_CID+'/hotspot/disparo/testar/',{method:'POST',body:{provider:provider,numero:numero}}).then(function(r){return r.json();}).then(function(d){
+            if(status)status.innerHTML=d.ok?'<span style="color:#22c55e;">Teste enviado!</span>':'<span style="color:#ef4444;">'+(d.detalhe||d.error||'Falha no envio.')+'</span>';
+        }).catch(function(){if(status)status.innerHTML='<span style="color:#ef4444;">Falha no envio.</span>';});
     }
     </script>
 

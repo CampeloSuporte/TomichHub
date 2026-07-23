@@ -1,3 +1,4 @@
+import logging
 import uuid as _uuid_mod
 
 from django.db import models
@@ -1825,3 +1826,66 @@ class HotspotLead(models.Model):
 
     def __str__(self):
         return f'{self.nome} ({self.telefone})'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Integração Disparo — envio automático de WhatsApp (HSM) para leads do Hotspot
+# ─────────────────────────────────────────────────────────────────────────────
+
+DISPARO_MENSAGEM_EXEMPLO = (
+    'Olá {nome}! Recebemos seu cadastro em nosso WiFi grátis e ficamos felizes em ter você por aqui. '
+    'Em breve podemos entrar em contato pelo número {telefone}. Bem-vindo(a)!'
+)
+
+
+class ClienteIntegracaoDisparo(models.Model):
+    """Configuração de disparo de WhatsApp (HSM) por empresa de integração
+    (Chatmix, Opa Suit, ...), usada para notificar automaticamente novos
+    leads capturados no Hotspot deste cliente."""
+
+    PROVIDER_CHOICES = [
+        ('chatmix', 'Chatmix'),
+        ('opa_suit', 'Opa Suit'),
+    ]
+
+    cliente    = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='integracoes_disparo')
+    provider   = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    habilitado = models.BooleanField(default=False)
+
+    # Credenciais (Chatmix: menu "Chaves para Acesso" — key + token)
+    api_key     = models.CharField(max_length=255, blank=True, default='')
+    api_token   = models.CharField(max_length=255, blank=True, default='')
+    template_id = models.CharField(max_length=20, blank=True, default='',
+                      help_text='ID do template HSM (Mensagens → Templates → número no final da URL)')
+    mensagem_modelo = models.TextField(default=DISPARO_MENSAGEM_EXEMPLO,
+                      help_text='Use {nome} e {telefone} para indicar as variáveis do lead, na ordem esperada pelo template.')
+
+    criado_em     = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Integração de Disparo (Cliente)'
+        verbose_name_plural = 'Integrações de Disparo (Cliente)'
+        unique_together     = ('cliente', 'provider')
+
+    def __str__(self):
+        return f'{self.get_provider_display()} — {self.cliente.nome_empresa}'
+
+
+@receiver(post_save, sender=HotspotLead)
+def disparar_integracao_lead(sender, instance, created, **kwargs):
+    """Ao capturar um novo lead do Hotspot, dispara (em background via Celery)
+    uma mensagem HSM via WhatsApp usando a integração habilitada do cliente.
+
+    Nunca deve derrubar o cadastro do lead: os pontos que criam HotspotLead
+    são endpoints públicos e críticos do captive portal (o usuário precisa
+    conseguir se conectar ao WiFi mesmo que o broker Celery esteja fora do
+    ar), então qualquer falha ao enfileirar a task é só logada.
+    """
+    if not created:
+        return
+    try:
+        from .tasks import enviar_disparo_hotspot_lead
+        enviar_disparo_hotspot_lead.delay(instance.id)
+    except Exception:
+        logging.getLogger(__name__).exception('Falha ao enfileirar disparo de integração p/ lead %s', instance.id)

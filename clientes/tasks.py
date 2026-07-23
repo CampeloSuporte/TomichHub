@@ -2076,3 +2076,46 @@ def remover_usuarios_antigos_task(self, job_id):
                 _fechar_ssh(client, ssh_tunnel)
 
     return {'job_id': job_id, 'processados': itens.count()}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Integração Disparo — envio de WhatsApp (HSM) para novos leads do Hotspot
+# ─────────────────────────────────────────────────────────────────────────────
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def enviar_disparo_hotspot_lead(self, lead_id):
+    """
+    Envia uma mensagem WhatsApp (HSM) via integração de disparo do cliente
+    (ex: Chatmix) quando um novo lead é capturado no Hotspot. Roda em
+    background (Celery) para não atrasar a resposta do portal cativo ao
+    usuário conectando no WiFi.
+    """
+    from .models import ClienteIntegracaoDisparo, HotspotLead
+    from .services import ChatmixClient, montar_variaveis_mensagem, normalizar_numero_whatsapp
+
+    try:
+        lead = HotspotLead.objects.select_related('hotspot__cliente').get(id=lead_id)
+    except HotspotLead.DoesNotExist:
+        return {'status': 'ignorado', 'motivo': 'Lead não encontrado'}
+
+    cliente = lead.hotspot.cliente
+    config = ClienteIntegracaoDisparo.objects.filter(
+        cliente=cliente, provider='chatmix', habilitado=True,
+    ).first()
+    if not config or not config.api_key or not config.api_token or not config.template_id:
+        return {'status': 'ignorado', 'motivo': 'Integração Chatmix não habilitada/configurada'}
+
+    numero = normalizar_numero_whatsapp(lead.telefone)
+    if not numero:
+        return {'status': 'ignorado', 'motivo': 'Lead sem telefone'}
+
+    variaveis = montar_variaveis_mensagem(config.mensagem_modelo, lead)
+    client = ChatmixClient(config.api_key, config.api_token)
+    ok, detalhe = client.enviar_hsm(numero, variaveis, config.template_id)
+
+    if not ok:
+        logger.warning(f'⚠️ Disparo Chatmix falhou p/ lead {lead_id}: {detalhe}')
+        raise self.retry(exc=Exception(detalhe))
+
+    logger.info(f'✅ Disparo Chatmix enviado p/ lead {lead_id} ({numero})')
+    return {'status': 'ok', 'detalhe': detalhe}
