@@ -2,6 +2,29 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 15 — 23/07/2026: Hotspot — Integração Disparo: Painel de Ajuda Visual (Chatmix)
+
+**O que foi implementado?**
+- ✅ Botão "Onde acho Key/Token/ID do Template?" no card Chatmix — abre um mini-guia visual
+  (mockups HTML/CSS, não screenshots reais) recriando as telas do Chatmix: "Chaves para acesso"
+  (destacando o campo Canais com seleção múltipla e o checkbox "Ver opções avançadas") e
+  "Mensagens → Mensagens Templates" (mostrando o ID do template no final da URL)
+- ✅ Sugestão de corpo de mensagem pronta (boas-vindas + oferta de desconto) com botão "Copiar"
+  (`navigator.clipboard`), usando `{{1}}` (sintaxe Meta/WhatsApp) para a variável de nome
+- ✅ Diagnosticados (não são bugs do CRM): `"success":true, status:"queue"` mas mensagem não
+  chega = template pendente de aprovação da Meta; `"Template nao encontrado"` mesmo o template
+  existindo = Key/Token sem o canal certo marcado (campo **Canais** multi-seleção na Chatmix)
+- ✅ Detalhe técnico: `{{1}}` literal quebraria o parser de templates do Django (`{{ }}` é a
+  sintaxe de variável dele) — resolvido com `{% templatetag openvariable/closevariable %}`
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** | Seções "Painel de ajuda embutido (card Chatmix)", "Bug 4 — Diagnósticos de teste que não são bug do CRM", "Exemplo de corpo de template" |
+
+---
+
 ### Sessão 14 — 23/07/2026: Módulos por Usuário — de Cliente (empresa) pra Login individual
 
 **O que mudou?**
@@ -619,6 +642,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 |------|-------|--------------|
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 23/07/2026 | Hotspot: Integração Disparo — painel de ajuda visual no card Chatmix (Key/Token, ID do Template, sugestão de mensagem com botão Copiar); diagnóstico de "template pendente" e "canal errado na chave" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo — Opa Suite funcional (`OpaSuiteClient`, `api_dominio`/`canal_id`), task generalizada p/ disparar em todos os providers habilitados, fix nomenclatura "Opa Suit"→"Opa Suite" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo (WhatsApp HSM via Chatmix) disparado automaticamente no cadastro do lead; lista dinâmica de variáveis do template; fix `success:false` com HTTP 200; fix telefone sem o 9º dígito | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos do Cliente: toggle por ferramenta (Acessos/Backups/VPN/Topologia/etc), admin-only, bloqueio de backend; fix menu do cliente colado no "Voltar ao Dashboard" | MODULOS_CLIENTE.md |
@@ -646,6 +670,6 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ---
 
 **Última atualização:** 23/07/2026  
-**Versão:** 1.9  
+**Versão:** 2.0  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
