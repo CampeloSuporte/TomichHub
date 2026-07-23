@@ -142,7 +142,7 @@
                                         <td>{{cliente.email}}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{{ u.id }}{% if not forloop.last %},{% endif %}{% endfor %}], JSON.parse('{{ cliente.modulos_json|escapejs }}'))" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{{ u.id }}{% if not forloop.last %},{% endif %}{% endfor %}])" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <button class="btn-action btn-delete" onclick="confirmarDelete({{cliente.id}})" title="Excluir">
@@ -254,22 +254,6 @@
                             <small class="form-text text-muted">Opcional — digite para pesquisar e clique para adicionar. Outros usuários que também podem logar e acessar o painel deste cliente.</small>
                         </div>
                     </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
-                        <input type="hidden" name="modulos_form_present" value="1">
-                        <div class="row">
-                            {% for chave, rotulo in modulos_disponiveis %}
-                            <div class="col-md-4 col-6 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="modulos" value="{{ chave }}" id="modulo_{{ chave }}" checked>
-                                    <label class="form-check-label" for="modulo_{{ chave }}" style="font-size:.82rem;">{{ rotulo }}</label>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <small class="form-text text-muted">Desmarque as ferramentas que este cliente não contratou — ficam ocultas na tela dele.</small>
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -378,22 +362,6 @@
                             <div id="editUsuariosAdicionaisHiddenInputs"></div>
                             <small class="form-text text-muted">Opcional — digite para pesquisar e clique para adicionar. Outros usuários que também podem logar e acessar o painel deste cliente.</small>
                         </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
-                        <input type="hidden" name="modulos_form_present" value="1">
-                        <div class="row">
-                            {% for chave, rotulo in modulos_disponiveis %}
-                            <div class="col-md-4 col-6 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="modulos" value="{{ chave }}" id="edit_modulo_{{ chave }}">
-                                    <label class="form-check-label" for="edit_modulo_{{ chave }}" style="font-size:.82rem;">{{ rotulo }}</label>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <small class="form-text text-muted">Desmarque as ferramentas que este cliente não contratou — ficam ocultas na tela dele.</small>
                     </div>
 
                     <div class="form-section">
@@ -869,10 +837,7 @@
         // Limpa as tags do modal de cadastro sempre que ele é reaberto do zero
         const cadastroModalEl = document.getElementById('cadastroModal');
         if (cadastroModalEl && seletorAdicionaisCadastro) {
-            cadastroModalEl.addEventListener('show.bs.modal', () => {
-                seletorAdicionaisCadastro.limpar();
-                document.querySelectorAll('#cadastroForm input[name="modulos"]').forEach(cb => cb.checked = true);
-            });
+            cadastroModalEl.addEventListener('show.bs.modal', () => seletorAdicionaisCadastro.limpar());
         }
 
         // ============================================

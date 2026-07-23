@@ -2,6 +2,31 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 14 — 23/07/2026: Módulos por Usuário — de Cliente (empresa) pra Login individual
+
+**O que mudou?**
+- ✅ Descoberto que a seleção de ferramentas deveria ser por **login individual** (`User`),
+  não por empresa (`Cliente`) — dois usuários da mesma empresa podem precisar ver coisas
+  diferentes (ex: financeiro não vê VPN, técnico de rede vê)
+- ✅ Removido `ClienteModulo` (model, migração `0086_delete_clientemodulo`, checkboxes em
+  `cadastrar_cliente.html`)
+- ✅ Novo model `UsuarioModulo` (`usuario/models.py`), primeira migração do app `usuario`
+- ✅ Checkboxes "Ferramentas habilitadas" movidos para **Sistema → Usuário**
+  (`cadastrar_usuario.html`), visíveis só quando o tipo selecionado é "Cliente"
+  (administradores sempre veem tudo)
+- ✅ `modulo_habilitado_required` simplificado: checa `request.user` diretamente, sem
+  precisar resolver qual `Cliente` está por trás da URL
+- ✅ `listar_clientes` calcula `modulos_habilitados` a partir do usuário logado, não do
+  cliente sendo visualizado
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[MODULOS_CLIENTE.md](MODULOS_CLIENTE.md)** | Reescrito — arquitetura atual (por usuário), histórico das 2 versões anteriores descartadas |
+
+---
+
 ### Sessão 13 — 23/07/2026: Módulos do Cliente — Seleção movida para o Cadastro/Edição
 
 **O que mudou?**
@@ -592,6 +617,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: Integração Disparo — Opa Suite funcional (`OpaSuiteClient`, `api_dominio`/`canal_id`), task generalizada p/ disparar em todos os providers habilitados, fix nomenclatura "Opa Suit"→"Opa Suite" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo (WhatsApp HSM via Chatmix) disparado automaticamente no cadastro do lead; lista dinâmica de variáveis do template; fix `success:false` com HTTP 200; fix telefone sem o 9º dígito | HOTSPOT_INTEGRACAO_DISPARO.md |

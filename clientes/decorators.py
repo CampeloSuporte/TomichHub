@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from functools import wraps
 from .models import Cliente
+from usuario.models import modulo_habilitado as _usuario_modulo_habilitado
 
 # ============================================
 # DECORADORES DE PERMISSÃO
@@ -102,16 +103,13 @@ def cliente_or_admin_required(view_func):
     return wrapper
 
 
-def modulo_habilitado_required(modulo_key, cliente_kwarg='cliente_id'):
+def modulo_habilitado_required(modulo_key):
     """
     Bloqueia o acesso de clientes (is_staff=False) a uma view quando o
-    módulo `modulo_key` estiver desabilitado para o Cliente. Admins
-    (is_staff/is_superuser) sempre passam — o toggle é só para o portal
-    do cliente final.
-
-    Resolve o Cliente por `kwargs[cliente_kwarg]` (padrão 'cliente_id');
-    se a view não recebe esse kwarg, cai para o Cliente vinculado ao
-    usuário autenticado.
+    módulo `modulo_key` estiver desabilitado para o **usuário logado**
+    (login individual, ver `usuario.models.UsuarioModulo`) — não para o
+    Cliente/empresa como um todo. Admins (is_staff/is_superuser) sempre
+    passam — o bloqueio é só para o portal do cliente final.
     """
     def decorator(view_func):
         @wraps(view_func)
@@ -119,19 +117,13 @@ def modulo_habilitado_required(modulo_key, cliente_kwarg='cliente_id'):
             if request.user.is_staff or request.user.is_superuser:
                 return view_func(request, *args, **kwargs)
 
-            cliente_id = kwargs.get(cliente_kwarg)
-            try:
-                if cliente_id:
-                    cliente = Cliente.objects.get(id=cliente_id)
-                else:
+            if not _usuario_modulo_habilitado(request.user, modulo_key):
+                messages.error(request, 'Este módulo não está disponível para o seu usuário. Fale com o suporte.')
+                try:
                     cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            except Cliente.DoesNotExist:
-                messages.error(request, 'Cliente não encontrado.')
-                return redirect('login')
-
-            if not cliente.modulo_habilitado(modulo_key):
-                messages.error(request, 'Este módulo não está disponível no seu contrato. Fale com o suporte.')
-                return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
+                    return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
+                except Cliente.DoesNotExist:
+                    return redirect('login')
 
             return view_func(request, *args, **kwargs)
         return wrapper

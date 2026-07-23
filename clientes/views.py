@@ -11,7 +11,7 @@ from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig, ClienteModulo
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando
 from .proxy_engine import ProxyEngine
@@ -23,6 +23,7 @@ from .decorators import (
     cliente_can_view_cliente,
     modulo_habilitado_required,
 )
+from usuario.models import modulos_habilitados_dict as usuario_modulos_habilitados_dict
 from django.http import HttpResponseRedirect
 import logging
 logger = logging.getLogger(__name__)
@@ -130,7 +131,7 @@ def listar_clientes(request):
     )
     total_blocos_rpki_irr_invalidos_cliente = blocos_rpki_invalidos_cliente.count() + blocos_irr_invalidos_cliente.count()
 
-    modulos_habilitados = cliente.modulos_habilitados_dict()
+    modulos_habilitados = usuario_modulos_habilitados_dict(request.user)
 
     response = render(request, 'listar.html', {
         'cliente': cliente,
@@ -189,13 +190,10 @@ def _validar_usuarios_adicionais(usuario_ids, cliente_id_atual=None):
 @admin_required  # ← ADICIONAR ESTA LINHA
 def cadastrar_cliente(request):
     if request.method == 'GET':
-        clientes = Cliente.objects.all().prefetch_related('usuarios_adicionais', 'modulos')
-        for c in clientes:
-            c.modulos_json = json.dumps(c.modulos_habilitados_dict())
+        clientes = Cliente.objects.all().prefetch_related('usuarios_adicionais')
         usuario = User.objects.all()
         return render(request, 'cadastrar_cliente.html', {
-            'clientes': clientes, 'usuario': usuario,
-            'modulos_disponiveis': ClienteModulo.MODULO_CHOICES})
+            'clientes': clientes, 'usuario': usuario})
 
     elif request.method == 'POST':
         nome_empresa = request.POST.get('nome_empresa')
@@ -251,16 +249,6 @@ def cadastrar_cliente(request):
         )
         cliente.save()
         cliente.usuarios_adicionais.set(ids_validos)
-
-        # Ferramentas habilitadas — só grava se o form realmente enviou a seção
-        # (marcador oculto), pra nunca desabilitar tudo por um form incompleto.
-        if request.POST.get('modulos_form_present'):
-            modulos_marcados = set(request.POST.getlist('modulos'))
-            ClienteModulo.objects.bulk_create([
-                ClienteModulo(cliente=cliente, modulo=chave, habilitado=(chave in modulos_marcados))
-                for chave, _ in ClienteModulo.MODULO_CHOICES
-            ])
-
         messages.success(request, 'Cliente cadastrado com sucesso!')
         return redirect('cadastrar_cliente')
 
@@ -857,17 +845,6 @@ def editar_cliente(request):
 
         cliente.save()
         cliente.usuarios_adicionais.set(ids_validos)
-
-        # Ferramentas habilitadas — só grava se o form realmente enviou a seção
-        # (marcador oculto), pra nunca desabilitar tudo por um form incompleto.
-        if request.POST.get('modulos_form_present'):
-            modulos_marcados = set(request.POST.getlist('modulos'))
-            for chave, _ in ClienteModulo.MODULO_CHOICES:
-                ClienteModulo.objects.update_or_create(
-                    cliente=cliente, modulo=chave,
-                    defaults={'habilitado': chave in modulos_marcados},
-                )
-
         messages.success(request, "Cliente atualizado com sucesso!")
         return redirect('cadastrar_cliente')
 
