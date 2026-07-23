@@ -1,6 +1,7 @@
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from functools import wraps
 from .models import Cliente
 
@@ -99,6 +100,42 @@ def cliente_or_admin_required(view_func):
             return redirect('login')
     
     return wrapper
+
+
+def modulo_habilitado_required(modulo_key, cliente_kwarg='cliente_id'):
+    """
+    Bloqueia o acesso de clientes (is_staff=False) a uma view quando o
+    módulo `modulo_key` estiver desabilitado para o Cliente. Admins
+    (is_staff/is_superuser) sempre passam — o toggle é só para o portal
+    do cliente final.
+
+    Resolve o Cliente por `kwargs[cliente_kwarg]` (padrão 'cliente_id');
+    se a view não recebe esse kwarg, cai para o Cliente vinculado ao
+    usuário autenticado.
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if request.user.is_staff or request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
+
+            cliente_id = kwargs.get(cliente_kwarg)
+            try:
+                if cliente_id:
+                    cliente = Cliente.objects.get(id=cliente_id)
+                else:
+                    cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+            except Cliente.DoesNotExist:
+                messages.error(request, 'Cliente não encontrado.')
+                return redirect('login')
+
+            if not cliente.modulo_habilitado(modulo_key):
+                messages.error(request, 'Este módulo não está disponível no seu contrato. Fale com o suporte.')
+                return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
+
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def cliente_can_view_cliente(view_func):

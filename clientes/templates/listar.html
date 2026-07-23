@@ -115,64 +115,84 @@
 
             <!-- Main Tabs -->
             <ul class="nav nav-tabs mb-4" id="mainTabs">
-                <li class="nav-item">
+                {% if is_admin or modulos_habilitados.acessos %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link active" href="#" onclick="trocarAba(event, 'acessos')">Acessos</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="acessos" habilitado=modulos_habilitados.acessos %}{% endif %}
                 </li>
-                <!--
-                <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="trocarAba(event, 'extrato')">Extrato</a>
-                </li>
-                -->
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.backups %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'backups')">Backups</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="backups" habilitado=modulos_habilitados.backups %}{% endif %}
                 </li>
-                
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.vpn %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'vpn')">VPN</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="vpn" habilitado=modulos_habilitados.vpn %}{% endif %}
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.topologia %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'topologia')">Topologia</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="topologia" habilitado=modulos_habilitados.topologia %}{% endif %}
                 </li>
-                
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.tuneis %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'tuneis')">Tuneis SSH</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="tuneis" habilitado=modulos_habilitados.tuneis %}{% endif %}
                 </li>
-                
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.documentos %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'documentos')">Documentos</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="documentos" habilitado=modulos_habilitados.documentos %}{% endif %}
                 </li>
-                <!--
-                <li class="nav-item">
-                    <a class="nav-link" href="#" onclick="trocarAba(event, 'credenciais')">Credenciais</a>
-                </li>
-                -->
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.rpki_irr %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'rpki-irr')">RPKI/IRR</a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="rpki_irr" habilitado=modulos_habilitados.rpki_irr %}{% endif %}
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.monitoramento %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" onclick="trocarAba(event, 'monitoramento')">
                     🖧 Monitoramento
                     </a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="monitoramento" habilitado=modulos_habilitados.monitoramento %}{% endif %}
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.documentacao %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" onclick="trocarAba(event, 'documentacao')">
                         📚 Documentação de Rede
                     </a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="documentacao" habilitado=modulos_habilitados.documentacao %}{% endif %}
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.hotspot %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" onclick="trocarAba(event, 'hotspot')">
                         📡 Hotspot
                     </a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="hotspot" habilitado=modulos_habilitados.hotspot %}{% endif %}
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% if is_admin or modulos_habilitados.testes_rede %}
+                <li class="nav-item modulo-tab-item">
                     <a class="nav-link" onclick="trocarAba(event, 'testes-rede')">
                         🔬 Testes de Rede
                     </a>
+                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="testes_rede" habilitado=modulos_habilitados.testes_rede %}{% endif %}
                 </li>
+                {% endif %}
             </ul>
 
         <!-- ABA ACESSOS -->
-            <div id="tab-acessos" class="tab-content-main" style="display: block;">
+            <div id="tab-acessos" class="tab-content-main" style="display: {% if is_admin or modulos_habilitados.acessos %}block{% else %}none{% endif %};">
                 <div class="d-flex justify-content-end gap-2 mb-3 align-items-center">
                     <div class="input-group input-group-sm" style="max-width:280px;">
                         <span class="input-group-text" style="background:var(--surface);border-color:var(--border);color:var(--text-muted);">
@@ -5621,8 +5641,62 @@ function getCsrfToken(){
     });
 
 
+    // ── Módulos habilitados/desabilitados por cliente (toggle admin) ─────────
+    window.IS_ADMIN_MODULOS = {{ is_admin|yesno:'true,false' }};
+    window.MODULOS_BLOQUEADOS = [
+        {% for chave, habilitado in modulos_habilitados.items %}{% if not habilitado %}'{{ chave }}',{% endif %}{% endfor %}
+    ];
+    const TAB_TO_MODULO = {
+        'acessos': 'acessos', 'backups': 'backups', 'vpn': 'vpn', 'topologia': 'topologia',
+        'tuneis': 'tuneis', 'documentos': 'documentos', 'rpki-irr': 'rpki_irr',
+        'monitoramento': 'monitoramento', 'documentacao': 'documentacao',
+        'hotspot': 'hotspot', 'testes-rede': 'testes_rede',
+    };
+    function moduloBloqueado(nomeAba) {
+        if (window.IS_ADMIN_MODULOS) return false;
+        const chave = TAB_TO_MODULO[nomeAba] || nomeAba;
+        return window.MODULOS_BLOQUEADOS.indexOf(chave) !== -1;
+    }
+
+    function toggleModuloCliente(btn) {
+        const modulo = btn.getAttribute('data-modulo');
+        fetch(`/clientes/{{ cliente.id }}/modulos/toggle/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'modulo=' + encodeURIComponent(modulo),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) { alert(data.erro || 'Erro ao atualizar módulo.'); return; }
+            btn.setAttribute('data-habilitado', data.habilitado ? 'true' : 'false');
+            const icone = btn.querySelector('i');
+            if (data.habilitado) {
+                icone.className = 'fas fa-toggle-on';
+                btn.style.borderColor = 'rgba(46,160,67,.5)';
+                btn.style.background = 'rgba(46,160,67,.15)';
+                btn.style.color = '#2ea043';
+                btn.title = 'Módulo contratado — clique para desabilitar para este cliente';
+            } else {
+                icone.className = 'fas fa-toggle-off';
+                btn.style.borderColor = 'rgba(110,118,129,.4)';
+                btn.style.background = 'rgba(110,118,129,.1)';
+                btn.style.color = '#6e7681';
+                btn.title = 'Módulo não contratado — clique para habilitar para este cliente';
+            }
+        })
+        .catch(() => alert('Erro de conexão ao atualizar módulo.'));
+    }
+
     function trocarAba(event, nomeAba) {
         if (event) event.preventDefault();
+        if (moduloBloqueado(nomeAba)) {
+            if (event) event.stopPropagation();
+            alert('Este módulo não está disponível no seu contrato. Fale com o suporte para mais informações.');
+            return;
+        }
         document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
         document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
         var displayMode = (nomeAba === 'monitoramento') ? 'flex' : 'block';
@@ -6980,7 +7054,11 @@ function getCsrfToken(){
     document.addEventListener('DOMContentLoaded', function() {
 
         // ✅ RESTAURAR ABA PRINCIPAL após reload (sessionStorage)
-        const abaAtiva = sessionStorage.getItem('abaAtiva');
+        let abaAtiva = sessionStorage.getItem('abaAtiva');
+        if (abaAtiva && moduloBloqueado(abaAtiva)) {
+            sessionStorage.removeItem('abaAtiva');
+            abaAtiva = null;
+        }
         if (abaAtiva) {
             document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('#mainTabs .nav-link').forEach(link => link.classList.remove('active'));
@@ -7007,6 +7085,15 @@ function getCsrfToken(){
             if (abaAtiva === 'monitoramento') {
                 if (window.GRAPH && typeof window.GRAPH.init === 'function') window.GRAPH.init();
             }
+        }
+
+        // A aba padrão "Acessos" pode estar desabilitada para este cliente —
+        // garante que sempre haja uma aba visível, ativando a primeira disponível.
+        const existeAbaVisivel = Array.from(document.querySelectorAll('.tab-content-main'))
+            .some(tab => tab.style.display === 'block' || tab.style.display === 'flex');
+        if (!existeAbaVisivel) {
+            const primeiroLink = document.querySelector('#mainTabs .nav-link');
+            if (primeiroLink) primeiroLink.click();
         }
 
         // Restauração da sub-aba de função foi movida para um <script> síncrono

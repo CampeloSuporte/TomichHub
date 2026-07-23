@@ -1,0 +1,12 @@
+<button type="button"
+        class="modulo-toggle-btn"
+        data-modulo="{{ modulo }}"
+        data-habilitado="{{ habilitado|yesno:'true,false' }}"
+        onclick="toggleModuloCliente(this)"
+        title="{% if habilitado %}Módulo contratado — clique para desabilitar para este cliente{% else %}Módulo não contratado — clique para habilitar para este cliente{% endif %}"
+        style="margin-left:6px;padding:1px 4px;border-radius:10px;border:1px solid {% if habilitado %}rgba(46,160,67,.5){% else %}rgba(110,118,129,.4){% endif %};
+               background:{% if habilitado %}rgba(46,160,67,.15){% else %}rgba(110,118,129,.1){% endif %};
+               color:{% if habilitado %}#2ea043{% else %}#6e7681{% endif %};
+               font-size:13px;line-height:1;cursor:pointer;vertical-align:middle;">
+    <i class="fas {% if habilitado %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+</button>

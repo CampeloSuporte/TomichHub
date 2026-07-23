@@ -11,16 +11,17 @@ from django.urls import reverse
 from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
-from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
+from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig, ClienteModulo
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
 from .decorators import (
-    cliente_login_required, 
-    admin_required, 
+    cliente_login_required,
+    admin_required,
     cliente_or_admin_required,
-    cliente_can_view_cliente
+    cliente_can_view_cliente,
+    modulo_habilitado_required,
 )
 from django.http import HttpResponseRedirect
 import logging
@@ -129,6 +130,8 @@ def listar_clientes(request):
     )
     total_blocos_rpki_irr_invalidos_cliente = blocos_rpki_invalidos_cliente.count() + blocos_irr_invalidos_cliente.count()
 
+    modulos_habilitados = cliente.modulos_habilitados_dict()
+
     response = render(request, 'listar.html', {
         'cliente': cliente,
         'funcoes': funcoes,
@@ -143,6 +146,7 @@ def listar_clientes(request):
         'is_cliente': is_cliente,
         'is_admin': is_admin,
         'is_superuser': is_superuser,
+        'modulos_habilitados': modulos_habilitados,
         'destinos_padrao': DESTINOS_PADRAO,
         'acessos_com_erro_backup': acessos_com_erro_backup,
         'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,
@@ -251,6 +255,7 @@ def cadastrar_cliente(request):
 
 @login_required(login_url='login')
 @require_http_methods(['POST'])
+@modulo_habilitado_required('acessos')
 def importar_acessos_crt(request, cliente_id):
     """Importa hosts a partir de um arquivo XML de backup do SecureCRT."""
     import xml.etree.ElementTree as ET
@@ -401,6 +406,7 @@ def importar_acessos_crt(request, cliente_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def template_excel_acessos(request, cliente_id):
     """Gera planilha Excel modelo para importação de acessos."""
     import io
@@ -579,6 +585,7 @@ def template_excel_acessos(request, cliente_id):
 
 @login_required(login_url='login')
 @require_http_methods(['POST'])
+@modulo_habilitado_required('acessos')
 def importar_acessos_excel(request, cliente_id):
     """Importa acessos a partir de planilha Excel gerada pelo template."""
     import io
@@ -685,6 +692,7 @@ def importar_acessos_excel(request, cliente_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def cadastrar_acesso(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
@@ -862,8 +870,26 @@ def deletar_cliente(request):
     return redirect('cadastrar_cliente')
 
 
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(["POST"])
+def toggle_modulo_cliente(request, cliente_id):
+    """Liga/desliga um módulo (aba) para o cliente. Só admin do sistema."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    modulo_key = request.POST.get('modulo')
+    chaves_validas = dict(ClienteModulo.MODULO_CHOICES)
+    if modulo_key not in chaves_validas:
+        return JsonResponse({'ok': False, 'erro': 'Módulo inválido.'}, status=400)
+
+    registro, _ = ClienteModulo.objects.get_or_create(cliente=cliente, modulo=modulo_key, defaults={'habilitado': True})
+    registro.habilitado = not registro.habilitado
+    registro.save(update_fields=['habilitado', 'atualizado_em'])
+
+    return JsonResponse({'ok': True, 'modulo': modulo_key, 'habilitado': registro.habilitado})
+
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def buscar_acesso(request, acesso_id):
     """
     Validar se cliente pode acessar este acesso
@@ -909,6 +935,7 @@ def buscar_acesso(request, acesso_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def editar_acesso(request, acesso_id):
     if request.method == 'POST':
         try:
@@ -983,6 +1010,7 @@ def editar_acesso(request, acesso_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def deletar_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
     cliente_id = acesso.cliente.id
@@ -996,6 +1024,7 @@ def deletar_acesso(request, acesso_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('documentos')
 def upload_documento(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
@@ -1017,6 +1046,7 @@ def upload_documento(request):
         return redirect('listar_clientes')
 
 @login_required(login_url='login')
+@modulo_habilitado_required('documentos')
 def deletar_documento(request, documento_id):
     documento = get_object_or_404(Documento, id=documento_id)
     cliente_id = documento.cliente.id
@@ -1035,6 +1065,7 @@ def deletar_documento(request, documento_id):
 # ========================================
 
 @login_required(login_url='login')
+@modulo_habilitado_required('vpn')
 def upload_vpn(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
@@ -1063,6 +1094,7 @@ def upload_vpn(request):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('vpn')
 def deletar_vpn(request, vpn_id):
     vpn = get_object_or_404(ArquivoVPN, id=vpn_id)
     cliente_id = vpn.cliente.id
@@ -1081,6 +1113,7 @@ def deletar_vpn(request, vpn_id):
 # ========================================
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def upload_topologia(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
@@ -1129,6 +1162,7 @@ def editar_topologia(request, topologia_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def deletar_topologia(request, topologia_id):
     topologia = get_object_or_404(ImagemTopologia, id=topologia_id)
     cliente_id = topologia.cliente.id
@@ -1143,6 +1177,7 @@ def deletar_topologia(request, topologia_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def editar_imagem_topologia(request, topologia_id):
     """Edita a imagem de uma topologia (substitui a imagem existente)"""
     if request.method == 'POST':
@@ -1191,6 +1226,7 @@ def editar_imagem_topologia(request, topologia_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('vpn')
 def buscar_vpn(request, vpn_id):
     try:
         vpn = ArquivoVPN.objects.get(id=vpn_id)
@@ -1212,6 +1248,7 @@ def buscar_vpn(request, vpn_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('vpn')
 def editar_vpn(request, vpn_id):
     if request.method == 'POST':
         try:
@@ -1514,6 +1551,7 @@ def buscar_clientes_chamado(request):
 # ========================================
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def cadastrar_proxy(request):
     """Cadastra um novo servidor proxy para um cliente"""
     if request.method == 'POST':
@@ -1551,6 +1589,7 @@ def cadastrar_proxy(request):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def buscar_proxy(request, proxy_id):
     """Busca dados de um proxy específico (AJAX)"""
     try:
@@ -1576,6 +1615,7 @@ def buscar_proxy(request, proxy_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def editar_proxy(request, proxy_id):
     """Edita um servidor proxy existente"""
     if request.method == 'POST':
@@ -1602,6 +1642,7 @@ def editar_proxy(request, proxy_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def deletar_proxy(request, proxy_id):
     """Deleta um servidor proxy"""
     if request.method == 'POST':
@@ -1618,6 +1659,7 @@ def deletar_proxy(request, proxy_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def testar_proxy(request, proxy_id):
     """Testa a conexão com um servidor proxy (AJAX)"""
     try:
@@ -1659,6 +1701,7 @@ def testar_proxy(request, proxy_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def toggle_proxy_status(request, proxy_id):
     """Ativa/Desativa um servidor proxy (AJAX)"""
     try:
@@ -1714,6 +1757,7 @@ def cliente_dashboard(request):
     })
 
 @login_required(login_url='login')
+@modulo_habilitado_required('backups')
 def executar_backup_acesso(request, acesso_id):
     """Executa backup manual"""
     if not request.user.is_authenticated:
@@ -3273,6 +3317,7 @@ def registrar_erro_backup(acesso, usuario, erro, duracao):
     )
 
 @login_required(login_url='login')
+@modulo_habilitado_required('backups')
 def listar_backups_cliente(request):
     """
     Lista backups de um cliente (AJAX)
@@ -3452,6 +3497,7 @@ def exportar_senhas_pdf(request, cliente_id):
     return response
 
 
+@modulo_habilitado_required('backups')
 def download_backup(request, backup_id):
     """Download de backup"""
     try:
@@ -3485,6 +3531,7 @@ def download_backup(request, backup_id):
 
 @login_required(login_url='login')
 @admin_required
+@modulo_habilitado_required('backups')
 def deletar_backup(request, backup_id):
     """Deleta backup"""
     if request.method == 'POST':
@@ -3511,6 +3558,7 @@ def deletar_backup(request, backup_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('backups')
 def buscar_templates_backup(request):
     """Busca templates de backup"""
     templates = BackupTemplate.objects.filter(ativo=True).order_by('fabricante', 'nome')
@@ -3525,6 +3573,7 @@ def buscar_templates_backup(request):
     })
 
 @login_required(login_url='login')
+@modulo_habilitado_required('backups')
 def backup_conteudo(request, backup_id):
     """Retorna conteúdo do arquivo de backup para visualização no modal."""
     try:
@@ -3567,6 +3616,7 @@ def backup_conteudo(request, backup_id):
 
 
 @require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
 def terminal_page(request):
     """Renderiza a página de terminal SSH múltiplo"""
     from wiki.models import ArtigoWiki, CategoriaWiki
@@ -3578,6 +3628,7 @@ def terminal_page(request):
 
 @login_required(login_url='login')
 @require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
 def listar_acessos_terminal(request):
     """Retorna JSON com acessos SSH/Telnet. Filtra por cliente_id se informado."""
     cliente_id = request.GET.get('cliente')
@@ -3625,6 +3676,7 @@ def listar_acessos_terminal(request):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def winbox_page(request, acesso_id):
     """Renderiza a página WebFig (interface web MikroTik) via proxy"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -3655,6 +3707,7 @@ def winbox_page(request, acesso_id):
     
     return render(request, 'winbox.html', context)
 
+@modulo_habilitado_required('acessos')
 def webfig_vnc_page(request, acesso_id):
     """Renderiza a página WebFig via VNC (Browser no servidor)"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -3683,6 +3736,7 @@ def webfig_vnc_page(request, acesso_id):
 # ============================================
 
 @login_required(login_url='login')
+@modulo_habilitado_required('tuneis')
 def proxy_ativo_cliente(request):
     """Indica se o cliente tem um ProxyServer SSH ativo — usado para validar
     backup/acesso a equipamentos com IP privado antes de tentar a operação."""
@@ -3699,6 +3753,7 @@ def proxy_ativo_cliente(request):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def ping_acesso(request, acesso_id):
     """Realiza ping para um acesso (via proxy se necessário)"""
     try:
@@ -3942,6 +3997,7 @@ def parsear_output_ping(output, host, return_code):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def traceroute_acesso(request, acesso_id):
     """Executa traceroute para um acesso (direto ou via proxy SSH)."""
     import subprocess, platform
@@ -4037,6 +4093,7 @@ def _traceroute_via_proxy(proxy, host):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
 def cadastrar_bloco_ip(request):
     """Cadastra um novo bloco de IP"""
     if request.method == 'POST':
@@ -4077,6 +4134,7 @@ def cadastrar_bloco_ip(request):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
 def buscar_bloco_ip(request, bloco_id):
     """Busca dados de um bloco IP específico (AJAX)"""
     try:
@@ -4115,6 +4173,7 @@ def buscar_bloco_ip(request, bloco_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
 def editar_bloco_ip(request, bloco_id):
     """Edita um bloco IP existente"""
     if request.method == 'POST':
@@ -4157,6 +4216,7 @@ def editar_bloco_ip(request, bloco_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
 def deletar_bloco_ip(request, bloco_id):
     """Deleta um bloco IP"""
     if request.method == 'POST':
@@ -4178,6 +4238,7 @@ def deletar_bloco_ip(request, bloco_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
 def validar_bloco_rpki_irr(request, bloco_id):
     """Executa validação RPKI/IRR manual para um bloco"""
     try:
@@ -4218,6 +4279,7 @@ def validar_bloco_rpki_irr(request, bloco_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
 def listar_blocos_cliente(request):
     """Lista blocos IP de um cliente (AJAX)"""
     cliente_id = request.GET.get('id')
@@ -4853,6 +4915,7 @@ def get_whois_server(irr_registry):
 
 @login_required(login_url='login')
 @require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
 def listar_comentarios_acesso(request, acesso_id):
     """Lista comentários de um acesso específico"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -4885,6 +4948,7 @@ def listar_comentarios_acesso(request, acesso_id):
     })
 
 
+@modulo_habilitado_required('acessos')
 def adicionar_comentario_acesso(request, acesso_id):
     """Adiciona um novo comentário ao acesso"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -4926,6 +4990,7 @@ def adicionar_comentario_acesso(request, acesso_id):
 
 @login_required(login_url='login')
 @require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
 def listar_sessoes_auditoria(request, acesso_id):
     """Lista sessões de acesso (SSH/Telnet/WinBox) de um Acesso, mais recentes primeiro."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -4964,6 +5029,7 @@ def listar_sessoes_auditoria(request, acesso_id):
 
 @login_required(login_url='login')
 @require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
 def listar_comandos_sessao(request, sessao_id):
     """Lista os comandos digitados (stdin) numa AcessoSessao SSH/Telnet."""
     sessao = get_object_or_404(AcessoSessao, id=sessao_id)
@@ -4987,6 +5053,7 @@ def listar_comandos_sessao(request, sessao_id):
 
 @login_required(login_url='login')
 @require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
 def ver_transcript_sessao(request, sessao_id):
     """Retorna o transcript completo (stdout, ANSI removido) de uma
     AcessoSessao SSH/Telnet — mostra o comando expandido/completo tal como
@@ -5007,6 +5074,7 @@ def ver_transcript_sessao(request, sessao_id):
 
 @login_required(login_url="login")
 @require_http_methods(["POST", "DELETE"])
+@modulo_habilitado_required('acessos')
 def deletar_comentario_acesso(request, comentario_id):
     """Deleta um comentário do acesso"""
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
@@ -5026,6 +5094,7 @@ def deletar_comentario_acesso(request, comentario_id):
 
 @login_required(login_url="login")
 @require_http_methods(["POST"])
+@modulo_habilitado_required('acessos')
 def editar_comentario_acesso(request, comentario_id):
     """Edita um comentário existente"""
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
@@ -5139,6 +5208,7 @@ def _parse_ping_output(output, host):
 
 @login_required(login_url='login')
 @require_http_methods(['POST'])
+@modulo_habilitado_required('testes_rede')
 def teste_rede_cliente(request, cliente_id):
     """
     Executa ping + mtr/traceroute para os destinos através do proxy SSH.
@@ -5426,6 +5496,7 @@ def _nslookup_ssh(proxy, dominio, dns_ip, timeout=20):
 
 @login_required(login_url='login')
 @require_http_methods(['POST'])
+@modulo_habilitado_required('testes_rede')
 def teste_dns_cliente(request, cliente_id):
     """
     Realiza nslookup de um domínio usando:
@@ -5588,6 +5659,7 @@ def teste_dns_cliente(request, cliente_id):
 
 @csrf_exempt
 @login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     from urllib.parse import urlparse as _up, urljoin as _uj
     acesso = get_object_or_404(Acesso, id=acesso_id)
@@ -5847,6 +5919,7 @@ def _topologia_perm(request, cliente):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def topologia_editor(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
@@ -5861,6 +5934,7 @@ def topologia_editor(request, cliente_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def topologia_drawio(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
@@ -5874,6 +5948,7 @@ def topologia_drawio(request, cliente_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def topologia_dados(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
@@ -5894,6 +5969,7 @@ def topologia_dados(request, cliente_id):
 
 @login_required(login_url='login')
 @require_http_methods(['POST'])
+@modulo_habilitado_required('topologia')
 def topologia_salvar(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
@@ -5918,6 +5994,7 @@ def topologia_salvar(request, cliente_id):
 
 
 @login_required(login_url='login')
+@modulo_habilitado_required('topologia')
 def topologia_hosts(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
@@ -6093,6 +6170,7 @@ def _extrair_interfaces_backup(conteudo, fabricante):
 
 @login_required(login_url='login')
 @require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
 def interfaces_backup_acesso(request, acesso_id):
     """Lista as interfaces (nome, descrição e IP/CIDR quando roteada)
     encontradas no backup mais recente do acesso, para sugestão nos campos
@@ -6182,6 +6260,7 @@ def _get_servidor_config():
 
 @login_required
 @require_http_methods(["GET"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_listar(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     vpns    = VPNWireGuard.objects.filter(cliente=cliente)
@@ -6216,6 +6295,7 @@ def vpn_wg_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_criar(request, cliente_id):
     """
     Cria uma VPN WireGuard em uma interface ISOLADA dedicada (wg5, wg6, ...)
@@ -6269,6 +6349,7 @@ def vpn_wg_criar(request, cliente_id):
 
 @login_required
 @require_http_methods(["GET"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_script(request, vpn_id):
     vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
     cfg = _get_servidor_config()
@@ -6278,6 +6359,7 @@ def vpn_wg_script(request, vpn_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_deletar(request, vpn_id):
     vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
     try:
@@ -6296,6 +6378,7 @@ def vpn_wg_deletar(request, vpn_id):
 
 @login_required
 @require_http_methods(["GET"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_status(request, cliente_id):
     vpns = VPNWireGuard.objects.filter(cliente_id=cliente_id, ativo=True)
     peers = {}
@@ -6318,6 +6401,7 @@ def vpn_wg_status(request, cliente_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_reativar_peer(request, vpn_id):
     """Re-adiciona peer ao servidor (útil após reboot ou falha pontual)."""
     vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
@@ -6342,6 +6426,7 @@ def vpn_wg_reativar_peer(request, vpn_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_wg_editar(request, vpn_id):
     """Atualiza nome e redes privadas de uma VPN WireGuard."""
     vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
@@ -6388,6 +6473,7 @@ from . import openvpn_tunnel_manager as ovpnm
 
 @login_required
 @require_http_methods(["GET"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_listar(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     vpns = VPNOpenVPN.objects.filter(cliente=cliente)
@@ -6405,6 +6491,7 @@ def vpn_ovpn_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_criar(request, cliente_id):
     """
     Cria um túnel OpenVPN em uma instância DEDICADA (porta/interface/sub-rede
@@ -6460,6 +6547,7 @@ def vpn_ovpn_criar(request, cliente_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_editar(request, vpn_id):
     vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
     try:
@@ -6480,6 +6568,7 @@ def vpn_ovpn_editar(request, vpn_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_deletar(request, vpn_id):
     vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
     try:
@@ -6494,6 +6583,7 @@ def vpn_ovpn_deletar(request, vpn_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_reativar(request, vpn_id):
     """Re-emite certificado e recria a instância (útil se os arquivos em disco
     tiverem sido perdidos ou o serviço tiver sido derrubado manualmente)."""
@@ -6511,6 +6601,7 @@ def vpn_ovpn_reativar(request, vpn_id):
 
 @login_required
 @require_http_methods(["GET"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_bootstrap(request, vpn_id):
     """One-liner de bootstrap (fetch + import) para colar no terminal do Mikrotik."""
     vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
@@ -6519,6 +6610,7 @@ def vpn_ovpn_bootstrap(request, vpn_id):
 
 @login_required
 @require_http_methods(["POST"])
+@modulo_habilitado_required('tuneis')
 def vpn_ovpn_regenerar_token(request, vpn_id):
     """Invalida o link de bootstrap antigo e gera um novo (botão 'Novo')."""
     import secrets
@@ -6563,6 +6655,7 @@ def vpn_ovpn_setup_arquivo(request, token, nome_arquivo):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @login_required
+@modulo_habilitado_required('vpn')
 def openvpn_listar(request, cliente_id):
     """Lista as configurações OpenVPN do cliente incluindo usuários adicionais."""
     from .models import OpenVPNConfig
@@ -6602,6 +6695,7 @@ def openvpn_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('vpn')
 def openvpn_criar(request, cliente_id):
     """Cria uma nova configuração OpenVPN e inicia a execução em background."""
     import threading
@@ -6649,6 +6743,7 @@ def openvpn_criar(request, cliente_id):
 
 
 @login_required
+@modulo_habilitado_required('vpn')
 def openvpn_status(request, config_id):
     """Retorna o status atual de uma configuração OpenVPN (usado para polling)."""
     from .models import OpenVPNConfig
@@ -6662,6 +6757,7 @@ def openvpn_status(request, config_id):
 
 
 @login_required
+@modulo_habilitado_required('vpn')
 def openvpn_download(request, config_id):
     """Faz o download do arquivo .ovpn gerado."""
     from .models import OpenVPNConfig
@@ -6680,6 +6776,7 @@ def openvpn_download(request, config_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('vpn')
 def openvpn_deletar(request, config_id):
     """Remove uma configuração OpenVPN e seu arquivo .ovpn."""
     from .models import OpenVPNConfig
@@ -6696,6 +6793,7 @@ def openvpn_deletar(request, config_id):
 
 
 @login_required
+@modulo_habilitado_required('vpn')
 def openvpn_logs(request, config_id):
     """Retorna os logs de execução de uma configuração OpenVPN."""
     from .models import OpenVPNConfig
@@ -6705,6 +6803,7 @@ def openvpn_logs(request, config_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('vpn')
 def openvpn_reexecutar(request, config_id):
     """Re-executa a configuração OpenVPN (útil quando houve erro)."""
     import threading
@@ -6723,6 +6822,7 @@ def openvpn_reexecutar(request, config_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('vpn')
 def openvpn_usuario_criar(request, config_id):
     import threading
     import json
@@ -6749,6 +6849,7 @@ def openvpn_usuario_criar(request, config_id):
 
 
 @login_required
+@modulo_habilitado_required('vpn')
 def openvpn_usuario_status(request, usuario_id):
     from .models import OpenVPNUsuario
     u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
@@ -6759,6 +6860,7 @@ def openvpn_usuario_status(request, usuario_id):
 
 
 @login_required
+@modulo_habilitado_required('vpn')
 def openvpn_usuario_download(request, usuario_id):
     from .models import OpenVPNUsuario
     from django.http import FileResponse
@@ -6772,6 +6874,7 @@ def openvpn_usuario_download(request, usuario_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('vpn')
 def openvpn_usuario_deletar(request, usuario_id):
     from .models import OpenVPNUsuario
     u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
@@ -6984,6 +7087,7 @@ def _irr_gerar_corpo(cfg):
 
 
 @login_required
+@modulo_habilitado_required('rpki_irr')
 def irr_config_get(request, cliente_id):
     """Retorna a configuração IRR do cliente (ou objeto vazio se não existir)."""
     from .models import IRRConfig
@@ -7035,6 +7139,7 @@ def irr_config_get(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('rpki_irr')
 def irr_config_salvar(request, cliente_id):
     """Cria ou atualiza a configuração IRR do cliente."""
     from .models import IRRConfig
@@ -7065,6 +7170,7 @@ def irr_config_salvar(request, cliente_id):
 
 
 @login_required
+@modulo_habilitado_required('rpki_irr')
 def irr_preview(request, cliente_id):
     """Retorna o preview do e-mail IRR gerado a partir da config salva."""
     from .models import IRRConfig
@@ -7079,6 +7185,7 @@ def irr_preview(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@modulo_habilitado_required('rpki_irr')
 def irr_enviar(request, cliente_id):
     """Gera e envia o e-mail de atualização IRR ao servidor TC."""
     import smtplib
@@ -7126,6 +7233,7 @@ def irr_enviar(request, cliente_id):
 
 
 @login_required
+@modulo_habilitado_required('rpki_irr')
 def irr_consultar_whois(request, cliente_id):
     """Consulta o WHOIS do TC/NIC.br para o ASN informado e retorna objetos parsados."""
     import socket
@@ -7250,6 +7358,7 @@ def irr_consultar_whois(request, cliente_id):
 
 
 @login_required
+@modulo_habilitado_required('rpki_irr')
 def irr_verificar_resposta(request, cliente_id):
     """
     Conecta via IMAP à caixa do remetente e busca a resposta do TC
