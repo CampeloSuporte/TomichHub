@@ -2,6 +2,28 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 11 — 23/07/2026: Módulos do Cliente — Seleção movida para o Cadastro/Edição
+
+**O que mudou?**
+- ✅ Removidos os switches de toggle inline nas abas de `listar.html` (feedback: melhor
+  selecionar tudo no mesmo lugar onde o cliente é cadastrado)
+- ✅ Nova seção "Ferramentas habilitadas" nos modais de Cadastro e Edição de cliente
+  (`cadastrar_cliente.html`), um checkbox por módulo
+- ✅ `cadastrar_cliente`/`editar_cliente` (views) gravam `ClienteModulo` a partir dos
+  checkboxes marcados, com marcador oculto `modulos_form_present` pra nunca desabilitar
+  tudo por um form incompleto
+- ✅ Removido o endpoint AJAX `toggle_modulo_cliente` (não usado mais)
+- ✅ Continua igual: aba some da tela do cliente quando o módulo está desabilitado, e o
+  bloqueio de backend (`modulo_habilitado_required`) nos 89 endpoints
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[MODULOS_CLIENTE.md](MODULOS_CLIENTE.md)** | Seção "Interface — Seleção no Cadastro/Edição do Cliente" |
+
+---
+
 ### Sessão 10 — 23/07/2026: Módulos do Cliente — Habilitar/Desabilitar Ferramentas por Contrato
 
 **O que foi implementado?**
@@ -503,6 +525,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: toggle por ferramenta (Acessos/Backups/VPN/Topologia/etc), admin-only, bloqueio de backend; fix menu do cliente colado no "Voltar ao Dashboard" | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: login com sobrenome, checkbox de aceite Termos/LGPD (modal), dedup de leads por telefone/nome | HOTSPOT_CAPTIVE_PORTAL.md |
 | 20/07/2026 | Gravação WinBox (fix vídeo 0 bytes, ícone preto/16bpp, nice/ionice); proxy web (fix redirect relativo); Wiki de Artigos (PDF, templates unificados, admin) | AUDITORIA_ACESSOS.md, winbox_vnc.md, WIKI_ARTIGOS.md |

@@ -16,7 +16,6 @@ urlpatterns = [
     path('acessos/importar-excel/<int:cliente_id>/', views.importar_acessos_excel, name='importar_acessos_excel'),
     path('editar-cliente/', views.editar_cliente, name='editar_cliente'),
     path('deletar-cliente/', views.deletar_cliente, name='deletar_cliente'),
-    path('<int:cliente_id>/modulos/toggle/', views.toggle_modulo_cliente, name='toggle_modulo_cliente'),
     path('acessos/buscar/<int:acesso_id>/', views.buscar_acesso, name='buscar_acesso'),
     path('acessos/editar/<int:acesso_id>/', views.editar_acesso, name='editar_acesso'),
     path('acessos/deletar/<int:acesso_id>/', views.deletar_acesso, name='deletar_acesso'),

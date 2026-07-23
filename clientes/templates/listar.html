@@ -114,133 +114,68 @@
             {% endif %}
 
             <!-- Main Tabs -->
-            <style>
-                #mainTabs .modulo-tab-item {
-                    display: flex;
-                    align-items: center;
-                }
-                .modulo-toggle-switch {
-                    position: relative;
-                    display: inline-block;
-                    width: 26px;
-                    height: 14px;
-                    margin-left: 8px;
-                    flex-shrink: 0;
-                    cursor: pointer;
-                }
-                .modulo-toggle-switch input {
-                    position: absolute;
-                    opacity: 0;
-                    width: 0;
-                    height: 0;
-                }
-                .modulo-toggle-slider {
-                    position: absolute;
-                    inset: 0;
-                    background: rgba(139, 148, 158, .2);
-                    border: 1px solid var(--border);
-                    border-radius: 20px;
-                    transition: background .15s ease, border-color .15s ease;
-                }
-                .modulo-toggle-slider::before {
-                    content: '';
-                    position: absolute;
-                    height: 8px;
-                    width: 8px;
-                    left: 2px;
-                    top: 2px;
-                    background: var(--text-muted);
-                    border-radius: 50%;
-                    transition: transform .15s ease, background .15s ease;
-                }
-                .modulo-toggle-input:checked + .modulo-toggle-slider {
-                    background: rgba(0, 255, 136, .15);
-                    border-color: var(--primary-green);
-                    box-shadow: 0 0 6px var(--glow-green);
-                }
-                .modulo-toggle-input:checked + .modulo-toggle-slider::before {
-                    transform: translateX(12px);
-                    background: var(--primary-green);
-                    box-shadow: 0 0 4px var(--primary-green);
-                }
-                .modulo-toggle-input:disabled + .modulo-toggle-slider {
-                    opacity: .5;
-                    cursor: wait;
-                }
-            </style>
             <ul class="nav nav-tabs mb-4" id="mainTabs">
                 {% if is_admin or modulos_habilitados.acessos %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link active" href="#" onclick="trocarAba(event, 'acessos')">Acessos</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="acessos" habilitado=modulos_habilitados.acessos %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.backups %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'backups')">Backups</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="backups" habilitado=modulos_habilitados.backups %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.vpn %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'vpn')">VPN</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="vpn" habilitado=modulos_habilitados.vpn %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.topologia %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'topologia')">Topologia</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="topologia" habilitado=modulos_habilitados.topologia %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.tuneis %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'tuneis')">Tuneis SSH</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="tuneis" habilitado=modulos_habilitados.tuneis %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.documentos %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'documentos')">Documentos</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="documentos" habilitado=modulos_habilitados.documentos %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.rpki_irr %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'rpki-irr')">RPKI/IRR</a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="rpki_irr" habilitado=modulos_habilitados.rpki_irr %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.monitoramento %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'monitoramento')">
                     🖧 Monitoramento
                     </a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="monitoramento" habilitado=modulos_habilitados.monitoramento %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.documentacao %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'documentacao')">
                         📚 Documentação de Rede
                     </a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="documentacao" habilitado=modulos_habilitados.documentacao %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.hotspot %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'hotspot')">
                         📡 Hotspot
                     </a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="hotspot" habilitado=modulos_habilitados.hotspot %}{% endif %}
                 </li>
                 {% endif %}
                 {% if is_admin or modulos_habilitados.testes_rede %}
-                <li class="nav-item modulo-tab-item">
+                <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'testes-rede')">
                         🔬 Testes de Rede
                     </a>
-                    {% if is_admin %}{% include "_modulo_toggle_btn.html" with modulo="testes_rede" habilitado=modulos_habilitados.testes_rede %}{% endif %}
                 </li>
                 {% endif %}
             </ul>
@@ -5710,41 +5645,6 @@ function getCsrfToken(){
         if (window.IS_ADMIN_MODULOS) return false;
         const chave = TAB_TO_MODULO[nomeAba] || nomeAba;
         return window.MODULOS_BLOQUEADOS.indexOf(chave) !== -1;
-    }
-
-    function toggleModuloCliente(checkbox) {
-        const modulo = checkbox.getAttribute('data-modulo');
-        const estadoAnterior = !checkbox.checked;
-        checkbox.disabled = true;
-        fetch(`/clientes/{{ cliente.id }}/modulos/toggle/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCsrfToken(),
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'modulo=' + encodeURIComponent(modulo),
-        })
-        .then(r => r.json())
-        .then(data => {
-            checkbox.disabled = false;
-            if (!data.ok) {
-                checkbox.checked = estadoAnterior;
-                alert(data.erro || 'Erro ao atualizar módulo.');
-                return;
-            }
-            checkbox.checked = data.habilitado;
-            const label = checkbox.closest('.modulo-toggle-switch');
-            if (label) {
-                label.title = data.habilitado
-                    ? 'Módulo contratado — clique para desabilitar para este cliente'
-                    : 'Módulo não contratado — clique para habilitar para este cliente';
-            }
-        })
-        .catch(() => {
-            checkbox.disabled = false;
-            checkbox.checked = estadoAnterior;
-            alert('Erro de conexão ao atualizar módulo.');
-        });
     }
 
     function trocarAba(event, nomeAba) {

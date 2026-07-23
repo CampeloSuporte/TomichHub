@@ -126,7 +126,7 @@ function confirmarDelete(id) {
 // ============================================
 // FUNÇÃO DE EDIÇÃO DE CLIENTE
 // ============================================
-function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, telefone, email, usuarioId, notas) {
+function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, telefone, email, usuarioId, notas, usuariosAdicionaisIds, modulosHabilitados) {
     // Preenche os campos do modal com os dados do cliente
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_nome_empresa').value = nomeEmpresa;
@@ -148,6 +148,11 @@ function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, tel
     if (usuarioSelecionado) {
         document.getElementById('edit_usuario_search').value = usuarioSelecionado.username;
     }
+
+    // Ferramentas habilitadas
+    document.querySelectorAll('#edicaoForm input[name="modulos"]').forEach(function(cb) {
+        cb.checked = !!(modulosHabilitados && modulosHabilitados[cb.value]);
+    });
 
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));
