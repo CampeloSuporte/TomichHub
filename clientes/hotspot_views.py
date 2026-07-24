@@ -821,6 +821,7 @@ def hotspot_detalhe(request, cliente_id, hotspot_id):
         'cor_primaria': h.cor_primaria,
         'cor_secundaria': h.cor_secundaria,
         'cor_painel': h.cor_painel,
+        'cor_texto': h.cor_texto,
         'estilo_fundo': h.estilo_fundo,
         'cor_fundo': h.cor_fundo,
         'imagem_fundo_url': h.imagem_fundo.url if h.imagem_fundo else None,
@@ -865,6 +866,7 @@ def hotspot_salvar(request, cliente_id):
         'cor_primaria': body.get('cor_primaria', '#1a73e8').strip(),
         'cor_secundaria': body.get('cor_secundaria', '').strip(),
         'cor_painel': body.get('cor_painel', '#0f0f19').strip() or '#0f0f19',
+        'cor_texto': body.get('cor_texto', '#ffffff').strip() or '#ffffff',
         'estilo_fundo': body.get('estilo_fundo', 'gradiente').strip() or 'gradiente',
         'cor_fundo': body.get('cor_fundo', '#0a0a0f').strip() or '#0a0a0f',
         'ativo': bool(body.get('ativo', True)),
@@ -1411,6 +1413,11 @@ _TERMOS_CONTEUDO_HTML = """
 """
 
 
+def _alpha(hex_color, opacity):
+    """Anexa um sufixo alpha de 2 dígitos hex a uma cor #RRGGBB (ex: #fff, .6 -> #fff99)."""
+    return f'{hex_color}{round(opacity * 255):02x}'
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Public portal — página de login hospedada no CRM, acessível via walled-garden
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1430,6 +1437,7 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
 
     cor_dark = hotspot.cor_secundaria or cor
     cor_painel = hotspot.cor_painel or '#0f0f19'
+    cor_texto = hotspot.cor_texto or '#ffffff'
 
     # Fundo da página de login — 3 estilos: gradiente (padrão, comportamento
     # histórico), solido, imagem. cor_fundo default reproduz o valor
@@ -1594,8 +1602,8 @@ body{{
   display:flex;align-items:center;justify-content:center;
   font-size:36px;
 }}
-.login-header h2{{color:#fff;font-size:1.5rem;font-weight:700;line-height:1.2}}
-.login-header p{{color:rgba(255,255,255,.6);font-size:.9rem;margin-top:6px}}
+.login-header h2{{color:{cor_texto};font-size:1.5rem;font-weight:700;line-height:1.2}}
+.login-header p{{color:{_alpha(cor_texto,.6)};font-size:.9rem;margin-top:6px}}
 
 /* Form area */
 .form-area{{padding:22px 22px 22px}}
@@ -1616,12 +1624,12 @@ body{{
   background:rgba(255,255,255,0.06);
   border:1.5px solid rgba(255,255,255,0.14);
   border-radius:14px;
-  color:#f8fafc;font-size:.95rem;
+  color:{cor_texto};font-size:.95rem;
   outline:none;transition:border-color .2s,background .2s,box-shadow .2s;
   -webkit-appearance:none;appearance:none;
 }}
 .field.no-icon input{{padding-left:16px}}
-.field input::placeholder{{color:rgba(255,255,255,.3)}}
+.field input::placeholder{{color:{_alpha(cor_texto,.3)}}}
 .field input:hover{{border-color:rgba(255,255,255,.22)}}
 .field input:focus{{
   border-color:{cor};
@@ -1629,11 +1637,11 @@ body{{
   box-shadow:0 0 0 3px {cor}2e;
 }}
 .field.error input{{border-color:#f87171;background:rgba(248,113,113,.08)}}
-.field-hint{{font-size:.72rem;color:rgba(255,255,255,.38);margin:-10px 2px 14px;padding-left:4px;transition:color .2s}}
+.field-hint{{font-size:.72rem;color:{_alpha(cor_texto,.38)};margin:-10px 2px 14px;padding-left:4px;transition:color .2s}}
 .field-hint.error{{color:#f87171}}
 .field-label{{
   position:absolute;left:44px;top:50%;transform:translateY(-50%);
-  font-size:.85rem;color:rgba(255,255,255,.38);
+  font-size:.85rem;color:{_alpha(cor_texto,.38)};
   pointer-events:none;transition:all .2s;
 }}
 .field.no-icon .field-label{{left:16px}}
@@ -1651,7 +1659,7 @@ body{{
   margin-top:2px;width:18px;height:18px;flex:none;
   accent-color:{cor};cursor:pointer;
 }}
-.terms-check span{{font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.55)}}
+.terms-check span{{font-size:.8rem;line-height:1.45;color:{_alpha(cor_texto,.55)}}}
 .terms-check a{{color:{cor};text-decoration:underline;font-weight:600}}
 .terms-check.error span{{color:#f87171}}
 
@@ -1685,9 +1693,9 @@ body{{
 /* Rodapé */
 .footer{{
   text-align:center;margin-top:14px;
-  font-size:.72rem;color:rgba(255,255,255,.2);line-height:1.5;
+  font-size:.72rem;color:{_alpha(cor_texto,.2)};line-height:1.5;
 }}
-.footer a{{color:rgba(255,255,255,.35);text-decoration:none}}
+.footer a{{color:{_alpha(cor_texto,.35)};text-decoration:none}}
 
 /* ── Modal de Termos de Uso / Política de Privacidade ────────────── */
 .modal-overlay{{
@@ -2072,6 +2080,7 @@ def _sucesso_page_html(hotspot, nome, login_js, login_href):
     cor        = hotspot.cor_primaria or '#6366f1'
     cor_dark   = hotspot.cor_secundaria or cor
     cor_painel = hotspot.cor_painel or '#0f0f19'
+    cor_texto  = hotspot.cor_texto or '#ffffff'
     titulo     = _html.escape(hotspot.portal_titulo or 'WiFi Grátis', quote=True)
     logo_url   = hotspot.logo.url if hotspot.logo else None
     logo_html  = (f'<img class="logo" src="{logo_url}" alt="Logo">' if logo_url else '')
@@ -2092,7 +2101,7 @@ body{{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
   background:#0a0a0f;
   display:flex;align-items:center;justify-content:center;
-  position:relative;color:#fff;
+  position:relative;color:{cor_texto};
 }}
 .bg{{
   position:fixed;inset:0;z-index:0;
@@ -2129,13 +2138,13 @@ body{{
 }}
 @keyframes draw{{to{{stroke-dashoffset:0}}}}
 h1{{font-size:1.32rem;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}}
-.sub{{color:rgba(255,255,255,.6);font-size:.9rem;line-height:1.55;margin-bottom:26px}}
-.sub b{{color:#fff}}
+.sub{{color:{_alpha(cor_texto,.6)};font-size:.9rem;line-height:1.55;margin-bottom:26px}}
+.sub b{{color:{cor_texto}}}
 .progress{{height:4px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:14px}}
 .progress-bar{{height:100%;border-radius:4px;background:linear-gradient(135deg,{cor},{cor_dark});
   width:0;animation:fill 2.1s ease forwards}}
 @keyframes fill{{to{{width:100%}}}}
-.status{{font-size:.76rem;color:rgba(255,255,255,.35)}}
+.status{{font-size:.76rem;color:{_alpha(cor_texto,.35)}}}
 .status a{{color:{cor};text-decoration:none;font-weight:600}}
 </style>
 </head>
