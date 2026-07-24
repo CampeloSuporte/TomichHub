@@ -477,3 +477,71 @@ registro ao reconectar e preencher o formulário de novo.
 A coluna "Nasc." da tabela de leads (sub-aba do hotspot em `listar.html`) virou "Termos"
 (✓ Aceito / — ), refletindo `termos_aceitos` em vez de `data_nascimento`; o export CSV
 (`hsExportLeads`) segue o mesmo padrão (`Termos Aceitos` no lugar de `Nascimento`).
+
+---
+
+## Cor do painel/texto e tela de sucesso redesenhada — 24/07/2026
+
+**Arquivos:** `clientes/hotspot_views.py` (`_alpha`, `_portal_page_html`, `_sucesso_page_html`,
+`hotspot_portal_conectar`, `hotspot_detalhe`, `hotspot_salvar`), `clientes/models.py`
+(`HotspotConfig`), `clientes/templates/listar.html`, migrações `0089_merge_20260724_1552`,
+`0090_hotspotconfig_cor_painel`, `0091_hotspotconfig_cor_texto`.
+
+### Motivação
+
+A personalização visual do portal só cobria a cor dos botões (`cor_primaria`/`cor_secundaria`)
+e o fundo *da página* (`cor_fundo`/`estilo_fundo`) — o fundo do card de login em si era
+hardcoded (`rgba(15,15,25,0.85)`, vidro escuro) e o texto do formulário era branco fixo. Ao
+tentar usar um painel claro, título/labels/placeholder/rodapé ficavam brancos sobre fundo
+branco, ilegíveis. Além disso, a tela exibida entre o envio do formulário e o redirect que
+libera a internet era só um spinner sobre fundo liso (`#0f172a`), sem identidade visual nem
+mensagem de boas-vindas.
+
+### Novos campos em `HotspotConfig`
+
+| Campo | Default | Uso |
+|-------|---------|-----|
+| `cor_painel` | `#0f0f19` | Fundo do card de login/sucesso (transparência `d9` ≈ 85% aplicada no template) |
+| `cor_texto`  | `#ffffff` | Cor do título, labels, placeholder, aceite de termos e rodapé do formulário |
+
+Ambos expostos como color picker + campo texto na aba Hotspot (`listar.html`, ao lado de
+"Cor Principal"/"Cor Secundária"/"Cor de Fundo"), lidos/gravados via `hotspot_detalhe` e
+`hotspot_salvar`.
+
+### Helper `_alpha(hex_color, opacity)`
+
+As várias hierarquias de texto do card (título 100%, subtítulo 60%, hint/label 38%, termos
+55%, rodapé 20-35%) antes usavam `rgba(255,255,255,X)` fixo. `_alpha` gera o mesmo efeito a
+partir de `cor_texto`, anexando um sufixo hex de 2 dígitos (`#RRGGBB` + alpha), a mesma técnica
+já usada em todo o arquivo para `cor_primaria` (ex.: `{cor}55`, `{cor}2e`):
+
+```python
+def _alpha(hex_color, opacity):
+    return f'{hex_color}{round(opacity * 255):02x}'
+```
+
+Cor de texto de botões e do spinner **não** muda com `cor_texto` — ficam sempre brancas, pois
+estão sobre o gradiente de `cor_primaria`/`cor_secundaria`, não sobre o painel. O modal de
+Termos/Privacidade também não foi tocado: seu fundo é sempre escuro (`#12121c`, independente do
+painel), então o texto branco continua legível.
+
+### `_sucesso_page_html` — nova tela pós-envio
+
+Substitui o HTML inline de `hotspot_portal_conectar` (spinner + "Conectando ao WiFi..." sobre
+`#0f172a`) por uma função dedicada que reaproveita a identidade visual do portal: mesmo card
+glass (`cor_painel`), logo do hotspot, ícone de check animado (SVG com `stroke-dasharray`),
+saudação com o primeiro nome do lead (`nome`, escapado via `html.escape` — dado enviado pelo
+próprio visitante, não confiável) e barra de progresso. Mantém o comportamento original:
+
+- Redirect automático por navegação (`window.location.replace`) para a URL de auth do MikroTik,
+  agora em **2200ms** (era 800ms) para dar tempo da animação aparecer.
+- Link de fallback ("Demorando? Clique aqui") que passa a aparecer em **5000ms** (era 3500ms).
+- `<noscript>` com link direto, para o caso raro de JS desabilitado no mini-browser.
+
+### Conflito de migrações resolvido
+
+Ao gerar a migração de `cor_painel`, `makemigrations` acusou dois leafs divergentes no grafo do
+app `clientes` a partir de `0085_clientemodulo` (`0086_delete_clientemodulo` de um lado,
+`0086_clienteintegracaodisparo → 0087 → 0088` do outro) — merge de branches anteriores sem
+`makemigrations --merge`. Resolvido com uma migração de merge (`0089_merge_20260724_1552`,
+no-op) antes de aplicar `0090_hotspotconfig_cor_painel`.

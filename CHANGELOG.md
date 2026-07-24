@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-24 (Hotspot — Cor do Painel/Texto e Tela de Sucesso)
+
+### Adicionado
+
+- **Cor do painel e cor do texto do formulário do hotspot** (`clientes/models.py`,
+  `clientes/hotspot_views.py`, `clientes/templates/listar.html`): antes só a cor dos botões e
+  do fundo da página eram customizáveis — o card de login em si tinha fundo escuro fixo e texto
+  branco fixo, ficando ilegível em painéis claros. Dois campos novos em `HotspotConfig`
+  (`cor_painel`, `cor_texto`) com seletor de cor na aba Hotspot, aplicados ao card de login e à
+  tela de sucesso. Migrações `0089_merge_20260724_1552` (resolve conflito pré-existente no
+  grafo de migrações do app `clientes`), `0090_hotspotconfig_cor_painel`,
+  `0091_hotspotconfig_cor_texto`.
+- **Tela de sucesso pós-conexão redesenhada** (`clientes/hotspot_views.py::_sucesso_page_html`):
+  a tela exibida entre o envio do formulário e a liberação da internet — antes só um spinner
+  sobre fundo liso — agora reaproveita a identidade visual do portal (logo, cores, painel),
+  com ícone de check animado e saudação com o nome do lead. Mantém o redirect automático (agora
+  em 2200ms) e o link de fallback para quando o redirect demora.
+
+Ver `docs/HOTSPOT_CAPTIVE_PORTAL.md` para detalhes de cada item.
+
+---
+
 ## [Não publicado] — 2026-07-20 (Editor de Topologia — Design e Efeitos Visuais)
 
 ### Adicionado
