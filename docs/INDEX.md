@@ -2,6 +2,29 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 16 — 24/07/2026: Hotspot — Integração Disparo: Opa Suite Canal/Template Trocados
+
+**O que foi diagnosticado?**
+- ✅ Teste de disparo do Opa Suite retornava `HTTP 404: "Communication channel not found"` mesmo
+  com domínio/token corretos
+- ✅ Causa: os campos **Canal** e **Template** da configuração estavam com valores trocados/errados
+  — um `_id` de canal WhatsApp válido estava salvo no campo Template, e o campo Canal tinha um
+  valor (`uej2uHCH`) que não batia com nenhum registro real da conta
+- ✅ Diagnóstico feito consultando a própria API do Opa Suite (`GET /api/v1/canal-comunicacao/` e
+  `GET /api/v1/template`, com o Bearer token já salvo no CRM) para listar os IDs reais da conta e
+  comparar com o configurado — sem precisar acessar o painel do Opa Suite manualmente
+- ✅ `canal_id` corrigido direto no banco (confirmado via API); operador confirmou e ajustou o
+  Template correto pela própria tela do CRM — teste funcionou
+- ✅ Nenhuma mudança de código — erro de preenchimento na configuração, não bug do CRM
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md)** | Seção "Bug 5 — Opa Suite: Canal e Template trocados", dica em "Configurar o Opa Suite" |
+
+---
+
 ### Sessão 15 — 23/07/2026: Hotspot — Integração Disparo: Painel de Ajuda Visual (Chatmix)
 
 **O que foi implementado?**
@@ -634,12 +657,16 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Chatmix disse que enviou mas a mensagem não chegou no WhatsApp, por quê?"
 → [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Bugs Corrigidos" (Bug 2: `success:false` com HTTP 200) e "Limitações Conhecidas" (template pendente de aprovação da Meta)
 
+### "Opa Suite retorna 'Communication channel not found', o que fazer?"
+→ [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Bugs Corrigidos" (Bug 5: Canal e Template trocados) — confirme os IDs reais chamando `GET /api/v1/canal-comunicacao/` e `GET /api/v1/template` com o token, em vez de confiar no que aparece no painel
+
 ---
 
 ## 📅 Histórico
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
 | 23/07/2026 | Hotspot: Integração Disparo — painel de ajuda visual no card Chatmix (Key/Token, ID do Template, sugestão de mensagem com botão Copiar); diagnóstico de "template pendente" e "canal errado na chave" | HOTSPOT_INTEGRACAO_DISPARO.md |
@@ -669,7 +696,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 23/07/2026  
-**Versão:** 2.0  
+**Última atualização:** 24/07/2026  
+**Versão:** 2.1  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

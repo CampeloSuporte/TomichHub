@@ -342,6 +342,37 @@ aqui porque são fáceis de confundir com bug:
 Esses dois casos motivaram o painel de ajuda visual descrito em "Onde fica na UI → Painel de ajuda
 embutido" — com destaque justamente para o campo Canais.
 
+### Bug 5 — Opa Suite: Canal e Template trocados (`"Communication channel not found"`)
+
+**Sintoma:** teste de envio retornava `HTTP 404: {"error":"NOT_FOUND_ERROR","message":"Communication
+channel not found."}`.
+
+**Causa:** os valores salvos em **Canal** e **Template** estavam invertidos/confundidos. Ao contrário
+do Chatmix (onde o ID do template aparece direto na URL do painel), o Opa Suite não expõe o `_id`
+real (ObjectId Mongo) de forma óbvia na interface — o operador havia colado o `_id` de um **canal**
+de comunicação no campo Template, e um valor de 8 caracteres (`uej2uHCH`, formato que não bate com
+nenhum ObjectId Mongo de 24 caracteres) no campo Canal, que não correspondia a nada na conta.
+
+**Diagnóstico:** como as credenciais (domínio + token) já estavam salvas no CRM, foi possível
+consultar a própria API do Opa Suite diretamente (`GET {dominio}/api/v1/canal-comunicacao/` e
+`GET {dominio}/api/v1/template`, com o Bearer token) para listar os canais e templates **reais** da
+conta e comparar com o que estava configurado — confirmando que:
+- o valor salvo em "Template" (`63f61c53f4752cb43ee88f77`) era na verdade o `_id` de um canal
+  WhatsApp ativo ("whatsapp api ... dialog360");
+- o valor salvo em "Canal" (`uej2uHCH`) não batia com nenhum dos 10 templates existentes na conta.
+
+**Correção:** `canal_id` foi corrigido para o `_id` do canal confirmado via API; o operador então
+localizou o template correto entre os listados e atualizou o campo Template pela própria tela do
+CRM. Nenhuma mudança de código foi necessária — foi um erro de preenchimento na configuração, mas
+vale documentar porque o padrão de diagnóstico (consultar os endpoints de listagem do provider
+usando as próprias credenciais salvas) é reaproveitável para qualquer erro futuro de "não
+encontrado" nesta integração, com qualquer provider.
+
+**Dica para configurar Canal/Template do Opa Suite sem adivinhar:** se a interface não deixar claro
+qual é o `_id` real de um canal ou template, uma chamada `GET {dominio}/api/v1/canal-comunicacao/`
+ou `GET {dominio}/api/v1/template` (com o Bearer token gerado no cadastro de usuário) retorna a
+lista completa com os `_id`s corretos — mais confiável do que tentar inferir pela URL do navegador.
+
 ---
 
 ## Como Configurar (passo a passo)
@@ -393,6 +424,10 @@ automaticamente pelo botão "+ Variável" no editor deles) — só ajustar a qua
    painel do Opa Suite) e copie o `_id` do canal WhatsApp que vai fazer o envio.
 5. **ID do Template**: liste os templates (`GET /api/v1/template`, ou abrindo o template no
    painel) e copie o `_id` (formato ObjectId Mongo, 24 caracteres).
+
+**Cuidado para não trocar Canal com Template** (ver Bug 5): diferente do Chatmix, o painel do Opa
+Suite não deixa o `_id` óbvio na tela/URL — prefira sempre confirmar os dois valores chamando os
+endpoints de listagem acima com o token, em vez de copiar algo direto da interface.
 6. Ajustar as **variáveis** (mesma lógica do Chatmix), Salvar, Enviar teste, e só então habilitar
    o toggle.
 
