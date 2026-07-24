@@ -1683,6 +1683,8 @@ class HotspotConfig(models.Model):
     cor_primaria     = models.CharField(max_length=7, default='#1a73e8')
     cor_secundaria   = models.CharField(max_length=7, blank=True, default='',
                           help_text='Cor secundária para o gradiente dos botões/fundo (opcional — usa um tom da primária se vazio)')
+    cor_painel       = models.CharField(max_length=7, default='#0f0f19',
+                          help_text='Cor do painel/card de login (transparência aplicada automaticamente)')
     logo             = models.ImageField(upload_to='hotspot/logos/', null=True, blank=True)
 
     # Fundo da página de login

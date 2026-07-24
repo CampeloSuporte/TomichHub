@@ -820,6 +820,7 @@ def hotspot_detalhe(request, cliente_id, hotspot_id):
         'portal_subtitulo': h.portal_subtitulo,
         'cor_primaria': h.cor_primaria,
         'cor_secundaria': h.cor_secundaria,
+        'cor_painel': h.cor_painel,
         'estilo_fundo': h.estilo_fundo,
         'cor_fundo': h.cor_fundo,
         'imagem_fundo_url': h.imagem_fundo.url if h.imagem_fundo else None,
@@ -863,6 +864,7 @@ def hotspot_salvar(request, cliente_id):
         'portal_subtitulo': body.get('portal_subtitulo', '').strip(),
         'cor_primaria': body.get('cor_primaria', '#1a73e8').strip(),
         'cor_secundaria': body.get('cor_secundaria', '').strip(),
+        'cor_painel': body.get('cor_painel', '#0f0f19').strip() or '#0f0f19',
         'estilo_fundo': body.get('estilo_fundo', 'gradiente').strip() or 'gradiente',
         'cor_fundo': body.get('cor_fundo', '#0a0a0f').strip() or '#0a0a0f',
         'ativo': bool(body.get('ativo', True)),
@@ -1427,6 +1429,7 @@ def _portal_page_html(hotspot, link, mac, ip, orig, request):
     logo_url = f'{scheme}://{host}{hotspot.logo.url}' if hotspot.logo else None
 
     cor_dark = hotspot.cor_secundaria or cor
+    cor_painel = hotspot.cor_painel or '#0f0f19'
 
     # Fundo da página de login — 3 estilos: gradiente (padrão, comportamento
     # histórico), solido, imagem. cor_fundo default reproduz o valor
@@ -1528,7 +1531,7 @@ body{{
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   border-radius:24px;
-  background:rgba(15,15,25,0.85);
+  background:{cor_painel}d9;
   backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
   border:1px solid rgba(255,255,255,0.08);
   box-shadow:0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.04) inset;
@@ -2060,35 +2063,106 @@ def hotspot_portal_conectar(request, hotspot_uuid):
     login_js   = login_full.replace('\\', '\\\\').replace("'", "\\'")
     login_href = _html.escape(login_full, quote=True)
 
-    html = f"""<!DOCTYPE html>
-<html>
+    html = _sucesso_page_html(h, nome, login_js, login_href)
+    return HttpResponse(html, content_type='text/html; charset=utf-8')
+
+
+def _sucesso_page_html(hotspot, nome, login_js, login_href):
+    """Gera a tela de sucesso exibida entre o envio do formulário e o redirect que autentica no MikroTik."""
+    cor        = hotspot.cor_primaria or '#6366f1'
+    cor_dark   = hotspot.cor_secundaria or cor
+    cor_painel = hotspot.cor_painel or '#0f0f19'
+    titulo     = _html.escape(hotspot.portal_titulo or 'WiFi Grátis', quote=True)
+    logo_url   = hotspot.logo.url if hotspot.logo else None
+    logo_html  = (f'<img class="logo" src="{logo_url}" alt="Logo">' if logo_url else '')
+
+    primeiro_nome = _html.escape(nome, quote=True) if nome else ''
+    saudacao = f'Tudo certo, <b>{primeiro_nome}</b>!' if primeiro_nome else 'Tudo certo!'
+
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Conectado!</title>
 <style>
-body{{font-family:sans-serif;display:flex;align-items:center;justify-content:center;
-     min-height:100vh;background:#0f172a;color:#fff;margin:0}}
-.msg{{text-align:center}}
-.spinner{{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);
-         border-top-color:{h.cor_primaria or '#1a73e8'};border-radius:50%;
-         animation:spin .7s linear infinite;margin:0 auto 16px}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
-a{{color:#93c5fd}}
+*{{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}}
+html,body{{height:100%;overflow:hidden}}
+body{{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  background:#0a0a0f;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;color:#fff;
+}}
+.bg{{
+  position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse at 20% 25%,{cor}2e 0%,transparent 60%),
+             radial-gradient(ellipse at 80% 75%,{cor_dark}2e 0%,transparent 60%);
+  animation:bgpulse 7s ease-in-out infinite alternate;
+}}
+@keyframes bgpulse{{0%{{background-position:0% 50%}}100%{{background-position:100% 50%}}}}
+.card{{
+  position:relative;z-index:1;width:min(380px,90vw);
+  border-radius:24px;background:{cor_painel}d9;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.04) inset;
+  padding:38px 30px 30px;text-align:center;
+  animation:cardIn .5s cubic-bezier(.22,1,.36,1) both;
+}}
+@keyframes cardIn{{from{{opacity:0;transform:translateY(24px) scale(.96)}}to{{opacity:1;transform:none}}}}
+.logo{{display:block;margin:0 auto 20px;max-height:64px;max-width:80%;object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}}
+.check-wrap{{width:80px;height:80px;margin:0 auto 22px}}
+.check-ring{{
+  width:100%;height:100%;border-radius:50%;
+  background:linear-gradient(135deg,{cor},{cor_dark});
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 30px {cor}55;
+  animation:popIn .5s cubic-bezier(.22,1.4,.36,1) .15s both;
+}}
+@keyframes popIn{{from{{transform:scale(0);opacity:0}}to{{transform:scale(1);opacity:1}}}}
+.check-ring svg{{width:38px;height:38px}}
+.check-ring path{{
+  stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:40;stroke-dashoffset:40;
+  animation:draw .45s ease .5s forwards;
+}}
+@keyframes draw{{to{{stroke-dashoffset:0}}}}
+h1{{font-size:1.32rem;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}}
+.sub{{color:rgba(255,255,255,.6);font-size:.9rem;line-height:1.55;margin-bottom:26px}}
+.sub b{{color:#fff}}
+.progress{{height:4px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:14px}}
+.progress-bar{{height:100%;border-radius:4px;background:linear-gradient(135deg,{cor},{cor_dark});
+  width:0;animation:fill 2.1s ease forwards}}
+@keyframes fill{{to{{width:100%}}}}
+.status{{font-size:.76rem;color:rgba(255,255,255,.35)}}
+.status a{{color:{cor};text-decoration:none;font-weight:600}}
 </style>
 </head>
 <body>
-<div class="msg">
-  <div class="spinner"></div>
-  <p>Conectando ao WiFi...</p>
-  <p><a id="mlink" href="{login_href}" style="display:none">Clique aqui se não conectar</a></p>
+<div class="bg"></div>
+<div class="card">
+  {logo_html}
+  <div class="check-wrap">
+    <div class="check-ring">
+      <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6"></path></svg>
+    </div>
+  </div>
+  <h1>{saudacao}</h1>
+  <p class="sub">Sua conexão foi liberada.<br>Aproveite o <b>{titulo}</b>!</p>
+  <div class="progress"><div class="progress-bar"></div></div>
+  <p class="status" id="statusMsg">Finalizando conexão&hellip;</p>
 </div>
 <script>
-setTimeout(function(){{ window.location.replace('{login_js}'); }}, 800);
-setTimeout(function(){{ var a=document.getElementById('mlink'); if(a) a.style.display='inline'; }}, 3500);
+setTimeout(function(){{ window.location.replace('{login_js}'); }}, 2200);
+setTimeout(function(){{
+  var s=document.getElementById('statusMsg');
+  if(s) s.innerHTML='Demorando? <a href="{login_href}">Clique aqui</a>';
+}}, 5000);
 </script>
-<noscript><a href="{login_href}">Clique aqui para conectar</a></noscript>
+<noscript><p style="text-align:center;margin-top:16px;position:relative;z-index:1"><a href="{login_href}" style="color:{cor}">Clique aqui para navegar</a></p></noscript>
 </body>
 </html>"""
-    return HttpResponse(html, content_type='text/html; charset=utf-8')
 
 
 # ─────────────────────────────────────────────────────────────────────────────

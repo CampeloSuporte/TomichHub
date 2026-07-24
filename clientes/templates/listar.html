@@ -2017,6 +2017,13 @@
                             <input type="text" id="hs_cor2_txt" class="hs-input" value="" placeholder="usa a principal" style="flex:1;" oninput="document.getElementById('hs_cor2').value=this.value||'#1a73e8'">
                           </div>
                         </div>
+                        <div class="hs-field">
+                          <label class="hs-label">Cor do Painel <small style="color:var(--text-muted);font-weight:400;">(card de login)</small></label>
+                          <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="color" id="hs_cor_painel" value="#0f0f19" style="width:44px;height:36px;padding:2px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;">
+                            <input type="text" id="hs_cor_painel_txt" class="hs-input" value="#0f0f19" style="flex:1;" oninput="document.getElementById('hs_cor_painel').value=this.value">
+                          </div>
+                        </div>
                         <div class="hs-field" style="display:flex;align-items:center;gap:8px;padding-top:20px;">
                           <label class="hs-label" style="margin:0;">Ativo</label>
                           <input type="checkbox" id="hs_ativo" checked style="width:18px;height:18px;cursor:pointer;">
@@ -7945,6 +7952,8 @@ function getCsrfToken(){
         if(pk2&&tx2)pk2.addEventListener('input',function(){tx2.value=pk2.value;});
         var pkf=document.getElementById('hs_cor_fundo'),txf=document.getElementById('hs_cor_fundo_txt');
         if(pkf&&txf)pkf.addEventListener('input',function(){txf.value=pkf.value;});
+        var pkp=document.getElementById('hs_cor_painel'),txp=document.getElementById('hs_cor_painel_txt');
+        if(pkp&&txp)pkp.addEventListener('input',function(){txp.value=pkp.value;});
     }());
     function _hsFetch(url,opts){
         var d={credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':(document.cookie.match(/csrftoken=([^;]+)/)||[])[1]||''}};
@@ -8046,6 +8055,7 @@ function getCsrfToken(){
             sv('hs_titulo',h.portal_titulo||'WiFi Grátis');sv('hs_subtitulo',h.portal_subtitulo||'');
             sv('hs_cor',h.cor_primaria||'#1a73e8');sv('hs_cor_txt',h.cor_primaria||'#1a73e8');
             sv('hs_cor2',h.cor_secundaria||h.cor_primaria||'#1a73e8');sv('hs_cor2_txt',h.cor_secundaria||'');
+            sv('hs_cor_painel',h.cor_painel||'#0f0f19');sv('hs_cor_painel_txt',h.cor_painel||'#0f0f19');
             sv('hs_estilo_fundo',h.estilo_fundo||'gradiente');
             sv('hs_cor_fundo',h.cor_fundo||'#0a0a0f');sv('hs_cor_fundo_txt',h.cor_fundo||'#0a0a0f');
             var at=document.getElementById('hs_ativo');if(at)at.checked=h.ativo;
@@ -8068,6 +8078,7 @@ function getCsrfToken(){
         sv('hs_dns','8.8.8.8');sv('hs_down','10M');sv('hs_up','5M');sv('hs_session','0');sv('hs_idle','30');
         sv('hs_guest_user','guest');sv('hs_guest_pass','wifi123');sv('hs_titulo','WiFi Grátis');sv('hs_subtitulo','');
         sv('hs_cor','#1a73e8');sv('hs_cor_txt','#1a73e8');sv('hs_cor2','#1a73e8');sv('hs_cor2_txt','');
+        sv('hs_cor_painel','#0f0f19');sv('hs_cor_painel_txt','#0f0f19');
         sv('hs_estilo_fundo','gradiente');sv('hs_cor_fundo','#0a0a0f');sv('hs_cor_fundo_txt','#0a0a0f');
         var at=document.getElementById('hs_ativo');if(at)at.checked=true;
         var cb=document.getElementById('hs_dhcp_controle_banda');if(cb){cb.checked=false;toggleHsBanda(cb);}
@@ -8104,7 +8115,7 @@ function getCsrfToken(){
             '}';
     }
     function hsSalvar(){
-        var p={id:_hsId,acesso_id:document.getElementById('hs_acesso').value||null,nome:document.getElementById('hs_nome').value.trim(),interface:document.getElementById('hs_interface').value.trim(),interface_fisica:document.getElementById('hs_interface_fisica').value.trim(),gateway:document.getElementById('hs_gateway').value.trim(),pool_start:document.getElementById('hs_pool_start').value.trim(),pool_end:document.getElementById('hs_pool_end').value.trim(),network:document.getElementById('hs_network').value.trim(),dns_servidor:document.getElementById('hs_dns').value.trim(),rate_limit_down:document.getElementById('hs_down').value.trim(),rate_limit_up:document.getElementById('hs_up').value.trim(),session_timeout:parseInt(document.getElementById('hs_session').value)||0,idle_timeout:parseInt(document.getElementById('hs_idle').value)||30,guest_usuario:document.getElementById('hs_guest_user').value.trim(),guest_senha:document.getElementById('hs_guest_pass').value.trim(),portal_titulo:document.getElementById('hs_titulo').value.trim(),portal_subtitulo:document.getElementById('hs_subtitulo').value.trim(),cor_primaria:document.getElementById('hs_cor_txt').value.trim(),cor_secundaria:document.getElementById('hs_cor2_txt').value.trim(),estilo_fundo:document.getElementById('hs_estilo_fundo').value,cor_fundo:document.getElementById('hs_cor_fundo_txt').value.trim(),ativo:document.getElementById('hs_ativo').checked,dhcp_controle_banda:document.getElementById('hs_dhcp_controle_banda')?.checked||false,dhcp_banda_limit:document.getElementById('hs_dhcp_banda_limit')?.value.trim()||'10M/10M'};
+        var p={id:_hsId,acesso_id:document.getElementById('hs_acesso').value||null,nome:document.getElementById('hs_nome').value.trim(),interface:document.getElementById('hs_interface').value.trim(),interface_fisica:document.getElementById('hs_interface_fisica').value.trim(),gateway:document.getElementById('hs_gateway').value.trim(),pool_start:document.getElementById('hs_pool_start').value.trim(),pool_end:document.getElementById('hs_pool_end').value.trim(),network:document.getElementById('hs_network').value.trim(),dns_servidor:document.getElementById('hs_dns').value.trim(),rate_limit_down:document.getElementById('hs_down').value.trim(),rate_limit_up:document.getElementById('hs_up').value.trim(),session_timeout:parseInt(document.getElementById('hs_session').value)||0,idle_timeout:parseInt(document.getElementById('hs_idle').value)||30,guest_usuario:document.getElementById('hs_guest_user').value.trim(),guest_senha:document.getElementById('hs_guest_pass').value.trim(),portal_titulo:document.getElementById('hs_titulo').value.trim(),portal_subtitulo:document.getElementById('hs_subtitulo').value.trim(),cor_primaria:document.getElementById('hs_cor_txt').value.trim(),cor_secundaria:document.getElementById('hs_cor2_txt').value.trim(),cor_painel:document.getElementById('hs_cor_painel_txt').value.trim(),estilo_fundo:document.getElementById('hs_estilo_fundo').value,cor_fundo:document.getElementById('hs_cor_fundo_txt').value.trim(),ativo:document.getElementById('hs_ativo').checked,dhcp_controle_banda:document.getElementById('hs_dhcp_controle_banda')?.checked||false,dhcp_banda_limit:document.getElementById('hs_dhcp_banda_limit')?.value.trim()||'10M/10M'};
         if(!p.nome){alert('Informe o nome do hotspot.');return;}
         _hsFetch('/clientes/'+HS_CID+'/hotspot/salvar/',{method:'POST',body:p}).then(function(r){return r.json();}).then(function(d){if(d.ok){_hsId=d.id;hsCarregarLista();setTimeout(function(){hsSelecionar(_hsId);},300);}else alert('Erro: '+(d.error||''));});
     }
