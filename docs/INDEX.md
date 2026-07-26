@@ -2,6 +2,29 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 17 — 26/07/2026: Geolocalização de IP — Múltiplos Blocos/Localizações no Geofeed
+
+**O que foi implementado?**
+- ✅ Novo model `GeofeedBloco` como fonte única do `geofeed.csv` público (RFC 8805) — antes o
+  arquivo dependia de deduplicar por prefixo dentro do histórico `CorrecaoGeoIP`, sem suporte a
+  editar/remover um bloco já publicado
+- ✅ Card "Blocos do Geofeed" na tela de Geolocalização de IP: tabela editável com "+ Adicionar
+  bloco" — cadastra quantos prefixos e localizações forem necessários, cada linha com
+  salvar/remover independentes (antes só dava pra publicar 1 bloco por vez, repetindo o fluxo de
+  busca + modal de correção manualmente para cada prefixo)
+- ✅ Endpoints `geo_blocos_listar`/`geo_blocos_salvar` (aceita lote de blocos em 1 requisição)/
+  `geo_blocos_excluir`
+- ✅ Coluna Postal-Code do RFC 8805 (antes sempre vazia) passa a ser preenchida quando informada
+- ✅ Migração de dados preserva os prefixos já publicados a partir do histórico existente
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[GEOLOCALIZACAO_IP.md](GEOLOCALIZACAO_IP.md)** | Arquitetura completa, endpoints, migrations, como usar, testes |
+
+---
+
 ### Sessão 16 — 24/07/2026: Hotspot — Integração Disparo: Opa Suite Canal/Template Trocados
 
 **O que foi diagnosticado?**
@@ -538,6 +561,7 @@ docs/
 ├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
 └─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
 └─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
+└─ GEOLOCALIZACAO_IP.md ................... 📌 Geolocalização de IP, correção e Geofeed público (múltiplos blocos)
 ```
 
 ---
@@ -666,6 +690,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 26/07/2026 | Geolocalização de IP: novo model `GeofeedBloco` como fonte única do geofeed.csv, card "Blocos do Geofeed" para cadastrar múltiplos prefixos/localizações de uma vez, coluna Postal-Code preenchida | GEOLOCALIZACAO_IP.md |
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
@@ -696,7 +721,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 24/07/2026  
+**Última atualização:** 26/07/2026  
 **Versão:** 2.1  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

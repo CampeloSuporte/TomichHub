@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-26 (Geolocalização de IP — Múltiplos Blocos/Localizações no Geofeed)
+
+### Adicionado
+
+- **Model `GeofeedBloco`** (`clientes/models.py`): fonte única de verdade do `geofeed.csv` público
+  (RFC 8805) — antes o arquivo era montado deduplicando por prefixo dentro do histórico
+  `CorrecaoGeoIP` (registro de solicitações de correção), o que era frágil e não permitia editar
+  ou remover um bloco já publicado. Migrações `0092_geofeed_bloco` (cria a tabela) e
+  `0093_geofeed_bloco_migrar_historico` (popula a partir do prefixo mais recente de cada
+  `CorrecaoGeoIP`, sem perder o conteúdo já publicado no deploy).
+- **Card "Blocos do Geofeed"** (`home/templates/geo_consulta.html`): tabela editável na tela de
+  Geolocalização de IP com botão "+ Adicionar bloco" — cadastra quantos prefixos/localizações
+  forem necessários (Prefixo, País, Região, Cidade, Postal Code), cada linha com salvar/remover
+  independentes. Antes só era possível publicar 1 bloco por vez, repetindo manualmente todo o
+  fluxo de busca + modal de correção para cada prefixo.
+- **Endpoints** (`home/views.py`/`home/urls.py`): `geo_blocos_listar` (GET), `geo_blocos_salvar`
+  (POST — aceita lista de blocos em uma única requisição) e `geo_blocos_excluir` (POST).
+- **Coluna Postal-Code do RFC 8805** (`Prefix,Country,Region,City,Postal-Code`): antes sempre
+  vazia — o formato agora inclui o campo quando informado no cadastro de blocos.
+- `geo_atualizar` (fluxo de correção via busca de 1 IP, inalterado na UI) agora também grava em
+  `GeofeedBloco`, mantendo as duas formas de cadastro na mesma fonte de verdade.
+
+Ver `docs/GEOLOCALIZACAO_IP.md` para detalhes.
+
+---
+
 ## [Não publicado] — 2026-07-24 (Hotspot — Cor do Painel/Texto e Tela de Sucesso)
 
 ### Adicionado
