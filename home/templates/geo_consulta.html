@@ -168,6 +168,42 @@
       </div>
     </div>
 
+    <!-- ── Blocos do Geofeed (múltiplos blocos/localizações) ────────────── -->
+    <div class="card mb-4" id="geo-blocos-card">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+          <h5 class="mb-0">
+            <i class="fas fa-layer-group me-2" style="color:#3fb950;opacity:.8"></i>Blocos do Geofeed
+          </h5>
+          <button class="btn btn-sm ms-auto" onclick="geoBlocoNovaLinha()"
+            style="border:1px solid rgba(63,185,80,.3);color:#3fb950;white-space:nowrap">
+            <i class="fas fa-plus me-1"></i> Adicionar bloco
+          </button>
+        </div>
+        <p style="font-size:.83rem;color:#aaa;margin-bottom:12px">
+          Cadastre quantos blocos IP e localizações forem necessários — todos entram no
+          <code style="color:#58a6ff;opacity:.8">geofeed.csv</code> público acima.
+        </p>
+
+        <div id="geo-blocos-feedback" style="display:none;margin-bottom:10px"></div>
+
+        <div class="geo-blocos-grid geo-header">
+          <div>Prefixo / Bloco IP</div>
+          <div>País</div>
+          <div>Região</div>
+          <div>Cidade</div>
+          <div>Postal Code</div>
+          <div>Ativo</div>
+          <div></div>
+        </div>
+        <div id="geo-blocos-body">
+          <span style="color:#555;font-size:.83rem">
+            <i class="fas fa-circle-notch fa-spin me-1"></i> Carregando…
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Histórico de Correções ─────────────────────────────────────── -->
     <div class="card mb-4" id="geo-historico-card">
       <div class="card-body">
@@ -467,6 +503,24 @@
     border-bottom: 1px solid rgba(255,255,255,.04);
 }
 .geo-hist-row:last-child { border-bottom: none; }
+.geo-blocos-grid {
+    display: grid;
+    grid-template-columns: 1.4fr .55fr 1fr 1fr 1fr .55fr 78px;
+    gap: 6px;
+    align-items: center;
+}
+.geo-blocos-grid.geo-row { padding: 6px 0; }
+.geo-blocos-grid input[type=text] {
+    font-size: .8rem;
+    padding: 4px 8px;
+}
+.geo-blocos-grid input[type=checkbox] {
+    width: 18px;
+    height: 18px;
+    accent-color: #3fb950;
+    justify-self: center;
+}
+.geo-bloco-erro { border-color: #e06060 !important; }
 .cor-dest-label {
     display: inline-flex;
     align-items: center;
@@ -1211,6 +1265,141 @@ async function geofeedPreview() {
     }
 }
 
+// ── Blocos do Geofeed (múltiplos blocos/localizações) ───────────────────────
+
+let geoBlocoSeq = 0;
+
+function geoBlocoLinhaHtml(b) {
+    b = b || {};
+    const rid = b.id ? `id-${b.id}` : `novo-${++geoBlocoSeq}`;
+    const ativo = b.ativo === undefined ? true : b.ativo;
+    return `
+    <div class="geo-blocos-grid geo-row" data-row-id="${rid}" data-bloco-id="${b.id || ''}">
+      <input type="text" class="form-control geo-bloco-prefixo" placeholder="200.100.50.0/24"
+        value="${escHtml(b.prefixo || '')}" style="font-family:monospace">
+      <input type="text" class="form-control geo-bloco-pais" maxlength="2" placeholder="BR"
+        value="${escHtml(b.pais || '')}" style="text-transform:uppercase;font-family:monospace">
+      <input type="text" class="form-control geo-bloco-regiao" placeholder="SP"
+        value="${escHtml(b.regiao || '')}">
+      <input type="text" class="form-control geo-bloco-cidade" placeholder="São Paulo"
+        value="${escHtml(b.cidade || '')}">
+      <input type="text" class="form-control geo-bloco-postal" placeholder="00000-000"
+        value="${escHtml(b.postal_code || '')}">
+      <input type="checkbox" class="geo-bloco-ativo" ${ativo ? 'checked' : ''}>
+      <div class="d-flex gap-1">
+        <button class="btn btn-sm" onclick="geoBlocoSalvar('${rid}')" title="Salvar"
+          style="border:1px solid rgba(63,185,80,.3);color:#3fb950;padding:3px 8px">
+          <i class="fas fa-save"></i>
+        </button>
+        <button class="btn btn-sm" onclick="geoBlocoExcluir('${rid}')" title="Remover"
+          style="border:1px solid rgba(224,96,96,.3);color:#e06060;padding:3px 8px">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+}
+
+async function geoBlocosCarregar() {
+    const body = document.getElementById('geo-blocos-body');
+    try {
+        const r = await fetch('{% url "geo_blocos_listar" %}');
+        const resp = await r.json();
+        if (!resp.ok) throw new Error(resp.erro || 'Falha ao carregar blocos');
+        body.innerHTML = resp.blocos.length
+            ? resp.blocos.map(geoBlocoLinhaHtml).join('')
+            : '<span style="color:#555;font-size:.83rem">Nenhum bloco cadastrado ainda.</span>';
+    } catch (e) {
+        body.innerHTML = `<span style="color:#e06060;font-size:.83rem">Erro ao carregar: ${e.message}</span>`;
+    }
+}
+
+function geoBlocoNovaLinha() {
+    const body = document.getElementById('geo-blocos-body');
+    if (body.children.length === 1 && body.children[0].tagName === 'SPAN') {
+        body.innerHTML = '';
+    }
+    body.insertAdjacentHTML('beforeend', geoBlocoLinhaHtml());
+}
+
+function geoBlocosFeedback(msg, ok) {
+    const fb = document.getElementById('geo-blocos-feedback');
+    fb.style.display = '';
+    fb.innerHTML = `<div style="padding:8px 12px;border-radius:6px;font-size:.8rem;
+        background:${ok ? 'rgba(63,185,80,.1)' : 'rgba(224,96,96,.1)'};
+        border:1px solid ${ok ? 'rgba(63,185,80,.3)' : '#e06060'};
+        color:${ok ? '#3fb950' : '#e06060'}">
+        <i class="fas fa-${ok ? 'check-circle' : 'times-circle'} me-2"></i>${escHtml(msg)}</div>`;
+    setTimeout(() => { fb.style.display = 'none'; }, 4000);
+}
+
+async function geoBlocoSalvar(rowId) {
+    const row = document.querySelector(`.geo-blocos-grid[data-row-id="${rowId}"]`);
+    if (!row) return;
+
+    row.querySelectorAll('input').forEach(el => el.classList.remove('geo-bloco-erro'));
+
+    const prefixo = row.querySelector('.geo-bloco-prefixo');
+    const item = {
+        id:          row.dataset.blocoId || null,
+        prefixo:     prefixo.value.trim(),
+        pais:        row.querySelector('.geo-bloco-pais').value.trim(),
+        regiao:      row.querySelector('.geo-bloco-regiao').value.trim(),
+        cidade:      row.querySelector('.geo-bloco-cidade').value.trim(),
+        postal_code: row.querySelector('.geo-bloco-postal').value.trim(),
+        ativo:       row.querySelector('.geo-bloco-ativo').checked,
+    };
+    if (!item.prefixo) {
+        prefixo.classList.add('geo-bloco-erro');
+        prefixo.focus();
+        return;
+    }
+
+    try {
+        const r = await fetch('{% url "geo_blocos_salvar" %}', {
+            method:  'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': GEO_CSRF},
+            body:    JSON.stringify({blocos: [item]}),
+        });
+        const resp = await r.json();
+        if (resp.ok && resp.salvos.length) {
+            row.dataset.blocoId = resp.salvos[0].id;
+            geoBlocosFeedback(`Bloco ${resp.salvos[0].prefixo} salvo no Geofeed.`, true);
+        } else {
+            const erro = (resp.erros && resp.erros[0] && resp.erros[0].erro) || resp.erro || 'Erro ao salvar bloco.';
+            prefixo.classList.add('geo-bloco-erro');
+            geoBlocosFeedback(erro, false);
+        }
+    } catch (e) {
+        geoBlocosFeedback('Erro de rede: ' + e.message, false);
+    }
+}
+
+async function geoBlocoExcluir(rowId) {
+    const row = document.querySelector(`.geo-blocos-grid[data-row-id="${rowId}"]`);
+    if (!row) return;
+    const blocoId = row.dataset.blocoId;
+
+    if (!blocoId) { row.remove(); return; }
+    if (!confirm('Remover este bloco do Geofeed?')) return;
+
+    const url = '{% url "geo_blocos_excluir" 0 %}'.replace('/0/', `/${blocoId}/`);
+    try {
+        const r = await fetch(url, {
+            method:  'POST',
+            headers: {'X-CSRFToken': GEO_CSRF},
+        });
+        const resp = await r.json();
+        if (resp.ok) {
+            row.remove();
+            geoBlocosFeedback('Bloco removido do Geofeed.', true);
+        } else {
+            geoBlocosFeedback(resp.erro || 'Erro ao remover bloco.', false);
+        }
+    } catch (e) {
+        geoBlocosFeedback('Erro de rede: ' + e.message, false);
+    }
+}
+
 // Auto-busca se veio com prefixo na URL
 {% if prefixo_inicial %}
 window.addEventListener('DOMContentLoaded', () => geoBuscar());
@@ -1218,6 +1407,9 @@ window.addEventListener('DOMContentLoaded', () => geoBuscar());
 
 // Carrega histórico ao abrir a página
 window.addEventListener('DOMContentLoaded', () => geoCarregarHistorico());
+
+// Carrega blocos do Geofeed ao abrir a página
+window.addEventListener('DOMContentLoaded', () => geoBlocosCarregar());
 </script>
 
 {% endblock %}

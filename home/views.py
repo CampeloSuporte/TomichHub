@@ -657,6 +657,19 @@ def lg_pesquisa_buscar(request):
 # GEOLOCALIZAÇÃO IP
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _geo_regiao_iso(pais, regiao):
+    """Converte regiao livre (ex: 'SP') para ISO 3166-2 (ex: 'BR-SP')."""
+    if not (pais and regiao):
+        return ''
+    pais = pais.strip().upper()
+    r    = regiao.strip()
+    if len(r) <= 3 and '-' not in r:
+        return f'{pais}-{r.upper()}'
+    elif r.upper().startswith(pais + '-'):
+        return r.upper()
+    return r
+
+
 @login_required(login_url='login')
 @admin_required
 def geo_consulta(request):
@@ -935,15 +948,7 @@ def geo_atualizar(request):
     cfg  = ConfiguracaoSistema.get()
 
     # ── ISO 3166-2 para regiao (ex: SP -> BR-SP) ──────────────────────────────
-    regiao_iso = ''
-    if pais and regiao:
-        r = regiao.strip()
-        if len(r) <= 3 and '-' not in r:
-            regiao_iso = f'{pais}-{r.upper()}'
-        elif r.upper().startswith(pais + '-'):
-            regiao_iso = r.upper()
-        else:
-            regiao_iso = r
+    regiao_iso = _geo_regiao_iso(pais, regiao)
 
     # ── Gera CSV Geofeed RFC 8805 (somente ASCII nos comentarios) ─────────────
     csv_content = '\n'.join([
@@ -1129,7 +1134,7 @@ def geo_atualizar(request):
     ]
 
     # ── Salva no historico (somente ASCII no JSONField) ───────────────────────
-    from clientes.models import CorrecaoGeoIP
+    from clientes.models import CorrecaoGeoIP, GeofeedBloco
     dest_log = [{'tipo': 'geofeed', 'label': 'RFC 8805 Geofeed'}]
     for e in enviados:
         dest_log.append({'tipo': e['tipo'], 'label': e['label'],
@@ -1146,6 +1151,15 @@ def geo_atualizar(request):
         solicitante    = request.user,
     )
 
+    # ── Publica/atualiza o bloco no Geofeed público ───────────────────────────
+    GeofeedBloco.objects.update_or_create(
+        prefixo=prefixo,
+        defaults={
+            'pais': pais, 'regiao': regiao, 'cidade': cidade,
+            'ativo': True, 'criado_por': request.user,
+        },
+    )
+
     return JsonResponse({
         'ok':       True,
         'csv':      csv_content,
@@ -1160,7 +1174,7 @@ def geo_atualizar(request):
 
 def geo_geofeed_csv(request):
     """Arquivo público Geofeed RFC 8805 — sem autenticação (referenciado no WHOIS)."""
-    from clientes.models import CorrecaoGeoIP
+    from clientes.models import GeofeedBloco
     from django.http import HttpResponse
     from datetime import date
 
@@ -1175,23 +1189,9 @@ def geo_geofeed_csv(request):
         '',
     ]
 
-    seen = set()
-    for reg in CorrecaoGeoIP.objects.order_by('prefixo', '-data_envio'):
-        if reg.prefixo in seen:
-            continue
-        seen.add(reg.prefixo)
-
-        regiao_iso = ''
-        if reg.pais and reg.regiao:
-            r = reg.regiao.strip()
-            if len(r) <= 3 and '-' not in r:
-                regiao_iso = f'{reg.pais}-{r.upper()}'
-            elif r.upper().startswith(reg.pais.upper() + '-'):
-                regiao_iso = r.upper()
-            else:
-                regiao_iso = r
-
-        linhas.append(f'{reg.prefixo},{reg.pais},{regiao_iso},{reg.cidade},')
+    for bloco in GeofeedBloco.objects.filter(ativo=True).order_by('prefixo'):
+        regiao_iso = _geo_regiao_iso(bloco.pais, bloco.regiao)
+        linhas.append(f'{bloco.prefixo},{bloco.pais},{regiao_iso},{bloco.cidade},{bloco.postal_code}')
 
     content = '\n'.join(linhas) + '\n'
     resp = HttpResponse(content, content_type='text/csv; charset=utf-8')
@@ -1199,6 +1199,110 @@ def geo_geofeed_csv(request):
     resp['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     resp['X-Content-Type-Options'] = 'nosniff'
     return resp
+
+
+# ── Blocos do Geofeed (cadastro manual de múltiplos blocos/localizações) ─────
+
+@login_required(login_url='login')
+@admin_required
+def geo_blocos_listar(request):
+    """Lista todos os blocos cadastrados no Geofeed."""
+    from clientes.models import GeofeedBloco
+
+    blocos = GeofeedBloco.objects.order_by('prefixo')
+    return JsonResponse({'ok': True, 'blocos': [
+        {
+            'id':          b.id,
+            'prefixo':     b.prefixo,
+            'pais':        b.pais,
+            'regiao':      b.regiao,
+            'cidade':      b.cidade,
+            'postal_code': b.postal_code,
+            'ativo':       b.ativo,
+        }
+        for b in blocos
+    ]})
+
+
+@login_required(login_url='login')
+@admin_required
+def geo_blocos_salvar(request):
+    """Cria ou atualiza um ou mais blocos do Geofeed em uma única requisição."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'erro': 'Metodo nao permitido'}, status=405)
+
+    import json as _json
+    import ipaddress
+    from clientes.models import GeofeedBloco
+
+    try:
+        body = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'JSON invalido'}, status=400)
+
+    itens = body.get('blocos', [])
+    if not isinstance(itens, list) or not itens:
+        return JsonResponse({'ok': False, 'erro': 'Nenhum bloco informado'}, status=400)
+
+    salvos = []
+    erros  = []
+    for item in itens:
+        prefixo = (item.get('prefixo') or '').strip()
+        if not prefixo:
+            erros.append({'prefixo': '', 'erro': 'Prefixo obrigatorio'})
+            continue
+        try:
+            ipaddress.ip_network(prefixo, strict=False)
+        except ValueError:
+            erros.append({'prefixo': prefixo, 'erro': 'Prefixo/bloco IP invalido'})
+            continue
+
+        defaults = {
+            'pais':        (item.get('pais') or '').strip().upper(),
+            'regiao':      (item.get('regiao') or '').strip(),
+            'cidade':      (item.get('cidade') or '').strip(),
+            'postal_code': (item.get('postal_code') or '').strip(),
+            'ativo':       bool(item.get('ativo', True)),
+        }
+
+        bloco_id = item.get('id')
+        if bloco_id:
+            atualizados = GeofeedBloco.objects.filter(id=bloco_id).update(**defaults)
+            if not atualizados:
+                erros.append({'prefixo': prefixo, 'erro': 'Bloco nao encontrado'})
+                continue
+            bloco = GeofeedBloco.objects.get(id=bloco_id)
+        else:
+            defaults['criado_por'] = request.user
+            try:
+                bloco, _criado = GeofeedBloco.objects.update_or_create(
+                    prefixo=prefixo, defaults=defaults)
+            except Exception as e:
+                erros.append({'prefixo': prefixo, 'erro': str(e)})
+                continue
+
+        salvos.append({
+            'id': bloco.id, 'prefixo': bloco.prefixo, 'pais': bloco.pais,
+            'regiao': bloco.regiao, 'cidade': bloco.cidade,
+            'postal_code': bloco.postal_code, 'ativo': bloco.ativo,
+        })
+
+    return JsonResponse({'ok': True, 'salvos': salvos, 'erros': erros})
+
+
+@login_required(login_url='login')
+@admin_required
+def geo_blocos_excluir(request, bloco_id):
+    """Remove um bloco do Geofeed."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'erro': 'Metodo nao permitido'}, status=405)
+
+    from clientes.models import GeofeedBloco
+
+    apagados, _ = GeofeedBloco.objects.filter(id=bloco_id).delete()
+    if not apagados:
+        return JsonResponse({'ok': False, 'erro': 'Bloco nao encontrado'}, status=404)
+    return JsonResponse({'ok': True})
 
 
 # ── Histórico de correções ────────────────────────────────────────────────────

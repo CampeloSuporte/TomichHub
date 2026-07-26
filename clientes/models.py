@@ -1155,6 +1155,36 @@ class CorrecaoGeoIP(models.Model):
         return 'pendente'
 
 
+class GeofeedBloco(models.Model):
+    """Bloco IP + localização publicado no Geofeed público (RFC 8805).
+
+    Fonte única de verdade do geofeed.csv — permite cadastrar vários blocos
+    e localizações, além dos gerados automaticamente pelo fluxo de correção.
+    """
+
+    prefixo      = models.CharField(max_length=50, unique=True, db_index=True, verbose_name='Prefixo / Bloco IP')
+    pais         = models.CharField(max_length=5, blank=True, verbose_name='País (ISO)')
+    regiao       = models.CharField(max_length=100, blank=True, verbose_name='Estado / Região')
+    cidade       = models.CharField(max_length=100, blank=True, verbose_name='Cidade')
+    postal_code  = models.CharField(max_length=20, blank=True, verbose_name='CEP / Postal Code')
+    ativo        = models.BooleanField(default=True, verbose_name='Ativo no Geofeed')
+
+    criado_em    = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
+    atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
+    criado_por   = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='blocos_geofeed', verbose_name='Criado por',
+    )
+
+    class Meta:
+        ordering = ['prefixo']
+        verbose_name = 'Bloco do Geofeed'
+        verbose_name_plural = 'Blocos do Geofeed'
+
+    def __str__(self):
+        return self.prefixo
+
+
 # ── Scripts de Automação ──────────────────────────────────────────────────────
 
 from django.conf import settings as _dj_settings
