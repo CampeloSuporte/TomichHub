@@ -2030,17 +2030,20 @@ def realizar_backup(acesso, usuario=None):
                 look_for_keys=False,
                 allow_agent=False,
                 banner_timeout=30,
-                # ZTE OLTs (e outros com CPU embarcado fraco) têm timeout de KEX
-                # curto — group16/group18/group-exchange demoram 2-5s pra negociar
-                # e a conexão cai antes da auth. Desabilitar força o paramiko a
-                # usar curve25519/ecdh/group14 (rápidos), que todo servidor SSH2
-                # moderno já suporta (ver docs/winbox_vnc.md e memória do projeto).
+                # ZTE OLTs têm timeout de KEX curto — group16/group18/group-exchange
+                # demoram 2-5s pra negociar e a conexão cai antes da auth.
+                # Desabilitar força o paramiko a usar curve25519/ecdh/group14
+                # (rápidos), que a OLT já suporta (ver docs/winbox_vnc.md e memória
+                # do projeto). Restrito a is_zte: outros vendors (ex. Huawei NE8000)
+                # às vezes só oferecem group-exchange-sha256 — desabilitar geral
+                # zera o KEX em comum e quebra a conexão ("no acceptable kex
+                # algorithm").
                 disabled_algorithms={'kex': [
                     'diffie-hellman-group-exchange-sha256',
                     'diffie-hellman-group-exchange-sha1',
                     'diffie-hellman-group16-sha512',
                     'diffie-hellman-group18-sha512',
-                ]},
+                ]} if is_zte else None,
             )
             client.get_transport().set_keepalive(10)
             print(f"✅ Conectado!")
