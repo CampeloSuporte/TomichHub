@@ -4511,13 +4511,11 @@ def validar_rpki(bloco, asn):
             }
 
     except requests.exceptions.Timeout:
-        print(f"⏱️ Timeout")
-        return {
-            'valido': False,
-            'status': 'Error',
-            'mensagem': 'Timeout ao conectar ao RIPE Stat',
-            'detalhes': 'Conexão com RIPE Stat expirou. Tente novamente mais tarde.'
-        }
+        # Timeout do RIPE Stat costuma ser pontual/transitório — retornar erro
+        # direto aqui (como antes) descartava o fallback do Cloudflare RPKI
+        # logo abaixo, que resolveria a mesma consulta sem esperar a próxima
+        # rodada agendada. Cai no fallback como qualquer outra exceção.
+        print(f"⏱️ Timeout — tentando fallback")
     except Exception as e:
         print(f"❌ {type(e).__name__}: {e}")
 
