@@ -29,16 +29,12 @@ def _normalizar_telefone(telefone: str) -> str | None:
         digitos = digitos[2:]
     if len(digitos) not in (10, 11):
         return None
-    local = digitos[2:]
-    # Plano de numeração ANATEL: fixo tem 8 dígitos e começa com 2-5; a faixa
-    # 6-9 é exclusiva de celular (que tem 9 dígitos, sempre com o 9 na
-    # frente). Um local de 8 dígitos começando com 6-9 tem a forma de fixo
-    # mas o prefixo de celular — quase sempre é um celular com o 9 faltando
-    # no cadastro (typo/truncamento), não um fixo válido. Rejeitar aqui
-    # evita mandar um número que não existe pra Evolution API e receber um
-    # 400 sem explicação nenhuma.
-    if len(local) == 8 and local[0] in '6789':
-        return None
+    # Um local de 8 dígitos começando com 6-9 tem a forma de fixo mas o
+    # prefixo de celular — antes isso era rejeitado aqui por presumir "9
+    # faltando no cadastro", mas alguns celulares BR (contas antigas/
+    # portadas) existem no WhatsApp exatamente nesse formato de 8 dígitos.
+    # Deixa passar; enviar_mensagem() já tenta a variante com/sem o 9º
+    # dígito via _alternar_nono_digito() se a Evolution API rejeitar.
     return f'55{digitos}@s.whatsapp.net'
 
 
