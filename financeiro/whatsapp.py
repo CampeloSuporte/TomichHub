@@ -80,19 +80,64 @@ def testar_conexao() -> tuple[bool, str]:
         return False, str(e)
 
 
+def _numero_nao_existe(resp) -> bool:
+    """Detecta o 400 específico da Evolution API que indica número inexistente
+    no WhatsApp: {"response": {"message": [{"exists": false, ...}]}}."""
+    if resp is None or resp.status_code != 400:
+        return False
+    try:
+        itens = resp.json().get('response', {}).get('message', [])
+        return any(item.get('exists') is False for item in itens)
+    except Exception:
+        return False
+
+
+def _alternar_nono_digito(jid: str) -> str | None:
+    """Alterna a presença do 9º dígito num JID celular BR (55+DDD+[9]+8 dígitos).
+    Números BR podem existir no WhatsApp com ou sem esse dígito (contas
+    antigas/portadas) e quem cadastrou o telefone do cliente não tem como
+    saber qual variante está registrada. Retorna None se o JID não tiver
+    essa forma (nada a alternar)."""
+    if '@' not in jid:
+        return None
+    numero, dominio = jid.split('@', 1)
+    if not numero.startswith('55') or not numero.isdigit():
+        return None
+    ddd = numero[2:4]
+    local = numero[4:]
+    if len(local) == 9 and local[0] == '9':
+        return f'55{ddd}{local[1:]}@{dominio}'
+    if len(local) == 8:
+        return f'55{ddd}9{local}@{dominio}'
+    return None
+
+
 def enviar_mensagem(jid: str, texto: str) -> tuple[bool, str]:
     session, base_url, instance = evolution_client()
     if not session:
         return False, 'Evolution API não configurada.'
-    try:
-        r = session.post(
+
+    def _post(numero):
+        return session.post(
             f'{base_url}/message/sendText/{instance}',
-            json={'number': jid, 'text': texto},
+            json={'number': numero, 'text': texto},
             timeout=20,
         )
+
+    try:
+        r = _post(jid)
         r.raise_for_status()
         return True, r.json().get('key', {}).get('id', 'enviado')
     except requests.HTTPError as e:
+        jid_alt = _alternar_nono_digito(jid) if _numero_nao_existe(r) else None
+        if jid_alt:
+            logger.warning('WhatsApp financeiro: %s não existe — tentando variante do 9º dígito: %s', jid, jid_alt)
+            try:
+                r2 = _post(jid_alt)
+                r2.raise_for_status()
+                return True, r2.json().get('key', {}).get('id', 'enviado')
+            except Exception as e2:
+                logger.error('WhatsApp financeiro: variante %s também falhou: %s', jid_alt, e2)
         # A Evolution API normalmente devolve um corpo explicando a rejeição
         # (ex: número não existe no WhatsApp) — sem capturar r.text, só
         # sobra "400 Bad Request" genérico e a causa real fica invisível.

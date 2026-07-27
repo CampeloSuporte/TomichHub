@@ -240,6 +240,35 @@ def _ws_send_inbox(data: dict):
         logger.warning(f"WebSocket send falhou (inbox): {e}")
 
 
+def _numero_nao_existe(response) -> bool:
+    """Detecta o 400 específico da Evolution API que indica número inexistente
+    no WhatsApp: {"response": {"message": [{"exists": false, ...}]}}."""
+    if response is None or response.status_code != 400:
+        return False
+    try:
+        itens = response.json().get('response', {}).get('message', [])
+        return any(item.get('exists') is False for item in itens)
+    except Exception:
+        return False
+
+
+def _alternar_nono_digito(jid: str) -> Optional[str]:
+    """Alterna a presença do 9º dígito num JID celular BR (55+DDD+[9]+8 dígitos).
+    Retorna None se o JID não tiver essa forma (nada a alternar)."""
+    if '@' not in jid:
+        return None
+    numero, dominio = jid.split('@', 1)
+    if not numero.startswith('55') or not numero.isdigit():
+        return None
+    local = numero[4:]  # após 55 + DDD (2 dígitos)
+    ddd = numero[2:4]
+    if len(local) == 9 and local[0] == '9':
+        return f'55{ddd}{local[1:]}@{dominio}'
+    if len(local) == 8:
+        return f'55{ddd}9{local}@{dominio}'
+    return None
+
+
 class EvolutionAPIClient:
     """Cliente para Evolution API v2"""
 
@@ -353,20 +382,44 @@ class EvolutionAPIClient:
         everyone=True: passa os números no campo 'mentioned' (todos recebem notificação)
         sem poluir o corpo da mensagem com @número.
         """
+        body = {"number": jid, "text": text}
+        if everyone and jid.endswith("@g.us"):
+            numbers = self.get_group_participants(jid)
+            if numbers:
+                body["mentioned"] = numbers
+            else:
+                body["everyOne"] = True
+        elif mentions:
+            body["mentioned"] = mentions
         try:
-            body = {"number": jid, "text": text}
-            if everyone and jid.endswith("@g.us"):
-                numbers = self.get_group_participants(jid)
-                if numbers:
-                    body["mentioned"] = numbers
-                else:
-                    body["everyOne"] = True
-            elif mentions:
-                body["mentioned"] = mentions
             r = self._post(f"/message/sendText/{self.instance}", body)
             r.raise_for_status()
             msg_id = r.json().get("key", {}).get("id") or ""
             return True, msg_id
+        except requests.HTTPError as e:
+            # BR: alguns números existem no WhatsApp só com o nono dígito e
+            # outros só sem ele (contas antigas/portadas) — quem cadastrou o
+            # contato não tem como saber qual variante está registrada. A
+            # Evolution API responde 400 com "exists": false quando o JID
+            # exato não existe; nesse caso tenta a variante alternada do 9º
+            # dígito antes de desistir, em vez de forçar o usuário a
+            # descobrir manualmente.
+            jid_alt = _numero_nao_existe(e.response) and _alternar_nono_digito(jid)
+            if jid_alt:
+                logger.warning(
+                    f"Envio p/ {jid} recusado (número não existe) — tentando variante do 9º dígito: {jid_alt}"
+                )
+                try:
+                    body["number"] = jid_alt
+                    r2 = self._post(f"/message/sendText/{self.instance}", body)
+                    r2.raise_for_status()
+                    msg_id = r2.json().get("key", {}).get("id") or ""
+                    return True, msg_id
+                except Exception as e2:
+                    logger.error(f"Erro ao enviar texto para {jid} (variante {jid_alt} também falhou): {e2}")
+                    return False, ""
+            logger.error(f"Erro ao enviar texto para {jid}: {e}")
+            return False, ""
         except Exception as e:
             logger.error(f"Erro ao enviar texto para {jid}: {e}")
             return False, ""
