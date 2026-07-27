@@ -509,5 +509,35 @@ e a cobrança saía sem nenhuma indicação de qual serviço/produto estava send
 
 ---
 
-**Última atualização:** 16/06/2026
+## Cobrança via WhatsApp — Número BR com/sem o Nono Dígito (2026-07-27)
+
+**Arquivos:** `financeiro/whatsapp.py`, `atendimento/services.py`
+
+### "❌ Bad Request... exists: false" ao enviar cobrança
+
+**Sintoma:** `enviar_mensagem()` retornava 400 da Evolution API com corpo
+`{"response":{"message":[{"jid":"...","exists":false,...}]}}` — a API confirma que aquele JID
+específico não existe no WhatsApp.
+
+**Causa raiz:** números de celular BR podem existir no WhatsApp **com ou sem** o 9º dígito
+(contas antigas/portadas mantêm o formato de 8 dígitos no local, mesmo com o plano de numeração
+atual exigindo 9). Quem cadastra o telefone do cliente não tem como saber qual variante está
+registrada, e o código sempre mandava o JID exatamente como digitado. Caso real: cliente **ALTA
+RADIO LTDA**, contato "Wiler" — cadastrado como `5534997265656` (com 9), mas só existe no WhatsApp
+como `553497265656` (sem 9); confirmado consultando `/chat/whatsappNumbers/{instance}` da própria
+Evolution API.
+
+**Correção:**
+- `enviar_mensagem()` (financeiro) e `EvolutionAPIClient.send_text()` (atendimento) agora detectam
+  esse 400 específico (`exists: false`) e tentam automaticamente a variante alternada do 9º dígito
+  (`_alternar_nono_digito()`) antes de desistir.
+- `_normalizar_telefone()` tinha uma segunda trava que **piorava** o mesmo problema: rejeitava de
+  propósito (retornava `None` → "Telefone inválido") qualquer celular de 8 dígitos começando com
+  6-9, presumindo que o 9 estava faltando por erro de digitação. Só que esse é exatamente o
+  formato real e válido do número acima — a rejeição bloqueava o envio antes mesmo de tentar.
+  Removida: agora o número passa e o retry acima resolve qual variante enviar.
+
+---
+
+**Última atualização:** 27/07/2026
 **Versão:** 2.0 (com recorrências e privacidade)

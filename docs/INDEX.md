@@ -2,6 +2,31 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 18 — 27/07/2026: Correções — KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI
+
+**O que foi diagnosticado e corrigido?**
+- ✅ Backup falhando com `Incompatible ssh peer (no acceptable kex algorithm)` num Huawei NE8000
+  M8 (roteador de borda/BGP) — o disable de KEX pesado, pensado só pra OLTs ZTE de CPU fraca,
+  estava sendo aplicado pra todos os fabricantes e zerava o KEX em comum com esse equipamento.
+  Restrito à flag `is_zte`.
+- ✅ Cobrança via WhatsApp rejeitada pela Evolution API (`exists: false`) — número de celular BR
+  cadastrado com o 9º dígito só existe no WhatsApp sem ele (conta antiga/portada). Envio agora
+  tenta a variante alternada automaticamente; removida uma trava que rejeitava esse formato de
+  número antes mesmo de tentar enviar.
+- ✅ Validação RPKI marcando bloco como erro num timeout pontual do RIPE Stat, sem tentar o
+  fallback Cloudflare RPKI que já existe no código — corrigido pra cair no fallback como qualquer
+  outra falha da fonte primária.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[backup_automatico.md](backup_automatico.md)** | Seção "KEX para equipamentos de CPU limitada" |
+| **[FINANCEIRO.md](FINANCEIRO.md)** | Seção "Cobrança via WhatsApp — Número BR com/sem o Nono Dígito" |
+| **[RPKI_IRR.md](RPKI_IRR.md)** | Novo — validação RPKI/IRR completa + fix do timeout |
+
+---
+
 ### Sessão 17 — 26/07/2026: Geolocalização de IP — Múltiplos Blocos/Localizações no Geofeed
 
 **O que foi implementado?**

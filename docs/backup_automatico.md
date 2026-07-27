@@ -230,11 +230,19 @@ usado em `consumers.py` para a detecção de fabricante do terminal interativo.
 
 ### KEX para equipamentos de CPU limitada (ZTE etc.)
 
-A conexão `paramiko.SSHClient().connect()` usada pelo backup agora passa
+A conexão `paramiko.SSHClient().connect()` usada pelo backup passa
 `disabled_algorithms={'kex': [...]}` desabilitando os KEX pesados (`group-exchange-sha256/sha1`,
 `group16-sha512`, `group18-sha512`), forçando o paramiko a negociar `curve25519`/`ecdh`/`group14`
 (rápidos, suportados por qualquer servidor SSH2 moderno). Mesmo problema e mesma causa raiz do fix
 de KEX do terminal interativo — ver [terminal_ssh.md](terminal_ssh.md).
+
+**Correção (2026-07-27):** esse disable era aplicado **para todos os fabricantes**, não só ZTE.
+Um Huawei NE8000 M8 (roteador de borda/BGP) só oferece `diffie-hellman-group-exchange-sha256` como
+KEX — desabilitar esse algoritmo pra todo mundo zerava o KEX em comum com esse equipamento e o
+backup falhava com `Incompatible ssh peer (no acceptable kex algorithm)` antes mesmo da
+autenticação. Agora o disable só é aplicado quando `is_zte` (a flag já calculada logo acima, pela
+mesma detecção combinada de fabricante). Huawei, Cisco, A10, MikroTik etc. usam a lista completa de
+KEX do paramiko.
 
 ---
 

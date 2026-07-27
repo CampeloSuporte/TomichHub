@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-27 (Correções: KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI)
+
+### Corrigido
+
+- **KEX SSH do backup restrito ao ZTE** (`clientes/views.py` — `realizar_backup`): o disable de
+  `group-exchange-sha256/sha1`/`group16-sha512`/`group18-sha512` (pensado só pra CPU embarcada
+  fraca de OLTs ZTE) era aplicado pra **todos** os fabricantes. Um Huawei NE8000 M8 só oferece
+  `group-exchange-sha256` como KEX — desabilitar geral zerava o KEX em comum e o backup falhava
+  com `Incompatible ssh peer (no acceptable kex algorithm)`. Restrito à flag `is_zte`. Ver
+  `docs/backup_automatico.md`.
+- **Cobrança WhatsApp com número BR sem o nono dígito** (`financeiro/whatsapp.py`,
+  `atendimento/services.py`): números de celular BR podem existir no WhatsApp com ou sem o 9º
+  dígito (contas antigas/portadas) e a Evolution API rejeitava com 400 `exists: false` sem nenhuma
+  tentativa de variante. `_normalizar_telefone()` ainda rejeitava de propósito (`None`) o formato
+  de 8 dígitos, bloqueando o número correto antes mesmo do envio. Agora o envio tenta
+  automaticamente a variante alternada do 9º dígito. Ver `docs/FINANCEIRO.md`.
+- **Timeout do RIPE Stat pulava o fallback RPKI** (`clientes/views.py` — `validar_rpki`): timeout
+  na fonte primária (RIPE Stat) retornava erro na hora em vez de cair no fallback Cloudflare RPKI
+  que já existe no código — um timeout pontual bastava pra marcar o bloco como erro sem tentar a
+  segunda fonte. Ver `docs/RPKI_IRR.md` (novo).
+
+---
+
 ## [Não publicado] — 2026-07-26 (Geolocalização de IP — Múltiplos Blocos/Localizações no Geofeed)
 
 ### Adicionado
