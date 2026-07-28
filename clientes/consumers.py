@@ -2021,6 +2021,21 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 from urllib.parse import urlparse as _up
                 target_host = _up(target_host).hostname
 
+            # Mesmo esquema de isolamento de cookies do proxy HTTP (views.py
+            # proxy_web_acesso): browser guarda cookies do device como
+            # "a{id}_NAME=value". Sem repassar o cookie de sessão (ex.
+            # PVEAuthCookie do Proxmox), o upgrade da WebSocket é rejeitado
+            # e o noVNC recebe "Falha ao conectar-se ao servidor".
+            _django_cookies = {'sessionid', 'csrftoken', 'messages'}
+            cookie_prefix   = f'a{acesso_id}_'
+            filtered_cookie_parts = []
+            for name, val in self.scope.get('cookies', {}).items():
+                if name in _django_cookies:
+                    continue
+                if name.startswith(cookie_prefix):
+                    filtered_cookie_parts.append(f'{name[len(cookie_prefix):]}={val}')
+            forward_cookie = '; '.join(filtered_cookie_parts)
+
             try:
                 is_private = ipaddress.ip_address(target_host).is_private
             except ValueError:
@@ -2054,7 +2069,8 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
             raw_sock, leftover = self._ws_handshake(
                 raw_sock, target_host, porta, full_path,
-                subprotocols=subprotocols or ['binary']
+                subprotocols=subprotocols or ['binary'],
+                cookie=forward_cookie,
             )
             self.ws_sock = raw_sock
 
@@ -2121,7 +2137,7 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     # ── Helpers WebSocket protocol ────────────────────────────────────────────
 
     @staticmethod
-    def _ws_handshake(sock, host, port, path_qs, subprotocols=None):
+    def _ws_handshake(sock, host, port, path_qs, subprotocols=None, cookie=None):
         import base64, os as _os
         key = base64.b64encode(_os.urandom(16)).decode()
         lines = [
@@ -2134,6 +2150,8 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         ]
         if subprotocols:
             lines.append(f'Sec-WebSocket-Protocol: {", ".join(subprotocols)}')
+        if cookie:
+            lines.append(f'Cookie: {cookie}')
         lines += ['', '']
         sock.sendall('\r\n'.join(lines).encode())
 
