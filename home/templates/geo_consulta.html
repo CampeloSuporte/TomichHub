@@ -359,18 +359,6 @@
           </div>
           <div class="d-flex flex-wrap gap-2" id="cor-destinos">
             <label class="cor-dest-label">
-              <input type="checkbox" value="maxmind" checked style="accent-color:#b464ff">
-              <i class="fas fa-map-marker-alt" style="color:#b464ff;font-size:.72rem"></i>
-              <span>MaxMind Geo</span>
-              <span class="cor-dest-tag" style="--tc:180,100,255">Localização</span>
-            </label>
-            <label class="cor-dest-label" onclick="toggleOrgNome(this)">
-              <input type="checkbox" value="maxmind_org" checked style="accent-color:#b464ff">
-              <i class="fas fa-building" style="color:#b464ff;font-size:.72rem"></i>
-              <span>MaxMind ISP/Org</span>
-              <span class="cor-dest-tag" style="--tc:180,100,255">Organização</span>
-            </label>
-            <label class="cor-dest-label">
               <input type="checkbox" value="lacnic" checked style="accent-color:#00c864">
               <i class="fas fa-envelope" style="color:#00c864;font-size:.72rem"></i>
               <span>LACNIC</span>
@@ -390,32 +378,9 @@
             </label>
           </div>
 
-          <!-- Campos extras MaxMind ISP/Org -->
-          <div id="cor-org-extra" class="mt-3">
-            <div class="row g-2">
-              <div class="col-8">
-                <label class="form-label" style="font-size:.78rem;color:rgba(88,166,255,.4)">
-                  <i class="fas fa-building me-1"></i>Nome correto do ISP / Organização
-                </label>
-                <input id="cor-org-nome" type="text" class="form-control"
-                  placeholder="Ex: Conecta ISP Ltda"
-                  style="font-size:.88rem">
-              </div>
-              <div class="col-4">
-                <label class="form-label" style="font-size:.78rem;color:rgba(88,166,255,.4)">Tipo de correção</label>
-                <select id="cor-correction-type" class="form-select" style="font-size:.85rem">
-                  <option value="Both" selected>ISP + Org (Both)</option>
-                  <option value="ISP">Apenas ISP</option>
-                  <option value="Organization">Apenas Org</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
           <div style="font-size:.71rem;color:#444;margin-top:8px">
-            MaxMind Geo: corrige localização &nbsp;·&nbsp;
-            MaxMind ISP/Org: corrige nome do provedor &nbsp;·&nbsp;
-            LACNIC/ARIN: e-mail via SMTP &nbsp;·&nbsp;
+            LACNIC/ARIN/IPligence: e-mail via SMTP &nbsp;·&nbsp;
+            MaxMind/ipinfo.io/DB-IP/IP2Location: portais manuais abaixo &nbsp;·&nbsp;
             Geofeed RFC 8805 gerado sempre
           </div>
         </div>
@@ -787,16 +752,12 @@ function geoAbrirCorrecao() {
     }
     document.getElementById('cor-lat').value      = lat;
     document.getElementById('cor-lon').value      = lon;
-    document.getElementById('cor-org-nome').value = c.org || c.isp || '';
 
     // Pre-seleciona destinos pelo pais
     const LACNIC_PAISES = new Set(['BR','AR','CL','CO','PE','VE','UY','BO','EC','PY','GY','SR']);
     const pais = (c.pais_code || '').toUpperCase();
     document.querySelector('#cor-destinos input[value="lacnic"]').checked = LACNIC_PAISES.has(pais);
     document.querySelector('#cor-destinos input[value="arin"]').checked   = ['US','CA'].includes(pais);
-    // Mostra/oculta campos ISP/Org conforme checkbox
-    const mmOrgCk = document.querySelector('#cor-destinos input[value="maxmind_org"]');
-    document.getElementById('cor-org-extra').style.display = mmOrgCk && mmOrgCk.checked ? '' : 'none';
 
     document.getElementById('cor-feedback').style.display = 'none';
     const btn = document.getElementById('cor-btn-enviar');
@@ -824,8 +785,6 @@ async function geoGerarGeofeed() {
         lon:              document.getElementById('cor-lon').value,
         email_contato:    emailContato,
         destinos,
-        org_nome:         document.getElementById('cor-org-nome').value.trim(),
-        correction_type:  document.getElementById('cor-correction-type').value,
     };
 
     const btn = document.getElementById('cor-btn-enviar');
@@ -965,14 +924,6 @@ async function geoGerarGeofeed() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-file-code me-1"></i> Tentar novamente';
     }
-}
-
-function toggleOrgNome(label) {
-    // Pequeno delay para deixar o checkbox mudar de estado
-    setTimeout(() => {
-        const ck = label.querySelector('input[type=checkbox]');
-        document.getElementById('cor-org-extra').style.display = ck.checked ? '' : 'none';
-    }, 10);
 }
 
 function escHtml(s) {

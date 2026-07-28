@@ -917,15 +917,14 @@ def geo_consulta_buscar(request):
 @login_required(login_url='login')
 @admin_required
 def geo_atualizar(request):
-    """Gera Geofeed RFC 8805, envia formulario MaxMind e e-mails para RIRs."""
+    """Gera Geofeed RFC 8805 e envia e-mails de correcao para RIRs/bancos parceiros."""
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'erro': 'Metodo nao permitido'}, status=405)
 
-    import json as _json, re as _re, smtplib
+    import json as _json, smtplib
     from datetime import date
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
-    import requests as req_lib
     from clientes.models import ConfiguracaoSistema
 
     try:
@@ -964,103 +963,6 @@ def geo_atualizar(request):
 
     enviados = []
     erros    = []
-
-    # ── Helper: extrai CSRF e faz POST em formulario MaxMind ─────────────────
-    MM_UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0'
-    MM_CSRF_PATS = [
-        r'<input[^>]+name=["\']csrf_token["\'][^>]+value=["\']([^"\']+)',
-        r'<input[^>]+value=["\']([^"\']+)["\'][^>]+name=["\']csrf_token["\']',
-        r'name=["\']csrf_token["\'][^>]*value=["\']([^"\']+)',
-    ]
-
-    def _mm_get_csrf(url):
-        s = req_lib.Session()
-        rg = s.get(url, timeout=15, headers={'User-Agent': MM_UA})
-        csrf = ''
-        for pat in MM_CSRF_PATS:
-            m = _re.search(pat, rg.text, _re.I)
-            if m:
-                csrf = m.group(1)
-                break
-        return s, csrf
-
-    def _mm_post(session, url, data):
-        return session.post(url, data=data, timeout=35,
-            headers={'Referer': url, 'User-Agent': MM_UA, 'Origin': 'https://www.maxmind.com',
-                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'},
-            allow_redirects=True)
-
-    def _mm_resultado(r, label):
-        txt = r.text.lower()
-        if r.status_code in (200, 201):
-            return {'ok': True,  'info': 'Aguardando confirmacao por e-mail'}
-        elif 'already submitted' in txt:
-            return {'ok': True,  'info': 'Ja enviado anteriormente (aguarde 2 semanas)'}
-        else:
-            import html as _html
-            errs = _re.findall(
-                r'class="[^"]*(?:invalid-feedback|field-error|alert-danger)[^"]*"[^>]*>\s*([^<]{4,200})',
-                r.text, _re.I)
-            det = '; '.join(e.strip() for e in errs[:2]) if errs else ''
-            return {'ok': False, 'erro': f'HTTP {r.status_code}' + (f': {_html.unescape(det)}' if det else '')}
-
-    # ── MaxMind: correcao de geolocalizacao ───────────────────────────────────
-    if 'maxmind' in destinos_sel:
-        try:
-            mm_url = 'https://www.maxmind.com/en/geoip-location-correction'
-            sess, csrf = _mm_get_csrf(mm_url)
-            fd = {
-                'ip_address':    prefixo,
-                'country':       pais,
-                'region':        '',   # select dinamico - nao enviar valor invalido
-                'city':          cidade,
-                'postal_code':   '',
-                'email_address': email_contato,
-                'other':         (f'Network: {prefixo}. '
-                                  + (f'Org: {org}. ' if org else '')
-                                  + (f'Coords: {lat},{lon}' if lat and lon else '')).strip(),
-                'certification': '1',
-            }
-            if csrf:
-                fd['csrf_token'] = csrf
-            res = _mm_resultado(_mm_post(sess, mm_url, fd), 'MaxMind Geo')
-            if res['ok']:
-                enviados.append({'label': 'MaxMind Geo', 'tipo': 'web',
-                                 'info': res['info'], 'email_confirmado': False})
-            else:
-                erros.append({'label': 'MaxMind Geo', 'erro': res['erro']})
-        except Exception as e:
-            erros.append({'label': 'MaxMind Geo', 'erro': str(e)})
-
-    # ── MaxMind: correcao de ISP / Organizacao ────────────────────────────────
-    if 'maxmind_org' in destinos_sel:
-        try:
-            org_nome  = body.get('org_nome', '').strip() or org
-            corr_type = body.get('correction_type', 'Both').strip() or 'Both'
-            if not org_nome:
-                erros.append({'label': 'MaxMind ISP/Org', 'erro': 'Nome da organizacao nao informado'})
-            else:
-                mm_url2 = 'https://www.maxmind.com/en/geoip-isp-org-correction'
-                sess2, csrf2 = _mm_get_csrf(mm_url2)
-                fd2 = {
-                    'ip_addresses':    prefixo,
-                    'correction_type': corr_type,
-                    'isp_org':         org_nome,
-                    'email_address':   email_contato,
-                    'other':           f'Network: {prefixo}.',
-                    'certification':   '1',
-                }
-                if csrf2:
-                    fd2['csrf_token'] = csrf2
-                res2 = _mm_resultado(_mm_post(sess2, mm_url2, fd2), 'MaxMind ISP/Org')
-                if res2['ok']:
-                    enviados.append({'label': 'MaxMind ISP/Org', 'tipo': 'web',
-                                     'info': res2['info'], 'email_confirmado': False,
-                                     'org_nome': org_nome, 'correction_type': corr_type})
-                else:
-                    erros.append({'label': 'MaxMind ISP/Org', 'erro': res2['erro']})
-        except Exception as e:
-            erros.append({'label': 'MaxMind ISP/Org', 'erro': str(e)})
 
     # ── RIRs e bancos de terceiros por e-mail ───────────────────────────────────
     EMAIL_DESTINOS = {
@@ -1144,6 +1046,10 @@ def geo_atualizar(request):
          'desc': 'Formulario "Report wrong location or ISP"', 'cor': '#7ee787'},
         {'nome': 'IP2Location',    'url': 'https://www.ip2location.com/contact',
          'desc': 'Sem formulario dedicado - contatar suporte com evidencias', 'cor': '#f0883e'},
+        {'nome': 'MaxMind Geo',      'url': 'https://www.maxmind.com/en/geoip-location-correction',
+         'desc': 'Formulario de correcao de localizacao', 'cor': '#b464ff'},
+        {'nome': 'MaxMind ISP/Org',  'url': 'https://www.maxmind.com/en/geoip-isp-org-correction',
+         'desc': 'Formulario de correcao de nome do provedor', 'cor': '#b464ff'},
     ]
 
     # ── Salva no historico (somente ASCII no JSONField) ───────────────────────

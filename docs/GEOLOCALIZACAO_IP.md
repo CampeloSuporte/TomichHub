@@ -245,3 +245,25 @@ path('geofeed.csv', geo_geofeed_csv, name='geofeed_csv_publico'),  # -> https://
 `geo_consulta` (a view que monta o contexto da página) passou a usar `reverse('geofeed_csv_publico')`
 em vez de `reverse('geo_geofeed_csv')` para preencher o campo de URL exibido/copiado na tela. A rota
 antiga continua registrada e funcionando — nenhuma URL já publicada no Registro.br/RIPE/LACNIC quebra.
+
+### 5. MaxMind Geo / MaxMind ISP/Org — removida a submissão automática (agora é portal manual)
+
+A automação existente (`geo_atualizar` raspava CSRF do formulário do MaxMind e fazia o POST direto)
+começou a retornar **HTTP 400** em toda submissão, para os dois formulários (Geo e ISP/Org). Reproduzido
+fora do CRM com o mesmo payload exato que o código envia — CSRF extraído corretamente, todos os campos
+batendo com o formulário real (`ip_address`, `country`, `region`, `city`, `postal_code`, `email_address`,
+`other`, `certification`), `country=BR` é opção válida — e ainda assim 400. Não há captcha visível no
+HTML; o mais provável é o MaxMind ter adicionado alguma proteção anti-bot (fingerprint de requisição,
+token gerado via JS no submit) nova o suficiente para não estar documentada.
+
+Não faz sentido tentar contornar uma proteção anti-bot de terceiro — os dois destinos foram convertidos
+de submissão automática (`if 'maxmind' in destinos_sel` / `if 'maxmind_org' in destinos_sel`, helpers
+`_mm_get_csrf`/`_mm_post`/`_mm_resultado`, tudo removido de `home/views.py`) para **portais manuais**,
+tratamento igual ao já dado a DB-IP/IP2Location: entram na lista `portais` apontando para
+`maxmind.com/en/geoip-location-correction` e `.../geoip-isp-org-correction`. Os checkboxes "MaxMind Geo"/
+"MaxMind ISP/Org" e os campos "Nome correto do ISP/Organização"/"Tipo de correção" (só existiam para
+alimentar a submissão automática) saíram de `home/templates/geo_consulta.html`.
+
+A confirmação por e-mail via IMAP (`geo_confirmar_maxmind`, busca `noreply@maxmind.com` na caixa desde a
+data do envio) **continua funcionando normalmente** — não depende de como a correção foi submetida, só
+do registro `CorrecaoGeoIP` já existir.

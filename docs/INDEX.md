@@ -24,6 +24,10 @@ contatar cada banco de terceiros diretamente (ipinfo.io, DB-IP, IPligence, IP2Lo
 - ✅ Nova URL pública limpa `/geofeed.csv` (bug legado de roteamento gerava
   `/homeferramentas/geo/geofeed.csv` — funciona, mas não é o formato esperado para colar no WHOIS); a
   antiga continua ativa, nada quebra.
+- 🐛 **MaxMind Geo/ISP-Org passou a rejeitar submissão automática com HTTP 400** — reproduzido fora do
+  CRM com o mesmo payload exato, sem nenhuma mudança de nossa parte (provável proteção anti-bot nova
+  do MaxMind). Convertido de automação para portal manual, mesmo tratamento do DB-IP/IP2Location; a
+  confirmação por e-mail via IMAP não foi afetada.
 
 **Onde está documentado?**
 

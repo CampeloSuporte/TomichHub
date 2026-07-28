@@ -28,6 +28,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   sucesso mas não persistia a mudança. Causa raiz de um caso real de suporte (bloco `186.65.76.0/22`
   editado para `/24`, continuava publicando `/22` no `geofeed.csv`). Ver `docs/GEOLOCALIZACAO_IP.md`.
 
+### Removido
+
+- **Submissão automática ao MaxMind Geo/ISP-Org** (`home/views.py` — `geo_atualizar`): o formulário do
+  MaxMind passou a rejeitar com HTTP 400 toda submissão automatizada (reproduzido fora do CRM com o
+  mesmo payload, sem mudança de nossa parte — provável proteção anti-bot nova do lado deles). Convertido
+  para portal manual, mesmo tratamento já dado a DB-IP/IP2Location. Confirmação por e-mail via IMAP
+  (`geo_confirmar_maxmind`) não foi afetada. Ver `docs/GEOLOCALIZACAO_IP.md`.
+
 ---
 
 ## [Não publicado] — 2026-07-27 (Correções: KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI)
