@@ -188,6 +188,13 @@ TURN_SECRET = _os.environ.get(
 )
 TURN_TTL    = int(_os.environ.get('TURN_TTL', 12 * 3600))  # validade das credenciais (s)
 
+# ========================================
+# ipinfo.io — Geolocalização de IP (ferramenta Geo em home/views.py)
+# ========================================
+# Sem token, a API responde anônima e com rate limit baixo/compartilhado
+# (facilmente esgotado). Com o token, usa a cota da conta cadastrada.
+IPINFO_TOKEN = _os.environ.get('IPINFO_TOKEN', '0fe64b5d693f45')
+
 # Limites de upload
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB

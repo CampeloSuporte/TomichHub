@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.db.models import Count, Q, Sum
 from datetime import datetime, timedelta
 from clientes.models import (
@@ -677,7 +678,7 @@ def geo_consulta(request):
     from clientes.models import ConfiguracaoSistema
     cfg = ConfiguracaoSistema.get()
     from django.urls import reverse
-    geofeed_url = request.build_absolute_uri(reverse('geo_geofeed_csv'))
+    geofeed_url = request.build_absolute_uri(reverse('geofeed_csv_publico'))
     return render(request, 'geo_consulta.html', {
         'prefixo_inicial': request.GET.get('prefixo', ''),
         'cfg': cfg,
@@ -746,7 +747,11 @@ def geo_consulta_buscar(request):
     # ── Fonte 2: ipinfo.io ───────────────────────────────────────────────────
     def query_ipinfo():
         try:
-            r = req_lib.get(f'https://ipinfo.io/{ip}/json', timeout=TIMEOUT, headers=HEADERS)
+            r = req_lib.get(
+                f'https://ipinfo.io/{ip}/json',
+                params={'token': settings.IPINFO_TOKEN},
+                timeout=TIMEOUT, headers=HEADERS,
+            )
             d = r.json()
             if 'bogon' in d or 'error' in d:
                 msg = d.get('error', {}).get('message', 'bogon/privado') if isinstance(d.get('error'), dict) else 'bogon/privado'
@@ -1057,12 +1062,13 @@ def geo_atualizar(request):
         except Exception as e:
             erros.append({'label': 'MaxMind ISP/Org', 'erro': str(e)})
 
-    # ── RIRs por e-mail ───────────────────────────────────────────────────────
-    RIR_DESTINOS = {
-        'lacnic': {'label': 'LACNIC', 'email': 'hostmaster@lacnic.net'},
-        'arin':   {'label': 'ARIN',   'email': 'hostmaster@arin.net'},
+    # ── RIRs e bancos de terceiros por e-mail ───────────────────────────────────
+    EMAIL_DESTINOS = {
+        'lacnic':    {'label': 'LACNIC',   'email': 'hostmaster@lacnic.net'},
+        'arin':      {'label': 'ARIN',     'email': 'hostmaster@arin.net'},
+        'ipligence': {'label': 'IPligence', 'email': 'sales@ipligence.com'},
     }
-    rir_sel = [k for k in destinos_sel if k in RIR_DESTINOS]
+    rir_sel = [k for k in destinos_sel if k in EMAIL_DESTINOS]
 
     if rir_sel:
         corpo_linhas = [
@@ -1093,7 +1099,7 @@ def geo_atualizar(request):
 
         if not cfg.smtp_host or not cfg.smtp_user:
             for k in rir_sel:
-                erros.append({'label': RIR_DESTINOS[k]['label'], 'erro': 'SMTP nao configurado'})
+                erros.append({'label': EMAIL_DESTINOS[k]['label'], 'erro': 'SMTP nao configurado'})
         else:
             try:
                 with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=30) as server:
@@ -1103,7 +1109,7 @@ def geo_atualizar(request):
                     server.login(cfg.smtp_user, cfg.smtp_pass)
                     remetente = cfg.smtp_from or cfg.smtp_user
                     for chave in rir_sel:
-                        info = RIR_DESTINOS[chave]
+                        info = EMAIL_DESTINOS[chave]
                         try:
                             msg = MIMEMultipart('alternative')
                             msg['Subject']  = f'Geolocation correction request: {prefixo}'
@@ -1119,9 +1125,12 @@ def geo_atualizar(request):
                                           'erro': str(e)})
             except Exception as e:
                 for k in rir_sel:
-                    erros.append({'label': RIR_DESTINOS[k]['label'], 'erro': f'SMTP: {e}'})
+                    erros.append({'label': EMAIL_DESTINOS[k]['label'], 'erro': f'SMTP: {e}'})
 
     # ── Portais para acesso direto ────────────────────────────────────────────
+    # Bancos de geolocalizacao de terceiros (nao tem API de correcao - so
+    # formulario/e-mail manual). O RIR nao consegue corrigi-los; cada um
+    # precisa ser acionado diretamente (orientacao recebida do registro.br).
     portais = [
         {'nome': 'RIPE Database', 'url': 'https://apps.db.ripe.net/',
          'desc': 'Editar inetnum - adicionar atributo geofeed:', 'cor': '#00d9ff'},
@@ -1129,8 +1138,12 @@ def geo_atualizar(request):
          'desc': 'Gerenciar recursos - editar objeto inetnum', 'cor': '#00c864'},
         {'nome': 'ARIN Online',   'url': 'https://account.arin.net/',
          'desc': 'Gerenciar recursos - editar objeto NET', 'cor': '#ffaa00'},
-        {'nome': 'ipinfo.io',     'url': 'https://ipinfo.io/data-correction',
-         'desc': 'Formulario de correcao de dados', 'cor': '#ff6eb4'},
+        {'nome': 'ipinfo.io',      'url': 'https://ipinfo.io/corrections',
+         'desc': 'Formulario de correcao (aceita geofeed tambem)', 'cor': '#ff6eb4'},
+        {'nome': 'DB-IP.com',      'url': 'https://db-ip.com/report/',
+         'desc': 'Formulario "Report wrong location or ISP"', 'cor': '#7ee787'},
+        {'nome': 'IP2Location',    'url': 'https://www.ip2location.com/contact',
+         'desc': 'Sem formulario dedicado - contatar suporte com evidencias', 'cor': '#f0883e'},
     ]
 
     # ── Salva no historico (somente ASCII no JSONField) ───────────────────────
@@ -1267,7 +1280,12 @@ def geo_blocos_salvar(request):
 
         bloco_id = item.get('id')
         if bloco_id:
-            atualizados = GeofeedBloco.objects.filter(id=bloco_id).update(**defaults)
+            try:
+                atualizados = GeofeedBloco.objects.filter(id=bloco_id).update(
+                    prefixo=prefixo, **defaults)
+            except Exception as e:
+                erros.append({'prefixo': prefixo, 'erro': str(e)})
+                continue
             if not atualizados:
                 erros.append({'prefixo': prefixo, 'erro': 'Bloco nao encontrado'})
                 continue
@@ -1543,7 +1561,11 @@ def geo_verificar_aplicacao(request, correcao_id):
 
     def q_ipinfo():
         try:
-            r = req_lib.get(f'https://ipinfo.io/{ip}/json', timeout=TIMEOUT, headers=HEADERS)
+            r = req_lib.get(
+                f'https://ipinfo.io/{ip}/json',
+                params={'token': settings.IPINFO_TOKEN},
+                timeout=TIMEOUT, headers=HEADERS,
+            )
             d = r.json()
             if 'bogon' in d or 'error' in d:
                 return {'fonte': 'ipinfo.io', 'ok': False}
