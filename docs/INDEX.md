@@ -2,6 +2,37 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 19 — 28/07/2026: Geolocalização de IP — Token ipinfo.io, Correção IPligence, Fix Crítico no Geofeed
+
+**Contexto:** caso real de suporte — bloco `186.65.76.0/22` alocado recentemente, geolocalização
+corrigida via MaxMind + Geofeed, mas ainda em país errado em algumas bases. Registro.br orientou a
+contatar cada banco de terceiros diretamente (ipinfo.io, DB-IP, IPligence, IP2Location).
+
+**O que foi implementado/corrigido?**
+- ✅ ipinfo.io autenticado com token próprio (era anônimo — rate limit baixo/compartilhado, causava
+  falhas intermitentes dessa fonte no consenso das 6 fontes)
+- ✅ Correção automática por e-mail para **IPligence** (`sales@ipligence.com`), mesmo fluxo já usado
+  para LACNIC/ARIN — novo checkbox em "Enviar para:"
+- ✅ DB-IP.com e IP2Location pesquisados e adicionados como links manuais (portais) — não
+  automatizados por não terem mecanismo confiável (DB-IP tem formulário mas atrás de anti-bot;
+  IP2Location não tem formulário público de correção)
+- ✅ URL do ipinfo.io corrigida na lista de portais: `/data-correction` (404) → `/corrections`
+  (formulário real, aceita geofeed)
+- 🐛 **Bug crítico corrigido**: `geo_blocos_salvar` não incluía `prefixo` no `.update()` ao editar um
+  bloco existente — editar o prefixo de uma linha já cadastrada retornava sucesso mas não persistia,
+  causa raiz do caso de suporte acima. Dado já errado em produção corrigido direto no banco.
+- ✅ Nova URL pública limpa `/geofeed.csv` (bug legado de roteamento gerava
+  `/homeferramentas/geo/geofeed.csv` — funciona, mas não é o formato esperado para colar no WHOIS); a
+  antiga continua ativa, nada quebra.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[GEOLOCALIZACAO_IP.md](GEOLOCALIZACAO_IP.md)** | Seção "2026-07-28 — Token ipinfo.io, correção automática IPligence, fix crítico no Geofeed" |
+
+---
+
 ### Sessão 18 — 27/07/2026: Correções — KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI
 
 **O que foi diagnosticado e corrigido?**
@@ -715,6 +746,8 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 28/07/2026 | Geolocalização de IP: token ipinfo.io, correção automática IPligence, fix crítico no `geo_blocos_salvar` (prefixo não persistia ao editar), nova URL pública limpa `/geofeed.csv` | GEOLOCALIZACAO_IP.md |
+| 27/07/2026 | Correções: KEX SSH restrito ao ZTE, WhatsApp nono dígito, timeout RPKI cai no fallback | backup_automatico.md, FINANCEIRO.md, RPKI_IRR.md |
 | 26/07/2026 | Geolocalização de IP: novo model `GeofeedBloco` como fonte única do geofeed.csv, card "Blocos do Geofeed" para cadastrar múltiplos prefixos/localizações de uma vez, coluna Postal-Code preenchida | GEOLOCALIZACAO_IP.md |
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
@@ -746,7 +779,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 26/07/2026  
-**Versão:** 2.1  
+**Última atualização:** 28/07/2026  
+**Versão:** 2.2  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

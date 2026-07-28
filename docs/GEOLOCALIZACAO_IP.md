@@ -1,6 +1,7 @@
 # Geolocalização de IP — Consulta, Correção e Geofeed Público (RFC 8805)
 
-**Data de Implementação:** 2026-05-17 (base) · **2026-07-26** (múltiplos blocos/localizações)
+**Data de Implementação:** 2026-05-17 (base) · **2026-07-26** (múltiplos blocos/localizações) ·
+**2026-07-28** (token ipinfo.io, correção IPligence, fix Geofeed)
 **Arquivo principal:** `home/views.py`, `home/templates/geo_consulta.html`
 **Status:** ✅ Produção
 
@@ -170,3 +171,77 @@ Via Django test client (`manage.py shell`), em banco local:
   `geo_atualizar` grava também em `GeofeedBloco`, `geo_geofeed_csv` lê de `GeofeedBloco`.
 - `home/urls.py` — 3 rotas novas (`geo_blocos_listar`, `geo_blocos_salvar`, `geo_blocos_excluir`).
 - `home/templates/geo_consulta.html` — card "Blocos do Geofeed" (tabela editável, JS de carregar/salvar/excluir).
+
+---
+
+## 2026-07-28 — Token ipinfo.io, correção automática IPligence, fix crítico no Geofeed
+
+Motivado por um caso real de suporte: bloco `186.65.76.0/22` alocado recentemente, geolocalização
+corrigida via MaxMind + Geofeed, mas ainda aparecendo em país errado em algumas bases. O Registro.br
+respondeu que a correção de bancos de terceiros precisa ser feita diretamente com cada um (listou
+ipinfo.io, DB-IP, IPligence, IP2Location).
+
+### 1. ipinfo.io autenticado com token
+
+As duas chamadas anônimas a `https://ipinfo.io/{ip}/json` (`query_ipinfo` na busca e `q_ipinfo` na
+verificação de aplicação, `home/views.py`) agora enviam `token=` — sem token, a API responde num rate
+limit baixo e compartilhado globalmente entre todos os usuários anônimos, o que causava falhas
+intermitentes dessa fonte no consenso das 6 fontes.
+
+```python
+IPINFO_TOKEN = _os.environ.get('IPINFO_TOKEN', '<token>')  # crm/settings.py
+```
+
+Testado contra o token real: o endpoint clássico (`ipinfo.io/{ip}/json`) retorna city/region/loc/postal/
+timezone — o endpoint `/lite/` (usado no exemplo de teste do token) só retorna país/ASN, por isso o
+código continua no endpoint clássico.
+
+### 2. Correção automática por e-mail — IPligence
+
+`RIR_DESTINOS` (LACNIC/ARIN) virou `EMAIL_DESTINOS`, com `ipligence: sales@ipligence.com` adicionado —
+mesmo corpo de e-mail em texto (prefixo/país/região/cidade/org/coordenadas) já usado para os RIRs.
+Novo checkbox "IPligence" em **Enviar para:** (`home/templates/geo_consulta.html`), desmarcado por
+padrão (é contato comercial, não registro obrigatório).
+
+DB-IP.com e IP2Location **não** foram automatizados: DB-IP tem formulário dedicado (`db-ip.com/report/`)
+mas atrás de proteção anti-bot (bloqueou até uma checagem simples via `curl`); IP2Location não tem
+formulário público de correção, só contato genérico com e-mail ofuscado. Automatizar contra esses seria
+arriscar reportar "enviado" quando na real falhou silenciosamente — os dois entraram na lista `portais`
+como links manuais, junto com o ipinfo.io (URL corrigida de `/data-correction`, que retorna 404, para
+`/corrections`, o formulário real — que também aceita geofeed).
+
+### 3. Bug corrigido — `geo_blocos_salvar` não atualizava o prefixo
+
+Ao editar uma linha existente em "Blocos do Geofeed" (por exemplo, trocar `186.65.76.0/22` por
+`186.65.76.0/24` na mesma linha) e clicar em salvar, o backend retornava sucesso mas o prefixo **não
+era atualizado no banco** — o dict `defaults` passado para `.update()` no caminho de edição por `id`
+não incluía o campo `prefixo`, só país/região/cidade/postal_code/ativo:
+
+```python
+# Antes (bug)
+atualizados = GeofeedBloco.objects.filter(id=bloco_id).update(**defaults)  # sem prefixo!
+
+# Depois
+atualizados = GeofeedBloco.objects.filter(id=bloco_id).update(prefixo=prefixo, **defaults)
+```
+
+Foi exatamente esse bug que causou o caso de suporte: o operador editou `/22` para `/24` na UI, o
+sistema confirmou "sucesso", mas o `geofeed.csv` público continuou publicando `/22`. Corrigido também
+o dado que já estava errado em produção (registro `GeofeedBloco` id=1).
+
+### 4. Nova URL pública limpa para o Geofeed
+
+`geo_geofeed_csv` é servido sob `/homeferramentas/geo/geofeed.csv` — resultado de um bug legado em
+`crm/urls.py` (`path('home', include('home.urls'))` sem barra, concatenando o prefixo `home` direto
+com as rotas do app sem separador). Essa URL **funciona** (retorna 200), só é feia/não-óbvia para
+colar num campo `geofeed:` de WHOIS. Corrigir o prefixo globalmente foi descartado — afetaria também o
+webhook do WhatsApp do Agent NOC e os links de download de firmware, que podem já estar configurados
+externamente com a URL "quebrada". Em vez disso, `crm/urls.py` ganhou uma rota dedicada:
+
+```python
+path('geofeed.csv', geo_geofeed_csv, name='geofeed_csv_publico'),  # -> https://.../geofeed.csv
+```
+
+`geo_consulta` (a view que monta o contexto da página) passou a usar `reverse('geofeed_csv_publico')`
+em vez de `reverse('geo_geofeed_csv')` para preencher o campo de URL exibido/copiado na tela. A rota
+antiga continua registrada e funcionando — nenhuma URL já publicada no Registro.br/RIPE/LACNIC quebra.

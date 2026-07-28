@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-28 (Geolocalização de IP: token ipinfo.io, correção IPligence, fix Geofeed)
+
+### Adicionado
+
+- **Token de autenticação na ipinfo.io** (`crm/settings.py` — `IPINFO_TOKEN`, `home/views.py` —
+  `query_ipinfo`/`q_ipinfo`): as consultas eram anônimas, sujeitas a rate limit baixo e compartilhado
+  globalmente. Ver `docs/GEOLOCALIZACAO_IP.md`.
+- **Correção automática por e-mail — IPligence** (`home/views.py` — `EMAIL_DESTINOS`,
+  `home/templates/geo_consulta.html`): novo destino de correção de geolocalização, mesmo fluxo já
+  usado para LACNIC/ARIN. DB-IP.com e IP2Location entraram só como links manuais (portais) — não têm
+  mecanismo confiável de automatizar sem risco de falso-positivo. Ver `docs/GEOLOCALIZACAO_IP.md`.
+- **URL pública limpa do Geofeed** (`crm/urls.py` — `/geofeed.csv`): a rota original
+  (`/homeferramentas/geo/geofeed.csv`) funciona mas é resultado de um bug legado de roteamento; a
+  nova rota fica ao lado, sem quebrar a antiga. Ver `docs/GEOLOCALIZACAO_IP.md`.
+
+### Corrigido
+
+- **`geo_blocos_salvar` não atualizava o campo `prefixo` ao editar um bloco existente**
+  (`home/views.py`): o `.update(**defaults)` no caminho de edição por `id` não incluía `prefixo` no
+  dict `defaults` — editar o prefixo de uma linha já cadastrada em "Blocos do Geofeed" retornava
+  sucesso mas não persistia a mudança. Causa raiz de um caso real de suporte (bloco `186.65.76.0/22`
+  editado para `/24`, continuava publicando `/22` no `geofeed.csv`). Ver `docs/GEOLOCALIZACAO_IP.md`.
+
+---
+
 ## [Não publicado] — 2026-07-27 (Correções: KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI)
 
 ### Corrigido
