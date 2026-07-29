@@ -9,12 +9,12 @@ class DrawIOCSPOverrideMiddleware(MiddlewareMixin):
         # Definir CSP que permite Draw.io
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' app.diagrams.net *.diagrams.net cdn.jsdelivr.net; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' app.diagrams.net *.diagrams.net cdn.jsdelivr.net https://challenges.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' fonts.googleapis.com app.diagrams.net *.diagrams.net; "
             "font-src 'self' fonts.gstatic.com app.diagrams.net *.diagrams.net; "
             "img-src 'self' data: https: blob: app.diagrams.net *.diagrams.net; "
-            "connect-src 'self' app.diagrams.net *.diagrams.net cdn.jsdelivr.net; "
-            "frame-src 'self' https://app.diagrams.net https://embed.diagrams.net https://*.diagrams.net; "
+            "connect-src 'self' app.diagrams.net *.diagrams.net cdn.jsdelivr.net https://challenges.cloudflare.com; "
+            "frame-src 'self' https://app.diagrams.net https://embed.diagrams.net https://*.diagrams.net https://challenges.cloudflare.com; "
             "frame-ancestors 'self' https://teams.microsoft.com https://*.cloud.microsoft https://app.diagrams.net https://embed.diagrams.net; "
             "object-src 'none'; "
             "base-uri 'self'; "
