@@ -1,4 +1,6 @@
 import json
+import requests
+from django.conf import settings
 from django.shortcuts import render,redirect,get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -9,6 +11,24 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
 from .models import UsuarioModulo, modulos_habilitados_dict
+
+TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+
+
+def _verificar_turnstile(request):
+    """Valida o token do Cloudflare Turnstile enviado pelo form de login."""
+    token = request.POST.get('cf-turnstile-response')
+    if not token:
+        return False
+    try:
+        resp = requests.post(TURNSTILE_VERIFY_URL, data={
+            'secret': settings.TURNSTILE_SECRET_KEY,
+            'response': token,
+            'remoteip': request.META.get('REMOTE_ADDR'),
+        }, timeout=5)
+        return resp.json().get('success', False)
+    except requests.RequestException:
+        return False
 
 
 def _sincronizar_modulos_usuario(request, usuario):
@@ -116,13 +136,21 @@ def login(request):
         if request.user.is_authenticated:
             return redirect_user_by_role(request.user)
         
-        return render(request, 'login.html')
-    
+        return render(request, 'login.html', {
+            'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
+        })
+
     else:
+        if not _verificar_turnstile(request):
+            messages.error(request, "Verificação de segurança falhou. Tente novamente.")
+            return render(request, 'login.html', {
+                'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
+            })
+
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             auth_login(request, user)
             

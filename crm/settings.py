@@ -188,6 +188,12 @@ TURN_SECRET = _os.environ.get(
 )
 TURN_TTL    = int(_os.environ.get('TURN_TTL', 12 * 3600))  # validade das credenciais (s)
 
+# ========================================
+# Cloudflare Turnstile — captcha da tela de login
+# ========================================
+TURNSTILE_SITE_KEY   = _os.environ.get('TURNSTILE_SITE_KEY', '0x4AAAAAAEA7NkrE4rea0ARo')
+TURNSTILE_SECRET_KEY = _os.environ.get('TURNSTILE_SECRET_KEY', '0x4AAAAAAEA7Nqn2Ua_muMu_sKkd5E03noI')
+
 # Limites de upload
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB

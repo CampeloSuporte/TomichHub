@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'css/css_login.css' %}" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 
@@ -97,6 +98,10 @@
                         <input type="password" id="senha" name="password" placeholder="••••••••••" autocomplete="current-password" required>
                         <div class="field-line"></div>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="cf-turnstile" data-theme="dark" data-sitekey="{{ turnstile_site_key }}"></div>
                 </div>
 
                 <button type="submit" class="btn-login">
