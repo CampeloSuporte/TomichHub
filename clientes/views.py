@@ -3399,7 +3399,7 @@ def exportar_senhas_pdf(request, cliente_id):
     from django.utils import timezone as tz
 
     buf = BytesIO()
-    pagesize = landscape(A4) if incluir_root else A4
+    pagesize = landscape(A4)
     doc = SimpleDocTemplate(
         buf, pagesize=pagesize,
         leftMargin=1.5*cm, rightMargin=1.5*cm,
@@ -3430,12 +3430,15 @@ def exportar_senhas_pdf(request, cliente_id):
     ))
     elements.append(Spacer(1, 0.3*cm))
 
+    # Largura útil da página (A4 paisagem, 1.5cm de margem em cada lado) = 26.7cm.
+    # As larguras abaixo somam menos que isso para evitar que a tabela seja
+    # cortada nas laterais do PDF.
     if incluir_root:
         header     = ['Descrição', 'Host', 'Proto', 'Porta', 'Usuário', 'Senha', 'Senha Root', 'Função']
-        col_widths = [4.0*cm, 4.0*cm, 1.5*cm, 1.3*cm, 3.2*cm, 3.5*cm, 3.5*cm, 3.0*cm]
+        col_widths = [4.2*cm, 4.5*cm, 1.6*cm, 1.3*cm, 3.6*cm, 3.8*cm, 3.8*cm, 3.5*cm]
     else:
         header     = ['Descrição', 'Host', 'Proto', 'Porta', 'Usuário', 'Senha', 'Função']
-        col_widths = [4.5*cm, 4.5*cm, 1.6*cm, 1.4*cm, 3.5*cm, 3.5*cm, 3.5*cm]
+        col_widths = [5.0*cm, 5.5*cm, 1.8*cm, 1.5*cm, 4.3*cm, 4.5*cm, 4.0*cm]
 
     data = [header]
     for ac in acessos:
@@ -3479,6 +3482,52 @@ def exportar_senhas_pdf(request, cliente_id):
     sufixo = '_com_root' if incluir_root else '_sem_root'
     nome_arquivo = f"senhas_{cliente.nome_empresa.replace(' ', '_')[:35]}{sufixo}.pdf"
     response = HttpResponse(buf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+    return response
+
+
+@login_required(login_url='login')
+@login_required
+def exportar_senhas_txt(request, cliente_id):
+    """Gera arquivo .txt com todos os acessos e credenciais do cliente. Apenas superusuários.
+    ?root=1  inclui Senha Root; ?root=0 (padrão) omite."""
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden('Acesso negado.')
+
+    incluir_root = request.GET.get('root', '0') == '1'
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao', 'modelo').order_by('tipo')
+
+    from django.utils import timezone as tz
+
+    tipo_export = 'Com Senha Root' if incluir_root else 'Sem Senha Root'
+    linhas = [
+        'CREDENCIAIS DE ACESSO',
+        f'{cliente.nome_empresa} | CNPJ: {cliente.cnpj or "—"}',
+        f'Gerado em: {tz.localtime(tz.now()).strftime("%d/%m/%Y %H:%M")} | {tipo_export}',
+        '=' * 70,
+        '',
+    ]
+
+    for ac in acessos:
+        linhas.append(f'Descrição : {ac.tipo or "—"}')
+        linhas.append(f'Host      : {ac.host or "—"}')
+        linhas.append(f'Protocolo : {ac.protocolo or "—"}')
+        linhas.append(f'Porta     : {ac.porta if ac.porta else "—"}')
+        linhas.append(f'Usuário   : {ac.usuario or "—"}')
+        linhas.append(f'Senha     : {ac.senha or "—"}')
+        if incluir_root:
+            linhas.append(f'Senha Root: {ac.senha_adm or "—"}')
+        linhas.append(f'Função    : {ac.funcao.descricao if ac.funcao else "—"}')
+        linhas.append('-' * 70)
+
+    conteudo = '\n'.join(linhas) + '\n'
+
+    sufixo = '_com_root' if incluir_root else '_sem_root'
+    nome_arquivo = f"senhas_{cliente.nome_empresa.replace(' ', '_')[:35]}{sufixo}.txt"
+    response = HttpResponse(conteudo, content_type='text/plain; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
     return response
 

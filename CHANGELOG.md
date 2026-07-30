@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-29 (Exportação de Senhas: TXT + fix de corte no PDF)
+
+### Adicionado
+
+- **Exportação de senhas em .txt** (`clientes/views.py` — `exportar_senhas_txt`, rota
+  `/clientes/<id>/senhas/txt/`): mesma regra de permissão (`is_superuser`) e parâmetro `?root=`
+  do PDF, gerando um arquivo de texto plano com um bloco por acesso. Novas opções no dropdown
+  "Exportar Senhas" em `listar.html`. Ver `docs/frontend_acessos.md`.
+
+### Corrigido
+
+- **PDF de senhas cortando nas laterais / nomes não aparecendo** (`clientes/views.py` —
+  `exportar_senhas_pdf`): o modo "Sem Senha Root" usava A4 retrato (18cm úteis) com colunas
+  somando 22,5cm — a tabela ultrapassava a borda direita da página e o ReportLab cortava o
+  conteúdo fora da área visível. Os dois modos (com/sem root) agora usam A4 paisagem (26,7cm
+  úteis) com larguras de coluna recalculadas para caber com folga. Ver `docs/frontend_acessos.md`.
+
+---
+
 ## [Não publicado] — 2026-07-27 (Correções: KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI)
 
 ### Corrigido

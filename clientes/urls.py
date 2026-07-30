@@ -192,6 +192,7 @@ urlpatterns = [
 
     # ── Editor de Topologia de Rede ──────────────────────────────────────
     path('<int:cliente_id>/senhas/pdf/',        views.exportar_senhas_pdf, name='exportar_senhas_pdf'),
+    path('<int:cliente_id>/senhas/txt/',        views.exportar_senhas_txt, name='exportar_senhas_txt'),
     path('<int:cliente_id>/topologia/editor/', views.topologia_editor, name='topologia_editor'),
     path('<int:cliente_id>/topologia/drawio/', views.topologia_drawio, name='topologia_drawio'),
     path('<int:cliente_id>/topologia/dados/', views.topologia_dados, name='topologia_dados'),

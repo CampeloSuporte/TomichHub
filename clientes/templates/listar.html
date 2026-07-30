@@ -43,6 +43,23 @@
                                 <i class="fas fa-key" style="color:#f87171;width:14px;"></i>
                                 Com Senha Root
                             </a>
+                            <div style="height:1px;background:rgba(255,255,255,.06);margin:0 10px;"></div>
+                            <a href="{% url 'exportar_senhas_txt' cliente.id %}?root=0"
+                               style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                                      color:#e2e8f0;font-size:.78rem;text-decoration:none;transition:background .12s;"
+                               onmouseover="this.style.background='rgba(255,255,255,.06)'"
+                               onmouseout="this.style.background='transparent'">
+                                <i class="fas fa-file-alt" style="color:#94a3b8;width:14px;"></i>
+                                TXT — Sem Senha Root
+                            </a>
+                            <a href="{% url 'exportar_senhas_txt' cliente.id %}?root=1"
+                               style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                                      color:#fca5a5;font-size:.78rem;text-decoration:none;transition:background .12s;"
+                               onmouseover="this.style.background='rgba(239,68,68,.08)'"
+                               onmouseout="this.style.background='transparent'">
+                                <i class="fas fa-file-alt" style="color:#f87171;width:14px;"></i>
+                                TXT — Com Senha Root
+                            </a>
                         </div>
                     </div>
                     <style>

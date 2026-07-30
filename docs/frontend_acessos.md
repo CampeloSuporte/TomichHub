@@ -235,32 +235,46 @@ function _gerarSenha(inputId) {
 
 ---
 
-## Exportação de Credenciais em PDF (2026-05-27)
+## Exportação de Credenciais em PDF e TXT (2026-05-27, atualizado 2026-07-29)
 
 ### Botão na interface
 
 Visível apenas para **superusuários** (`is_superuser=True`). Aparece ao lado do nome/CNPJ
-do cliente no cabeçalho da página. Abre um dropdown com duas opções:
+do cliente no cabeçalho da página. Abre um dropdown com quatro opções (PDF e TXT, cada um
+com/sem Senha Root):
 
-| Opção | Parâmetro | Conteúdo | Orientação |
-|---|---|---|---|
-| Sem Senha Root | `?root=0` | Descrição, Host, Proto, Porta, Usuário, Senha, Função | Retrato (A4) |
-| Com Senha Root | `?root=1` | + coluna Senha Root | Paisagem (A4) |
+| Opção | Parâmetro | Conteúdo |
+|---|---|---|
+| PDF — Sem Senha Root | `?root=0` | Descrição, Host, Proto, Porta, Usuário, Senha, Função |
+| PDF — Com Senha Root | `?root=1` | + coluna Senha Root |
+| TXT — Sem Senha Root | `?root=0` | Mesmos campos do PDF, em texto plano |
+| TXT — Com Senha Root | `?root=1` | + Senha Root |
 
-### View
+### Views
 
 ```
 GET /clientes/<id>/senhas/pdf/?root=0|1
+GET /clientes/<id>/senhas/txt/?root=0|1
 ```
 
 - Requer `request.user.is_superuser` — retorna 403 caso contrário
-- Gera PDF via **ReportLab** com tabela de acessos ordenada por tipo
-- Nome do arquivo: `senhas_<NomeCliente>_sem_root.pdf` ou `senhas_<NomeCliente>_com_root.pdf`
+- PDF gerado via **ReportLab** com tabela de acessos ordenada por tipo; TXT é texto plano com
+  um bloco por acesso (`Descrição/Host/Protocolo/Porta/Usuário/Senha[/Senha Root]/Função`)
+- Nome do arquivo: `senhas_<NomeCliente>_sem_root.{pdf,txt}` ou `senhas_<NomeCliente>_com_root.{pdf,txt}`
 
-### Arquivo do nome
+### Correção — PDF cortando nas laterais (2026-07-29)
 
-`clientes/views.py` — função `exportar_senhas_pdf`  
-`clientes/urls.py` — `path('<int:cliente_id>/senhas/pdf/', ..., name='exportar_senhas_pdf')`
+O modo "Sem Senha Root" usava A4 **retrato** (18cm úteis de largura, com margens de 1,5cm)
+com colunas somando **22,5cm** — a tabela ultrapassava a borda direita da página e o
+ReportLab simplesmente cortava host/senha/função fora da área visível. O modo "Com Senha
+Root" já usava paisagem e não tinha esse problema. Correção: os dois modos agora usam A4
+**paisagem** (26,7cm úteis) e as larguras de coluna foram recalculadas para caber com folga
+(26,3cm e 26,6cm respectivamente).
+
+### Arquivos
+
+`clientes/views.py` — funções `exportar_senhas_pdf` e `exportar_senhas_txt`  
+`clientes/urls.py` — `path('<int:cliente_id>/senhas/pdf/', ...)` e `path('<int:cliente_id>/senhas/txt/', ...)`
 
 ---
 
