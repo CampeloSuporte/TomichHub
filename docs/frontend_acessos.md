@@ -1,7 +1,7 @@
 # Frontend — Aba de Acessos
 
 **Arquivos:** `clientes/templates/listar.html`, `templates/modal_acessos.html`, `clientes/views.py`  
-**Atualizado em:** 2026-07-20
+**Atualizado em:** 2026-07-30
 
 ---
 
@@ -10,6 +10,47 @@
 A aba de Acessos exibe todos os `Acesso` do cliente agrupados por função (ex: Roteadores,
 Switches, OLTs). Cada acesso é representado por um card com ações rápidas: terminal, ping,
 editar, duplicar, excluir, Winbox, etc.
+
+---
+
+## Autofill do Chrome nos Campos de Pesquisa — Corrigido em 2026-07-30
+
+### Sintoma
+
+Ao abrir a tela do cliente, o Chrome exibia um dropdown de autofill sugerindo um login salvo
+(usuário/senha) sobre o campo de pesquisa da aba Acessos, oferecendo preencher automaticamente
+com uma credencial de login salva no navegador (relatado em produção com a senha da
+"greentelecom"). O mesmo ocorria no campo de pesquisa de Backups.
+
+### Causa
+
+1. **Campos de busca sem `autocomplete="off"`**: `filtro-acessos-input` (busca de acessos) e
+   `pesquisaBackup` (busca de backups) eram `<input type="text">` simples, sem `autocomplete`
+   nem `name` — o Chrome os classifica heuristicamente como campo de username de um formulário de
+   login e oferece autofill de credenciais salvas para o domínio.
+2. **Origem do login salvo indevidamente**: o formulário de cadastro/edição de Túnel Proxy tem um
+   par de campos "Usuário" (`name="usuario"`) + "Senha" (`type="password" name="senha"`) lado a
+   lado, sem nenhum atributo de autocomplete. Esse é o padrão clássico que o Chrome usa para
+   detectar um formulário de login — ao submeter, o navegador oferece "salvar senha?" e grava a
+   credencial digitada (usuário/servidor + senha) como um login do site. Mesmo problema, em menor
+   grau, nos campos "Usuário" dos modais de Acesso e VPN (que já tinham `autocomplete="new-password"`
+   na senha, mas não no usuário).
+
+### Correção
+
+- `filtro-acessos-input` e `pesquisaBackup`: adicionado `autocomplete="off"` e um `name`
+  dedicado e não ambíguo (`filtro-acessos-nao-preencher` / `pesquisaBackup-nao-preencher`).
+- Túnel Proxy (cadastro e edição, `listar.html`): `usuario` → `autocomplete="off"`, `senha` →
+  `autocomplete="new-password"`.
+- Modais de Acesso/VPN (`modal_acessos.html`): todos os campos `name="usuario"` (cadastro,
+  duplicar, edição, VPN) receberam `autocomplete="off"`.
+
+### Limitação importante
+
+Essas mudanças impedem o Chrome de **voltar a salvar** essas credenciais como login do site, mas
+**não removem** um login já salvo indevidamente em sessões anteriores — o dropdown de autofill
+vai continuar aparecendo em qualquer PC que já tenha essa credencial salva até que o usuário a
+apague manualmente em `chrome://settings/passwords` (buscar pelo domínio do CRM → excluir).
 
 ---
 

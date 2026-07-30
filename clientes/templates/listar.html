@@ -205,7 +205,7 @@
                             <i class="fas fa-search"></i>
                         </span>
                         <input type="text" id="filtro-acessos-input" class="form-control form-control-sm"
-                               placeholder="Nome ou IP..."
+                               placeholder="Nome ou IP..." autocomplete="off" name="filtro-acessos-nao-preencher"
                                style="background:var(--surface);color:var(--text-light);border-color:var(--border);"
                                oninput="filtrarAcessos(this.value)">
                         <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('filtro-acessos-input').value='';filtrarAcessos('');" title="Limpar">
@@ -315,7 +315,7 @@
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button class="icon-btn btn-sm"
-                                                    onclick="abrirWebAcesso({{ acesso.id }}, '{{ acesso.host }}', '{{ acesso.porta }}')"
+                                                    onclick="abrirWebAcesso({{ acesso.id }}, '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.protocolo|escapejs }}')"
                                                     title="Abrir Interface Web (Proxy)"
                                                     style="color:#58a6ff;">
                                                 <i class="fas fa-display"></i>
@@ -878,13 +878,15 @@
                             <span class="input-group-text" style="background: var(--bg-dark); border: 1px solid var(--primary-green); color: var(--primary-green);">
                                 <i class="fas fa-search"></i>
                             </span>
-                            <input 
-                                type="text" 
-                                id="pesquisaBackup" 
-                                class="form-control" 
+                            <input
+                                type="text"
+                                id="pesquisaBackup"
+                                name="pesquisaBackup-nao-preencher"
+                                class="form-control"
                                 placeholder="Digite para pesquisar backups por nome do equipamento..."
                                 style="background: var(--bg-dark); border: 1px solid var(--primary-green); color: var(--text-light);"
                                 onkeyup="filtrarBackups(this.value)"
+                                autocomplete="off"
                             >
                             <button 
                                 class="btn btn-outline-secondary" 
@@ -1457,13 +1459,13 @@
                         <div class="col-md-6">
                             <div class="form-group-modal">
                                 <label><span class="label-prefix">&gt;</span> Usuário</label>
-                                <input type="text" name="usuario" class="form-control" placeholder="root" required>
+                                <input type="text" name="usuario" class="form-control" placeholder="root" required autocomplete="off">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-modal">
                                 <label><span class="label-prefix">&gt;</span> Senha</label>
-                                <input type="password" name="senha" class="form-control" required>
+                                <input type="password" name="senha" class="form-control" required autocomplete="new-password">
                             </div>
                         </div>
                     </div>
@@ -1760,13 +1762,13 @@
                         <div class="col-md-6">
                             <div class="form-group-modal">
                                 <label><span class="label-prefix">&gt;</span> Usuário</label>
-                                <input type="text" id="edit_usuario" name="usuario" class="form-control" required>
+                                <input type="text" id="edit_usuario" name="usuario" class="form-control" required autocomplete="off">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-modal">
                                 <label><span class="label-prefix">&gt;</span> Senha</label>
-                                <input type="password" id="edit_senha" name="senha" class="form-control" required>
+                                <input type="password" id="edit_senha" name="senha" class="form-control" required autocomplete="new-password">
                             </div>
                         </div>
                     </div>
@@ -4627,19 +4629,21 @@ function getCsrfToken(){
     let _webAcessoId   = null;
     let _webAcessoHost = null;
 
-    function abrirWebAcesso(acessoId, host, portaOriginal) {
+    function abrirWebAcesso(acessoId, host, portaOriginal, protocolo) {
         const p = parseInt(portaOriginal);
-        let webPorta = 80;
-        let webScheme = 'http';
+        const webPorta = p;
+        let webScheme;
 
-        if ([443, 8443, 4443].includes(p)) {
-            webPorta  = p;
+        // Protocolo salvo no acesso (HTTP/HTTPS) manda — a porta só serve de
+        // fallback para acessos legados sem protocolo HTTP/HTTPS definido.
+        const protocoloLower = (protocolo || '').toLowerCase();
+        if (protocoloLower === 'https') {
             webScheme = 'https';
-        } else if ([80, 8080, 8888, 3000, 8000, 8081, 8082].includes(p)) {
-            webPorta  = p;
+        } else if (protocoloLower === 'http') {
             webScheme = 'http';
+        } else if ([443, 8443, 4443].includes(p)) {
+            webScheme = 'https';
         } else {
-            webPorta  = p;
             webScheme = 'http';
         }
 

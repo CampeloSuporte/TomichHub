@@ -2,6 +2,34 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 19 — 30/07/2026: Fix — Autofill do Chrome Preenchendo Campos de Pesquisa
+
+**O que foi diagnosticado e corrigido?**
+- ✅ Ao entrar na tela do cliente, o Chrome sugeria/preenchia automaticamente logins salvos
+  (ex: senha do relatado "greentelecom") no campo de pesquisa da aba Acessos e no campo de
+  pesquisa de Backups — nenhum dos dois tinha `autocomplete="off"`/`name`, e o Chrome os
+  reconhecia como campo de login.
+- ✅ Causa raiz do login salvo indevidamente: o formulário de cadastro/edição de Túnel Proxy
+  tem um par "Usuário" + "Senha" lado a lado sem nenhum atributo de autocomplete — padrão
+  clássico que faz o Chrome oferecer "salvar senha?" e gravar como login do site. Mesmo problema
+  nos campos "Usuário" dos modais de Acesso/VPN.
+- ℹ️ O Turnstile "marcando sozinho" sem clique no login **não é bug**: é o modo "Managed" do
+  Cloudflare Turnstile passando silenciosamente para sessões que não parecem suspeitas. A
+  validação de segurança real continua no backend (`usuario/views.py` — `_verificar_turnstile`,
+  que confere o token via `siteverify` antes de liberar o login).
+
+**Importante:** a correção evita que o Chrome volte a salvar esses campos como login, mas **não
+apaga** logins já salvos indevidamente — isso precisa ser removido manualmente em
+`chrome://settings/passwords` em cada PC afetado.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[frontend_acessos.md](frontend_acessos.md)** | Seção "Autofill do Chrome nos Campos de Pesquisa" |
+
+---
+
 ### Sessão 18 — 27/07/2026: Correções — KEX SSH do Backup, WhatsApp Nono Dígito, Timeout RPKI
 
 **O que foi diagnosticado e corrigido?**

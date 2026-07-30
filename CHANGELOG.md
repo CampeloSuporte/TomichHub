@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-30 (Fix: Autofill do Chrome nos Campos de Pesquisa)
+
+### Corrigido
+
+- **Chrome preenchendo/sugerindo login automaticamente no campo de pesquisa** (`clientes/templates/listar.html`):
+  os campos de busca da aba Acessos (`filtro-acessos-input`) e de Backups (`pesquisaBackup`) não
+  tinham `autocomplete="off"` nem `name`, e o navegador os reconhecia como campo de login,
+  exibindo sugestões de senhas salvas (ex: relatado em produção com a senha da "greentelecom").
+  Adicionado `autocomplete="off"` e `name` dedicado nos dois campos.
+- **Causa raiz do login salvo indevidamente pelo Chrome** (`clientes/templates/listar.html`,
+  `templates/modal_acessos.html`): o formulário de cadastro/edição de Túnel Proxy tinha um par
+  "Usuário" + "Senha" sem nenhum atributo de autocomplete — padrão que faz o navegador oferecer
+  "salvar senha?" e gravar como login do site. Mesmo ajuste aplicado aos campos "Usuário" dos
+  modais de Acesso/VPN (`autocomplete="off"` no usuário, `autocomplete="new-password"` na senha).
+  Ver `docs/frontend_acessos.md`.
+
+### Observado (não é bug)
+
+- Widget do Cloudflare Turnstile no login passando sem exigir clique: comportamento esperado do
+  modo "Managed" para sessões que não parecem suspeitas. A validação real continua no backend
+  via `siteverify` (`usuario/views.py` — `_verificar_turnstile`).
+
+---
+
 ## [Não publicado] — 2026-07-29 (Exportação de Senhas: TXT + fix de corte no PDF)
 
 ### Adicionado
