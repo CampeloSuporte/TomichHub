@@ -657,8 +657,29 @@ def lg_pesquisa_buscar(request):
 # GEOLOCALIZAÇÃO IP
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Nome completo (sem acento, minusculo) -> sigla UF, para converter estados
+# brasileiros digitados por extenso (ex: "Bahia") em ISO 3166-2 (ex: "BR-BA").
+_BR_UF_POR_NOME = {
+    'acre': 'AC', 'alagoas': 'AL', 'amapa': 'AP', 'amazonas': 'AM',
+    'bahia': 'BA', 'ceara': 'CE', 'distrito federal': 'DF',
+    'espirito santo': 'ES', 'goias': 'GO', 'maranhao': 'MA',
+    'mato grosso': 'MT', 'mato grosso do sul': 'MS', 'minas gerais': 'MG',
+    'para': 'PA', 'paraiba': 'PB', 'parana': 'PR', 'pernambuco': 'PE',
+    'piaui': 'PI', 'rio de janeiro': 'RJ', 'rio grande do norte': 'RN',
+    'rio grande do sul': 'RS', 'rondonia': 'RO', 'roraima': 'RR',
+    'santa catarina': 'SC', 'sao paulo': 'SP', 'sergipe': 'SE',
+    'tocantins': 'TO',
+}
+
+
+def _sem_acentos(texto):
+    import unicodedata
+    nfkd = unicodedata.normalize('NFKD', texto)
+    return ''.join(c for c in nfkd if not unicodedata.combining(c))
+
+
 def _geo_regiao_iso(pais, regiao):
-    """Converte regiao livre (ex: 'SP') para ISO 3166-2 (ex: 'BR-SP')."""
+    """Converte regiao livre (ex: 'SP' ou 'Bahia') para ISO 3166-2 (ex: 'BR-SP', 'BR-BA')."""
     if not (pais and regiao):
         return ''
     pais = pais.strip().upper()
@@ -667,6 +688,10 @@ def _geo_regiao_iso(pais, regiao):
         return f'{pais}-{r.upper()}'
     elif r.upper().startswith(pais + '-'):
         return r.upper()
+    if pais == 'BR':
+        uf = _BR_UF_POR_NOME.get(_sem_acentos(r).lower())
+        if uf:
+            return f'BR-{uf}'
     return r
 
 
@@ -1193,7 +1218,7 @@ def geo_geofeed_csv(request):
         regiao_iso = _geo_regiao_iso(bloco.pais, bloco.regiao)
         linhas.append(f'{bloco.prefixo},{bloco.pais},{regiao_iso},{bloco.cidade},{bloco.postal_code}')
 
-    content = '\n'.join(linhas) + '\n'
+    content = '\r\n'.join(linhas) + '\r\n'
     resp = HttpResponse(content, content_type='text/csv; charset=utf-8')
     resp['Content-Disposition'] = 'inline; filename="geofeed.csv"'
     resp['Cache-Control'] = 'no-cache, no-store, must-revalidate'
