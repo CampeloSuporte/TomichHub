@@ -121,9 +121,22 @@
                        color:rgba(88,166,255,.5)">Registro.br</span>
         </div>
         <p style="font-size:.83rem;color:#aaa;margin-bottom:12px">
-          Arquivo público com todos os prefixos corrigidos, no formato exigido pelo Registro.br.
+          Arquivo público com os prefixos corrigidos, no formato exigido pelo Registro.br.
           Informe esta URL no campo <code style="color:#58a6ff;opacity:.8">geofeed:</code> ao configurar seu bloco IP no Registro.br.
+          <strong style="color:#ffaa00">Importante:</strong> o RIR (LACNIC etc.) rejeita a URL se ela
+          tiver prefixo de outra empresa — cada empresa/recurso deve cadastrar a própria URL abaixo,
+          filtrada, e não a URL "Todos" (que serve pra conferência interna, não pra cadastro no RIR).
         </p>
+
+        <!-- Seletor de empresa -->
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <label style="font-size:.78rem;color:rgba(88,166,255,.6)">Empresa:</label>
+          <select id="geofeed-empresa-select" class="form-control form-control-sm" style="max-width:260px;
+                  background:rgba(0,0,0,.4);border:1px solid rgba(88,166,255,.2);color:#e6edf3"
+                  onchange="geofeedTrocarEmpresa()">
+            <option value="">Todos (não cadastrar no RIR)</option>
+          </select>
+        </div>
 
         <!-- URL do arquivo -->
         <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -181,14 +194,17 @@
           </button>
         </div>
         <p style="font-size:.83rem;color:#aaa;margin-bottom:12px">
-          Cadastre quantos blocos IP e localizações forem necessários — todos entram no
-          <code style="color:#58a6ff;opacity:.8">geofeed.csv</code> público acima.
+          Cadastre quantos blocos IP e localizações forem necessários. Preencha a
+          <strong>Empresa</strong> com o nome do dono do bloco (ex: "INFORLIMA") — isso define em
+          qual URL por empresa, no painel acima, aquele prefixo aparece. Deixe em branco só se o
+          bloco não for usado pra cadastro em nenhum RIR.
         </p>
 
         <div id="geo-blocos-feedback" style="display:none;margin-bottom:10px"></div>
 
         <div class="geo-blocos-grid geo-header">
           <div>Prefixo / Bloco IP</div>
+          <div>Empresa (dono do bloco)</div>
           <div>País</div>
           <div>Região</div>
           <div>Cidade</div>
@@ -505,7 +521,7 @@
 .geo-hist-row:last-child { border-bottom: none; }
 .geo-blocos-grid {
     display: grid;
-    grid-template-columns: 1.4fr .55fr 1fr 1fr 1fr .55fr 78px;
+    grid-template-columns: 1.3fr 1fr .55fr 1fr 1fr 1fr .55fr 78px;
     gap: 6px;
     align-items: center;
 }
@@ -1239,6 +1255,53 @@ function geoVerRespostaModalDados(d) {
 }
 
 // ── Geofeed ──────────────────────────────────────────────────────────────────
+const GEOFEED_URL_TODOS = "{{ geofeed_url }}";
+const GEOFEED_URL_EMPRESA_BASE = "{{ geofeed_url_empresa_base }}";
+
+function geofeedUrlAtual() {
+    const slug = document.getElementById('geofeed-empresa-select').value;
+    return slug ? GEOFEED_URL_EMPRESA_BASE.replace('__SLUG__', slug) : GEOFEED_URL_TODOS;
+}
+
+function geofeedTrocarEmpresa() {
+    const url = geofeedUrlAtual();
+    document.getElementById('geofeed-url').value = url;
+    document.getElementById('geofeed-link').href = url;
+    const wrap = document.getElementById('geofeed-preview-wrap');
+    if (wrap.style.display !== 'none') { wrap.style.display = 'none'; geofeedPreview(); }
+}
+
+function slugifyJs(texto) {
+    return texto.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+        .toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function geofeedAtualizarSeletorEmpresas(blocos) {
+    const select = document.getElementById('geofeed-empresa-select');
+    const atual  = select.value;
+    const vistos = new Map();
+    blocos.forEach(b => {
+        const slug = b.empresa_slug || (b.empresa ? slugifyJs(b.empresa) : '');
+        if (slug) vistos.set(slug, b.empresa);
+    });
+    select.innerHTML = '<option value="">Todos (não cadastrar no RIR)</option>' +
+        Array.from(vistos.entries())
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .map(([slug, nome]) => `<option value="${escHtml(slug)}">${escHtml(nome)}</option>`)
+            .join('');
+    if (vistos.has(atual)) select.value = atual;
+    geofeedTrocarEmpresa();
+}
+
+function geofeedAtualizarSeletorEmpresasDoDom() {
+    const blocos = Array.from(document.querySelectorAll('.geo-blocos-grid.geo-row')).map(r => ({
+        empresa: r.querySelector('.geo-bloco-empresa').value.trim(),
+    }));
+    geofeedAtualizarSeletorEmpresas(blocos);
+}
+
 function copiarGeofeedUrl() {
     const url = document.getElementById('geofeed-url').value;
     navigator.clipboard.writeText(url).then(() => {
@@ -1257,7 +1320,7 @@ async function geofeedPreview() {
     pre.textContent = 'Carregando…';
     wrap.style.display = '';
     try {
-        const r = await fetch('{% url "geo_geofeed_csv" %}');
+        const r = await fetch(geofeedUrlAtual());
         const txt = await r.text();
         pre.textContent = txt;
     } catch(e) {
@@ -1277,6 +1340,8 @@ function geoBlocoLinhaHtml(b) {
     <div class="geo-blocos-grid geo-row" data-row-id="${rid}" data-bloco-id="${b.id || ''}">
       <input type="text" class="form-control geo-bloco-prefixo" placeholder="200.100.50.0/24"
         value="${escHtml(b.prefixo || '')}" style="font-family:monospace">
+      <input type="text" class="form-control geo-bloco-empresa" placeholder="Ex: INFORLIMA"
+        value="${escHtml(b.empresa || '')}">
       <input type="text" class="form-control geo-bloco-pais" maxlength="2" placeholder="BR"
         value="${escHtml(b.pais || '')}" style="text-transform:uppercase;font-family:monospace">
       <input type="text" class="form-control geo-bloco-regiao" placeholder="SP"
@@ -1308,6 +1373,7 @@ async function geoBlocosCarregar() {
         body.innerHTML = resp.blocos.length
             ? resp.blocos.map(geoBlocoLinhaHtml).join('')
             : '<span style="color:#555;font-size:.83rem">Nenhum bloco cadastrado ainda.</span>';
+        geofeedAtualizarSeletorEmpresas(resp.blocos);
     } catch (e) {
         body.innerHTML = `<span style="color:#e06060;font-size:.83rem">Erro ao carregar: ${e.message}</span>`;
     }
@@ -1342,6 +1408,7 @@ async function geoBlocoSalvar(rowId) {
     const item = {
         id:          row.dataset.blocoId || null,
         prefixo:     prefixo.value.trim(),
+        empresa:     row.querySelector('.geo-bloco-empresa').value.trim(),
         pais:        row.querySelector('.geo-bloco-pais').value.trim(),
         regiao:      row.querySelector('.geo-bloco-regiao').value.trim(),
         cidade:      row.querySelector('.geo-bloco-cidade').value.trim(),
@@ -1364,6 +1431,7 @@ async function geoBlocoSalvar(rowId) {
         if (resp.ok && resp.salvos.length) {
             row.dataset.blocoId = resp.salvos[0].id;
             geoBlocosFeedback(`Bloco ${resp.salvos[0].prefixo} salvo no Geofeed.`, true);
+            geofeedAtualizarSeletorEmpresasDoDom();
         } else {
             const erro = (resp.erros && resp.erros[0] && resp.erros[0].erro) || resp.erro || 'Erro ao salvar bloco.';
             prefixo.classList.add('geo-bloco-erro');

@@ -1169,12 +1169,25 @@ class GeofeedBloco(models.Model):
     postal_code  = models.CharField(max_length=20, blank=True, verbose_name='CEP / Postal Code')
     ativo        = models.BooleanField(default=True, verbose_name='Ativo no Geofeed')
 
+    # Empresa dona do bloco (ex: "INFORLIMA") — cada empresa registra no seu RIR (LACNIC etc.)
+    # uma URL própria (/geo/geofeed/<empresa_slug>.csv) contendo só os seus prefixos, já que o
+    # RIR valida se cada linha do CSV pertence ao recurso da conta que cadastrou a URL. Um único
+    # arquivo global com blocos de empresas diferentes é sempre rejeitado a partir da primeira
+    # linha de outro dono.
+    empresa      = models.CharField(max_length=200, blank=True, db_index=True, verbose_name='Empresa (dona do bloco)')
+    empresa_slug = models.SlugField(max_length=220, blank=True, db_index=True, verbose_name='Slug da empresa (URL do geofeed)')
+
     criado_em    = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
     atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
     criado_por   = models.ForeignKey(
         'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='blocos_geofeed', verbose_name='Criado por',
     )
+
+    def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+        self.empresa_slug = slugify(self.empresa) if self.empresa else ''
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['prefixo']

@@ -703,10 +703,15 @@ def geo_consulta(request):
     cfg = ConfiguracaoSistema.get()
     from django.urls import reverse
     geofeed_url = request.build_absolute_uri(reverse('geo_geofeed_csv'))
+    # placeholder "__SLUG__" trocado no JS pelo slug da empresa escolhida no seletor
+    geofeed_url_empresa_base = request.build_absolute_uri(
+        reverse('geo_geofeed_csv_empresa', args=['__SLUG__'])
+    )
     return render(request, 'geo_consulta.html', {
         'prefixo_inicial': request.GET.get('prefixo', ''),
         'cfg': cfg,
         'geofeed_url': geofeed_url,
+        'geofeed_url_empresa_base': geofeed_url_empresa_base,
     })
 
 
@@ -1197,9 +1202,8 @@ def geo_atualizar(request):
 
 # ── Geofeed público RFC 8805 ─────────────────────────────────────────────────
 
-def geo_geofeed_csv(request):
-    """Arquivo público Geofeed RFC 8805 — sem autenticação (referenciado no WHOIS)."""
-    from clientes.models import GeofeedBloco
+def _geo_geofeed_csv_response(request, blocos_qs):
+    """Monta a resposta CSV RFC 8805 a partir de um queryset de GeofeedBloco já filtrado."""
     from django.http import HttpResponse
     from datetime import date
 
@@ -1214,7 +1218,7 @@ def geo_geofeed_csv(request):
         '',
     ]
 
-    for bloco in GeofeedBloco.objects.filter(ativo=True).order_by('prefixo'):
+    for bloco in blocos_qs.filter(ativo=True).order_by('prefixo'):
         regiao_iso = _geo_regiao_iso(bloco.pais, bloco.regiao)
         linhas.append(f'{bloco.prefixo},{bloco.pais},{regiao_iso},{bloco.cidade},{bloco.postal_code}')
 
@@ -1226,6 +1230,24 @@ def geo_geofeed_csv(request):
     return resp
 
 
+def geo_geofeed_csv(request):
+    """Arquivo público Geofeed RFC 8805 — sem autenticação (referenciado no WHOIS).
+
+    Contém TODOS os blocos ativos, de qualquer empresa. Um RIR (LACNIC etc.) só aceita
+    cadastrar essa URL se todo prefixo listado pertencer ao recurso da conta que está
+    cadastrando — por isso, pra uso real numa conta específica, prefira a URL por empresa
+    (geo_geofeed_csv_empresa) com só os prefixos daquela empresa.
+    """
+    from clientes.models import GeofeedBloco
+    return _geo_geofeed_csv_response(request, GeofeedBloco.objects.all())
+
+
+def geo_geofeed_csv_empresa(request, empresa_slug):
+    """Arquivo Geofeed RFC 8805 filtrado por empresa — uma URL por dono do recurso no RIR."""
+    from clientes.models import GeofeedBloco
+    return _geo_geofeed_csv_response(request, GeofeedBloco.objects.filter(empresa_slug=empresa_slug))
+
+
 # ── Blocos do Geofeed (cadastro manual de múltiplos blocos/localizações) ─────
 
 @login_required(login_url='login')
@@ -1234,16 +1256,18 @@ def geo_blocos_listar(request):
     """Lista todos os blocos cadastrados no Geofeed."""
     from clientes.models import GeofeedBloco
 
-    blocos = GeofeedBloco.objects.order_by('prefixo')
+    blocos = GeofeedBloco.objects.order_by('empresa', 'prefixo')
     return JsonResponse({'ok': True, 'blocos': [
         {
-            'id':          b.id,
-            'prefixo':     b.prefixo,
-            'pais':        b.pais,
-            'regiao':      b.regiao,
-            'cidade':      b.cidade,
-            'postal_code': b.postal_code,
-            'ativo':       b.ativo,
+            'id':           b.id,
+            'prefixo':      b.prefixo,
+            'pais':         b.pais,
+            'regiao':       b.regiao,
+            'cidade':       b.cidade,
+            'postal_code':  b.postal_code,
+            'ativo':        b.ativo,
+            'empresa':      b.empresa,
+            'empresa_slug': b.empresa_slug,
         }
         for b in blocos
     ]})
@@ -1288,7 +1312,10 @@ def geo_blocos_salvar(request):
             'cidade':      (item.get('cidade') or '').strip(),
             'postal_code': (item.get('postal_code') or '').strip(),
             'ativo':       bool(item.get('ativo', True)),
+            'empresa':     (item.get('empresa') or '').strip(),
         }
+        from django.utils.text import slugify
+        defaults['empresa_slug'] = slugify(defaults['empresa']) if defaults['empresa'] else ''
 
         bloco_id = item.get('id')
         if bloco_id:
@@ -1310,6 +1337,7 @@ def geo_blocos_salvar(request):
             'id': bloco.id, 'prefixo': bloco.prefixo, 'pais': bloco.pais,
             'regiao': bloco.regiao, 'cidade': bloco.cidade,
             'postal_code': bloco.postal_code, 'ativo': bloco.ativo,
+            'empresa': bloco.empresa, 'empresa_slug': bloco.empresa_slug,
         })
 
     return JsonResponse({'ok': True, 'salvos': salvos, 'erros': erros})

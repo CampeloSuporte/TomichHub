@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-30 (Feat: Geofeed por Empresa — Fix LACNIC "prefixo não contido no bloco")
+
+### Adicionado
+
+- **Geofeed por empresa** (`clientes/models.py` — `GeofeedBloco.empresa`/`empresa_slug`; migration
+  `0094_geofeed_bloco_empresa`; `home/views.py` — `geo_geofeed_csv_empresa`; nova rota
+  `/homeferramentas/geo/geofeed/<empresa_slug>.csv`): o `geofeed.csv` global mistura blocos de
+  empresas diferentes, e o LACNIC rejeita a URL cadastrada por uma empresa se qualquer linha do
+  CSV pertencer a outro dono (`Prefixo IP do CSV de Geofeed não está contido no bloco original`).
+  Cada empresa agora tem sua própria URL filtrada. UI em `geo_consulta.html`: coluna Empresa na
+  tabela de blocos + seletor que troca a URL/preview exibidos. A rota antiga (`/geofeed.csv`, todos
+  os blocos) continua existindo só para conferência interna — não deve mais ser cadastrada em RIR.
+
+### Corrigido
+
+- **Dados incorretos no Geofeed, achados via WHOIS**: dos 6 blocos cadastrados, 4
+  (`186.65.76-79.0/24`) marcados como `empresa="INFORLIMA"` (dono real, AS272418); 1
+  (`2804:57b0:efe0::/44`) marcado como `empresa="JMA Provedor"` (pertence ao `/32` da JMA, AS268080,
+  não à INFORLIMA); 1 (`38.210.126.0/24`) desativado (`ativo=False`) por não estar alocado a
+  ninguém no LACNIC. Ver `docs/GEOLOCALIZACAO_IP.md`.
+
+---
+
 ## [Não publicado] — 2026-07-30 (Fix: LACNIC Rejeitando o Geofeed — Estado por Extenso)
 
 ### Corrigido

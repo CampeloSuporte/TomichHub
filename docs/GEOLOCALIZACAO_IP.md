@@ -124,6 +124,37 @@ Nessa mesma checagem foi encontrado um bloco (`186.65.78.0/24`) com o campo Cida
 próprio prefixo IP por engano — corrigido (limpo) diretamente na tabela `GeofeedBloco`, já que causaria
 o mesmo tipo de rejeição na linha seguinte assim que a linha do Region fosse aceita.
 
+### Fix — LACNIC rejeitando o Geofeed com prefixo de outra empresa (2026-07-30)
+
+Corrigido o erro de Region, a LACNIC passou a rejeitar com
+`Prefixo IP do CSV de Geofeed não está contido no bloco original`. Causa: `geo_geofeed_csv` publica
+**todos** os `GeofeedBloco` ativos num único arquivo, mas o RIR valida se cada prefixo do CSV
+pertence ao recurso da conta que está cadastrando a URL — um arquivo compartilhado entre empresas
+diferentes é sempre rejeitado na primeira linha que não pertence ao dono da conta.
+
+Conferido via WHOIS: dos 6 blocos cadastrados, 4 (`186.65.76-79.0/24`) pertencem à
+**INFORLIMA TELECOMUNICAÇÃO EIRELI** (AS272418), 1 (`2804:57b0:efe0::/44`) está dentro do `/32` da
+**JMA Provedor de Internet** (AS268080, outra empresa) e 1 (`38.210.126.0/24`) **não está alocado a
+ninguém** no LACNIC (`whois -h whois.lacnic.net`) — provavelmente dado de teste.
+
+**Solução — Geofeed por empresa:**
+- Novo campo `GeofeedBloco.empresa` (texto livre) + `empresa_slug` (`SlugField`, calculado
+  automaticamente em `save()` via `slugify(empresa)`) — migration `0094_geofeed_bloco_empresa`.
+- Nova rota pública `home/urls.py` → `/homeferramentas/geo/geofeed/<empresa_slug>.csv`
+  (`views.geo_geofeed_csv_empresa`), servindo só os blocos daquela empresa. A rota antiga
+  `/geofeed.csv` continua existindo com todos os blocos, mas passa a ser só para conferência
+  interna — **não deve mais ser cadastrada em nenhum RIR**, já que sempre vai misturar empresas.
+  Lógica de montagem do CSV extraída para `_geo_geofeed_csv_response(request, blocos_qs)`,
+  reaproveitada pelas duas views.
+- UI (`geo_consulta.html`): coluna "Empresa" na tabela de Blocos do Geofeed, e um seletor de
+  empresa acima da URL pública que troca a URL/preview mostrados (usa `slugifyJs`, réplica em JS
+  do `django.utils.text.slugify`, pra montar o dropdown otimisticamente antes do round-trip ao
+  servidor confirmar o slug oficial).
+- Dados existentes corrigidos: os 4 blocos da INFORLIMA marcados com `empresa="INFORLIMA"`, o bloco
+  da JMA com `empresa="JMA Provedor"` (preservado, caso a JMA vire cliente com Geofeed próprio no
+  futuro) e o bloco não alocado (`38.210.126.0/24`) desativado (`ativo=False`, não apagado) até
+  alguém confirmar o prefixo correto.
+
 ---
 
 ## Endpoints (visão completa da ferramenta)
@@ -140,7 +171,8 @@ o mesmo tipo de rejeição na linha seguinte assim que a linha do Region fosse a
 | `/homeferramentas/geo/<id>/resposta/` | GET | ✅ | Resposta IMAP do RIR |
 | `/homeferramentas/geo/<id>/aplicacao/` | GET | ✅ | Re-verifica se a correção foi aplicada |
 | `/homeferramentas/geo/<id>/confirmar-maxmind/` | GET | ✅ | Confirma e-mail MaxMind via IMAP |
-| `/homeferramentas/geo/geofeed.csv` | GET | 🌐 público | Arquivo Geofeed servido para os RIRs/bancos |
+| `/homeferramentas/geo/geofeed.csv` | GET | 🌐 público | Todos os blocos ativos — só para conferência interna, não cadastrar em RIR |
+| `/homeferramentas/geo/geofeed/<empresa_slug>.csv` | GET | 🌐 público | Só os blocos daquela empresa — URL a cadastrar no RIR |
 
 ---
 
@@ -149,6 +181,8 @@ o mesmo tipo de rejeição na linha seguinte assim que a linha do Region fosse a
 - `0092_geofeed_bloco` — cria a tabela `GeofeedBloco`.
 - `0093_geofeed_bloco_migrar_historico` — `RunPython` que popula `GeofeedBloco` a partir do prefixo mais
   recente de cada `CorrecaoGeoIP`, preservando o conteúdo do `geofeed.csv` público no deploy.
+- `0094_geofeed_bloco_empresa` — adiciona `empresa` e `empresa_slug` em `GeofeedBloco`, base do Geofeed
+  por empresa (ver seção "Fix — LACNIC rejeitando o Geofeed com prefixo de outra empresa").
 
 ---
 

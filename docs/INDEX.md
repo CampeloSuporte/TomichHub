@@ -2,6 +2,29 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 21 — 30/07/2026: Geofeed por Empresa — Fix LACNIC "prefixo não contido no bloco"
+
+**O que foi diagnosticado e corrigido?**
+- ✅ Depois do fix da Sessão 20, a LACNIC passou a rejeitar com `Prefixo IP do CSV de Geofeed não
+  está contido no bloco original`. Causa: o `geofeed.csv` publicado mistura blocos de empresas
+  diferentes num arquivo só, e o RIR rejeita a URL cadastrada por uma empresa se qualquer linha
+  pertencer a outro dono.
+- ✅ Conferido via WHOIS: dos 6 blocos cadastrados, 4 pertencem à INFORLIMA (AS272418), 1 é do
+  `/32` da JMA Provedor (AS268080, outra empresa) e 1 (`38.210.126.0/24`) não está sequer alocado a
+  ninguém no LACNIC.
+- ✅ Implementado Geofeed por empresa: campo `empresa` em `GeofeedBloco`, nova URL
+  `/homeferramentas/geo/geofeed/<empresa_slug>.csv` só com os blocos daquela empresa, e seletor de
+  empresa na UI. A URL da INFORLIMA (`.../geofeed/inforlima.csv`) já está no ar só com os 4 blocos
+  corretos — é essa que deve ser cadastrada no LACNIC, não mais a `/geofeed.csv` genérica.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[GEOLOCALIZACAO_IP.md](GEOLOCALIZACAO_IP.md)** | Seção "Fix — LACNIC rejeitando o Geofeed com prefixo de outra empresa" |
+
+---
+
 ### Sessão 20 — 30/07/2026: Fix — LACNIC Rejeitando o Geofeed (Estado por Extenso)
 
 **O que foi diagnosticado e corrigido?**
