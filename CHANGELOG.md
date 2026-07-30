@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-30 (Fix: LACNIC Rejeitando o Geofeed — Estado por Extenso)
+
+### Corrigido
+
+- **Geofeed rejeitado pela LACNIC com "CSV de Geofeed inválido (linha 6)"** (`home/views.py` —
+  `_geo_regiao_iso`): blocos cadastrados com o estado por extenso (ex: "Bahia", "Rio de Janeiro")
+  não eram convertidos para ISO 3166-2 (`BR-BA`, `BR-RJ`) — só siglas prontas eram reconhecidas.
+  Adicionado mapa `_BR_UF_POR_NOME` (estado sem acento → sigla) como fallback na conversão. CSV
+  também passou a usar quebra de linha CRLF conforme RFC 4180/8805. Esse fix já existia numa
+  branch separada de uma sessão anterior e nunca tinha sido mesclado no `main` em produção — só
+  aplicado agora (cherry-pick `007cee947`).
+- **Bloco `186.65.78.0/24` com cidade inválida**: campo Cidade estava preenchido com o próprio
+  prefixo IP (erro de digitação) — limpo diretamente no banco (`GeofeedBloco`), pois causaria
+  rejeição na linha seguinte assim que a linha do Region fosse aceita. Ver `docs/GEOLOCALIZACAO_IP.md`.
+
+---
+
 ## [Não publicado] — 2026-07-30 (Fix: Autofill do Chrome nos Campos de Pesquisa)
 
 ### Corrigido

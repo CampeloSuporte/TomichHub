@@ -2,6 +2,27 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 20 — 30/07/2026: Fix — LACNIC Rejeitando o Geofeed (Estado por Extenso)
+
+**O que foi diagnosticado e corrigido?**
+- ✅ LACNIC rejeitava a URL do Geofeed com `CSV de Geofeed inválido (linha 6)`: blocos cadastrados
+  com o estado por extenso (ex: "Bahia") não eram convertidos para ISO 3166-2 (`BR-BA`) — a
+  conversão só reconhecia siglas prontas. Adicionado mapa de nome completo → sigla como fallback.
+  CSV também passou a usar CRLF (RFC 4180/8805).
+- ⚠️ Esse fix já tinha sido feito numa sessão anterior (30/07), mas ficou numa branch separada
+  (`claude/geofeed-update-error-3679ba`) sem nunca ser mesclada no `main` — o bug continuou em
+  produção até ser aplicado agora via cherry-pick.
+- ✅ Bloco `186.65.78.0/24` com o campo Cidade preenchido com o próprio prefixo IP por engano —
+  limpo diretamente no banco, evitando rejeição na linha seguinte.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[GEOLOCALIZACAO_IP.md](GEOLOCALIZACAO_IP.md)** | Seção "Fix — LACNIC rejeitando o Geofeed com nome de estado por extenso" |
+
+---
+
 ### Sessão 19 — 30/07/2026: Fix — Autofill do Chrome Preenchendo Campos de Pesquisa
 
 **O que foi diagnosticado e corrigido?**

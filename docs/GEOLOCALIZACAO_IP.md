@@ -109,6 +109,21 @@ A lógica de converter `regiao` livre (ex: `"SP"`) para o formato ISO 3166-2 exi
 `home/views.py::_geo_regiao_iso(pais, regiao)`, reaproveitada nos dois lugares e também no cálculo do CSV
 gerado a partir dos blocos.
 
+### Fix — LACNIC rejeitando o Geofeed com nome de estado por extenso (2026-07-30)
+
+`_geo_regiao_iso` só convertia siglas (`"SP"` → `"BR-SP"`); blocos cadastrados com o estado por
+extenso (ex: `"Bahia"`, `"Rio de Janeiro"`) ficavam sem conversão e o CSV publicado saía com
+`BR,Bahia,...` em vez de `BR,BR-BA,...`. A LACNIC valida o campo Region contra a lista ISO 3166-2 e
+rejeitava o arquivo já na primeira linha de dados (`CSV de Geofeed inválido (linha 6)`).
+
+Adicionado `_BR_UF_POR_NOME` (mapa nome do estado, sem acento → sigla) em `home/views.py`; quando a
+sigla direta não bate, `_geo_regiao_iso` tenta esse mapa antes de desistir e devolver o texto cru.
+O CSV também passou a usar `\r\n` (CRLF) entre linhas, conforme RFC 4180/8805.
+
+Nessa mesma checagem foi encontrado um bloco (`186.65.78.0/24`) com o campo Cidade preenchido com o
+próprio prefixo IP por engano — corrigido (limpo) diretamente na tabela `GeofeedBloco`, já que causaria
+o mesmo tipo de rejeição na linha seguinte assim que a linha do Region fosse aceita.
+
 ---
 
 ## Endpoints (visão completa da ferramenta)
