@@ -176,7 +176,7 @@ Implementação: `static/js/topo_main.js` — `this.selectedNodes` (Set de ids),
 | `label` | string | Rótulo livre exibido no meio da linha |
 | `ip_local` | string | IP P2P lado A (ex: `10.0.0.1/30`) |
 | `ip_remote` | string | IP P2P lado B (ex: `10.0.0.2/30`) |
-| `vlan` | string | VLAN ID — exibida como `V100` junto ao label de velocidade |
+| `vlan` | string | VLAN ID — exibida como `VLAN 100` em linha própria, abaixo do label de velocidade |
 | `iface_a` | string | Nome da interface no lado A — nó de origem do link (ex: `ge0/0/1`, `eth0`, `sfp1`) |
 | `iface_b` | string | Nome da interface no lado B — nó de destino do link (ex: `ge0/0/2`, `eth1`, `sfp2`) |
 | `style` | `solid`\|`dashed`\|`dotted` | Estilo do traço |
@@ -205,6 +205,20 @@ Implementação: `static/js/topo_main.js` — `this.selectedNodes` (Set de ids),
 
 `20g`/`30g`/`50g` adicionados em 2026-07-20 (útil também para representar link
 aggregation/LACP, ex. 2×10G = 20G).
+
+### Rótulo do Link (banda + VLAN) e Cor do IP P2P — Ajustado em 2026-07-31
+
+**Rótulo do meio do link (`_renderLink`, `topo_main.js`):** antes a VLAN aparecia grudada na
+mesma linha da banda (`"100 Gbps V100"`), o que ficava confuso e cortava em links curtos. Agora
+cada informação tem sua própria linha, sempre nesta ordem: nome do link (se houver, em negrito
+na cor da interface) → banda → `VLAN <id>` (só aparece quando o link tem VLAN configurada). A
+caixa de fundo (`<rect>`) cresce dinamicamente com a quantidade de linhas (`lblLines.length`) em
+vez de assumir só 1 ou 2 linhas como antes.
+
+**Cor do IP P2P (`.link-ip`, CSS em `topologia_editor.html`):** o texto dos rótulos de IP Local/
+Remoto ao lado dos nodes usava `fill:#8b949e` (cinza apagado, baixo contraste sobre o fundo
+escuro do rótulo). Trocado para branco (`#ffffff`) em negrito (`font-weight:700`) para ficar
+legível à distância no canvas.
 
 ### Sugestão de Interface a partir do Backup — Adicionado em 2026-07-20
 
