@@ -191,6 +191,15 @@
         .btn-terminal.btn-scripts { border-color: #ffa500; color: #ffa500; }
         .btn-terminal.btn-scripts:hover, .btn-terminal.btn-scripts:active { background: rgba(255,165,0,0.1); }
         .btn-terminal.btn-cores-off { border-color: rgba(88,166,255,.18); color: rgba(88,166,255,.18); }
+        .btn-terminal.btn-share { border-color: rgba(255,165,0,.4); color: #ffa500; }
+        .btn-terminal.btn-share:hover { border-color: #ffa500; }
+        .btn-terminal.btn-share.ativo { background: rgba(255,165,0,.14); border-color: #ffa500; color: #ffd280; }
+        .share-viewers-badge {
+            font-size: 10px; color: #ffa500; background: rgba(255,165,0,.1);
+            border: 1px solid rgba(255,165,0,.3); border-radius: 10px;
+            padding: 2px 8px; white-space: nowrap; display: none; align-items: center; gap: 4px;
+        }
+        .share-viewers-badge.visivel { display: inline-flex; }
 
         /* ─── BOTÃO TECLADO MOBILE ─── */
         .btn-mobile-keyboard {
@@ -742,6 +751,7 @@
         <div class="terminal-header">
             <button class="btn-sidebar-toggle" id="btnSidebarToggle" onclick="toggleHostSidebar()" title="Mostrar/ocultar hosts">☰</button>
             <div class="terminal-title">▶ Terminal SSH</div>
+            <div class="share-viewers-badge" id="shareViewersBadge" title="Usuários vendo este terminal em tempo real"></div>
             <div class="terminal-status connected" id="terminalStatus">
                 <div class="status-dot connected"></div>
                 <span id="statusText">Pronto</span>
@@ -825,6 +835,7 @@
                     <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
                     <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
                     <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
+                    <button class="btn-terminal btn-share" id="btnShare" onclick="toggleCompartilhar()" title="Compartilhar esta sessão em tempo real com outros usuários autorizados neste host">🔗 Compartilhar</button>
                     <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
                     <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
                 </div>
@@ -855,6 +866,9 @@
         </div>
         <div class="mobile-menu-item" onclick="reconectarTerminalAtivo();fecharMenuMobile()">
             <span>↻</span><span>Reconectar</span>
+        </div>
+        <div class="mobile-menu-item" onclick="toggleCompartilhar();fecharMenuMobile()" style="color:#ffa500">
+            <span>🔗</span><span id="menuShareLabel">Compartilhar Terminal</span>
         </div>
         {% if request.user.is_staff %}
         <div class="mobile-menu-separator"></div>
@@ -1734,7 +1748,8 @@
 
                 const tObj = {
                     id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
-                    socket: null, connected: false, wsRetries: 0, hadSshError: false
+                    socket: null, connected: false, wsRetries: 0, hadSshError: false,
+                    shared: false, viewers: [], isPhysical: true
                 };
                 this.terminals.set(terminalId, tObj);
                 this.criarAba(terminalId, acessoData);
@@ -1840,6 +1855,7 @@
                     setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} if (!isMobile()) tObj.terminal?.focus(); }, 50);
                 }
             }
+            atualizarBotaoCompartilhar();
         }
 
         conectarWebSocket(terminalId) {
@@ -1869,6 +1885,9 @@
                     const data = JSON.parse(e.data);
                     if (data.type === 'connected') {
                         tObj.connected = true;
+                        tObj.shared = !!data.shared;
+                        tObj.isPhysical = !data.shared;   // entrou via join = não é quem detém a conexão
+                        if (data.shared) tObj.viewers = [];
                         const tab = document.getElementById(`tab-${terminalId}`);
                         if (tab) tab.querySelector('.terminal-tab-status').classList.add('connected');
                         // Re-sincroniza o tamanho do PTY agora que o shell do host já existe
@@ -1879,12 +1898,35 @@
                                 action: 'resize', cols: tObj.terminal.cols, rows: tObj.terminal.rows,
                             }));
                         }
+                        atualizarBotaoCompartilhar();
                     } else if (data.type === 'output' && data.data) {
                         writeToTerminal(tObj.terminal, data.data);
                     } else if (data.type === 'error') {
                         tObj.connected = false;
                         tObj.hadSshError = true;   // não reconectar automaticamente após erro SSH
                         tObj.terminal.writeln('\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\n');
+                    } else if (data.type === 'share_started') {
+                        tObj.shared = true;
+                        tObj.isPhysical = true;
+                        tObj.viewers = data.viewers || [];
+                        tObj.terminal.writeln('\x1b[33m🔗 Compartilhamento ativado — outros usuários autorizados neste host que abrirem o terminal agora entram nesta mesma sessão.\x1b[0m\n');
+                        atualizarBotaoCompartilhar();
+                    } else if (data.type === 'share_stopped') {
+                        tObj.shared = false;
+                        tObj.viewers = [];
+                        tObj.terminal.writeln('\x1b[33m🔒 Compartilhamento encerrado.\x1b[0m\n');
+                        atualizarBotaoCompartilhar();
+                    } else if (data.type === 'share_info') {
+                        tObj.shared = true;
+                        tObj.viewers = data.viewers || [];
+                        tObj.terminal.writeln('\x1b[33mℹ ' + data.message + '\x1b[0m\n');
+                        atualizarBotaoCompartilhar();
+                    } else if (data.type === 'share_ended') {
+                        tObj.shared = false;
+                        tObj.viewers = [];
+                        tObj.hadSshError = true;   // sessão compartilhada acabou — reconectar seria uma conexão nova
+                        tObj.terminal.writeln('\x1b[33m⚠ ' + data.message + ' Clique em "↻ Reconectar" para abrir uma conexão própria.\x1b[0m\n');
+                        atualizarBotaoCompartilhar();
                     }
                 };
                 tObj.socket.onerror = () => tObj.terminal.writeln('\x1b[31m✕ Erro na conexão\x1b[0m\n');
@@ -1928,6 +1970,49 @@
         }
     }
     function fecharTodosTerminais() { terminalManager.fecharTodos(); }
+
+    // ============================================================
+    // TERMINAL COMPARTILHADO — opt-in: o usuário liga o compartilhamento
+    // da sua sessão ativa e qualquer outro usuário autorizado sobre o mesmo
+    // host que abrir o terminal passa a ver e digitar na mesma sessão.
+    // ============================================================
+    function toggleCompartilhar() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        if (!t || !t.socket || t.socket.readyState !== WebSocket.OPEN) return;
+        if (t.shared && !t.isPhysical) {
+            t.terminal.writeln('\x1b[33mℹ Apenas quem iniciou o compartilhamento pode encerrá-lo.\x1b[0m\n');
+            return;
+        }
+        t.socket.send(JSON.stringify({ action: t.shared ? 'share_stop' : 'share_start' }));
+    }
+
+    function atualizarBotaoCompartilhar() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        const btn = document.getElementById('btnShare');
+        const menuLabel = document.getElementById('menuShareLabel');
+        const badge = document.getElementById('shareViewersBadge');
+        if (!t || t.tipo === 'winbox') {
+            if (btn) btn.style.display = 'none';
+            if (badge) badge.classList.remove('visivel');
+            return;
+        }
+        if (btn) {
+            btn.style.display = '';
+            btn.classList.toggle('ativo', !!t.shared);
+            btn.textContent = t.shared ? (t.isPhysical ? '🔗 Compartilhado' : '👀 Assistindo') : '🔗 Compartilhar';
+        }
+        if (menuLabel) {
+            menuLabel.textContent = t.shared ? (t.isPhysical ? 'Parar Compartilhamento' : 'Sessão compartilhada') : 'Compartilhar Terminal';
+        }
+        if (badge) {
+            if (t.shared && t.viewers && t.viewers.length) {
+                badge.textContent = '👀 ' + t.viewers.join(', ');
+                badge.classList.add('visivel');
+            } else {
+                badge.classList.remove('visivel');
+            }
+        }
+    }
 
     // ============================================================
     // RESIZE — inclui refit ao girar tela e ao teclado virtual aparecer

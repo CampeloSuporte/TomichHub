@@ -19,7 +19,7 @@ from channels.generic.websocket import WebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 from django.db import close_old_connections
 from django.utils import timezone
-from .models import Acesso, ProxyServer, AcessoSessao, AcessoComando
+from .models import Acesso, Cliente, ProxyServer, AcessoSessao, AcessoComando
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +137,86 @@ class _ProxyPool:
             self._conns.pop(key, None)
 
 _proxy_pool = _ProxyPool()
+
+
+# ── Terminal compartilhado (opt-in) ──────────────────────────────────────────
+# Um usuário conectado normalmente a um Acesso pode optar por "compartilhar"
+# sua sessão; outros usuários com permissão sobre o mesmo Acesso que abrirem
+# o terminal enquanto o compartilhamento estiver ativo entram na MESMA sessão
+# (mesma conexão SSH/Telnet física), veem o output em tempo real e podem
+# digitar — exatamente como o dono. Registro só em memória de processo (não
+# Redis): igual à Sala Virtual (atendimento/consumers.py), válido porque o
+# daphne.service roda com 1 único worker.
+class _SharedTerminalSession:
+    """`physical` é o SSHConsumer que fisicamente detém a conexão (shell
+    paramiko/pexpect/telnet) — nunca muda, mesmo que o próprio WebSocket dele
+    desconecte: a thread de leitura dele continua rodando e transmitindo para
+    quem ainda estiver assistindo (ver `limpar_recursos`/`_sair_de_sessao_
+    compartilhada`). `owner_label` é só cosmético (nome exibido como "dono
+    atual" na UI) e é promovido para o próximo espectador quando quem
+    compartilhou originalmente sai."""
+
+    def __init__(self, acesso_id, physical_consumer, label):
+        self.acesso_id = acesso_id
+        self.physical = physical_consumer
+        self.owner_label = label
+        self.lock = threading.Lock()
+        self.viewers = {physical_consumer: label}   # dict preserva ordem de entrada
+        self.recent_output = ''
+        self._RECENT_MAX = 20_000
+
+    def add_viewer(self, consumer, label):
+        with self.lock:
+            self.viewers[consumer] = label
+
+    def remove_viewer(self, consumer):
+        """Remove `consumer` da sessão. Retorna True se ainda restam
+        espectadores (sessão continua viva)."""
+        with self.lock:
+            self.viewers.pop(consumer, None)
+            if consumer is self.physical and self.viewers:
+                self.owner_label = next(iter(self.viewers.values()))
+            return bool(self.viewers)
+
+    def snapshot_viewers(self):
+        with self.lock:
+            return list(self.viewers.items())
+
+    def append_recent(self, text):
+        with self.lock:
+            buf = self.recent_output + text
+            if len(buf) > self._RECENT_MAX:
+                buf = buf[-self._RECENT_MAX:]
+            self.recent_output = buf
+
+
+class _TerminalSessionRegistry:
+    """acesso_id -> _SharedTerminalSession, apenas para sessões compartilhadas
+    explicitamente (opt-in). Conexões normais (a maioria) nunca passam por
+    aqui e continuam 1 WebSocket : 1 shell, sem nenhuma mudança de
+    comportamento."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._sessions = {}
+
+    def share(self, acesso_id, physical_consumer, label):
+        with self._lock:
+            session = _SharedTerminalSession(acesso_id, physical_consumer, label)
+            self._sessions[acesso_id] = session
+            return session
+
+    def get(self, acesso_id):
+        with self._lock:
+            return self._sessions.get(acesso_id)
+
+    def drop(self, acesso_id, session):
+        with self._lock:
+            if self._sessions.get(acesso_id) is session:
+                del self._sessions[acesso_id]
+
+
+_terminal_sessions = _TerminalSessionRegistry()
 
 
 def _wg_peer_ativo(interface_nome: str) -> bool:
@@ -355,31 +435,21 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
     def limpar_recursos(self):
         self._encerrar_sessao_auditoria()
+        manter_vivo = self._sair_de_sessao_compartilhada()
         self._cmd_buffer = ''
         self._cmd_cursor = 0
-        self.is_reading = False
-        if hasattr(self, 'read_thread') and self.read_thread and self.read_thread.is_alive():
-            time.sleep(0.2)
-            try:
-                self.read_thread.join(timeout=1.0)
-            except:
-                pass
 
-        # Fechar recursos exclusivos desta conexão (shell e transporte para o destino)
-        for attr in ('ssh_process', 'telnet_client', 'tunnel_process',
-                     '_paramiko_shell', '_paramiko_dest_transport',
-                     '_tunnel_server'):
-            obj = getattr(self, attr, None)
-            if obj:
-                try:
-                    obj.close()
-                except:
-                    pass
-            setattr(self, attr, None)
+        if manter_vivo:
+            # Este consumer é quem detém fisicamente a conexão de um terminal
+            # compartilhado (shell, thread de leitura, protocol, is_huawei/
+            # is_parks...) e ainda há outros espectadores vendo a sessão.
+            # NÃO pode zerar nenhum desses atributos aqui: outros consumers
+            # continuam lendo-os via `session.physical.<attr>` para escrever
+            # no shell (enviar_comando) e redimensionar o PTY (_resize_pty)
+            # mesmo depois deste WebSocket específico ter desconectado.
+            return
 
-        # _paramiko_client é o SSHClient do pool compartilhado — NÃO fechar,
-        # apenas liberar a referência para não derrubar outros terminais ativos.
-        self._paramiko_client = None
+        self._fechar_recursos_fisicos()
 
         self.protocol         = None
         self.read_thread      = None
@@ -393,6 +463,38 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         # texto fica sobreposto.
         self.term_cols        = 80
         self.term_rows        = 24
+
+    def _fechar_recursos_fisicos(self):
+        """Fecha o shell/processo real e para a thread de leitura desta
+        conexão. Extraído de limpar_recursos() para poder ser chamado
+        também sobre uma outra instância (`session.physical`) quando o
+        último espectador de uma sessão compartilhada sai DEPOIS de quem
+        originalmente a compartilhou — nesse caso o dono físico já
+        desconectou seu próprio WebSocket há tempos e nunca mais teria
+        limpar_recursos() chamado sobre si mesmo, deixando o shell e a
+        thread de leitura órfãos (conexão SSH/Telnet aberta para sempre)."""
+        self.is_reading = False
+        if getattr(self, 'read_thread', None) and self.read_thread.is_alive():
+            time.sleep(0.2)
+            try:
+                self.read_thread.join(timeout=1.0)
+            except Exception:
+                pass
+
+        for attr in ('ssh_process', 'telnet_client', 'tunnel_process',
+                     '_paramiko_shell', '_paramiko_dest_transport',
+                     '_tunnel_server'):
+            obj = getattr(self, attr, None)
+            if obj:
+                try:
+                    obj.close()
+                except Exception:
+                    pass
+            setattr(self, attr, None)
+
+        # _paramiko_client é o SSHClient do pool compartilhado — NÃO fechar,
+        # apenas liberar a referência para não derrubar outros terminais ativos.
+        self._paramiko_client = None
 
     def disconnect(self, close_code):
         logger.info("🔌 WebSocket desconectando...")
@@ -417,7 +519,19 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 logger.info(f"📋 Conectar acesso {acesso_id}")
                 self.limpar_recursos()
                 self._set_term_size(data.get('cols'), data.get('rows'))
-                self.conectar_acesso(acesso_id)
+                try:
+                    acesso = Acesso.objects.get(id=acesso_id)
+                except Acesso.DoesNotExist:
+                    self.send_error('Acesso não encontrado')
+                    return
+                if not self._usuario_pode_acessar(acesso):
+                    self.send_error('Você não tem permissão para acessar este host.')
+                    return
+                sessao_compartilhada = None if data.get('independente') else _terminal_sessions.get(acesso_id)
+                if sessao_compartilhada:
+                    self._entrar_em_sessao_compartilhada(sessao_compartilhada)
+                else:
+                    self.conectar_acesso(acesso_id)
 
             elif action == 'command':
                 command = data.get('command', '')
@@ -427,6 +541,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 # Frontend redimensionou o terminal — repassa ao PTY do host.
                 if self._set_term_size(data.get('cols'), data.get('rows')):
                     self._resize_pty(self.term_cols, self.term_rows)
+
+            elif action == 'share_start':
+                self._iniciar_compartilhamento()
+
+            elif action == 'share_stop':
+                self._parar_compartilhamento()
 
         except json.JSONDecodeError as e:
             self.send_error(f"Erro ao parsear JSON: {str(e)}")
@@ -460,15 +580,19 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         return self.term_cols, self.term_rows
 
     def _resize_pty(self, cols, rows):
-        """Aplica o novo tamanho ao canal/pty ativo (Paramiko ou pexpect)."""
-        sh = getattr(self, '_paramiko_shell', None)
+        """Aplica o novo tamanho ao canal/pty ativo (Paramiko ou pexpect).
+        Em sessão compartilhada, redimensiona o PTY de quem detém a conexão
+        física — o último espectador a redimensionar a janela "vence"."""
+        session = getattr(self, '_shared_session', None)
+        alvo = session.physical if session else self
+        sh = getattr(alvo, '_paramiko_shell', None)
         if sh is not None:
             try:
                 sh.resize_pty(width=cols, height=rows)
                 return
             except Exception as e:
                 logger.debug(f"resize_pty (paramiko) falhou: {e}")
-        pex = getattr(self, 'ssh_process', None)
+        pex = getattr(alvo, 'ssh_process', None)
         if pex is not None and hasattr(pex, 'setwinsize'):
             try:
                 pex.setwinsize(rows, cols)   # pexpect: (linhas, colunas)
@@ -527,10 +651,167 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             logger.warning(f"⚠️ Erro ao verificar túnel OpenVPN: {e}")
         return None
 
+    # =========================================================
+    # Terminal compartilhado (opt-in)
+    # =========================================================
+    def _usuario_pode_acessar(self, acesso):
+        """Mesma regra de `listar_acessos_terminal` (views.py): staff/superuser
+        vê tudo; usuário comum só acessa Acessos do(s) Cliente(s) a que está
+        vinculado. Antes desta checagem, conectar_acesso() confiava cegamente
+        no acesso_id vindo do frontend — qualquer autenticado podia abrir o
+        terminal de qualquer host cadastrado, de qualquer cliente."""
+        user = getattr(self, '_crm_user', None)
+        if not user:
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        return Cliente.objects.filter_by_usuario_vinculado(user).filter(id=acesso.cliente_id).exists()
+
+    def _label_usuario(self):
+        user = getattr(self, '_crm_user', None)
+        if not user:
+            return 'Usuário'
+        nome = (user.get_full_name() or '').strip()
+        return nome or user.get_username()
+
+    def _broadcast_para(self, session, payload):
+        for consumer, _label in session.snapshot_viewers():
+            try:
+                consumer.send_json(payload)
+            except Exception:
+                pass
+
+    def _iniciar_compartilhamento(self):
+        """Chamado pelo usuário que já está conectado normalmente a um Acesso
+        e decide compartilhar sua sessão viva com outros usuários autorizados."""
+        if not getattr(self, 'acessoId', None) or not getattr(self, 'is_reading', False):
+            self.send_error('Conecte-se ao terminal antes de compartilhar.')
+            return
+        if getattr(self, '_shared_session', None):
+            self.send_error('Esta sessão já está compartilhada.')
+            return
+        label = self._label_usuario()
+        session = _terminal_sessions.share(self.acessoId, self, label)
+        self._shared_session = session
+        self.send_json({'type': 'share_started', 'acesso_id': self.acessoId, 'viewers': [label]})
+
+    def _parar_compartilhamento(self):
+        """Encerra o compartilhamento: os demais espectadores são avisados e
+        desconectados da sessão viva (podem reabrir o terminal, mas como uma
+        conexão independente); a conexão física deste usuário continua."""
+        session = getattr(self, '_shared_session', None)
+        if not session or session.physical is not self:
+            self.send_error('Nenhuma sessão compartilhada ativa para encerrar.')
+            return
+        for consumer, _label in session.snapshot_viewers():
+            if consumer is self:
+                continue
+            try:
+                consumer.send_json({'type': 'share_ended', 'message': 'O host encerrou o compartilhamento desta sessão.'})
+            except Exception:
+                pass
+            session.remove_viewer(consumer)
+            # Sem isso, o espectador expulso continuaria com `_shared_session`
+            # apontando pra esta sessão — enviar_comando() ainda redirecionaria
+            # a escrita para `session.physical` (o shell continua vivo), mas
+            # ele não está mais em `session.viewers` então não recebe mais
+            # nenhum output: ficaria "digitando às cegas" sem ver resposta.
+            consumer._shared_session = None
+        _terminal_sessions.drop(session.acesso_id, session)
+        self._shared_session = None
+        self.send_json({'type': 'share_stopped'})
+
+    def _entrar_em_sessao_compartilhada(self, session):
+        """Anexa este WebSocket a uma sessão já compartilhada por outro
+        usuário — sem abrir nenhuma conexão SSH/Telnet nova, só passa a
+        receber o mesmo output e poder escrever no mesmo shell físico."""
+        try:
+            acesso = Acesso.objects.get(id=session.acesso_id)
+        except Acesso.DoesNotExist:
+            self.send_error('Acesso não encontrado')
+            return
+        if not self._usuario_pode_acessar(acesso):
+            self.send_error('Você não tem permissão para acessar este host.')
+            return
+
+        label = self._label_usuario()
+        session.add_viewer(self, label)
+        self._shared_session = session
+        self.acessoId         = session.acesso_id
+        self.protocol         = session.physical.protocol
+        self.is_huawei        = session.physical.is_huawei
+        self.is_parks         = session.physical.is_parks
+
+        self._sessao_auditoria = AcessoSessao.objects.create(
+            acesso=acesso,
+            usuario=getattr(self, '_crm_user', None),
+            tipo=self.protocol,
+            ip_origem=(self.scope.get('client') or [None])[0],
+        )
+        self._cmd_buffer, self._cmd_cursor, self._transcript_buf = '', 0, ''
+
+        self.send_json({
+            'type': 'connected',
+            'shared': True,
+            'message': f'✓ Conectado à sessão compartilhada de {session.owner_label}',
+        })
+        if session.recent_output:
+            self._registrar_saida(session.recent_output)
+            try:
+                self.send(bytes_data=session.recent_output.encode('utf-8'))
+            except Exception:
+                pass
+        self._broadcast_para(session, {
+            'type': 'share_info',
+            'message': f'👀 {label} entrou no terminal compartilhado.',
+            'viewers': [v for _c, v in session.snapshot_viewers()],
+        })
+
+    def _sair_de_sessao_compartilhada(self):
+        """Remove este consumer de uma sessão compartilhada, se houver.
+        Retorna True quando este consumer é quem detém fisicamente a conexão
+        E ainda restam espectadores — nesse caso `limpar_recursos()` NÃO deve
+        fechar o shell real, pois outros ainda o estão usando."""
+        session = getattr(self, '_shared_session', None)
+        if not session:
+            return False
+
+        label = self._label_usuario()
+        ainda_ativa = session.remove_viewer(self)
+        manter_vivo = ainda_ativa and session.physical is self
+
+        if not manter_vivo:
+            # Consumers comuns (e o físico quando ninguém mais resta) largam
+            # a referência; o físico com espectadores restantes PRECISA manter
+            # `_shared_session` para que send_output() continue encontrando a
+            # lista de espectadores a partir da thread de leitura em segundo
+            # plano, mesmo depois deste WebSocket ter desconectado.
+            self._shared_session = None
+
+        if not ainda_ativa:
+            _terminal_sessions.drop(session.acesso_id, session)
+            if session.physical is not self:
+                # O dono físico já havia desconectado antes (ver comentário em
+                # _fechar_recursos_fisicos) — como este era o último
+                # espectador restante, é responsabilidade dele encerrar a
+                # conexão real que ficou órfã.
+                session.physical._fechar_recursos_fisicos()
+            return False
+
+        self._broadcast_para(session, {
+            'type': 'share_info',
+            'message': f'👋 {label} saiu do terminal compartilhado.',
+            'viewers': [v for _c, v in session.snapshot_viewers()],
+        })
+        return manter_vivo
+
     def conectar_acesso(self, acesso_id):
         try:
             self.acessoId = acesso_id
             acesso        = Acesso.objects.get(id=acesso_id)
+            if not self._usuario_pode_acessar(acesso):
+                self.send_error('Você não tem permissão para acessar este host.')
+                return
             protocol      = self.detect_protocol(acesso.porta)
             self.protocol = protocol
 
@@ -628,21 +909,28 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         """
         BACKSPACE FIX: xterm.js envia DEL (\x7f); equipamentos esperam BS (\x08).
         Usa os.write() direto no fd do pty para SSH direto, ou channel.send() para proxy.
+
+        Em sessão compartilhada, quem digita pode ser um mero espectador (sem
+        shell próprio) — o comando é escrito no shell de quem detém a conexão
+        física (`alvo`), mas a auditoria (_registrar_digitacao) fica atribuída
+        a este usuário (self), não ao dono da conexão.
         """
+        session = getattr(self, '_shared_session', None)
+        alvo = session.physical if session else self
         try:
-            if self.protocol in ('ssh', 'telnet'):
+            if alvo.protocol in ('ssh', 'telnet'):
                 self._registrar_digitacao(command)
 
             command = command.replace('\x7f', '\x08')
 
-            if self.protocol == 'ssh':
-                if getattr(self, '_paramiko_shell', None):
-                    self._paramiko_shell.send(command.encode('utf-8'))
-                elif self.ssh_process:
-                    os.write(self.ssh_process.child_fd, command.encode('utf-8'))
-            elif self.protocol == 'telnet':
-                if self.telnet_client:
-                    self.telnet_client.write(command.encode('utf-8'))
+            if alvo.protocol == 'ssh':
+                if getattr(alvo, '_paramiko_shell', None):
+                    alvo._paramiko_shell.send(command.encode('utf-8'))
+                elif alvo.ssh_process:
+                    os.write(alvo.ssh_process.child_fd, command.encode('utf-8'))
+            elif alvo.protocol == 'telnet':
+                if alvo.telnet_client:
+                    alvo.telnet_client.write(command.encode('utf-8'))
         except Exception as e:
             logger.error(f"❌ Erro ao enviar: {str(e)}")
             self.send_error(f'Erro ao enviar comando: {str(e)}')
@@ -1669,12 +1957,25 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         raise Exception("Nenhuma porta disponível")
 
     def send_output(self, text):
-        """Envia output do terminal — bytes puros, sem JSON overhead."""
-        self._registrar_saida(text)
-        try:
-            self.send(bytes_data=text.encode('utf-8'))
-        except Exception:
-            pass
+        """Envia output do terminal — bytes puros, sem JSON overhead.
+        Se esta conexão está compartilhada, propaga para todos os
+        espectadores (inclusive quem fisicamente detém o shell) em vez de só
+        para `self` — é o único ponto de fan-out necessário: todos os loops
+        de leitura (_read_paramiko_shell, read_ssh_output, read_telnet_output,
+        _read_pexpect_shell) já chamam send_output() sem saber se a sessão
+        está compartilhada."""
+        session = getattr(self, '_shared_session', None)
+        if session:
+            session.append_recent(text)
+            alvos = session.snapshot_viewers()
+        else:
+            alvos = [(self, None)]
+        for consumer, _label in alvos:
+            consumer._registrar_saida(text)
+            try:
+                consumer.send(bytes_data=text.encode('utf-8'))
+            except Exception:
+                pass
 
     def send_json(self, data):
         try:
