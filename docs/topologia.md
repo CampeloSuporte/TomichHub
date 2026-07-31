@@ -457,6 +457,47 @@ const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
 
 ---
 
+## Incidente — Campos de Link (Interface/IP P2P) Zerados — 2026-07-31
+
+**Sintoma relatado:** no diagrama do cliente 41 (Sinop), o link entre **SW DT ENLACE SINOP**
+(`acesso_id=1027`) e **SWITCH HU SINOP** (`acesso_id=1055`) apareceu com `iface_a`, `iface_b`,
+`ip_local` e `ip_remote` vazios no editor, embora uma captura de tela anterior mostrasse os
+quatro campos preenchidos (`hundred-gigabit-ethernet 1/1/1` / `100GE1/0/3` /
+`198.18.103.54/30` / `198.18.103.53/30`).
+
+**Investigação:** os quatro campos vêm de `dados_json` (`TopologiaDiagrama`, não têm modelo
+próprio — ver seção "Conexões (Links)" acima). Consulta direta ao banco (`manage.py shell`)
+confirmou que os campos estavam de fato gravados como string vazia no `dados_json` salvo — não
+era um problema de renderização do editor. Verificação em paralelo confirmou que:
+
+- O JS publicado em `static/js/topo_main.js` batia byte a byte com o que estava em disco (sem
+  problema de deploy/cache).
+- `_extrair_interfaces_backup` continuava extraindo corretamente os dois lados a partir dos
+  backups mais recentes de cada acesso — reconstruindo exatamente os mesmos valores da captura
+  de tela original (porta física em cada equipamento + IP da interface lógica correspondente,
+  já que tanto o Huawei quanto o Datacom roteiam a VLAN numa interface separada da porta física).
+
+**Causa raiz não confirmada.** Não foi possível reproduzir em navegador (sem acesso a login na
+sessão que investigou). A hipótese mais provável é uma ação de "Aplicar" no painel de
+propriedades do link com os campos aparentando vazios — o pré-preenchimento
+(`value="${link.ip_local||''}"` em `_showLinkProps`) está correto no código atual, então, se o
+problema se repetir, vale investigar se o navegador está de fato exibindo o `<datalist>` ao
+focar um campo já preenchido (alguns navegadores só mostram sugestões quando o valor digitado
+ainda não bate exatamente com uma opção).
+
+**Correção aplicada:** os 4 campos foram restaurados por escrita direta no `dados_json` desse
+link específico (`manage.py shell`), usando os valores reconstruídos a partir do backup de cada
+equipamento (mesma fonte de dados que o próprio recurso de sugestão usa). O `dados_json` anterior
+à correção foi salvo em `/tmp/topologia_cliente41_backup_<timestamp>.json` antes da escrita, para
+rollback caso necessário.
+
+**Follow-up em aberto:** se o mesmo sumiço acontecer de novo em outro link/cliente, reproduzir no
+navegador com o console aberto (Network + Console) para capturar se `/interfaces-backup/` retorna
+vazio, se o `<datalist>` chega a ser populado, e se "Aplicar" está sendo clicado com o campo
+realmente vazio na tela.
+
+---
+
 ## Passe de Design — 2026-07-20
 
 Ajustes visuais em `clientes/templates/topologia_editor.html` (CSS) e `topo_main.js`/`topo_engine.js`
