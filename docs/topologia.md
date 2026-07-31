@@ -599,6 +599,45 @@ atrás do texto (`.node-label-bg`) também foi ligeiramente aumentada (multiplic
 por caractere) porque texto em negrito ocupa um pouco mais de espaço horizontal que o mesmo texto
 normal — sem o ajuste, IPs mais longos ficariam com a última letra encostando na borda do fundo.
 
+**Sexta leva (2026-07-31 — micro-interações e correção de animações "mortas"):** revisão de
+todas as transições/animações do editor com foco em consistência e em duas animações que
+existiam no CSS mas nunca chegavam a rodar de fato:
+
+- **Fade do painel de propriedades nunca retocava:** `#props-body{animation:props-fade...}` só
+  disparava uma vez, no carregamento da página — trocar de seleção substitui o `innerHTML` do
+  mesmo elemento, o que não reinicia uma CSS `animation` já concluída. Corrigido com um
+  `MutationObserver` no construtor do `TopoEditor` (`topo_main.js`) que força um reflow
+  (`style.animation='none'` → `offsetWidth` → `style.animation=''`) toda vez que o conteúdo do
+  painel muda — sem precisar tocar nos 4 pontos do código que escrevem em `#props-body`.
+- **Dica de canvas vazio e legenda de interfaces trocavam com `display:none`/`block`:** isso
+  impede qualquer transição (não dá pra animar de/para `display:none`). Ambas passaram a usar
+  `opacity`/`transform` com uma classe `.show`, então a `transition` que já existia no CSS (da
+  dica) ou uma nova (da legenda, que ganhou um leve `scale(.95)→scale(1)` com
+  `transform-origin:bottom left`, coerente com a posição fixa do painel no canto inferior
+  esquerdo) finalmente tem efeito.
+- **`transition:all` no botão "Aplicar"/"Remover" (`.prop-btn`)** trocado por propriedades
+  explícitas (`background,border-color,color,transform`) — mais previsível e mais barato pro
+  navegador que recalcular todas as propriedades a cada troca de estado.
+- **Feedback de clique nos botões:** `.tb-btn:active`/`.prop-btn:active` ganharam
+  `scale(.97)` além do `translateY` que já existia, para os botões "responderem" visualmente ao
+  clique (não só ao hover).
+- **Curva de easing consistente:** nova variável `--ease-out:cubic-bezier(.23,1,.32,1)` usada no
+  toast, na legenda, na dica de canvas vazio e no fade do painel de propriedades — essas quatro
+  animações de entrada/saída agora compartilham a mesma "personalidade" de movimento em vez de
+  cada uma usar o `ease`/`ease-out` padrão do navegador.
+- **Anel do node (`.node-ring`) ganhou transição de cor** (`transition:...,stroke .15s`), não só
+  de opacidade — a troca de cor entre anel normal (cor do device) e anel de multi-seleção (ciano
+  forçado por `!important`) deixou de "saltar" instantaneamente.
+- **`:focus-visible` nos controles** (`tb-btn`, `prop-btn`, `prop-input`, `prop-select`) — anel
+  ciano consistente com o resto da UI ao navegar por teclado (Tab), em vez do contorno azul
+  padrão do navegador que destoava do tema escuro.
+- **Efeitos respeitam `prefers-reduced-motion`:** se o usuário tem "reduzir movimento" ativado no
+  SO/navegador, o editor já inicia com pulso/fluxo/pacotes desligados (mesmo estado do botão
+  "Efeitos" manual), em vez de exigir que a pessoa descubra e desligue na mão.
+
+Nenhuma dessas mudanças altera o modelo de dados salvo em `dados_json` nem o comportamento
+funcional de nenhuma ação — é puramente polish visual/tátil.
+
 ---
 
 ## Atalhos de Teclado
