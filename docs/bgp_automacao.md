@@ -160,7 +160,7 @@ Cada fabricante usa o mecanismo **mais natural e reversível da própria CLI** �
 |---|---|
 | Mikrotik v6 | `/routing bgp peer {enable\|disable} [find name="NOME"]` |
 | Mikrotik v7 | `/routing bgp connection {enable\|disable} [find name="NOME"]` |
-| Huawei | `bgp ASN` + `{undo peer IP ignore \| peer IP ignore}` |
+| Huawei | `bgp ASN` + `{undo peer IP ignore \| peer IP ignore}` + `commit` |
 | Cisco/Datacom | `router bgp ASN` + `{no neighbor IP shutdown \| neighbor IP shutdown}` |
 | Juniper | `{activate\|deactivate} protocols bgp group GRUPO neighbor IP` + `commit` |
 
@@ -170,7 +170,7 @@ Cada fabricante usa o mecanismo **mais natural e reversível da própria CLI** �
 |---|---|
 | Mikrotik v6 | `/routing filter set [find chain="CHAIN" prefix="PREFIXO"] set-bgp-prepend=N` |
 | Mikrotik v7 | reescreve a `rule=` inserindo/substituindo `set bgp-path-prepend=N;` — **best-effort, não confirmado em backup real** (todo prepend real visto em produção é RouterOS 6) |
-| Huawei | `route-policy NOME permit node N` + `apply as-path ASN...ASN additive` |
+| Huawei | `route-policy NOME permit node N` + `apply as-path ASN...ASN additive` + `commit` |
 | Cisco/Datacom | `route-map NOME permit SEQ` + `set as-path prepend ASN...ASN` |
 | Juniper | `set policy-options policy-statement NOME term TERM then as-path-prepend "ASN...ASN"` + `commit` |
 
@@ -181,7 +181,7 @@ Cada fabricante usa o mecanismo **mais natural e reversível da própria CLI** �
 | Juniper | `deactivate policy-options policy-statement NOME term TERM` + `commit` | Reversível (`activate`); padrão já visto ativo em produção |
 | Mikrotik v6 | `/routing bgp network disable [...]` OU `/routing filter disable [...]` | Conforme a origem do anúncio (network object vs. regra de filtro) |
 | Mikrotik v7 | `/ip firewall address-list disable [...]` | ⚠️ `.network=` pode ser compartilhado por mais de uma connection — mesma lista, mesmo efeito em todas |
-| Huawei | `undo network IP MASCARA` | Só suportado quando o anúncio vem de um `network` statement explícito; senão a ação recusa (`AcaoBgpNaoSuportada`) em vez de arriscar um edit de route-policy |
+| Huawei | `undo network IP MASCARA` + `commit` | Só suportado quando o anúncio vem de um `network` statement explícito; senão a ação recusa (`AcaoBgpNaoSuportada`) em vez de arriscar um edit de route-policy |
 | Cisco/Datacom | `ip prefix-list PL seq SEQ_MENOR deny PREFIXO` | Insere um `deny` ANTES do `permit` existente (não edita a entrada original); se não houver seq livre abaixo, recusa e pede renumeração manual |
 
 ### Execução (`executar_acao_bgp`)
@@ -191,10 +191,20 @@ resolução de túnel via `ProxyServer`/VPN já usada pelo Painel de Scripts) �
 adicionar `'juniper': 'juniper_junos'` em `DEVICE_TYPES`. Por fabricante:
 
 - **Mikrotik**: `send_command()` — um comando único, RouterOS não tem "modo configuração" separado.
-- **Huawei/Cisco/Datacom**: `send_config_set(comandos)` — mesmo padrão já usado por `executar_script`.
-- **Juniper**: `send_config_set(comandos, exit_config_mode=False)` seguido de `commit()` **explícito**
-  — sem isso, o driver Juniper do Netmiko descarta (discard) qualquer mudança não commitada ao sair
-  do modo config. Nenhum outro lugar do projeto chamava `commit()` antes desta feature.
+- **Cisco/Datacom**: `send_config_set(comandos)` — mesmo padrão já usado por `executar_script`.
+- **Huawei e Juniper**: `send_config_set(comandos, exit_config_mode=False)` seguido de `commit()`
+  **explícito** — sem isso a mudança fica só na config candidata, nunca aplicada de verdade.
+  **Bug real encontrado em produção (31/07/2026)**: a versão inicial só tratava isso pro Juniper;
+  o driver Huawei `huawei_vrpv8` (usado por TODO equipamento Huawei deste projeto — ver
+  `DEVICE_TYPES`) tem o **mesmo modelo de config candidata/commit** — sem o `commit()` explícito o
+  prompt fica em `[*...]` (mudança pendente, nunca aplicada) mesmo com a conexão "funcionando" sem
+  nenhum erro. Corrigido adicionando `'huawei'` a `_PRECISA_COMMIT`. Nenhum outro lugar do projeto
+  chamava `commit()` antes desta feature.
+  - `comandos_*` do Huawei e Juniper incluem `'commit'` como último item da lista só pro
+    preview/auditoria mostrarem a ação completa — `executar_acao_bgp` filtra essa string antes de
+    mandar pro `send_config_set` (senão o commit sairia duplicado: uma vez como linha de config
+    comum, outra pela chamada real `conn.commit()`, que faz o handshake de confirmação/erro da
+    config candidata, diferente de só mandar o texto "commit").
 
 Toda `AcaoBgpNaoSuportada` (fabricante/situação sem comando seguro conhecido) é capturada na view e
 devolvida como erro 422 — a UI mostra o motivo em vez de tentar um comando arriscado.

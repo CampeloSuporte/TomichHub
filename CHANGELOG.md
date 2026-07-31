@@ -24,6 +24,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Validado ponta a ponta contra backups reais dos 4 fabricantes (não dados sintéticos) antes de
   entrar em produção — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
 
+### Corrigido
+
+- **Ações BGP no Huawei não eram aplicadas de verdade** (`clientes/bgp_actions.py`): reportado em
+  produção — um `apply as-path ... additive` real rodou sem erro nenhum (prompt `[~...]` →
+  `[*...]`, indicando mudança pendente), mas nunca foi commitado. O driver Netmiko `huawei_vrpv8`
+  (usado por todo equipamento Huawei deste projeto) tem o mesmo modelo de config candidata/commit
+  do Juniper — a versão inicial só tratava isso pro Juniper. Corrigido adicionando `'huawei'` a
+  `_PRECISA_COMMIT`; `comandos_toggle_sessao`/`comandos_prepend`/`comandos_parar_anuncio` do Huawei
+  agora incluem `'commit'` no preview/auditoria (filtrado antes do `send_config_set` pra não
+  duplicar o commit — a execução real usa `conn.commit()`, não o texto literal).
+
 ---
 
 ## [Não publicado] — 2026-07-31 (Feat: Terminal Compartilhado + Link Externo)

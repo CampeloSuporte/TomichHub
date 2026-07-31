@@ -79,7 +79,10 @@ def comandos_toggle_sessao(vendor, dados, nome_sessao, ativar):
         if not asn:
             raise AcaoBgpNaoSuportada('AS local não identificado no snapshot — não dá pra montar o comando.')
         linha = f'undo peer {nome} ignore' if ativar else f'peer {nome} ignore'
-        return [f'bgp {asn}', linha]
+        # 'commit' aqui é só pro preview/auditoria mostrarem a ação completa —
+        # a execução de verdade usa conn.commit() do Netmiko (ver
+        # executar_acao_bgp/_PRECISA_COMMIT), não este texto literal.
+        return [f'bgp {asn}', linha, 'commit']
 
     if vendor in ('cisco', 'datacom'):
         asn = sessao.get('as_local')
@@ -139,9 +142,9 @@ def comandos_prepend(vendor, dados, nome_sessao, prefixo, delta=1):
         node = extra.get('node')
         cabecalho = [f'route-policy {policy_nome} permit node {node}']
         if novo_valor == 0:
-            return cabecalho + ['undo apply as-path']
+            return cabecalho + ['undo apply as-path', 'commit']
         asns = ' '.join([str(asn)] * novo_valor)
-        return cabecalho + [f'apply as-path {asns} additive']
+        return cabecalho + [f'apply as-path {asns} additive', 'commit']
 
     if vendor in ('cisco', 'datacom'):
         if not asn:
@@ -213,7 +216,7 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
         else:
             familia = 'ipv4-family'
             mask_arg = str(ipaddress.IPv4Network(prefixo, strict=False).netmask)
-        return [f'bgp {asn}', f'{familia} unicast', f'undo network {ip} {mask_arg}']
+        return [f'bgp {asn}', f'{familia} unicast', f'undo network {ip} {mask_arg}', 'commit']
 
     if vendor in ('cisco', 'datacom'):
         termo, entrada = _termo_e_entrada_responsaveis(dados, policy_nome, prefixo)
@@ -246,9 +249,18 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
 # ═══════════════════════════════════════════════════════════════════════
 
 # Fabricantes cuja conexão exige `commit()` explícito depois do
-# `send_config_set` — sem isso o driver Juniper do Netmiko descarta
-# (discard) qualquer mudança não commitada ao sair do modo config.
-_PRECISA_COMMIT = {'juniper'}
+# `send_config_set` — sem isso a mudança fica só na config candidata,
+# nunca aplicada de verdade:
+# - Juniper: o driver descarta (discard) qualquer mudança não commitada
+#   ao sair do modo config.
+# - Huawei (driver `huawei_vrpv8`, usado por TODO equipamento Huawei deste
+#   projeto — ver DEVICE_TYPES): VRP8 tem o mesmo modelo de config
+#   candidata/commit do Juniper. `send_config_set` nem sai do modo config
+#   sozinho (o driver força `exit_config_mode=False`) — sem o `commit()`
+#   explícito o prompt fica em `[*...]` (mudança pendente) para sempre e
+#   nada é aplicado no equipamento real, mesmo a conexão "funcionando" sem
+#   erro nenhum. Bug real encontrado em produção — ver AcaoBgp/histórico.
+_PRECISA_COMMIT = {'juniper', 'huawei'}
 # Fabricantes cujo comando é enviado direto (sem "modo configuração" —
 # RouterOS não tem esse conceito, cada comando já é completo por si só).
 _COMANDO_UNICO = {'mikrotik'}
@@ -269,7 +281,14 @@ def executar_acao_bgp(acesso, vendor, comandos):
         if vendor in _COMANDO_UNICO:
             output = conn.send_command(comandos[0])
         elif vendor in _PRECISA_COMMIT:
-            output = conn.send_config_set(comandos, exit_config_mode=False)
+            # 'commit' pode aparecer como último item de `comandos` (só pro
+            # preview/auditoria mostrarem a ação completa) — não manda como
+            # texto pro send_config_set, senão o commit sai duplicado: uma
+            # vez como linha de config comum, outra pela chamada real
+            # conn.commit() (que faz o handshake certo de confirmação/erro
+            # da config candidata, diferente de só mandar o texto "commit").
+            comandos_config = [c for c in comandos if c != 'commit']
+            output = conn.send_config_set(comandos_config, exit_config_mode=False)
             output += '\n' + conn.commit()
         else:
             output = conn.send_config_set(comandos)

@@ -23,6 +23,10 @@
 - ✅ Tudo validado ponta a ponta contra backups **reais** de produção (não dados sintéticos) pra
   cada um dos 4 fabricantes, incluindo casos reais complexos (grupos Juniper inteiros desativados,
   nós Huawei baseados em community-filter, RouterOS 6 e 7 no mesmo ambiente).
+- 🐛 **Corrigido no mesmo dia**: ações no Huawei rodavam sem erro mas nunca eram commitadas (driver
+  `huawei_vrpv8` do Netmiko tem o mesmo modelo de config candidata/commit do Juniper, e a versão
+  inicial só tratava isso pro Juniper) — reportado em produção, comando real ficou pendente
+  (`[*...]`) sem aplicar. Corrigido em `clientes/bgp_actions.py`.
 
 **Onde está documentado?**
 
