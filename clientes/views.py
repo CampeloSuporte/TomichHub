@@ -13,7 +13,7 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import ProxyServer
-from .models import AcessoSessao, AcessoComando
+from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
 from .decorators import (
@@ -3658,6 +3658,34 @@ def terminal_page(request):
     return render(request, 'terminal.html', {
         'wiki_categorias': CategoriaWiki.objects.all(),
         'wiki_fabricantes': ArtigoWiki.FABRICANTES,
+    })
+
+
+@require_http_methods(["GET"])
+def terminal_link_externo(request, token):
+    """
+    Página PÚBLICA (sem login) para um visitante externo — ex: suporte de
+    fabricante numa chamada — acessar um terminal compartilhado por um
+    usuário do CRM através de um link temporário (TerminalLinkExterno).
+
+    A autorização inteira é o token (UUID imprevisível na URL); não expõe
+    nada do resto do CRM (sem sidebar de hosts, sem outros clientes) — só
+    o único terminal daquele Acesso, e só enquanto o link for válido.
+    """
+    try:
+        link = TerminalLinkExterno.objects.select_related('acesso').get(id=token)
+    except TerminalLinkExterno.DoesNotExist:
+        return render(request, 'terminal_link_invalido.html', {'motivo': 'Link inválido.'}, status=404)
+
+    valido, motivo = link.validar()
+    if not valido:
+        return render(request, 'terminal_link_invalido.html', {'motivo': motivo}, status=410)
+
+    acesso = link.acesso
+    return render(request, 'terminal_externo.html', {
+        'token': str(link.id),
+        'host_label': f'{acesso.tipo or acesso.protocolo} — {acesso.host}',
+        'expira_em': link.expira_em.isoformat(),
     })
 
 

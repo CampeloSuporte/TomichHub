@@ -200,6 +200,43 @@
             padding: 2px 8px; white-space: nowrap; display: none; align-items: center; gap: 4px;
         }
         .share-viewers-badge.visivel { display: inline-flex; }
+        .btn-terminal.btn-link-externo { border-color: rgba(88,166,255,.4); color: #58a6ff; }
+        .btn-terminal.btn-link-externo:hover { border-color: #58a6ff; background: rgba(88,166,255,.08); }
+
+        /* ─── MODAL LINK EXTERNO ─── */
+        .link-externo-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
+            z-index: 9500; align-items: center; justify-content: center; padding: 16px;
+        }
+        .link-externo-overlay.aberto { display: flex; }
+        .link-externo-card {
+            background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+            padding: 22px; max-width: 420px; width: 100%; font-family: 'Inter',sans-serif;
+        }
+        .link-externo-card h3 { margin: 0 0 6px; font-size: 15px; color: #e6edf3; }
+        .link-externo-card p.desc { margin: 0 0 16px; font-size: 12px; color: #7d8590; line-height: 1.6; }
+        .link-externo-duracao { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .link-externo-duracao button {
+            flex: 1; min-width: 60px; background: transparent; border: 1px solid #30363d; color: #7d8590;
+            padding: 8px 6px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;
+        }
+        .link-externo-duracao button.selecionado { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,.08); }
+        .link-externo-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+        .link-externo-acoes button {
+            border-radius: 4px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent;
+        }
+        .btn-le-cancelar { background: transparent; border-color: #30363d !important; color: #7d8590; }
+        .btn-le-gerar { background: #58a6ff; color: #0d1117; }
+        .link-externo-resultado { display: none; }
+        .link-externo-resultado.visivel { display: block; }
+        .link-externo-url-row { display: flex; gap: 6px; margin-bottom: 12px; }
+        .link-externo-url-row input {
+            flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
+            padding: 8px 10px; border-radius: 4px; font-size: 12px; font-family: monospace;
+        }
+        .link-externo-url-row button { background: #3fb950; color: #0d1117; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .link-externo-expira { font-size: 11px; color: #ffa500; margin-bottom: 14px; }
+        .btn-le-revogar { background: transparent; border: 1px solid #ff5555 !important; color: #ff5555; width: 100%; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
 
         /* ─── BOTÃO TECLADO MOBILE ─── */
         .btn-mobile-keyboard {
@@ -836,6 +873,7 @@
                     <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
                     <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
                     <button class="btn-terminal btn-share" id="btnShare" onclick="toggleCompartilhar()" title="Compartilhar esta sessão em tempo real com outros usuários autorizados neste host">🔗 Compartilhar</button>
+                    <button class="btn-terminal btn-link-externo" id="btnLinkExterno" onclick="abrirModalLinkExterno()" title="Gerar um link temporário para alguém de fora do CRM acessar este terminal (ex: suporte de fabricante)">🌐 Link Externo</button>
                     <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
                     <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
                 </div>
@@ -870,6 +908,9 @@
         <div class="mobile-menu-item" onclick="toggleCompartilhar();fecharMenuMobile()" style="color:#ffa500">
             <span>🔗</span><span id="menuShareLabel">Compartilhar Terminal</span>
         </div>
+        <div class="mobile-menu-item" onclick="abrirModalLinkExterno();fecharMenuMobile()" style="color:#58a6ff">
+            <span>🌐</span><span>Link Externo</span>
+        </div>
         {% if request.user.is_staff %}
         <div class="mobile-menu-separator"></div>
         <div class="mobile-menu-item item-wiki" onclick="toggleWikiSidebar();fecharMenuMobile()">
@@ -888,6 +929,36 @@
         </div>
         <div class="mobile-menu-item item-danger" onclick="window.close()">
             <span>✕</span><span>Fechar Aba</span>
+        </div>
+    </div>
+
+    <!-- ── Modal Link Externo ── -->
+    <div class="link-externo-overlay" id="linkExternoOverlay" onclick="if(event.target===this) fecharModalLinkExterno()">
+        <div class="link-externo-card">
+            <h3>🌐 Compartilhar terminal externamente</h3>
+            <p class="desc">Gera um link temporário para alguém de fora do CRM (sem login) acessar este terminal — útil durante um suporte, por exemplo. A pessoa vê e digita comandos como um espectador comum; o link expira sozinho.</p>
+
+            <div id="linkExternoForm">
+                <div class="link-externo-duracao" id="linkExternoDuracao">
+                    <button data-min="15" onclick="selecionarDuracaoLink(15)">15 min</button>
+                    <button data-min="30" class="selecionado" onclick="selecionarDuracaoLink(30)">30 min</button>
+                    <button data-min="60" onclick="selecionarDuracaoLink(60)">60 min</button>
+                    <button data-min="120" onclick="selecionarDuracaoLink(120)">120 min</button>
+                </div>
+                <div class="link-externo-acoes">
+                    <button class="btn-le-cancelar" onclick="fecharModalLinkExterno()">Cancelar</button>
+                    <button class="btn-le-gerar" onclick="gerarLinkExterno()">Gerar link</button>
+                </div>
+            </div>
+
+            <div id="linkExternoResultado" class="link-externo-resultado">
+                <div class="link-externo-url-row">
+                    <input type="text" id="linkExternoUrl" readonly onclick="this.select()">
+                    <button onclick="copiarLinkExterno()">Copiar</button>
+                </div>
+                <div class="link-externo-expira" id="linkExternoExpiraTexto"></div>
+                <button class="btn-le-revogar" onclick="revogarLinkExterno()">Revogar agora</button>
+            </div>
         </div>
     </div>
 
@@ -1927,6 +1998,13 @@
                         tObj.hadSshError = true;   // sessão compartilhada acabou — reconectar seria uma conexão nova
                         tObj.terminal.writeln('\x1b[33m⚠ ' + data.message + ' Clique em "↻ Reconectar" para abrir uma conexão própria.\x1b[0m\n');
                         atualizarBotaoCompartilhar();
+                    } else if (data.type === 'link_externo_criado') {
+                        tObj.linkExternoToken = data.token;
+                        mostrarLinkExternoGerado(data.token, data.expira_em);
+                    } else if (data.type === 'link_externo_revogado') {
+                        if (tObj.linkExternoToken === data.token) tObj.linkExternoToken = null;
+                        fecharModalLinkExterno();
+                        tObj.terminal.writeln('\x1b[36m🌐 Link externo revogado.\x1b[0m\n');
                     }
                 };
                 tObj.socket.onerror = () => tObj.terminal.writeln('\x1b[31m✕ Erro na conexão\x1b[0m\n');
@@ -1989,10 +2067,12 @@
     function atualizarBotaoCompartilhar() {
         const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
         const btn = document.getElementById('btnShare');
+        const btnLink = document.getElementById('btnLinkExterno');
         const menuLabel = document.getElementById('menuShareLabel');
         const badge = document.getElementById('shareViewersBadge');
         if (!t || t.tipo === 'winbox') {
             if (btn) btn.style.display = 'none';
+            if (btnLink) btnLink.style.display = 'none';
             if (badge) badge.classList.remove('visivel');
             return;
         }
@@ -2001,6 +2081,7 @@
             btn.classList.toggle('ativo', !!t.shared);
             btn.textContent = t.shared ? (t.isPhysical ? '🔗 Compartilhado' : '👀 Assistindo') : '🔗 Compartilhar';
         }
+        if (btnLink) btnLink.style.display = '';
         if (menuLabel) {
             menuLabel.textContent = t.shared ? (t.isPhysical ? 'Parar Compartilhamento' : 'Sessão compartilhada') : 'Compartilhar Terminal';
         }
@@ -2012,6 +2093,66 @@
                 badge.classList.remove('visivel');
             }
         }
+    }
+
+    // ============================================================
+    // LINK EXTERNO — compartilhar o terminal com alguém sem login no CRM,
+    // por um tempo limitado (ex: suporte de fabricante numa chamada).
+    // ============================================================
+    let _linkExternoDuracaoSelecionada = 30;
+
+    function abrirModalLinkExterno() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        if (!t || t.tipo === 'winbox' || !t.socket || t.socket.readyState !== WebSocket.OPEN) return;
+        document.getElementById('linkExternoOverlay').classList.add('aberto');
+        if (t.linkExternoToken) {
+            // Já existe um link ativo para este terminal — mostra direto o resultado.
+            document.getElementById('linkExternoForm').style.display = 'none';
+            document.getElementById('linkExternoResultado').classList.add('visivel');
+        } else {
+            document.getElementById('linkExternoForm').style.display = '';
+            document.getElementById('linkExternoResultado').classList.remove('visivel');
+        }
+    }
+
+    function fecharModalLinkExterno() {
+        document.getElementById('linkExternoOverlay').classList.remove('aberto');
+    }
+
+    function selecionarDuracaoLink(minutos) {
+        _linkExternoDuracaoSelecionada = minutos;
+        document.querySelectorAll('#linkExternoDuracao button').forEach(b => {
+            b.classList.toggle('selecionado', parseInt(b.dataset.min, 10) === minutos);
+        });
+    }
+
+    function gerarLinkExterno() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        if (!t || !t.socket || t.socket.readyState !== WebSocket.OPEN) return;
+        t.socket.send(JSON.stringify({ action: 'criar_link_externo', minutos: _linkExternoDuracaoSelecionada }));
+    }
+
+    function mostrarLinkExternoGerado(token, expiraEmIso) {
+        const url = `${window.location.protocol}//${window.location.host}/clientes/terminal/link/${token}/`;
+        document.getElementById('linkExternoForm').style.display = 'none';
+        document.getElementById('linkExternoResultado').classList.add('visivel');
+        document.getElementById('linkExternoUrl').value = url;
+        const expira = new Date(expiraEmIso);
+        document.getElementById('linkExternoExpiraTexto').textContent =
+            '⏱ Expira às ' + expira.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('linkExternoOverlay').classList.add('aberto');
+    }
+
+    function copiarLinkExterno() {
+        const input = document.getElementById('linkExternoUrl');
+        input.select();
+        navigator.clipboard?.writeText(input.value).catch(() => document.execCommand('copy'));
+    }
+
+    function revogarLinkExterno() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        if (!t || !t.socket || t.socket.readyState !== WebSocket.OPEN || !t.linkExternoToken) return;
+        t.socket.send(JSON.stringify({ action: 'revogar_link_externo', token: t.linkExternoToken }));
     }
 
     // ============================================================

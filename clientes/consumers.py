@@ -12,14 +12,16 @@ import ssl
 import struct
 import socket
 import paramiko
+from datetime import timedelta
 from paramiko.message import Message
 from asgiref.sync import sync_to_async
 from channels.consumer import get_handler_name
 from channels.generic.websocket import WebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 from django.utils import timezone
-from .models import Acesso, Cliente, ProxyServer, AcessoSessao, AcessoComando
+from .models import Acesso, Cliente, ProxyServer, AcessoSessao, AcessoComando, TerminalLinkExterno
 
 logger = logging.getLogger(__name__)
 
@@ -548,6 +550,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             elif action == 'share_stop':
                 self._parar_compartilhamento()
 
+            elif action == 'criar_link_externo':
+                self._criar_link_externo(data.get('minutos'))
+
+            elif action == 'revogar_link_externo':
+                self._revogar_link_externo(data.get('token'))
+
         except json.JSONDecodeError as e:
             self.send_error(f"Erro ao parsear JSON: {str(e)}")
         except Exception as e:
@@ -721,10 +729,81 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         self._shared_session = None
         self.send_json({'type': 'share_stopped'})
 
-    def _entrar_em_sessao_compartilhada(self, session):
+    _LINK_EXTERNO_MIN_MINUTOS = 5
+    _LINK_EXTERNO_MAX_MINUTOS = 240
+
+    def _criar_link_externo(self, minutos):
+        """Gera um link temporário (TerminalLinkExterno) para compartilhar
+        este terminal com alguém de fora do CRM (sem login) — ex: suporte de
+        fabricante durante uma chamada. Garante que a sessão esteja
+        compartilhada primeiro (senão o link não teria a quem se anexar)."""
+        user = getattr(self, '_crm_user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            self.send_error('Apenas usuários do CRM podem gerar links externos.')
+            return
+
+        session = getattr(self, '_shared_session', None)
+        if not session:
+            self._iniciar_compartilhamento()
+            session = getattr(self, '_shared_session', None)
+            if not session:
+                return   # _iniciar_compartilhamento já enviou o erro
+
+        try:
+            mins = int(minutos)
+        except (TypeError, ValueError):
+            mins = 30
+        mins = max(self._LINK_EXTERNO_MIN_MINUTOS, min(mins, self._LINK_EXTERNO_MAX_MINUTOS))
+
+        link = TerminalLinkExterno.objects.create(
+            acesso_id=session.acesso_id,
+            criado_por=user,
+            expira_em=timezone.now() + timedelta(minutes=mins),
+        )
+        self.send_json({
+            'type': 'link_externo_criado',
+            'token': str(link.id),
+            'expira_em': link.expira_em.isoformat(),
+            'minutos': mins,
+        })
+
+    def _revogar_link_externo(self, token):
+        """Revoga um link antes do prazo — qualquer visitante já conectado
+        por ele é avisado e desconectado imediatamente."""
+        user = getattr(self, '_crm_user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            self.send_error('Apenas usuários do CRM podem revogar links externos.')
+            return
+        try:
+            link = TerminalLinkExterno.objects.get(id=token)
+        except (TerminalLinkExterno.DoesNotExist, ValueError, ValidationError):
+            self.send_error('Link não encontrado.')
+            return
+        if link.criado_por_id and link.criado_por_id != user.id and not (user.is_staff or user.is_superuser):
+            self.send_error('Você só pode revogar links que você mesmo criou.')
+            return
+
+        link.revogado = True
+        link.save(update_fields=['revogado'])
+
+        session = _terminal_sessions.get(link.acesso_id)
+        if session:
+            for consumer, _label in session.snapshot_viewers():
+                if getattr(consumer, '_link_externo_id', None) == link.id:
+                    try:
+                        consumer.send_json({'type': 'share_ended', 'message': 'O link de acesso externo foi revogado.'})
+                        consumer.close(code=4008)
+                    except Exception:
+                        pass
+        self.send_json({'type': 'link_externo_revogado', 'token': str(link.id)})
+
+    def _entrar_em_sessao_compartilhada(self, session, link_externo=None):
         """Anexa este WebSocket a uma sessão já compartilhada por outro
         usuário — sem abrir nenhuma conexão SSH/Telnet nova, só passa a
-        receber o mesmo output e poder escrever no mesmo shell físico."""
+        receber o mesmo output e poder escrever no mesmo shell físico.
+        `link_externo`, quando informado (visitante externo via token),
+        fica registrado na auditoria e permite revogar/expirar este
+        visitante especificamente depois."""
         try:
             acesso = Acesso.objects.get(id=session.acesso_id)
         except Acesso.DoesNotExist:
@@ -741,10 +820,13 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         self.protocol         = session.physical.protocol
         self.is_huawei        = session.physical.is_huawei
         self.is_parks         = session.physical.is_parks
+        if link_externo is not None:
+            self._link_externo_id = link_externo.id
 
         self._sessao_auditoria = AcessoSessao.objects.create(
             acesso=acesso,
             usuario=getattr(self, '_crm_user', None),
+            link_externo=link_externo,
             tipo=self.protocol,
             ip_origem=(self.scope.get('client') or [None])[0],
         )
@@ -1985,6 +2067,91 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
     def send_error(self, message):
         self.send_json({'type': 'error', 'message': message})
+
+
+class TerminalLinkExternoConsumer(SSHConsumer):
+    """WebSocket para visitantes SEM login no CRM que entraram por um link
+    temporário (TerminalLinkExterno) — ex: suporte de fabricante durante uma
+    chamada. Nunca abre uma conexão SSH/Telnet própria nem aceita acesso_id
+    arbitrário: só pode anexar-se a uma sessão que um usuário do CRM já
+    deixou compartilhada, e só enquanto o token do link for válido.
+    A autorização inteira é o token — por isso `_usuario_pode_acessar` é
+    sobrescrito para sempre liberar (já validado em `_conectar_via_link`
+    antes de chegar lá) e `_crm_user` fica sempre None."""
+
+    def connect(self):
+        self._crm_user = None
+        self.accept()
+        self.limpar_recursos()
+
+    def receive(self, text_data=None, bytes_data=None):
+        if bytes_data is not None:
+            try:
+                self.enviar_comando(bytes_data.decode('utf-8', errors='replace'))
+            except Exception as e:
+                logger.error(f"❌ Erro ao enviar bytes (link externo): {e}")
+            return
+        try:
+            data   = json.loads(text_data)
+            action = data.get('action')
+            if action == 'connect_link':
+                self._conectar_via_link(data.get('token'))
+            elif action == 'resize':
+                if self._set_term_size(data.get('cols'), data.get('rows')):
+                    self._resize_pty(self.term_cols, self.term_rows)
+        except json.JSONDecodeError as e:
+            self.send_error(f'Erro ao parsear JSON: {e}')
+        except Exception as e:
+            logger.error(f"❌ Erro receive (link externo): {e}")
+            self.send_error(f'Erro: {e}')
+
+    def _usuario_pode_acessar(self, acesso):
+        return True
+
+    def _label_usuario(self):
+        return 'Visitante externo'
+
+    def _conectar_via_link(self, token):
+        try:
+            link = TerminalLinkExterno.objects.get(id=token)
+        except (TerminalLinkExterno.DoesNotExist, ValueError, ValidationError):
+            self.send_error('Link inválido.')
+            self.close(code=4003)
+            return
+
+        valido, motivo = link.validar()
+        if not valido:
+            self.send_error(motivo)
+            self.close(code=4003)
+            return
+
+        session = _terminal_sessions.get(link.acesso_id)
+        if not session:
+            self.send_error('A sessão compartilhada não está mais ativa. Peça um novo link.')
+            self.close(code=4003)
+            return
+
+        self._entrar_em_sessao_compartilhada(session, link_externo=link)
+
+        # Encerra a conexão exatamente no momento da expiração, mesmo que
+        # ninguém revogue manualmente antes disso.
+        restante = (link.expira_em - timezone.now()).total_seconds()
+        self._expira_timer = threading.Timer(max(restante, 0), self._expirar_por_link)
+        self._expira_timer.daemon = True
+        self._expira_timer.start()
+
+    def _expirar_por_link(self):
+        try:
+            self.send_json({'type': 'share_ended', 'message': 'O link de acesso externo expirou.'})
+            self.close(code=4008)
+        except Exception:
+            pass
+
+    def disconnect(self, close_code):
+        timer = getattr(self, '_expira_timer', None)
+        if timer:
+            timer.cancel()
+        super().disconnect(close_code)
 
 
 class WinboxConsumer(SSHConsumer):

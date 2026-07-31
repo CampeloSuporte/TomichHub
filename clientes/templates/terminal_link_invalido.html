@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Link indisponível</title>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: #0d1117; color: #e6edf3; font-family: 'Inter', 'Segoe UI', sans-serif;
+        padding: 20px;
+    }
+    .card {
+        background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+        padding: 36px 32px; max-width: 420px; width: 100%; text-align: center;
+    }
+    .icone { font-size: 40px; margin-bottom: 14px; }
+    h1 { font-size: 17px; margin: 0 0 8px; }
+    p { font-size: 13px; color: #7d8590; line-height: 1.6; margin: 0; }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="icone">🔒</div>
+        <h1>Este link não está mais disponível</h1>
+        <p>{{ motivo }}</p>
+        <p style="margin-top:10px;">Peça a quem compartilhou para gerar um novo link.</p>
+    </div>
+</body>
+</html>

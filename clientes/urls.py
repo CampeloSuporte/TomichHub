@@ -69,6 +69,8 @@ urlpatterns = [
     # Terminal e Winbox
     path('terminal/', views.terminal_page, name='terminal_page'),
     path('terminal/acessos/', views.listar_acessos_terminal, name='listar_acessos_terminal'),
+    # Link externo de terminal compartilhado — página pública, SEM login
+    path('terminal/link/<uuid:token>/', views.terminal_link_externo, name='terminal_link_externo'),
     path('winbox/<int:acesso_id>/', views.winbox_page, name='winbox_page'),
     path('webfig-vnc/<int:acesso_id>/', views.webfig_vnc_page, name='webfig_vnc_page'),
 

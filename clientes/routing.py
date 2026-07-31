@@ -10,6 +10,8 @@ websocket_urlpatterns = [
     re_path(r'ws/atendimento/inbox/$', InboxConsumer.as_asgi()),
 
     re_path(r'ws/ssh/$', consumers.SSHConsumer.as_asgi()),
+    # Visitante externo (sem login) via link temporário de terminal compartilhado
+    re_path(r'ws/ssh-link/$', consumers.TerminalLinkExternoConsumer.as_asgi()),
     re_path(r'ws/winbox/$', consumers.WinboxConsumer.as_asgi()),
     re_path(r'ws/vnc/(?P<acesso_id>\d+)/$', consumers.WinboxVNCConsumer.as_asgi()),
     # Proxy WebSocket genérico: encaminha WS do browser para o equipamento via túnel SSH

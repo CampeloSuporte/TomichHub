@@ -168,6 +168,10 @@ class AcessoSessao(models.Model):
 
     acesso        = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='sessoes_auditoria')
     usuario       = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='sessoes_acesso')
+    # Preenchido quando esta sessão veio de um visitante externo (sem login)
+    # que entrou por um link temporário — usuario fica None nesse caso;
+    # este campo é o que permite rastrear quem gerou o acesso (link.criado_por).
+    link_externo  = models.ForeignKey('TerminalLinkExterno', null=True, blank=True, on_delete=models.SET_NULL, related_name='sessoes')
     tipo          = models.CharField(max_length=20, choices=TIPOS)
     ip_origem     = models.GenericIPAddressField(null=True, blank=True)
     status        = models.CharField(max_length=20, choices=STATUS, default='ativa')
@@ -210,6 +214,37 @@ class AcessoComando(models.Model):
 
     def __str__(self):
         return self.comando[:80]
+
+
+class TerminalLinkExterno(models.Model):
+    """Link temporário para compartilhar um terminal (SSH/Telnet) com alguém
+    de fora do CRM (sem login) — ex: suporte de fabricante durante uma
+    chamada. A autorização é 100% o token (id, UUID imprevisível): não há
+    usuário CRM nem senha envolvidos do lado de quem acessa pelo link."""
+
+    id          = models.UUIDField(primary_key=True, default=_uuid_mod.uuid4, editable=False)
+    acesso      = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='links_externos')
+    criado_por  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='links_terminal_criados')
+    criado_em   = models.DateTimeField(auto_now_add=True)
+    expira_em   = models.DateTimeField()
+    revogado    = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = 'Link Externo de Terminal'
+        verbose_name_plural = 'Links Externos de Terminal'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        quem = self.criado_por.get_username() if self.criado_por else '?'
+        return f'Link {self.id} — {self.acesso} (criado por {quem})'
+
+    def validar(self):
+        """Retorna (bool, motivo) — motivo só é relevante quando inválido."""
+        if self.revogado:
+            return False, 'Este link foi revogado.'
+        if timezone.now() >= self.expira_em:
+            return False, 'Este link expirou.'
+        return True, ''
 
 
 class Documento(models.Model):

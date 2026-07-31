@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Terminal compartilhado — {{ host_label }}</title>
+<link rel="stylesheet" href="/static/css/xterm.min.css">
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; height: 100%; background: #0d1117; color: #e6edf3;
+        font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden;
+    }
+    #app { display: flex; flex-direction: column; height: 100%; }
+    .header {
+        background: #161b22; border-bottom: 1px solid #30363d;
+        padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .header-title { font-size: 13px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-title small { display: block; font-weight: 400; color: #7d8590; font-size: 11px; margin-top: 2px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #f85149; flex-shrink: 0; }
+    .status-dot.ok { background: #3fb950; }
+    #countdown {
+        font-size: 11px; color: #ffa500; background: rgba(255,165,0,.1);
+        border: 1px solid rgba(255,165,0,.3); border-radius: 10px; padding: 3px 10px; white-space: nowrap;
+    }
+    #countdown.critico { color: #ff5555; border-color: rgba(255,85,85,.4); background: rgba(255,85,85,.1); }
+    .term-wrap { flex: 1; min-height: 0; padding: 6px; }
+    #terminal { width: 100%; height: 100%; }
+    .overlay {
+        position: fixed; inset: 0; background: rgba(13,17,23,.92); display: flex;
+        align-items: center; justify-content: center; z-index: 20; text-align: center; padding: 20px;
+    }
+    .overlay-card { max-width: 380px; }
+    .overlay-card .icone { font-size: 36px; margin-bottom: 10px; }
+    .overlay-card p { color: #7d8590; font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div id="app">
+    <div class="header">
+        <div class="status-dot" id="statusDot"></div>
+        <div class="header-title">
+            Terminal compartilhado
+            <small>{{ host_label }}</small>
+        </div>
+        <div id="countdown">--:--</div>
+    </div>
+    <div class="term-wrap"><div id="terminal"></div></div>
+</div>
+<div class="overlay" id="overlayEncerrado" style="display:none;">
+    <div class="overlay-card">
+        <div class="icone">🔒</div>
+        <p id="overlayMsg">Sessão encerrada.</p>
+    </div>
+</div>
+
+<script src="/static/js/xterm.min.js"></script>
+<script src="/static/js/xterm-addon-fit.min.js"></script>
+<script src="/static/js/xterm-addon-canvas.min.js"></script>
+<script>
+(function() {
+    const TOKEN = "{{ token|escapejs }}";
+    const EXPIRA_EM = new Date("{{ expira_em|escapejs }}");
+    const _enc = new TextEncoder();
+    const _dec = new TextDecoder();
+
+    const terminal = new Terminal({
+        cursorBlink: false, fontSize: window.innerWidth < 480 ? 12 : 14,
+        fontFamily: "'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace",
+        theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff',
+                 selectionBackground: 'rgba(88,166,255,0.25)' },
+        scrollback: 3000, convertEol: false, disableStdin: false,
+    });
+    const fitAddon = new FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
+    terminal.open(document.getElementById('terminal'));
+    try { terminal.loadAddon(new CanvasAddon.CanvasAddon()); } catch (e) {}
+    fitAddon.fit();
+    window.addEventListener('resize', () => { try { fitAddon.fit(); } catch (e) {} });
+
+    let socket = null;
+    let encerrado = false;
+
+    function mostrarEncerrado(msg) {
+        encerrado = true;
+        document.getElementById('overlayMsg').textContent = msg;
+        document.getElementById('overlayEncerrado').style.display = 'flex';
+    }
+
+    function conectar() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        socket = new WebSocket(`${protocol}//${window.location.host}/ws/ssh-link/`);
+        socket.binaryType = 'arraybuffer';
+
+        socket.onopen = () => {
+            socket.send(JSON.stringify({
+                action: 'connect_link', token: TOKEN,
+                cols: terminal.cols, rows: terminal.rows,
+            }));
+        };
+        socket.onmessage = (e) => {
+            if (e.data instanceof ArrayBuffer) {
+                terminal.write(_dec.decode(e.data));
+                return;
+            }
+            const data = JSON.parse(e.data);
+            if (data.type === 'connected') {
+                document.getElementById('statusDot').classList.add('ok');
+                socket.send(JSON.stringify({ action: 'resize', cols: terminal.cols, rows: terminal.rows }));
+            } else if (data.type === 'output' && data.data) {
+                terminal.write(data.data);
+            } else if (data.type === 'share_info') {
+                terminal.writeln('\x1b[33mℹ ' + data.message + '\x1b[0m\n');
+            } else if (data.type === 'share_ended') {
+                mostrarEncerrado(data.message || 'Esta sessão foi encerrada.');
+            } else if (data.type === 'error') {
+                terminal.writeln('\x1b[31m✕ ' + data.message + '\x1b[0m\n');
+            }
+        };
+        socket.onclose = () => {
+            document.getElementById('statusDot').classList.remove('ok');
+            if (!encerrado) mostrarEncerrado('Conexão encerrada.');
+        };
+        socket.onerror = () => terminal.writeln('\x1b[31m✕ Erro na conexão\x1b[0m\n');
+    }
+
+    terminal.onData(input => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(_enc.encode(input.replace(/\x7f/g, '\x08')));
+        }
+    });
+    terminal.onResize(({ cols, rows }) => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ action: 'resize', cols, rows }));
+        }
+    });
+
+    // Contagem regressiva até a expiração do link — só cosmético, o
+    // servidor já derruba a conexão sozinho no horário certo.
+    function atualizarContagem() {
+        const restanteMs = EXPIRA_EM - new Date();
+        const el = document.getElementById('countdown');
+        if (restanteMs <= 0) {
+            el.textContent = 'expirado';
+            el.classList.add('critico');
+            return;
+        }
+        const totalSeg = Math.floor(restanteMs / 1000);
+        const m = Math.floor(totalSeg / 60), s = totalSeg % 60;
+        el.textContent = `${m}:${String(s).padStart(2, '0')} restantes`;
+        el.classList.toggle('critico', totalSeg < 60);
+    }
+    atualizarContagem();
+    setInterval(atualizarContagem, 1000);
+
+    conectar();
+})();
+</script>
+</body>
+</html>

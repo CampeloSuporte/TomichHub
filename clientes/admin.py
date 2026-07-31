@@ -8,7 +8,7 @@ from .models import (
 
 
 from .models import BackupTemplate, BackupLog
-from .models import AcessoSessao, AcessoComando
+from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
 
 @admin.register(BackupTemplate)
 class BackupTemplateAdmin(admin.ModelAdmin):
@@ -50,6 +50,14 @@ class AcessoSessaoAdmin(admin.ModelAdmin):
     search_fields = ['acesso__tipo', 'acesso__host', 'usuario__username']
     readonly_fields = ['iniciada_em']
     inlines = [AcessoComandoInline]
+
+
+@admin.register(TerminalLinkExterno)
+class TerminalLinkExternoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'acesso', 'criado_por', 'criado_em', 'expira_em', 'revogado']
+    list_filter = ['revogado', 'criado_em']
+    search_fields = ['acesso__host', 'criado_por__username']
+    readonly_fields = ['id', 'criado_em']
 
 
 @admin.register(ProxyServer)
