@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-07-20
+**Atualizado em:** 2026-07-31
 
 ---
 
@@ -18,6 +18,8 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 - Exportação PNG (via canvas 2×), Undo/Redo, Grid, Snap
 - Acesso direto aos hosts via terminal/browser
 - Waypoints: dobrar conexões arrastando pontos intermediários
+- Seleção múltipla por laço de área (ou Shift+clique) e movimentação de vários dispositivos
+  em grupo, preservando a posição relativa entre eles
 
 ---
 
@@ -121,6 +123,46 @@ automática de `type` (mas continuam atualizando `funcao`) para qualquer node co
 - Nodes sem `acesso_id` (adicionados manualmente da paleta) não têm essa nota — nunca são
   tocados pela sincronização automática de qualquer forma.
 - `type_manual` é salvo junto do node no `dados_json` da topologia (persiste entre sessões).
+
+---
+
+## Seleção Múltipla e Movimentação em Grupo — Adicionado em 2026-07-31
+
+Permite selecionar vários dispositivos de uma vez e arrastá-los juntos, preservando a
+posição relativa entre eles.
+
+**Como selecionar um grupo:**
+
+| Ação | Efeito |
+|---|---|
+| Botão **"Área"** na toolbar (`topo.toggleAreaSelect()`) | Ativa o modo seleção — arrastar na área vazia do canvas desenha um laço em vez de fazer pan |
+| Segurar **Shift** e arrastar na área vazia | Mesmo laço de seleção, sem precisar ativar o modo (funciona a qualquer momento) |
+| **Shift+clique** num dispositivo | Adiciona/remove esse dispositivo da seleção atual, um de cada vez |
+
+O laço de seleção (`_finishRubberBand`) captura todo node cujo **centro** (`x,y`) caia
+dentro do retângulo desenhado — não é preciso envolver o node inteiro. Um laço que captura
+só 1 node vira uma seleção normal (abre o painel de propriedades); 2 ou mais viram um grupo.
+
+**Movendo o grupo:** com 2+ nodes selecionados, clicar (sem Shift) e arrastar qualquer um
+deles que já esteja no grupo move todos juntos. O deslocamento do mouse é aplicado a partir
+da posição inicial de cada node (`groupDragging.positions`), com snap ao grid aplicado ao
+delta como um todo — assim a formação do grupo não "desalinha" mesmo com o snap ativo.
+
+**Deletar em grupo:** `Delete`/`Backspace` com 2+ nodes selecionados remove todos os nodes
+do grupo e qualquer link conectado a algum deles (mesma regra de remoção em cascata de um
+node único).
+
+**Visual:** nodes na seleção múltipla ganham a classe `.multi-selected` (brilho ciano +
+anel tracejado, ver CSS em `topologia_editor.html`), a mesma familia visual do `.selected`
+de um node único, mas distinguível dele (o `.selected` não some quando o painel de
+propriedades de um node individual está aberto simultaneamente a um grupo, porque as duas
+seleções — `this.selected` e `this.selectedNodes` — são independentes; clicar um node novo
+sem Shift limpa o grupo).
+
+Implementação: `static/js/topo_main.js` — `this.selectedNodes` (Set de ids), `this.rubberBand`
+(retângulo em andamento), `this.groupDragging` (arrasto em grupo em andamento),
+`this.areaSelectMode` (toggle do botão "Área"). Estado transitório de UI, não é salvo no
+`dados_json` do diagrama.
 
 ---
 
@@ -240,6 +282,33 @@ sobrescreve um IP já digitado manualmente).
   persistida no link ao clicar em **Aplicar**.
 - Reaproveita o mesmo cache (`_ifaceCache`) do datalist de interfaces — não dispara uma chamada
   de rede adicional.
+
+### Datalist de IP Local/Remoto a partir do Backup — Adicionado em 2026-07-31
+
+Os campos **IP Local (P2P)** e **IP Remoto (P2P)** ganharam a mesma lógica de sugestão via
+`<datalist>` já usada nos campos **Interface Lado A/B** (`_populateIfaceDatalist`), em vez de
+serem inputs de texto puro como antes:
+
+- `pl-ipl` (IP Local) lista `datalist id="dl-ipl"`, ligada ao **nó de origem** do link
+  (`link.src`) — mesmo lado A usado pela interface.
+- `pl-ipr` (IP Remoto) lista `datalist id="dl-ipr"`, ligada ao **nó de destino** (`link.tgt`)
+  — mesmo lado B.
+- A nova função `_populateIpDatalist(datalistId, acessoId, gen)` reaproveita **exatamente a
+  mesma busca** (`_fetchInterfaces`/`_ifaceCache`) usada pelos campos de interface — nenhuma
+  chamada de rede adicional é feita. A diferença é o filtro e o valor do `<option>`: só
+  interfaces com `item.ip` preenchido entram na lista (a maioria das portas L2/trunk não tem
+  endereço e não faria sentido aparecer aqui), e o **valor da opção é o IP/CIDR** (não o nome
+  da interface) — a legenda (`nome — descricao`) ajuda a identificar de qual interface veio
+  aquele IP.
+- Mesmo padrão de robustez dos demais datalists: guardado pelo contador de geração
+  (`_propsGen`) contra respostas que chegam depois de trocar a seleção, e continua sendo um
+  campo 100% texto livre — o `<datalist>` só sugere, nunca restringe o valor digitado.
+- Continua existindo o preenchimento automático (`_sugerirIpPorInterface`, seção acima): ao
+  digitar/escolher uma interface em Lado A/B que bate com o nome exato de uma interface do
+  backup, o campo de IP correspondente ainda é preenchido sozinho se estiver vazio. O novo
+  datalist é um caminho **adicional** para chegar no mesmo IP — direto pelo campo de IP, sem
+  precisar passar pelo campo de interface primeiro (útil quando o usuário já sabe o IP mas não
+  o nome da porta, ou quando quer só conferir a sugestão sem alterar a interface preenchida).
 
 ---
 
@@ -485,7 +554,9 @@ normal — sem o ajuste, IPs mais longos ficariam com a última letra encostando
 | `Ctrl+Z` | Desfazer |
 | `Ctrl+Y` | Refazer |
 | `C` | Alternar modo conexão |
-| `Delete` / `Backspace` | Remover nó ou conexão selecionado |
-| `Escape` | Cancelar conexão / Desselecionar |
+| `Delete` / `Backspace` | Remover nó(s) ou conexão selecionado(s) — inclui grupo em multi-seleção |
+| `Escape` | Cancelar conexão / Desselecionar (inclui limpar multi-seleção) |
 | Scroll do mouse | Zoom |
 | Duplo-clique em waypoint | Remover waypoint |
+| `Shift` + arrastar (área vazia) | Laço de seleção em área — seleciona vários dispositivos |
+| `Shift` + clique num dispositivo | Adiciona/remove esse dispositivo da multi-seleção |

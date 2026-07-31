@@ -100,6 +100,10 @@ body.effects-off .link-packet{display:none}
 .link-arrow{overflow:visible}
 /* Connect preview */
 #connect-preview{fill:none;stroke:var(--cyan);stroke-width:2;stroke-dasharray:6 4;pointer-events:none;opacity:.7}
+/* Multi-seleção (laço de área / shift+clique) e arrasto em grupo */
+.node.multi-selected .node-body{filter:drop-shadow(0 0 9px var(--cyan))}
+.node.multi-selected .node-ring{stroke:var(--cyan)!important;stroke-opacity:1!important;stroke-dasharray:4 2}
+#rubber-band{fill:rgba(0,217,255,.08);stroke:var(--cyan);stroke-width:1;stroke-dasharray:4 3;pointer-events:none}
 /* ── Properties panel ── */
 #props{width:250px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 #props-content{padding:14px;flex:1}
@@ -176,6 +180,7 @@ body.effects-off .link-packet{display:none}
   <button class="tb-btn" id="btn-grid" onclick="topo.toggleGrid()" title="Toggle grid"><i class="fas fa-th"></i> Grid</button>
   <button class="tb-btn" id="btn-snap" onclick="topo.toggleSnap()" title="Snap ao grid"><i class="fas fa-magnet"></i> Snap</button>
   <button class="tb-btn" id="btn-connect" onclick="topo.toggleConnectMode()" title="Modo conexão (C)"><i class="fas fa-project-diagram"></i> Conectar</button>
+  <button class="tb-btn" id="btn-area-select" onclick="topo.toggleAreaSelect()" title="Seleção de área — arraste para selecionar vários dispositivos (atalho: segurar Shift e arrastar)"><i class="fas fa-vector-square"></i> Área</button>
   <button class="tb-btn" id="btn-legend" onclick="topo.toggleLegend()" title="Legenda de interfaces"><i class="fas fa-list"></i> Legenda</button>
   <button class="tb-btn" id="btn-effects" onclick="topo.toggleEffects()" title="Efeitos visuais (fluxo animado nos links, pulso nos nodes do CRM)"><i class="fas fa-bolt"></i> Efeitos</button>
   <div class="tb-sep"></div>
@@ -227,6 +232,7 @@ body.effects-off .link-packet{display:none}
         <path id="connect-preview" d="" style="display:none"/>
         <g id="links-layer"></g>
         <g id="nodes-layer"></g>
+        <rect id="rubber-band" x="0" y="0" width="0" height="0" style="display:none"/>
       </g>
     </svg>
     <div id="legend-panel"></div>
@@ -265,6 +271,6 @@ body.effects-off .link-packet{display:none}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=23"></script>
-<script src="/static/js/topo_main.js?v=23"></script>
+<script src="/static/js/topo_main.js?v=24"></script>
 </body>
 </html>
