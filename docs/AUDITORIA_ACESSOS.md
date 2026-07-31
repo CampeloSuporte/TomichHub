@@ -28,7 +28,8 @@ Uma linha por sessão de conexão a um `Acesso`.
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `acesso` | FK → `Acesso` | Equipamento acessado (`related_name='sessoes_auditoria'`) |
-| `usuario` | FK → `User`, nullable | Usuário do CRM que conectou (`SET_NULL` — sessão sobrevive à exclusão do usuário) |
+| `usuario` | FK → `User`, nullable | Usuário do CRM que conectou (`SET_NULL` — sessão sobrevive à exclusão do usuário). `None` quando a sessão veio de um visitante externo via `link_externo` |
+| `link_externo` | FK → `TerminalLinkExterno`, nullable | Preenchido quando a sessão veio de um visitante **sem login** (link temporário) — ver [terminal_ssh.md](terminal_ssh.md#link-externo--compartilhar-terminal-sem-login-adicionado-em-2026-07-31). Permite rastrear quem autorizou (`link_externo.criado_por`) mesmo sem `usuario` |
 | `tipo` | choice | `ssh`, `telnet`, `winbox` (WinBox Web/VNC), `winbox_nativo`, `webfig` |
 | `ip_origem` | IP | IP de origem da conexão WebSocket (`scope['client']`) |
 | `status` | choice | `ativa` / `encerrada` |
@@ -43,7 +44,17 @@ Um comando digitado (stdin), FK → `AcessoSessao` (`related_name='comandos'`). 
 (texto completo com Enter), `executado_em`.
 
 **Migrações:** `0080_acessosessao_acessocomando.py` (cria os dois modelos), `0081_acessosessao_transcript.py`
-(adiciona `transcript` — feito em migração separada porque foi implementado depois do `AcessoComando`).
+(adiciona `transcript` — feito em migração separada porque foi implementado depois do `AcessoComando`),
+`0095_terminallinkexterno_acessosessao_link_externo.py` (cria `TerminalLinkExterno` e o FK
+`link_externo`).
+
+**Terminal compartilhado (2026-07-31):** quando um terminal SSH/Telnet é compartilhado (opt-in,
+ver [terminal_ssh.md](terminal_ssh.md#terminal-compartilhado-opt-in--adicionado-em-2026-07-31)),
+cada espectador que entra — interno ou visitante externo via link — ganha sua **própria**
+`AcessoSessao`, todas apontando pro mesmo `Acesso` e recebendo o mesmo `transcript` (o output é
+idêntico para todos que estavam assistindo). Os comandos digitados (`AcessoComando`), porém, ficam
+atribuídos corretamente a quem de fato digitou, mesmo que a escrita física aconteça no shell de
+outro usuário.
 
 ---
 

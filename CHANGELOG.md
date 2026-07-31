@@ -5,6 +5,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-31 (Feat: Terminal Compartilhado + Link Externo)
+
+### Adicionado
+
+- **Terminal compartilhado (opt-in)** (`clientes/consumers.py` — `_SharedTerminalSession`,
+  `_TerminalSessionRegistry`; `clientes/templates/terminal.html` — botão 🔗 Compartilhar): usuário
+  conectado a um `Acesso` pode compartilhar sua sessão viva; outro usuário autorizado sobre o mesmo
+  host, ao abrir o terminal, entra na mesma conexão física (mesmo shell) em vez de abrir a sua
+  própria — vê o output em tempo real e digita junto. Se quem compartilhou sai, a conexão real com
+  o equipamento continua viva para quem ainda está assistindo; só é fechada quando o último
+  espectador sai. Ver [docs/terminal_ssh.md](docs/terminal_ssh.md#terminal-compartilhado-opt-in--adicionado-em-2026-07-31).
+- **Link externo temporário para suporte** (`clientes/models.py` — `TerminalLinkExterno`;
+  `clientes/consumers.py` — `TerminalLinkExternoConsumer`, rota `ws/ssh-link/`; nova página pública
+  `/clientes/terminal/link/<uuid>/`, sem login): a partir de uma sessão compartilhada, gera um link
+  com expiração configurável (15/30/60/120 min) para alguém de fora do CRM (ex: suporte de
+  fabricante) acessar aquele terminal — leitura e escrita, como um espectador comum. Autorização
+  100% pelo token (UUID); página isolada, sem sidebar de hosts nem qualquer outra parte do CRM;
+  expira sozinho ou pode ser revogado manualmente antes da hora. `AcessoSessao` ganhou FK
+  `link_externo` para auditoria (migration `0095`). Ver
+  [docs/terminal_ssh.md](docs/terminal_ssh.md#link-externo--compartilhar-terminal-sem-login-adicionado-em-2026-07-31).
+
+### Corrigido
+
+- **Lacuna de autorização em `conectar_acesso()`** (`clientes/consumers.py`): não validava se o
+  usuário autenticado tinha permissão sobre o `acesso_id` recebido do frontend — qualquer usuário
+  autenticado podia abrir o terminal de qualquer host cadastrado, de qualquer cliente, bastando
+  descobrir/adivinhar o ID. Adicionado `_usuario_pode_acessar()` (mesma regra de
+  `listar_acessos_terminal`), chamado em toda conexão, compartilhada ou não.
+
+---
+
 ## [Não publicado] — 2026-07-30 (Feat: Geofeed por Empresa — Fix LACNIC "prefixo não contido no bloco")
 
 ### Adicionado

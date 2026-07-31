@@ -2,7 +2,7 @@
 
 **Arquivo:** `clientes/consumers.py`  
 **Classe principal:** `SSHConsumer` (Django Channels WebSocket Consumer)  
-**Atualizado em:** 2026-07-20
+**Atualizado em:** 2026-07-31
 
 ---
 
@@ -139,3 +139,146 @@ de parsing de output e envio de comandos.
 `connect()` agora exige um usuário autenticado no `scope` (`self.close(code=4001)` caso contrário)
 e toda sessão passa a ser registrada — quem conectou, quando, de qual IP, comandos digitados e
 transcript completo da tela. Detalhes completos em [AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md).
+
+---
+
+## Terminal Compartilhado (opt-in) — Adicionado em 2026-07-31
+
+**Caso de uso:** dois usuários do CRM autorizados sobre o mesmo `Acesso` precisam ver e digitar no
+**mesmo** terminal em tempo real — ex: um sênior acompanhando/ajudando um técnico numa mesma sessão
+SSH, em vez de dois logins independentes no equipamento.
+
+### Decisão de arquitetura: opt-in, não automático
+
+Duas abas abrindo o mesmo `Acesso` continuam, por padrão, abrindo **duas conexões SSH/Telnet
+físicas independentes** ao equipamento — exatamente como antes. O compartilhamento só existe
+quando alguém explicitamente ativa (`action: "share_start"`); sem isso, nada muda.
+
+### Registro em memória — `_SharedTerminalSession` / `_TerminalSessionRegistry`
+
+Mesmo padrão já usado por `_ProxyPool` neste arquivo: um registro em memória de processo (não
+Redis/`channel_layer`) mapeando `acesso_id → _SharedTerminalSession`. Só é seguro porque o
+`daphne.service` roda com **um único worker** (mesma premissa documentada em `VirtualRoomConsumer`,
+`atendimento/consumers.py`) — se o daphne algum dia escalar para múltiplos processos, este registro
+precisa migrar para Redis.
+
+`_SharedTerminalSession` guarda:
+
+- `physical` — o `SSHConsumer` que fisicamente abriu a conexão SSH/Telnet (shell paramiko/pexpect,
+  thread de leitura). **Nunca muda** durante a vida da sessão.
+- `viewers` — dict ordenado `consumer → rótulo de exibição`, todos os WebSockets assistindo agora
+  (inclui o próprio `physical`).
+- `recent_output` — buffer dos últimos ~20.000 caracteres de output, para quem entra depois ver
+  contexto em vez de tela em branco.
+
+### Fluxo
+
+1. Usuário A já está conectado normalmente (`is_reading=True`, shell físico aberto). Manda
+   `{"action": "share_start"}` → `_iniciar_compartilhamento()` cria a `_SharedTerminalSession` e
+   registra A como `physical`.
+2. Usuário B abre o terminal do mesmo `Acesso`. `receive()`, na ação `connect`, primeiro verifica
+   `_terminal_sessions.get(acesso_id)`: se existir sessão compartilhada, chama
+   `_entrar_em_sessao_compartilhada()` em vez de `conectar_acesso()` — **B nunca abre uma conexão
+   SSH/Telnet própria**, só se anexa como espectador.
+3. **Output:** `send_output()` (chamado pelos mesmos 5 loops de leitura de sempre —
+   `_read_paramiko_shell`, `read_ssh_output`, `read_telnet_output`, `_read_pexpect_shell` — sem
+   nenhuma mudança neles) passou a checar `self._shared_session`; se existir, propaga o texto para
+   **todos** os `viewers` (cada um grava no próprio `_registrar_saida`/transcript de auditoria) em
+   vez de só para `self`. Esse é o único ponto de fan-out.
+4. **Input:** `enviar_comando()` passou a resolver `alvo = session.physical if session else self` —
+   quem digita pode ser um mero espectador (sem shell próprio); o byte é escrito no shell de quem
+   detém a conexão física, mas a auditoria (`_registrar_digitacao`) continua atribuída a quem
+   digitou, não ao dono da conexão. `_resize_pty()` segue a mesma regra (redimensiona o PTY de
+   `session.physical`; último a redimensionar "vence").
+
+### Dono sai, sessão continua
+
+Se quem compartilhou (`physical`) fecha a aba enquanto ainda há espectadores, a conexão real com o
+equipamento **não é encerrada** — `limpar_recursos()` detecta (`_sair_de_sessao_compartilhada()`
+retorna `True`) que ainda há espectadores e **não** toca em `_paramiko_shell`/`ssh_process`/
+`telnet_client`/`is_reading`/`read_thread`: a thread de leitura, já rodando como daemon thread,
+continua sozinha, sem nenhum consumer "dono" vivo — só referenciada pela própria thread e pelo
+objeto `_SharedTerminalSession`. Só quando o **último** espectador sai é que a conexão física é
+efetivamente fechada (`_fechar_recursos_fisicos()`, chamado sobre `session.physical` mesmo que ele
+já tenha desconectado há tempos — evita ficar com shell/thread órfãos abertos indefinidamente).
+
+### Correção de segurança pré-existente
+
+`conectar_acesso()` nunca validava se o usuário autenticado tinha permissão sobre o `acesso_id`
+recebido do frontend — qualquer usuário autenticado podia abrir o terminal de qualquer host
+cadastrado, de qualquer cliente, bastando adivinhar/descobrir o ID. Adicionado
+`_usuario_pode_acessar()` (mesma regra de `listar_acessos_terminal` em `views.py`: staff/superuser
+vê tudo, usuário comum só acessa `Acesso`s do(s) `Cliente`(s) a que está vinculado via
+`Cliente.objects.filter_by_usuario_vinculado()`), chamado tanto em `conectar_acesso()` quanto em
+`_entrar_em_sessao_compartilhada()`.
+
+---
+
+## Link Externo — Compartilhar Terminal Sem Login (Adicionado em 2026-07-31)
+
+**Caso de uso:** compartilhar o terminal com alguém **de fora do CRM** (sem usuário/senha) por um
+tempo limitado — ex: suporte de fabricante numa chamada. A pessoa acessa por um link, vê e digita
+comandos como um espectador comum, e o acesso expira sozinho.
+
+### Modelo `TerminalLinkExterno` (`clientes/models.py`)
+
+| Campo | Descrição |
+|---|---|
+| `id` | `UUIDField` primary key (`uuid4`) — **é** o token; a autorização inteira é ele, imprevisível |
+| `acesso` | FK → `Acesso` |
+| `criado_por` | FK → `User`, nullable (`SET_NULL`) |
+| `criado_em` / `expira_em` | datetime |
+| `revogado` | bool |
+| `validar()` | retorna `(bool, motivo)` — checa `revogado` e `expira_em` |
+
+`AcessoSessao` ganhou FK `link_externo` (nullable) para rastrear, na auditoria, que uma sessão veio
+de um visitante externo e quem autorizou (`link.criado_por`) — ver
+[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md).
+
+### Geração do link — sempre a partir de uma sessão compartilhada
+
+`{"action": "criar_link_externo", "minutos": N}` (`_criar_link_externo`, `N` entre 5 e 240,
+default 30): se a sessão ainda não estiver compartilhada, chama `_iniciar_compartilhamento()`
+primeiro — um link sem sessão compartilhada não teria a quem o visitante se anexar. Qualquer
+participante já autenticado da sessão (dono ou espectador interno) pode gerar/revogar links; um
+visitante externo **nunca** pode (`TerminalLinkExternoConsumer._usuario_pode_acessar` sempre libera
+o *join*, mas a ação `criar_link_externo` nem existe no `receive()` dessa subclasse).
+
+### `TerminalLinkExternoConsumer` (`ws/ssh-link/`, `clientes/consumers.py`)
+
+Subclasse de `SSHConsumer` para visitantes **sem login Django** (`self._crm_user = None` sempre):
+
+- `connect()` aceita qualquer WebSocket, autenticado ou não — a autorização é 100% o token,
+  validado só quando chega `{"action": "connect_link", "token": "..."}`.
+- `_conectar_via_link()`: busca `TerminalLinkExterno` pelo token, chama `link.validar()`, confirma
+  que existe `_SharedTerminalSession` ativa para aquele `acesso_id` (`_terminal_sessions.get()`) —
+  se o dono nunca ativou o compartilhamento (ou já encerrou), o link fica "válido" no banco mas sem
+  sessão viva pra entrar, e o visitante recebe erro pedindo um link novo. Reaproveita
+  `_entrar_em_sessao_compartilhada()` sem nenhuma duplicação de lógica de anexação.
+  **Nunca** abre conexão SSH/Telnet própria nem aceita `acesso_id` arbitrário.
+  - `_usuario_pode_acessar()` sobrescrito para sempre retornar `True` — já validado pelo token antes
+    de chegar lá.
+  - `_label_usuario()` sobrescrito para `"Visitante externo"`.
+- **Expiração automática:** ao entrar, agenda um `threading.Timer` para o tempo restante até
+  `expira_em` — encerra a conexão sozinho (`close(code=4008)`) mesmo que ninguém revogue
+  manualmente. Cancelado em `disconnect()` se a conexão cair antes.
+- **Revogação manual:** `{"action": "revogar_link_externo", "token": "..."}` do lado do usuário
+  interno (`_revogar_link_externo`) marca `revogado=True` no banco e localiza, na
+  `_SharedTerminalSession`, qualquer viewer com `_link_externo_id` igual ao do link revogado —
+  avisa (`share_ended`) e força o fechamento (`close(code=4008)`) imediatamente.
+
+### Página pública (`clientes/views.py::terminal_link_externo`, sem `@login_required`)
+
+`GET /clientes/terminal/link/<uuid:token>/` — valida o token no servidor (404 se não existe, 410 se
+expirado/revogado, com `terminal_link_invalido.html`) e renderiza `terminal_externo.html`: uma
+página **isolada**, sem sidebar de hosts, sem Wiki, sem Agent NOC, sem nenhuma outra parte do CRM —
+só o terminal daquele único `Acesso`, com contador regressivo até a expiração (cosmético; quem
+derruba a conexão de fato é o `threading.Timer` do lado do servidor). Conecta em `ws/ssh-link/`
+mandando `{"action": "connect_link", "token": "..."}`.
+
+### Frontend interno (`clientes/templates/terminal.html`)
+
+Botão **🌐 Link Externo** (rodapé + menu mobile) abre um modal (`#linkExternoOverlay`) com seletor
+de duração (15/30/60/120 min), botão "Gerar link" (`gerarLinkExterno()` → `criar_link_externo`),
+campo com a URL pronta pra copiar e botão **"Revogar agora"**
+(`revogarLinkExterno()` → `revogar_link_externo`).

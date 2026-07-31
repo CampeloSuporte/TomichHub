@@ -2,6 +2,35 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 22 — 31/07/2026: Terminal Compartilhado + Link Externo (sem login)
+
+**O que foi implementado?**
+- ✅ **Terminal compartilhado (opt-in):** usuário já conectado a um `Acesso` pode ativar
+  "Compartilhar" (`clientes/consumers.py` — `_SharedTerminalSession`/`_TerminalSessionRegistry`,
+  registro em memória no mesmo padrão do `_ProxyPool`) para que outro usuário autorizado sobre o
+  mesmo host, ao abrir o terminal, entre na **mesma** conexão física em vez de abrir a sua própria
+  — vê o mesmo output em tempo real e pode digitar junto. Se quem compartilhou sai, a conexão real
+  com o equipamento continua viva para quem ainda está assistindo (só encerra quando o último
+  espectador sai).
+- ✅ **Link externo temporário:** a partir de uma sessão compartilhada, qualquer participante pode
+  gerar um link (15/30/60/120 min) para alguém **de fora do CRM** (sem login) acessar aquele
+  terminal — ex: suporte de fabricante numa chamada. Autorização inteira pelo token
+  (`TerminalLinkExterno`, UUID); página pública isolada (`terminal_externo.html`, sem sidebar de
+  hosts nem qualquer outra parte do CRM); expira sozinho ou pode ser revogado antes da hora.
+- ✅ **Correção de segurança pré-existente:** `conectar_acesso()` não validava se o usuário
+  autenticado tinha permissão sobre o `acesso_id` recebido do frontend — qualquer autenticado podia
+  abrir o terminal de qualquer host cadastrado, de qualquer cliente. Adicionado
+  `_usuario_pode_acessar()`.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[terminal_ssh.md](terminal_ssh.md)** | Seções "Terminal Compartilhado (opt-in)" e "Link Externo — Compartilhar Terminal Sem Login" |
+| **[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md)** | Campo `AcessoSessao.link_externo`, auditoria por espectador |
+
+---
+
 ### Sessão 21 — 30/07/2026: Geofeed por Empresa — Fix LACNIC "prefixo não contido no bloco"
 
 **O que foi diagnosticado e corrigido?**
@@ -792,6 +821,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 31/07/2026 | Terminal compartilhado (opt-in, múltiplos usuários na mesma conexão) + link externo temporário (sem login) para suporte; fix de autorização em `conectar_acesso` | terminal_ssh.md, AUDITORIA_ACESSOS.md |
 | 23/07/2026 | Hotspot: Integração Disparo — painel de ajuda visual no card Chatmix (Key/Token, ID do Template, sugestão de mensagem com botão Copiar); diagnóstico de "template pendente" e "canal errado na chave" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo — Opa Suite funcional (`OpaSuiteClient`, `api_dominio`/`canal_id`), task generalizada p/ disparar em todos os providers habilitados, fix nomenclatura "Opa Suit"→"Opa Suite" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo (WhatsApp HSM via Chatmix) disparado automaticamente no cadastro do lead; lista dinâmica de variáveis do template; fix `success:false` com HTTP 200; fix telefone sem o 9º dígito | HOTSPOT_INTEGRACAO_DISPARO.md |
