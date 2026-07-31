@@ -307,6 +307,14 @@
                                                     style="color: #a371f7;">
                                                 <i class="fas fa-shield-halved"></i>
                                             </button>
+                                            {% if request.user.is_staff and acesso.bgp_snapshot %}
+                                            <button class="icon-btn btn-sm"
+                                                    onclick="window.open('/clientes/bgp/{{ acesso.id }}/', '_blank')"
+                                                    title="Automação BGP"
+                                                    style="color: #58a6ff;">
+                                                <i class="fas fa-diagram-project"></i>
+                                            </button>
+                                            {% endif %}
                                             <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
                                                 <i class="fas fa-file"></i>
                                             </button>

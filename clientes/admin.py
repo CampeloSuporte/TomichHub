@@ -9,6 +9,7 @@ from .models import (
 
 from .models import BackupTemplate, BackupLog
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
+from .models import BgpSnapshot, AcaoBgp
 
 @admin.register(BackupTemplate)
 class BackupTemplateAdmin(admin.ModelAdmin):
@@ -58,6 +59,27 @@ class TerminalLinkExternoAdmin(admin.ModelAdmin):
     list_filter = ['revogado', 'criado_em']
     search_fields = ['acesso__host', 'criado_por__username']
     readonly_fields = ['id', 'criado_em']
+
+
+@admin.register(BgpSnapshot)
+class BgpSnapshotAdmin(admin.ModelAdmin):
+    list_display = ['acesso', 'vendor', 'gerado_em', 'tem_erro']
+    list_filter = ['vendor']
+    search_fields = ['acesso__host', 'acesso__tipo']
+    readonly_fields = ['gerado_em']
+
+    def tem_erro(self, obj):
+        return bool(obj.erro)
+    tem_erro.boolean = True
+    tem_erro.short_description = 'Erro?'
+
+
+@admin.register(AcaoBgp)
+class AcaoBgpAdmin(admin.ModelAdmin):
+    list_display = ['tipo', 'acesso', 'usuario', 'alvo', 'status', 'executado_em']
+    list_filter = ['tipo', 'status']
+    search_fields = ['acesso__host', 'usuario__username', 'alvo']
+    readonly_fields = ['executado_em']
 
 
 @admin.register(ProxyServer)

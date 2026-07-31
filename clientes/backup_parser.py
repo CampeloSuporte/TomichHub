@@ -50,68 +50,223 @@ def _detectar_vendor_backup(conteudo):
 
 # ─── MikroTik (RouterOS /export terse) ───────────────────────────────────────
 
+def _juntar_continuacao_mikrotik(conteudo):
+    """O `/export` do RouterOS quebra linhas longas em ~80 colunas com uma
+    linha de continuação que NÃO começa com `/` (comando) nem `#`
+    (comentário) — sem re-juntar, um regex por linha perde parâmetros que
+    caíram na continuação (ex: `remote.address=` numa linha e `.as=` na
+    próxima). Junta só pra decisão de parsing; não é usado pros outros
+    vendors (peculiaridade do `/export` do RouterOS)."""
+    linhas = conteudo.replace('\r\n', '\n').split('\n')
+    juntas = []
+    for linha in linhas:
+        if linha and not linha.startswith('/') and not linha.startswith('#') and juntas:
+            juntas[-1] += linha
+        else:
+            juntas.append(linha)
+    return '\n'.join(juntas)
+
+
+def _parse_v7_regra_filtro(rule_str):
+    """Mini-parser da expressão de uma `/routing filter rule` do RouterOS 7:
+    'if (dst == X.X.X.X/Y [&& dst-len OP N [&& dst-len OP2 N2]]) { accept|reject }'
+    ou simplesmente 'accept'/'reject' (regra catch-all sem `if`).
+    Retorna (prefixo|None, len_min, len_max, acao, prepend)."""
+    prefixo = None
+    len_min = len_max = None
+    m = re.search(r'dst\s+(?:==|in)\s+([\da-fA-F:./]+)', rule_str)
+    if m:
+        prefixo = m.group(1)
+    for m in re.finditer(r'dst-len\s*(==|>=|<=)\s*(\d+)', rule_str):
+        op, val = m.group(1), int(m.group(2))
+        if op == '==':
+            len_min = len_max = val
+        elif op == '>=':
+            len_min = val
+        elif op == '<=':
+            len_max = val
+    # `set bgp-path-prepend=N` dentro do bloco de ação — não confirmado em
+    # nenhum backup real do ambiente (todos os prepends reais vistos em
+    # produção são RouterOS 6), aceito best-effort pela doc oficial do v7.
+    m_acao = re.search(r'(?:set\s+bgp-path-prepend=(\d+)\s*;?\s*)?(accept|reject)', rule_str)
+    prepend = int(m_acao.group(1)) if m_acao and m_acao.group(1) else 0
+    acao = m_acao.group(2) if m_acao else 'reject'
+    return prefixo, len_min, len_max, acao, prepend
+
+
 def parse_mikrotik(conteudo, nome_equip=''):
-    ips, bgp, vlans, hostname = [], [], [], nome_equip
+    ips, bgp, vlans = [], [], []
+    prefix_lists, policies, networks = {}, {}, []
+
+    conteudo_join = _juntar_continuacao_mikrotik(conteudo)
 
     # Hostname (sysname do RouterOS aparece no comentário do export)
-    m = re.search(r'#\s*model\s*=\s*(.+)', conteudo)
+    m = re.search(r'#\s*model\s*=\s*(.+)', conteudo_join)
     modelo = m.group(1).strip() if m else ''
+
+    # Versão do RouterOS — única fonte confiável pra saber qual gramática
+    # usar depois nos comandos de ação (peer/network v6 vs connection v7).
+    m = re.search(r'by RouterOS (\d+)\.', conteudo_join)
+    versao = int(m.group(1)) if m else 6
 
     # IPs: /ip address add address=X.X.X.X/YY interface=NAME [comment=...]
     for m in re.finditer(
-        r'/ip address add .*?address=([\d./]+).*?interface=([^\s]+)', conteudo
+        r'/ip address add .*?address=([\d./]+).*?interface=([^\s]+)', conteudo_join
     ):
         ip_prefix, iface = m.group(1), m.group(2).strip('"')
         ips.append({'ip': ip_prefix, 'interface': iface, 'equipamento': nome_equip})
 
-    # BGP ROS7: /routing bgp connection add name=DESCRICAO remote.address=X/32 remote.as=Y
-    for m in re.finditer(
-        r'/routing bgp connection add[^\n]*?name=(?:"([^"]+)"|(\S+))[^\n]*?remote\.address=([\d.]+)/\d+[^\n]*?remote\.as=(\d+)',
-        conteudo,
-    ):
-        desc   = (m.group(1) or m.group(2) or '').strip()
-        bgp.append({'peer_ip': m.group(3), 'peer_as': m.group(4),
-                    'equipamento': nome_equip, 'descricao': desc})
-    # ROS7 formato multiline — ordem dos campos pode variar: pega pelo IP
-    if not bgp:
-        for m in re.finditer(
-            r'/routing bgp connection add.*?remote\.address=([\d.]+)/\d+.*?(?:remote\.)?as=(\d+)',
-            conteudo,
-        ):
-            # tenta pegar nome da mesma linha
-            linha = m.group(0)
-            mn = re.search(r'\bname=(?:"([^"]+)"|(\S+))', linha)
-            desc = (mn.group(1) or mn.group(2) if mn else '').strip()
-            bgp.append({'peer_ip': m.group(1), 'peer_as': m.group(2),
-                        'equipamento': nome_equip, 'descricao': desc})
-
-    # BGP ROS6: remote-address=X remote-as=Y [name=DESC | comment="DESC"]
-    for m in re.finditer(
-        r'/routing bgp peer add[^\n]*?remote-address=([\d.]+)[^\n]*?remote-as=(\d+)[^\n]*',
-        conteudo,
-    ):
-        linha = m.group(0)
-        # tenta name= primeiro, depois comment=
+    # ── BGP: v7 (/routing bgp connection) ────────────────────────────────────
+    for m in re.finditer(r'^/routing bgp connection add(.*)$', conteudo_join, re.MULTILINE):
+        linha = m.group(1)
+        m_ip = re.search(r'remote\.address=([\da-fA-F:.]+)/\d+', linha)
+        m_as = re.search(r'\.as=(\d+)', linha)
+        if not (m_ip and m_as):
+            continue
         mn = re.search(r'\bname=(?:"([^"]+)"|(\S+))', linha)
-        mc = re.search(r'\bcomment="([^"]+)"', linha)
-        desc = (mn.group(1) or mn.group(2) if mn else '') or (mc.group(1) if mc else '')
-        bgp.append({'peer_ip': m.group(1), 'peer_as': m.group(2),
-                    'equipamento': nome_equip, 'descricao': desc.strip()})
+        nome = ((mn.group(1) or mn.group(2)) if mn else '').strip()
+        m_in  = re.search(r'input\.filter=(\S+)', linha)
+        m_out = re.search(r'output\.filter-chain=(\S+)', linha)
+        bgp.append({
+            'peer_ip': m_ip.group(1), 'peer_as': m_as.group(1),
+            'equipamento': nome_equip, 'descricao': nome,
+            'nome': nome, 'habilitada': 'disabled=yes' not in linha,
+            'policy_in': m_in.group(1) if m_in else '',
+            'policy_out': m_out.group(1) if m_out else '',
+        })
+
+    # ── BGP: v6 (/routing bgp peer) — só roda se v7 não achou nada ──────────
+    if not bgp:
+        for m in re.finditer(r'^/routing bgp peer add(.*)$', conteudo_join, re.MULTILINE):
+            linha = m.group(1)
+            m_ip = re.search(r'remote-address=([\da-fA-F:.]+)', linha)
+            m_as = re.search(r'remote-as=(\d+)', linha)
+            if not (m_ip and m_as):
+                continue
+            mn = re.search(r'\bname=(?:"([^"]+)"|(\S+))', linha)
+            mc = re.search(r'\bcomment="([^"]+)"', linha)
+            nome = ((mn.group(1) or mn.group(2)) if mn else '').strip()
+            desc = nome or (mc.group(1) if mc else '')
+            m_in  = re.search(r'\bin-filter=(\S+)', linha)
+            m_out = re.search(r'\bout-filter=(\S+)', linha)
+            bgp.append({
+                'peer_ip': m_ip.group(1), 'peer_as': m_as.group(1),
+                'equipamento': nome_equip, 'descricao': desc.strip(),
+                'nome': nome, 'habilitada': 'disabled=yes' not in linha,
+                'policy_in': m_in.group(1) if m_in else '',
+                'policy_out': m_out.group(1) if m_out else '',
+            })
 
     # AS local: /routing bgp instance add as=XXXXX
     as_local = ''
-    m = re.search(r'/routing bgp instance add as=(\d+)', conteudo)
+    m = re.search(r'/routing bgp instance add as=(\d+)', conteudo_join)
     if not m:
-        m = re.search(r'/routing bgp template set.*?as=(\d+)', conteudo)
+        m = re.search(r'/routing bgp template set.*?as=(\d+)', conteudo_join)
     if m:
         as_local = m.group(1)
         for b in bgp:
             b['as_local'] = as_local
 
+    # ── Networks anunciados: v6 (/routing bgp network) ───────────────────────
+    for m in re.finditer(r'^/routing bgp network add(.*)$', conteudo_join, re.MULTILINE):
+        linha = m.group(1)
+        m_net = re.search(r'\bnetwork=(\S+)', linha)
+        if not m_net:
+            continue
+        networks.append({
+            'prefixo': m_net.group(1),
+            'habilitada': 'disabled=yes' not in linha,
+            'origem': 'bgp_network',
+        })
+
+    # ── Networks anunciados: v7 (address-list referenciada por .network=) ───
+    for m in re.finditer(
+        r'^/ip(?:v6)? firewall address-list add(.*)$', conteudo_join, re.MULTILINE
+    ):
+        linha = m.group(1)
+        m_addr = re.search(r'\baddress=(\S+)', linha)
+        m_list = re.search(r'\blist=(\S+)', linha)
+        if not (m_addr and m_list):
+            continue
+        networks.append({
+            'prefixo': m_addr.group(1),
+            'habilitada': 'disabled=yes' not in linha,
+            'origem': 'address_list',
+            'lista': m_list.group(1),
+        })
+    if networks:
+        prefix_lists['__networks__'] = [
+            {'acao': 'permit', 'prefixo': n['prefixo'], 'len_min': None, 'len_max': None}
+            for n in networks if n['habilitada']
+        ]
+
+    # ── Filtros v6 (/routing filter add) — vira policies[chain] ─────────────
+    if versao == 6:
+        contadores = {}
+        for m in re.finditer(r'^/routing filter add(.*)$', conteudo_join, re.MULTILINE):
+            linha = m.group(1)
+            m_chain = re.search(r'\bchain=(\S+)', linha)
+            if not m_chain:
+                continue
+            chain = m_chain.group(1)
+            ordem = contadores.get(chain, 0)
+            contadores[chain] = ordem + 1
+
+            m_prefix = re.search(r'\bprefix=(!?[\da-fA-F:./]+)', linha)
+            m_plen   = re.search(r'\bprefix-length=(\d+)-(\d+)', linha)
+            m_prepend = re.search(r'\bset-bgp-prepend=(\d+)', linha)
+            acao = 'accept' if re.search(r'\baction=accept\b', linha) else 'reject'
+
+            refs_pl = []
+            # Negação (`prefix=!X`) não é simulada (deixa a regra "passar
+            # direto" pro próximo termo) — caso raro nos backups reais e a
+            # semântica de negação exigiria um matcher bem mais complexo.
+            if m_prefix and not m_prefix.group(1).startswith('!'):
+                nome_pl = f'{chain}#{ordem}'
+                prefix_lists[nome_pl] = [{
+                    'acao': 'permit', 'prefixo': m_prefix.group(1),
+                    'len_min': int(m_plen.group(1)) if m_plen else None,
+                    'len_max': int(m_plen.group(2)) if m_plen else None,
+                }]
+                refs_pl = [nome_pl]
+
+            policies.setdefault(chain, []).append({
+                'ordem': ordem, 'prefix_lists': refs_pl, 'acao': acao,
+                'prepend': int(m_prepend.group(1)) if m_prepend else 0,
+                'extra': {'chain': chain},
+            })
+    else:
+        # ── Filtros v7 (/routing filter rule) — mini-parser da expressão ────
+        contadores = {}
+        for m in re.finditer(
+            r'^/routing filter rule add chain=(\S+)(?:\s+disabled=\S+)?\s+rule=(.+)$',
+            conteudo_join, re.MULTILINE,
+        ):
+            chain, rule_raw = m.group(1), m.group(2).strip()
+            if rule_raw.startswith('"') and rule_raw.endswith('"'):
+                rule_raw = rule_raw[1:-1]
+            ordem = contadores.get(chain, 0)
+            contadores[chain] = ordem + 1
+
+            prefixo, len_min, len_max, acao, prepend = _parse_v7_regra_filtro(rule_raw)
+            refs_pl = []
+            if prefixo:
+                nome_pl = f'{chain}#{ordem}'
+                prefix_lists[nome_pl] = [{
+                    'acao': 'permit', 'prefixo': prefixo,
+                    'len_min': len_min, 'len_max': len_max,
+                }]
+                refs_pl = [nome_pl]
+
+            policies.setdefault(chain, []).append({
+                'ordem': ordem, 'prefix_lists': refs_pl, 'acao': acao,
+                'prepend': prepend, 'extra': {'chain': chain, 'rule_raw': rule_raw},
+            })
+
     # VLANs: /interface vlan add name=NAME vlan-id=ID
     seen_vlans = set()
     for m in re.finditer(
-        r'/interface vlan add .*?name=(?:"([^"]+)"|(\S+)).*?vlan-id=(\d+)', conteudo
+        r'/interface vlan add .*?name=(?:"([^"]+)"|(\S+)).*?vlan-id=(\d+)', conteudo_join
     ):
         nome = (m.group(1) or m.group(2) or '').strip()
         vid  = m.group(3)
@@ -120,7 +275,8 @@ def parse_mikrotik(conteudo, nome_equip=''):
             seen_vlans.add(vid)
 
     return {'ips': ips, 'bgp': bgp, 'vlans': vlans,
-            'modelo': modelo, 'as_local': as_local}
+            'modelo': modelo, 'as_local': as_local, 'versao_routeros': versao,
+            'prefix_lists': prefix_lists, 'policies': policies, 'networks': networks}
 
 
 # ─── Cisco / IOS (Parks, Intelbras, genérico) ────────────────────────────────
@@ -158,16 +314,104 @@ def parse_cisco(conteudo, nome_equip=''):
     bgp_as_m = re.search(r'^router bgp (\d+)', conteudo, re.MULTILINE)
     as_local  = bgp_as_m.group(1) if bgp_as_m else ''
 
+    prefix_lists, policies, networks = {}, {}, []
     desc_map = {}
-    for m in re.finditer(r'neighbor ([\d.]+) description (.+)', conteudo):
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) description (.+)', conteudo):
         desc_map[m.group(1)] = m.group(2).strip()
-    for m in re.finditer(r'neighbor ([\d.]+) remote-as (\d+)', conteudo):
+
+    # `neighbor X shutdown` (nível de topo do `router bgp`) desativa a
+    # sessão inteira — mesmo mecanismo já visto ativo em produção.
+    desabilitados = set(re.findall(r'neighbor ([\d.:a-fA-F]+) shutdown\b', conteudo))
+
+    policy_in_map, policy_out_map = {}, {}
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) route-map (\S+) in\b', conteudo):
+        policy_in_map[m.group(1)] = m.group(2)
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) route-map (\S+) out\b', conteudo):
+        policy_out_map[m.group(1)] = m.group(2)
+
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) remote-as (\d+)', conteudo):
         peer_ip = m.group(1)
         bgp.append({
             'peer_ip': peer_ip, 'peer_as': m.group(2),
             'as_local': as_local, 'equipamento': nome_equip,
             'descricao': desc_map.get(peer_ip, ''),
+            'nome': peer_ip,   # Cisco/Datacom não têm identificador próprio — comando usa o IP
+            'habilitada': peer_ip not in desabilitados,
+            'policy_in': policy_in_map.get(peer_ip, ''),
+            'policy_out': policy_out_map.get(peer_ip, ''),
         })
+
+    # ── Prefix-lists: ip prefix-list NOME seq N permit|deny X.X.X.X/Y ───────
+    for m in re.finditer(
+        r'^(?:ip|ipv6) prefix-list (\S+) seq (\d+) (permit|deny) ([\da-fA-F:./]+)'
+        r'(?:\s+ge\s+(\d+))?(?:\s+le\s+(\d+))?',
+        conteudo, re.MULTILINE,
+    ):
+        nome, seq, acao, prefixo = m.group(1), m.group(2), m.group(3), m.group(4)
+        ge, le = m.group(5), m.group(6)
+        try:
+            tam = int(prefixo.split('/')[1])
+        except (IndexError, ValueError):
+            tam = None
+        prefix_lists.setdefault(nome, []).append({
+            'acao': acao, 'prefixo': prefixo,
+            'len_min': int(ge) if ge else tam,
+            'len_max': int(le) if le else tam,
+            'seq': int(seq),   # necessário pra inserir um `deny` com seq menor (ação "parar de anunciar")
+        })
+
+    # ── route-map NOME permit|deny SEQ — bloco indentado ─────────────────────
+    termo_atual = None
+    for linha in conteudo.splitlines():
+        m_rm = re.match(r'route-map (\S+) (permit|deny) (\d+)', linha)
+        if m_rm:
+            nome_rm, acao_rm, seq = m_rm.group(1), m_rm.group(2), int(m_rm.group(3))
+            termo_atual = {
+                'ordem': seq, 'prefix_lists': [],
+                'acao': 'accept' if acao_rm == 'permit' else 'reject',
+                'prepend': 0, 'extra': {'route_map': nome_rm, 'seq': seq, 'nao_suportado': False},
+            }
+            policies.setdefault(nome_rm, []).append(termo_atual)
+            continue
+        if termo_atual is None:
+            continue
+        m_match_pl = re.match(r'\s+match (?:ip|ipv6) address prefix-list (\S+)', linha)
+        if m_match_pl:
+            termo_atual['prefix_lists'].append(m_match_pl.group(1))
+            continue
+        if re.match(r'\s+match\s+', linha):
+            # match de outro tipo (as-path, community, tag...) — não
+            # avaliável estaticamente, descarta o termo (mesma lógica do
+            # Huawei: melhor não simular do que simular errado).
+            termo_atual['extra']['nao_suportado'] = True
+            continue
+        m_prepend = re.match(r'\s+set as-path prepend ([\d\s]+)$', linha)
+        if m_prepend:
+            termo_atual['prepend'] = len(m_prepend.group(1).split())
+            continue
+        if linha and not linha.startswith((' ', '\t')):
+            termo_atual = None
+
+    for nome_rm in list(policies.keys()):
+        policies[nome_rm] = [t for t in policies[nome_rm] if not t['extra'].get('nao_suportado')]
+        if not policies[nome_rm]:
+            del policies[nome_rm]
+
+    # ── Networks anunciados: network X mask Y | network X/Y (dentro de AF) ──
+    for m in re.finditer(r'^\s+network\s+([\d.:a-fA-F]+)(?:\s+mask\s+([\d.]+))?', conteudo, re.MULTILINE):
+        ip, mask = m.group(1), m.group(2)
+        if '/' in ip:
+            networks.append({'prefixo': ip, 'habilitada': True, 'origem': 'network'})
+            continue
+        if mask:
+            pfx = _mascara_para_prefix(mask)
+            if pfx is not None:
+                networks.append({'prefixo': f'{ip}/{pfx}', 'habilitada': True, 'origem': 'network'})
+    if networks:
+        prefix_lists['__networks__'] = [
+            {'acao': 'permit', 'prefixo': n['prefixo'], 'len_min': None, 'len_max': None}
+            for n in networks
+        ]
 
     # VLANs: vlan ID / name NAME
     vid_atual = None
@@ -185,7 +429,8 @@ def parse_cisco(conteudo, nome_equip=''):
                 vid_atual = None
 
     return {'ips': ips, 'bgp': bgp, 'vlans': vlans,
-            'modelo': modelo, 'as_local': as_local}
+            'modelo': modelo, 'as_local': as_local,
+            'prefix_lists': prefix_lists, 'policies': policies, 'networks': networks}
 
 
 # ─── Huawei VRP ──────────────────────────────────────────────────────────────
@@ -216,20 +461,116 @@ def parse_huawei(conteudo, nome_equip=''):
             ips.append({'ip': ip_pfx, 'interface': iface_atual, 'equipamento': nome_equip})
 
     # ── BGP ───────────────────────────────────────────────────────────────────
+    prefix_lists, policies, networks = {}, {}, []
     bgp_as_m = re.search(r'^bgp (\d+)', conteudo, re.MULTILINE)
     as_local  = bgp_as_m.group(1) if bgp_as_m else ''
     desc_map  = {}
-    for m in re.finditer(r'peer ([\d.]+) description (.+)', conteudo):
+    for m in re.finditer(r'peer ([\d.:a-fA-F]+) description (.+)', conteudo):
         desc_map[m.group(1)] = m.group(2).strip()
+
+    # `peer X ignore` derruba a sessão inteira; `undo peer X enable` (dentro
+    # de ipv4-family/ipv6-family) desativa só a troca de rotas naquela AF —
+    # os dois coexistem no mesmo bloco `bgp <ASN>` e qualquer um dos dois
+    # basta pra considerar a sessão desabilitada.
+    ignorados = set(re.findall(r'peer ([\d.:a-fA-F]+) ignore\b', conteudo))
+    af_desabilitados = set(re.findall(r'undo peer ([\d.:a-fA-F]+) enable\b', conteudo))
+
+    policy_in_map, policy_out_map = {}, {}
+    for m in re.finditer(r'peer ([\d.:a-fA-F]+) route-policy (\S+) import', conteudo):
+        policy_in_map[m.group(1)] = m.group(2)
+    for m in re.finditer(r'peer ([\d.:a-fA-F]+) route-policy (\S+) export', conteudo):
+        policy_out_map[m.group(1)] = m.group(2)
+
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) as-number (\d+)', conteudo):
         peer_ip = m.group(1)
-        if ':' in peer_ip:
-            continue
         bgp.append({
             'peer_ip': peer_ip, 'peer_as': m.group(2),
             'as_local': as_local, 'equipamento': nome_equip,
             'descricao': desc_map.get(peer_ip, ''),
+            'nome': peer_ip,   # Huawei não tem identificador próprio — o comando de ação usa o IP
+            'habilitada': peer_ip not in ignorados and peer_ip not in af_desabilitados,
+            'policy_in': policy_in_map.get(peer_ip, ''),
+            'policy_out': policy_out_map.get(peer_ip, ''),
         })
+
+    # ── Prefix-lists: ip ip-prefix NOME index N permit|deny IP LEN [ge/le] ──
+    for m in re.finditer(
+        r'^ip ip-prefix (\S+) index (\d+) (permit|deny) ([\d.]+) (\d+)'
+        r'(?:\s+match-network)?(?:\s+greater-equal (\d+))?(?:\s+less-equal (\d+))?',
+        conteudo, re.MULTILINE,
+    ):
+        nome, _idx, acao, ip, tam = m.group(1), m.group(2), m.group(3), m.group(4), int(m.group(5))
+        ge, le = m.group(6), m.group(7)
+        prefix_lists.setdefault(nome, []).append({
+            'acao': acao, 'prefixo': f'{ip}/{tam}',
+            'len_min': int(ge) if ge else tam,
+            'len_max': int(le) if le else tam,
+        })
+
+    # ── route-policy NOME permit|deny node N — bloco indentado ──────────────
+    # Nós cujo único if-match é algo que não sabemos avaliar estaticamente
+    # (ex: `if-match community-filter`, que depende de comunidade BGP já
+    # carregada na rota, não do prefixo em si) são DESCARTADOS da simulação
+    # em vez de virarem falso catch-all — um nó "vazio" tratado como
+    # catch-all faria a policy inteira "rejeitar tudo" incorretamente assim
+    # que esse nó aparecesse primeiro na ordem.
+    termo_atual = None
+    for linha in conteudo.splitlines():
+        m_node = re.match(r'route-policy (\S+) (permit|deny) node (\d+)', linha)
+        if m_node:
+            nome_rp, acao_rp, node = m_node.group(1), m_node.group(2), int(m_node.group(3))
+            termo_atual = {
+                'ordem': node, 'prefix_lists': [],
+                'acao': 'accept' if acao_rp == 'permit' else 'reject',
+                'prepend': 0,
+                'extra': {'policy': nome_rp, 'node': node, 'nao_suportado': False},
+            }
+            policies.setdefault(nome_rp, []).append(termo_atual)
+            continue
+        if termo_atual is None:
+            continue
+        m_if_v4 = re.match(r'\s+if-match ip-prefix (\S+)', linha)
+        m_if_v6 = re.match(r'\s+if-match ipv6 address prefix-list (\S+)', linha)
+        if m_if_v4 or m_if_v6:
+            termo_atual['prefix_lists'].append((m_if_v4 or m_if_v6).group(1))
+            continue
+        if re.match(r'\s+if-match\s+', linha):
+            # if-match de um tipo que não sabemos avaliar (community-filter,
+            # as-path-filter etc.) — marca o nó pra ser descartado depois.
+            termo_atual['extra']['nao_suportado'] = True
+            continue
+        m_prepend = re.match(r'\s+apply as-path ([\d\s]+?)\s*additive', linha)
+        if m_prepend:
+            termo_atual['prepend'] = len(m_prepend.group(1).split())
+            continue
+        # linha não-indentada e não é outro `route-policy` = saiu do bloco
+        if linha and not linha.startswith((' ', '\t')):
+            termo_atual = None
+
+    for nome_rp in list(policies.keys()):
+        policies[nome_rp] = [
+            t for t in policies[nome_rp] if not t['extra'].get('nao_suportado')
+        ]
+        if not policies[nome_rp]:
+            del policies[nome_rp]
+
+    # ── Networks anunciados: network IP MASCARA_OU_LEN [route-policy NOME] ──
+    for m in re.finditer(r'^\s*network\s+(\S+)\s+(\S+)', conteudo, re.MULTILINE):
+        ip, mask_ou_len = m.group(1), m.group(2)
+        if '.' in mask_ou_len:
+            pfx = _mascara_para_prefix(mask_ou_len)
+        elif mask_ou_len.isdigit():
+            pfx = int(mask_ou_len)
+        else:
+            continue
+        if pfx is None:
+            continue
+        networks.append({'prefixo': f'{ip}/{pfx}', 'habilitada': True, 'origem': 'network'})
+    if networks:
+        prefix_lists['__networks__'] = [
+            {'acao': 'permit', 'prefixo': n['prefixo'], 'len_min': None, 'len_max': None}
+            for n in networks
+        ]
 
     # ── VLANs: vlan batch / vlan ID + description ────────────────────────────
     seen = set()
@@ -349,6 +690,7 @@ def parse_huawei(conteudo, nome_equip=''):
         'ips': ips, 'bgp': bgp, 'vlans': vlans,
         'ospf': ospf_list, 'vsi': vsi_list, 'l2vc': l2vc_list,
         'modelo': modelo, 'as_local': as_local,
+        'prefix_lists': prefix_lists, 'policies': policies, 'networks': networks,
     }
 
 
@@ -551,20 +893,37 @@ def parse_juniper(conteudo, nome_equip=''):
     nb_desc  = {}   # ip → description
     nb_peras = {}   # ip → peer-as
     for m in re.finditer(
-        r'^set protocols bgp group (\S+) neighbor ([\d.]+) description (.+)',
+        r'^set protocols bgp group (\S+) neighbor ([\da-fA-F:.]+) description (.+)',
         conteudo, re.MULTILINE,
     ):
         nb_desc[m.group(2)] = m.group(3).strip().strip('"')
     for m in re.finditer(
-        r'^set protocols bgp group (\S+) neighbor ([\d.]+) peer-as (\d+)',
+        r'^set protocols bgp group (\S+) neighbor ([\da-fA-F:.]+) peer-as (\d+)',
         conteudo, re.MULTILINE,
     ):
         nb_peras[m.group(2)] = m.group(3)
 
+    # import/export por grupo — governa o que cada peer recebe/anuncia
+    group_import, group_export = {}, {}
+    for m in re.finditer(r'^set protocols bgp group (\S+) import (\S+)', conteudo, re.MULTILINE):
+        group_import[m.group(1)] = m.group(2)
+    for m in re.finditer(r'^set protocols bgp group (\S+) export (\S+)', conteudo, re.MULTILINE):
+        group_export[m.group(1)] = m.group(2)
+
+    # `deactivate` é o mecanismo real do Junos pra "desligar sem apagar"
+    # (não existe uma keyword `disable` na hierarquia `protocols bgp`) —
+    # tanto em nível de group inteiro quanto de neighbor específico, e os
+    # dois coexistem no mesmo arquivo real (grupo com 1 neighbor desativado
+    # individualmente E, à parte, outro grupo inteiro desativado).
+    grupos_desativados = set(re.findall(r'^deactivate protocols bgp group (\S+)$', conteudo, re.MULTILINE))
+    neighbors_desativados = set(re.findall(
+        r'^deactivate protocols bgp group (\S+) neighbor ([\da-fA-F:.]+)$', conteudo, re.MULTILINE
+    ))
+
     # Coletar todos os neighbors com seu grupo
     seen_nb = set()
     for m in re.finditer(
-        r'^set protocols bgp group (\S+) neighbor ([\d.]+)',
+        r'^set protocols bgp group (\S+) neighbor ([\da-fA-F:.]+)',
         conteudo, re.MULTILINE,
     ):
         grp, ip = m.group(1), m.group(2)
@@ -579,7 +938,131 @@ def parse_juniper(conteudo, nome_equip=''):
             'peer_ip': ip, 'peer_as': peer_as,
             'as_local': as_local, 'equipamento': nome_equip,
             'descricao': desc,
+            'nome': ip,   # Juniper não tem identificador próprio — comando usa o IP
+            'habilitada': grp not in grupos_desativados and (grp, ip) not in neighbors_desativados,
+            'policy_in': group_import.get(grp, ''),
+            'policy_out': group_export.get(grp, ''),
+            'extra': {'grupo': grp},
         })
+
+    # ── Prefix-lists nomeadas: policy-options prefix-list NOME X.X.X.X/Y ────
+    prefix_lists = {}
+    for m in re.finditer(r'^set policy-options prefix-list (\S+) ([\da-fA-F:./]+)$', conteudo, re.MULTILINE):
+        nome, prefixo = m.group(1), m.group(2)
+        prefix_lists.setdefault(nome, []).append(
+            {'acao': 'permit', 'prefixo': prefixo, 'len_min': None, 'len_max': None}
+        )
+
+    # ── policy-statement / term — mais comum nos backups reais é usar
+    # `from route-filter X/Y TIPO` embutido direto no term (em vez de uma
+    # prefix-list nomeada) — cada ocorrência vira uma prefix-list sintética
+    # de uma entrada só, exclusiva daquele term.
+    policies = {}
+    termos_index = {}  # (policy, term) -> dict, pra conseguir voltar e mexer depois
+
+    # `deactivate` de sub-caminhos específicos (ex: só o as-path-prepend, ou
+    # só o "then accept") e de terms inteiros — coletados à parte porque
+    # podem aparecer em QUALQUER ordem relativa ao `set` correspondente.
+    terms_desativados = set(re.findall(
+        r'^deactivate policy-options policy-statement (\S+) term (\S+)$', conteudo, re.MULTILINE
+    ))
+    prepend_desativado = set(re.findall(
+        r'^deactivate policy-options policy-statement (\S+) term (\S+) then as-path-prepend$',
+        conteudo, re.MULTILINE,
+    ))
+
+    # Pré-passo SÓ pra fixar a ordem real dos terms no arquivo — os campos
+    # de cada term (from/then/prepend) são extraídos depois em passes
+    # regex separados (um por atributo), e se `ordem` fosse atribuída na
+    # hora de cada um desses passes ela refletiria em qual PASSE o term foi
+    # visto primeiro, não a posição real no arquivo — o que inverteria a
+    # prioridade entre termos (crítico: um catch-all reject "fora de ordem"
+    # antes do term específico faria a policy inteira rejeitar tudo).
+    ordem_vista = {}
+    for m in re.finditer(
+        r'^(?:set|deactivate) policy-options policy-statement (\S+) term (\S+)\b',
+        conteudo, re.MULTILINE,
+    ):
+        chave = (m.group(1), m.group(2))
+        if chave not in ordem_vista:
+            ordem_vista[chave] = len(ordem_vista)
+
+    def _termo(policy, term):
+        chave = (policy, term)
+        if chave not in termos_index:
+            t = {
+                'ordem': ordem_vista.get(chave, len(ordem_vista) + len(termos_index)),
+                'prefix_lists': [],
+                'acao': 'reject', 'prepend': 0, 'extra': {'policy': policy, 'term': term},
+            }
+            termos_index[chave] = t
+            policies.setdefault(policy, []).append(t)
+        return termos_index[chave]
+
+    for m in re.finditer(
+        r'^set policy-options policy-statement (\S+) term (\S+) from (?:prefix-list|prefix-list-filter) (\S+)',
+        conteudo, re.MULTILINE,
+    ):
+        _termo(m.group(1), m.group(2))['prefix_lists'].append(m.group(3))
+
+    for m in re.finditer(
+        r'^set policy-options policy-statement (\S+) term (\S+) from route-filter '
+        r'([\da-fA-F:./]+)\s+(exact|orlonger|upto\s+/\d+|\S+)',
+        conteudo, re.MULTILINE,
+    ):
+        policy, term, prefixo, tipo = m.group(1), m.group(2), m.group(3), m.group(4)
+        try:
+            tam = int(prefixo.split('/')[1])
+        except (IndexError, ValueError):
+            tam = None
+        len_min = len_max = tam
+        if tipo == 'orlonger':
+            len_max = 32 if '.' in prefixo else 128
+        elif tipo.startswith('upto'):
+            len_max = int(tipo.split('/')[-1])
+        nome_sintetico = f'{policy}#{term}#{len(prefix_lists)}'
+        prefix_lists[nome_sintetico] = [{
+            'acao': 'permit', 'prefixo': prefixo, 'len_min': len_min, 'len_max': len_max,
+        }]
+        _termo(policy, term)['prefix_lists'].append(nome_sintetico)
+
+    for m in re.finditer(
+        r'^set policy-options policy-statement (\S+) term (\S+) then (accept|reject)',
+        conteudo, re.MULTILINE,
+    ):
+        _termo(m.group(1), m.group(2))['acao'] = m.group(3)
+
+    # `set policy-options policy-statement NOME then accept|reject` (sem
+    # `term` — policy direta, ex: `DENY then reject`) vira um term "" único.
+    for m in re.finditer(
+        r'^set policy-options policy-statement (\S+) then (accept|reject)$',
+        conteudo, re.MULTILINE,
+    ):
+        _termo(m.group(1), '')['acao'] = m.group(2)
+
+    for m in re.finditer(
+        r'^set policy-options policy-statement (\S+) term (\S+) then as-path-prepend "([\d\s]+)"',
+        conteudo, re.MULTILINE,
+    ):
+        policy, term, asns = m.group(1), m.group(2), m.group(3)
+        if (policy, term) in prepend_desativado:
+            continue
+        _termo(policy, term)['prepend'] = len(asns.split())
+
+    # Remove terms inteiramente desativados (`deactivate ... term T`, sem
+    # sub-caminho) — Junos os ignora completamente na avaliação da policy.
+    for policy in list(policies.keys()):
+        policies[policy] = [
+            t for t in policies[policy]
+            if (t['extra']['policy'], t['extra']['term']) not in terms_desativados
+        ]
+        if not policies[policy]:
+            del policies[policy]
+
+    # ── Networks: Juniper não tem `network` estático — redes chegam via
+    # `export` das próprias prefix-lists/route-filters já capturados acima
+    # (ex: term `default-route` com `from route-filter 0.0.0.0/0 exact`).
+    networks = []
 
     # VLANs: set vlans <NAME> vlan-id <ID>
     seen = set()
@@ -589,7 +1072,8 @@ def parse_juniper(conteudo, nome_equip=''):
             vlans.append({'id': vid, 'nome': m.group(1), 'equipamento': nome_equip})
             seen.add(vid)
 
-    return {'ips': ips, 'bgp': bgp, 'vlans': vlans, 'modelo': modelo, 'as_local': as_local}
+    return {'ips': ips, 'bgp': bgp, 'vlans': vlans, 'modelo': modelo, 'as_local': as_local,
+            'prefix_lists': prefix_lists, 'policies': policies, 'networks': networks}
 
 
 # ─── A10 Networks Thunder (ACOS) ──────────────────────────────────────────────

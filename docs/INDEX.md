@@ -2,6 +2,36 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 23 — 31/07/2026: Automação BGP (ativar/desativar sessão, prepend, parar de anunciar)
+
+**O que foi implementado?**
+- ✅ **Parser BGP por fabricante estendido** (`clientes/backup_parser.py`, usado antes só pelo
+  snapshot de conhecimento do Agent NOC): Mikrotik (RouterOS 6 e 7), Huawei, Cisco/Datacom e Juniper
+  ganharam extração de estado habilitado/desabilitado, identificador de comando, e toda a estrutura
+  de prefix-lists/route-policies — numa representação canônica única, a mesma pros 4 fabricantes.
+- ✅ **Simulador de match único e vendor-agnóstico** (`clientes/bgp_matcher.py`): avalia de verdade
+  a lógica de permit/deny/prefix-length das policies (não só lista descritivamente) — sem precisar
+  reimplementar a avaliação 4 vezes, porque os 4 parsers traduzem pra o mesmo formato.
+- ✅ **Snapshot noturno em banco** (`BgpSnapshot`, `clientes.tasks.atualizar_snapshots_bgp`, 02:45,
+  depois do backup e do snapshot de conhecimento) — validado em produção: 393 acessos com backup,
+  53 com BGP identificado, só 2 erros (casos reais de sintaxe fora do padrão, não bugs).
+  Auditoria de ações em `AcaoBgp`.
+- ✅ **Tela de automação** (`/clientes/bgp/<acesso_id>/`, staff-only): botões Ativar/Desativar
+  sessão, +1 Prepend e Parar de anunciar por prefixo, cada um com preview dos comandos reais antes
+  de confirmar. Comandos executados via a mesma conexão Netmiko do Painel de Scripts
+  (`script_views.py::_conectar_script`), reaproveitada sem duplicação.
+- ✅ Tudo validado ponta a ponta contra backups **reais** de produção (não dados sintéticos) pra
+  cada um dos 4 fabricantes, incluindo casos reais complexos (grupos Juniper inteiros desativados,
+  nós Huawei baseados em community-filter, RouterOS 6 e 7 no mesmo ambiente).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Arquitetura completa, tabela de comandos por fabricante/ação, limitações |
+
+---
+
 ### Sessão 22 — 31/07/2026: Terminal Compartilhado + Link Externo (sem login)
 
 **O que foi implementado?**
@@ -682,6 +712,7 @@ docs/
 ├─ envio_credenciais_email.md
 ├─ winbox_vnc.md
 ├─ terminal_ssh.md
+├─ bgp_automacao.md ....................... 📌 Automação BGP: ativar/desativar sessão, prepend, parar de anunciar
 ├─ frontend_acessos.md
 ├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
 ├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
@@ -821,6 +852,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 31/07/2026 | Automação BGP: parser estendido (Mikrotik/Huawei/Cisco-Datacom/Juniper), simulador de match único, snapshot noturno, ativar/desativar sessão + prepend + parar de anunciar via UI | bgp_automacao.md |
 | 31/07/2026 | Terminal compartilhado (opt-in, múltiplos usuários na mesma conexão) + link externo temporário (sem login) para suporte; fix de autorização em `conectar_acesso` | terminal_ssh.md, AUDITORIA_ACESSOS.md |
 | 23/07/2026 | Hotspot: Integração Disparo — painel de ajuda visual no card Chatmix (Key/Token, ID do Template, sugestão de mensagem com botão Copiar); diagnóstico de "template pendente" e "canal errado na chave" | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Hotspot: Integração Disparo — Opa Suite funcional (`OpaSuiteClient`, `api_dominio`/`canal_id`), task generalizada p/ disparar em todos os providers habilitados, fix nomenclatura "Opa Suit"→"Opa Suite" | HOTSPOT_INTEGRACAO_DISPARO.md |

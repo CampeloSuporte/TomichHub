@@ -1305,6 +1305,68 @@ class ScriptExecucaoLog(models.Model):
         return f"Execução #{self.id} — {self.script} [{self.status}]"
 
 
+class BgpSnapshot(models.Model):
+    """Estrutura BGP (sessões, prefix-lists, route-policies e simulação de quais
+    prefixos cada sessão está anunciando) extraída do backup mais recente de um
+    Acesso. Recalculado toda madrugada por `clientes.tasks.atualizar_snapshots_bgp`,
+    depois da rotina de backup. Guardado como JSON (não normalizado em várias
+    tabelas) porque é sempre lido/escrito como uma unidade só, por Acesso, uma vez
+    por dia — nunca há necessidade de JOIN entre sessão/prefix-list/policy."""
+
+    acesso     = models.OneToOneField('Acesso', on_delete=models.CASCADE, related_name='bgp_snapshot')
+    vendor     = models.CharField(max_length=20, blank=True, default='')
+    backup_log = models.ForeignKey('BackupLog', null=True, blank=True, on_delete=models.SET_NULL)
+    # dados = {"sessoes": [...], "prefix_lists": {...}, "policies": {...},
+    #          "anuncios": {"<nome_sessao>": [{"prefixo","permitido","prepend"}, ...]}}
+    dados      = models.JSONField(default=dict, blank=True)
+    # Se o parser falhar num backup novo, registra o motivo aqui SEM apagar
+    # `dados` do snapshot anterior — a tela continua mostrando o último estado
+    # válido conhecido em vez de ficar vazia.
+    erro       = models.TextField(blank=True, default='')
+    gerado_em  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Snapshot BGP'
+        verbose_name_plural = 'Snapshots BGP'
+
+    def __str__(self):
+        return f'BGP {self.acesso} [{self.vendor}]'
+
+
+class AcaoBgp(models.Model):
+    """Auditoria de uma ação de automação BGP disparada pela tela de BGP —
+    quem clicou, o que foi enviado ao equipamento e o resultado."""
+
+    TIPOS = [
+        ('ativar_sessao',    'Ativar sessão'),
+        ('desativar_sessao', 'Desativar sessão'),
+        ('prepend',          'Adicionar prepend'),
+        ('parar_anuncio',    'Parar de anunciar'),
+    ]
+    STATUS = [
+        ('sucesso', 'Sucesso'),
+        ('erro',    'Erro'),
+    ]
+
+    acesso       = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='acoes_bgp')
+    usuario      = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
+    tipo         = models.CharField(max_length=20, choices=TIPOS)
+    alvo         = models.CharField(max_length=255)   # nome do peer, ou prefixo/policy afetado
+    comandos     = models.TextField()                 # comandos reais enviados, um por linha
+    output       = models.TextField(blank=True, default='')
+    status       = models.CharField(max_length=10, choices=STATUS)
+    executado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-executado_em']
+        verbose_name = 'Ação BGP (Auditoria)'
+        verbose_name_plural = 'Ações BGP (Auditoria)'
+
+    def __str__(self):
+        quem = self.usuario.get_username() if self.usuario else '?'
+        return f'[{self.tipo}] {quem} → {self.acesso} :: {self.alvo} [{self.status}]'
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # AGENT NOC TOMICH
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -5,6 +5,7 @@ from . import ipam_views as ipam
 from . import firmware_views as fw
 from . import script_views as sv
 from . import hotspot_views as hv
+from . import bgp_views as bgpv
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -217,6 +218,11 @@ urlpatterns = [
     path('scripts/executar/',                       sv.executar_script,     name='executar_script'),
     path('scripts/historico/<int:acesso_id>/',      sv.historico_execucoes, name='historico_scripts'),
     path('scripts/<int:script_id>/',                sv.detalhe_script,      name='detalhe_script'),
+
+    # ── Automação BGP ─────────────────────────────────────────────────────────
+    path('bgp/<int:acesso_id>/',                    bgpv.bgp_page,          name='bgp_page'),
+    path('bgp/<int:acesso_id>/dados/',               bgpv.bgp_dados,         name='bgp_dados'),
+    path('bgp/<int:acesso_id>/acao/',                bgpv.bgp_executar_acao, name='bgp_executar_acao'),
 
     # ── Hotspot ─────────────────────────────────────────────────────────────
     path('<int:cliente_id>/hotspot/listar/',                                      hv.hotspot_listar,         name='hotspot_listar'),

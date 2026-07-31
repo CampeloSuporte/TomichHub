@@ -107,6 +107,7 @@ DEVICE_TYPES = {
     'mikrotik': 'mikrotik_routeros',
     'datacom':  'cisco_ios',
     'parks':    'cisco_ios',
+    'juniper':  'juniper_junos',
     'generico': 'autodetect',
 }
 

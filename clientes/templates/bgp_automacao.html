@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automação BGP — {{ acesso.tipo|default:acesso.host }}</title>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; min-height: 100vh; background: #0d1117; color: #e6edf3;
+        font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px;
+    }
+    .header {
+        background: #161b22; border-bottom: 1px solid #30363d;
+        padding: 14px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .header h1 { font-size: 16px; margin: 0; }
+    .header .sub { color: #7d8590; font-size: 12px; }
+    .badge {
+        font-size: 11px; padding: 3px 9px; border-radius: 10px; border: 1px solid #30363d;
+        color: #7d8590; text-transform: uppercase; letter-spacing: .03em;
+    }
+    .badge.vendor { border-color: #58a6ff; color: #58a6ff; }
+    .badge.erro { border-color: #ff5555; color: #ff5555; }
+    #btnVoltar {
+        margin-left: auto; background: transparent; border: 1px solid #30363d; color: #7d8590;
+        padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    #btnVoltar:hover { border-color: #58a6ff; color: #58a6ff; }
+    .conteudo { padding: 20px; max-width: 1100px; margin: 0 auto; }
+    .vazio { text-align: center; color: #7d8590; padding: 60px 20px; }
+    .sessao-card {
+        background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+        margin-bottom: 16px; overflow: hidden;
+    }
+    .sessao-head {
+        display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+        border-bottom: 1px solid #21262d; cursor: pointer;
+    }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #ff5555; flex-shrink: 0; }
+    .status-dot.ativa { background: #3fb950; }
+    .sessao-titulo { font-weight: 600; font-size: 13px; }
+    .sessao-sub { color: #7d8590; font-size: 11px; }
+    .sessao-acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .btn {
+        background: transparent; border: 1px solid #30363d; color: #e6edf3;
+        padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;
+        font-weight: 600; text-transform: uppercase; letter-spacing: .02em;
+    }
+    .btn:hover { border-color: #58a6ff; }
+    .btn.perigo { border-color: rgba(255,85,85,.4); color: #ff8080; }
+    .btn.perigo:hover { border-color: #ff5555; background: rgba(255,85,85,.08); }
+    .btn.sucesso { border-color: rgba(63,185,80,.4); color: #6fdd85; }
+    .btn.sucesso:hover { border-color: #3fb950; background: rgba(63,185,80,.08); }
+    .btn.pequeno { padding: 3px 8px; font-size: 10px; }
+    .anuncios-wrap { display: none; }
+    .anuncios-wrap.aberto { display: block; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; color: #7d8590; font-weight: 500; padding: 8px 16px; border-bottom: 1px solid #21262d; font-size: 11px; text-transform: uppercase; }
+    td { padding: 7px 16px; border-bottom: 1px solid #161b22; }
+    tr:last-child td { border-bottom: none; }
+    .prefixo { font-family: 'Cascadia Code', monospace; }
+    .sim { color: #3fb950; }
+    .nao { color: #7d8590; }
+    .prepend-tag { background: rgba(255,165,0,.1); color: #ffa500; border-radius: 8px; padding: 1px 7px; font-size: 10px; }
+
+    /* Modal de confirmação */
+    .overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
+        z-index: 500; align-items: center; justify-content: center; padding: 16px;
+    }
+    .overlay.aberto { display: flex; }
+    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px; max-width: 480px; width: 100%; }
+    .modal h3 { margin: 0 0 12px; font-size: 14px; }
+    .modal pre {
+        background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;
+        font-family: 'Cascadia Code', monospace; font-size: 12px; color: #ffd280; overflow-x: auto;
+        white-space: pre-wrap; word-break: break-all; margin: 0 0 16px;
+    }
+    .modal .aviso { color: #ff8080; font-size: 11px; margin-bottom: 14px; }
+    .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-resultado { margin-top: 14px; font-size: 12px; white-space: pre-wrap; font-family: 'Cascadia Code', monospace; max-height: 200px; overflow-y: auto; }
+</style>
+</head>
+<body>
+{% csrf_token %}
+
+<div class="header">
+    <div>
+        <h1>🌐 Automação BGP — {{ acesso.tipo|default:"Host" }}</h1>
+        <div class="sub">{{ acesso.host }}{% if acesso.cliente %} · {{ acesso.cliente.nome_empresa }}{% endif %}</div>
+    </div>
+    <span class="badge vendor" id="badgeVendor">—</span>
+    <span class="badge" id="badgeGerado">carregando…</span>
+    <button id="btnVoltar" onclick="window.close()">✕ Fechar</button>
+</div>
+
+<div class="conteudo" id="conteudo">
+    <div class="vazio">Carregando snapshot…</div>
+</div>
+
+<div class="overlay" id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitulo">Confirmar ação</h3>
+        <div class="aviso">Estes comandos serão enviados de verdade ao equipamento:</div>
+        <pre id="modalComandos"></pre>
+        <div class="modal-resultado" id="modalResultado"></div>
+        <div class="modal-acoes">
+            <button class="btn" onclick="fecharModal()">Cancelar</button>
+            <button class="btn perigo" id="btnConfirmarAcao" onclick="confirmarAcao()">Executar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const ACESSO_ID = {{ acesso_id }};
+let SNAPSHOT = null;
+let acaoPendente = null;   // {tipo, alvo, params}
+
+function _getCookie(name) {
+    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+}
+
+async function carregar() {
+    try {
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/dados/`);
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            document.getElementById('conteudo').innerHTML =
+                `<div class="vazio">${err.error || 'Sem snapshot BGP para este host.'}<br><small>A rotina noturna gera o snapshot automaticamente após o próximo backup.</small></div>`;
+            document.getElementById('badgeGerado').textContent = 'sem dados';
+            return;
+        }
+        const data = await r.json();
+        SNAPSHOT = data;
+        document.getElementById('badgeVendor').textContent = data.vendor || '?';
+        document.getElementById('badgeGerado').textContent = 'snapshot de ' + data.gerado_em;
+        if (data.erro) {
+            document.getElementById('badgeGerado').classList.add('erro');
+            document.getElementById('badgeGerado').title = data.erro;
+        }
+        renderizar(data.dados);
+    } catch (e) {
+        document.getElementById('conteudo').innerHTML = `<div class="vazio">Erro ao carregar: ${e}</div>`;
+    }
+}
+
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderizar(dados) {
+    const sessoes = dados.sessoes || [];
+    if (!sessoes.length) {
+        document.getElementById('conteudo').innerHTML = '<div class="vazio">Nenhuma sessão BGP encontrada no último backup deste host.</div>';
+        return;
+    }
+    const anuncios = dados.anuncios || {};
+    let html = '';
+    sessoes.forEach((s, idx) => {
+        const lista = (anuncios[s.nome] || []).filter(a => a.permitido);
+        html += `
+        <div class="sessao-card">
+            <div class="sessao-head" onclick="toggleSessao(${idx})">
+                <div class="status-dot ${s.habilitada ? 'ativa' : ''}"></div>
+                <div>
+                    <div class="sessao-titulo">${escapeHtml(s.descricao || s.nome)}</div>
+                    <div class="sessao-sub">${escapeHtml(s.peer_ip)} · AS${escapeHtml(s.peer_as || '?')} · ${s.habilitada ? 'ativa' : 'desativada'}${s.policy_out ? ' · export: ' + escapeHtml(s.policy_out) : ''}</div>
+                </div>
+                <div class="sessao-acoes" onclick="event.stopPropagation()">
+                    ${s.habilitada
+                        ? `<button class="btn perigo" onclick="pedirAcao('desativar_sessao','${escapeHtml(s.nome)}',{},'Desativar sessão ${escapeHtml(s.descricao || s.nome)}')">Desativar</button>`
+                        : `<button class="btn sucesso" onclick="pedirAcao('ativar_sessao','${escapeHtml(s.nome)}',{},'Ativar sessão ${escapeHtml(s.descricao || s.nome)}')">Ativar</button>`
+                    }
+                </div>
+            </div>
+            <div class="anuncios-wrap" id="anuncios-${idx}">
+                ${lista.length ? `
+                <table>
+                    <thead><tr><th>Prefixo anunciado</th><th>Prepend</th><th style="width:220px"></th></tr></thead>
+                    <tbody>
+                        ${lista.map(a => `
+                        <tr>
+                            <td class="prefixo sim">${escapeHtml(a.prefixo)}</td>
+                            <td>${a.prepend ? `<span class="prepend-tag">+${a.prepend}x</span>` : '—'}</td>
+                            <td style="text-align:right">
+                                <button class="btn pequeno" onclick="pedirAcao('prepend','${escapeHtml(a.prefixo)}',{sessao:'${escapeHtml(s.nome)}',delta:1},'Adicionar +1 prepend em ${escapeHtml(a.prefixo)}')">+1 Prepend</button>
+                                <button class="btn pequeno perigo" onclick="pedirAcao('parar_anuncio','${escapeHtml(a.prefixo)}',{sessao:'${escapeHtml(s.nome)}'},'Parar de anunciar ${escapeHtml(a.prefixo)}')">Parar de anunciar</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>` : '<div class="vazio" style="padding:16px">Nenhum prefixo simulado como anunciado por esta sessão.</div>'}
+            </div>
+        </div>`;
+    });
+    document.getElementById('conteudo').innerHTML = html;
+}
+
+function toggleSessao(idx) {
+    document.getElementById(`anuncios-${idx}`).classList.toggle('aberto');
+}
+
+function pedirAcao(tipo, alvo, params, titulo) {
+    acaoPendente = { tipo, alvo, params };
+    document.getElementById('modalTitulo').textContent = titulo;
+    document.getElementById('modalComandos').textContent = 'Consultando comandos…';
+    document.getElementById('modalResultado').textContent = '';
+    document.getElementById('btnConfirmarAcao').disabled = false;
+    document.getElementById('btnConfirmarAcao').textContent = 'Executar';
+    document.getElementById('modalOverlay').classList.add('aberto');
+
+    fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+        body: JSON.stringify({ tipo, alvo, params, preview: true }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('modalComandos').textContent = '(ação não disponível)';
+                document.getElementById('modalResultado').textContent = '⚠ ' + data.error;
+                document.getElementById('btnConfirmarAcao').disabled = true;
+            } else {
+                document.getElementById('modalComandos').textContent = data.comandos.join('\n');
+            }
+        })
+        .catch(e => {
+            document.getElementById('modalComandos').textContent = '(erro)';
+            document.getElementById('modalResultado').textContent = String(e);
+            document.getElementById('btnConfirmarAcao').disabled = true;
+        });
+}
+
+function fecharModal() {
+    document.getElementById('modalOverlay').classList.remove('aberto');
+    acaoPendente = null;
+}
+
+function confirmarAcao() {
+    if (!acaoPendente) return;
+    const btn = document.getElementById('btnConfirmarAcao');
+    btn.disabled = true;
+    btn.textContent = 'Executando…';
+    fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+        body: JSON.stringify({ ...acaoPendente, preview: false }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('modalResultado').textContent =
+                (data.status === 'sucesso' ? '✓ ' : '✕ ') + (data.output || data.error || '');
+            btn.textContent = 'Fechar';
+            btn.disabled = false;
+            btn.onclick = () => { fecharModal(); carregar(); };
+        })
+        .catch(e => {
+            document.getElementById('modalResultado').textContent = '✕ ' + e;
+            btn.textContent = 'Fechar';
+            btn.disabled = false;
+            btn.onclick = fecharModal;
+        });
+}
+
+carregar();
+</script>
+</body>
+</html>

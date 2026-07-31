@@ -55,6 +55,10 @@ app.conf.beat_schedule = {
         'task': 'clientes.tasks.gerar_snapshots_conhecimento',
         'schedule': crontab(hour=2, minute=30),  # diariamente às 02:30, após backups noturnos
     },
+    'atualizar-snapshots-bgp': {
+        'task': 'clientes.tasks.atualizar_snapshots_bgp',
+        'schedule': crontab(hour=2, minute=45),  # após backups (01h) e snapshot de conhecimento (02:30)
+    },
     'notificar-chamados-abertos': {
         'task': 'atendimento.tasks.notificar_chamados_abertos',
         'schedule': timedelta(minutes=10),

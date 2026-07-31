@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-07-31 (Feat: Automação BGP)
+
+### Adicionado
+
+- **Automação BGP** (`clientes/backup_parser.py`, `clientes/bgp_matcher.py`, `clientes/bgp_actions.py`,
+  `clientes/bgp_views.py`, `clientes/tasks.py` — `atualizar_snapshots_bgp`; nova página
+  `/clientes/bgp/<acesso_id>/`, staff-only): a partir do backup mais recente de cada host, monta a
+  estrutura de sessões BGP/prefix-lists/route-policies (Mikrotik RouterOS 6 e 7, Huawei, Cisco/
+  Datacom, Juniper) e **simula de verdade** — não só lista — quais prefixos cada sessão está
+  anunciando agora, com quantos prepends. Botões pra ativar/desativar uma sessão, adicionar prepend
+  e parar de anunciar um prefixo, cada um com preview dos comandos reais antes de confirmar a
+  execução no equipamento. Snapshot recalculado toda madrugada (02:45, depois do backup e do
+  snapshot de conhecimento do Agent NOC) e persistido em `BgpSnapshot`; toda ação fica auditada em
+  `AcaoBgp`. Reaproveita a conexão Netmiko já usada pelo Painel de Scripts
+  (`script_views.py::_conectar_script`), só adicionando Juniper ao `DEVICE_TYPES` e tratamento de
+  `commit()` explícito (nenhum outro fluxo do projeto chamava commit no driver Juniper antes).
+  Validado ponta a ponta contra backups reais dos 4 fabricantes (não dados sintéticos) antes de
+  entrar em produção — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
+
+---
+
 ## [Não publicado] — 2026-07-31 (Feat: Terminal Compartilhado + Link Externo)
 
 ### Adicionado
