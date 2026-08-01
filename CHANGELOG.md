@@ -35,6 +35,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   agora incluem `'commit'` no preview/auditoria (filtrado antes do `send_config_set` pra não
   duplicar o commit — a execução real usa `conn.commit()`, não o texto literal).
 
+### Adicionado (2)
+
+- **Edição do comando antes de confirmar a ação BGP** (`clientes/bgp_views.py`,
+  `clientes/templates/bgp_automacao.html`): o textarea do modal de confirmação passou a ser
+  editável — dá pra ajustar o comando gerado automaticamente antes de enviar (ex: trocar o ASN
+  usado no prepend por um diferente do AS local da sessão). `POST .../acao/` com `preview=false`
+  agora aceita `comandos` (lista de strings) e usa exatamente esse texto em vez de gerar de novo;
+  sem esse campo, cai de volta pra geração automática (comportamento anterior inalterado).
+
 ---
 
 ## [Não publicado] — 2026-07-31 (Feat: Terminal Compartilhado + Link Externo)

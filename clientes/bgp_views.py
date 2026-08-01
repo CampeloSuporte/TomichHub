@@ -84,11 +84,14 @@ def _montar_comandos(tipo, vendor, dados, alvo, params):
 def bgp_executar_acao(request, acesso_id):
     """
     POST /clientes/bgp/<acesso_id>/acao/
-    body: {"tipo", "alvo", "params": {...}, "preview": bool}
+    body: {"tipo", "alvo", "params": {...}, "preview": bool, "comandos": [...]}
 
-    `preview=true` só monta e devolve os comandos, sem tocar no equipamento
-    — é o que a UI usa pro modal de confirmação mostrar antes do clique
-    final. `preview=false` executa de verdade e grava AcaoBgp.
+    `preview=true` só monta e devolve os comandos gerados automaticamente,
+    sem tocar no equipamento — é o que a UI usa pra preencher o textarea
+    editável do modal de confirmação. `preview=false` executa de verdade e
+    grava AcaoBgp; se o body trouxer `comandos` (o texto do modal, possivelmente
+    editado à mão — ex: trocar o ASN usado no prepend), usa exatamente esses
+    comandos em vez de gerar de novo — dá pra revisar/ajustar antes de confirmar.
     """
     erro = _checar_staff(request)
     if erro:
@@ -104,19 +107,31 @@ def bgp_executar_acao(request, acesso_id):
     alvo = body.get('alvo', '')
     params = body.get('params') or {}
     preview = bool(body.get('preview', True))
+    comandos_editados = body.get('comandos')
 
     try:
         snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
     except BgpSnapshot.DoesNotExist:
         return JsonResponse({'error': 'Sem snapshot BGP para este host — aguarde a próxima atualização noturna.'}, status=404)
 
-    try:
-        comandos = _montar_comandos(tipo, snap.vendor, snap.dados, alvo, params)
-    except AcaoBgpNaoSuportada as e:
-        return JsonResponse({'error': str(e)}, status=422)
-
     if preview:
+        # Preview sempre gera do zero — é o texto inicial que preenche o
+        # textarea editável do modal, nunca deve refletir uma edição anterior.
+        try:
+            comandos = _montar_comandos(tipo, snap.vendor, snap.dados, alvo, params)
+        except AcaoBgpNaoSuportada as e:
+            return JsonResponse({'error': str(e)}, status=422)
         return JsonResponse({'comandos': comandos})
+
+    if isinstance(comandos_editados, list) and comandos_editados and all(isinstance(c, str) for c in comandos_editados):
+        if len(comandos_editados) > 30 or any(len(c) > 500 for c in comandos_editados):
+            return JsonResponse({'error': 'Comando editado longo demais — revise antes de enviar.'}, status=400)
+        comandos = [c.strip() for c in comandos_editados if c.strip()]
+    else:
+        try:
+            comandos = _montar_comandos(tipo, snap.vendor, snap.dados, alvo, params)
+        except AcaoBgpNaoSuportada as e:
+            return JsonResponse({'error': str(e)}, status=422)
 
     output, status = executar_acao_bgp(acesso, snap.vendor, comandos)
     AcaoBgp.objects.create(

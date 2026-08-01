@@ -233,12 +233,22 @@ de range `X-Y` em vez de CIDR — ambos casos reais, não bugs do parser).
 |---|---|
 | `GET /clientes/bgp/<acesso_id>/` | Página (staff/superuser; `render` com `terminal_link_invalido.html` reaproveitado como tela de acesso negado) |
 | `GET /clientes/bgp/<acesso_id>/dados/` | JSON do `BgpSnapshot.dados` + `vendor`/`gerado_em`/`erro`; 404 se não houver snapshot ainda |
-| `POST /clientes/bgp/<acesso_id>/acao/` | `{tipo, alvo, params, preview}` — `preview=true` só monta e devolve os comandos (sem tocar no equipamento); `preview=false` executa de verdade e grava `AcaoBgp` |
+| `POST /clientes/bgp/<acesso_id>/acao/` | `{tipo, alvo, params, preview, comandos}` — `preview=true` só monta e devolve os comandos gerados automaticamente (sem tocar no equipamento); `preview=false` executa de verdade e grava `AcaoBgp`. Se o body trouxer `comandos` (lista de strings) nesse segundo caso, usa exatamente esses em vez de gerar de novo — ver "Edição do comando antes de confirmar" abaixo |
 
 Página dedicada (sem sidebar de hosts, no padrão de `terminal.html`): uma tabela de sessões
 (clicável, expande a lista de prefixos anunciados simulados) com botão Ativar/Desativar por sessão,
 e por prefixo anunciado, botões "+1 Prepend"/"Parar de anunciar". Todo botão abre um modal mostrando
 os **comandos reais** (via `preview=true`) antes de um segundo clique confirmar a execução.
+
+### Edição do comando antes de confirmar (adicionado em 2026-07-31)
+
+O textarea do modal de confirmação é **editável** — o texto inicial vem do `preview=true` (geração
+automática), mas o staff pode ajustar antes de clicar em "Executar" (ex: trocar o ASN usado no
+prepend por um diferente do AS local da sessão, corrigir um nome). No confirm (`preview=false`), o
+frontend manda o conteúdo atual do textarea (`comandos: [...]`, uma linha por elemento) — a view
+usa exatamente esse texto em vez de rechamar `_montar_comandos`. Se o body não trouxer `comandos`
+(ex: chamada direta na API sem passar pelo modal), cai de volta pra geração automática — comportamento
+inalterado. Limite de sanidade: até 30 linhas, 500 caracteres cada, senão a view recusa com 400.
 
 Ícone novo no card de cada `Acesso` em `listar.html` (`fa-diagram-project`, ao lado do de auditoria),
 visível só pra staff e só quando `acesso.bgp_snapshot` existe (Django trata o `OneToOneField`

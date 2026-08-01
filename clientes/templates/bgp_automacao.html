@@ -70,13 +70,16 @@
         z-index: 500; align-items: center; justify-content: center; padding: 16px;
     }
     .overlay.aberto { display: flex; }
-    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px; max-width: 480px; width: 100%; }
+    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px; max-width: 560px; width: 100%; }
     .modal h3 { margin: 0 0 12px; font-size: 14px; }
-    .modal pre {
+    .modal textarea#modalComandos {
+        display: block; width: 100%; min-height: 110px; resize: vertical;
         background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px;
-        font-family: 'Cascadia Code', monospace; font-size: 12px; color: #ffd280; overflow-x: auto;
-        white-space: pre-wrap; word-break: break-all; margin: 0 0 16px;
+        font-family: 'Cascadia Code', monospace; font-size: 12px; color: #ffd280;
+        white-space: pre; overflow: auto; margin: 0 0 6px; box-sizing: border-box;
     }
+    .modal textarea#modalComandos:focus { outline: none; border-color: #58a6ff; }
+    .modal .dica-edicao { color: #7d8590; font-size: 10.5px; margin: 0 0 16px; }
     .modal .aviso { color: #ff8080; font-size: 11px; margin-bottom: 14px; }
     .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; }
     .modal-resultado { margin-top: 14px; font-size: 12px; white-space: pre-wrap; font-family: 'Cascadia Code', monospace; max-height: 200px; overflow-y: auto; }
@@ -103,7 +106,8 @@
     <div class="modal">
         <h3 id="modalTitulo">Confirmar ação</h3>
         <div class="aviso">Estes comandos serão enviados de verdade ao equipamento:</div>
-        <pre id="modalComandos"></pre>
+        <textarea id="modalComandos" spellcheck="false"></textarea>
+        <div class="dica-edicao">Pode editar antes de confirmar — ex: trocar o ASN usado no prepend, ajustar um nome. O que estiver aqui é exatamente o que será enviado.</div>
         <div class="modal-resultado" id="modalResultado"></div>
         <div class="modal-acoes">
             <button class="btn" onclick="fecharModal()">Cancelar</button>
@@ -203,8 +207,10 @@ function toggleSessao(idx) {
 
 function pedirAcao(tipo, alvo, params, titulo) {
     acaoPendente = { tipo, alvo, params };
+    const textarea = document.getElementById('modalComandos');
     document.getElementById('modalTitulo').textContent = titulo;
-    document.getElementById('modalComandos').textContent = 'Consultando comandos…';
+    textarea.value = 'Consultando comandos…';
+    textarea.readOnly = true;
     document.getElementById('modalResultado').textContent = '';
     document.getElementById('btnConfirmarAcao').disabled = false;
     document.getElementById('btnConfirmarAcao').textContent = 'Executar';
@@ -218,15 +224,18 @@ function pedirAcao(tipo, alvo, params, titulo) {
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                document.getElementById('modalComandos').textContent = '(ação não disponível)';
+                textarea.value = '';
+                textarea.readOnly = true;
                 document.getElementById('modalResultado').textContent = '⚠ ' + data.error;
                 document.getElementById('btnConfirmarAcao').disabled = true;
             } else {
-                document.getElementById('modalComandos').textContent = data.comandos.join('\n');
+                textarea.value = data.comandos.join('\n');
+                textarea.readOnly = false;
             }
         })
         .catch(e => {
-            document.getElementById('modalComandos').textContent = '(erro)';
+            textarea.value = '';
+            textarea.readOnly = true;
             document.getElementById('modalResultado').textContent = String(e);
             document.getElementById('btnConfirmarAcao').disabled = true;
         });
@@ -240,12 +249,16 @@ function fecharModal() {
 function confirmarAcao() {
     if (!acaoPendente) return;
     const btn = document.getElementById('btnConfirmarAcao');
+    const comandos = document.getElementById('modalComandos').value
+        .split('\n').map(l => l.trim()).filter(Boolean);
+    if (!comandos.length) return;
     btn.disabled = true;
     btn.textContent = 'Executando…';
+    document.getElementById('modalComandos').readOnly = true;
     fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
-        body: JSON.stringify({ ...acaoPendente, preview: false }),
+        body: JSON.stringify({ ...acaoPendente, comandos, preview: false }),
     })
         .then(r => r.json())
         .then(data => {
