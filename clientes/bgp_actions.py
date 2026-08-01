@@ -125,7 +125,11 @@ def comandos_prepend(vendor, dados, nome_sessao, prefixo, delta=1):
             f'Não encontrei uma regra de anúncio ativa para {prefixo} em "{policy_nome}".'
         )
     novo_valor = max(0, int(termo.get('prepend', 0)) + delta)
-    asn = sessao.get('as_local')
+    # `prepend_as` só existe quando o parser achou um `fake-as` configurado
+    # nessa sessão (hoje só Huawei) — o peer enxerga o AS_PATH com o
+    # fake-as, não o AS real do roteador, então o prepend precisa repetir
+    # o número que o peer efetivamente vê. Nos demais casos cai no AS real.
+    asn = sessao.get('prepend_as') or sessao.get('as_local')
     extra = termo.get('extra', {})
 
     if vendor == 'mikrotik':

@@ -53,6 +53,9 @@
     .btn.sucesso { border-color: rgba(63,185,80,.4); color: #6fdd85; }
     .btn.sucesso:hover { border-color: #3fb950; background: rgba(63,185,80,.08); }
     .btn.pequeno { padding: 3px 8px; font-size: 10px; }
+    .stepper { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; vertical-align: middle; }
+    .stepper .btn.pequeno { padding: 2px 7px; }
+    .stepper-valor { display: inline-block; min-width: 16px; text-align: center; font-size: 11px; color: #ffa500; font-weight: 600; }
     .anuncios-wrap { display: none; }
     .anuncios-wrap.aberto { display: block; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -120,6 +123,7 @@
 const ACESSO_ID = {{ acesso_id }};
 let SNAPSHOT = null;
 let acaoPendente = null;   // {tipo, alvo, params}
+let deltaState = {};       // "idxSessao_idxPrefixo" -> quantidade de prepends a adicionar (>=1)
 
 function _getCookie(name) {
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -182,17 +186,26 @@ function renderizar(dados) {
             <div class="anuncios-wrap" id="anuncios-${idx}">
                 ${lista.length ? `
                 <table>
-                    <thead><tr><th>Prefixo anunciado</th><th>Prepend</th><th style="width:220px"></th></tr></thead>
+                    <thead><tr><th>Prefixo anunciado</th><th>Prepend</th><th style="width:280px"></th></tr></thead>
                     <tbody>
-                        ${lista.map(a => `
+                        ${lista.map((a, aIdx) => {
+                            const key = `${idx}_${aIdx}`;
+                            deltaState[key] = deltaState[key] || 1;
+                            return `
                         <tr>
                             <td class="prefixo sim">${escapeHtml(a.prefixo)}</td>
                             <td>${a.prepend ? `<span class="prepend-tag">+${a.prepend}x</span>` : '—'}</td>
                             <td style="text-align:right">
-                                <button class="btn pequeno" onclick="pedirAcao('prepend','${escapeHtml(a.prefixo)}',{sessao:'${escapeHtml(s.nome)}',delta:1},'Adicionar +1 prepend em ${escapeHtml(a.prefixo)}')">+1 Prepend</button>
+                                <span class="stepper">
+                                    <button class="btn pequeno" onclick="ajustarDelta('${key}', -1)" title="Diminuir quantidade">−</button>
+                                    <span class="stepper-valor" id="delta-${key}">${deltaState[key]}</span>
+                                    <button class="btn pequeno" onclick="ajustarDelta('${key}', 1)" title="Aumentar quantidade">+</button>
+                                </span>
+                                <button class="btn pequeno" onclick="pedirAcaoPrepend('${key}','${escapeHtml(a.prefixo)}','${escapeHtml(s.nome)}')">Prepend</button>
                                 <button class="btn pequeno perigo" onclick="pedirAcao('parar_anuncio','${escapeHtml(a.prefixo)}',{sessao:'${escapeHtml(s.nome)}'},'Parar de anunciar ${escapeHtml(a.prefixo)}')">Parar de anunciar</button>
                             </td>
-                        </tr>`).join('')}
+                        </tr>`;
+                        }).join('')}
                     </tbody>
                 </table>` : '<div class="vazio" style="padding:16px">Nenhum prefixo simulado como anunciado por esta sessão.</div>'}
             </div>
@@ -203,6 +216,18 @@ function renderizar(dados) {
 
 function toggleSessao(idx) {
     document.getElementById(`anuncios-${idx}`).classList.toggle('aberto');
+}
+
+function ajustarDelta(key, passo) {
+    const novo = Math.max(1, Math.min(20, (deltaState[key] || 1) + passo));
+    deltaState[key] = novo;
+    const el = document.getElementById(`delta-${key}`);
+    if (el) el.textContent = novo;
+}
+
+function pedirAcaoPrepend(key, prefixo, nomeSessao) {
+    const delta = deltaState[key] || 1;
+    pedirAcao('prepend', prefixo, { sessao: nomeSessao, delta }, `Adicionar +${delta} prepend em ${prefixo}`);
 }
 
 function pedirAcao(tipo, alvo, params, titulo) {

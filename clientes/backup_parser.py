@@ -481,8 +481,17 @@ def parse_huawei(conteudo, nome_equip=''):
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) route-policy (\S+) export', conteudo):
         policy_out_map[m.group(1)] = m.group(2)
 
+    # `peer X fake-as N` faz o roteador se apresentar com o AS N (em vez do
+    # AS real do `bgp <ASN>`) só pra esse peer — o AS_PATH que ESSE peer
+    # enxerga usa `fake-as`, não o AS real. Prepend nessa sessão precisa
+    # repetir `fake-as`, senão o valor não bate com o que o peer já vê.
+    fake_as_map = {}
+    for m in re.finditer(r'peer ([\d.:a-fA-F]+) fake-as (\d+)', conteudo):
+        fake_as_map[m.group(1)] = m.group(2)
+
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) as-number (\d+)', conteudo):
         peer_ip = m.group(1)
+        fake_as = fake_as_map.get(peer_ip, '')
         bgp.append({
             'peer_ip': peer_ip, 'peer_as': m.group(2),
             'as_local': as_local, 'equipamento': nome_equip,
@@ -491,6 +500,10 @@ def parse_huawei(conteudo, nome_equip=''):
             'habilitada': peer_ip not in ignorados and peer_ip not in af_desabilitados,
             'policy_in': policy_in_map.get(peer_ip, ''),
             'policy_out': policy_out_map.get(peer_ip, ''),
+            'fake_as': fake_as,
+            # AS a repetir no prepend — fake-as tem prioridade sobre o AS
+            # real quando configurado (é o que o peer efetivamente enxerga).
+            'prepend_as': fake_as or as_local,
         })
 
     # ── Prefix-lists: ip ip-prefix NOME index N permit|deny IP LEN [ge/le] ──

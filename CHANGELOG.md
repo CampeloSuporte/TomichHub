@@ -44,6 +44,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   agora aceita `comandos` (lista de strings) e usa exatamente esse texto em vez de gerar de novo;
   sem esse campo, cai de volta pra geração automática (comportamento anterior inalterado).
 
+### Adicionado (3)
+
+- **Stepper de quantidade no prepend** (`clientes/templates/bgp_automacao.html`): cada prefixo
+  anunciado ganhou um contador `−`/`+` (1 a 20) ao lado do botão "Prepend" — dá pra adicionar mais
+  de um prepend numa ação só, sem clicar repetidamente. O backend já aceitava `delta` arbitrário; só
+  a UI estava fixa em `+1`.
+- **Suporte a `fake-as` (Huawei) no prepend** (`clientes/backup_parser.py::parse_huawei`,
+  `clientes/bgp_actions.py`): reportado em produção — quando um peer Huawei tem `peer IP fake-as N`
+  configurado, o roteador se apresenta com o AS `N` só pra esse peer, e o AS_PATH que esse peer
+  enxerga já usa `N`, não o AS real do `bgp <ASN>`. `parse_huawei` agora extrai `peer.fake_as` e
+  calcula `peer.prepend_as = fake_as or as_local`; `comandos_prepend` prependa `prepend_as` em vez
+  do AS real quando houver `fake-as` configurado (fallback automático pros outros fabricantes, que
+  não têm esse campo). Validado contra backup real com `fake-as 271699` ≠ AS real `266550`.
+
 ---
 
 ## [Não publicado] — 2026-07-31 (Feat: Terminal Compartilhado + Link Externo)

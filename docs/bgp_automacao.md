@@ -108,7 +108,9 @@ inline em `backup_parser.py` (`extra.nao_suportado`).
   o bucket `prefix_lists['__networks__']`.
 - **Huawei**: duas formas de "desativado" coexistem no mesmo bloco `bgp <ASN>` — `peer X ignore`
   (sessão inteira) e `undo peer X enable` (só a address-family, dentro de `ipv4-family unicast`/
-  `ipv6-family unicast`) — qualquer um dos dois já conta como desabilitada.
+  `ipv6-family unicast`) — qualquer um dos dois já conta como desabilitada. `peer X fake-as N`
+  (o roteador se apresenta com AS `N` só pra esse peer) vira `peer.fake_as`/`peer.prepend_as` —
+  ver "Qual ASN é repetido" na seção de comandos, abaixo.
 - **Cisco/Datacom**: `neighbor X shutdown` desativa a sessão. Datacom não tem nenhuma evidência real
   de BGP em backup de produção até agora — `atualizar_snapshots_bgp` reaproveita o parser Cisco pra
   qualquer `Acesso` detectado como `datacom` (mesmo tratamento já usado em `DEVICE_TYPES` do Netmiko).
@@ -173,6 +175,22 @@ Cada fabricante usa o mecanismo **mais natural e reversível da própria CLI** �
 | Huawei | `route-policy NOME permit node N` + `apply as-path ASN...ASN additive` + `commit` |
 | Cisco/Datacom | `route-map NOME permit SEQ` + `set as-path prepend ASN...ASN` |
 | Juniper | `set policy-options policy-statement NOME term TERM then as-path-prepend "ASN...ASN"` + `commit` |
+
+**Qual ASN é repetido — `fake-as` (adicionado em 2026-07-31):** por padrão, o prepend repete o AS
+local da sessão (`sessao.as_local`). Exceção real confirmada em produção: quando o peer Huawei tem
+`peer IP fake-as N` configurado (o roteador se apresenta com o AS `N` só pra esse peer, em vez do
+AS real do `bgp <ASN>`), o AS_PATH que ESSE peer enxerga já usa o `fake-as` — prepender o AS real
+nesse caso produziria um valor que não bate com o que o peer já vê. `parse_huawei` extrai
+`peer.fake_as` e calcula `peer.prepend_as = fake_as or as_local`; `comandos_prepend` usa
+`sessao.prepend_as` em vez de `sessao.as_local` (fallback automático pros outros 3 fabricantes, que
+não têm esse campo). Not confirmado equivalente pra Cisco `neighbor ... local-as`/Juniper
+`local-as` nos backups reais deste ambiente (o único `local-as` visto no dataset Juniper repete o
+próprio AS do roteador, não é mascaramento de fato) — não implementado por falta de evidência real.
+
+**Quantos prepends de uma vez — stepper na UI (adicionado em 2026-07-31):** cada linha de prefixo
+anunciado tem um contador `−`/`+` (1 a 20) ao lado do botão "Prepend", pra adicionar mais de um de
+uma vez sem precisar clicar "Prepend" repetidamente — `delta` no `POST .../acao/` já aceitava
+qualquer inteiro desde o início, só a UI estava fixa em `delta:1`.
 
 ### Parar de anunciar
 
