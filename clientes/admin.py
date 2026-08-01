@@ -9,7 +9,7 @@ from .models import (
 
 from .models import BackupTemplate, BackupLog
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
-from .models import BgpSnapshot, AcaoBgp
+from .models import BgpSnapshot, AcaoBgp, BgpCommunity
 
 @admin.register(BackupTemplate)
 class BackupTemplateAdmin(admin.ModelAdmin):
@@ -80,6 +80,14 @@ class AcaoBgpAdmin(admin.ModelAdmin):
     list_filter = ['tipo', 'status']
     search_fields = ['acesso__host', 'usuario__username', 'alvo']
     readonly_fields = ['executado_em']
+
+
+@admin.register(BgpCommunity)
+class BgpCommunityAdmin(admin.ModelAdmin):
+    list_display = ['acesso', 'sessao_nome', 'label', 'valor', 'criado_por', 'criado_em']
+    list_filter = ['criado_em']
+    search_fields = ['acesso__host', 'sessao_nome', 'label', 'valor']
+    readonly_fields = ['criado_em']
 
 
 @admin.register(ProxyServer)

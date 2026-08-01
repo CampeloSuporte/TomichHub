@@ -1342,6 +1342,8 @@ class AcaoBgp(models.Model):
         ('desativar_sessao', 'Desativar sessão'),
         ('prepend',          'Adicionar prepend'),
         ('parar_anuncio',    'Parar de anunciar'),
+        ('community',        'Aplicar community'),
+        ('novo_anuncio',     'Anunciar prefixo novo'),
     ]
     STATUS = [
         ('sucesso', 'Sucesso'),
@@ -1365,6 +1367,30 @@ class AcaoBgp(models.Model):
     def __str__(self):
         quem = self.usuario.get_username() if self.usuario else '?'
         return f'[{self.tipo}] {quem} → {self.acesso} :: {self.alvo} [{self.status}]'
+
+
+class BgpCommunity(models.Model):
+    """Communities BGP cadastradas manualmente por sessão (upstream/operadora)
+    — cada upstream publica sua própria lista (blackhole, no-export seletivo,
+    tag de prioridade etc); guardamos aqui como atalho pra aplicar rápido via
+    o botão "Usar community" em vez do operador ter que decorar/copiar o
+    valor toda vez. Não vem do backup — é cadastro manual do usuário."""
+
+    acesso      = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='bgp_communities')
+    sessao_nome = models.CharField(max_length=255)   # == sessao['nome'] no BgpSnapshot.dados (IP ou name= do Mikrotik)
+    label       = models.CharField(max_length=100)   # rótulo dado pelo usuário, ex "Blackhole"
+    valor       = models.CharField(max_length=255)   # "61663:666" ou vários: "53181:1607 53181:3710"
+    criado_por  = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sessao_nome', 'label']
+        unique_together = [('acesso', 'sessao_nome', 'label')]
+        verbose_name = 'Community BGP (por sessão)'
+        verbose_name_plural = 'Communities BGP (por sessão)'
+
+    def __str__(self):
+        return f'{self.acesso} :: {self.sessao_nome} — {self.label} ({self.valor})'
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

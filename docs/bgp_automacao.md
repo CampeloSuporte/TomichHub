@@ -2,7 +2,7 @@
 
 **Arquivos principais:** `clientes/backup_parser.py`, `clientes/bgp_matcher.py`, `clientes/bgp_actions.py`,
 `clientes/bgp_views.py`, `clientes/tasks.py` (`atualizar_snapshots_bgp`), `clientes/models.py`
-(`BgpSnapshot`, `AcaoBgp`), `clientes/templates/bgp_automacao.html`
+(`BgpSnapshot`, `AcaoBgp`, `BgpCommunity`), `clientes/templates/bgp_automacao.html`
 **Fabricantes suportados:** Mikrotik (RouterOS 6 e 7), Huawei (VRP), Cisco/Datacom (IOS-like), Juniper (Junos)
 **Status:** ✅ Produção
 **Data de implementação:** 2026-07-31
@@ -275,4 +275,109 @@ quando não há snapshot pra aquele Acesso).
 
 ---
 
-**Última atualização:** 31/07/2026
+## Atualizar snapshot sob demanda (adicionado em 2026-08-01)
+
+`clientes/tasks.py::atualizar_snapshots_bgp` foi refatorada — o trabalho de UM Acesso (ler backup
+mais recente, `parse_backup`, `simular_anuncios`, gravar `BgpSnapshot`) virou uma função reutilizável
+`_atualizar_snapshot_bgp_de_acesso(acesso)`, que devolve `(resultado, detalhe)` (`'ok'`,
+`'sem_backup'`, `'fabricante_nao_suportado'`, `'erro_leitura'`, `'erro_parser'`, `'sem_bgp'`,
+`'erro_simulacao'`). A task noturna passou a chamar essa função em loop (mesmo comportamento de
+antes, só refatorado); e um botão novo **"🔄 Atualizar agora"** no cabeçalho da tela
+(`POST /clientes/bgp/<acesso_id>/atualizar/`, `bgp_views.bgp_atualizar_snapshot`) chama a mesma
+função **síncrono**, pra um único host, sem esperar a rotina das 02:45 — não precisa de Celery
+porque só lê um arquivo já salvo em disco e roda regex, não conecta em nada.
+
+---
+
+## Communities por sessão — cadastro + "usar community" (adicionado em 2026-08-01)
+
+Cada upstream/operadora costuma publicar sua própria lista de communities aceitas (blackhole,
+no-export seletivo, tag de prioridade — confirmado em produção: `blackhole-fortetelecom` no Juniper
+= `61663:666`, `apply community 65001:100 additive` no Huawei). Modelo novo `BgpCommunity`
+(`clientes/models.py`) guarda isso por **sessão** (`acesso` + `sessao_nome` + `label` + `valor`,
+`unique_together` nos três primeiros) — cadastro manual, não vem do backup.
+
+### Comando gerado (`clientes/bgp_actions.py::comandos_aplicar_community`)
+
+Mesmo mecanismo de "achar o termo responsável" já usado no prepend (`_termo_e_entrada_responsaveis`).
+
+| Fabricante | Comando | Confiança |
+|---|---|---|
+| Mikrotik v6 | `/routing filter set [...] append-bgp-communities={valor}` (aditivo, não `set-` — não arrisca sobrescrever outros atributos já setados na mesma regra) | ✅ confirmado |
+| Mikrotik v7 | `AcaoBgpNaoSuportada` | ❌ sem evidência real de **set** de community no dialeto de script v7 (só *match*, `if (bgp-communities includes ...)`) |
+| Huawei | `route-policy NOME permit node N` + `apply community {valor} additive` + `commit` | ✅ confirmado, muito consistente |
+| Cisco/Datacom | `route-map NOME permit SEQ` + `set community {valor} additive` | ⚠️ best-effort — **zero ocorrências reais** de `set community` em 38 backups Cisco deste ambiente (só existe `neighbor X send-community both`, que é outra coisa) |
+| Juniper | `set policy-options community {nome} members {valor}` + `set policy-options policy-statement NOME term T then community add {nome}` + `commit` | ✅ confirmado — Junos **sempre** referencia community por nome, nunca valor literal inline. `{nome}` vem do `label` cadastrado (slugificado: minúsculo, não-`[a-z0-9]` vira hífen) — reemitir o mesmo `members` é idempotente, não precisa checar se já existe no equipamento |
+
+### Endpoints (`clientes/bgp_views.py`)
+
+| Endpoint | Descrição |
+|---|---|
+| `GET /clientes/bgp/<id>/communities/[?sessao=NOME]` | Sem `?sessao=`, devolve TODAS agrupadas por sessão (`{"communities": {"<sessao_nome>": [...]}}`) — a UI carrega uma vez só no load da página em vez de 1 fetch por sessão |
+| `POST /clientes/bgp/<id>/communities/criar/` | `{sessao, label, valor}` |
+| `POST /clientes/bgp/<id>/communities/<community_id>/deletar/` | remove |
+
+`_montar_comandos` ganhou `tipo == 'community'` (`params: {sessao, valor, label}`).
+
+### Frontend
+
+Painel colapsável "📡 Communities desta sessão" dentro de cada card de sessão (lista + form de
+adicionar). Por prefixo anunciado, um `<select>` "Usar community…" (desabilitado se a sessão não
+tiver nenhuma cadastrada) que dispara o mesmo modal de preview/edição já existente.
+
+---
+
+## Anunciar prefixo novo — varredura de prefix-lists (adicionado em 2026-08-01)
+
+Até aqui só dava pra mexer em anúncios que **já existiam** (prepend/parar). Esta extensão permite
+anunciar um prefixo **novo**, achando automaticamente qual prefix-list já cadastrada (e já
+referenciada por um termo `accept` da export policy da sessão) faz sentido receber esse prefixo —
+sem precisar mexer na route-policy/term em si.
+
+### `clientes/bgp_matcher.py::escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo)`
+
+Reúne as prefix-lists referenciadas por termos `accept` de `policy_nome` (candidatas) e roda a MESMA
+lógica de match do `simular_anuncios` (`entrada_que_bate`) pra conferir se `prefixo_novo` já bate em
+alguma — se sim, `ja_coberto=True` e não tem nada a fazer (já seria anunciado automaticamente se a
+rota existisse na tabela). Devolve também uma amostra de até 3 prefixos de cada candidata, pra UI
+mostrar algo reconhecível em vez de só o nome da lista.
+
+### `clientes/bgp_actions.py::comandos_novo_anuncio(vendor, dados, nome_sessao, prefixo_novo, lista_escolhida)`
+
+| Fabricante | Comando |
+|---|---|
+| Huawei | `ip ip-prefix {lista} index {próximo múltiplo de 10 livre} permit {ip} {tamanho}` |
+| Cisco/Datacom | `ip prefix-list {lista} seq {próximo múltiplo de 5 livre} permit {prefixo}` |
+| Juniper | `set policy-options prefix-list {lista} {prefixo}` + `commit` — recusa (`AcaoBgpNaoSuportada`) se a "lista" escolhida for um `route-filter` sintético embutido direto no term (nome contém `#`) em vez de uma prefix-list nomeada de verdade, porque não dá pra adicionar entrada nesse tipo de objeto |
+| Mikrotik v6 | **não usa `lista_escolhida`** — Mikrotik não tem objeto de prefix-list separado (cada "prefix-list" do nosso parser é sintética, 1:1 com uma regra de filter). Insere uma regra `accept` nova direto na chain de export da sessão (`sessao.policy_out`), com `place-before=[find chain=... action=discard]` pra garantir que fica ANTES do catch-all final — senão nunca seria alcançada |
+| Mikrotik v7 | `AcaoBgpNaoSuportada` — mesma razão do community v7 |
+
+"Próximo índice/seq livre" = maior `index`/`seq` já usado nas entradas daquela lista + o incremento
+padrão do fabricante (10 Huawei, 5 Cisco) — não tenta preencher buracos. Huawei precisou ganhar
+`index` nas entradas de `ip ip-prefix` em `backup_parser.py::parse_huawei` (mesmo campo que o Cisco
+já tinha como `seq`).
+
+### Endpoint
+
+`POST /clientes/bgp/<id>/escanear-prefixo/` — `{sessao, prefixo}`, devolve
+`{ja_coberto, lista_cobertura, candidatas: [{nome, amostra}], vendor}`. Leitura pura sobre o
+snapshot já em memória, não toca em nada. `_montar_comandos` ganhou `tipo == 'novo_anuncio'`
+(`params: {sessao, lista}`).
+
+### Frontend
+
+Botão "➕ Anunciar prefixo novo" no cabeçalho de cada sessão abre um modal dedicado: campo de texto
+pro prefixo + "Verificar" → chama o endpoint de varredura e mostra "já coberto" (informativo, sem
+ação) ou a lista de candidatas como botões clicáveis (com amostra de prefixos, pra reconhecer sem
+decorar nome de lista) — ao escolher, abre o mesmo modal de preview/edição de sempre.
+
+---
+
+**Validado em 2026-08-01** contra os 53 `BgpSnapshot` reais de produção existentes (todos os 4
+fabricantes), rodando os 4 endpoints novos (`atualizar`, `community` preview, `escanear-prefixo`,
+`novo_anuncio` preview) em cada um — sem nenhum erro inesperado. Nenhuma ação real (`preview=false`)
+executada contra equipamento durante a validação.
+
+---
+
+**Última atualização:** 01/08/2026

@@ -107,3 +107,37 @@ def simular_anuncios(prefix_lists, policies, policy_nome):
             # nenhum termo bateu — deny implícito de final de policy
             resultado.append({'prefixo': prefixo, 'permitido': False, 'prepend': 0})
     return resultado
+
+
+def escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo):
+    """Pra "anunciar prefixo novo": reúne as prefix-lists referenciadas por
+    termos `accept` de `policy_nome` (candidatas pra adicionar o prefixo
+    novo — são as únicas que, se ganhassem uma entrada nova, o fariam ser
+    anunciado sem precisar mexer na route-policy/term em si) e confere se
+    `prefixo_novo` já bate em alguma delas (nesse caso não precisa fazer
+    nada — já seria anunciado automaticamente se a rota existisse).
+
+    Retorna {"ja_coberto": bool, "lista_cobertura": str|None,
+             "candidatas": [{"nome", "amostra": [até 3 prefixos]}]}."""
+    termos = sorted(policies.get(policy_nome or '', []), key=lambda t: t.get('ordem', 0))
+
+    candidatas_nomes = []
+    for termo in termos:
+        if termo.get('acao') != 'accept':
+            continue
+        for nome in (termo.get('prefix_lists') or []):
+            if nome not in candidatas_nomes:
+                candidatas_nomes.append(nome)
+
+    ja_coberto, lista_cobertura = False, None
+    for nome in candidatas_nomes:
+        if _prefix_list_bate(prefixo_novo, prefix_lists.get(nome, [])):
+            ja_coberto, lista_cobertura = True, nome
+            break
+
+    candidatas = [
+        {'nome': nome, 'amostra': [e['prefixo'] for e in prefix_lists.get(nome, [])[:3]]}
+        for nome in candidatas_nomes
+    ]
+
+    return {'ja_coberto': ja_coberto, 'lista_cobertura': lista_cobertura, 'candidatas': candidatas}

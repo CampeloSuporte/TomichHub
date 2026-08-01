@@ -5,6 +5,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-01 (Feat: Automação BGP — atualizar sob demanda, communities, anunciar prefixo novo)
+
+### Adicionado
+
+- **Botão "Atualizar agora"** (`clientes/tasks.py`, `clientes/bgp_views.py`): `atualizar_snapshots_bgp`
+  refatorada — o trabalho de um Acesso virou `_atualizar_snapshot_bgp_de_acesso`, reutilizada pela
+  rotina noturna (loop) e por um botão novo (`POST /clientes/bgp/<id>/atualizar/`) que refaz a
+  extração+simulação de um host na hora, síncrono, sem esperar a próxima rodada das 02:45.
+- **Communities cadastráveis por sessão** (`BgpCommunity`, migration `0097`;
+  `clientes/bgp_actions.py::comandos_aplicar_community`): cadastro manual (rótulo + valor) por
+  sessão/upstream, com botão "Usar community" que aplica num anúncio. Huawei
+  (`apply community ... additive`) e Juniper (`policy-options community` nomeada, sempre por nome)
+  confirmados em backup real; Mikrotik v6 confirmado (`append-bgp-communities=`); Mikrotik v7
+  recusado (sem evidência de `set` de community no dialeto de script); Cisco/Datacom implementado
+  como best-effort (`set community ... additive`, sintaxe IOS padrão-de-mercado, mas zero
+  ocorrências reais em 38 backups Cisco deste ambiente).
+- **Anunciar prefixo novo via varredura de prefix-lists** (`clientes/bgp_matcher.py::escanear_prefix_lists`,
+  `clientes/bgp_actions.py::comandos_novo_anuncio`, endpoint `POST /clientes/bgp/<id>/escanear-prefixo/`):
+  dado um prefixo ainda não anunciado, varre as prefix-lists já usadas pela export policy da sessão,
+  diz se já bateria em alguma (nada a fazer) ou lista candidatas pra adicionar uma entrada nova — sem
+  mexer na route-policy/term. Implementado pros 4 fabricantes; Mikrotik usa um mecanismo diferente
+  (insere regra `accept` direto na chain de export, por não ter prefix-list nomeada separada);
+  Juniper recusa se a candidata for um route-filter sintético embutido no term, não uma prefix-list
+  de verdade. `parse_huawei` ganhou `index` nas entradas de `ip ip-prefix` (paridade com o `seq` que
+  o Cisco já tinha) — necessário pra calcular o próximo índice livre.
+
+Validado contra os 53 `BgpSnapshot` reais de produção existentes (todos os 4 fabricantes) nos 4
+endpoints novos — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
+
+---
+
 ## [Não publicado] — 2026-07-31 (Feat: Automação BGP)
 
 ### Adicionado

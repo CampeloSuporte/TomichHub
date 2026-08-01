@@ -2,6 +2,36 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 24 — 01/08/2026: Automação BGP — atualizar sob demanda, communities, anunciar prefixo novo
+
+**O que foi implementado?**
+- ✅ **Botão "Atualizar agora"**: `atualizar_snapshots_bgp` refatorada — o trabalho de um único
+  Acesso virou `_atualizar_snapshot_bgp_de_acesso`, reutilizada tanto pela rotina noturna (loop)
+  quanto por um botão novo no painel que refaz a extração+simulação de um host na hora, sem
+  esperar até o dia seguinte.
+- ✅ **Communities cadastráveis por sessão** (`BgpCommunity`, novo modelo): cada upstream/operadora
+  costuma publicar sua lista de communities aceitas — agora dá pra cadastrar (rótulo + valor) por
+  sessão e aplicar com um clique num anúncio ("Usar community"), sem decorar/copiar valor toda vez.
+  Confirmado em produção: Huawei `apply community ... additive`, Juniper sempre via nome
+  (`policy-options community`) — Cisco marcado como best-effort (zero evidência real de `set
+  community` nos 38 backups Cisco do ambiente).
+- ✅ **Anunciar prefixo novo com varredura de prefix-lists**: dado um prefixo ainda não anunciado,
+  o sistema varre as prefix-lists já usadas pela export policy da sessão, diz se o prefixo já
+  bateria em alguma (nada a fazer) ou lista as candidatas pra adicionar uma entrada nova — sem
+  mexer na route-policy/term. Implementado pros 4 fabricantes, com o Mikrotik usando um mecanismo
+  diferente dos outros três (não tem objeto de prefix-list nomeado separado, ver
+  `docs/bgp_automacao.md`).
+- ✅ Validado contra os 53 `BgpSnapshot` reais de produção (todos os 4 fabricantes) nos 4 endpoints
+  novos, sem erro inesperado. Nenhuma ação real executada contra equipamento durante a validação.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seções "Atualizar snapshot sob demanda", "Communities por sessão" e "Anunciar prefixo novo" |
+
+---
+
 ### Sessão 23 — 31/07/2026: Automação BGP (ativar/desativar sessão, prepend, parar de anunciar)
 
 **O que foi implementado?**
@@ -856,6 +886,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 01/08/2026 | Automação BGP: botão atualizar snapshot sob demanda, communities cadastráveis por sessão, anunciar prefixo novo via varredura de prefix-lists (4 fabricantes) | bgp_automacao.md |
 | 31/07/2026 | Automação BGP: parser estendido (Mikrotik/Huawei/Cisco-Datacom/Juniper), simulador de match único, snapshot noturno, ativar/desativar sessão + prepend + parar de anunciar via UI | bgp_automacao.md |
 | 31/07/2026 | Terminal compartilhado (opt-in, múltiplos usuários na mesma conexão) + link externo temporário (sem login) para suporte; fix de autorização em `conectar_acesso` | terminal_ssh.md, AUDITORIA_ACESSOS.md |
 | 23/07/2026 | Hotspot: Integração Disparo — painel de ajuda visual no card Chatmix (Key/Token, ID do Template, sugestão de mensagem com botão Copiar); diagnóstico de "template pendente" e "canal errado na chave" | HOTSPOT_INTEGRACAO_DISPARO.md |

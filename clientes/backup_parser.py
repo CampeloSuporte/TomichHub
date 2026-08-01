@@ -512,12 +512,13 @@ def parse_huawei(conteudo, nome_equip=''):
         r'(?:\s+match-network)?(?:\s+greater-equal (\d+))?(?:\s+less-equal (\d+))?',
         conteudo, re.MULTILINE,
     ):
-        nome, _idx, acao, ip, tam = m.group(1), m.group(2), m.group(3), m.group(4), int(m.group(5))
+        nome, idx, acao, ip, tam = m.group(1), m.group(2), m.group(3), m.group(4), int(m.group(5))
         ge, le = m.group(6), m.group(7)
         prefix_lists.setdefault(nome, []).append({
             'acao': acao, 'prefixo': f'{ip}/{tam}',
             'len_min': int(ge) if ge else tam,
             'len_max': int(le) if le else tam,
+            'index': int(idx),   # necessário pra achar o próximo índice livre (ação "anunciar prefixo novo")
         })
 
     # ── route-policy NOME permit|deny node N — bloco indentado ──────────────

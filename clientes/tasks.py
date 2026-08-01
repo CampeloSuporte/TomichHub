@@ -2017,13 +2017,101 @@ def gerar_snapshots_conhecimento():
     }
 
 
+def _atualizar_snapshot_bgp_de_acesso(acesso):
+    """
+    Faz o trabalho de UM Acesso: lê o backup mais recente, extrai sessões
+    BGP/prefix-lists/route-policies (`clientes.backup_parser`), simula quais
+    prefixos cada sessão está anunciando (`clientes.bgp_matcher`) e grava/
+    atualiza o `BgpSnapshot`. Reaproveitado tanto pela rotina noturna
+    (`atualizar_snapshots_bgp`, em loop) quanto pelo botão "Atualizar agora"
+    da tela de automação BGP (`clientes.bgp_views.bgp_atualizar_snapshot`,
+    para um único host, sob demanda).
+
+    Retorna (resultado: str, detalhe: str) — `resultado` é um dos:
+    'sem_backup', 'fabricante_nao_suportado', 'erro_leitura', 'erro_parser',
+    'sem_bgp', 'erro_simulacao', 'ok'.
+    """
+    from .backup_parser import parse_backup
+    from .bgp_matcher import simular_anuncios
+    from .models import BgpSnapshot
+
+    MEDIA_ROOT = getattr(settings, 'MEDIA_ROOT', '/opt/crm/media')
+
+    backup = (
+        BackupLog.objects
+        .filter(acesso=acesso, status='SUCESSO')
+        .exclude(arquivo_path='')
+        .exclude(arquivo_path__isnull=True)
+        .order_by('-data_backup')
+        .first()
+    )
+    if not backup:
+        return 'sem_backup', 'Nenhum backup bem-sucedido encontrado para este host.'
+
+    caminho = os.path.join(MEDIA_ROOT, backup.arquivo_path)
+    if not os.path.exists(caminho):
+        return 'sem_backup', f'Arquivo de backup não encontrado em disco: {backup.arquivo_path}'
+
+    # Fabricante mais confiável (funcao → modelo → conteúdo do backup), já
+    # usado por detectar_modelos_via_backup — evita re-detectar do zero e
+    # herda o mesmo fallback de leitura de arquivo.
+    vendor = _detectar_vendor(acesso)
+    # Datacom não tem parser BGP próprio validado (nenhuma evidência de BGP
+    # em backup real de Datacom até agora) — reaproveita a gramática
+    # Cisco/IOS, mesmo tratamento já usado em DEVICE_TYPES pro Netmiko.
+    vendor_parser = 'cisco' if vendor == 'datacom' else vendor
+    if vendor_parser not in ('mikrotik', 'huawei', 'cisco', 'juniper'):
+        return 'fabricante_nao_suportado', f'Fabricante "{vendor}" não suportado pela automação BGP.'
+
+    try:
+        with open(caminho, 'r', encoding='utf-8', errors='replace') as fh:
+            conteudo = fh.read()
+    except OSError as e:
+        logger.warning(f'_atualizar_snapshot_bgp_de_acesso: acesso {acesso.id} leitura: {e}')
+        return 'erro_leitura', str(e)
+
+    nome_equip = acesso.tipo or acesso.host or f'acesso-{acesso.id}'
+    try:
+        dados = parse_backup(conteudo, nome_equip, vendor_hint=vendor_parser)
+    except Exception as e:
+        logger.warning(f'_atualizar_snapshot_bgp_de_acesso: parse acesso {acesso.id}: {e}')
+        BgpSnapshot.objects.update_or_create(acesso=acesso, defaults={'erro': f'Erro no parser: {e}'})
+        return 'erro_parser', str(e)
+
+    if not dados.get('bgp'):
+        return 'sem_bgp', 'Nenhuma sessão BGP encontrada neste backup.'
+
+    dados['sessoes'] = dados.pop('bgp')
+    try:
+        anuncios = {}
+        for sessao in dados['sessoes']:
+            policy_out = sessao.get('policy_out')
+            if policy_out:
+                anuncios[sessao['nome']] = simular_anuncios(
+                    dados.get('prefix_lists', {}), dados.get('policies', {}), policy_out
+                )
+        dados['anuncios'] = anuncios
+
+        BgpSnapshot.objects.update_or_create(
+            acesso=acesso,
+            defaults={
+                'vendor': vendor_parser,
+                'backup_log': backup,
+                'dados': dados,
+                'erro': '',
+            },
+        )
+        return 'ok', ''
+    except Exception as e:
+        logger.warning(f'_atualizar_snapshot_bgp_de_acesso: simulação/gravação acesso {acesso.id}: {e}')
+        BgpSnapshot.objects.update_or_create(acesso=acesso, defaults={'erro': f'Erro na simulação: {e}'})
+        return 'erro_simulacao', str(e)
+
+
 @shared_task
 def atualizar_snapshots_bgp():
     """
-    Lê o backup mais recente de cada Acesso, extrai sessões BGP/prefix-lists/
-    route-policies (`clientes.backup_parser`) e simula quais prefixos cada
-    sessão está anunciando agora (`clientes.bgp_matcher`), gravando o
-    resultado em `BgpSnapshot` — usado pela tela de automação BGP.
+    Roda `_atualizar_snapshot_bgp_de_acesso` pra todo Acesso do CRM.
 
     Executado diariamente às 02:45, depois da rotina de backup (01h) e do
     snapshot de conhecimento do Agent NOC (02:30). Acessos sem nenhum peer
@@ -2031,88 +2119,19 @@ def atualizar_snapshots_bgp():
     criado); erros de parser por Acesso ficam registrados em
     `BgpSnapshot.erro` sem derrubar a rotina nem apagar o snapshot anterior.
     """
-    from .backup_parser import parse_backup
-    from .bgp_matcher import simular_anuncios
-    from .models import BgpSnapshot
-
-    MEDIA_ROOT = getattr(settings, 'MEDIA_ROOT', '/opt/crm/media')
     processados, com_bgp, com_erro = 0, 0, 0
 
     for acesso in Acesso.objects.select_related('modelo', 'funcao', 'cliente').all():
-        backup = (
-            BackupLog.objects
-            .filter(acesso=acesso, status='SUCESSO')
-            .exclude(arquivo_path='')
-            .exclude(arquivo_path__isnull=True)
-            .order_by('-data_backup')
-            .first()
-        )
-        if not backup:
+        resultado, _detalhe = _atualizar_snapshot_bgp_de_acesso(acesso)
+        if resultado in ('sem_backup', 'fabricante_nao_suportado'):
             continue
-
-        caminho = os.path.join(MEDIA_ROOT, backup.arquivo_path)
-        if not os.path.exists(caminho):
-            continue
-
+        # 'processados' conta todo host onde deu pra ler o backup e o
+        # fabricante é suportado, mesmo que não tenha achado BGP nele
+        # (mesmo ponto de contagem que a versão original desta task).
         processados += 1
-        # Fabricante mais confiável (funcao → modelo → conteúdo do backup),
-        # já usado por detectar_modelos_via_backup — evita re-detectar do
-        # zero e herda o mesmo fallback de leitura de arquivo.
-        vendor = _detectar_vendor(acesso)
-        # Datacom não tem parser BGP próprio validado (nenhuma evidência de
-        # BGP em backup real de Datacom até agora) — reaproveita a gramática
-        # Cisco/IOS, mesmo tratamento já usado em DEVICE_TYPES pro Netmiko.
-        vendor_parser = 'cisco' if vendor == 'datacom' else vendor
-        if vendor_parser not in ('mikrotik', 'huawei', 'cisco', 'juniper'):
-            continue
-
-        try:
-            with open(caminho, 'r', encoding='utf-8', errors='replace') as fh:
-                conteudo = fh.read()
-        except OSError as e:
-            logger.warning(f'atualizar_snapshots_bgp: acesso {acesso.id} leitura: {e}')
-            continue
-
-        nome_equip = acesso.tipo or acesso.host or f'acesso-{acesso.id}'
-        try:
-            dados = parse_backup(conteudo, nome_equip, vendor_hint=vendor_parser)
-        except Exception as e:
-            logger.warning(f'atualizar_snapshots_bgp: parse acesso {acesso.id}: {e}')
-            BgpSnapshot.objects.update_or_create(
-                acesso=acesso, defaults={'erro': f'Erro no parser: {e}'}
-            )
-            com_erro += 1
-            continue
-
-        if not dados.get('bgp'):
-            continue   # sem sessões BGP neste backup — não é um erro, só não se aplica
-
-        dados['sessoes'] = dados.pop('bgp')
-        try:
-            anuncios = {}
-            for sessao in dados['sessoes']:
-                policy_out = sessao.get('policy_out')
-                if policy_out:
-                    anuncios[sessao['nome']] = simular_anuncios(
-                        dados.get('prefix_lists', {}), dados.get('policies', {}), policy_out
-                    )
-            dados['anuncios'] = anuncios
-
-            BgpSnapshot.objects.update_or_create(
-                acesso=acesso,
-                defaults={
-                    'vendor': vendor_parser,
-                    'backup_log': backup,
-                    'dados': dados,
-                    'erro': '',
-                },
-            )
+        if resultado == 'ok':
             com_bgp += 1
-        except Exception as e:
-            logger.warning(f'atualizar_snapshots_bgp: simulação/gravação acesso {acesso.id}: {e}')
-            BgpSnapshot.objects.update_or_create(
-                acesso=acesso, defaults={'erro': f'Erro na simulação: {e}'}
-            )
+        elif resultado in ('erro_parser', 'erro_simulacao', 'erro_leitura'):
             com_erro += 1
 
     logger.info(

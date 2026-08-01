@@ -173,6 +173,75 @@ def comandos_prepend(vendor, dados, nome_sessao, prefixo, delta=1):
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Aplicar community
+# ═══════════════════════════════════════════════════════════════════════
+
+def _slug(texto):
+    """Vira um identificador seguro pra objeto nomeado (ex: community-set do
+    Junos, que não aceita espaço/dois-pontos): minúsculo, tudo que não é
+    [a-z0-9] vira hífen, hífens nas pontas removidos. Pode devolver ''."""
+    return re.sub(r'[^a-z0-9]+', '-', (texto or '').lower()).strip('-')
+
+
+def comandos_aplicar_community(vendor, dados, nome_sessao, prefixo, valor, label=''):
+    """`valor` é o texto da community (`61663:666`, ou vários separados por
+    espaço tipo `53181:1607 53181:3710` — Huawei aceita múltiplos numa linha
+    só). `label` é o rótulo amigável cadastrado pelo usuário (`BgpCommunity.
+    label`) — só usado pra nomear o community-set no Juniper, que não aceita
+    valor literal inline (sempre referencia um nome definido à parte)."""
+    sessao = _sessao_por_nome(dados, nome_sessao)
+    policy_nome = sessao.get('policy_out')
+    termo, _entrada = _termo_e_entrada_responsaveis(dados, policy_nome, prefixo)
+    if not termo or termo.get('acao') != 'accept':
+        raise AcaoBgpNaoSuportada(
+            f'Não encontrei uma regra de anúncio ativa para {prefixo} em "{policy_nome}".'
+        )
+    valor = (valor or '').strip()
+    if not valor:
+        raise AcaoBgpNaoSuportada('Informe o valor da community (ex: 61663:666).')
+    extra = termo.get('extra', {})
+
+    if vendor == 'mikrotik':
+        if dados.get('versao_routeros', 6) != 6:
+            raise AcaoBgpNaoSuportada(
+                'Aplicar community não é suportado no RouterOS 7 — não há evidência confiável de '
+                'como fazer isso no dialeto de script (rule="...") em backups reais deste ambiente '
+                '(só encontramos MATCH de community nesse dialeto, não SET).'
+            )
+        chain = extra.get('chain')
+        # append (não set) — soma à(s) community(ies) que a regra já tiver
+        # (ex: set-pref-src, set-bgp-prepend) em vez de arriscar substituir.
+        return [f'/routing filter set [find chain="{chain}" prefix="{prefixo}"] append-bgp-communities={valor}']
+
+    if vendor == 'huawei':
+        node = extra.get('node')
+        return [f'route-policy {policy_nome} permit node {node}', f'apply community {valor} additive', 'commit']
+
+    if vendor in ('cisco', 'datacom'):
+        # Best-effort: `set community <valor> additive` é a sintaxe IOS
+        # padrão-de-mercado, mas NÃO há uma única ocorrência real de `set
+        # community` em nenhum dos 38 backups Cisco deste ambiente (só
+        # existe `neighbor X send-community both`, que é outra coisa) —
+        # revise antes de confirmar.
+        seq = extra.get('seq')
+        return [f'route-map {policy_nome} permit {seq}', f'set community {valor} additive']
+
+    if vendor == 'juniper':
+        term = extra.get('term')
+        nome_community = _slug(label) or _slug(valor) or 'community'
+        # `set` de definição é idempotente — reemitir os mesmos `members`
+        # não duplica nem dá erro, então não precisa checar se a
+        # community-set já existe no equipamento antes de reenviar.
+        return [
+            f'set policy-options community {nome_community} members {valor}',
+            f'set policy-options policy-statement {policy_nome} term {term} then community add {nome_community}',
+            'commit',
+        ]
+
+    raise AcaoBgpNaoSuportada(f'Fabricante "{vendor}" não suportado para aplicar community.')
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Parar de anunciar
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -246,6 +315,72 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
         return [cmd]
 
     raise AcaoBgpNaoSuportada(f'Fabricante "{vendor}" não suportado para parar de anunciar.')
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Anunciar prefixo novo (varredura de prefix-lists — clientes/bgp_matcher.py::escanear_prefix_lists)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _proximo_indice_livre(entradas, incremento, campo):
+    """Maior valor de `campo` já usado nas entradas + `incremento` — não
+    tenta preencher buracos, só continua a numeração pra frente."""
+    valores = [e.get(campo) for e in entradas if e.get(campo) is not None]
+    return (max(valores) if valores else 0) + incremento
+
+
+def comandos_novo_anuncio(vendor, dados, nome_sessao, prefixo_novo, lista_escolhida=None):
+    """`lista_escolhida` é o nome de uma das `candidatas` devolvidas por
+    `escanear_prefix_lists` — ignorado no Mikrotik (não tem objeto de
+    prefix-list separado, ver abaixo)."""
+    sessao = _sessao_por_nome(dados, nome_sessao)
+    try:
+        ip_novo, tam_novo = prefixo_novo.split('/')
+        tam_novo = int(tam_novo)
+    except (ValueError, AttributeError):
+        raise AcaoBgpNaoSuportada(f'Prefixo inválido: "{prefixo_novo}" (esperado formato X.X.X.X/Y).')
+
+    if vendor == 'mikrotik':
+        if dados.get('versao_routeros', 6) != 6:
+            raise AcaoBgpNaoSuportada(
+                'Anunciar prefixo novo não é suportado no RouterOS 7 — sem evidência real confiável '
+                'de como inserir uma regra nova preservando a ordem no dialeto de script deste ambiente.'
+            )
+        chain = sessao.get('policy_out')
+        if not chain:
+            raise AcaoBgpNaoSuportada('Esta sessão não tem export filter (policy_out) identificado.')
+        # Mikrotik v6 não tem prefix-list nomeada separada (cada "prefix-list"
+        # no nosso parser é sintética, 1:1 com uma regra de filter) — o
+        # equivalente é inserir uma regra `accept` nova na própria chain de
+        # export, ANTES do discard/catch-all final (senão a regra nunca
+        # seria alcançada nessa cadeia sequencial).
+        return [
+            f'/routing filter add action=accept chain="{chain}" prefix="{prefixo_novo}" '
+            f'place-before=[find chain="{chain}" action=discard]'
+        ]
+
+    if not lista_escolhida:
+        raise AcaoBgpNaoSuportada('Escolha uma prefix-list já cadastrada pra adicionar o prefixo.')
+    entradas = dados.get('prefix_lists', {}).get(lista_escolhida, [])
+
+    if vendor == 'huawei':
+        proximo = _proximo_indice_livre(entradas, 10, 'index')
+        return [f'ip ip-prefix {lista_escolhida} index {proximo} permit {ip_novo} {tam_novo}']
+
+    if vendor in ('cisco', 'datacom'):
+        proximo = _proximo_indice_livre(entradas, 5, 'seq')
+        cmd = 'ipv6 prefix-list' if ':' in ip_novo else 'ip prefix-list'
+        return [f'{cmd} {lista_escolhida} seq {proximo} permit {prefixo_novo}']
+
+    if vendor == 'juniper':
+        if '#' in lista_escolhida:
+            raise AcaoBgpNaoSuportada(
+                f'"{lista_escolhida}" é um route-filter embutido direto no term (não uma prefix-list '
+                'nomeada) — não dá pra adicionar uma entrada nele por aqui. Escolha uma prefix-list '
+                'de verdade (policy-options prefix-list) entre as candidatas, se houver alguma.'
+            )
+        return [f'set policy-options prefix-list {lista_escolhida} {prefixo_novo}', 'commit']
+
+    raise AcaoBgpNaoSuportada(f'Fabricante "{vendor}" não suportado para anunciar prefixo novo.')
 
 
 # ═══════════════════════════════════════════════════════════════════════

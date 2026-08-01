@@ -16,12 +16,15 @@ from django.views.decorators.http import require_http_methods
 
 from .bgp_actions import (
     AcaoBgpNaoSuportada,
+    comandos_aplicar_community,
+    comandos_novo_anuncio,
     comandos_parar_anuncio,
     comandos_prepend,
     comandos_toggle_sessao,
     executar_acao_bgp,
 )
-from .models import Acesso, AcaoBgp, BgpSnapshot
+from .bgp_matcher import escanear_prefix_lists
+from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,28 @@ def bgp_dados(request, acesso_id):
     })
 
 
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def bgp_atualizar_snapshot(request, acesso_id):
+    """
+    POST /clientes/bgp/<acesso_id>/atualizar/ — refaz a extração+simulação
+    desse host agora, sem esperar a rotina noturna (02:45). Só lê o backup
+    mais recente já salvo em disco e roda regex — não conecta em nada, não
+    precisa de Celery, roda síncrono na própria request.
+    """
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+
+    from .tasks import _atualizar_snapshot_bgp_de_acesso
+    resultado, detalhe = _atualizar_snapshot_bgp_de_acesso(acesso)
+
+    if resultado == 'ok':
+        return JsonResponse({'status': 'ok'})
+    return JsonResponse({'status': resultado, 'error': detalhe or resultado}, status=422)
+
+
 def _montar_comandos(tipo, vendor, dados, alvo, params):
     if tipo == 'ativar_sessao':
         return comandos_toggle_sessao(vendor, dados, alvo, ativar=True)
@@ -76,7 +101,122 @@ def _montar_comandos(tipo, vendor, dados, alvo, params):
     if tipo == 'parar_anuncio':
         nome_sessao = params.get('sessao', '')
         return comandos_parar_anuncio(vendor, dados, nome_sessao, alvo)
+    if tipo == 'community':
+        nome_sessao = params.get('sessao', '')
+        valor = params.get('valor', '')
+        label = params.get('label', '')
+        return comandos_aplicar_community(vendor, dados, nome_sessao, alvo, valor, label=label)
+    if tipo == 'novo_anuncio':
+        nome_sessao = params.get('sessao', '')
+        lista = params.get('lista') or None
+        return comandos_novo_anuncio(vendor, dados, nome_sessao, alvo, lista_escolhida=lista)
     raise AcaoBgpNaoSuportada(f'Tipo de ação "{tipo}" desconhecido.')
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def bgp_escanear_prefixo(request, acesso_id):
+    """
+    POST /clientes/bgp/<acesso_id>/escanear-prefixo/ — body {sessao, prefixo}.
+    Leitura pura sobre o snapshot já em memória (não toca em nada): varre as
+    prefix-lists já usadas pelo export policy dessa sessão e diz se o
+    prefixo novo já bate em alguma (nada a fazer) ou quais são candidatas
+    pra adicionar uma entrada nova.
+    """
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    sessao_nome = (body.get('sessao') or '').strip()
+    prefixo = (body.get('prefixo') or '').strip()
+    if not sessao_nome or not prefixo:
+        return JsonResponse({'error': 'Informe a sessão e o prefixo.'}, status=400)
+
+    try:
+        snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
+    except BgpSnapshot.DoesNotExist:
+        return JsonResponse({'error': 'Sem snapshot BGP para este host.'}, status=404)
+
+    sessao = next((s for s in snap.dados.get('sessoes', []) if s.get('nome') == sessao_nome), None)
+    if not sessao:
+        return JsonResponse({'error': f'Sessão "{sessao_nome}" não encontrada no snapshot.'}, status=404)
+    policy_out = sessao.get('policy_out')
+    if not policy_out:
+        return JsonResponse({'error': 'Esta sessão não tem export policy identificada.'}, status=422)
+
+    resultado = escanear_prefix_lists(
+        snap.dados.get('prefix_lists', {}), snap.dados.get('policies', {}), policy_out, prefixo
+    )
+    resultado['vendor'] = snap.vendor
+    return JsonResponse(resultado)
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def bgp_communities_listar(request, acesso_id):
+    """GET /clientes/bgp/<acesso_id>/communities/[?sessao=NOME] — communities
+    cadastradas pro host. Sem `?sessao=`, devolve TODAS agrupadas por sessão
+    de uma vez (`{"communities": {"<sessao_nome>": [...], ...}}`) — a UI
+    carrega isso uma vez só no load da página em vez de um fetch por sessão."""
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    sessao_nome = request.GET.get('sessao')
+    qs = BgpCommunity.objects.filter(acesso_id=acesso_id)
+    if sessao_nome:
+        qs = qs.filter(sessao_nome=sessao_nome)
+    agrupado = {}
+    for c in qs.order_by('sessao_nome', 'label'):
+        agrupado.setdefault(c.sessao_nome, []).append({'id': c.id, 'label': c.label, 'valor': c.valor})
+    return JsonResponse({'communities': agrupado})
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def bgp_communities_criar(request, acesso_id):
+    """POST /clientes/bgp/<acesso_id>/communities/ — body {sessao, label, valor}."""
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    sessao_nome = (body.get('sessao') or '').strip()
+    label       = (body.get('label') or '').strip()
+    valor       = (body.get('valor') or '').strip()
+    if not sessao_nome or not label or not valor:
+        return JsonResponse({'error': 'Sessão, rótulo e valor são obrigatórios.'}, status=400)
+    if len(label) > 100 or len(valor) > 255:
+        return JsonResponse({'error': 'Rótulo ou valor longo demais.'}, status=400)
+
+    try:
+        community = BgpCommunity.objects.create(
+            acesso=acesso, sessao_nome=sessao_nome, label=label, valor=valor,
+            criado_por=request.user,
+        )
+    except Exception as e:
+        # provável violação do unique_together (label repetido nessa sessão)
+        return JsonResponse({'error': f'Não foi possível salvar: {e}'}, status=400)
+    return JsonResponse({'id': community.id, 'label': community.label, 'valor': community.valor})
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def bgp_communities_deletar(request, acesso_id, community_id):
+    """POST /clientes/bgp/<acesso_id>/communities/<community_id>/deletar/"""
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    community = get_object_or_404(BgpCommunity, id=community_id, acesso_id=acesso_id)
+    community.delete()
+    return JsonResponse({'status': 'ok'})
 
 
 @login_required(login_url='login')

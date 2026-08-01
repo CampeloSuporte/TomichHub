@@ -22,11 +22,13 @@
     }
     .badge.vendor { border-color: #58a6ff; color: #58a6ff; }
     .badge.erro { border-color: #ff5555; color: #ff5555; }
-    #btnVoltar {
-        margin-left: auto; background: transparent; border: 1px solid #30363d; color: #7d8590;
+    #btnVoltar, #btnAtualizar {
+        background: transparent; border: 1px solid #30363d; color: #7d8590;
         padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
     }
-    #btnVoltar:hover { border-color: #58a6ff; color: #58a6ff; }
+    #btnAtualizar { margin-left: auto; }
+    #btnVoltar:hover, #btnAtualizar:hover { border-color: #58a6ff; color: #58a6ff; }
+    #btnAtualizar:disabled { opacity: .5; cursor: default; }
     .conteudo { padding: 20px; max-width: 1100px; margin: 0 auto; }
     .vazio { text-align: center; color: #7d8590; padding: 60px 20px; }
     .sessao-card {
@@ -56,6 +58,43 @@
     .stepper { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; vertical-align: middle; }
     .stepper .btn.pequeno { padding: 2px 7px; }
     .stepper-valor { display: inline-block; min-width: 16px; text-align: center; font-size: 11px; color: #ffa500; font-weight: 600; }
+    .communities-painel { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin: 12px 16px; }
+    .communities-titulo { font-size: 11px; color: #7d8590; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 8px; }
+    .communities-lista { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .communities-vazio { color: #7d8590; font-size: 11px; }
+    .community-chip {
+        display: inline-flex; align-items: center; gap: 5px; background: rgba(88,166,255,.08);
+        border: 1px solid rgba(88,166,255,.25); border-radius: 12px; padding: 3px 6px 3px 10px; font-size: 11px;
+    }
+    .community-chip code { color: #ffd280; font-family: 'Cascadia Code', monospace; }
+    .community-chip button {
+        background: transparent; border: none; color: #7d8590; cursor: pointer; font-size: 11px;
+        padding: 0 3px; line-height: 1;
+    }
+    .community-chip button:hover { color: #ff5555; }
+    .communities-form { display: flex; gap: 6px; flex-wrap: wrap; }
+    .communities-form input {
+        background: #161b22; border: 1px solid #30363d; color: #e6edf3; border-radius: 4px;
+        padding: 5px 8px; font-size: 11px; flex: 1; min-width: 140px;
+    }
+    .communities-form input:focus { outline: none; border-color: #58a6ff; }
+    .select-community {
+        background: #161b22; border: 1px solid #30363d; color: #e6edf3; border-radius: 4px;
+        padding: 3px 6px; font-size: 10px; max-width: 130px; vertical-align: middle;
+    }
+    .select-community:disabled { opacity: .4; }
+    .input-modal {
+        background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px;
+        padding: 8px 10px; font-size: 12px; font-family: 'Cascadia Code', monospace;
+    }
+    .input-modal:focus { outline: none; border-color: #58a6ff; }
+    .candidata-btn {
+        display: block; width: 100%; text-align: left; margin-bottom: 6px;
+        background: transparent; border: 1px solid #30363d; color: #e6edf3;
+        border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 12px;
+    }
+    .candidata-btn:hover { border-color: #58a6ff; background: rgba(88,166,255,.06); }
+    .candidata-btn .amostra { color: #7d8590; font-size: 10px; margin-left: 6px; }
     .anuncios-wrap { display: none; }
     .anuncios-wrap.aberto { display: block; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -98,6 +137,7 @@
     </div>
     <span class="badge vendor" id="badgeVendor">—</span>
     <span class="badge" id="badgeGerado">carregando…</span>
+    <button id="btnAtualizar" onclick="atualizarAgora()" title="Refaz a extração a partir do backup mais recente já salvo, sem esperar a rotina noturna">🔄 Atualizar agora</button>
     <button id="btnVoltar" onclick="window.close()">✕ Fechar</button>
 </div>
 
@@ -119,15 +159,78 @@
     </div>
 </div>
 
+<div class="overlay" id="novoAnuncioOverlay">
+    <div class="modal">
+        <h3>➕ Anunciar prefixo novo</h3>
+        <div class="dica-edicao" style="margin-bottom:12px;">Sessão: <strong id="naSessaoNome"></strong></div>
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+            <input type="text" id="naPrefixoInput" placeholder="X.X.X.X/Y" class="input-modal" style="flex:1;">
+            <button class="btn" onclick="verificarPrefixoNovo()">Verificar</button>
+        </div>
+        <div id="naResultado"></div>
+        <div class="modal-acoes">
+            <button class="btn" onclick="fecharNovoAnuncio()">Fechar</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const ACESSO_ID = {{ acesso_id }};
 let SNAPSHOT = null;
 let acaoPendente = null;   // {tipo, alvo, params}
 let deltaState = {};       // "idxSessao_idxPrefixo" -> quantidade de prepends a adicionar (>=1)
+let COMMUNITIES_BY_SESSAO = {};   // "<sessao_nome>" -> [{id,label,valor}, ...]
 
 function _getCookie(name) {
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return m ? m.pop() : '';
+}
+
+async function carregarCommunities() {
+    try {
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/communities/`);
+        if (r.ok) {
+            const data = await r.json();
+            COMMUNITIES_BY_SESSAO = data.communities || {};
+        }
+    } catch (e) { /* não trava a tela por causa disso */ }
+}
+
+async function adicionarCommunity(idxSessao, nomeSessao) {
+    const labelInput = document.getElementById(`comm-label-${idxSessao}`);
+    const valorInput = document.getElementById(`comm-valor-${idxSessao}`);
+    const label = labelInput.value.trim();
+    const valor = valorInput.value.trim();
+    if (!label || !valor) { alert('Preencha rótulo e valor.'); return; }
+    const r = await fetch(`/clientes/bgp/${ACESSO_ID}/communities/criar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+        body: JSON.stringify({ sessao: nomeSessao, label, valor }),
+    });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'Erro ao salvar community.'); return; }
+    if (!COMMUNITIES_BY_SESSAO[nomeSessao]) COMMUNITIES_BY_SESSAO[nomeSessao] = [];
+    COMMUNITIES_BY_SESSAO[nomeSessao].push({ id: data.id, label: data.label, valor: data.valor });
+    renderizar(SNAPSHOT.dados);
+}
+
+async function removerCommunity(id, nomeSessao) {
+    if (!confirm('Remover esta community?')) return;
+    await fetch(`/clientes/bgp/${ACESSO_ID}/communities/${id}/deletar/`, {
+        method: 'POST', headers: { 'X-CSRFToken': _getCookie('csrftoken') },
+    });
+    COMMUNITIES_BY_SESSAO[nomeSessao] = (COMMUNITIES_BY_SESSAO[nomeSessao] || []).filter(c => c.id !== id);
+    renderizar(SNAPSHOT.dados);
+}
+
+function usarCommunity(selectEl, prefixo, nomeSessao) {
+    const idx = selectEl.value;
+    if (idx === '') return;
+    const community = (COMMUNITIES_BY_SESSAO[nomeSessao] || [])[idx];
+    selectEl.value = '';
+    if (!community) return;
+    pedirAcao('community', prefixo, { sessao: nomeSessao, valor: community.valor, label: community.label },
+        `Aplicar community "${community.label}" (${community.valor}) em ${prefixo}`);
 }
 
 async function carregar() {
@@ -142,15 +245,42 @@ async function carregar() {
         }
         const data = await r.json();
         SNAPSHOT = data;
+        await carregarCommunities();
         document.getElementById('badgeVendor').textContent = data.vendor || '?';
-        document.getElementById('badgeGerado').textContent = 'snapshot de ' + data.gerado_em;
+        const badgeGerado = document.getElementById('badgeGerado');
+        badgeGerado.textContent = 'snapshot de ' + data.gerado_em;
+        badgeGerado.classList.remove('erro');
+        badgeGerado.title = '';
         if (data.erro) {
-            document.getElementById('badgeGerado').classList.add('erro');
-            document.getElementById('badgeGerado').title = data.erro;
+            badgeGerado.classList.add('erro');
+            badgeGerado.title = data.erro;
         }
         renderizar(data.dados);
     } catch (e) {
         document.getElementById('conteudo').innerHTML = `<div class="vazio">Erro ao carregar: ${e}</div>`;
+    }
+}
+
+async function atualizarAgora() {
+    const btn = document.getElementById('btnAtualizar');
+    btn.disabled = true;
+    btn.textContent = '🔄 Atualizando…';
+    try {
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/atualizar/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': _getCookie('csrftoken') },
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            alert('Não foi possível atualizar: ' + (data.error || data.status || 'erro desconhecido'));
+        } else {
+            await carregar();
+        }
+    } catch (e) {
+        alert('Erro ao atualizar: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Atualizar agora';
     }
 }
 
@@ -168,6 +298,10 @@ function renderizar(dados) {
     let html = '';
     sessoes.forEach((s, idx) => {
         const lista = (anuncios[s.nome] || []).filter(a => a.permitido);
+        const communities = COMMUNITIES_BY_SESSAO[s.nome] || [];
+        const opcoesCommunity = communities.map((c, ci) =>
+            `<option value="${ci}">${escapeHtml(c.label)} (${escapeHtml(c.valor)})</option>`
+        ).join('');
         html += `
         <div class="sessao-card">
             <div class="sessao-head" onclick="toggleSessao(${idx})">
@@ -177,6 +311,7 @@ function renderizar(dados) {
                     <div class="sessao-sub">${escapeHtml(s.peer_ip)} · AS${escapeHtml(s.peer_as || '?')} · ${s.habilitada ? 'ativa' : 'desativada'}${s.policy_out ? ' · export: ' + escapeHtml(s.policy_out) : ''}</div>
                 </div>
                 <div class="sessao-acoes" onclick="event.stopPropagation()">
+                    <button class="btn" onclick="abrirNovoAnuncio('${escapeHtml(s.nome)}','${escapeHtml(s.descricao || s.nome)}')">➕ Anunciar prefixo novo</button>
                     ${s.habilitada
                         ? `<button class="btn perigo" onclick="pedirAcao('desativar_sessao','${escapeHtml(s.nome)}',{},'Desativar sessão ${escapeHtml(s.descricao || s.nome)}')">Desativar</button>`
                         : `<button class="btn sucesso" onclick="pedirAcao('ativar_sessao','${escapeHtml(s.nome)}',{},'Ativar sessão ${escapeHtml(s.descricao || s.nome)}')">Ativar</button>`
@@ -184,9 +319,25 @@ function renderizar(dados) {
                 </div>
             </div>
             <div class="anuncios-wrap" id="anuncios-${idx}">
+                <div class="communities-painel">
+                    <div class="communities-titulo">📡 Communities desta sessão</div>
+                    <div class="communities-lista">
+                        ${communities.length ? communities.map(c => `
+                            <span class="community-chip">
+                                ${escapeHtml(c.label)}: <code>${escapeHtml(c.valor)}</code>
+                                <button onclick="removerCommunity(${c.id}, '${escapeHtml(s.nome)}')" title="Remover">✕</button>
+                            </span>
+                        `).join('') : '<span class="communities-vazio">Nenhuma cadastrada ainda.</span>'}
+                    </div>
+                    <div class="communities-form">
+                        <input type="text" id="comm-label-${idx}" placeholder="Rótulo (ex: Blackhole)" maxlength="100">
+                        <input type="text" id="comm-valor-${idx}" placeholder="Valor (ex: 61663:666)" maxlength="255">
+                        <button class="btn pequeno" onclick="adicionarCommunity(${idx}, '${escapeHtml(s.nome)}')">+ Adicionar</button>
+                    </div>
+                </div>
                 ${lista.length ? `
                 <table>
-                    <thead><tr><th>Prefixo anunciado</th><th>Prepend</th><th style="width:280px"></th></tr></thead>
+                    <thead><tr><th>Prefixo anunciado</th><th>Prepend</th><th style="width:340px"></th></tr></thead>
                     <tbody>
                         ${lista.map((a, aIdx) => {
                             const key = `${idx}_${aIdx}`;
@@ -202,6 +353,12 @@ function renderizar(dados) {
                                     <button class="btn pequeno" onclick="ajustarDelta('${key}', 1)" title="Aumentar quantidade">+</button>
                                 </span>
                                 <button class="btn pequeno" onclick="pedirAcaoPrepend('${key}','${escapeHtml(a.prefixo)}','${escapeHtml(s.nome)}')">Prepend</button>
+                                <select class="select-community" ${communities.length ? '' : 'disabled'}
+                                        title="${communities.length ? 'Aplicar uma community cadastrada' : 'Cadastre uma community pra esta sessão primeiro'}"
+                                        onchange="usarCommunity(this,'${escapeHtml(a.prefixo)}','${escapeHtml(s.nome)}')">
+                                    <option value="">Usar community…</option>
+                                    ${opcoesCommunity}
+                                </select>
                                 <button class="btn pequeno perigo" onclick="pedirAcao('parar_anuncio','${escapeHtml(a.prefixo)}',{sessao:'${escapeHtml(s.nome)}'},'Parar de anunciar ${escapeHtml(a.prefixo)}')">Parar de anunciar</button>
                             </td>
                         </tr>`;
@@ -269,6 +426,76 @@ function pedirAcao(tipo, alvo, params, titulo) {
 function fecharModal() {
     document.getElementById('modalOverlay').classList.remove('aberto');
     acaoPendente = null;
+}
+
+// ── Anunciar prefixo novo (varredura de prefix-lists) ──
+let naSessaoAtual = null;
+
+function abrirNovoAnuncio(nomeSessao, tituloSessao) {
+    naSessaoAtual = nomeSessao;
+    document.getElementById('naSessaoNome').textContent = tituloSessao;
+    document.getElementById('naPrefixoInput').value = '';
+    document.getElementById('naResultado').innerHTML = '';
+    document.getElementById('novoAnuncioOverlay').classList.add('aberto');
+}
+
+function fecharNovoAnuncio() {
+    document.getElementById('novoAnuncioOverlay').classList.remove('aberto');
+    naSessaoAtual = null;
+}
+
+async function verificarPrefixoNovo() {
+    const prefixo = document.getElementById('naPrefixoInput').value.trim();
+    const resultadoEl = document.getElementById('naResultado');
+    if (!prefixo) { resultadoEl.innerHTML = '<div class="vazio">Informe um prefixo (ex: 45.187.130.0/24).</div>'; return; }
+
+    resultadoEl.innerHTML = '<div class="vazio">Verificando…</div>';
+    try {
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/escanear-prefixo/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+            body: JSON.stringify({ sessao: naSessaoAtual, prefixo }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            resultadoEl.innerHTML = `<div class="vazio">⚠ ${escapeHtml(data.error || 'erro desconhecido')}</div>`;
+            return;
+        }
+
+        if (data.ja_coberto) {
+            resultadoEl.innerHTML = `<div class="dica-edicao">✓ Já cai na regra de <strong>${escapeHtml(data.lista_cobertura)}</strong> — nenhuma ação necessária aqui, seria anunciado automaticamente se a rota existisse na tabela.</div>`;
+            return;
+        }
+
+        if (data.vendor === 'mikrotik') {
+            // Mikrotik não tem prefix-list separada — insere direto uma regra na chain de export.
+            resultadoEl.innerHTML = `<button class="candidata-btn" onclick="pedirAcaoNovoAnuncio('${escapeHtml(prefixo)}', null)">Adicionar regra de anúncio na chain de export desta sessão</button>`;
+            return;
+        }
+
+        if (!data.candidatas || !data.candidatas.length) {
+            resultadoEl.innerHTML = '<div class="vazio">Nenhuma prefix-list candidata encontrada no export desta sessão — não dá pra anunciar automaticamente por aqui.</div>';
+            return;
+        }
+
+        resultadoEl.innerHTML =
+            '<div class="dica-edicao" style="margin-bottom:8px;">Escolha uma prefix-list já usada nesta sessão pra adicionar o prefixo:</div>' +
+            data.candidatas.map(c => `
+                <button class="candidata-btn" onclick="pedirAcaoNovoAnuncio('${escapeHtml(prefixo)}', '${escapeHtml(c.nome)}')">
+                    ${escapeHtml(c.nome)}
+                    <span class="amostra">${c.amostra && c.amostra.length ? '(ex: ' + c.amostra.map(escapeHtml).join(', ') + ')' : '(vazia)'}</span>
+                </button>
+            `).join('');
+    } catch (e) {
+        resultadoEl.innerHTML = `<div class="vazio">Erro: ${e}</div>`;
+    }
+}
+
+function pedirAcaoNovoAnuncio(prefixo, lista) {
+    const sessao = naSessaoAtual;
+    fecharNovoAnuncio();
+    const tituloLista = lista ? ` na lista ${lista}` : '';
+    pedirAcao('novo_anuncio', prefixo, { sessao, lista }, `Anunciar ${prefixo}${tituloLista}`);
 }
 
 function confirmarAcao() {
