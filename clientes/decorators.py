@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from functools import wraps
 from .models import Cliente
-from usuario.models import modulo_habilitado as _usuario_modulo_habilitado
 
 # ============================================
 # DECORADORES DE PERMISSÃO
@@ -152,7 +151,8 @@ def modulo_habilitado_required(modulo_key):
                     return redirect('cadastrar_cliente')
                 return view_func(request, *args, **kwargs)
 
-            if not _usuario_modulo_habilitado(request.user, modulo_key):
+            from usuario.perms import portal_pode_usar_ferramenta
+            if not portal_pode_usar_ferramenta(request.user, modulo_key):
                 messages.error(request, 'Este módulo não está disponível para o seu usuário. Fale com o suporte.')
                 try:
                     cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
@@ -169,10 +169,10 @@ def ferramenta_instancia_required(ferramenta_key):
     """
     Equivalente a `modulo_habilitado_required`, para views que hoje não têm
     nenhum controle de ferramenta (só `@login_required`) — ex.: IPAM,
-    Hotspot, Scripts, BGP. Portal do cliente final só passa se `ferramenta_key`
-    também existir em `UsuarioModulo.MODULO_CHOICES` e estiver habilitada
-    para o login; caso contrário (ex.: 'ipam', 'scripts', 'bgp', que são
-    ferramentas de back-office) fica bloqueado.
+    Hotspot, Scripts, BGP. Portal do cliente final: ver
+    `usuario.perms.portal_pode_usar_ferramenta` (toggle por login, capado
+    pela instância do Consultor dono do cliente; ferramentas sem
+    equivalente no portal, como 'scripts'/'bgp', ficam bloqueadas).
     """
     def decorator(view_func):
         @wraps(view_func)
@@ -191,8 +191,8 @@ def ferramenta_instancia_required(ferramenta_key):
                     return redirect('cadastrar_cliente')
                 return view_func(request, *args, **kwargs)
 
-            from usuario.models import UsuarioModulo
-            if ferramenta_key in dict(UsuarioModulo.MODULO_CHOICES) and _usuario_modulo_habilitado(request.user, ferramenta_key):
+            from usuario.perms import portal_pode_usar_ferramenta
+            if portal_pode_usar_ferramenta(request.user, ferramenta_key):
                 return view_func(request, *args, **kwargs)
 
             messages.error(request, 'Você não possui permissão para acessar esta página.')
