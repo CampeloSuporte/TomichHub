@@ -1540,7 +1540,7 @@ def buscar_usuarios(request):
 @login_required(login_url='login')
 def buscar_clientes_chamado(request):
     query = request.GET.get('q', '')
-    clientes = Cliente.objects.filter(
+    clientes = Cliente.objects.visiveis_para(request.user).filter(
         Q(nome_empresa__icontains=query) |
         Q(cnpj__icontains=query)
     )[:10]
