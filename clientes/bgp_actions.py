@@ -23,9 +23,10 @@ logger = logging.getLogger(__name__)
 
 class AcaoBgpNaoSuportada(Exception):
     """Ação sem um comando seguro/conhecido pra aquele fabricante+situação
-    (ex: Huawei "parar de anunciar" quando o prefixo não vem de um
-    `network` statement) — melhor recusar explicitamente do que arriscar um
-    edit incorreto num equipamento de borda em produção."""
+    (ex: Huawei "parar de anunciar" quando o prefixo não vem nem de uma
+    entrada de ip-prefix na policy nem de um `network` statement) — melhor
+    recusar explicitamente do que arriscar um edit incorreto num
+    equipamento de borda em produção."""
 
 
 def _sessao_por_nome(dados, nome_sessao):
@@ -274,11 +275,25 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
         return [f'/routing filter disable [find chain="{chain}" prefix="{prefixo}"]']
 
     if vendor == 'huawei':
+        # Preferência: remover a entrada de ip-prefix responsável pelo match
+        # dentro do route-policy de export DESSA sessão — é o mecanismo
+        # correto porque é escopado ao peer (só afeta o que é anunciado por
+        # esta sessão). `undo network` afeta a origem BGP inteira do
+        # equipamento (todas as sessões que originam essa rede), então só
+        # entra como último recurso, quando não há controle via policy.
+        termo, entrada = _termo_e_entrada_responsaveis(dados, policy_nome, prefixo)
+        if termo and entrada:
+            nomes_pl = termo.get('prefix_lists') or []
+            pl_nome = nomes_pl[0] if nomes_pl else None
+            index_existente = entrada.get('index')
+            if pl_nome and index_existente is not None:
+                return [f'undo ip ip-prefix {pl_nome} index {index_existente}', 'commit']
+
         rede = _rede_correspondente(dados, prefixo)
         if not rede:
             raise AcaoBgpNaoSuportada(
-                f'{prefixo} não vem de um `network` statement explícito — parar de anunciar só é '
-                'suportado nesse caso para Huawei (edição manual da route-policy necessária aqui).'
+                f'Não encontrei nem uma entrada de ip-prefix na policy "{policy_nome}" nem um '
+                f'`network` statement pra {prefixo} — parar de anunciar precisa de edição manual aqui.'
             )
         asn = sessao.get('as_local')
         if not asn:
@@ -289,6 +304,9 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
         else:
             familia = 'ipv4-family'
             mask_arg = str(ipaddress.IPv4Network(prefixo, strict=False).netmask)
+        # AVISO: isso desliga a origem BGP dessa rede pra TODAS as sessões
+        # do equipamento, não só esta — só chega aqui quando não há uma
+        # entrada de ip-prefix na policy pra remover em vez disso.
         return [f'bgp {asn}', f'{familia} unicast', f'undo network {ip} {mask_arg}', 'commit']
 
     if vendor in ('cisco', 'datacom'):

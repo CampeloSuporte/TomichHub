@@ -2,6 +2,30 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 25 — 01/08/2026: Fix — Automação BGP: "parar de anunciar" (Huawei) e UX de "anunciar prefixo novo"
+
+**O que foi corrigido?**
+- 🐛 **Huawei "parar de anunciar" usava `undo network` (global) mesmo quando o prefixo era
+  controlado por route-policy**: reportado com um caso real (`RP-UPSTREAM-MEGASNET-V4-OUT` node 10
+  → `if-match ip-prefix PL-179.0.110.0/24`) — o comando antigo desligava a origem BGP daquela rede
+  pra **todas** as sessões do equipamento, não só a sessão em questão. Agora a ação procura primeiro
+  a entrada de `ip ip-prefix` responsável pelo match dentro da export policy DESSA sessão e remove
+  só ela (`undo ip ip-prefix LISTA index N`); `undo network` (global) virou último recurso.
+- 🎨 **UX de "Anunciar prefixo novo" exigia digitar o prefixo antes de ver as prefix-lists
+  disponíveis**: invertido — o modal já abre listando as prefix-lists candidatas da sessão (nome +
+  amostra), o usuário escolhe a lista primeiro e só digita o prefixo novo depois, junto da lista
+  escolhida (Mikrotik continua digitando o prefixo direto, por não ter prefix-list separada).
+- ✅ Reverificado contra os 53 `BgpSnapshot` reais de produção (todos os 4 fabricantes) — nenhum
+  erro inesperado.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Parar de anunciar" (nota "Huawei: por que `undo network` era um bug") e "Anunciar prefixo novo" |
+
+---
+
 ### Sessão 24 — 01/08/2026: Automação BGP — atualizar sob demanda, communities, anunciar prefixo novo
 
 **O que foi implementado?**
@@ -886,6 +910,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 01/08/2026 | Fix Automação BGP: "parar de anunciar" no Huawei usava `undo network` global em vez da entrada de ip-prefix na route-policy da sessão; UX de "anunciar prefixo novo" agora lista as prefix-lists antes de pedir o prefixo | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: botão atualizar snapshot sob demanda, communities cadastráveis por sessão, anunciar prefixo novo via varredura de prefix-lists (4 fabricantes) | bgp_automacao.md |
 | 31/07/2026 | Automação BGP: parser estendido (Mikrotik/Huawei/Cisco-Datacom/Juniper), simulador de match único, snapshot noturno, ativar/desativar sessão + prepend + parar de anunciar via UI | bgp_automacao.md |
 | 31/07/2026 | Terminal compartilhado (opt-in, múltiplos usuários na mesma conexão) + link externo temporário (sem login) para suporte; fix de autorização em `conectar_acesso` | terminal_ssh.md, AUDITORIA_ACESSOS.md |

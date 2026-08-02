@@ -199,8 +199,25 @@ qualquer inteiro desde o início, só a UI estava fixa em `delta:1`.
 | Juniper | `deactivate policy-options policy-statement NOME term TERM` + `commit` | Reversível (`activate`); padrão já visto ativo em produção |
 | Mikrotik v6 | `/routing bgp network disable [...]` OU `/routing filter disable [...]` | Conforme a origem do anúncio (network object vs. regra de filtro) |
 | Mikrotik v7 | `/ip firewall address-list disable [...]` | ⚠️ `.network=` pode ser compartilhado por mais de uma connection — mesma lista, mesmo efeito em todas |
-| Huawei | `undo network IP MASCARA` + `commit` | Só suportado quando o anúncio vem de um `network` statement explícito; senão a ação recusa (`AcaoBgpNaoSuportada`) em vez de arriscar um edit de route-policy |
+| Huawei | `undo ip ip-prefix LISTA index N` + `commit` (preferido) OU `undo network IP MASCARA` + `commit` (fallback) | Ver nota abaixo — corrigido em 2026-08-01 |
 | Cisco/Datacom | `ip prefix-list PL seq SEQ_MENOR deny PREFIXO` | Insere um `deny` ANTES do `permit` existente (não edita a entrada original); se não houver seq livre abaixo, recusa e pede renumeração manual |
+
+#### Huawei: por que `undo network` era um bug (corrigido em 2026-08-01)
+
+A versão original só sabia remover a origem via `network IP MASCARA` (comando global do processo
+BGP — desliga aquela rede pra **todas** as sessões que a originam, não só a sessão em questão).
+Isso quebrou num caso real: `RP-UPSTREAM-MEGASNET-V4-OUT permit node 10` casava
+`179.0.110.0/24` via `if-match ip-prefix PL-179.0.110.0/24`, mas a ação gerou
+`undo network 179.0.110.0 255.255.255.0` — que teria efeito colateral em qualquer outra sessão que
+também originasse essa rede.
+
+A ordem correta (e agora implementada) é: primeiro procurar, dentro da export policy DESSA sessão
+(via `_termo_e_entrada_responsaveis`, mesma função já usada por prepend/community), a entrada de
+`ip ip-prefix` responsável pelo match — e remover só ela (`undo ip ip-prefix LISTA index N`).
+Isso é escopado ao peer: só afeta o que essa sessão especificamente anuncia via essa entrada,
+mesmo que a prefix-list tenha outras entradas (só o `index` alvo é removido) ou seja referenciada
+por outro node/policy. `undo network` (global) só é usado como último recurso — quando o prefixo
+não é controlado por nenhuma route-policy (ex: `network` statement sem filtro algum aplicado).
 
 ### Execução (`executar_acao_bgp`)
 
@@ -334,13 +351,16 @@ anunciar um prefixo **novo**, achando automaticamente qual prefix-list já cadas
 referenciada por um termo `accept` da export policy da sessão) faz sentido receber esse prefixo —
 sem precisar mexer na route-policy/term em si.
 
-### `clientes/bgp_matcher.py::escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo)`
+### `clientes/bgp_matcher.py::escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo=None)`
 
-Reúne as prefix-lists referenciadas por termos `accept` de `policy_nome` (candidatas) e roda a MESMA
-lógica de match do `simular_anuncios` (`entrada_que_bate`) pra conferir se `prefixo_novo` já bate em
-alguma — se sim, `ja_coberto=True` e não tem nada a fazer (já seria anunciado automaticamente se a
-rota existisse na tabela). Devolve também uma amostra de até 3 prefixos de cada candidata, pra UI
-mostrar algo reconhecível em vez de só o nome da lista.
+Reúne as prefix-lists referenciadas por termos `accept` de `policy_nome` (candidatas) — essa lista
+não depende de `prefixo_novo`, é só "quais prefix-lists esta sessão usa pra anunciar". Por isso
+`prefixo_novo` é opcional (adicionado em 2026-08-01): sem ele devolve só as candidatas (é o que a UI
+usa pra popular o modal assim que abre, antes do usuário escolher qualquer coisa); com ele, roda
+também a MESMA lógica de match do `simular_anuncios` (`entrada_que_bate`) pra conferir se
+`prefixo_novo` já bate em alguma — se sim, `ja_coberto=True` e não tem nada a fazer (já seria
+anunciado automaticamente se a rota existisse na tabela). Devolve também uma amostra de até 3
+prefixos de cada candidata, pra UI mostrar algo reconhecível em vez de só o nome da lista.
 
 ### `clientes/bgp_actions.py::comandos_novo_anuncio(vendor, dados, nome_sessao, prefixo_novo, lista_escolhida)`
 
@@ -359,17 +379,26 @@ já tinha como `seq`).
 
 ### Endpoint
 
-`POST /clientes/bgp/<id>/escanear-prefixo/` — `{sessao, prefixo}`, devolve
-`{ja_coberto, lista_cobertura, candidatas: [{nome, amostra}], vendor}`. Leitura pura sobre o
-snapshot já em memória, não toca em nada. `_montar_comandos` ganhou `tipo == 'novo_anuncio'`
-(`params: {sessao, lista}`).
+`POST /clientes/bgp/<id>/escanear-prefixo/` — `{sessao, prefixo?}` (`prefixo` opcional desde
+2026-08-01), devolve `{ja_coberto, lista_cobertura, candidatas: [{nome, amostra}], vendor}`. Leitura
+pura sobre o snapshot já em memória, não toca em nada. `_montar_comandos` ganhou
+`tipo == 'novo_anuncio'` (`params: {sessao, lista}`).
 
 ### Frontend
 
-Botão "➕ Anunciar prefixo novo" no cabeçalho de cada sessão abre um modal dedicado: campo de texto
-pro prefixo + "Verificar" → chama o endpoint de varredura e mostra "já coberto" (informativo, sem
-ação) ou a lista de candidatas como botões clicáveis (com amostra de prefixos, pra reconhecer sem
-decorar nome de lista) — ao escolher, abre o mesmo modal de preview/edição de sempre.
+Botão "➕ Anunciar prefixo novo" no cabeçalho de cada sessão abre um modal dedicado que já chama o
+endpoint de varredura **sem prefixo** assim que abre, listando de cara as prefix-lists candidatas
+(nome + amostra de prefixos, pra reconhecer sem decorar nome de lista) — o usuário escolhe a lista
+primeiro e só digita o prefixo novo depois, num campo ao lado dela (não precisa digitar nada só pra
+ver quais listas existem). Ao confirmar, faz uma segunda checagem (agora com o prefixo) pra avisar
+se ele já cai em alguma candidata (`ja_coberto`) antes de abrir o modal de preview/edição de sempre.
+Mikrotik é exceção: como não tem prefix-list separada, mostra direto um campo pra digitar o prefixo
+(insere regra na chain de export, sem conceito de "lista" pra escolher).
+
+UX original (adicionada em 2026-08-01, corrigida no mesmo dia): exigia digitar o prefixo antes de
+ver qualquer coisa (campo de texto + botão "Verificar"). Trocado porque forçava o operador a digitar
+um prefixo "no escuro" pra só então descobrir quais prefix-lists existiam — mais natural escolher a
+lista primeiro (contexto conhecido do upstream) e digitar o prefixo depois.
 
 ---
 

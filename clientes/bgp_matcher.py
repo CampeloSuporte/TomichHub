@@ -109,13 +109,17 @@ def simular_anuncios(prefix_lists, policies, policy_nome):
     return resultado
 
 
-def escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo):
+def escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo=None):
     """Pra "anunciar prefixo novo": reúne as prefix-lists referenciadas por
     termos `accept` de `policy_nome` (candidatas pra adicionar o prefixo
     novo — são as únicas que, se ganhassem uma entrada nova, o fariam ser
-    anunciado sem precisar mexer na route-policy/term em si) e confere se
-    `prefixo_novo` já bate em alguma delas (nesse caso não precisa fazer
-    nada — já seria anunciado automaticamente se a rota existisse).
+    anunciado sem precisar mexer na route-policy/term em si). Essa lista de
+    candidatas não depende do prefixo novo — é só "quais listas esta
+    sessão usa pra anunciar" — por isso `prefixo_novo` é opcional: sem ele
+    (tela inicial, antes do usuário escolher uma lista/digitar o prefixo),
+    devolve só as candidatas; com ele, confere também se aquele prefixo já
+    bate em alguma delas (nesse caso não precisa adicionar nada — já seria
+    anunciado automaticamente se a rota existisse).
 
     Retorna {"ja_coberto": bool, "lista_cobertura": str|None,
              "candidatas": [{"nome", "amostra": [até 3 prefixos]}]}."""
@@ -130,10 +134,11 @@ def escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo):
                 candidatas_nomes.append(nome)
 
     ja_coberto, lista_cobertura = False, None
-    for nome in candidatas_nomes:
-        if _prefix_list_bate(prefixo_novo, prefix_lists.get(nome, [])):
-            ja_coberto, lista_cobertura = True, nome
-            break
+    if prefixo_novo:
+        for nome in candidatas_nomes:
+            if _prefix_list_bate(prefixo_novo, prefix_lists.get(nome, [])):
+                ja_coberto, lista_cobertura = True, nome
+                break
 
     candidatas = [
         {'nome': nome, 'amostra': [e['prefixo'] for e in prefix_lists.get(nome, [])[:3]]}

@@ -34,6 +34,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 Validado contra os 53 `BgpSnapshot` reais de produção existentes (todos os 4 fabricantes) nos 4
 endpoints novos — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
 
+### Corrigido
+
+- **"Parar de anunciar" no Huawei usava `undo network` (global) mesmo quando o prefixo era
+  controlado por route-policy** (`clientes/bgp_actions.py::comandos_parar_anuncio`): reportado com
+  um caso real (`RP-UPSTREAM-MEGASNET-V4-OUT` node 10 → `if-match ip-prefix PL-179.0.110.0/24`) —
+  o comando antigo (`undo network 179.0.110.0 255.255.255.0`) desliga a origem BGP daquela rede pra
+  **todas** as sessões do equipamento, não só a sessão em questão. Agora a ação primeiro procura a
+  entrada de `ip ip-prefix` responsável pelo match dentro do route-policy de export da sessão e
+  remove só ela (`undo ip ip-prefix LISTA index N`), escopado ao peer; `undo network` (global) só
+  entra como último recurso, quando o prefixo não é controlado por nenhuma route-policy.
+- **UX de "Anunciar prefixo novo" exigia digitar o prefixo antes de ver as prefix-lists
+  disponíveis**: agora o modal já abre listando as prefix-lists candidatas da sessão (nome +
+  amostra) direto — o usuário escolhe a lista primeiro e só digita o prefixo novo depois, junto da
+  lista escolhida (Mikrotik continua digitando o prefixo direto, por não ter prefix-list separada).
+  `bgp_matcher.py::escanear_prefix_lists` e o endpoint `POST /clientes/bgp/<id>/escanear-prefixo/`
+  passaram a aceitar `prefixo` opcional pra isso.
+
+Reverificado contra os 53 `BgpSnapshot` reais (todos os 4 fabricantes) — nenhum erro inesperado.
+
 ---
 
 ## [Não publicado] — 2026-07-31 (Feat: Automação BGP)
