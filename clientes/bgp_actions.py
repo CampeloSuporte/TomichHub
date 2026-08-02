@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 class AcaoBgpNaoSuportada(Exception):
     """Ação sem um comando seguro/conhecido pra aquele fabricante+situação
-    (ex: Huawei "parar de anunciar" quando o prefixo não vem nem de uma
-    entrada de ip-prefix na policy nem de um `network` statement) — melhor
-    recusar explicitamente do que arriscar um edit incorreto num
-    equipamento de borda em produção."""
+    (ex: Huawei "parar de anunciar" quando o prefixo não vem nem de um node
+    de route-policy nem de um `network` statement) — melhor recusar
+    explicitamente do que arriscar um edit incorreto num equipamento de
+    borda em produção."""
 
 
 def _sessao_por_nome(dados, nome_sessao):
@@ -275,25 +275,27 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
         return [f'/routing filter disable [find chain="{chain}" prefix="{prefixo}"]']
 
     if vendor == 'huawei':
-        # Preferência: remover a entrada de ip-prefix responsável pelo match
-        # dentro do route-policy de export DESSA sessão — é o mecanismo
-        # correto porque é escopado ao peer (só afeta o que é anunciado por
-        # esta sessão). `undo network` afeta a origem BGP inteira do
-        # equipamento (todas as sessões que originam essa rede), então só
-        # entra como último recurso, quando não há controle via policy.
+        # Preferência: trocar o modo do NODE de permit pra deny dentro do
+        # route-policy de export DESSA sessão, mantendo o mesmo número de
+        # node (if-match/apply continuam intactos, só o permit/deny muda) —
+        # é escopado ao peer porque cada sessão tem seu próprio route-policy
+        # de export. NÃO editar a prefix-list em vez disso: ela é um objeto
+        # nomeado à parte que pode estar referenciada por outro node/route-
+        # policy (de outra sessão, ou até a mesma sessão em outro node) —
+        # mexer nela vazaria o efeito pra fora desta sessão. `undo network`
+        # (global, afeta TODAS as sessões que originam essa rede) só entra
+        # como último recurso, quando não há controle via policy.
         termo, entrada = _termo_e_entrada_responsaveis(dados, policy_nome, prefixo)
-        if termo and entrada:
-            nomes_pl = termo.get('prefix_lists') or []
-            pl_nome = nomes_pl[0] if nomes_pl else None
-            index_existente = entrada.get('index')
-            if pl_nome and index_existente is not None:
-                return [f'undo ip ip-prefix {pl_nome} index {index_existente}', 'commit']
+        if termo and entrada and termo.get('acao') == 'accept':
+            node = termo.get('extra', {}).get('node')
+            if node is not None:
+                return [f'route-policy {policy_nome} deny node {node}', 'commit']
 
         rede = _rede_correspondente(dados, prefixo)
         if not rede:
             raise AcaoBgpNaoSuportada(
-                f'Não encontrei nem uma entrada de ip-prefix na policy "{policy_nome}" nem um '
-                f'`network` statement pra {prefixo} — parar de anunciar precisa de edição manual aqui.'
+                f'Não encontrei nem um node de route-policy nem um `network` statement pra '
+                f'{prefixo} em "{policy_nome}" — parar de anunciar precisa de edição manual aqui.'
             )
         asn = sessao.get('as_local')
         if not asn:

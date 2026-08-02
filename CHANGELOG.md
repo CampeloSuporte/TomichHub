@@ -40,10 +40,12 @@ endpoints novos — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
   controlado por route-policy** (`clientes/bgp_actions.py::comandos_parar_anuncio`): reportado com
   um caso real (`RP-UPSTREAM-MEGASNET-V4-OUT` node 10 → `if-match ip-prefix PL-179.0.110.0/24`) —
   o comando antigo (`undo network 179.0.110.0 255.255.255.0`) desliga a origem BGP daquela rede pra
-  **todas** as sessões do equipamento, não só a sessão em questão. Agora a ação primeiro procura a
-  entrada de `ip ip-prefix` responsável pelo match dentro do route-policy de export da sessão e
-  remove só ela (`undo ip ip-prefix LISTA index N`), escopado ao peer; `undo network` (global) só
-  entra como último recurso, quando o prefixo não é controlado por nenhuma route-policy.
+  **todas** as sessões do equipamento, não só a sessão em questão. Agora a ação troca o modo do
+  node responsável pelo match, de `permit` pra `deny`, dentro do route-policy de export DESSA
+  sessão (`route-policy NOME deny node N`), mantendo o mesmo node/if-match/apply — escopado ao
+  peer, sem editar a prefix-list (que pode ser um objeto compartilhado por outro node/policy).
+  `undo network` (global) só entra como último recurso, quando o prefixo não é controlado por
+  nenhuma route-policy.
 - **UX de "Anunciar prefixo novo" exigia digitar o prefixo antes de ver as prefix-lists
   disponíveis**: agora o modal já abre listando as prefix-lists candidatas da sessão (nome +
   amostra) direto — o usuário escolhe a lista primeiro e só digita o prefixo novo depois, junto da

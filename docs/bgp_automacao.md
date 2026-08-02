@@ -199,7 +199,7 @@ qualquer inteiro desde o início, só a UI estava fixa em `delta:1`.
 | Juniper | `deactivate policy-options policy-statement NOME term TERM` + `commit` | Reversível (`activate`); padrão já visto ativo em produção |
 | Mikrotik v6 | `/routing bgp network disable [...]` OU `/routing filter disable [...]` | Conforme a origem do anúncio (network object vs. regra de filtro) |
 | Mikrotik v7 | `/ip firewall address-list disable [...]` | ⚠️ `.network=` pode ser compartilhado por mais de uma connection — mesma lista, mesmo efeito em todas |
-| Huawei | `undo ip ip-prefix LISTA index N` + `commit` (preferido) OU `undo network IP MASCARA` + `commit` (fallback) | Ver nota abaixo — corrigido em 2026-08-01 |
+| Huawei | `route-policy NOME deny node N` + `commit` (preferido) OU `undo network IP MASCARA` + `commit` (fallback) | Ver nota abaixo — corrigido em 2026-08-01 |
 | Cisco/Datacom | `ip prefix-list PL seq SEQ_MENOR deny PREFIXO` | Insere um `deny` ANTES do `permit` existente (não edita a entrada original); se não houver seq livre abaixo, recusa e pede renumeração manual |
 
 #### Huawei: por que `undo network` era um bug (corrigido em 2026-08-01)
@@ -211,13 +211,27 @@ Isso quebrou num caso real: `RP-UPSTREAM-MEGASNET-V4-OUT permit node 10` casava
 `undo network 179.0.110.0 255.255.255.0` — que teria efeito colateral em qualquer outra sessão que
 também originasse essa rede.
 
-A ordem correta (e agora implementada) é: primeiro procurar, dentro da export policy DESSA sessão
-(via `_termo_e_entrada_responsaveis`, mesma função já usada por prepend/community), a entrada de
-`ip ip-prefix` responsável pelo match — e remover só ela (`undo ip ip-prefix LISTA index N`).
-Isso é escopado ao peer: só afeta o que essa sessão especificamente anuncia via essa entrada,
-mesmo que a prefix-list tenha outras entradas (só o `index` alvo é removido) ou seja referenciada
-por outro node/policy. `undo network` (global) só é usado como último recurso — quando o prefixo
-não é controlado por nenhuma route-policy (ex: `network` statement sem filtro algum aplicado).
+Uma primeira correção tentou remover a entrada de `ip ip-prefix` responsável pelo match
+(`undo ip ip-prefix LISTA index N`) — também errado: a prefix-list é um objeto nomeado à parte que
+pode estar referenciada por OUTRO node/route-policy (de outra sessão, ou até de outro node da mesma
+policy), então editá-la vazaria o efeito pra fora da sessão em questão, exatamente o mesmo problema
+do `undo network`, só que num escopo menor.
+
+A forma correta (a que o node já usa desde sempre pra decidir permit/deny) é trocar o **modo do
+próprio node** dentro do route-policy de export DESSA sessão, mantendo o mesmo número de node — o
+`if-match`/`apply` continuam intactos, só o `permit`/`deny` muda:
+
+```
+route-policy RP-UPSTREAM-MEGASNET-V4-OUT permit node 10        route-policy RP-UPSTREAM-MEGASNET-V4-OUT deny node 10
+ if-match ip-prefix PL-179.0.110.0/24              -->           if-match ip-prefix PL-179.0.110.0/24
+ apply as-path 272418 additive                                   apply as-path 272418 additive
+#                                                                #
+```
+
+Isso é escopado ao peer porque cada sessão tem seu próprio route-policy de export — nenhum outro
+node, policy ou sessão é tocado, e a prefix-list em si nunca é editada. `undo network` (global)
+continua só como último recurso, quando o prefixo não é controlado por nenhuma route-policy (ex:
+`network` statement sem filtro algum aplicado).
 
 ### Execução (`executar_acao_bgp`)
 
