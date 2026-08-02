@@ -201,6 +201,15 @@
                                                 <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}', '{{usuarios.role_efetivo}}', {{usuarios.instancia_id_efetivo|default_if_none:'null'}}, JSON.parse('{{ usuarios.modulos_json|escapejs }}'), JSON.parse('{{ usuarios.ferramentas_json|escapejs }}'))" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
+                                                {% if usuarios.tem_2fa %}
+                                                <form method="post" action="{% url 'resetar_2fa_admin' %}" style="display:inline" onsubmit="return confirm('Resetar o 2FA de {{ usuarios.username|escapejs }}? O usuário vai precisar configurar de novo.');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="id" value="{{ usuarios.id }}">
+                                                    <button type="submit" class="btn-action" style="color:#ffaa00" title="Resetar 2FA">
+                                                        <i class="fas fa-mobile-alt"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
                                             </div>
                                         </td>
                                         </tr>

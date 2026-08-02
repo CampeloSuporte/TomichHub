@@ -9,4 +9,7 @@ urlpatterns = [
     path('editar-usuario/', views.editar_usuario, name='editar_usuario'),
     path('logout/', views.logout, name='logout'),
     path('trocar-senha/', views.trocar_senha, name='trocar_senha'),
+    path('2fa/', views.configurar_2fa, name='configurar_2fa'),
+    path('2fa/verificar/', views.verificar_2fa, name='verificar_2fa'),
+    path('2fa/resetar/', views.resetar_2fa_admin, name='resetar_2fa_admin'),
 ]
