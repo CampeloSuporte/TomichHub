@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-02 (Feat: Dashboard da instância pra Consultor e Operador)
+
+### Adicionado
+
+- **Dashboard da instância** (`quadro_instancia`, `/homeinstancia`) — mesma visão do dashboard do
+  Administrador (`quadro_geral`): stats de clientes/hosts, backups de hoje, gráfico dos últimos 14
+  dias, últimos backups, top clientes por hosts, blocos RPKI/IRR inválidos — escopada aos clientes
+  da própria instância via `Cliente.objects.visiveis_para(user)`. Consultor e todos os seus
+  Operadores veem os mesmos números. Reaproveita o template `quadro_geral.html` (parametrizado)
+  em vez de duplicar HTML. Login e o botão "Dashboard" do menu agora levam Consultor/Operador
+  direto pra esse painel. Detalhes na
+  [Sessão 17 do SISTEMA.md](SISTEMA.md#sessão-17--dashboard-da-instância-pra-consultor-e-operador).
+
+---
+
 ## [Não publicado] — 2026-08-02 (Feat: Multi-tenant — papéis Consultor e Operador)
 
 ### Adicionado
