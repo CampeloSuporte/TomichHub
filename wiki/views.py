@@ -8,12 +8,14 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods
 import markdown
 from .models import ArtigoWiki, CategoriaWiki, TagWiki
+from clientes.decorators import admin_required
 
 # ============================================
 # VIEWS PRINCIPAIS
 # ============================================
 
 @login_required(login_url='login')
+@admin_required
 def dashboard_wiki(request):
     """Dashboard principal da Wiki"""
     categorias = CategoriaWiki.objects.all()
@@ -28,6 +30,7 @@ def dashboard_wiki(request):
 
 
 @login_required(login_url='login')
+@admin_required
 def visualizar_artigo(request, slug):
     """Visualiza um artigo específico"""
     artigo = get_object_or_404(ArtigoWiki, slug=slug, ativo=True)
@@ -46,6 +49,7 @@ def visualizar_artigo(request, slug):
 
 
 @login_required(login_url='login')
+@admin_required
 def cadastrar_artigo(request):
     """Cadastra novo artigo"""
     if request.method == 'POST':
@@ -98,6 +102,7 @@ def cadastrar_artigo(request):
 
 
 @login_required(login_url='login')
+@admin_required
 def editar_artigo(request, slug):
     """Edita um artigo existente"""
     artigo = get_object_or_404(ArtigoWiki, slug=slug)
@@ -152,6 +157,7 @@ def editar_artigo(request, slug):
 
 
 @login_required(login_url='login')
+@admin_required
 @require_http_methods(["POST"])
 def deletar_artigo(request, slug):
     """Deleta um artigo"""
@@ -168,6 +174,7 @@ def deletar_artigo(request, slug):
 # ============================================
 
 @login_required(login_url='login')
+@admin_required
 def buscar_wiki(request):
     """Busca artigos"""
     query = request.GET.get('q', '')
@@ -203,6 +210,7 @@ def buscar_wiki(request):
 
 
 @login_required(login_url='login')
+@admin_required
 def listar_por_categoria(request, slug):
     """Lista artigos por categoria"""
     categoria = get_object_or_404(CategoriaWiki, slug=slug)
@@ -217,6 +225,7 @@ def listar_por_categoria(request, slug):
 
 
 @login_required(login_url='login')
+@admin_required
 def listar_por_tag(request, slug):
     """Lista artigos por tag"""
     tag = get_object_or_404(TagWiki, slug=slug)
@@ -231,6 +240,7 @@ def listar_por_tag(request, slug):
 
 
 @login_required(login_url='login')
+@admin_required
 def listar_por_fabricante(request, fabricante):
     """Lista artigos por fabricante"""
     artigos = ArtigoWiki.objects.filter(fabricante=fabricante, ativo=True)
@@ -250,6 +260,7 @@ def listar_por_fabricante(request, fabricante):
 # ============================================
 
 @login_required(login_url='login')
+@admin_required
 def api_buscar_wiki(request):
     """API de busca para o terminal"""
     query = request.GET.get('q', '')
@@ -291,6 +302,7 @@ def api_buscar_wiki(request):
 
 
 @login_required(login_url='login')
+@admin_required
 def api_visualizar_artigo(request, slug):
     """API para visualizar artigo no terminal"""
     artigo = get_object_or_404(ArtigoWiki, slug=slug, ativo=True)
@@ -326,6 +338,7 @@ def api_visualizar_artigo(request, slug):
 # ============================================
 
 @login_required(login_url='login')
+@admin_required
 @require_http_methods(["POST"])
 def cadastrar_categoria_ajax(request):
     """Cadastra categoria via AJAX"""

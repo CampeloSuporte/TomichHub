@@ -20,7 +20,7 @@
 .phb-text p { margin: 2px 0 0; font-size: .8rem; color: var(--text-muted); }
 .phb-action { flex-shrink: 0; }
 
-.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
 .stat-box {
     display: flex; align-items: center; gap: 14px;
     background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
@@ -41,8 +41,10 @@
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: .85rem; font-family: 'Courier New', monospace;
 }
-.avatar-admin   { background: rgba(248,81,73,.12);  border: 1px solid rgba(248,81,73,.3);  color: var(--red); }
-.avatar-cliente { background: rgba(63,185,80,.12);  border: 1px solid rgba(63,185,80,.3);  color: var(--green); }
+.avatar-admin     { background: rgba(248,81,73,.12);  border: 1px solid rgba(248,81,73,.3);  color: var(--red); }
+.avatar-consultor { background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.3); color: var(--cyan); }
+.avatar-operador  { background: rgba(210,153,34,.12); border: 1px solid rgba(210,153,34,.3); color: #d29922; }
+.avatar-cliente   { background: rgba(63,185,80,.12);  border: 1px solid rgba(63,185,80,.3);  color: var(--green); }
 .user-name   { font-weight: 600; color: var(--text-light); font-size: .85rem; }
 .user-joined { font-size: .7rem; color: var(--text-muted); margin-top: 1px; }
 
@@ -51,8 +53,10 @@
     padding: 4px 10px; border-radius: 20px; font-size: .68rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
 }
-.role-badge.admin   { background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.3); color: var(--red); }
-.role-badge.cliente { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3); color: var(--green); }
+.role-badge.admin      { background: rgba(248,81,73,.1);  border: 1px solid rgba(248,81,73,.3);  color: var(--red); }
+.role-badge.consultor  { background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.3); color: var(--cyan); }
+.role-badge.operador   { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3); color: #d29922; }
+.role-badge.cliente    { background: rgba(63,185,80,.1);  border: 1px solid rgba(63,185,80,.3);  color: var(--green); }
 
 /* Seções dentro dos modais */
 .form-section { margin-bottom: 22px; }
@@ -74,8 +78,10 @@
     transition: .15s; user-select: none;
 }
 .role-option:hover { border-color: rgba(255,255,255,.25); color: var(--text-light); }
-.role-option.active[data-role="cliente"] { background: rgba(63,185,80,.1); border-color: var(--green); color: var(--green); }
-.role-option.active[data-role="admin"]   { background: rgba(248,81,73,.1); border-color: var(--red);   color: var(--red); }
+.role-option.active[data-role="cliente"]   { background: rgba(63,185,80,.1);  border-color: var(--green);  color: var(--green); }
+.role-option.active[data-role="operador"]  { background: rgba(210,153,34,.1); border-color: #d29922;       color: #d29922; }
+.role-option.active[data-role="consultor"] { background: rgba(88,166,255,.1); border-color: var(--cyan);   color: var(--cyan); }
+.role-option.active[data-role="admin"]     { background: rgba(248,81,73,.1);  border-color: var(--red);    color: var(--red); }
 .role-hint { font-size: .75rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5; display: block; }
 
 @media (max-width: 768px) {
@@ -105,7 +111,7 @@
                         <div class="phb-icon"><i class="fas fa-users-cog"></i></div>
                         <div class="phb-text">
                             <h2>Usuários do Sistema</h2>
-                            <p>Gerencie quem tem acesso à plataforma — administradores e clientes</p>
+                            <p>Gerencie quem tem acesso à plataforma — administradores, consultores, operadores e clientes</p>
                         </div>
                         <button class="btn btn-primary phb-action" data-bs-toggle="modal" data-bs-target="#cadastroModal">
                             <i class="fas fa-plus me-2"></i> Cadastrar Usuário
@@ -126,6 +132,13 @@
                             <div>
                                 <div class="stat-box-value" id="statAdmins">0</div>
                                 <div class="stat-box-label">Administradores</div>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-box-icon" style="color:#58a6ff;"><i class="fas fa-briefcase"></i></div>
+                            <div>
+                                <div class="stat-box-value" id="statConsultores">0</div>
+                                <div class="stat-box-label">Consultores/Operadores</div>
                             </div>
                         </div>
                         <div class="stat-box">
@@ -163,7 +176,7 @@
                                             <td>{{usuarios.id}}</td>
                                             <td>
                                                 <div class="user-cell">
-                                                    <div class="user-avatar {% if usuarios.is_staff %}avatar-admin{% else %}avatar-cliente{% endif %}">
+                                                    <div class="user-avatar avatar-{{ usuarios.role_efetivo }}">
                                                         {{ usuarios.username|slice:":1"|upper }}
                                                     </div>
                                                     <div>
@@ -176,19 +189,16 @@
                                             </td>
                                             <td>{{usuarios.email}}</td>
                                             <td>
-                                                {% if usuarios.is_staff %}
-                                                    <span class="role-badge admin" data-role-marker="admin">
-                                                        <i class="fas fa-shield-alt"></i> Administrador
-                                                    </span>
-                                                {% else %}
-                                                    <span class="role-badge cliente" data-role-marker="cliente">
-                                                        <i class="fas fa-user"></i> Cliente
-                                                    </span>
-                                                {% endif %}
+                                                <span class="role-badge {{ usuarios.role_efetivo }}" data-role-marker="{{ usuarios.role_efetivo }}">
+                                                    {% if usuarios.role_efetivo == 'admin' %}<i class="fas fa-shield-alt"></i> Administrador
+                                                    {% elif usuarios.role_efetivo == 'consultor' %}<i class="fas fa-briefcase"></i> Consultor
+                                                    {% elif usuarios.role_efetivo == 'operador' %}<i class="fas fa-user-cog"></i> Operador
+                                                    {% else %}<i class="fas fa-user"></i> Cliente{% endif %}
+                                                </span>
                                             </td>
                                             <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}', {{usuarios.is_staff|lower}}, JSON.parse('{{ usuarios.modulos_json|escapejs }}'))" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarUsuario({{usuarios.id}}, '{{usuarios.username|escapejs}}', '{{usuarios.email|escapejs}}', '{{usuarios.role_efetivo}}', {{usuarios.instancia_id_efetivo|default_if_none:'null'}}, JSON.parse('{{ usuarios.modulos_json|escapejs }}'), JSON.parse('{{ usuarios.ferramentas_json|escapejs }}'))" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                             </div>
@@ -236,19 +246,69 @@
                     <div class="form-section">
                         <div class="form-section-title"><i class="fas fa-user-tag"></i> Tipo de usuário</div>
                         <div class="role-toggle">
-                            <input type="checkbox" id="is_staff" name="is_staff" hidden>
-                            <div class="role-option active" data-role="cliente" onclick="setRole(this, false)">
+                            <input type="hidden" id="role" name="role" value="cliente">
+                            <div class="role-option active" data-role="cliente" onclick="setRole(this, 'cliente')">
                                 <i class="fas fa-user"></i> Cliente
                             </div>
-                            <div class="role-option" data-role="admin" onclick="setRole(this, true)">
+                            <div class="role-option" data-role="operador" onclick="setRole(this, 'operador')">
+                                <i class="fas fa-user-cog"></i> Operador
+                            </div>
+                            {% if pode_criar_consultor %}
+                            <div class="role-option" data-role="consultor" onclick="setRole(this, 'consultor')">
+                                <i class="fas fa-briefcase"></i> Consultor
+                            </div>
+                            <div class="role-option" data-role="admin" onclick="setRole(this, 'admin')">
                                 <i class="fas fa-shield-alt"></i> Administrador
                             </div>
+                            {% endif %}
                         </div>
                         <small class="role-hint">
-                            <strong>Cliente:</strong> acesso apenas aos próprios dados. &nbsp;
-                            <strong>Administrador:</strong> acesso total ao sistema.
+                            <strong>Cliente:</strong> acesso apenas ao próprio painel (portal). &nbsp;
+                            <strong>Operador:</strong> funcionário que opera os clientes da instância, sem gerenciar usuários. &nbsp;
+                            {% if pode_criar_consultor %}
+                            <strong>Consultor:</strong> gerencia sua própria instância (clientes e operadores) com as ferramentas liberadas abaixo. &nbsp;
+                            <strong>Administrador:</strong> acesso total à plataforma.
+                            {% endif %}
                         </small>
                     </div>
+
+                    <div class="form-section instancia-section" style="display:none;">
+                        <div class="form-section-title"><i class="fas fa-building"></i> Instância</div>
+                        {% if pode_criar_consultor %}
+                        <select class="form-control" name="instancia" id="instancia_select">
+                            <option value="">Selecione a instância...</option>
+                            {% for inst in instancias %}
+                            <option value="{{ inst.id }}">{{ inst.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Instância à qual este Operador vai pertencer.</small>
+                        {% else %}
+                        <small class="form-text text-muted">O Operador será criado na sua própria instância.</small>
+                        {% endif %}
+                    </div>
+
+                    {% if pode_criar_consultor %}
+                    <div class="form-section consultor-nome-section" style="display:none;">
+                        <div class="form-section-title"><i class="fas fa-building"></i> Nome da instância</div>
+                        <input type="text" class="form-control" name="instancia_nome" placeholder="Ex: nome do consultor/empresa revendedora">
+                    </div>
+
+                    <div class="form-section ferramentas-section" style="display:none;">
+                        <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas liberadas para a instância</div>
+                        <input type="hidden" name="ferramentas_form_present" value="1">
+                        <div class="row">
+                            {% for chave, rotulo in ferramentas_disponiveis %}
+                            <div class="col-md-4 col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="ferramentas" value="{{ chave }}" id="ferramenta_{{ chave }}">
+                                    <label class="form-check-label" for="ferramenta_{{ chave }}" style="font-size:.82rem;">{{ rotulo }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text text-muted">O Consultor (e seus Operadores) só usam o que estiver marcado aqui.</small>
+                    </div>
+                    {% endif %}
 
                     <div class="form-section modulos-section">
                         <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
@@ -311,15 +371,60 @@
                     <div class="form-section">
                         <div class="form-section-title"><i class="fas fa-user-tag"></i> Tipo de usuário</div>
                         <div class="role-toggle">
-                            <input type="checkbox" id="edit_is_staff" name="is_staff" hidden>
-                            <div class="role-option" data-role="cliente" onclick="setRole(this, false)">
+                            <input type="hidden" id="edit_role" name="role" value="cliente">
+                            <div class="role-option" data-role="cliente" onclick="setRole(this, 'cliente')">
                                 <i class="fas fa-user"></i> Cliente
                             </div>
-                            <div class="role-option" data-role="admin" onclick="setRole(this, true)">
+                            <div class="role-option" data-role="operador" onclick="setRole(this, 'operador')">
+                                <i class="fas fa-user-cog"></i> Operador
+                            </div>
+                            {% if pode_criar_consultor %}
+                            <div class="role-option" data-role="consultor" onclick="setRole(this, 'consultor')">
+                                <i class="fas fa-briefcase"></i> Consultor
+                            </div>
+                            <div class="role-option" data-role="admin" onclick="setRole(this, 'admin')">
                                 <i class="fas fa-shield-alt"></i> Administrador
                             </div>
+                            {% endif %}
                         </div>
                     </div>
+
+                    <div class="form-section instancia-section" style="display:none;">
+                        <div class="form-section-title"><i class="fas fa-building"></i> Instância</div>
+                        {% if pode_criar_consultor %}
+                        <select class="form-control" name="instancia" id="edit_instancia_select">
+                            <option value="">Selecione a instância...</option>
+                            {% for inst in instancias %}
+                            <option value="{{ inst.id }}">{{ inst.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <small class="form-text text-muted">O Operador pertence à sua própria instância.</small>
+                        {% endif %}
+                    </div>
+
+                    {% if pode_criar_consultor %}
+                    <div class="form-section consultor-nome-section" style="display:none;">
+                        <div class="form-section-title"><i class="fas fa-building"></i> Nome da instância</div>
+                        <input type="text" class="form-control" name="instancia_nome" id="edit_instancia_nome" placeholder="Ex: nome do consultor/empresa revendedora">
+                    </div>
+
+                    <div class="form-section ferramentas-section" style="display:none;">
+                        <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas liberadas para a instância</div>
+                        <input type="hidden" name="ferramentas_form_present" value="1">
+                        <div class="row">
+                            {% for chave, rotulo in ferramentas_disponiveis %}
+                            <div class="col-md-4 col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="ferramentas" value="{{ chave }}" id="edit_ferramenta_{{ chave }}">
+                                    <label class="form-check-label" for="edit_ferramenta_{{ chave }}" style="font-size:.82rem;">{{ rotulo }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text text-muted">O Consultor (e seus Operadores) só usam o que estiver marcado aqui.</small>
+                    </div>
+                    {% endif %}
 
                     <div class="form-section modulos-section">
                         <div class="form-section-title"><i class="fas fa-toolbox"></i> Ferramentas habilitadas</div>
@@ -377,10 +482,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Estatísticas do cabeçalho — calculadas a partir da própria tabela renderizada
     const linhas = document.querySelectorAll('.custom-table tbody tr');
     const admins = document.querySelectorAll('[data-role-marker="admin"]').length;
+    const equipe = document.querySelectorAll('[data-role-marker="consultor"], [data-role-marker="operador"]').length;
     const total = linhas.length;
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statAdmins').textContent = admins;
-    document.getElementById('statClientes').textContent = total - admins;
+    document.getElementById('statConsultores').textContent = equipe;
+    document.getElementById('statClientes').textContent = total - admins - equipe;
 
     // Busca de usuários — filtra as linhas da tabela por qualquer texto visível
     const searchInput = document.getElementById('searchInput');
@@ -395,44 +502,70 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Toggle visual "Tipo de usuário" — mantém o checkbox real (is_staff) sincronizado
-function setRole(el, isAdmin) {
+// Toggle visual "Tipo de usuário" — mantém o campo real (role) sincronizado
+// e mostra/esconde as seções que só fazem sentido para cada papel.
+function setRole(el, role) {
     const wrapper = el.closest('.role-toggle');
-    const checkbox = wrapper.querySelector('input[type=checkbox]');
-    checkbox.checked = isAdmin;
+    const hidden = wrapper.querySelector('input[type=hidden]');
+    hidden.value = role;
     wrapper.querySelectorAll('.role-option').forEach(o => o.classList.remove('active'));
     el.classList.add('active');
 
-    // Administrador vê tudo por definição — a seleção de ferramentas só faz
-    // sentido pra usuário do tipo Cliente.
     const form = el.closest('form');
-    const modulosSection = form ? form.querySelector('.modulos-section') : null;
-    if (modulosSection) modulosSection.style.display = isAdmin ? 'none' : '';
+    if (!form) return;
+    const modulosSection = form.querySelector('.modulos-section');
+    const instanciaSection = form.querySelector('.instancia-section');
+    const consultorNomeSection = form.querySelector('.consultor-nome-section');
+    const ferramentasSection = form.querySelector('.ferramentas-section');
+
+    // Ferramentas por login (UsuarioModulo) só fazem sentido pro portal do
+    // cliente final.
+    if (modulosSection) modulosSection.style.display = (role === 'cliente') ? '' : 'none';
+    // Instância só aparece pra Operador.
+    if (instanciaSection) instanciaSection.style.display = (role === 'operador') ? '' : 'none';
+    // Nome da instância + ferramentas liberadas só fazem sentido pro Consultor.
+    if (consultorNomeSection) consultorNomeSection.style.display = (role === 'consultor') ? '' : 'none';
+    if (ferramentasSection) ferramentasSection.style.display = (role === 'consultor') ? '' : 'none';
 }
 </script>
 
 <script>
-function editarUsuario(id, username, email, isStaff, modulosHabilitados) {
+function editarUsuario(id, username, email, role, instanciaId, modulosHabilitados, ferramentasHabilitadas) {
     // Preenche os campos do modal com os dados do usuário
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_username').value = username;
     document.getElementById('edit_email').value = email;
     document.getElementById('edit_password').value = ''; // Limpa o campo de senha
 
-    // Sincroniza o checkbox real e o toggle visual de tipo de usuário
-    const checkbox = document.getElementById('edit_is_staff');
-    checkbox.checked = isStaff;
-    const wrapper = checkbox.closest('.role-toggle');
+    // Sincroniza o campo real e o toggle visual de tipo de usuário
+    const hidden = document.getElementById('edit_role');
+    hidden.value = role;
+    const wrapper = hidden.closest('.role-toggle');
     wrapper.querySelectorAll('.role-option').forEach(o => {
-        o.classList.toggle('active', (o.dataset.role === 'admin') === !!isStaff);
+        o.classList.toggle('active', o.dataset.role === role);
+    });
+
+    const form = document.getElementById('edicaoForm');
+    const modulosSection = form.querySelector('.modulos-section');
+    const instanciaSection = form.querySelector('.instancia-section');
+    const consultorNomeSection = form.querySelector('.consultor-nome-section');
+    const ferramentasSection = form.querySelector('.ferramentas-section');
+    if (modulosSection) modulosSection.style.display = (role === 'cliente') ? '' : 'none';
+    if (instanciaSection) instanciaSection.style.display = (role === 'operador') ? '' : 'none';
+    if (consultorNomeSection) consultorNomeSection.style.display = (role === 'consultor') ? '' : 'none';
+    if (ferramentasSection) ferramentasSection.style.display = (role === 'consultor') ? '' : 'none';
+
+    // Instância (Operador) e ferramentas liberadas (Consultor)
+    const instanciaSelect = document.getElementById('edit_instancia_select');
+    if (instanciaSelect) instanciaSelect.value = instanciaId || '';
+    document.querySelectorAll('#edicaoForm input[name="ferramentas"]').forEach(function(cb) {
+        cb.checked = !!(ferramentasHabilitadas && ferramentasHabilitadas[cb.value]);
     });
 
     // Ferramentas habilitadas — só relevante pra usuário do tipo Cliente
     document.querySelectorAll('#edicaoForm input[name="modulos"]').forEach(function(cb) {
         cb.checked = !!(modulosHabilitados && modulosHabilitados[cb.value]);
     });
-    const modulosSection = document.querySelector('#edicaoForm .modulos-section');
-    if (modulosSection) modulosSection.style.display = isStaff ? 'none' : '';
 
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));

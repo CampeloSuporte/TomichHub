@@ -47,3 +47,104 @@ def modulos_habilitados_dict(user):
     """Dict {modulo_key: bool} para todos os módulos conhecidos, pra uso no template."""
     estado = {m.modulo: m.habilitado for m in UsuarioModulo.objects.filter(usuario=user)}
     return {chave: estado.get(chave, True) for chave, _ in UsuarioModulo.MODULO_CHOICES}
+
+
+class Instancia(models.Model):
+    """Uma 'conta' de revenda: um Consultor cadastra e gerencia seus próprios
+    Clientes dentro da sua Instancia, isolados de outras instâncias. O
+    Administrador da plataforma não pertence a nenhuma (vê todas)."""
+
+    nome = models.CharField(max_length=255)
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='instancias_criadas')
+
+    class Meta:
+        verbose_name = 'Instância'
+        verbose_name_plural = 'Instâncias'
+
+    def __str__(self):
+        return self.nome
+
+
+class PerfilUsuario(models.Model):
+    """Papel de um usuário de back-office (admin/consultor/operador).
+    Ausência deste registro para um usuário is_staff=True = admin legado
+    (compatibilidade com contas criadas antes desta feature — ver
+    `usuario.perms.get_role`). Usuários do portal do cliente final
+    (is_staff=False, vinculados via Cliente) não têm PerfilUsuario."""
+
+    ROLE_ADMIN = 'admin'
+    ROLE_CONSULTOR = 'consultor'
+    ROLE_OPERADOR = 'operador'
+    ROLE_CHOICES = [
+        (ROLE_ADMIN, 'Administrador'),
+        (ROLE_CONSULTOR, 'Consultor'),
+        (ROLE_OPERADOR, 'Operador'),
+    ]
+
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    instancia = models.ForeignKey(Instancia, on_delete=models.CASCADE, null=True, blank=True, related_name='usuarios')
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_criados')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Perfil de Usuário'
+        verbose_name_plural = 'Perfis de Usuário'
+
+    def __str__(self):
+        return f"{self.usuario.username} ({self.get_role_display()})"
+
+
+class InstanciaFerramenta(models.Model):
+    """Controla, por Instancia (não por login), se uma ferramenta do
+    núcleo do sistema está liberada para o Consultor e seus Operadores.
+    Ausência de registro = desabilitado (o oposto de UsuarioModulo): é o
+    Administrador concedendo acesso a um revendedor pago, não um toggle
+    opcional por login."""
+
+    FERRAMENTA_CHOICES = [
+        ('acessos', 'Acessos'),
+        ('backups', 'Backups'),
+        ('vpn', 'VPN'),
+        ('topologia', 'Topologia'),
+        ('tuneis', 'Túneis SSH'),
+        ('documentos', 'Documentos'),
+        ('rpki_irr', 'RPKI/IRR'),
+        ('monitoramento', 'Monitoramento'),
+        ('hotspot', 'Hotspot'),
+        ('ipam', 'IPAM'),
+        ('scripts', 'Scripts'),
+        ('bgp', 'BGP'),
+        ('testes_rede', 'Testes de Rede'),
+    ]
+
+    instancia = models.ForeignKey(Instancia, on_delete=models.CASCADE, related_name='ferramentas')
+    ferramenta = models.CharField(max_length=30, choices=FERRAMENTA_CHOICES)
+    habilitado = models.BooleanField(default=False)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('instancia', 'ferramenta')
+        verbose_name = 'Ferramenta da Instância'
+        verbose_name_plural = 'Ferramentas da Instância'
+
+    def __str__(self):
+        return f"{self.instancia.nome} - {self.get_ferramenta_display()}: {'ON' if self.habilitado else 'OFF'}"
+
+
+def ferramenta_habilitada(instancia, ferramenta_key):
+    """Ferramenta sem registro para essa instância = desabilitada."""
+    if instancia is None:
+        return False
+    registro = InstanciaFerramenta.objects.filter(instancia=instancia, ferramenta=ferramenta_key).values_list('habilitado', flat=True).first()
+    return bool(registro)
+
+
+def ferramentas_habilitadas_dict(instancia):
+    """Dict {ferramenta_key: bool} para todas as ferramentas conhecidas, pra uso no template."""
+    if instancia is None:
+        return {chave: False for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}
+    estado = {f.ferramenta: f.habilitado for f in InstanciaFerramenta.objects.filter(instancia=instancia)}
+    return {chave: estado.get(chave, False) for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}

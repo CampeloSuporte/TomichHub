@@ -21,7 +21,7 @@ from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models.functions import TruncDate
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -32,6 +32,8 @@ from .models import (
     Acesso, Cliente, ClienteIntegracaoDisparo, DISPARO_VARIAVEIS_EXEMPLO,
     HotspotBanner, HotspotConfig, HotspotInterface, HotspotLead,
 )
+from .decorators import ferramenta_instancia_required
+from usuario.perms import pode_acessar_cliente as _perms_pode_acessar_cliente
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +43,10 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _cliente(request, cliente_id):
-    return get_object_or_404(Cliente, id=cliente_id)
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms_pode_acessar_cliente(request.user, cliente):
+        raise Http404('Cliente não encontrado ou sem permissão.')
+    return cliente
 
 
 def _json(request):
@@ -769,6 +774,7 @@ def _aplicar_mikrotik(hotspot, pixel_url):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_listar(request, cliente_id):
     c = _cliente(request, cliente_id)
     configs = HotspotConfig.objects.filter(cliente=c).select_related('acesso')
@@ -796,6 +802,7 @@ def hotspot_listar(request, cliente_id):
 
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_detalhe(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -836,6 +843,7 @@ def hotspot_detalhe(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_salvar(request, cliente_id):
     c = _cliente(request, cliente_id)
     body = _json(request)
@@ -889,6 +897,7 @@ def hotspot_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_deletar(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -901,6 +910,7 @@ def hotspot_deletar(request, cliente_id, hotspot_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_interfaces(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -924,6 +934,7 @@ def hotspot_interfaces(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_interface_salvar(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -962,6 +973,7 @@ def hotspot_interface_salvar(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_interface_deletar(request, cliente_id, hotspot_id, interface_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -976,6 +988,7 @@ def hotspot_interface_deletar(request, cliente_id, hotspot_id, interface_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_aplicar(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -985,6 +998,7 @@ def hotspot_aplicar(request, cliente_id, hotspot_id):
 
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_preview_html(request, cliente_id, hotspot_id):
     """Retorna o login.html de redirecionamento para inspeção."""
     c = _cliente(request, cliente_id)
@@ -1000,6 +1014,7 @@ def hotspot_preview_html(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_logo_upload(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1027,6 +1042,7 @@ def hotspot_logo_upload(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_logo_deletar(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1042,6 +1058,7 @@ def hotspot_logo_deletar(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_fundo_upload(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1063,6 +1080,7 @@ def hotspot_fundo_upload(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_fundo_deletar(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1077,6 +1095,7 @@ def hotspot_fundo_deletar(request, cliente_id, hotspot_id):
 
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_banners(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1096,6 +1115,7 @@ def hotspot_banners(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_banner_upload(request, cliente_id, hotspot_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1115,6 +1135,7 @@ def hotspot_banner_upload(request, cliente_id, hotspot_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_banner_deletar(request, cliente_id, hotspot_id, banner_id):
     c = _cliente(request, cliente_id)
     h = get_object_or_404(HotspotConfig, id=hotspot_id, cliente=c)
@@ -1137,6 +1158,7 @@ LEADS_POR_PAGINA = 50
 
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_leads(request, cliente_id, hotspot_id):
     """
     Lista os leads de UM dia por vez (padrão: hoje), paginado — antes trazia
@@ -1206,6 +1228,7 @@ def hotspot_leads(request, cliente_id, hotspot_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('hotspot')
 def hotspot_disparo_config(request, cliente_id):
     """Config de disparo por empresa de integração (Chatmix, Opa Suite, ...)
     para o cliente — compartilhada entre todos os hotspots dele."""
@@ -1233,6 +1256,7 @@ def hotspot_disparo_config(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_disparo_salvar(request, cliente_id):
     c = _cliente(request, cliente_id)
     body = _json(request)
@@ -1262,6 +1286,7 @@ def hotspot_disparo_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_disparo_toggle(request, cliente_id):
     c = _cliente(request, cliente_id)
     body = _json(request)
@@ -1279,6 +1304,7 @@ def hotspot_disparo_toggle(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('hotspot')
 def hotspot_disparo_testar(request, cliente_id):
     """Envia um disparo de teste com os dados salvos, sem depender de um
     lead real — útil para validar as credenciais/template antes de habilitar."""

@@ -16,12 +16,14 @@ from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
+from usuario import perms as _perms
 from .decorators import (
     cliente_login_required,
     admin_required,
     cliente_or_admin_required,
     cliente_can_view_cliente,
     modulo_habilitado_required,
+    backoffice_required,
 )
 from usuario.models import modulos_habilitados_dict as usuario_modulos_habilitados_dict
 from django.http import HttpResponseRedirect
@@ -71,17 +73,15 @@ def listar_clientes(request):
 
     cliente = get_object_or_404(Cliente, id=id_cliente)
 
-    # ✅ VALIDAÇÃO: Verificar permissão
-    if not request.user.is_staff and not request.user.is_superuser:
-        # Se é cliente, verificar se é o próprio cliente
-        try:
-            cliente_auth = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente_auth.id != cliente.id:
-                messages.error(request, 'Você não possui permissão para visualizar este cliente.')
-                return redirect('quadro_geral')
-        except Cliente.DoesNotExist:
-            messages.error(request, 'Você não é um cliente válido.')
-            return redirect('login')
+    # ✅ VALIDAÇÃO: Verificar permissão (redundante com o decorator acima,
+    # mantido como segunda camada — mesma lógica central para todo mundo)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        messages.error(request, 'Você não possui permissão para visualizar este cliente.')
+        if _perms.is_admin(request.user):
+            return redirect('quadro_geral')
+        if _perms.is_backoffice(request.user):
+            return redirect('cadastrar_cliente')
+        return redirect('login')
 
     # Restante do código existente...
     funcao_selecionada = request.GET.get('funcao')
@@ -101,8 +101,11 @@ def listar_clientes(request):
     proxies = ProxyServer.objects.filter(cliente=cliente).order_by('-ativo', 'nome')
 
     # ✅ NOVO: Adicionar flag de tipo de usuário ao contexto
+    # is_admin aqui significa "não é o portal do cliente final" (equipe:
+    # Administrador, Consultor ou Operador) — controla a UI operacional do
+    # dashboard. is_superuser continua restrito ao Administrador de fato.
     is_cliente = False
-    is_admin = request.user.is_staff or request.user.is_superuser
+    is_admin = _perms.is_backoffice(request.user)
     is_superuser = request.user.is_superuser
     try:
         if not is_admin and Cliente.objects.get_by_usuario_vinculado(request.user).id == cliente.id:
@@ -187,11 +190,22 @@ def _validar_usuarios_adicionais(usuario_ids, cliente_id_atual=None):
 
 
 @login_required(login_url='login')
-@admin_required  # ← ADICIONAR ESTA LINHA
+@backoffice_required
 def cadastrar_cliente(request):
+    from usuario.perms import is_admin, get_instancia, usuarios_gerenciaveis_por
+
     if request.method == 'GET':
-        clientes = Cliente.objects.all().prefetch_related('usuarios_adicionais')
-        usuario = User.objects.all()
+        clientes = Cliente.objects.visiveis_para(request.user).prefetch_related('usuarios_adicionais')
+        if is_admin(request.user):
+            usuario = User.objects.all()
+        else:
+            # Consultor/Operador só podem vincular ao portal do cliente um
+            # login que eles mesmos gerenciam (e que ainda não está
+            # vinculado a nenhum outro cliente) — evita "roubar" o login de
+            # um usuário de fora da instância.
+            usuario = usuarios_gerenciaveis_por(request.user).filter(
+                cliente__isnull=True, clientes_adicionais__isnull=True
+            )
         return render(request, 'cadastrar_cliente.html', {
             'clientes': clientes, 'usuario': usuario})
 
@@ -215,6 +229,27 @@ def cadastrar_cliente(request):
             messages.error(request, 'Erro: Usuário selecionado é inválido.')
             return redirect('cadastrar_cliente')
         usuarios_adicionais_ids = request.POST.getlist('usuarios_adicionais')
+
+        # Consultor/Operador: cliente sempre nasce na própria instância, não
+        # é escolha do formulário. Administrador pode opcionalmente atribuir
+        # o cliente a uma instância (senão fica "da plataforma").
+        if is_admin(request.user):
+            instancia_id = request.POST.get('instancia') or None
+        else:
+            instancia = get_instancia(request.user)
+            if not instancia:
+                messages.error(request, 'Sua conta não está vinculada a nenhuma instância.')
+                return redirect('cadastrar_cliente')
+            instancia_id = instancia.id
+
+            # Blindagem contra manipulação direta do POST: só é permitido
+            # vincular um login que o próprio Consultor/Operador já gerencia
+            # e que ainda não está vinculado a outro cliente.
+            if usuario_id and not usuarios_gerenciaveis_por(request.user).filter(
+                id=usuario_id, cliente__isnull=True, clientes_adicionais__isnull=True
+            ).exists():
+                messages.error(request, 'Erro: Usuário selecionado é inválido.')
+                return redirect('cadastrar_cliente')
 
         # Verifica se o email ou telefone já estão cadastrados
         if Cliente.objects.filter(email=email).exists():
@@ -245,7 +280,8 @@ def cadastrar_cliente(request):
             estado=estado,
             cep=cep,
             cnpj=cnpj,
-            usuario_id=usuario_id
+            usuario_id=usuario_id,
+            instancia_id=instancia_id,
         )
         cliente.save()
         cliente.usuarios_adicionais.set(ids_validos)
@@ -881,10 +917,8 @@ def buscar_acesso(request, acesso_id):
         acesso = Acesso.objects.get(id=acesso_id)
 
         # ✅ Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if acesso.cliente.id != cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         data = {
             'id': acesso.id,
@@ -895,7 +929,7 @@ def buscar_acesso(request, acesso_id):
             'porta': acesso.porta,
             'usuario': acesso.usuario,
             'senha': acesso.senha,
-            'senha_adm': (acesso.senha_adm or '') if (request.user.is_staff or request.user.is_superuser) else '',
+            'senha_adm': (acesso.senha_adm or '') if _perms.is_backoffice(request.user) else '',
             'vlan': acesso.vlan or '',
             'winbox': acesso.winbox or '',
             'funcao_id': acesso.funcao.id if acesso.funcao and hasattr(acesso.funcao, 'id') else '',
@@ -1168,15 +1202,9 @@ def editar_imagem_topologia(request, topologia_id):
         cliente_id = topologia.cliente.id
 
         # ✅ Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if cliente.id != cliente_id:
-                    messages.error(request, 'Sem permissão para editar esta topologia.')
-                    return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
-            except Cliente.DoesNotExist:
-                messages.error(request, 'Sem permissão.')
-                return redirect('listar_clientes')
+        if not _perms.pode_acessar_cliente(request.user, topologia.cliente):
+            messages.error(request, 'Sem permissão para editar esta topologia.')
+            return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
         # ✅ Obter a nova imagem
         imagem = request.FILES.get('imagem')
@@ -1298,12 +1326,9 @@ def listar_chamados_cliente(request):
     cliente_id = request.GET.get('id')
 
     # ✅ Verificar permissão
-    if not request.user.is_staff and not request.user.is_superuser:
-        cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-        if str(cliente.id) != str(cliente_id):
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
-
     cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     chamados = Chamado.objects.filter(cliente=cliente).select_related(
         'categoria', 'responsavel', 'criado_por'
@@ -1717,9 +1742,11 @@ def cliente_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    # Se for admin, redireciona para o dashboard do admin
-    if request.user.is_staff or request.user.is_superuser:
+    # Se for admin/consultor/operador, redireciona para o dashboard correto
+    if _perms.is_admin(request.user):
         return redirect('quadro_geral')
+    if _perms.is_backoffice(request.user):
+        return redirect('cadastrar_cliente')
 
     # Buscar cliente vinculado
     try:
@@ -1750,13 +1777,8 @@ def executar_backup_acesso(request, acesso_id):
         acesso = Acesso.objects.get(id=acesso_id)
 
         # Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if acesso.cliente.id != cliente.id:
-                    return JsonResponse({'error': 'Sem permissão'}, status=403)
-            except Cliente.DoesNotExist:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         # Verificar se backup está habilitado
         if not acesso.backup_habilitado:
@@ -3315,15 +3337,9 @@ def listar_backups_cliente(request):
         return JsonResponse({'error': 'Cliente não especificado'}, status=400)
 
     # Verificar permissão
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if str(cliente.id) != str(cliente_id):
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
-
     cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     # Buscar backups
     backups = BackupLog.objects.filter(cliente=cliente).select_related(
@@ -3539,11 +3555,9 @@ def download_backup(request, backup_id):
         backup = BackupLog.objects.get(id=backup_id)
 
         # Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if backup.cliente.id != cliente.id:
-                messages.error(request, 'Sem permissão')
-                return redirect('listar_clientes')
+        if not _perms.pode_acessar_cliente(request.user, backup.cliente):
+            messages.error(request, 'Sem permissão')
+            return redirect('listar_clientes')
 
         arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
 
@@ -3615,13 +3629,8 @@ def backup_conteudo(request, backup_id):
         backup = BackupLog.objects.select_related('acesso', 'cliente').get(id=backup_id)
 
         # Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if backup.cliente.id != cliente.id:
-                    return JsonResponse({'error': 'Sem permissão'}, status=403)
-            except Cliente.DoesNotExist:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        if not _perms.pode_acessar_cliente(request.user, backup.cliente):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         if not backup.arquivo_path:
             return JsonResponse({'error': 'Este registro não possui arquivo (sem mudanças)'}, status=404)
@@ -3703,16 +3712,16 @@ def listar_acessos_terminal(request):
     if cliente_id:
         # Filtrar pelo cliente especificado — verificar permissão de acesso
         cliente_obj = get_object_or_404(Cliente, id=cliente_id)
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                c = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if c.id != cliente_obj.id:
-                    return JsonResponse({'acessos': []})
-            except Cliente.DoesNotExist:
-                return JsonResponse({'acessos': []})
+        if not _perms.pode_acessar_cliente(request.user, cliente_obj):
+            return JsonResponse({'acessos': []})
         acessos = base_qs.filter(cliente=cliente_obj).order_by('tipo')
-    elif request.user.is_staff or request.user.is_superuser:
+    elif _perms.is_admin(request.user):
         acessos = base_qs.order_by('cliente__nome_empresa', 'tipo')
+    elif _perms.is_backoffice(request.user):
+        # Consultor/Operador: só acessos dos clientes da própria instância.
+        acessos = base_qs.filter(
+            cliente__in=Cliente.objects.visiveis_para(request.user)
+        ).order_by('cliente__nome_empresa', 'tipo')
     else:
         try:
             cliente_obj = Cliente.objects.get_by_usuario_vinculado(request.user)
@@ -3743,16 +3752,11 @@ def listar_acessos_terminal(request):
 def winbox_page(request, acesso_id):
     """Renderiza a página WebFig (interface web MikroTik) via proxy"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    
+
     # Verificar permissões
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if acesso.cliente.id != cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
     # Determinar porta WebFig (80 = HTTP padrão do RouterOS)
     # O campo 'winbox' armazena a porta do serviço Winbox (8291),
     # mas a interface web (WebFig) roda na porta HTTP (80 por padrão)
@@ -3774,16 +3778,11 @@ def winbox_page(request, acesso_id):
 def webfig_vnc_page(request, acesso_id):
     """Renderiza a página WebFig via VNC (Browser no servidor)"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    
+
     # Verificar permissões
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if acesso.cliente.id != cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
-    
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
     context = {
         'acesso': acesso,
         'vnc_mode': 'browser',
@@ -3823,13 +3822,8 @@ def ping_acesso(request, acesso_id):
         acesso = Acesso.objects.get(id=acesso_id)
 
         # ✅ Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if acesso.cliente.id != cliente.id:
-                    return JsonResponse({'error': 'Sem permissão'}, status=403)
-            except Cliente.DoesNotExist:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         host = acesso.host
         eh_privado = is_private_ip(host)
@@ -4070,13 +4064,8 @@ def traceroute_acesso(request, acesso_id):
     except Acesso.DoesNotExist:
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
 
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if acesso.cliente.id != cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     host = acesso.host
     eh_privado = is_private_ip(host)
@@ -4204,13 +4193,8 @@ def buscar_bloco_ip(request, bloco_id):
         bloco = BlocoIP.objects.get(id=bloco_id)
 
         # Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if bloco.cliente.id != cliente.id:
-                    return JsonResponse({'error': 'Sem permissão'}, status=403)
-            except Cliente.DoesNotExist:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        if not _perms.pode_acessar_cliente(request.user, bloco.cliente):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         data = {
             'id': bloco.id,
@@ -4244,15 +4228,9 @@ def editar_bloco_ip(request, bloco_id):
             bloco = get_object_or_404(BlocoIP, id=bloco_id)
 
             # Verificar permissão
-            if not request.user.is_staff and not request.user.is_superuser:
-                try:
-                    cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                    if bloco.cliente.id != cliente.id:
-                        messages.error(request, 'Sem permissão')
-                        return redirect('listar_clientes')
-                except Cliente.DoesNotExist:
-                    messages.error(request, 'Sem permissão')
-                    return redirect('listar_clientes')
+            if not _perms.pode_acessar_cliente(request.user, bloco.cliente):
+                messages.error(request, 'Sem permissão')
+                return redirect('listar_clientes')
 
             bloco.bloco = request.POST.get('bloco')
             bloco.tipo = request.POST.get('tipo')
@@ -4288,8 +4266,8 @@ def deletar_bloco_ip(request, bloco_id):
         bloco_texto = bloco.bloco
 
         # Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            messages.error(request, 'Apenas administradores podem deletar blocos IP')
+        if not _perms.pode_acessar_cliente(request.user, bloco.cliente):
+            messages.error(request, 'Sem permissão para deletar este bloco IP')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
         bloco.delete()
@@ -4308,13 +4286,8 @@ def validar_bloco_rpki_irr(request, bloco_id):
         bloco = BlocoIP.objects.get(id=bloco_id)
 
         # Verificar permissão
-        if not request.user.is_staff and not request.user.is_superuser:
-            try:
-                cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-                if bloco.cliente.id != cliente.id:
-                    return JsonResponse({'error': 'Sem permissão'}, status=403)
-            except Cliente.DoesNotExist:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
+        if not _perms.pode_acessar_cliente(request.user, bloco.cliente):
+            return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         # Executar validação
         resultado = executar_validacao_rpki_irr(bloco)
@@ -4351,15 +4324,9 @@ def listar_blocos_cliente(request):
         return JsonResponse({'error': 'Cliente não especificado'}, status=400)
 
     # Verificar permissão
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if str(cliente.id) != str(cliente_id):
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
-
     cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     # Buscar blocos
     blocos = BlocoIP.objects.filter(cliente=cliente).order_by('tipo', 'bloco')
@@ -4981,14 +4948,9 @@ def listar_comentarios_acesso(request, acesso_id):
     """Lista comentários de um acesso específico"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
-    # ✅ CORRIGIDO: Verificação de permissão CORRETA - staff/superuser são permitidos
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente.id != acesso.cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    # ✅ CORRIGIDO: Verificação de permissão CORRETA
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     comentarios = acesso.comentarios.all()
 
@@ -5015,13 +4977,8 @@ def adicionar_comentario_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ✅ CORRIGIDO: Verificação de permissão CORRETA
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente.id != acesso.cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     comentario_texto = request.POST.get('comentario', '').strip()
 
@@ -5056,13 +5013,8 @@ def listar_sessoes_auditoria(request, acesso_id):
     """Lista sessões de acesso (SSH/Telnet/WinBox) de um Acesso, mais recentes primeiro."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente.id != acesso.cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     sessoes = acesso.sessoes_auditoria.select_related('usuario').annotate(
         total_comandos=Count('comandos')
@@ -5096,13 +5048,8 @@ def listar_comandos_sessao(request, sessao_id):
     sessao = get_object_or_404(AcessoSessao, id=sessao_id)
     acesso = sessao.acesso
 
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente.id != acesso.cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     dados = [
         {'comando': c.comando, 'executado_em': c.executado_em.strftime('%d/%m/%Y %H:%M:%S')}
@@ -5122,13 +5069,8 @@ def ver_transcript_sessao(request, sessao_id):
     sessao = get_object_or_404(AcessoSessao, id=sessao_id)
     acesso = sessao.acesso
 
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente.id != acesso.cliente.id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     return JsonResponse({'success': True, 'transcript': sessao.transcript})
 
@@ -5141,7 +5083,7 @@ def deletar_comentario_acesso(request, comentario_id):
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
 
     # Verificar permissão - apenas o autor ou admin pode deletar
-    if request.user != comentario.usuario and not request.user.is_staff:
+    if request.user != comentario.usuario and not _perms.is_backoffice(request.user):
         return JsonResponse({'error': 'Sem permissão para deletar'}, status=403)
 
     acesso = comentario.acesso
@@ -5161,7 +5103,7 @@ def editar_comentario_acesso(request, comentario_id):
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
 
     # Verificar permissão - apenas o autor ou admin pode editar
-    if request.user != comentario.usuario and not request.user.is_staff:
+    if request.user != comentario.usuario and not _perms.is_backoffice(request.user):
         return JsonResponse({'error': 'Sem permissão para editar'}, status=403)
 
     novo_texto = request.POST.get('comentario', '').strip()
@@ -5282,7 +5224,7 @@ def teste_rede_cliente(request, cliente_id):
     """
     cliente = get_object_or_404(Cliente, id=cliente_id)
 
-    if not request.user.is_staff and not request.user.is_superuser:
+    if not _perms.is_backoffice(request.user) or not _perms.pode_acessar_cliente(request.user, cliente):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
@@ -5567,7 +5509,7 @@ def teste_dns_cliente(request, cliente_id):
     """
     cliente = get_object_or_404(Cliente, id=cliente_id)
 
-    if not request.user.is_staff and not request.user.is_superuser:
+    if not _perms.is_backoffice(request.user) or not _perms.pode_acessar_cliente(request.user, cliente):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     try:
@@ -5726,13 +5668,8 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ── Permissão ─────────────────────────────────────────────────────
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente_obj = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if acesso.cliente.id != cliente_obj.id:
-                return HttpResponse('Sem permissao', status=403)
-        except Cliente.DoesNotExist:
-            return HttpResponse('Sem permissao', status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return HttpResponse('Sem permissao', status=403)
 
     # ── Normalização de URL ───────────────────────────────────────────
     if porta is None or scheme is None:
@@ -5971,12 +5908,7 @@ from .models import TopologiaDiagrama
 
 def _topologia_perm(request, cliente):
     """Verifica permissão para acessar topologia."""
-    if request.user.is_staff or request.user.is_superuser:
-        return True
-    try:
-        return Cliente.objects.get_by_usuario_vinculado(request.user).id == cliente.id
-    except Exception:
-        return False
+    return _perms.pode_acessar_cliente(request.user, cliente)
 
 
 @login_required(login_url='login')
@@ -6240,13 +6172,8 @@ def interfaces_backup_acesso(request, acesso_id):
     lista vazia — o campo continua editável em texto livre."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
-    if not request.user.is_staff and not request.user.is_superuser:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-            if cliente.id != acesso.cliente_id:
-                return JsonResponse({'error': 'Sem permissão'}, status=403)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     backup = BackupLog.objects.filter(
         acesso=acesso, status__in=['SUCESSO', 'PARCIAL'],

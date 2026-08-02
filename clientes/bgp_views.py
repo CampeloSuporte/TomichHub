@@ -26,12 +26,22 @@ from .bgp_actions import (
 )
 from .bgp_matcher import listar_prefix_lists
 from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
+from usuario import perms as _perms
 
 logger = logging.getLogger(__name__)
 
 
 def _checar_staff(request):
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not (_perms.is_backoffice(request.user) and _perms.ferramenta_habilitada(request.user, 'bgp')):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    return None
+
+
+def _checar_acesso(request, acesso):
+    """Checagem de posse do Acesso (mesma instância/consultor dono do cliente).
+    Devolve um JsonResponse de erro (status 403) se não puder acessar, ou
+    None se puder — mesmo estilo de `_checar_staff`."""
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
     return None
 
@@ -39,10 +49,13 @@ def _checar_staff(request):
 @login_required(login_url='login')
 def bgp_page(request, acesso_id):
     """GET /clientes/bgp/<acesso_id>/ — página da automação BGP do host."""
-    if not (request.user.is_staff or request.user.is_superuser):
+    if not (_perms.is_backoffice(request.user) and _perms.ferramenta_habilitada(request.user, 'bgp')):
         return render(request, 'terminal_link_invalido.html',
                        {'motivo': 'Sem permissão para acessar esta tela.'}, status=403)
     acesso = get_object_or_404(Acesso, id=acesso_id)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return render(request, 'terminal_link_invalido.html',
+                       {'motivo': 'Sem permissão para acessar esta tela.'}, status=403)
     return render(request, 'bgp_automacao.html', {
         'acesso': acesso,
         'acesso_id': acesso.id,
@@ -54,6 +67,10 @@ def bgp_page(request, acesso_id):
 def bgp_dados(request, acesso_id):
     """GET /clientes/bgp/<acesso_id>/dados/ — snapshot atual em JSON."""
     erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
     if erro:
         return erro
     try:
@@ -81,6 +98,9 @@ def bgp_atualizar_snapshot(request, acesso_id):
     if erro:
         return erro
     acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
 
     from .tasks import _atualizar_snapshot_bgp_de_acesso
     resultado, detalhe = _atualizar_snapshot_bgp_de_acesso(acesso)
@@ -135,6 +155,10 @@ def bgp_escanear_prefixo(request, acesso_id):
     erro = _checar_staff(request)
     if erro:
         return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
     try:
         body = json.loads(request.body)
     except Exception:
@@ -173,6 +197,10 @@ def bgp_communities_listar(request, acesso_id):
     erro = _checar_staff(request)
     if erro:
         return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
     sessao_nome = request.GET.get('sessao')
     qs = BgpCommunity.objects.filter(acesso_id=acesso_id)
     if sessao_nome:
@@ -191,6 +219,9 @@ def bgp_communities_criar(request, acesso_id):
     if erro:
         return erro
     acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
     try:
         body = json.loads(request.body)
     except Exception:
@@ -222,6 +253,10 @@ def bgp_communities_deletar(request, acesso_id, community_id):
     erro = _checar_staff(request)
     if erro:
         return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
     community = get_object_or_404(BgpCommunity, id=community_id, acesso_id=acesso_id)
     community.delete()
     return JsonResponse({'status': 'ok'})
@@ -246,6 +281,9 @@ def bgp_executar_acao(request, acesso_id):
         return erro
 
     acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
     try:
         body = json.loads(request.body)
     except Exception:

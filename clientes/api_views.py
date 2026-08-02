@@ -172,18 +172,18 @@ class ClienteViewSet(viewsets.ReadOnlyModelViewSet):
     - GET /api/clientes/     - Lista todos os clientes
     - GET /api/clientes/{id}/ - Detalhes de um cliente
     """
-    queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nome_empresa', 'cnpj', 'email']
-    
+
     def get_queryset(self):
-        """Retorna apenas o cliente do usuário se não for superusuário"""
+        """Administrador: todos os clientes. Consultor/Operador: só os da
+        própria instância (Cliente.objects.visiveis_para). Portal do cliente
+        final: só o(s) próprio(s) cliente(s) vinculado(s) — visiveis_para não
+        cobre esse caso (ver seu docstring), por isso o fallback abaixo."""
+        from usuario import perms as _perms
         user = self.request.user
-        
-        if user.is_superuser:
-            return Cliente.objects.all()
-        
-        # Retorna apenas o cliente vinculado ao usuário (principal ou adicional)
+        if _perms.is_backoffice(user):
+            return Cliente.objects.visiveis_para(user)
         return Cliente.objects.filter_by_usuario_vinculado(user)
