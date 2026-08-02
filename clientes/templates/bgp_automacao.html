@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Automação BGP — {{ acesso.tipo|default:acesso.host }}</title>
-<link rel="stylesheet" href="/static/css/xterm.min.css" />
 <style>
     * { box-sizing: border-box; }
     body {
@@ -137,16 +136,10 @@
 
     /* Modal de tráfego em tempo real */
     .modal-trafego { max-width: 920px; }
-    .trafego-stats { display: flex; gap: 20px; font-size: 12px; margin-bottom: 8px; }
+    .trafego-stats { display: flex; gap: 20px; font-size: 12px; margin-bottom: 8px; align-items: center; }
     .trafego-stats strong { color: #e6edf3; font-family: 'Cascadia Code', monospace; }
-    .trafego-grafico { height: 220px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; margin-bottom: 12px; box-sizing: border-box; }
-    #trafegoXterm { height: 220px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px; margin-bottom: 14px; }
-    /* xterm.css base não define largura/altura em .xterm — sem isso o
-       terminal renderiza com 0px e fica invisível mesmo recebendo dados
-       (mesmas regras que terminal.html usa pro terminal SSH normal). */
-    #trafegoXterm .xterm { width: 100%; height: 100%; position: relative; }
-    #trafegoXterm .xterm-screen { width: 100%; height: 100%; }
-    #trafegoXterm .xterm-viewport { background-color: #0d1117; }
+    #trafegoStatus { color: #7d8590; font-size: 11px; }
+    .trafego-grafico { height: 320px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; margin-bottom: 14px; box-sizing: border-box; }
 </style>
 </head>
 <body>
@@ -198,13 +191,12 @@
 <div class="overlay" id="trafegoOverlay">
     <div class="modal modal-trafego">
         <h3 id="trafegoTitulo">📶 Tráfego em tempo real</h3>
-        <div class="dica-edicao" style="margin-bottom:10px;">Conectando no equipamento e rodando <code>display counters rate interface ... | refresh 1</code> — atualiza sozinho a cada segundo.</div>
         <div class="trafego-stats" id="trafegoStats">
             <span>↓ Entrada: <strong id="trafegoStatIn">—</strong></span>
             <span>↑ Saída: <strong id="trafegoStatOut">—</strong></span>
+            <span id="trafegoStatus">Conectando…</span>
         </div>
         <div class="trafego-grafico"><canvas id="trafegoCanvas"></canvas></div>
-        <div id="trafegoXterm"></div>
         <div class="modal-acoes">
             <button class="btn perigo" onclick="fecharTrafego()">Fechar</button>
         </div>
@@ -627,20 +619,8 @@ let trafegoState = null;
 function abrirTrafego(interfaceNome, tituloSessao) {
     if (trafegoState) { fecharTrafego(); }
     document.getElementById('trafegoTitulo').textContent = `📶 Tráfego em tempo real — ${tituloSessao} (${interfaceNome})`;
+    document.getElementById('trafegoStatus').textContent = 'Conectando…';
     document.getElementById('trafegoOverlay').classList.add('aberto');
-
-    const term = new Terminal({
-        cursorBlink: false, disableStdin: true,
-        fontSize: 12, fontFamily: "'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace",
-        theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff' },
-        scrollback: 1000, rows: 24, cols: 120, convertEol: false,
-    });
-    const fitAddon = new FitAddon.FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(document.getElementById('trafegoXterm'));
-    try { term.loadAddon(new CanvasAddon.CanvasAddon()); } catch (e) {}
-    setTimeout(() => { try { fitAddon.fit(); } catch (e) {} }, 50);
-    term.writeln('\x1b[36mConectando…\x1b[0m');
 
     const chart = new Chart(document.getElementById('trafegoCanvas'), {
         type: 'line',
@@ -673,10 +653,7 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     // 'blob', e o instanceof ArrayBuffer abaixo falha silenciosamente pra
     // cada byte de saída (cai no JSON.parse de um Blob, que estoura).
     socket.binaryType = 'arraybuffer';
-    trafegoState = {
-        terminal: term, fitAddon, socket, comandoEnviado: false,
-        chart, bufferParse: '',
-    };
+    trafegoState = { socket, comandoEnviado: false, chart, bufferParse: '' };
 
     // Formato real do "display counters rate interface X | refresh 1" no
     // Huawei (confirmado ao vivo, sem sequências ANSI — cada ciclo já vem
@@ -710,6 +687,7 @@ function abrirTrafego(interfaceNome, tituloSessao) {
             }
             document.getElementById('trafegoStatIn').textContent = _fmtBps(inBps);
             document.getElementById('trafegoStatOut').textContent = _fmtBps(outBps);
+            document.getElementById('trafegoStatus').textContent = '';
             fimUltimoMatch = CICLO_REGEX.lastIndex;
         }
         if (fimUltimoMatch > 0) {
@@ -724,16 +702,14 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     }
 
     function _trafegoReceberTexto(texto) {
-        term.write(texto);
         trafegoState.bufferParse += texto;
         _processarBufferTrafego();
     }
 
     socket.onopen = () => {
-        try { fitAddon.fit(); } catch (e) {}
         socket.send(JSON.stringify({
             action: 'connect', acesso_id: ACESSO_ID, independente: true,
-            cols: term.cols, rows: term.rows,
+            cols: 120, rows: 24,
         }));
     };
     socket.onmessage = e => {
@@ -749,10 +725,7 @@ function abrirTrafego(interfaceNome, tituloSessao) {
             return;
         }
         if (data.type === 'connected') {
-            try { fitAddon.fit(); } catch (err) {}
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ action: 'resize', cols: term.cols, rows: term.rows }));
-            }
+            document.getElementById('trafegoStatus').textContent = 'Conectado — aguardando dados…';
             if (!trafegoState.comandoEnviado) {
                 trafegoState.comandoEnviado = true;
                 setTimeout(() => {
@@ -767,11 +740,11 @@ function abrirTrafego(interfaceNome, tituloSessao) {
         } else if (data.type === 'output' && data.data) {
             _trafegoReceberTexto(data.data);
         } else if (data.type === 'error') {
-            term.writeln('\r\n\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\r\n');
+            document.getElementById('trafegoStatus').textContent = '✕ ERRO: ' + data.message;
         }
     };
-    socket.onerror = () => term.writeln('\r\n\x1b[31m✕ Erro na conexão\x1b[0m\r\n');
-    socket.onclose = () => term.writeln('\r\n\x1b[33m— conexão encerrada —\x1b[0m\r\n');
+    socket.onerror = () => { document.getElementById('trafegoStatus').textContent = '✕ Erro na conexão'; };
+    socket.onclose = () => { document.getElementById('trafegoStatus').textContent = '— conexão encerrada —'; };
 }
 
 function fecharTrafego() {
@@ -786,11 +759,9 @@ function fecharTrafego() {
                 trafegoState.socket.close();
             }
         } catch (e) {}
-        try { trafegoState.terminal.dispose(); } catch (e) {}
         try { trafegoState.chart.destroy(); } catch (e) {}
         trafegoState = null;
     }
-    document.getElementById('trafegoXterm').innerHTML = '';
     document.getElementById('trafegoStatIn').textContent = '—';
     document.getElementById('trafegoStatOut').textContent = '—';
     document.getElementById('trafegoOverlay').classList.remove('aberto');
@@ -798,9 +769,6 @@ function fecharTrafego() {
 
 carregar();
 </script>
-<script src="/static/js/xterm.min.js"></script>
-<script src="/static/js/xterm-addon-fit.min.js"></script>
-<script src="/static/js/xterm-addon-canvas.min.js"></script>
 <script src="/static/js/chart.umd.min.js"></script>
 </body>
 </html>

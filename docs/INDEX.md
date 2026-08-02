@@ -1047,6 +1047,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 02/08/2026 | Ver tráfego (BGP): removido o terminal xterm.js embutido — modal mostra só o gráfico ao vivo, WebSocket alimenta o parser direto sem exibir texto bruto | bgp_automacao.md |
 | 02/08/2026 | Fix Ver tráfego (BGP): terminal ficava em branco (CSS do xterm) e depois travava em "Conectando…" (faltava socket.binaryType) — corrigidos; adicionado gráfico ao vivo (Chart.js) com formato real do comando capturado do equipamento | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: identificação automática da interface de cada sessão (Huawei) + botão "Ver tráfego em tempo real" (terminal embutido, reaproveita o WS do terminal SSH) | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: modal "Anunciar prefixo novo" não rolava com lista grande de prefix-lists (esticava pra fora da tela) — modal ganhou scroll, campo de busca fica fixo no topo | bgp_automacao.md |

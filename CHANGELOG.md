@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-02 (Simplificação: Ver tráfego mostra só o gráfico)
+
+### Modificado
+
+- **Removido o terminal xterm.js embutido do modal "Ver tráfego"** — pedido do usuário ("a tela do
+  comando não precisa"). O gráfico já é a única saída exibida; a conexão WebSocket continua a mesma
+  (`ws/ssh/`, `independente: true`), só que o texto recebido vai direto pro parser do gráfico em vez
+  de também ser escrito num terminal visual. Removidos os assets de xterm.js
+  (`xterm.min.js`/`.css`, `xterm-addon-fit`, `xterm-addon-canvas`) da página, já que não são mais
+  usados em lugar nenhum dela — só `chart.umd.min.js` continua carregado.
+
+---
+
 ## [Não publicado] — 2026-08-02 (Fix + Feat: Ver tráfego em tempo real — 2 bugs reais e gráfico ao vivo)
 
 ### Corrigido

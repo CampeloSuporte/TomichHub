@@ -538,53 +538,40 @@ que tem `ip address 177.85.201.250 255.255.255.252`).
 
 ### Frontend — reaproveita o WebSocket do terminal SSH (`ws/ssh/`), sem endpoint novo
 
-O botão abre um modal com um terminal embutido ([xterm.js](https://xtermjs.org/), mesmos assets
-estáticos já usados em `terminal.html`: `xterm.min.js`/`.css`, `xterm-addon-fit`,
-`xterm-addon-canvas`) que conecta na MESMA conexão WebSocket já usada pelo painel de Terminal
-normal (`ws/ssh/`, `SSHConsumer` — nenhuma mudança em `consumers.py`, nenhum endpoint HTTP novo):
+O botão abre um modal que conecta na MESMA conexão WebSocket já usada pelo painel de Terminal
+normal (`ws/ssh/`, `SSHConsumer` — nenhuma mudança em `consumers.py`, nenhum endpoint HTTP novo),
+mas **não exibe um terminal** — só usa a conexão pra alimentar um gráfico (ver "Gráfico ao vivo"
+abaixo). A primeira versão embutia um terminal de verdade (xterm.js) mostrando a saída bruta do
+comando; removido a pedido do usuário ("a tela do comando não precisa") — o gráfico já é a única
+coisa exibida.
 
 1. `{action: 'connect', acesso_id, independente: true, cols, rows}` — `independente: true` é
    importante: evita entrar numa sessão SSH já compartilhada por outro operador nesse host (abre uma
    conexão isolada só pra esse monitoramento, sem interferir em quem já estiver usando o terminal).
+   `cols`/`rows` são fixos (120×24) já que não há mais um terminal visual pra medir o tamanho real.
 2. Ao receber `{type: 'connected'}`, envia `{action: 'command', command: 'display counters rate
    interface {interface} | refresh 1\r'}` — o mesmo mecanismo que o handler `action == 'command'`
    do consumer já usa pra `enviar_comando()` (idêntico ao que orquestra digitação normal, só que
    com o texto pronto em vez de tecla por tecla).
-3. Saída chega como já era esperado pelo terminal normal (frames binários = texto puro, hot path;
-   frames de texto = mensagens de controle JSON) e é escrita direto no xterm.js.
+3. Saída chega como já era esperado (frames binários = texto puro, hot path; frames de texto =
+   mensagens de controle JSON) — só que em vez de escrever num terminal, o texto vai direto pro
+   parser do gráfico (ver abaixo).
 4. Ao fechar o modal, manda Ctrl+C (`{action:'command', command:'\x03'}`) antes de fechar o socket —
    encerra o `| refresh 1` com elegância em vez de só derrubar a conexão SSH no meio do loop.
 
-Terminal é somente-leitura (`disableStdin: true` no xterm.js) — não dá pra digitar nele, só observar.
 Não gera registro de auditoria `AcaoBgp` (é leitura pura, mesmo padrão do "Atualizar agora").
 
-### Dois bugs reais pegos em produção logo depois do primeiro deploy
+### Gráfico ao vivo — única saída exibida (Chart.js)
 
-1. **Terminal ficava em branco, nada aparecia** — `xterm.css` base não define `width`/`height` em
-   `.xterm` (só `position: relative`); sem essas regras o terminal renderiza com 0px de altura e fica
-   invisível mesmo recebendo dados. `terminal.html` (terminal SSH normal) já tinha essas regras;
-   esqueci de copiar pro modal novo. Corrigido com as mesmas 3 regras escopadas a `#trafegoXterm`.
-2. **Depois do fix acima, ficava travado em "Conectando…" pra sempre** — mesmo com os logs do
-   daphne confirmando que a sessão SSH conectou de verdade no equipamento. Causa:
-   `consumers.py::send_output` manda a saída do terminal como frame **binário puro** (sem JSON
-   overhead, de propósito). Sem `socket.binaryType = 'arraybuffer'` (que eu tinha esquecido de
-   copiar do `terminal.html` também), o navegador usa o default `'blob'` — `e.data instanceof
-   ArrayBuffer` dava falso pra todo frame de saída, caindo no `JSON.parse(blob)`, que estoura uma
-   exceção não tratada dentro do `onmessage`. Resultado: a mensagem `{type:'connected'}` (frame de
-   TEXTO, funcionava) processava normalmente, mas nenhuma saída real (frames BINÁRIOS) jamais
-   chegava a aparecer. Corrigido setando `binaryType` explicitamente, igual ao terminal normal.
-
-### Gráfico ao vivo (adicionado em 2026-08-02)
-
-Pedido do usuário depois de confirmar que o texto bruto já funcionava: mostrar o tráfego em forma
-de gráfico, não só a tabela de texto rolando. Reaproveita `chart.umd.min.js` (Chart.js, já
-vendorizado no projeto e usado em `monitoramento/tab_monitoramento.html` — mesma paleta de cores e
-`_fmtBps` copiados de lá pra manter consistência visual entre as duas telas).
+Pedido do usuário: mostrar o tráfego em forma de gráfico, não uma tabela de texto rolando (e depois,
+"a tela do comando não precisa" — removendo até a exibição de texto bruto que existiu por uma
+versão). Reaproveita `chart.umd.min.js` (Chart.js, já vendorizado no projeto e usado em
+`monitoramento/tab_monitoramento.html` — mesma paleta de cores e `_fmtBps` copiados de lá pra manter
+consistência visual entre as duas telas).
 
 **Formato real do comando** (capturado ao vivo direto do equipamento antes de escrever o parser —
-mesmo rigor de "validar contra dado real" usado no resto do projeto): ao contrário do que a versão
-anterior desta doc dizia, o Huawei **não usa sequências ANSI** pra redesenhar a tela em `| refresh 1`
-— cada ciclo já vem delimitado em texto puro:
+mesmo rigor de "validar contra dado real" usado no resto do projeto): o Huawei **não usa sequências
+ANSI** pra redesenhar a tela em `| refresh 1` — cada ciclo já vem delimitado em texto puro:
 
 ```
   ---- (Refreshed at 2026-08-02 10:58:31) ----
@@ -598,15 +585,33 @@ GE0/7/1.3179       55782043          146817                 0                 0
   ---- (Finish) ----
 ```
 
-`_trafegoReceberTexto(texto)` (dentro de `abrirTrafego`, `bgp_automacao.html`) escreve o texto no
-xterm.js (como sempre) **e** acumula num buffer separado (`trafegoState.bufferParse`) que é
-reprocessado a cada chunk recebido por uma regex (`CICLO_REGEX`) que só aceita um ciclo como
-completo quando o marcador `(Finish)` já chegou — evita processar um bloco cortado no meio por um
-frame de WebSocket parcial (testado simulando o chunk quebrado no meio do texto). Extrai
-`Octets(bytes/s)` de Inbound/Outbound, multiplica por 8 (bytes→bits) e empurra um ponto novo nos
-dois datasets do Chart.js (`Entrada ↓`/`Saída ↑`), limitado a 60 pontos (~1 minuto de histórico a 1
-ciclo/segundo) — depois de cada ciclo processado, o buffer é cortado até onde já foi consumido, pra
-não crescer sem limite numa sessão longa.
+`_trafegoReceberTexto(texto)` (dentro de `abrirTrafego`, `bgp_automacao.html`) acumula o texto recebido
+num buffer (`trafegoState.bufferParse`) que é reprocessado a cada chunk por uma regex (`CICLO_REGEX`)
+que só aceita um ciclo como completo quando o marcador `(Finish)` já chegou — evita processar um
+bloco cortado no meio por um frame de WebSocket parcial (testado simulando o chunk quebrado no meio
+do texto). Extrai `Octets(bytes/s)` de Inbound/Outbound, multiplica por 8 (bytes→bits) e empurra um
+ponto novo nos dois datasets do Chart.js (`Entrada ↓`/`Saída ↑`), limitado a 60 pontos (~1 minuto de
+histórico a 1 ciclo/segundo) — depois de cada ciclo processado, o buffer é cortado até onde já foi
+consumido, pra não crescer sem limite numa sessão longa.
+
+### Dois bugs reais pegos em produção durante o desenvolvimento (versão com terminal embutido)
+
+Histórico — a versão que exibia um terminal xterm.js junto do gráfico teve dois bugs reais antes de
+funcionar, ambos por esquecer de copiar configuração que `terminal.html` (terminal SSH normal) já
+tinha. Removidos junto com o terminal (não se aplicam mais), mas registrados aqui porque o padrão
+pode se repetir se um terminal embutido for reintroduzido no futuro:
+
+1. **Terminal ficava em branco, nada aparecia** — `xterm.css` base não define `width`/`height` em
+   `.xterm` (só `position: relative`); sem essas regras o terminal renderiza com 0px de altura e
+   fica invisível mesmo recebendo dados.
+2. **Depois do fix acima, ficava travado em "Conectando…" pra sempre** — mesmo com os logs do
+   daphne confirmando que a sessão SSH conectou de verdade no equipamento. Causa:
+   `consumers.py::send_output` manda a saída do terminal como frame **binário puro** (sem JSON
+   overhead, de propósito). Sem `socket.binaryType = 'arraybuffer'`, o navegador usa o default
+   `'blob'` — `e.data instanceof ArrayBuffer` dava falso pra todo frame de saída, caindo no
+   `JSON.parse(blob)`, que estoura uma exceção não tratada dentro do `onmessage`. Resultado: a
+   mensagem `{type:'connected'}` (frame de texto) processava normalmente, mas nenhuma saída real
+   (frames binários) jamais chegava a aparecer.
 
 ---
 
