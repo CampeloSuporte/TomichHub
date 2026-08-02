@@ -46,6 +46,14 @@ endpoints novos — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
   peer, sem editar a prefix-list (que pode ser um objeto compartilhado por outro node/policy).
   `undo network` (global) só entra como último recurso, quando o prefixo não é controlado por
   nenhuma route-policy.
+- **Mesmo problema confirmado no Cisco/Datacom**: a ação inseria um `deny` direto na prefix-list
+  (`ip prefix-list PL seq N deny PREFIXO`) — só que prefix-lists de prefixo próprio são reaproveitadas
+  por vários route-maps/peers ao mesmo tempo (confirmado em backup real: `PL-ORIGIN-45.71.73.0_24`
+  em `cliente_8/acesso_348` está referenciada em 3 route-maps OUT diferentes ao mesmo tempo — mesmo
+  prefixo anunciado a 3 upstreams). Editar a lista pararia de anunciar nos três peers. Corrigido pro
+  mesmo padrão do Huawei: insere um `deny` novo dentro do route-map de export DESSA sessão (mesma
+  prefix-list como match, mas escopado a esse route-map), num seq menor que o `permit` existente —
+  os outros route-maps que também usam a mesma lista continuam intocados.
 - **UX de "Anunciar prefixo novo" exigia digitar o prefixo antes de ver as prefix-lists
   disponíveis**: agora o modal já abre listando as prefix-lists candidatas da sessão (nome +
   amostra) direto — o usuário escolhe a lista primeiro e só digita o prefixo novo depois, junto da

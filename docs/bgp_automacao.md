@@ -200,9 +200,9 @@ qualquer inteiro desde o início, só a UI estava fixa em `delta:1`.
 | Mikrotik v6 | `/routing bgp network disable [...]` OU `/routing filter disable [...]` | Conforme a origem do anúncio (network object vs. regra de filtro) |
 | Mikrotik v7 | `/ip firewall address-list disable [...]` | ⚠️ `.network=` pode ser compartilhado por mais de uma connection — mesma lista, mesmo efeito em todas |
 | Huawei | `route-policy NOME deny node N` + `commit` (preferido) OU `undo network IP MASCARA` + `commit` (fallback) | Ver nota abaixo — corrigido em 2026-08-01 |
-| Cisco/Datacom | `ip prefix-list PL seq SEQ_MENOR deny PREFIXO` | Insere um `deny` ANTES do `permit` existente (não edita a entrada original); se não houver seq livre abaixo, recusa e pede renumeração manual |
+| Cisco/Datacom | `route-map NOME deny SEQ_MENOR` + `match ip[v6] address prefix-list PL` | Ver nota abaixo — corrigido em 2026-08-01. Se não houver seq livre abaixo (ou o seq alvo já estiver ocupado no route-map), recusa e pede renumeração manual |
 
-#### Huawei: por que `undo network` era um bug (corrigido em 2026-08-01)
+#### Huawei/Cisco: por que editar a prefix-list era um bug (corrigido em 2026-08-01)
 
 A versão original só sabia remover a origem via `network IP MASCARA` (comando global do processo
 BGP — desliga aquela rede pra **todas** as sessões que a originam, não só a sessão em questão).
@@ -232,6 +232,27 @@ Isso é escopado ao peer porque cada sessão tem seu próprio route-policy de ex
 node, policy ou sessão é tocado, e a prefix-list em si nunca é editada. `undo network` (global)
 continua só como último recurso, quando o prefixo não é controlado por nenhuma route-policy (ex:
 `network` statement sem filtro algum aplicado).
+
+**O mesmo problema existia no Cisco/Datacom** e foi confirmado em backup real, não só em teoria: a
+versão original inseria um `deny` direto na prefix-list (`ip prefix-list PL seq N deny PREFIXO`).
+Só que prefix-lists de prefixo próprio (`PL-ORIGIN-*`, `PL-MY-PREFIX-*`) são tipicamente
+**reaproveitadas por vários route-maps/peers ao mesmo tempo** — ex: `PL-ORIGIN-45.71.73.0_24` (backup
+real, `cliente_8/acesso_348`) está referenciada em `RM-PEER-1TELECOM-V4-OUT`,
+`RM-PEER-LOCALLINK-V4-OUT` e `RM-PEER-LOCALLINK-BACKUP-V4-OUT` simultaneamente (mesmo prefixo próprio
+anunciado a três upstreams diferentes). Editar a lista pararia de anunciar nos três peers, não só no
+selecionado. Corrigido pro mesmo padrão do Huawei: insere um `deny` novo dentro do **route-map de
+export DESSA sessão** (mesma prefix-list como critério de match, mas o `deny` só existe dentro desse
+route-map específico), num seq menor que a entrada `permit` existente:
+
+```
+route-map RM-PEER-1TELECOM-V4-OUT deny 9
+ match ip address prefix-list PL-ORIGIN-45.71.73.0_24
+```
+
+Os outros route-maps (`RM-PEER-LOCALLINK-V4-OUT`, `RM-PEER-LOCALLINK-BACKUP-V4-OUT`) que também
+casam com essa prefix-list continuam intocados — só o peer selecionado para de anunciar. Recusa
+(`AcaoBgpNaoSuportada`) se o seq calculado (`seq_do_route-map_existente - 1`) já estiver ocupado por
+outra entrada do mesmo route-map, ou se não houver seq livre abaixo (`<= 1`).
 
 ### Execução (`executar_acao_bgp`)
 

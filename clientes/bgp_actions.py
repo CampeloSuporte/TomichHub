@@ -312,6 +312,18 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
         return [f'bgp {asn}', f'{familia} unicast', f'undo network {ip} {mask_arg}', 'commit']
 
     if vendor in ('cisco', 'datacom'):
+        # Mesmo princípio da correção do Huawei: NÃO editar a prefix-list
+        # (`ip prefix-list PL seq N deny ...`) — é um objeto nomeado à
+        # parte, frequentemente reaproveitado por VÁRIOS route-maps/peers
+        # ao mesmo tempo (confirmado em backup real: `PL-ORIGIN-*` e
+        # `PL-MY-PREFIX-V6-*` — o prefixo próprio do cliente, anunciado
+        # pra mais de um upstream — aparecem referenciados por 2-3
+        # route-maps OUT diferentes no mesmo equipamento). Editar a lista
+        # pararia de anunciar em TODOS os peers que a referenciam, não só
+        # o selecionado. Em vez disso, insere um `deny` novo dentro do
+        # ROUTE-MAP de export DESSA sessão (mesma prefix-list como match,
+        # mas escopado a esse route-map só), num seq menor que o da
+        # entrada `permit` existente — só afeta este peer.
         termo, entrada = _termo_e_entrada_responsaveis(dados, policy_nome, prefixo)
         if not termo or not entrada:
             raise AcaoBgpNaoSuportada(
@@ -320,19 +332,28 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
             )
         nomes_pl = termo.get('prefix_lists') or []
         pl_nome = nomes_pl[0] if nomes_pl else None
-        seq_existente = entrada.get('seq')
-        if not pl_nome or seq_existente is None:
-            raise AcaoBgpNaoSuportada('Não encontrei o seq da entrada de prefix-list correspondente.')
-        if seq_existente <= 1:
+        seq_rm_existente = termo.get('extra', {}).get('seq')
+        if not pl_nome or seq_rm_existente is None:
+            raise AcaoBgpNaoSuportada('Não encontrei o seq do route-map correspondente.')
+        if seq_rm_existente <= 1:
             raise AcaoBgpNaoSuportada(
-                f'A entrada seq {seq_existente} da prefix-list "{pl_nome}" não tem seq livre abaixo '
-                'dela — renumere a prefix-list manualmente antes de tentar esta ação.'
+                f'A entrada seq {seq_rm_existente} do route-map "{policy_nome}" não tem seq livre '
+                'abaixo dela — renumere o route-map manualmente antes de tentar esta ação.'
             )
-        novo_seq = seq_existente - 1
-        cmd = f'ip prefix-list {pl_nome} seq {novo_seq} deny {prefixo}'
-        if ':' in prefixo:
-            cmd = f'ipv6 prefix-list {pl_nome} seq {novo_seq} deny {prefixo}'
-        return [cmd]
+        novo_seq_rm = seq_rm_existente - 1
+        seqs_existentes = {
+            t.get('extra', {}).get('seq') for t in dados.get('policies', {}).get(policy_nome, [])
+        }
+        if novo_seq_rm in seqs_existentes:
+            raise AcaoBgpNaoSuportada(
+                f'Já existe uma entrada no route-map "{policy_nome}" com seq {novo_seq_rm} — '
+                'renumere manualmente antes de tentar esta ação.'
+            )
+        cmd_match = 'match ipv6 address prefix-list' if ':' in prefixo else 'match ip address prefix-list'
+        return [
+            f'route-map {policy_nome} deny {novo_seq_rm}',
+            f'{cmd_match} {pl_nome}',
+        ]
 
     raise AcaoBgpNaoSuportada(f'Fabricante "{vendor}" não suportado para parar de anunciar.')
 
