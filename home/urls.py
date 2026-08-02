@@ -6,6 +6,7 @@ from clientes.firmware_views import firmware_download
 
 urlpatterns = [
     path('geral', views.quadro_geral, name='quadro_geral'),
+    path('instancia', views.quadro_instancia, name='quadro_instancia'),
     path('relatorio/backups/', views.relatorio_backups, name='relatorio_backups'),
     path('chamados/<str:status>/', views.listar_chamados_por_status, name='listar_chamados_status'),
     path('configuracoes/', views.configuracoes_sistema, name='configuracoes_sistema'),

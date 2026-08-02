@@ -287,7 +287,7 @@ def redirect_user_by_role(user):
     if role == PerfilUsuario.ROLE_ADMIN:
         return redirect('quadro_geral')
     if role in (PerfilUsuario.ROLE_CONSULTOR, PerfilUsuario.ROLE_OPERADOR):
-        return redirect('cadastrar_cliente')
+        return redirect('quadro_instancia')
 
     try:
         cliente = Cliente.objects.get_by_usuario_vinculado(user)

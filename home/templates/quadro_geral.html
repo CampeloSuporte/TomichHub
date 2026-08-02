@@ -205,14 +205,16 @@
     <div class="dash-header">
         <div>
             <div class="dash-title">
-                <i class="fas fa-chart-line"></i> Dashboard
+                <i class="fas fa-chart-line"></i> {{ dash_titulo|default:"Dashboard" }}
             </div>
-            <div class="dash-subtitle">{{ data_hoje|date:"d/m/Y" }} &nbsp;·&nbsp; Visão geral do sistema</div>
+            <div class="dash-subtitle">{{ data_hoje|date:"d/m/Y" }} &nbsp;·&nbsp; {{ dash_subtitulo|default:"Visão geral do sistema" }}</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            {% if mostrar_relatorio_backups %}
             <a href="{% url 'relatorio_backups' %}" class="content-card-link" style="font-size:13px;">
                 <i class="fas fa-database" style="margin-right:4px;"></i> Relatório de Backups
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -275,7 +277,9 @@
         <div class="content-card" style="margin-bottom:0;">
             <div class="content-card-header">
                 <div class="content-card-title"><i class="fas fa-history"></i> Últimos Backups</div>
+                {% if mostrar_relatorio_backups %}
                 <a href="{% url 'relatorio_backups' %}" class="content-card-link">ver todos →</a>
+                {% endif %}
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
