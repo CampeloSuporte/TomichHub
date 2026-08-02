@@ -151,3 +151,37 @@ def ferramentas_habilitadas_dict(instancia):
         return {chave: False for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}
     estado = {f.ferramenta: f.habilitado for f in InstanciaFerramenta.objects.filter(instancia=instancia)}
     return {chave: estado.get(chave, False) for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}
+
+
+class TOTPDevice(models.Model):
+    """2FA via app Google Authenticator (TOTP, RFC 6238). Um por usuário;
+    só passa a valer no login depois de `confirmado=True` (evita travar a
+    conta caso o usuário abandone o setup antes de escanear o QR)."""
+
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='totp_device')
+    secret = models.CharField(max_length=32)
+    confirmado = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    confirmado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Dispositivo 2FA (TOTP)'
+        verbose_name_plural = 'Dispositivos 2FA (TOTP)'
+
+    def __str__(self):
+        return f"{self.usuario.username} - {'confirmado' if self.confirmado else 'pendente'}"
+
+
+class TOTPBackupCode(models.Model):
+    """Código de uso único pra login sem o app, caso o usuário perca o
+    celular. Guardado como hash (mesmo hasher de senha) — nunca em texto
+    puro depois de gerado."""
+
+    device = models.ForeignKey(TOTPDevice, on_delete=models.CASCADE, related_name='backup_codes')
+    codigo_hash = models.CharField(max_length=128)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    usado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Código de Backup 2FA'
+        verbose_name_plural = 'Códigos de Backup 2FA'

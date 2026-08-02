@@ -65,11 +65,13 @@ pyeapi==1.0.4
 Pygments==2.19.2
 PyNaCl==1.6.0
 pyOpenSSL==25.3.0
+pyotp==2.10.0
 pyparsing==3.2.5
 pyserial==3.5
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0
 PyYAML==6.0.1
+qrcode==8.2
 redis==6.4.0
 reportlab==4.4.5
 requests==2.32.5

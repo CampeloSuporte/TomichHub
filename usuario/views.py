@@ -1,6 +1,7 @@
 import json
 import requests
 from django.conf import settings
+from django.utils import timezone
 from django.shortcuts import render,redirect,get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -10,8 +11,9 @@ from clientes.decorators import admin_required  # ← ADICIONAR ESTA LINHA
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
-from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict
+from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice
 from . import perms
+from . import totp as totp_lib
 
 TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
@@ -99,7 +101,7 @@ def _resolver_instancia_operador(request):
 @perms.pode_gerenciar_usuarios_required
 def cadastrar_usuario(request):
         if request.method == 'GET':
-            usuario = perms.usuarios_gerenciaveis_por(request.user).select_related('perfil', 'perfil__instancia')
+            usuario = perms.usuarios_gerenciaveis_por(request.user).select_related('perfil', 'perfil__instancia', 'totp_device')
             for u in usuario:
                 u.modulos_json = json.dumps(modulos_habilitados_dict(u))
                 perfil = getattr(u, 'perfil', None)
@@ -107,6 +109,7 @@ def cadastrar_usuario(request):
                 u.instancia_id_efetivo = perfil.instancia_id if perfil else None
                 ferramentas = ferramentas_habilitadas_dict(perfil.instancia) if (perfil and perfil.role == PerfilUsuario.ROLE_CONSULTOR) else {}
                 u.ferramentas_json = json.dumps(ferramentas)
+                u.tem_2fa = getattr(u, 'totp_device', None) is not None and u.totp_device.confirmado
             return render(request, 'cadastrar_usuario.html', {
                 'usuario': usuario,
                 'modulos_disponiveis': UsuarioModulo.MODULO_CHOICES,
@@ -270,6 +273,15 @@ def login(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+            device = getattr(user, 'totp_device', None)
+            if device and device.confirmado:
+                # 2FA ativo: guarda o usuário como "pendente" na sessão sem
+                # autenticar ainda — só loga de fato depois do código certo
+                # em verificar_2fa.
+                request.session['2fa_user_id'] = user.id
+                request.session['2fa_tentativas'] = 0
+                return redirect('verificar_2fa')
+
             auth_login(request, user)
 
             tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
@@ -280,6 +292,40 @@ def login(request):
         else:
             messages.error(request, "Usuário ou senha inválidos.")
             return redirect('login')
+
+
+def verificar_2fa(request):
+    """Segunda etapa do login: código do Google Authenticator (ou código de
+    backup) pro usuário que a view `login` deixou pendente na sessão."""
+    user_id = request.session.get('2fa_user_id')
+    if not user_id:
+        return redirect('login')
+
+    if request.method == 'POST':
+        codigo = request.POST.get('codigo', '')
+        user = User.objects.filter(id=user_id).first()
+        device = getattr(user, 'totp_device', None) if user else None
+
+        if device and device.confirmado and (totp_lib.verificar_codigo(device, codigo) or totp_lib.verificar_backup_code(device, codigo)):
+            del request.session['2fa_user_id']
+            request.session.pop('2fa_tentativas', None)
+            auth_login(request, user)
+
+            tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
+            messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
+            return redirect_user_by_role(user)
+
+        tentativas = request.session.get('2fa_tentativas', 0) + 1
+        if tentativas >= 5:
+            request.session.pop('2fa_user_id', None)
+            request.session.pop('2fa_tentativas', None)
+            messages.error(request, 'Muitas tentativas inválidas. Faça login novamente.')
+            return redirect('login')
+
+        request.session['2fa_tentativas'] = tentativas
+        messages.error(request, 'Código inválido.')
+
+    return render(request, 'verificar_2fa.html')
 
 
 def redirect_user_by_role(user):
@@ -348,6 +394,75 @@ def trocar_senha(request):
         
         # Mantém o usuário logado após trocar a senha
         update_session_auth_hash(request, request.user)
-        
+
         messages.success(request, "Senha alterada com sucesso!")
         return redirect('cadastrar_usuario')
+
+
+@login_required(login_url='login')
+def configurar_2fa(request):
+    """Tela de autoatendimento: cada usuário ativa/desativa o 2FA (Google
+    Authenticator) só na própria conta."""
+    device, _ = TOTPDevice.objects.get_or_create(usuario=request.user, defaults={'secret': totp_lib.gerar_secret()})
+
+    if request.method == 'POST':
+        acao = request.POST.get('acao')
+
+        if acao == 'ativar' and not device.confirmado:
+            codigo = request.POST.get('codigo', '')
+            if totp_lib.verificar_codigo(device, codigo):
+                device.confirmado = True
+                device.confirmado_em = timezone.now()
+                device.save(update_fields=['confirmado', 'confirmado_em'])
+                backup_codes = totp_lib.gerar_backup_codes(device)
+                messages.success(request, 'Autenticação em duas etapas ativada com sucesso!')
+                return render(request, 'configurar_2fa.html', {
+                    'device': device,
+                    'backup_codes': backup_codes,
+                })
+            messages.error(request, 'Código inválido. Confira o horário do celular e tente novamente.')
+
+        elif acao == 'desativar' and device.confirmado:
+            senha = request.POST.get('senha', '')
+            if not request.user.check_password(senha):
+                messages.error(request, 'Senha incorreta.')
+            else:
+                device.delete()
+                messages.success(request, 'Autenticação em duas etapas desativada.')
+                return redirect('configurar_2fa')
+
+        elif acao == 'regenerar_backup' and device.confirmado:
+            senha = request.POST.get('senha', '')
+            if not request.user.check_password(senha):
+                messages.error(request, 'Senha incorreta.')
+            else:
+                backup_codes = totp_lib.gerar_backup_codes(device)
+                messages.success(request, 'Novos códigos de backup gerados. Guarde-os em um lugar seguro.')
+                return render(request, 'configurar_2fa.html', {
+                    'device': device,
+                    'backup_codes': backup_codes,
+                })
+
+    contexto = {'device': device}
+    if not device.confirmado:
+        contexto['qr_code'] = totp_lib.qr_code_data_uri(totp_lib.provisioning_uri(device, request.user))
+    return render(request, 'configurar_2fa.html', contexto)
+
+
+@login_required(login_url='login')
+@perms.pode_gerenciar_usuarios_required
+def resetar_2fa_admin(request):
+    """Apaga o 2FA de outro usuário gerenciável — cobre perda de celular +
+    códigos de backup, quando só um Administrador/Consultor destrava a conta."""
+    if request.method != 'POST':
+        return redirect('cadastrar_usuario')
+
+    usuario_id = request.POST.get('id')
+    usuario = perms.usuarios_gerenciaveis_por(request.user).filter(id=usuario_id).first()
+    if not usuario:
+        messages.error(request, 'Você não possui permissão para resetar o 2FA deste usuário.')
+        return redirect('cadastrar_usuario')
+
+    TOTPDevice.objects.filter(usuario=usuario).delete()
+    messages.success(request, f"2FA de '{usuario.username}' foi resetado.")
+    return redirect('cadastrar_usuario')

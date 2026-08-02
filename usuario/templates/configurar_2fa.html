@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body p-4">
+                        <h4 class="mb-4">Autenticação em Duas Etapas</h4>
+
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if backup_codes %}
+                            <div class="alert alert-warning">
+                                <strong>Guarde estes códigos de backup agora.</strong> Eles só aparecem
+                                uma vez e servem pra entrar caso você perca o celular. Cada código só
+                                funciona uma vez.
+                            </div>
+                            <pre class="p-3" style="background:#0d1117;color:#58a6ff;border-radius:8px;font-size:1rem;">{% for codigo in backup_codes %}{{ codigo }}
+{% endfor %}</pre>
+                            <a href="{% url 'configurar_2fa' %}" class="btn-register w-100 text-center d-block mt-3">
+                                <i class="fas fa-check me-2"></i>Já salvei meus códigos
+                            </a>
+
+                        {% elif device.confirmado %}
+                            <div class="terminal-status mb-4">
+                                <span class="status-indicator"></span>
+                                <span class="status-text">2FA ativado nesta conta.</span>
+                            </div>
+
+                            <form method="POST" class="mb-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="acao" value="regenerar_backup">
+                                <div class="form-group-modal mb-3">
+                                    <label for="senha_backup">
+                                        <span class="label-prefix">&gt;</span> Senha Atual
+                                    </label>
+                                    <input type="password" class="form-control" id="senha_backup" name="senha" placeholder="Confirme sua senha" required>
+                                </div>
+                                <button type="submit" class="btn-register w-100">
+                                    <i class="fas fa-sync me-2"></i>Gerar Novos Códigos de Backup
+                                </button>
+                            </form>
+
+                            <hr>
+
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="acao" value="desativar">
+                                <div class="form-group-modal mb-3">
+                                    <label for="senha_desativar">
+                                        <span class="label-prefix">&gt;</span> Senha Atual
+                                    </label>
+                                    <input type="password" class="form-control" id="senha_desativar" name="senha" placeholder="Confirme sua senha" required>
+                                </div>
+                                <button type="submit" class="btn-cancel w-100">
+                                    <i class="fas fa-times me-2"></i>Desativar 2FA
+                                </button>
+                            </form>
+
+                        {% else %}
+                            <p>Escaneie o QR code abaixo com o app <strong>Google Authenticator</strong>
+                                (ou similar) e digite o código de 6 dígitos gerado pra confirmar.</p>
+
+                            <div class="text-center mb-3">
+                                <img src="{{ qr_code }}" alt="QR code 2FA" style="max-width:220px;background:#fff;padding:8px;border-radius:8px;">
+                            </div>
+
+                            <p class="text-center">
+                                <small>Não consegue escanear? Digite manualmente: <code>{{ device.secret }}</code></small>
+                            </p>
+
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="acao" value="ativar">
+                                <div class="form-group-modal mb-4">
+                                    <label for="codigo_ativar">
+                                        <span class="label-prefix">&gt;</span> Código do Authenticator
+                                    </label>
+                                    <input type="text" class="form-control" id="codigo_ativar" name="codigo"
+                                           placeholder="000000" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+                                </div>
+                                <button type="submit" class="btn-register w-100">
+                                    <i class="fas fa-check me-2"></i>Confirmar e Ativar
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
