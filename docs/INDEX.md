@@ -2,6 +2,31 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 32 — 02/08/2026: Autenticação em Duas Etapas (2FA) via Google Authenticator
+
+**O que foi implementado?**
+- ✅ **2FA via TOTP (RFC 6238)**, compatível com o app Google Authenticator — não depende de conta
+  Google nem de API externa. Novos modelos `TOTPDevice`/`TOTPBackupCode`, tela de auto-atendimento
+  em `/auth/2fa/` (QR code, confirmação, 10 códigos de backup de uso único, desativar, regenerar
+  backup codes).
+- ✅ **Segunda etapa no login** (`verificar_2fa`): quem tem 2FA confirmado só é autenticado de fato
+  depois do código certo (ou um backup code) — sessão fica "pendente" até então; 5 tentativas
+  erradas derrubam de volta pro login.
+- ✅ **Obrigatoriedade** (`Forcar2FAMiddleware`): qualquer usuário autenticado — inclusive portal do
+  cliente final, decisão tomada com o usuário via `AskUserQuestion` — sem `TOTPDevice` confirmado é
+  redirecionado pra tela de configuração em **toda** requisição, com um modal de alerta não
+  fechável por fora. Só logout e a própria tela de config ficam livres.
+- ✅ **Reset por Administrador/Consultor** (`resetar_2fa_admin`): cobre perda de celular + códigos
+  de backup — botão na listagem de usuários apaga o `TOTPDevice` de uma conta gerenciada.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[2FA_GOOGLE_AUTHENTICATOR.md](2FA_GOOGLE_AUTHENTICATOR.md)** | Documento completo — modelos, fluxo de login, middleware obrigatório, reset por admin |
+
+---
+
 ### Sessão 31 — 02/08/2026: Automação BGP — Execução em modo trial
 
 **O que foi implementado?**
@@ -794,6 +819,12 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
 
 ### Outros Módulos
 
+- **[2FA_GOOGLE_AUTHENTICATOR.md](2FA_GOOGLE_AUTHENTICATOR.md)** — Autenticação em duas etapas (TOTP/Google Authenticator)
+  - Modelos `TOTPDevice`/`TOTPBackupCode`, geração de QR code e códigos de backup
+  - Segunda etapa no login (`verificar_2fa`) e rate limit de tentativas
+  - `Forcar2FAMiddleware` — obrigatoriedade pra todos os perfis, inclusive portal do cliente
+  - Reset de 2FA por Administrador/Consultor (perda de celular + backup codes)
+
 - **[AUDITORIA_ACESSOS.md](AUDITORIA_ACESSOS.md)** — Auditoria de Acessos (sessões SSH/WinBox)
   - Modelos `AcessoSessao`/`AcessoComando`
   - Transcript e comandos digitados (SSH/Telnet)
@@ -1019,6 +1050,12 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ## 🆘 Precisa de Ajuda?
 
+### "Um usuário perdeu o celular e os códigos de backup do 2FA, como destravo a conta?"
+→ [2FA_GOOGLE_AUTHENTICATOR.md](2FA_GOOGLE_AUTHENTICATOR.md) — Seção "Reset por Administrador/Consultor" — botão na listagem de usuários (`resetar_2fa_admin`)
+
+### "Todo usuário é obrigado a configurar 2FA, ou só o back-office?"
+→ [2FA_GOOGLE_AUTHENTICATOR.md](2FA_GOOGLE_AUTHENTICATOR.md) — Seção "Obrigatoriedade — Forcar2FAMiddleware" — vale pra todos os perfis, inclusive portal do cliente final
+
 ### "Como adiciono privacidade a um novo modelo?"
 → [PRIVACIDADE_FINANCEIRA.md](PRIVACIDADE_FINANCEIRA.md) — Seção "Modelos Implementados"
 
@@ -1067,6 +1104,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 02/08/2026 | 2FA via Google Authenticator (TOTP): auto-atendimento, segunda etapa no login, códigos de backup, reset por admin e obrigatoriedade (`Forcar2FAMiddleware`) pra todos os perfis | 2FA_GOOGLE_AUTHENTICATOR.md |
 | 29/07/2026 | Exportação de Senhas: novo formato TXT (além do PDF); fix PDF cortando nas laterais no modo "Sem Senha Root" (tabela mais larga que a página) | frontend_acessos.md |
 | 26/07/2026 | Geolocalização de IP: novo model `GeofeedBloco` como fonte única do geofeed.csv, card "Blocos do Geofeed" para cadastrar múltiplos prefixos/localizações de uma vez, coluna Postal-Code preenchida | GEOLOCALIZACAO_IP.md |
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
