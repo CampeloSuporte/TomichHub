@@ -379,61 +379,69 @@ tiver nenhuma cadastrada) que dispara o mesmo modal de preview/edição já exis
 
 ---
 
-## Anunciar prefixo novo — varredura de prefix-lists (adicionado em 2026-08-01)
+## Anunciar prefixo novo — anexar prefix-list existente via node/termo novo (adicionado em 2026-08-01, redesenhado no mesmo dia)
 
 Até aqui só dava pra mexer em anúncios que **já existiam** (prepend/parar). Esta extensão permite
-anunciar um prefixo **novo**, achando automaticamente qual prefix-list já cadastrada (e já
-referenciada por um termo `accept` da export policy da sessão) faz sentido receber esse prefixo —
-sem precisar mexer na route-policy/term em si.
+fazer uma sessão passar a anunciar uma prefix-list que **já existe** no equipamento (de outra sessão,
+ou cadastrada por outro motivo) mas que essa sessão específica ainda não anuncia.
 
-### `clientes/bgp_matcher.py::escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo=None)`
+### Duas tentativas de design — por que a primeira era outro caso do mesmo bug
 
-Reúne as prefix-lists referenciadas por termos `accept` de `policy_nome` (candidatas) — essa lista
-não depende de `prefixo_novo`, é só "quais prefix-lists esta sessão usa pra anunciar". Por isso
-`prefixo_novo` é opcional (adicionado em 2026-08-01): sem ele devolve só as candidatas (é o que a UI
-usa pra popular o modal assim que abre, antes do usuário escolher qualquer coisa); com ele, roda
-também a MESMA lógica de match do `simular_anuncios` (`entrada_que_bate`) pra conferir se
-`prefixo_novo` já bate em alguma — se sim, `ja_coberto=True` e não tem nada a fazer (já seria
-anunciado automaticamente se a rota existisse na tabela). Devolve também uma amostra de até 3
-prefixos de cada candidata, pra UI mostrar algo reconhecível em vez de só o nome da lista.
+A primeira versão pedia o **prefixo novo** digitado, escolhia uma prefix-list já usada pela sessão
+como candidata, e **adicionava uma entrada nova** nela (`ip ip-prefix LISTA index N permit ...` no
+Huawei, por exemplo). Reportado como errado pelo mesmo motivo já corrigido em "parar de anunciar":
+prefix-lists são objetos nomeados **compartilháveis** — adicionar uma entrada numa lista que também é
+referenciada pelo route-map/route-policy de OUTRA sessão faria aquele prefixo passar a ser anunciado
+por essa outra sessão também, não só a selecionada.
 
-### `clientes/bgp_actions.py::comandos_novo_anuncio(vendor, dados, nome_sessao, prefixo_novo, lista_escolhida)`
+A forma correta: a prefix-list escolhida **nunca é editada**. Em vez disso, a ação cria um
+**node/termo/entrada de route-map NOVO**, exclusivo da export policy DESSA sessão, que só faz
+`if-match`/`match` na prefix-list já existente — mesmo princípio do fix de "parar de anunciar"
+(mexer só no objeto escopado à sessão, nunca no objeto compartilhado).
+
+### `clientes/bgp_matcher.py::listar_prefix_lists(prefix_lists, policies, policy_nome)`
+
+Lista **todas** as prefix-lists nomeadas conhecidas no snapshot do equipamento inteiro — não só as
+já usadas por essa sessão — com uma amostra de até 3 prefixos de cada, pra UI mostrar algo
+reconhecível sem decorar nome de lista. Marca `ja_anunciando: True` nas que essa sessão já anuncia
+(via algum termo `accept` existente), pra UI não oferecer redundante. Exclui prefix-lists sintéticas
+(nome com `#` — route-filter/regra embutida direto num term/chain, Mikrotik/Juniper) e a chave
+interna `__networks__` (união de `network` statements pra simulação, Huawei/Cisco — não é um objeto
+real referenciável).
+
+### `clientes/bgp_actions.py::comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, prefixo_novo=None)`
+
+`lista_escolhida` é uma das `candidatas` de `listar_prefix_lists`. `prefixo_novo` só é usado pelo
+Mikrotik (ver linha própria abaixo); os outros fabricantes o ignoram.
 
 | Fabricante | Comando |
 |---|---|
-| Huawei | `ip ip-prefix {lista} index {próximo múltiplo de 10 livre} permit {ip} {tamanho}` |
-| Cisco/Datacom | `ip prefix-list {lista} seq {próximo múltiplo de 5 livre} permit {prefixo}` |
-| Juniper | `set policy-options prefix-list {lista} {prefixo}` + `commit` — recusa (`AcaoBgpNaoSuportada`) se a "lista" escolhida for um `route-filter` sintético embutido direto no term (nome contém `#`) em vez de uma prefix-list nomeada de verdade, porque não dá pra adicionar entrada nesse tipo de objeto |
-| Mikrotik v6 | **não usa `lista_escolhida`** — Mikrotik não tem objeto de prefix-list separado (cada "prefix-list" do nosso parser é sintética, 1:1 com uma regra de filter). Insere uma regra `accept` nova direto na chain de export da sessão (`sessao.policy_out`), com `place-before=[find chain=... action=discard]` pra garantir que fica ANTES do catch-all final — senão nunca seria alcançada |
+| Huawei | `route-policy NOME permit node N` + `if-match ip-prefix {lista}` + `commit` — `N` = próximo node livre (múltiplo de 10) **antes** de qualquer node catch-all existente (sem `if-match`, geralmente o `deny node 2000` final) |
+| Cisco/Datacom | `route-map NOME permit N` + `match ip[v6] address prefix-list {lista}` — `N` = próximo seq livre (múltiplo de 10) antes de um eventual catch-all explícito; route-maps Cisco costumam ter deny implícito no final, então normalmente não há restrição |
+| Juniper | `set policy-options policy-statement NOME term T from prefix-list {lista}` + `then accept` + `insert ... term T before term CATCHALL` (se existir um term catch-all `then reject` sem `from`) + `commit` — Junos avalia terms pela ORDEM DE DEFINIÇÃO no arquivo, não pelo nome/número, então um `set` novo entraria no fim por padrão (depois do catch-all, nunca alcançado); o `insert` garante a posição correta |
+| Mikrotik v6 | **usa `prefixo_novo`, não `lista_escolhida`** — Mikrotik não tem objeto de prefix-list separado (cada "prefix-list" do nosso parser é sintética, 1:1 com uma regra de filter). Insere uma regra `accept` nova direto na chain de export da sessão, com `place-before=[find chain=... action=discard]` pra garantir que fica ANTES do catch-all final |
 | Mikrotik v7 | `AcaoBgpNaoSuportada` — mesma razão do community v7 |
 
-"Próximo índice/seq livre" = maior `index`/`seq` já usado nas entradas daquela lista + o incremento
-padrão do fabricante (10 Huawei, 5 Cisco) — não tenta preencher buracos. Huawei precisou ganhar
-`index` nas entradas de `ip ip-prefix` em `backup_parser.py::parse_huawei` (mesmo campo que o Cisco
-já tinha como `seq`).
+Recusa (`AcaoBgpNaoSuportada`) se não sobrar node/seq/term livre antes do catch-all (pede
+renumeração manual), ou se a `lista_escolhida` for sintética/interna (`#`/`__`).
 
 ### Endpoint
 
-`POST /clientes/bgp/<id>/escanear-prefixo/` — `{sessao, prefixo?}` (`prefixo` opcional desde
-2026-08-01), devolve `{ja_coberto, lista_cobertura, candidatas: [{nome, amostra}], vendor}`. Leitura
-pura sobre o snapshot já em memória, não toca em nada. `_montar_comandos` ganhou
-`tipo == 'novo_anuncio'` (`params: {sessao, lista}`).
+`POST /clientes/bgp/<id>/escanear-prefixo/` — `{sessao}`, devolve
+`{candidatas: [{nome, amostra, ja_anunciando}], vendor}`. Leitura pura sobre o snapshot já em
+memória, não toca em nada — **não pede prefixo** (redesenhado em 2026-08-01, era `{sessao, prefixo?}`
+antes). `_montar_comandos` ganhou `tipo == 'novo_anuncio'` (`params: {sessao, lista}` pros 3
+fabricantes com prefix-list nomeada, `params: {sessao, prefixo}` pro Mikrotik).
 
 ### Frontend
 
-Botão "➕ Anunciar prefixo novo" no cabeçalho de cada sessão abre um modal dedicado que já chama o
-endpoint de varredura **sem prefixo** assim que abre, listando de cara as prefix-lists candidatas
-(nome + amostra de prefixos, pra reconhecer sem decorar nome de lista) — o usuário escolhe a lista
-primeiro e só digita o prefixo novo depois, num campo ao lado dela (não precisa digitar nada só pra
-ver quais listas existem). Ao confirmar, faz uma segunda checagem (agora com o prefixo) pra avisar
-se ele já cai em alguma candidata (`ja_coberto`) antes de abrir o modal de preview/edição de sempre.
-Mikrotik é exceção: como não tem prefix-list separada, mostra direto um campo pra digitar o prefixo
-(insere regra na chain de export, sem conceito de "lista" pra escolher).
-
-UX original (adicionada em 2026-08-01, corrigida no mesmo dia): exigia digitar o prefixo antes de
-ver qualquer coisa (campo de texto + botão "Verificar"). Trocado porque forçava o operador a digitar
-um prefixo "no escuro" pra só então descobrir quais prefix-lists existiam — mais natural escolher a
-lista primeiro (contexto conhecido do upstream) e digitar o prefixo depois.
+Botão "➕ Anunciar prefixo novo" no cabeçalho de cada sessão abre um modal que já lista **todas** as
+prefix-lists do equipamento assim que abre (nome + amostra, marcando "já anunciada nesta sessão" nas
+que já estão em uso, desabilitadas pra evitar redundância) — com um campo de busca (mostrado quando
+há mais de 8 candidatas) pra filtrar por nome ou por prefixo da amostra, já que um equipamento real
+pode ter dezenas de prefix-lists cadastradas. Clicar numa candidata abre direto o modal de
+preview/edição de sempre — **nenhum prefixo é digitado** nesse fluxo, só a escolha da lista. Mikrotik
+é exceção: como não tem prefix-list separada, mostra direto um campo pra digitar o prefixo.
 
 ---
 

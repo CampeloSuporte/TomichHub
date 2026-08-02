@@ -23,7 +23,7 @@ from .bgp_actions import (
     comandos_toggle_sessao,
     executar_acao_bgp,
 )
-from .bgp_matcher import escanear_prefix_lists
+from .bgp_matcher import listar_prefix_lists
 from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,8 @@ def _montar_comandos(tipo, vendor, dados, alvo, params):
     if tipo == 'novo_anuncio':
         nome_sessao = params.get('sessao', '')
         lista = params.get('lista') or None
-        return comandos_novo_anuncio(vendor, dados, nome_sessao, alvo, lista_escolhida=lista)
+        prefixo_novo = params.get('prefixo') or None
+        return comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=lista, prefixo_novo=prefixo_novo)
     raise AcaoBgpNaoSuportada(f'Tipo de ação "{tipo}" desconhecido.')
 
 
@@ -117,13 +118,13 @@ def _montar_comandos(tipo, vendor, dados, alvo, params):
 @require_http_methods(["POST"])
 def bgp_escanear_prefixo(request, acesso_id):
     """
-    POST /clientes/bgp/<acesso_id>/escanear-prefixo/ — body {sessao, prefixo?}.
-    Leitura pura sobre o snapshot já em memória (não toca em nada): varre as
-    prefix-lists já usadas pelo export policy dessa sessão. `prefixo` é
-    opcional — sem ele, devolve só as prefix-lists candidatas (pra UI
-    mostrar de cara, antes do usuário escolher uma e digitar o prefixo);
-    com ele, confere também se aquele prefixo novo já bate em alguma delas
-    (nada a fazer) ou quais são candidatas pra adicionar uma entrada nova.
+    POST /clientes/bgp/<acesso_id>/escanear-prefixo/ — body {sessao}.
+    Leitura pura sobre o snapshot já em memória (não toca em nada): lista
+    TODAS as prefix-lists nomeadas conhecidas no equipamento (não só as já
+    usadas por essa sessão), marcando quais essa sessão já anuncia — pra
+    UI oferecer escolher uma pra anexar via um node/termo novo na export
+    policy da sessão (`comandos_novo_anuncio`), sem editar a prefix-list
+    em si.
     """
     erro = _checar_staff(request)
     if erro:
@@ -134,7 +135,6 @@ def bgp_escanear_prefixo(request, acesso_id):
         return JsonResponse({'error': 'JSON inválido'}, status=400)
 
     sessao_nome = (body.get('sessao') or '').strip()
-    prefixo = (body.get('prefixo') or '').strip()
     if not sessao_nome:
         return JsonResponse({'error': 'Informe a sessão.'}, status=400)
 
@@ -150,8 +150,8 @@ def bgp_escanear_prefixo(request, acesso_id):
     if not policy_out:
         return JsonResponse({'error': 'Esta sessão não tem export policy identificada.'}, status=422)
 
-    resultado = escanear_prefix_lists(
-        snap.dados.get('prefix_lists', {}), snap.dados.get('policies', {}), policy_out, prefixo or None
+    resultado = listar_prefix_lists(
+        snap.dados.get('prefix_lists', {}), snap.dados.get('policies', {}), policy_out
     )
     resultado['vendor'] = snap.vendor
     return JsonResponse(resultado)

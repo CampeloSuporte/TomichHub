@@ -359,26 +359,46 @@ def comandos_parar_anuncio(vendor, dados, nome_sessao, prefixo):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Anunciar prefixo novo (varredura de prefix-lists — clientes/bgp_matcher.py::escanear_prefix_lists)
+# Anunciar prefixo novo (clientes/bgp_matcher.py::listar_prefix_lists)
 # ═══════════════════════════════════════════════════════════════════════
 
-def _proximo_indice_livre(entradas, incremento, campo):
-    """Maior valor de `campo` já usado nas entradas + `incremento` — não
-    tenta preencher buracos, só continua a numeração pra frente."""
-    valores = [e.get(campo) for e in entradas if e.get(campo) is not None]
-    return (max(valores) if valores else 0) + incremento
+def _proximo_indice_antes_do_catchall(termos, campo, incremento):
+    """Calcula o próximo valor de `campo` (node/seq) livre pra inserir um
+    termo PERMIT novo no fim da lista de termos "normais" — mas garantindo
+    que fique ANTES de qualquer termo catch-all já existente (sem
+    `prefix_lists` — bate com tudo, geralmente um deny/reject final), senão
+    o termo novo nunca seria alcançado. Devolve None se não sobrar espaço
+    livre entre o último termo normal e o catch-all (precisa renumerar
+    manualmente nesse caso)."""
+    normais = [
+        t['extra'].get(campo) for t in termos
+        if t.get('prefix_lists') and t['extra'].get(campo) is not None
+    ]
+    catchall = [
+        t['extra'].get(campo) for t in termos
+        if not t.get('prefix_lists') and t['extra'].get(campo) is not None
+    ]
+    novo = (max(normais) if normais else 0) + incremento
+    if catchall and novo >= min(catchall):
+        return None
+    return novo
 
 
-def comandos_novo_anuncio(vendor, dados, nome_sessao, prefixo_novo, lista_escolhida=None):
+def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, prefixo_novo=None):
     """`lista_escolhida` é o nome de uma das `candidatas` devolvidas por
-    `escanear_prefix_lists` — ignorado no Mikrotik (não tem objeto de
-    prefix-list separado, ver abaixo)."""
+    `bgp_matcher.py::listar_prefix_lists` — uma prefix-list JÁ EXISTENTE no
+    equipamento (de outra sessão, ou cadastrada por outro motivo) que o
+    usuário quer passar a anunciar também nesta sessão. A ação NUNCA edita
+    essa prefix-list (mesmo cuidado do "parar de anunciar": é um objeto
+    compartilhável) — em vez disso cria um NODE/termo/entrada de route-map
+    NOVO, exclusivo da export policy DESSA sessão, que só faz `if-match`/
+    `match` nela. `prefixo_novo` é usado só pelo Mikrotik, que não tem
+    prefix-list nomeada separada (ver abaixo) — os outros fabricantes
+    ignoram esse parâmetro."""
     sessao = _sessao_por_nome(dados, nome_sessao)
-    try:
-        ip_novo, tam_novo = prefixo_novo.split('/')
-        tam_novo = int(tam_novo)
-    except (ValueError, AttributeError):
-        raise AcaoBgpNaoSuportada(f'Prefixo inválido: "{prefixo_novo}" (esperado formato X.X.X.X/Y).')
+    policy_nome = sessao.get('policy_out')
+    if not policy_nome:
+        raise AcaoBgpNaoSuportada('Esta sessão não tem export policy/filter identificada.')
 
     if vendor == 'mikrotik':
         if dados.get('versao_routeros', 6) != 6:
@@ -386,40 +406,94 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, prefixo_novo, lista_escolh
                 'Anunciar prefixo novo não é suportado no RouterOS 7 — sem evidência real confiável '
                 'de como inserir uma regra nova preservando a ordem no dialeto de script deste ambiente.'
             )
-        chain = sessao.get('policy_out')
-        if not chain:
-            raise AcaoBgpNaoSuportada('Esta sessão não tem export filter (policy_out) identificado.')
+        try:
+            ipaddress.ip_network(prefixo_novo, strict=False)
+        except (ValueError, TypeError):
+            raise AcaoBgpNaoSuportada(f'Prefixo inválido: "{prefixo_novo}" (esperado formato X.X.X.X/Y).')
         # Mikrotik v6 não tem prefix-list nomeada separada (cada "prefix-list"
         # no nosso parser é sintética, 1:1 com uma regra de filter) — o
         # equivalente é inserir uma regra `accept` nova na própria chain de
         # export, ANTES do discard/catch-all final (senão a regra nunca
         # seria alcançada nessa cadeia sequencial).
         return [
-            f'/routing filter add action=accept chain="{chain}" prefix="{prefixo_novo}" '
-            f'place-before=[find chain="{chain}" action=discard]'
+            f'/routing filter add action=accept chain="{policy_nome}" prefix="{prefixo_novo}" '
+            f'place-before=[find chain="{policy_nome}" action=discard]'
         ]
 
     if not lista_escolhida:
-        raise AcaoBgpNaoSuportada('Escolha uma prefix-list já cadastrada pra adicionar o prefixo.')
-    entradas = dados.get('prefix_lists', {}).get(lista_escolhida, [])
+        raise AcaoBgpNaoSuportada('Escolha uma prefix-list já existente no equipamento pra anunciar.')
+    if lista_escolhida not in dados.get('prefix_lists', {}):
+        raise AcaoBgpNaoSuportada(f'Prefix-list "{lista_escolhida}" não encontrada no snapshot.')
+    if '#' in lista_escolhida or lista_escolhida.startswith('__'):
+        raise AcaoBgpNaoSuportada(
+            f'"{lista_escolhida}" é sintética/interna (route-filter embutido ou união de `network` '
+            'statements pra simulação) — não é um objeto nomeado real que dê pra referenciar aqui.'
+        )
+    termos = dados.get('policies', {}).get(policy_nome, [])
 
     if vendor == 'huawei':
-        proximo = _proximo_indice_livre(entradas, 10, 'index')
-        return [f'ip ip-prefix {lista_escolhida} index {proximo} permit {ip_novo} {tam_novo}']
+        novo_node = _proximo_indice_antes_do_catchall(termos, 'node', 10)
+        if novo_node is None:
+            raise AcaoBgpNaoSuportada(
+                f'Não sobrou node livre antes do bloqueio final da policy "{policy_nome}" — '
+                'renumere manualmente antes de tentar esta ação.'
+            )
+        return [
+            f'route-policy {policy_nome} permit node {novo_node}',
+            f'if-match ip-prefix {lista_escolhida}',
+            'commit',
+        ]
 
     if vendor in ('cisco', 'datacom'):
-        proximo = _proximo_indice_livre(entradas, 5, 'seq')
-        cmd = 'ipv6 prefix-list' if ':' in ip_novo else 'ip prefix-list'
-        return [f'{cmd} {lista_escolhida} seq {proximo} permit {prefixo_novo}']
+        novo_seq = _proximo_indice_antes_do_catchall(termos, 'seq', 10)
+        if novo_seq is None:
+            raise AcaoBgpNaoSuportada(
+                f'Não sobrou seq livre antes do bloqueio final do route-map "{policy_nome}" — '
+                'renumere manualmente antes de tentar esta ação.'
+            )
+        entradas = dados['prefix_lists'][lista_escolhida]
+        eh_v6 = bool(entradas) and ':' in entradas[0]['prefixo']
+        cmd_match = 'match ipv6 address prefix-list' if eh_v6 else 'match ip address prefix-list'
+        return [
+            f'route-map {policy_nome} permit {novo_seq}',
+            f'{cmd_match} {lista_escolhida}',
+        ]
 
     if vendor == 'juniper':
-        if '#' in lista_escolhida:
-            raise AcaoBgpNaoSuportada(
-                f'"{lista_escolhida}" é um route-filter embutido direto no term (não uma prefix-list '
-                'nomeada) — não dá pra adicionar uma entrada nele por aqui. Escolha uma prefix-list '
-                'de verdade (policy-options prefix-list) entre as candidatas, se houver alguma.'
+        # Junos avalia terms na ORDEM DE DEFINIÇÃO no arquivo, não pelo
+        # nome/número do term (por isso o parser precisa do pré-passo
+        # `ordem_vista` — ver backup_parser.py::parse_juniper) — um `set`
+        # novo entra no FIM da policy por padrão, depois de um eventual
+        # term catch-all de reject (nunca seria alcançado). Por isso usa
+        # `insert ... before term X` pra garantir a posição — mecanismo
+        # padrão do Junos pra isso, mesmo sem evidência em backup real
+        # deste ambiente (nenhum backup mostra HISTÓRICO de edições, só o
+        # estado final).
+        #
+        # `extra.term` é STRING (ex: "10", "default-route") — nem todo
+        # term segue convenção numérica; só usamos os numéricos pra
+        # escolher um nome de term novo que não colida com nenhum existente.
+        nomes_existentes = {t['extra']['term'] for t in termos}
+        numericos = [int(t['extra']['term']) for t in termos if str(t['extra'].get('term', '')).isdigit()]
+        novo_term = (max(numericos) if numericos else 0) + 10
+        while str(novo_term) in nomes_existentes:
+            novo_term += 10
+        novo_term = str(novo_term)
+
+        termo_catchall = next(
+            (t['extra']['term'] for t in termos if not t.get('prefix_lists') and t.get('acao') == 'reject'),
+            None,
+        )
+        cmds = [
+            f'set policy-options policy-statement {policy_nome} term {novo_term} from prefix-list {lista_escolhida}',
+            f'set policy-options policy-statement {policy_nome} term {novo_term} then accept',
+        ]
+        if termo_catchall:
+            cmds.append(
+                f'insert policy-options policy-statement {policy_nome} term {novo_term} before term {termo_catchall}'
             )
-        return [f'set policy-options prefix-list {lista_escolhida} {prefixo_novo}', 'commit']
+        cmds.append('commit')
+        return cmds
 
     raise AcaoBgpNaoSuportada(f'Fabricante "{vendor}" não suportado para anunciar prefixo novo.')
 

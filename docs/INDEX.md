@@ -2,6 +2,36 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 26 — 01/08/2026: Fix — Automação BGP: "anunciar prefixo novo" redesenhado (não edita mais prefix-list)
+
+**O que foi corrigido?**
+- 🐛 **"Anunciar prefixo novo" também editava uma prefix-list compartilhável — mesma classe de bug
+  já corrigida em "parar de anunciar"**: a versão anterior adicionava uma entrada nova numa prefix-
+  list já usada pela sessão (`ip ip-prefix LISTA index N permit ...` no Huawei). Se essa lista também
+  fosse referenciada pela export policy de OUTRA sessão, o prefixo novo passaria a ser anunciado por
+  ela também — não só a sessão selecionada.
+- ✅ **Redesenhado**: agora escolhe uma prefix-list **já existente** no equipamento (de qualquer
+  sessão) sem editá-la, e cria um **node/termo/entrada de route-map NOVO**, exclusivo da export
+  policy DESSA sessão, que só faz `if-match`/`match` nela — `route-policy NOME permit node N` +
+  `if-match ip-prefix LISTA` no Huawei; `route-map NOME permit N` + `match ip address prefix-list
+  LISTA` no Cisco/Datacom; novo `term` + `insert ... before term CATCHALL` no Juniper (Junos avalia
+  terms pela ordem de definição no arquivo, não pelo nome — um `set` novo entraria depois de um
+  catch-all reject por padrão, por isso o `insert` explícito).
+- 🎨 UI: o modal agora lista **todas** as prefix-lists do equipamento assim que abre (nome + amostra),
+  com busca (útil com dezenas de listas por equipamento real) e marca as já anunciadas nessa sessão
+  como desabilitadas — nenhum prefixo é digitado nesse fluxo, só a escolha da lista. Mikrotik segue
+  exceção (digita o prefixo direto, não tem prefix-list nomeada separada).
+- ✅ Reverificado contra os 53 `BgpSnapshot` reais (todos os 4 fabricantes) — 4716 combinações
+  sessão×prefix-list testadas, nenhum erro inesperado.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Anunciar prefixo novo — anexar prefix-list existente via node/termo novo" |
+
+---
+
 ### Sessão 25 — 01/08/2026: Fix — Automação BGP: "parar de anunciar" (Huawei + Cisco/Datacom) e UX de "anunciar prefixo novo"
 
 **O que foi corrigido?**
@@ -919,6 +949,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 01/08/2026 | Fix Automação BGP: "anunciar prefixo novo" também editava prefix-list compartilhada — redesenhado pra criar node/route-map/term novo na sessão (nunca edita a lista), UI lista todas as prefix-lists do equipamento com busca, sem pedir prefixo digitado | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "parar de anunciar" no Huawei (`undo network` global) e Cisco/Datacom (edição direta de prefix-list compartilhada) — ambos corrigidos pra mexer só no node/route-map da sessão, sem tocar em objeto compartilhado; UX de "anunciar prefixo novo" agora lista as prefix-lists antes de pedir o prefixo | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: botão atualizar snapshot sob demanda, communities cadastráveis por sessão, anunciar prefixo novo via varredura de prefix-lists (4 fabricantes) | bgp_automacao.md |
 | 31/07/2026 | Automação BGP: parser estendido (Mikrotik/Huawei/Cisco-Datacom/Juniper), simulador de match único, snapshot noturno, ativar/desativar sessão + prepend + parar de anunciar via UI | bgp_automacao.md |

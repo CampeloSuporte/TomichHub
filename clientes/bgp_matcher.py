@@ -109,40 +109,38 @@ def simular_anuncios(prefix_lists, policies, policy_nome):
     return resultado
 
 
-def escanear_prefix_lists(prefix_lists, policies, policy_nome, prefixo_novo=None):
-    """Pra "anunciar prefixo novo": reúne as prefix-lists referenciadas por
-    termos `accept` de `policy_nome` (candidatas pra adicionar o prefixo
-    novo — são as únicas que, se ganhassem uma entrada nova, o fariam ser
-    anunciado sem precisar mexer na route-policy/term em si). Essa lista de
-    candidatas não depende do prefixo novo — é só "quais listas esta
-    sessão usa pra anunciar" — por isso `prefixo_novo` é opcional: sem ele
-    (tela inicial, antes do usuário escolher uma lista/digitar o prefixo),
-    devolve só as candidatas; com ele, confere também se aquele prefixo já
-    bate em alguma delas (nesse caso não precisa adicionar nada — já seria
-    anunciado automaticamente se a rota existisse).
+def listar_prefix_lists(prefix_lists, policies, policy_nome):
+    """Pra "anunciar prefixo novo": lista as prefix-lists NOMEADAS conhecidas
+    no snapshot do equipamento inteiro — não só as já usadas por essa sessão
+    — pro usuário escolher qual anexar como um NODE/termo novo na export
+    policy DESSA sessão (`bgp_actions.py::comandos_novo_anuncio`), sem
+    editar a prefix-list em si (que pode estar em uso por outras sessões/
+    policies — mesmo cuidado já aplicado em "parar de anunciar": editar o
+    objeto compartilhado vazaria o efeito pra fora desta sessão).
 
-    Retorna {"ja_coberto": bool, "lista_cobertura": str|None,
-             "candidatas": [{"nome", "amostra": [até 3 prefixos]}]}."""
-    termos = sorted(policies.get(policy_nome or '', []), key=lambda t: t.get('ordem', 0))
+    Exclui prefix-lists sintéticas — nome com "#" (Mikrotik/Juniper: um
+    route-filter/regra embutido direto num term/chain, não um objeto
+    nomeado que dê pra referenciar de outro lugar) e a chave interna
+    `__networks__` (Huawei/Cisco: união de `network` statements pra
+    simulação, não um objeto real de prefix-list — `if-match ip-prefix
+    __networks__`/`match ip address prefix-list __networks__` não existe
+    no equipamento). Marca quais já estão anexadas nessa sessão (via algum
+    termo `accept` já existente) pra UI não oferecer redundante.
 
-    candidatas_nomes = []
-    for termo in termos:
-        if termo.get('acao') != 'accept':
-            continue
-        for nome in (termo.get('prefix_lists') or []):
-            if nome not in candidatas_nomes:
-                candidatas_nomes.append(nome)
-
-    ja_coberto, lista_cobertura = False, None
-    if prefixo_novo:
-        for nome in candidatas_nomes:
-            if _prefix_list_bate(prefixo_novo, prefix_lists.get(nome, [])):
-                ja_coberto, lista_cobertura = True, nome
-                break
+    Retorna {"candidatas": [{"nome", "amostra": [até 3 prefixos], "ja_anunciando": bool}]}."""
+    ja_anunciando = set()
+    for termo in policies.get(policy_nome or '', []):
+        if termo.get('acao') == 'accept':
+            ja_anunciando.update(termo.get('prefix_lists') or [])
 
     candidatas = [
-        {'nome': nome, 'amostra': [e['prefixo'] for e in prefix_lists.get(nome, [])[:3]]}
-        for nome in candidatas_nomes
+        {
+            'nome': nome,
+            'amostra': [e['prefixo'] for e in entradas[:3]],
+            'ja_anunciando': nome in ja_anunciando,
+        }
+        for nome, entradas in sorted(prefix_lists.items())
+        if '#' not in nome and not nome.startswith('__')
     ]
 
-    return {'ja_coberto': ja_coberto, 'lista_cobertura': lista_cobertura, 'candidatas': candidatas}
+    return {'candidatas': candidatas}

@@ -54,14 +54,24 @@ endpoints novos — ver [docs/bgp_automacao.md](docs/bgp_automacao.md).
   mesmo padrão do Huawei: insere um `deny` novo dentro do route-map de export DESSA sessão (mesma
   prefix-list como match, mas escopado a esse route-map), num seq menor que o `permit` existente —
   os outros route-maps que também usam a mesma lista continuam intocados.
-- **UX de "Anunciar prefixo novo" exigia digitar o prefixo antes de ver as prefix-lists
-  disponíveis**: agora o modal já abre listando as prefix-lists candidatas da sessão (nome +
-  amostra) direto — o usuário escolhe a lista primeiro e só digita o prefixo novo depois, junto da
-  lista escolhida (Mikrotik continua digitando o prefixo direto, por não ter prefix-list separada).
-  `bgp_matcher.py::escanear_prefix_lists` e o endpoint `POST /clientes/bgp/<id>/escanear-prefixo/`
-  passaram a aceitar `prefixo` opcional pra isso.
+- **"Anunciar prefixo novo" também editava uma prefix-list compartilhável, mesma classe de bug**
+  (`clientes/bgp_actions.py::comandos_novo_anuncio`): a versão original adicionava uma entrada nova
+  numa prefix-list já usada pela sessão (`ip ip-prefix LISTA index N permit ...`) — se essa lista
+  também fosse referenciada por OUTRA sessão, o prefixo novo passaria a ser anunciado por ela também.
+  Redesenhado: agora escolhe uma prefix-list **já existente** no equipamento (sem editá-la) e cria um
+  **node/termo/entrada de route-map NOVO**, exclusivo da export policy dessa sessão, que só faz
+  `if-match`/`match` nela (`route-policy NOME permit node N` + `if-match ip-prefix LISTA` no Huawei;
+  `route-map NOME permit N` + `match ip address prefix-list LISTA` no Cisco/Datacom; novo `term` +
+  `insert ... before` no Juniper, pra garantir a posição antes de um catch-all — Junos avalia terms
+  pela ordem de definição, não pelo nome). `bgp_matcher.py::escanear_prefix_lists` virou
+  `listar_prefix_lists`: agora lista TODAS as prefix-lists do equipamento (não só as já usadas pela
+  sessão), sem pedir prefixo algum — o endpoint `POST /clientes/bgp/<id>/escanear-prefixo/` deixou de
+  aceitar `prefixo`. UI ganhou um campo de busca no modal (útil com dezenas de prefix-lists por
+  equipamento) e marca as já anunciadas nessa sessão como desabilitadas. Mikrotik é a única exceção,
+  continua digitando o prefixo direto (não tem prefix-list nomeada separada).
 
-Reverificado contra os 53 `BgpSnapshot` reais (todos os 4 fabricantes) — nenhum erro inesperado.
+Reverificado contra os 53 `BgpSnapshot` reais (todos os 4 fabricantes) — nenhum erro inesperado em
+4716 combinações sessão×prefix-list testadas pro "anunciar prefixo novo".
 
 ---
 

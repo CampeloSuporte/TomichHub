@@ -167,6 +167,9 @@
     <div class="modal">
         <h3>➕ Anunciar prefixo novo</h3>
         <div class="dica-edicao" style="margin-bottom:12px;">Sessão: <strong id="naSessaoNome"></strong></div>
+        <input type="text" id="naBusca" placeholder="Buscar prefix-list por nome ou prefixo…"
+               class="input-modal" style="width:100%; margin-bottom:12px; display:none;"
+               oninput="filtrarCandidatasNovoAnuncio()">
         <div id="naResultado"></div>
         <div class="modal-acoes">
             <button class="btn" onclick="fecharNovoAnuncio()">Fechar</button>
@@ -428,12 +431,18 @@ function fecharModal() {
     acaoPendente = null;
 }
 
-// ── Anunciar prefixo novo (varredura de prefix-lists) ──
+// ── Anunciar prefixo novo (escolher uma prefix-list já existente pra
+// anexar via um node/termo NOVO na export policy desta sessão — nunca
+// edita a prefix-list em si, que pode estar em uso por outras sessões) ──
 let naSessaoAtual = null;
+let naCandidatas = [];   // [{nome, amostra, ja_anunciando}] — cache pro filtro client-side
 
 function abrirNovoAnuncio(nomeSessao, tituloSessao) {
     naSessaoAtual = nomeSessao;
+    naCandidatas = [];
     document.getElementById('naSessaoNome').textContent = tituloSessao;
+    document.getElementById('naBusca').style.display = 'none';
+    document.getElementById('naBusca').value = '';
     document.getElementById('naResultado').innerHTML = '<div class="vazio">Carregando prefix-lists…</div>';
     document.getElementById('novoAnuncioOverlay').classList.add('aberto');
     carregarCandidatasNovoAnuncio();
@@ -444,9 +453,8 @@ function fecharNovoAnuncio() {
     naSessaoAtual = null;
 }
 
-// Lista as prefix-lists candidatas da sessão de cara (sem exigir digitar
-// um prefixo antes) — o usuário escolhe a lista primeiro e só digita o
-// prefixo novo depois, junto da lista escolhida.
+// Lista TODAS as prefix-lists nomeadas do equipamento de cara — nada de
+// digitar um prefixo pra "descobrir" quais existem.
 async function carregarCandidatasNovoAnuncio() {
     const resultadoEl = document.getElementById('naResultado');
     try {
@@ -472,62 +480,56 @@ async function carregarCandidatasNovoAnuncio() {
             return;
         }
 
-        if (!data.candidatas || !data.candidatas.length) {
-            resultadoEl.innerHTML = '<div class="vazio">Nenhuma prefix-list candidata encontrada no export desta sessão — não dá pra anunciar automaticamente por aqui.</div>';
+        naCandidatas = data.candidatas || [];
+        if (!naCandidatas.length) {
+            resultadoEl.innerHTML = '<div class="vazio">Nenhuma prefix-list encontrada neste equipamento.</div>';
             return;
         }
-
-        resultadoEl.innerHTML =
-            '<div class="dica-edicao" style="margin-bottom:8px;">Escolha a prefix-list e informe o prefixo novo:</div>' +
-            data.candidatas.map((c, i) => `
-                <div class="candidata-item">
-                    <div>${escapeHtml(c.nome)}
-                        <span class="amostra">${c.amostra && c.amostra.length ? '(ex: ' + c.amostra.map(escapeHtml).join(', ') + ')' : '(vazia)'}</span>
-                    </div>
-                    <div class="linha-add">
-                        <input type="text" id="na-prefixo-${i}" placeholder="X.X.X.X/Y" class="input-modal">
-                        <button class="btn" onclick="confirmarNovoAnuncioLista(${i}, '${escapeHtml(c.nome)}')">Adicionar</button>
-                    </div>
-                </div>
-            `).join('');
+        document.getElementById('naBusca').style.display = naCandidatas.length > 8 ? 'block' : 'none';
+        renderizarCandidatasNovoAnuncio(naCandidatas);
     } catch (e) {
         resultadoEl.innerHTML = `<div class="vazio">Erro: ${e}</div>`;
     }
 }
 
+function filtrarCandidatasNovoAnuncio() {
+    const termo = document.getElementById('naBusca').value.trim().toLowerCase();
+    if (!termo) { renderizarCandidatasNovoAnuncio(naCandidatas); return; }
+    const filtradas = naCandidatas.filter(c =>
+        c.nome.toLowerCase().includes(termo) ||
+        (c.amostra || []).some(p => p.toLowerCase().includes(termo))
+    );
+    renderizarCandidatasNovoAnuncio(filtradas);
+}
+
+function renderizarCandidatasNovoAnuncio(candidatas) {
+    const resultadoEl = document.getElementById('naResultado');
+    if (!candidatas.length) {
+        resultadoEl.innerHTML = '<div class="vazio">Nenhuma prefix-list encontrada pra essa busca.</div>';
+        return;
+    }
+    resultadoEl.innerHTML =
+        '<div class="dica-edicao" style="margin-bottom:8px;">Escolha a prefix-list já existente pra anunciar nesta sessão (cria um node/termo novo, sem mexer na lista em si):</div>' +
+        candidatas.map(c => `
+            <button class="candidata-btn" ${c.ja_anunciando ? 'disabled style="opacity:.4;cursor:default;"' : `onclick="pedirAcaoNovoAnuncio('${escapeHtml(c.nome)}')"`}>
+                ${escapeHtml(c.nome)}${c.ja_anunciando ? ' <span class="amostra">(já anunciada nesta sessão)</span>' : ''}
+                <span class="amostra">${c.amostra && c.amostra.length ? '(ex: ' + c.amostra.map(escapeHtml).join(', ') + ')' : '(vazia)'}</span>
+            </button>
+        `).join('');
+}
+
 function confirmarNovoAnuncioMikrotik() {
     const prefixo = document.getElementById('naPrefixoMikrotik').value.trim();
     if (!prefixo) { alert('Informe o prefixo.'); return; }
-    pedirAcaoNovoAnuncio(prefixo, null);
-}
-
-async function confirmarNovoAnuncioLista(i, nomeLista) {
-    const prefixo = document.getElementById(`na-prefixo-${i}`).value.trim();
-    if (!prefixo) { alert('Informe o prefixo.'); return; }
-
-    // Checagem de segurança: se o prefixo já bate em alguma candidata,
-    // não precisa adicionar entrada nenhuma — já seria anunciado.
-    try {
-        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/escanear-prefixo/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
-            body: JSON.stringify({ sessao: naSessaoAtual, prefixo }),
-        });
-        const data = await r.json();
-        if (r.ok && data.ja_coberto) {
-            alert(`Já cai na regra de "${data.lista_cobertura}" — nenhuma ação necessária, seria anunciado automaticamente se a rota existisse na tabela.`);
-            return;
-        }
-    } catch (e) { /* se a checagem falhar, segue e deixa o preview normal acusar erro */ }
-
-    pedirAcaoNovoAnuncio(prefixo, nomeLista);
-}
-
-function pedirAcaoNovoAnuncio(prefixo, lista) {
     const sessao = naSessaoAtual;
     fecharNovoAnuncio();
-    const tituloLista = lista ? ` na lista ${lista}` : '';
-    pedirAcao('novo_anuncio', prefixo, { sessao, lista }, `Anunciar ${prefixo}${tituloLista}`);
+    pedirAcao('novo_anuncio', prefixo, { sessao, prefixo }, `Anunciar ${prefixo}`);
+}
+
+function pedirAcaoNovoAnuncio(lista) {
+    const sessao = naSessaoAtual;
+    fecharNovoAnuncio();
+    pedirAcao('novo_anuncio', lista, { sessao, lista }, `Anunciar via prefix-list "${lista}"`);
 }
 
 function confirmarAcao() {
