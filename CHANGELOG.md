@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-01 (Fix: Automação BGP — painel não refletia ação recém-executada)
+
+### Corrigido
+
+- **Painel continuava mostrando um prefixo como anunciado depois de rodar "Parar de anunciar" nele**
+  (reportado com screenshot real: `179.0.110.0/24` continuava na tabela mesmo depois da ação real ter
+  sido executada com sucesso no equipamento). Causa: `BgpSnapshot.dados` só é reescrito pela rotina
+  noturna ou pelo botão "Atualizar agora" (que relê o ÚLTIMO BACKUP salvo — que não muda só porque
+  uma ação foi executada, precisa de um backup novo do equipamento). O painel ficava mostrando o
+  estado de ANTES da ação até o próximo backup real.
+- Adicionado `clientes/bgp_actions.py::aplicar_efeito_localmente(vendor, dados, tipo, nome_sessao,
+  alvo, params)`: depois de qualquer ação real (`preview=false`) bem-sucedida, atualiza o mesmo dict
+  `dados` (sessão habilitada/desabilitada, prepend do termo responsável, termo vira `reject` no
+  "parar de anunciar", termo novo inserido no "anunciar prefixo novo") e recalcula
+  `dados['anuncios'][sessao]` via `simular_anuncios` — grava de volta no `BgpSnapshot` antes de
+  responder. É uma aproximação otimista (assume que o comando fez o que a mesma lógica que o gerou
+  previu); o próximo backup real sempre corrige qualquer divergência. Nunca derruba a resposta de
+  sucesso já obtida do equipamento se a atualização local falhar.
+- Bug pego durante a implementação (não em produção): a primeira versão do "anunciar prefixo novo"
+  local inseria o termo novo com `ordem = max(ordem existente) + 1` — quebrava quando o node/termo
+  catch-all final já tinha a maior `ordem` (ex: Huawei `deny node 2000` tem `ordem=2000`), colocando
+  o termo novo DEPOIS do catch-all na simulação e fazendo o prefixo nunca aparecer como anunciado.
+  Corrigido pra sempre inserir com `ordem` menor que a de qualquer termo catch-all existente.
+
+Validado com 9802 combinações (toggle/prepend/parar/novo_anuncio) contra os 53 `BgpSnapshot` reais —
+zero erros inesperados. Testado também o fluxo HTTP completo (view real, execução do equipamento
+mockada) confirmando que o prefixo some da tabela de anunciados no mesmo request.
+
+---
+
 ## [Não publicado] — 2026-08-01 (Feat: Automação BGP — atualizar sob demanda, communities, anunciar prefixo novo)
 
 ### Adicionado

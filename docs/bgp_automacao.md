@@ -445,6 +445,56 @@ preview/edição de sempre — **nenhum prefixo é digitado** nesse fluxo, só a
 
 ---
 
+## Atualização otimista do painel após uma ação real (adicionado em 2026-08-01)
+
+Problema: `BgpSnapshot.dados` só é reescrito pela rotina noturna ou pelo botão "Atualizar agora" —
+e "Atualizar agora" relê o **último backup já salvo em disco**, que não muda só porque uma ação foi
+executada (precisa de um backup NOVO do equipamento, que só acontece na rotina de backup normal).
+Sem isso, o painel continuava mostrando um prefixo como anunciado mesmo depois do operador já ter
+executado "Parar de anunciar" nele com sucesso — reportado com um caso real
+(`179.0.110.0/24` continuava na tabela mesmo após a ação real).
+
+### `clientes/bgp_actions.py::aplicar_efeito_localmente(vendor, dados, tipo, nome_sessao, alvo, params)`
+
+Chamada por `bgp_views.py::bgp_executar_acao` logo depois de `executar_acao_bgp` devolver
+`status == 'sucesso'` — atualiza o MESMO dict `dados` que é salvo em `BgpSnapshot.dados`:
+
+| `tipo` | Efeito aplicado |
+|---|---|
+| `ativar_sessao`/`desativar_sessao` | `sessao['habilitada'] = True/False` |
+| `prepend` | `termo['prepend'] += delta` no termo responsável pelo match (`_termo_e_entrada_responsaveis`) |
+| `parar_anuncio` | `termo['acao'] = 'reject'` no termo responsável — reproduz o resultado observável pro prefixo alvo independente do mecanismo real usado por cada fabricante (node vira deny no Huawei, deny novo inserido no Cisco, term desativado no Juniper, regra/network desabilitada no Mikrotik) |
+| `novo_anuncio` | Insere um termo novo (`acao: accept`, referenciando a `lista`/prefixo sintético) na policy da sessão |
+| `community` | Nada — communities não afetam o que é simulado como anunciado |
+
+No final, se a sessão tem `policy_out`, recalcula `dados['anuncios'][sessao]` via
+`simular_anuncios` — é isso que a tabela "Prefixo anunciado" da UI usa pra renderizar.
+
+**É uma aproximação otimista**, não uma leitura real do equipamento: assume que o comando aplicado
+fez exatamente o que a mesma lógica usada pra gerá-lo (`comandos_*`) previu. Qualquer divergência
+real é corrigida no próximo backup de verdade (rotina noturna ou "Atualizar agora" após um backup
+novo) — isso já era uma limitação inerente do snapshot (sempre foi cópia ponto-no-tempo do backup,
+nunca a config viva do equipamento), só ficou mais visível sem essa atualização otimista. Nunca
+levanta exceção — falha em aplicar localmente é logada mas não derruba a resposta de sucesso já
+obtida do equipamento (a ação real já aconteceu; só a exibição ficaria desatualizada até o próximo
+backup, o que já era o comportamento anterior a esta mudança).
+
+### Bug pego durante a implementação (`novo_anuncio`, corrigido antes de ir pra produção)
+
+A primeira versão inseria o termo novo com `ordem = max(ordem existente) + 1` — quebra quando o
+termo/node catch-all final já tem a maior `ordem` (ex: Huawei `route-policy NOME deny node 2000` tem
+`ordem=2000`, a mesma semântica usada por `simular_anuncios` pra ordenar a avaliação), colocando o
+termo novo DEPOIS do catch-all e fazendo o prefixo nunca aparecer como anunciado na simulação — o
+mesmo tipo de bug de posicionamento já visto e corrigido em `comandos_novo_anuncio`/Juniper. Corrigido
+pra sempre inserir com `ordem` menor que a de qualquer termo catch-all existente na policy.
+
+Validado com 9802 combinações (toggle/prepend/parar/novo_anuncio, incluindo `novo_anuncio` do
+Mikrotik) contra os 53 `BgpSnapshot` reais — zero erros inesperados. Testado também o fluxo HTTP
+completo (view real, `executar_acao_bgp` mockada pra não tocar equipamento) confirmando que o
+prefixo some da tabela de anunciados no mesmo request em que a ação é executada.
+
+---
+
 **Validado em 2026-08-01** contra os 53 `BgpSnapshot` reais de produção existentes (todos os 4
 fabricantes), rodando os 4 endpoints novos (`atualizar`, `community` preview, `escanear-prefixo`,
 `novo_anuncio` preview) em cada um — sem nenhum erro inesperado. Nenhuma ação real (`preview=false`)

@@ -499,6 +499,98 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Atualização otimista do snapshot local (depois de uma ação real bem-
+# sucedida no equipamento)
+# ═══════════════════════════════════════════════════════════════════════
+
+def aplicar_efeito_localmente(vendor, dados, tipo, nome_sessao, alvo, params):
+    """Depois de uma ação real (`preview=false`) bem-sucedida no
+    equipamento, atualiza `dados` (o MESMO dict que é salvo como
+    `BgpSnapshot.dados`) pra refletir o efeito esperado — sem esperar o
+    próximo backup real do equipamento (rotina noturna ou "Atualizar
+    agora"). Evita o painel continuar mostrando um prefixo como anunciado
+    depois que o operador já rodou "Parar de anunciar" nele, por exemplo.
+
+    É uma aproximação OTIMISTA: assume que o comando fez exatamente o que
+    a mesma lógica usada pra montá-lo (`comandos_*`/`_termo_e_entrada_
+    responsaveis`) previu. Se o comando real teve algum efeito colateral
+    inesperado no equipamento, só o próximo backup de verdade corrige —
+    mas isso já era verdade antes desta função existir (o snapshot sempre
+    foi uma cópia ponto-no-tempo do backup, nunca a config viva).
+
+    Nunca levanta exceção — falha em aplicar localmente não deve impedir
+    a ação real (já executada) de ser reportada como sucesso ao usuário."""
+    try:
+        sessao = _sessao_por_nome(dados, nome_sessao)
+    except AcaoBgpNaoSuportada:
+        return
+    policy_nome = sessao.get('policy_out')
+
+    if tipo == 'ativar_sessao':
+        sessao['habilitada'] = True
+    elif tipo == 'desativar_sessao':
+        sessao['habilitada'] = False
+    elif tipo == 'prepend':
+        termo, entrada = _termo_e_entrada_responsaveis(dados, policy_nome, alvo)
+        if termo and entrada:
+            termo['prepend'] = max(0, int(termo.get('prepend', 0)) + int(params.get('delta', 1)))
+    elif tipo == 'parar_anuncio':
+        # Mecanismo real varia por fabricante (node vira deny no Huawei,
+        # deny novo inserido acima no Cisco, term desativado no Juniper,
+        # regra/network desabilitada no Mikrotik) — mas o efeito
+        # observável pro prefixo alvo é sempre o mesmo: o termo que
+        # decidia o match dele deixa de permitir. Simular isso como
+        # "esse termo agora rejeita" reproduz o resultado corretamente
+        # pra fins de exibição, sem precisar replicar cada mecanismo.
+        termo, entrada = _termo_e_entrada_responsaveis(dados, policy_nome, alvo)
+        if termo and entrada:
+            termo['acao'] = 'reject'
+    elif tipo == 'novo_anuncio':
+        lista = params.get('lista')
+        prefixo_novo = params.get('prefixo')
+        if policy_nome and (lista or prefixo_novo):
+            termos = dados.setdefault('policies', {}).setdefault(policy_nome, [])
+            # `ordem` decide a prioridade na simulação (`simular_anuncios`
+            # ordena por ela) — semântica varia por fabricante (node number
+            # no Huawei, posição no arquivo no Juniper/Mikrotik), mas em
+            # TODOS os casos um catch-all (termo sem prefix_lists — bate
+            # com tudo) tem que continuar sendo avaliado por ÚLTIMO. Só
+            # apendar com `max(ordem)+1` colocaria o termo novo DEPOIS de
+            # um catch-all que já tenha a maior ordem (bug real: testado
+            # com backup do Huawei, node 2000 de deny final tem ordem=2000,
+            # apendar com +1 o colocava depois dele e o novo anúncio nunca
+            # era alcançado na simulação).
+            ordens_catchall = [t.get('ordem', 0) for t in termos if not t.get('prefix_lists')]
+            if ordens_catchall:
+                nova_ordem = min(ordens_catchall) - 0.5
+            else:
+                ordens_normais = [t.get('ordem', 0) for t in termos]
+                nova_ordem = (max(ordens_normais) if ordens_normais else -1) + 1
+
+            if lista and lista in dados.get('prefix_lists', {}):
+                nome_lista = lista
+            else:
+                # Mikrotik: sem prefix-list nomeada — registra uma entrada
+                # sintética só pra simulação local refletir o prefixo novo.
+                nome_lista = f'__local_novo_anuncio__{nome_sessao}__{prefixo_novo}'
+                dados.setdefault('prefix_lists', {})[nome_lista] = [
+                    {'acao': 'permit', 'prefixo': prefixo_novo, 'len_min': None, 'len_max': None}
+                ]
+            termos.append({
+                'ordem': nova_ordem, 'prefix_lists': [nome_lista], 'acao': 'accept',
+                'prepend': 0, 'extra': {},
+            })
+    # 'community' não muda o que é simulado como anunciado (é um atributo
+    # extra aplicado ao anúncio, não afeta permit/deny) — nada a fazer.
+
+    if policy_nome:
+        from .bgp_matcher import simular_anuncios
+        dados.setdefault('anuncios', {})[nome_sessao] = simular_anuncios(
+            dados.get('prefix_lists', {}), dados.get('policies', {}), policy_nome
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Execução real (conecta e envia)
 # ═══════════════════════════════════════════════════════════════════════
 

@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 
 from .bgp_actions import (
     AcaoBgpNaoSuportada,
+    aplicar_efeito_localmente,
     comandos_aplicar_community,
     comandos_novo_anuncio,
     comandos_parar_anuncio,
@@ -276,6 +277,17 @@ def bgp_executar_acao(request, acesso_id):
             return JsonResponse({'error': str(e)}, status=422)
 
     output, status = executar_acao_bgp(acesso, snap.vendor, comandos)
+    if status == 'sucesso':
+        # Atualiza o snapshot local pro painel já refletir o efeito da
+        # ação (ex: prefixo some da lista de anunciados depois de "Parar
+        # de anunciar") sem esperar o próximo backup/rotina noturna — ver
+        # docstring de aplicar_efeito_localmente. Nunca deve derrubar a
+        # resposta de sucesso já obtida do equipamento.
+        try:
+            aplicar_efeito_localmente(snap.vendor, snap.dados, tipo, params.get('sessao', ''), alvo, params)
+            snap.save(update_fields=['dados'])
+        except Exception as e:
+            logger.warning(f'aplicar_efeito_localmente falhou pra acesso {acesso_id} (não crítico): {e}')
     AcaoBgp.objects.create(
         acesso=acesso, usuario=request.user, tipo=tipo, alvo=alvo,
         comandos='\n'.join(comandos), output=output, status=status,

@@ -2,6 +2,34 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 27 — 01/08/2026: Fix — Automação BGP: painel não atualizava depois de uma ação real
+
+**O que foi corrigido?**
+- 🐛 **Painel continuava mostrando um prefixo como anunciado depois de "Parar de anunciar" nele**,
+  mesmo com a ação real já executada com sucesso no equipamento (reportado com caso real:
+  `179.0.110.0/24` continuava na tabela). Causa: `BgpSnapshot.dados` só é reescrito pela rotina
+  noturna ou pelo botão "Atualizar agora" (que relê o último backup salvo — que não muda só porque
+  uma ação foi executada, precisa de um backup NOVO do equipamento).
+- ✅ Novo `clientes/bgp_actions.py::aplicar_efeito_localmente`: depois de qualquer ação real
+  bem-sucedida, atualiza o snapshot em memória (sessão habilitada/desabilitada, prepend, termo vira
+  `reject` no "parar de anunciar", termo novo no "anunciar prefixo novo") e recalcula os anúncios
+  simulados antes de gravar — o painel já reflete a mudança na mesma hora, sem esperar o próximo
+  backup real (que continua sendo a fonte de verdade definitiva, corrigindo qualquer divergência).
+- 🐛 Bug pego durante a implementação (não chegou a produção): a versão inicial inseria o termo novo
+  do "anunciar prefixo novo" com `ordem` sempre maior que a de tudo mais — quebrava quando o
+  catch-all final da policy já tinha a maior `ordem` (ex: Huawei `deny node 2000`), fazendo o
+  prefixo nunca aparecer como anunciado na simulação. Corrigido pra sempre inserir antes do catch-all.
+- ✅ Validado com 9802 combinações contra os 53 `BgpSnapshot` reais — zero erros. Fluxo HTTP completo
+  testado com a execução no equipamento mockada (nunca uma ação real durante a validação).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Atualização otimista do painel após uma ação real" |
+
+---
+
 ### Sessão 26 — 01/08/2026: Fix — Automação BGP: "anunciar prefixo novo" redesenhado (não edita mais prefix-list)
 
 **O que foi corrigido?**
@@ -949,6 +977,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 01/08/2026 | Fix Automação BGP: painel não refletia uma ação recém-executada (prefixo continuava aparecendo como anunciado depois de "Parar de anunciar") — snapshot local atualizado com o efeito esperado logo após cada ação real bem-sucedida | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "anunciar prefixo novo" também editava prefix-list compartilhada — redesenhado pra criar node/route-map/term novo na sessão (nunca edita a lista), UI lista todas as prefix-lists do equipamento com busca, sem pedir prefixo digitado | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "parar de anunciar" no Huawei (`undo network` global) e Cisco/Datacom (edição direta de prefix-list compartilhada) — ambos corrigidos pra mexer só no node/route-map da sessão, sem tocar em objeto compartilhado; UX de "anunciar prefixo novo" agora lista as prefix-lists antes de pedir o prefixo | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: botão atualizar snapshot sob demanda, communities cadastráveis por sessão, anunciar prefixo novo via varredura de prefix-lists (4 fabricantes) | bgp_automacao.md |
