@@ -118,6 +118,9 @@ class InstanciaFerramenta(models.Model):
         ('scripts', 'Scripts'),
         ('bgp', 'BGP'),
         ('testes_rede', 'Testes de Rede'),
+        ('lg', 'Pesquisa LG'),
+        ('geoip', 'Geolocalização IP'),
+        ('firmware', 'Firmware'),
     ]
 
     instancia = models.ForeignKey(Instancia, on_delete=models.CASCADE, related_name='ferramentas')

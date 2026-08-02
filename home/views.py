@@ -8,7 +8,7 @@ from clientes.models import (
     AgentKnowledgeDoc, AgentSessao, AgentLog,
 )
 from django.contrib.auth.models import User
-from clientes.decorators import admin_required, superuser_required
+from clientes.decorators import admin_required, superuser_required, ferramenta_instancia_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -243,12 +243,14 @@ def configuracoes_sistema(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('lg')
 def lg_pesquisa(request):
     prefixo = request.GET.get('prefixo', '')
     return render(request, 'lg_pesquisa.html', {'prefixo_inicial': prefixo})
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('lg')
 def lg_asn_info(request):
     """Retorna o nome/operadora de um ASN via RIPE stat API + fallback WHOIS."""
     import requests as req_lib
@@ -318,6 +320,7 @@ def lg_asn_info(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('lg')
 def lg_pesquisa_buscar(request):
     import ipaddress
     import socket
@@ -696,7 +699,7 @@ def _geo_regiao_iso(pais, regiao):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_consulta(request):
     """Página principal da ferramenta de geolocalização de IPs/prefixos."""
     from clientes.models import ConfiguracaoSistema
@@ -716,7 +719,7 @@ def geo_consulta(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_consulta_buscar(request):
     """
     Consulta um IP/prefixo em 6 bancos de geolocalização em paralelo

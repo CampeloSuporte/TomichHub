@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 
-from clientes.decorators import admin_required
+from clientes.decorators import ferramenta_instancia_required
 from clientes.models import FirmwarePasta, FirmwareArquivo, FirmwareCompartilhamento
 
 
@@ -113,13 +113,13 @@ def _serialize_arquivo(a, request=None):
 
 # ── Views principais ──────────────────────────────────────────────────────────
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 def firmware_index(request):
     return render(request, 'firmware.html')
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 def firmware_listar(request):
     """Retorna pastas e arquivos de uma pasta (ou raiz)."""
     pasta_id = request.GET.get('pasta_id') or None
@@ -150,7 +150,7 @@ def firmware_listar(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_criar_pasta(request):
     data = json.loads(request.body)
@@ -168,7 +168,7 @@ def firmware_criar_pasta(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_upload(request):
     """Upload de arquivo (suporta grandes arquivos via streaming)."""
@@ -231,7 +231,7 @@ def firmware_upload(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_deletar_arquivo(request, arquivo_id):
     arq = get_object_or_404(FirmwareArquivo, pk=arquivo_id)
@@ -245,7 +245,7 @@ def firmware_deletar_arquivo(request, arquivo_id):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_deletar_pasta(request, pasta_id):
     pasta = get_object_or_404(FirmwarePasta, pk=pasta_id)
@@ -268,7 +268,7 @@ def firmware_deletar_pasta(request, pasta_id):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_compartilhar(request, arquivo_id):
     """Gera um link de compartilhamento com tempo definido."""
@@ -430,7 +430,7 @@ def _ftp_remover_usuario(username: str):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_revogar_link(request, comp_id):
     comp = get_object_or_404(FirmwareCompartilhamento, pk=comp_id)
@@ -627,7 +627,7 @@ def _fw_nome_do_content_disposition(cd: str) -> str:
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 @require_POST
 def firmware_upload_url(request):
     """
@@ -811,7 +811,7 @@ def _fw_download_worker(task_id: str, url: str, pasta_id, user_id: int):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 def firmware_upload_url_progresso(request, task_id):
     """Retorna o progresso de um download em andamento (polling)."""
     data = _progress_get(task_id)
@@ -821,7 +821,7 @@ def firmware_upload_url_progresso(request, task_id):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('firmware')
 def firmware_links_ativos(request, arquivo_id):
     arq   = get_object_or_404(FirmwareArquivo, pk=arquivo_id)
     comps = arq.compartilhamentos.filter(expira_em__gt=timezone.now())
