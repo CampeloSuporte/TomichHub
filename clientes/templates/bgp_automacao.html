@@ -619,6 +619,11 @@ function abrirTrafego(interfaceNome, tituloSessao) {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws/ssh/`);
+    // Output do terminal chega como frame BINÁRIO puro (sem JSON overhead —
+    // ver consumers.py::send_output). Sem isso o navegador usa o default
+    // 'blob', e o instanceof ArrayBuffer abaixo falha silenciosamente pra
+    // cada byte de saída (cai no JSON.parse de um Blob, que estoura).
+    socket.binaryType = 'arraybuffer';
     trafegoState = { terminal: term, fitAddon, socket, comandoEnviado: false };
 
     socket.onopen = () => {
@@ -633,9 +638,15 @@ function abrirTrafego(interfaceNome, tituloSessao) {
             term.write(new TextDecoder().decode(e.data));
             return;
         }
-        const data = JSON.parse(e.data);
+        let data;
+        try {
+            data = JSON.parse(e.data);
+        } catch (err) {
+            console.error('trafego: mensagem de controle não era JSON válido', err, e.data);
+            return;
+        }
         if (data.type === 'connected') {
-            try { fitAddon.fit(); } catch (e) {}
+            try { fitAddon.fit(); } catch (err) {}
             if (socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ action: 'resize', cols: term.cols, rows: term.rows }));
             }
