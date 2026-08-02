@@ -132,63 +132,63 @@
 
             <!-- Main Tabs -->
             <ul class="nav nav-tabs mb-4" id="mainTabs">
-                {% if is_admin or modulos_habilitados.acessos %}
+                {% if is_admin_puro or modulos_habilitados.acessos %}
                 <li class="nav-item">
                     <a class="nav-link active" href="#" onclick="trocarAba(event, 'acessos')">Acessos</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.backups %}
+                {% if is_admin_puro or modulos_habilitados.backups %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'backups')">Backups</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.vpn %}
+                {% if is_admin_puro or modulos_habilitados.vpn %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'vpn')">VPN</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.topologia %}
+                {% if is_admin_puro or modulos_habilitados.topologia %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'topologia')">Topologia</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.tuneis %}
+                {% if is_admin_puro or modulos_habilitados.tuneis %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'tuneis')">Tuneis SSH</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.documentos %}
+                {% if is_admin_puro or modulos_habilitados.documentos %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'documentos')">Documentos</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.rpki_irr %}
+                {% if is_admin_puro or modulos_habilitados.rpki_irr %}
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'rpki-irr')">RPKI/IRR</a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.monitoramento %}
+                {% if is_admin_puro or modulos_habilitados.monitoramento %}
                 <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'monitoramento')">
                     🖧 Monitoramento
                     </a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.documentacao %}
+                {% if is_admin_puro or modulos_habilitados.documentacao %}
                 <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'documentacao')">
                         📚 Documentação de Rede
                     </a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.hotspot %}
+                {% if is_admin_puro or modulos_habilitados.hotspot %}
                 <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'hotspot')">
                         📡 Hotspot
                     </a>
                 </li>
                 {% endif %}
-                {% if is_admin or modulos_habilitados.testes_rede %}
+                {% if is_admin_puro or modulos_habilitados.testes_rede %}
                 <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'testes-rede')">
                         🔬 Testes de Rede
@@ -198,7 +198,7 @@
             </ul>
 
         <!-- ABA ACESSOS -->
-            <div id="tab-acessos" class="tab-content-main" style="display: {% if is_admin or modulos_habilitados.acessos %}block{% else %}none{% endif %};">
+            <div id="tab-acessos" class="tab-content-main" style="display: {% if is_admin_puro or modulos_habilitados.acessos %}block{% else %}none{% endif %};">
                 <div class="d-flex justify-content-end gap-2 mb-3 align-items-center">
                     <div class="input-group input-group-sm" style="max-width:280px;">
                         <span class="input-group-text" style="background:var(--surface);border-color:var(--border);color:var(--text-muted);">
@@ -5864,7 +5864,7 @@ function getCsrfToken(){
 
 
     // ── Módulos habilitados/desabilitados por cliente (toggle admin) ─────────
-    window.IS_ADMIN_MODULOS = {{ is_admin|yesno:'true,false' }};
+    window.IS_ADMIN_MODULOS = {{ is_admin_puro|yesno:'true,false' }};
     window.MODULOS_BLOQUEADOS = [
         {% for chave, habilitado in modulos_habilitados.items %}{% if not habilitado %}'{{ chave }}',{% endif %}{% endfor %}
     ];

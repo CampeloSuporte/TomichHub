@@ -25,7 +25,6 @@ from .decorators import (
     modulo_habilitado_required,
     backoffice_required,
 )
-from usuario.models import modulos_habilitados_dict as usuario_modulos_habilitados_dict
 from django.http import HttpResponseRedirect
 import logging
 logger = logging.getLogger(__name__)
@@ -106,6 +105,11 @@ def listar_clientes(request):
     # dashboard. is_superuser continua restrito ao Administrador de fato.
     is_cliente = False
     is_admin = _perms.is_backoffice(request.user)
+    # Distinto de is_admin acima: aqui é só o Administrador de fato — usado
+    # para o bypass das abas/ferramentas, que para Consultor/Operador deve
+    # respeitar o que a instância tem liberado (InstanciaFerramenta),
+    # exatamente como para o portal do cliente final dele.
+    is_admin_puro = _perms.is_admin(request.user)
     is_superuser = request.user.is_superuser
     try:
         if not is_admin and Cliente.objects.get_by_usuario_vinculado(request.user).id == cliente.id:
@@ -134,7 +138,7 @@ def listar_clientes(request):
     )
     total_blocos_rpki_irr_invalidos_cliente = blocos_rpki_invalidos_cliente.count() + blocos_irr_invalidos_cliente.count()
 
-    modulos_habilitados = usuario_modulos_habilitados_dict(request.user)
+    modulos_habilitados = _perms.modulos_habilitados_dict_para_listagem(request.user, cliente)
 
     response = render(request, 'listar.html', {
         'cliente': cliente,
@@ -149,6 +153,7 @@ def listar_clientes(request):
         'proxies': proxies,
         'is_cliente': is_cliente,
         'is_admin': is_admin,
+        'is_admin_puro': is_admin_puro,
         'is_superuser': is_superuser,
         'modulos_habilitados': modulos_habilitados,
         'destinos_padrao': DESTINOS_PADRAO,

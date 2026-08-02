@@ -110,6 +110,75 @@ def ferramentas_habilitadas_dict_para(user):
     return {chave: False for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}
 
 
+# A aba "Documentação de Rede" (UsuarioModulo) é a mesma feature que o
+# IPAM (InstanciaFerramenta) — nomes históricos diferentes pro mesmo recurso.
+_MODULO_PARA_FERRAMENTA = {'documentacao': 'ipam'}
+
+
+def modulos_habilitados_dict_para_listagem(user, cliente):
+    """Dict {modulo_key: bool} pras abas de listar.html (painel do
+    cliente) — um único cálculo pra qualquer tipo de viewer:
+    - Administrador: tudo habilitado.
+    - Consultor/Operador: conforme as ferramentas que o Administrador
+      liberou pra própria instância (`InstanciaFerramenta`).
+    - Portal do cliente final: toggle por login (`UsuarioModulo`, default
+      ligado) capado pelas ferramentas liberadas pra instância do
+      Consultor dono do cliente — o cliente final nunca vê mais do que o
+      próprio Consultor tem liberado. Cliente sem instância (da
+      plataforma) não tem teto, comportamento igual a antes desta feature.
+    """
+    from .models import UsuarioModulo, modulos_habilitados_dict as _modulos_dict, ferramentas_habilitadas_dict as _ferramentas_dict
+
+    if is_admin(user):
+        return {chave: True for chave, _ in UsuarioModulo.MODULO_CHOICES}
+
+    if is_consultor(user) or is_operador(user):
+        ferramentas = _ferramentas_dict(get_instancia(user))
+        return {
+            chave: ferramentas.get(_MODULO_PARA_FERRAMENTA.get(chave, chave), False)
+            for chave, _ in UsuarioModulo.MODULO_CHOICES
+        }
+
+    base = _modulos_dict(user)
+    if cliente and cliente.instancia_id:
+        ferramentas = _ferramentas_dict(cliente.instancia)
+        for chave in list(base.keys()):
+            chave_ferramenta = _MODULO_PARA_FERRAMENTA.get(chave, chave)
+            if chave_ferramenta in ferramentas and not ferramentas[chave_ferramenta]:
+                base[chave] = False
+    return base
+
+
+def portal_pode_usar_ferramenta(user, ferramenta_key):
+    """Para login do portal do cliente final: toggle por login
+    (`UsuarioModulo`, default ligado) — aceita tanto a chave nativa da
+    ferramenta quanto o nome histórico usado em UsuarioModulo (ex:
+    'ipam' -> 'documentacao') — capado pelas ferramentas liberadas pra
+    instância do Consultor dono do cliente, se houver."""
+    from clientes.models import Cliente
+    from .models import UsuarioModulo, modulo_habilitado as _modulo_habilitado
+
+    chave_modulo = ferramenta_key
+    if ferramenta_key not in dict(UsuarioModulo.MODULO_CHOICES):
+        reversa = {v: k for k, v in _MODULO_PARA_FERRAMENTA.items()}
+        chave_modulo = reversa.get(ferramenta_key)
+        if chave_modulo is None:
+            return False
+
+    if not _modulo_habilitado(user, chave_modulo):
+        return False
+
+    try:
+        cliente = Cliente.objects.get_by_usuario_vinculado(user)
+    except Cliente.DoesNotExist:
+        return False
+
+    if cliente.instancia_id and not _ferramenta_habilitada(cliente.instancia, ferramenta_key):
+        return False
+
+    return True
+
+
 def pode_gerenciar_usuarios_required(view_func):
     """Admin ou Consultor — Operador não cria/edita usuários."""
     from functools import wraps
