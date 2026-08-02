@@ -512,6 +512,57 @@ prefixo some da tabela de anunciados no mesmo request em que a ação é executa
 
 ---
 
+## Ver tráfego em tempo real (Huawei, adicionado em 2026-08-01)
+
+Cada sessão BGP Huawei tenta identificar automaticamente por qual interface local o peer é
+alcançado, e — quando consegue — ganha um botão **"📶 Ver tráfego"** que abre uma janela mostrando o
+tráfego da interface ao vivo, atualizando sozinho a cada segundo.
+
+### `clientes/bgp_matcher.py::identificar_interface(dados, peer_ip)`
+
+Vendor-agnóstica (opera só sobre `dados['ips']`, já extraído pelo parser — lista de
+`{"ip": "X.X.X.X/Y", "interface": "NOME"}`): acha a interface local cuja subnet CONTÉM `peer_ip`.
+Peers eBGP diretamente conectados (a maioria em ambiente de borda) ficam na mesma subnet do lado
+local — ex: interface com `177.85.201.250/30` e peer `177.85.201.249` no mesmo /30 — então dá pra
+inferir a interface sem consultar rota/ARP ao vivo no equipamento. Devolve `None` quando não acha
+(peer iBGP multihop via loopback/IGP, IPv6 — o parser Huawei só extrai `ip address` IPv4 de
+interface hoje — ou qualquer IP fora de toda subnet local conhecida no backup): nesses casos não tem
+como inferir com segurança, e o botão simplesmente não aparece.
+
+Chamada em `clientes/tasks.py::_atualizar_snapshot_bgp_de_acesso`, só pra `vendor_parser == 'huawei'`,
+populando `sessao['interface']` no snapshot salvo. Validado contra todos os 53 `BgpSnapshot` reais via
+os backups em disco (229 sessões Huawei): 114 com interface identificada, 115 sem (a maioria peers
+iBGP via loopback ou IPv6) — zero erros inesperados, e as amostras conferidas manualmente batem com a
+config real (inclusive o exemplo usado nesta seção: `177.85.201.249` → `GigabitEthernet0/7/1.3179`,
+que tem `ip address 177.85.201.250 255.255.255.252`).
+
+### Frontend — reaproveita o WebSocket do terminal SSH (`ws/ssh/`), sem endpoint novo
+
+O botão abre um modal com um terminal embutido ([xterm.js](https://xtermjs.org/), mesmos assets
+estáticos já usados em `terminal.html`: `xterm.min.js`/`.css`, `xterm-addon-fit`,
+`xterm-addon-canvas`) que conecta na MESMA conexão WebSocket já usada pelo painel de Terminal
+normal (`ws/ssh/`, `SSHConsumer` — nenhuma mudança em `consumers.py`, nenhum endpoint HTTP novo):
+
+1. `{action: 'connect', acesso_id, independente: true, cols, rows}` — `independente: true` é
+   importante: evita entrar numa sessão SSH já compartilhada por outro operador nesse host (abre uma
+   conexão isolada só pra esse monitoramento, sem interferir em quem já estiver usando o terminal).
+2. Ao receber `{type: 'connected'}`, envia `{action: 'command', command: 'display counters rate
+   interface {interface} | refresh 1\r'}` — o mesmo mecanismo que o handler `action == 'command'`
+   do consumer já usa pra `enviar_comando()` (idêntico ao que orquestra digitação normal, só que
+   com o texto pronto em vez de tecla por tecla).
+3. Saída chega como já era esperado pelo terminal normal (frames binários = texto puro, hot path;
+   frames de texto = mensagens de controle JSON) e é escrita direto no xterm.js — como `refresh 1`
+   redesenha a tela via sequências ANSI (limpa + reposiciona cursor), é necessário um emulador de
+   terminal de verdade (não dá pra só concatenar texto) — daí reaproveitar xterm.js em vez de um
+   `<pre>` simples.
+4. Ao fechar o modal, manda Ctrl+C (`{action:'command', command:'\x03'}`) antes de fechar o socket —
+   encerra o `| refresh 1` com elegância em vez de só derrubar a conexão SSH no meio do loop.
+
+Terminal é somente-leitura (`disableStdin: true` no xterm.js) — não dá pra digitar nele, só observar.
+Não gera registro de auditoria `AcaoBgp` (é leitura pura, mesmo padrão do "Atualizar agora").
+
+---
+
 **Validado em 2026-08-01** contra os 53 `BgpSnapshot` reais de produção existentes (todos os 4
 fabricantes), rodando os 4 endpoints novos (`atualizar`, `community` preview, `escanear-prefixo`,
 `novo_anuncio` preview) em cada um — sem nenhum erro inesperado. Nenhuma ação real (`preview=false`)

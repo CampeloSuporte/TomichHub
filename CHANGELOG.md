@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-01 (Feat: Automação BGP — ver tráfego em tempo real, Huawei)
+
+### Adicionado
+
+- **Identificação automática da interface de cada sessão BGP** (`clientes/bgp_matcher.py::
+  identificar_interface`): acha a interface local cuja subnet contém o IP do peer (peers eBGP
+  diretamente conectados ficam na mesma subnet do lado local) — vendor-agnóstica, mas só chamada
+  hoje pra Huawei (`clientes/tasks.py::_atualizar_snapshot_bgp_de_acesso`), populando
+  `sessao['interface']` no snapshot. Validado contra os 53 `BgpSnapshot` reais (229 sessões Huawei):
+  114 identificadas, 115 sem match (peers iBGP via loopback/IGP ou IPv6, corretamente não
+  adivinhados) — zero erros.
+- **Botão "📶 Ver tráfego"** por sessão (quando a interface foi identificada): abre um modal com
+  terminal embutido (xterm.js, mesmos assets já usados em `terminal.html`) conectado ao MESMO
+  WebSocket do terminal SSH normal (`ws/ssh/`) — sem endpoint HTTP novo, sem mudança em
+  `consumers.py`. Conecta com `independente: true` (não entra numa sessão compartilhada de outro
+  operador) e roda `display counters rate interface {interface} | refresh 1`, que atualiza sozinho
+  a cada segundo. Ctrl+C automático ao fechar o modal, antes de desconectar. Terminal
+  somente-leitura, sem registro de auditoria (leitura pura, mesmo padrão do "Atualizar agora").
+
+---
+
 ## [Não publicado] — 2026-08-01 (Fix: Automação BGP — modal de "anunciar prefixo novo" sem scroll)
 
 ### Corrigido

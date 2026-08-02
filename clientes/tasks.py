@@ -2032,7 +2032,7 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
     'erro_parser', 'sem_bgp', 'erro_simulacao', 'ok'.
     """
     from .backup_parser import parse_backup
-    from .bgp_matcher import simular_anuncios
+    from .bgp_matcher import identificar_interface, simular_anuncios
     from .models import BgpSnapshot
 
     MEDIA_ROOT = getattr(settings, 'MEDIA_ROOT', '/opt/crm/media')
@@ -2103,6 +2103,11 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
                 anuncios[sessao['nome']] = simular_anuncios(
                     dados.get('prefix_lists', {}), dados.get('policies', {}), policy_out
                 )
+            if vendor_parser == 'huawei':
+                # Interface local do peer (pra botão "ver tráfego em tempo
+                # real") — só Huawei por enquanto; peer multihop/via
+                # loopback devolve None (sem interface identificável).
+                sessao['interface'] = identificar_interface(dados, sessao.get('peer_ip', ''))
         dados['anuncios'] = anuncios
 
         BgpSnapshot.objects.update_or_create(

@@ -2,6 +2,27 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 29 — 01/08/2026: Automação BGP — Ver tráfego em tempo real (Huawei)
+
+**O que foi implementado?**
+- ✅ **Identificação automática da interface de cada sessão BGP** (Huawei): acha a interface local
+  cuja subnet contém o IP do peer (peers eBGP diretamente conectados ficam na mesma subnet do lado
+  local) — sem precisar consultar rota/ARP ao vivo. Validado contra os 53 `BgpSnapshot` reais (229
+  sessões Huawei): 114 identificadas, 115 corretamente sem match (peers iBGP via loopback/IGP, IPv6).
+- ✅ **Botão "📶 Ver tráfego"** por sessão: abre um terminal embutido (xterm.js) conectado ao MESMO
+  WebSocket do terminal SSH normal — sem endpoint novo, sem mudar `consumers.py`. Roda `display
+  counters rate interface {interface} | refresh 1`, que atualiza sozinho a cada segundo; Ctrl+C
+  automático ao fechar. Conecta isolado (`independente: true`), não interfere em sessão
+  compartilhada de outro operador no mesmo host.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Ver tráfego em tempo real (Huawei)" |
+
+---
+
 ### Sessão 28 — 01/08/2026: Fix — Automação BGP: "Atualizar agora" revertia a atualização otimista
 
 **O que foi corrigido?**
@@ -1002,6 +1023,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 01/08/2026 | Automação BGP: identificação automática da interface de cada sessão (Huawei) + botão "Ver tráfego em tempo real" (terminal embutido, reaproveita o WS do terminal SSH) | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: modal "Anunciar prefixo novo" não rolava com lista grande de prefix-lists (esticava pra fora da tela) — modal ganhou scroll, campo de busca fica fixo no topo | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "Atualizar agora" revertia a atualização otimista de uma ação real (reprocessava o mesmo backup antigo) — agora detecta quando não há backup novo e preserva o estado atual | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: painel não refletia uma ação recém-executada (prefixo continuava aparecendo como anunciado depois de "Parar de anunciar") — snapshot local atualizado com o efeito esperado logo após cada ação real bem-sucedida | bgp_automacao.md |

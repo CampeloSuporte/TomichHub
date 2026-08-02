@@ -144,3 +144,29 @@ def listar_prefix_lists(prefix_lists, policies, policy_nome):
     ]
 
     return {'candidatas': candidatas}
+
+
+def identificar_interface(dados, peer_ip):
+    """Acha a interface LOCAL cuja subnet contém `peer_ip`, usando
+    `dados['ips']` (já extraído pelo parser — lista de
+    `{"ip": "X.X.X.X/Y", "interface": "NOME"}`). Peers eBGP diretamente
+    conectados (a grande maioria em ambiente de borda/upstream) ficam na
+    MESMA subnet do lado local — ex: interface com `177.85.201.250/30` e
+    peer `177.85.201.249` — então dá pra inferir por qual interface aquele
+    peer é alcançado sem precisar consultar rota/ARP ao vivo no
+    equipamento. Devolve o nome da interface, ou `None` se não achar
+    (peer multihop/via loopback, ou IP fora de qualquer subnet local
+    conhecida no backup — nesses casos não tem como inferir com
+    segurança, melhor não adivinhar)."""
+    try:
+        peer = ipaddress.ip_address(peer_ip)
+    except ValueError:
+        return None
+    for entrada in dados.get('ips', []):
+        try:
+            rede = ipaddress.ip_network(entrada['ip'], strict=False)
+        except (ValueError, KeyError):
+            continue
+        if peer in rede:
+            return entrada.get('interface')
+    return None

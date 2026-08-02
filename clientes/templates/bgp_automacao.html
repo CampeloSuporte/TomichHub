@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Automação BGP — {{ acesso.tipo|default:acesso.host }}</title>
+<link rel="stylesheet" href="/static/css/xterm.min.css" />
 <style>
     * { box-sizing: border-box; }
     body {
@@ -133,6 +134,10 @@
     .modal .aviso { color: #ff8080; font-size: 11px; margin-bottom: 14px; }
     .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; }
     .modal-resultado { margin-top: 14px; font-size: 12px; white-space: pre-wrap; font-family: 'Cascadia Code', monospace; max-height: 200px; overflow-y: auto; }
+
+    /* Modal de tráfego em tempo real */
+    .modal-trafego { max-width: 920px; }
+    #trafegoXterm { height: 60vh; min-height: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px; margin-bottom: 14px; }
 </style>
 </head>
 <body>
@@ -177,6 +182,17 @@
         <div id="naResultado"></div>
         <div class="modal-acoes">
             <button class="btn" onclick="fecharNovoAnuncio()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="trafegoOverlay">
+    <div class="modal modal-trafego">
+        <h3 id="trafegoTitulo">📶 Tráfego em tempo real</h3>
+        <div class="dica-edicao" style="margin-bottom:12px;">Conectando no equipamento e rodando <code>display counters rate interface ... | refresh 1</code> — atualiza sozinho a cada segundo.</div>
+        <div id="trafegoXterm"></div>
+        <div class="modal-acoes">
+            <button class="btn perigo" onclick="fecharTrafego()">Fechar</button>
         </div>
     </div>
 </div>
@@ -319,9 +335,10 @@ function renderizar(dados) {
                 <div class="status-dot ${s.habilitada ? 'ativa' : ''}"></div>
                 <div>
                     <div class="sessao-titulo">${escapeHtml(s.descricao || s.nome)}</div>
-                    <div class="sessao-sub">${escapeHtml(s.peer_ip)} · AS${escapeHtml(s.peer_as || '?')} · ${s.habilitada ? 'ativa' : 'desativada'}${s.policy_out ? ' · export: ' + escapeHtml(s.policy_out) : ''}</div>
+                    <div class="sessao-sub">${escapeHtml(s.peer_ip)} · AS${escapeHtml(s.peer_as || '?')} · ${s.habilitada ? 'ativa' : 'desativada'}${s.policy_out ? ' · export: ' + escapeHtml(s.policy_out) : ''}${s.interface ? ' · interface: ' + escapeHtml(s.interface) : ''}</div>
                 </div>
                 <div class="sessao-acoes" onclick="event.stopPropagation()">
+                    ${s.interface ? `<button class="btn" onclick="abrirTrafego('${escapeHtml(s.interface)}','${escapeHtml(s.descricao || s.nome)}')">📶 Ver tráfego</button>` : ''}
                     <button class="btn" onclick="abrirNovoAnuncio('${escapeHtml(s.nome)}','${escapeHtml(s.descricao || s.nome)}')">➕ Anunciar prefixo novo</button>
                     ${s.habilitada
                         ? `<button class="btn perigo" onclick="pedirAcao('desativar_sessao','${escapeHtml(s.nome)}',{},'Desativar sessão ${escapeHtml(s.descricao || s.nome)}')">Desativar</button>`
@@ -570,7 +587,95 @@ function confirmarAcao() {
         });
 }
 
+// ── Ver tráfego em tempo real (reaproveita o WS do terminal SSH,
+// ws/ssh/ — mesma conexão/autorização do painel de terminal normal,
+// só que "independente" pra não entrar numa sessão compartilhada de
+// outro operador) ──
+let trafegoState = null;
+
+function abrirTrafego(interfaceNome, tituloSessao) {
+    if (trafegoState) { fecharTrafego(); }
+    document.getElementById('trafegoTitulo').textContent = `📶 Tráfego em tempo real — ${tituloSessao} (${interfaceNome})`;
+    document.getElementById('trafegoOverlay').classList.add('aberto');
+
+    const term = new Terminal({
+        cursorBlink: false, disableStdin: true,
+        fontSize: 12, fontFamily: "'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace",
+        theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff' },
+        scrollback: 1000, rows: 24, cols: 120, convertEol: false,
+    });
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('trafegoXterm'));
+    try { term.loadAddon(new CanvasAddon.CanvasAddon()); } catch (e) {}
+    setTimeout(() => { try { fitAddon.fit(); } catch (e) {} }, 50);
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/ssh/`);
+    trafegoState = { terminal: term, fitAddon, socket, comandoEnviado: false };
+
+    socket.onopen = () => {
+        try { fitAddon.fit(); } catch (e) {}
+        socket.send(JSON.stringify({
+            action: 'connect', acesso_id: ACESSO_ID, independente: true,
+            cols: term.cols, rows: term.rows,
+        }));
+    };
+    socket.onmessage = e => {
+        if (e.data instanceof ArrayBuffer) {
+            term.write(new TextDecoder().decode(e.data));
+            return;
+        }
+        const data = JSON.parse(e.data);
+        if (data.type === 'connected') {
+            try { fitAddon.fit(); } catch (e) {}
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ action: 'resize', cols: term.cols, rows: term.rows }));
+            }
+            if (!trafegoState.comandoEnviado) {
+                trafegoState.comandoEnviado = true;
+                setTimeout(() => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            action: 'command',
+                            command: `display counters rate interface ${interfaceNome} | refresh 1\r`,
+                        }));
+                    }
+                }, 400);
+            }
+        } else if (data.type === 'output' && data.data) {
+            term.write(data.data);
+        } else if (data.type === 'error') {
+            term.writeln('\r\n\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\r\n');
+        }
+    };
+    socket.onerror = () => term.writeln('\r\n\x1b[31m✕ Erro na conexão\x1b[0m\r\n');
+    socket.onclose = () => term.writeln('\r\n\x1b[33m— conexão encerrada —\x1b[0m\r\n');
+}
+
+function fecharTrafego() {
+    if (trafegoState) {
+        try {
+            if (trafegoState.socket.readyState === WebSocket.OPEN) {
+                // Ctrl+C antes de desconectar — encerra o "| refresh 1" com
+                // elegância em vez de só derrubar a sessão SSH no meio.
+                trafegoState.socket.send(JSON.stringify({ action: 'command', command: '\x03' }));
+                setTimeout(() => trafegoState.socket.close(), 150);
+            } else {
+                trafegoState.socket.close();
+            }
+        } catch (e) {}
+        try { trafegoState.terminal.dispose(); } catch (e) {}
+        trafegoState = null;
+    }
+    document.getElementById('trafegoXterm').innerHTML = '';
+    document.getElementById('trafegoOverlay').classList.remove('aberto');
+}
+
 carregar();
 </script>
+<script src="/static/js/xterm.min.js"></script>
+<script src="/static/js/xterm-addon-fit.min.js"></script>
+<script src="/static/js/xterm-addon-canvas.min.js"></script>
 </body>
 </html>
