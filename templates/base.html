@@ -144,6 +144,31 @@
                 </div>
                 {% endif %}
 
+                {% if not request.user.is_staff and is_backoffice_bo and ferramentas_menu_bo_visivel %}
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-tools me-1"></i> Ferramentas
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% if ferramentas_habilitadas.lg %}
+                        <li><a class="dropdown-item" href="{% url 'lg_pesquisa' %}">
+                            <i class="fas fa-route me-2" style="color:#00d9ff"></i>Pesquisa LG
+                        </a></li>
+                        {% endif %}
+                        {% if ferramentas_habilitadas.geoip %}
+                        <li><a class="dropdown-item" href="{% url 'geo_consulta' %}">
+                            <i class="fas fa-map-marker-alt me-2" style="color:#3fb950"></i>Geolocalização IP
+                        </a></li>
+                        {% endif %}
+                        {% if ferramentas_habilitadas.firmware %}
+                        <li><a class="dropdown-item" href="{% url 'firmware_index' %}">
+                            <i class="fas fa-hdd me-2" style="color:#ffaa00"></i>Arquivos / Firmware
+                        </a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+
                 <!-- Atendimento — somente para administradores e funcionários -->
                 {% if request.user.is_staff %}
                 <a href="{% url 'atendimento:dashboard' %}" class="btn btn-sm" id="globalAtendBtn" style="position:relative;">

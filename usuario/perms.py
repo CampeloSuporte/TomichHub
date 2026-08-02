@@ -97,6 +97,19 @@ def usuarios_gerenciaveis_por(user):
     return User.objects.none()
 
 
+def ferramentas_habilitadas_dict_para(user):
+    """Dict {ferramenta_key: bool} pronto pra uso em template (nav) —
+    Administrador vê tudo habilitado; Consultor/Operador conforme a
+    instância; portal do cliente final e anônimo, tudo desabilitado (essas
+    ferramentas são todas de back-office, não do portal)."""
+    if is_admin(user):
+        return {chave: True for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}
+    if is_consultor(user) or is_operador(user):
+        from .models import ferramentas_habilitadas_dict as _dict
+        return _dict(get_instancia(user))
+    return {chave: False for chave, _ in InstanciaFerramenta.FERRAMENTA_CHOICES}
+
+
 def pode_gerenciar_usuarios_required(view_func):
     """Admin ou Consultor — Operador não cria/edita usuários."""
     from functools import wraps
