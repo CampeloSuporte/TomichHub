@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-01 (Fix: Automação BGP — modal de "anunciar prefixo novo" sem scroll)
+
+### Corrigido
+
+- **Modal "➕ Anunciar prefixo novo" não rolava com uma lista grande de prefix-lists** — em
+  equipamentos com muitas cadastradas (ex: 20+), a lista de candidatas simplesmente esticava o modal
+  pra fora da tela, sem barra de rolagem, cortando o conteúdo. `.modal` ganhou
+  `max-height: calc(100vh - 32px)` + `overflow-y: auto` (afeta todos os modais da tela, sem risco —
+  os outros são curtos o bastante pra nunca precisar rolar). O campo de busca (`#naBusca`) ficou
+  `position: sticky` no topo, então continua visível enquanto a lista rola por baixo dele.
+
+---
+
 ## [Não publicado] — 2026-08-01 (Fix: Automação BGP — painel não refletia ação recém-executada)
 
 ### Corrigido

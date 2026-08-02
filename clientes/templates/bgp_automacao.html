@@ -116,7 +116,11 @@
         z-index: 500; align-items: center; justify-content: center; padding: 16px;
     }
     .overlay.aberto { display: flex; }
-    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px; max-width: 560px; width: 100%; }
+    .modal {
+        background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px;
+        max-width: 560px; width: 100%; max-height: calc(100vh - 32px); overflow-y: auto;
+        box-sizing: border-box;
+    }
     .modal h3 { margin: 0 0 12px; font-size: 14px; }
     .modal textarea#modalComandos {
         display: block; width: 100%; min-height: 110px; resize: vertical;
@@ -168,7 +172,7 @@
         <h3>➕ Anunciar prefixo novo</h3>
         <div class="dica-edicao" style="margin-bottom:12px;">Sessão: <strong id="naSessaoNome"></strong></div>
         <input type="text" id="naBusca" placeholder="Buscar prefix-list por nome ou prefixo…"
-               class="input-modal" style="width:100%; margin-bottom:12px; display:none;"
+               class="input-modal" style="width:100%; margin-bottom:12px; display:none; position:sticky; top:0; z-index:1;"
                oninput="filtrarCandidatasNovoAnuncio()">
         <div id="naResultado"></div>
         <div class="modal-acoes">
