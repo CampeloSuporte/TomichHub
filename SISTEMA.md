@@ -30,6 +30,7 @@
    - [Sessão 13](#sessão-13--firmware-progress-ws-ftp-fix-design-modais-e-agent-noc) — Firmware WS, FTP, Design, Agent NOC
    - [Sessão 14](#sessão-14--firmware-url-fix-evolution-api-agent-grupos-e-bug-uiconfirm) — Firmware URL, Evolution API, Agent Grupos, uiConfirm
    - [Sessão 15](#sessão-15--agent-noc-whatsapp-terminal-e-correções-de-infraestrutura) — Agent NOC: WhatsApp funcional, terminal funcional, SSH legado, permissões
+   - [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) — Multi-tenant: Consultor e Operador
 
 ---
 
@@ -129,9 +130,9 @@ Integração com API Zabbix, topologias de monitoramento, status em tempo real.
 
 **URLs principais:** `/monitoramento/`
 
-### `usuario` — Autenticação
+### `usuario` — Autenticação e Multi-tenant
 
-Registro e autenticação de usuários.
+Registro e autenticação de usuários, e o sistema de papéis multi-tenant (Administrador / Consultor / Operador / portal do Cliente final) — ver [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador). `usuario/perms.py` é o ponto único de verdade para papel e escopo de instância, usado pelos decorators do núcleo (`clientes`, `monitoramento`, `ipam`, `hotspot`, `bgp`, `scripts`).
 
 **URLs principais:** `/auth/`
 
@@ -143,11 +144,21 @@ Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipame
 
 ## Modelos de Dados
 
+### Multi-tenant (app `usuario`)
+
+| Modelo | Descrição |
+|---|---|
+| `PerfilUsuario` | Papel do usuário de back-office: `admin` / `consultor` / `operador`. Sem registro + `is_staff=True` = admin legado (compatibilidade retroativa) |
+| `Instancia` | "Conta" de um Consultor — Clientes e Operadores pertencem a uma Instancia |
+| `InstanciaFerramenta` | Ferramentas do núcleo liberadas pelo Administrador para a Instancia (default desabilitado) |
+
+Ver [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) para o desenho completo.
+
 ### Clientes e Infraestrutura
 
 | Modelo | Descrição |
 |---|---|
-| `Cliente` | Empresa cliente com CNPJ, endereço, contatos |
+| `Cliente` | Empresa cliente com CNPJ, endereço, contatos. `instancia` (FK, nullable) — vazio = cliente da plataforma (só o Administrador vê) |
 | `Acesso` | Credenciais de acesso a equipamento (SSH, Telnet, HTTP, Winbox) |
 | `ProxyServer` | Túnel SSH para acesso a redes privadas de clientes |
 | `Documento` | Arquivos anexados ao cliente |
@@ -1918,3 +1929,69 @@ payload = {"number": jid, "text": texto}
 **Correção:** Recolocado o include entre as abas Credenciais e Documentação.
 
 **Arquivo:** `clientes/templates/listar.html`
+
+---
+
+### Sessão 16 — Multi-tenant: Consultor e Operador
+
+**Objetivo:** comercializar a plataforma para consultores de rede — cada um cadastra e gerencia seus próprios clientes, isolados dos clientes de outros consultores, sem acesso a Financeiro/Atendimento/Wiki/dashboards administrativos. O Administrador escolhe, por instância, quais ferramentas do núcleo cada consultor pode usar. O Operador é um funcionário do consultor (ou do admin) com acesso quase igual, exceto que não gerencia usuários nem escolhe ferramentas da instância.
+
+#### 1. Decisão de design: `is_staff` não muda de significado
+
+Consultor e Operador continuam com `is_staff=False` — exatamente como o portal do cliente final tinha antes. Isso evita reabrir dezenas de checks `is_staff`/`admin_required` espalhados por Financeiro, Atendimento, Wiki, `home`, catálogos de equipamento e Firmware, que continuam tratando `is_staff=True` como bypass total de administrador. O papel real do usuário passa a vir de um novo modelo `PerfilUsuario` (`role`: `admin`/`consultor`/`operador`), consultado através de `usuario/perms.py` — não de `is_staff` cru. Contas administradoras existentes continuam funcionando sem qualquer migração de dados: na ausência de `PerfilUsuario`, `is_staff=True` cai de volta para papel `admin` (compatibilidade retroativa).
+
+#### 2. Modelos novos (`usuario/models.py`)
+
+- `Instancia` — a "conta" de um Consultor (`nome`, `ativo`, `criado_por`).
+- `PerfilUsuario` — `usuario` (OneToOne), `role` (`admin`/`consultor`/`operador`), `instancia` (FK, null só para admin), `criado_por`.
+- `InstanciaFerramenta` — `instancia`, `ferramenta` (14 chaves: `acessos, backups, vpn, topologia, tuneis, documentos, rpki_irr, monitoramento, hotspot, ipam, scripts, bgp, testes_rede, lg, geoip, firmware`), `habilitado` (**default `False`** — o oposto do `UsuarioModulo` existente: aqui é o Administrador concedendo acesso a um revendedor pago, não um toggle opcional por login).
+- `Cliente.instancia` (FK nullable, `clientes/models.py`) — cliente sem instância = "da plataforma", só o Administrador vê (preserva o comportamento anterior sem precisar de data migration).
+- `Cliente.objects.visiveis_para(user)` — escopo central de visibilidade usado em todas as telas de back-office (admin → tudo; consultor/operador → só a própria instância).
+
+`UsuarioModulo` (o toggle por login existente, usado pelo portal do cliente final) não mudou de propósito — continua um sistema paralelo, agora combinado com `InstanciaFerramenta` (ver item 5).
+
+#### 3. `usuario/perms.py` — ponto único de verdade
+
+Toda checagem de papel/escopo no núcleo passa por aqui: `get_role`, `is_admin`/`is_consultor`/`is_operador`/`is_backoffice`, `get_instancia`, `pode_gerenciar_usuarios`, `pode_gerenciar_ferramentas_instancia`, `ferramenta_habilitada(user, key)`, `pode_acessar_cliente(user, cliente)`, `usuarios_gerenciaveis_por(user)`.
+
+#### 4. Decorators (`clientes/decorators.py`)
+
+- `backoffice_required` (novo) — admin/consultor/operador; usado nas telas do núcleo que Consultor/Operador também acessam (ex.: `cadastrar_cliente`).
+- `admin_required`/`superuser_required` — inalterados, continuam exclusivos do Administrador (o que já barra Consultor/Operador de Financeiro, Atendimento, Wiki, catálogos de equipamento, Firmware antigo, etc., sem precisar tocar nesses apps).
+- `cliente_can_view_cliente` — delega para `pode_acessar_cliente`.
+- `modulo_habilitado_required(key)` — bypass só para admin; Consultor/Operador checam `InstanciaFerramenta`; portal do cliente final passa por `portal_pode_usar_ferramenta` (ver item 5). Já estava aplicado em ~86 pontos de `clientes/views.py` (acessos, backups, vpn, topologia, túneis, rpki_irr, documentos, testes_rede) — a mudança central cobriu a maior parte do núcleo sem editar view por view.
+- `ferramenta_instancia_required(key)` (novo) — mesma lógica, aplicado em `monitoramento/views.py`, `clientes/ipam_views.py`, `clientes/hotspot_views.py`, `clientes/bgp_views.py`, `clientes/script_views.py`, `clientes/firmware_views.py` e nas views de LG/GeoIP em `home/views.py` — views que antes só tinham `@login_required`, sem nenhum controle de ferramenta.
+
+#### 5. Portal do cliente final: teto da instância do Consultor
+
+Bug encontrado em teste manual: um Consultor sem a ferramenta Hotspot liberada via `InstanciaFerramenta` via a aba Hotspot aparecer mesmo assim — tanto no próprio painel quanto no painel do cliente que ele cadastrou (o `UsuarioModulo` do cliente final, com default ligado, nunca conferia o teto da instância). Corrigido com duas funções em `usuario/perms.py`:
+
+- `modulos_habilitados_dict_para_listagem(user, cliente)` — dict usado por `listar.html` pra decidir quais abas mostrar, unificando admin (tudo), consultor/operador (`InstanciaFerramenta` da própria instância) e portal do cliente final (`UsuarioModulo` capado pela `InstanciaFerramenta` da instância do Consultor dono do cliente).
+- `portal_pode_usar_ferramenta(user, key)` — mesma lógica no backend, usada pelos decorators.
+
+Inclui o mapeamento `'documentacao' → 'ipam'` (nomes históricos diferentes pro mesmo recurso — a aba "Documentação de Rede" do `UsuarioModulo` é o backend de IPAM).
+
+No template (`clientes/templates/listar.html`), as 13 chamadas que decidiam visibilidade de aba/ferramenta (`{% if is_admin or modulos_habilitados.X %}`) foram trocadas para `is_admin_puro` (só Administrador de fato) — `is_admin` continua significando "é da equipe" (admin/consultor/operador) e segue controlando os outros ~4 pontos de UI que não são sobre ferramentas (ex.: campo de senha admin).
+
+#### 6. Gestão de usuários (`usuario/views.py`, `usuario/templates/cadastrar_usuario.html`)
+
+Seletor de 4 papéis no lugar do checkbox único `is_staff`: **Cliente** / **Operador** / **Consultor** / **Administrador** — as duas últimas opções só aparecem para quem já é Administrador. Regras reforçadas no servidor (não só escondidas na UI):
+
+- Consultor só cria `role=operador`, sempre na própria instância — mesmo manipulando o POST diretamente.
+- Ao criar/editar um Consultor, o Administrador vê checkboxes de `InstanciaFerramenta` (mesmo padrão visual dos checkboxes de `UsuarioModulo` já existentes).
+- `cadastrar_usuario`/`editar_usuario` passam a listar só `usuarios_gerenciaveis_por(request.user)` em vez de `User.objects.all()`.
+
+#### 7. Navegação (`templates/base.html`, `usuario/context_processors.py`)
+
+Novo context processor `perfil_context` expõe `is_admin_bo`/`is_consultor_bo`/`is_operador_bo`/`is_backoffice_bo` e `ferramentas_habilitadas`/`ferramentas_menu_bo_visivel`. Os blocos hoje gated só por `is_staff` (Financeiro, Atendimento, Wiki, catálogos, Agent NOC) não precisaram mudar — já ficam de fora para Consultor/Operador. Item de menu "Clientes" (e "Usuários", só pra quem gerencia usuários) adicionado pra back-office não-admin; dropdown "Ferramentas" ganhou uma versão enxuta mostrando só LG/GeoIP/Firmware quando liberados pra instância.
+
+#### 8. Bugs encontrados em teste manual pós-deploy (e corrigidos na mesma sessão)
+
+1. **Busca de cliente do menu vazava entre instâncias** — `buscar_clientes_chamado` (`clientes/views.py`) usava `Cliente.objects.filter(...)` sem nenhum escopo; um Consultor via nos resultados clientes de outra instância (o clique já era bloqueado por `pode_acessar_cliente`, mas a lista não deveria nem mostrar o nome). Trocado para `Cliente.objects.visiveis_para(request.user)`.
+2. **Endpoints do IPAM identificados só por objeto (`vlan_id`/`prefixo_id`/`subrede_id`/`ip_id`/`vpn_id`)** não passavam pelo helper `_cliente()` (que já validava posse) — um Consultor/Operador com IPAM liberado podia mutar VLAN/prefixo/sub-rede/IP/VPN de outra instância adivinhando o id. Fechado com `_checar_obj_cliente` aplicado nos 15 endpoints afetados.
+3. **Aba/ferramenta não liberada pra instância aparecia mesmo assim** — ver item 5 acima (bug do Hotspot reportado pelo usuário).
+4. **Wiki não tinha nenhum gate de `is_staff`** — reachable por qualquer usuário autenticado, incluindo (antes desta sessão) o próprio portal do cliente final. Adicionado `@admin_required` nas 12 views de `wiki/views.py`, cumprindo a premissa de que Wiki continua exclusivo do Administrador nesta fase.
+
+**Fora do escopo desta sessão** (fica pra uma fase 2, caso decidam abrir pra Consultor/Operador): Financeiro, Atendimento, Wiki e os dashboards administrativos globais (`quadro_geral` e relatórios cross-cliente) continuam exclusivos do Administrador. Firmware é biblioteca global compartilhada (sem FK de cliente/instância) — liberar a ferramenta dá acesso ao mesmo acervo que o Administrador vê, não uma cópia isolada por instância.
+
+**Arquivos principais:** `usuario/models.py`, `usuario/perms.py` (novo), `usuario/views.py`, `usuario/context_processors.py` (novo), `usuario/templates/cadastrar_usuario.html`, `clientes/decorators.py`, `clientes/models.py`, `clientes/views.py`, `clientes/api_views.py`, `clientes/ipam_views.py`, `clientes/hotspot_views.py`, `clientes/bgp_views.py`, `clientes/script_views.py`, `clientes/firmware_views.py`, `monitoramento/views.py`, `home/views.py`, `wiki/views.py`, `templates/base.html`, `crm/settings.py`.

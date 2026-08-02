@@ -5,6 +5,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-02 (Feat: Multi-tenant — papéis Consultor e Operador)
+
+### Adicionado
+
+- **Papéis Consultor e Operador**, além de Administrador e do portal do cliente final já existentes.
+  Consultor cadastra e gerencia seus próprios clientes, isolados dos clientes de outros consultores;
+  Operador é um funcionário do consultor (ou do admin) com acesso quase igual, exceto que não
+  gerencia usuários nem escolhe ferramentas da instância. `is_staff` não mudou de significado —
+  Consultor/Operador continuam `is_staff=False`, o que já os exclui automaticamente de
+  Financeiro/Atendimento/Wiki/dashboards administrativos sem precisar tocar nesses apps.
+- Modelos novos: `usuario.Instancia` (a "conta" de um Consultor), `usuario.PerfilUsuario` (papel:
+  admin/consultor/operador), `usuario.InstanciaFerramenta` (quais ferramentas do núcleo — acessos,
+  backups, vpn, topologia, túneis, documentos, rpki/irr, monitoramento, hotspot, ipam, scripts, bgp,
+  testes de rede, pesquisa LG, geolocalização IP, firmware — o Administrador liberou pra cada
+  instância, default desabilitado). `Cliente.instancia` (FK nullable) +
+  `Cliente.objects.visiveis_para(user)`.
+- `usuario/perms.py` — ponto único de verdade pra papel e escopo de instância, usado pelos
+  decorators e views do núcleo (`clientes`, `monitoramento`, `ipam`, `hotspot`, `bgp`, `scripts`,
+  LG/GeoIP em `home`).
+- Tela de gestão de usuários (`cadastrar_usuario.html`) ganhou seletor de 4 papéis no lugar do
+  checkbox único `is_staff`, com checkboxes de `InstanciaFerramenta` pro Administrador liberar ao
+  criar/editar um Consultor.
+- Ver detalhamento completo (modelos, decorators, integração com o `UsuarioModulo` existente do
+  portal do cliente) na [Sessão 16 do SISTEMA.md](SISTEMA.md#sessão-16--multi-tenant-consultor-e-operador).
+
+### Corrigido
+
+- Busca de cliente do menu (`buscar_clientes_chamado`) listava clientes de outras instâncias nos
+  resultados (o clique já era bloqueado, mas a lista não deveria nem mostrar o nome).
+- Endpoints do IPAM identificados só por objeto (`vlan_id`/`prefixo_id`/`subrede_id`/`ip_id`/
+  `vpn_id`) não validavam posse do cliente — um Consultor/Operador com IPAM liberado podia mutar
+  registros de outra instância adivinhando o id.
+- Aba/ferramenta não liberada pra instância (ex.: Hotspot) continuava aparecendo tanto pro
+  Consultor quanto pro cliente final que ele cadastrou — o portal do cliente não tinha teto nenhum
+  da instância do Consultor dono do cliente.
+- Wiki não tinha nenhum controle de `is_staff` (reachable por qualquer usuário autenticado);
+  adicionado `@admin_required` nas 12 views.
+
+---
+
 ## [Não publicado] — 2026-08-02 (Simplificação: Ver tráfego mostra só o gráfico)
 
 ### Modificado
