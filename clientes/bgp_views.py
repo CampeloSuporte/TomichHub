@@ -87,6 +87,11 @@ def bgp_atualizar_snapshot(request, acesso_id):
 
     if resultado == 'ok':
         return JsonResponse({'status': 'ok'})
+    if resultado == 'sem_novidade':
+        # Não é erro — só não havia backup novo pra extrair. O painel
+        # continua com o estado atual (inclui qualquer atualização
+        # otimista de uma ação real recente).
+        return JsonResponse({'status': 'sem_novidade', 'mensagem': detalhe})
     return JsonResponse({'status': resultado, 'error': detalhe or resultado}, status=422)
 
 

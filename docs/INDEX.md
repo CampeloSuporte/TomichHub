@@ -2,6 +2,31 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 28 — 01/08/2026: Fix — Automação BGP: "Atualizar agora" revertia a atualização otimista
+
+**O que foi corrigido?**
+- 🐛 **Regressão pega em produção logo depois do fix da Sessão 27**: reportado de novo pelo usuário
+  ("ainda continua como anunciando") — a ação real (`parar_anuncio`) tinha funcionado e o painel
+  atualizado corretamente, mas o operador clicou "Atualizar agora" alguns minutos depois e o prefixo
+  voltou a aparecer como anunciado. Causa: "Atualizar agora" relê o backup mais recente já salvo em
+  disco e reescreve `BgpSnapshot.dados` do zero — como nenhum backup NOVO tinha sido tirado desde a
+  ação (o equipamento ainda não tinha sido rebackupeado), reprocessar o mesmo backup antigo
+  sobrescrevia a atualização otimista de volta pro estado de ANTES da ação.
+- ✅ `clientes/tasks.py::_atualizar_snapshot_bgp_de_acesso` ganhou o resultado `'sem_novidade'`: se o
+  backup mais recente é o MESMO já usado pelo snapshot atual, não reprocessa nada — preserva `dados`
+  como está. Vale tanto pro botão quanto pra rotina noturna (mesma função, mesmo risco).
+  `bgp_atualizar_snapshot` trata isso como sucesso; frontend mostra só um tooltip discreto.
+- ✅ Corrigido manualmente o estado do `BgpSnapshot` do acesso 175 em produção (tinha sido revertido
+  pela regressão) e reverificado que "Atualizar agora" não reverte mais depois do fix.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "'sem_novidade' — proteção contra reverter a atualização otimista" |
+
+---
+
 ### Sessão 27 — 01/08/2026: Fix — Automação BGP: painel não atualizava depois de uma ação real
 
 **O que foi corrigido?**
@@ -977,6 +1002,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 01/08/2026 | Fix Automação BGP: "Atualizar agora" revertia a atualização otimista de uma ação real (reprocessava o mesmo backup antigo) — agora detecta quando não há backup novo e preserva o estado atual | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: painel não refletia uma ação recém-executada (prefixo continuava aparecendo como anunciado depois de "Parar de anunciar") — snapshot local atualizado com o efeito esperado logo após cada ação real bem-sucedida | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "anunciar prefixo novo" também editava prefix-list compartilhada — redesenhado pra criar node/route-map/term novo na sessão (nunca edita a lista), UI lista todas as prefix-lists do equipamento com busca, sem pedir prefixo digitado | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "parar de anunciar" no Huawei (`undo network` global) e Cisco/Datacom (edição direta de prefix-list compartilhada) — ambos corrigidos pra mexer só no node/route-map da sessão, sem tocar em objeto compartilhado; UX de "anunciar prefixo novo" agora lista as prefix-lists antes de pedir o prefixo | bgp_automacao.md |

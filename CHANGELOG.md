@@ -33,6 +33,21 @@ Validado com 9802 combinações (toggle/prepend/parar/novo_anuncio) contra os 53
 zero erros inesperados. Testado também o fluxo HTTP completo (view real, execução do equipamento
 mockada) confirmando que o prefixo some da tabela de anunciados no mesmo request.
 
+- **Regressão pega em produção logo depois do fix acima**: "Atualizar agora" relê o backup mais
+  recente já salvo em disco e reescreve `BgpSnapshot.dados` do zero — se nenhum backup NOVO foi
+  tirado desde a ação real (backup ainda não capturou a mudança no equipamento), isso sobrescrevia a
+  atualização otimista de volta pro estado de ANTES da ação, exatamente o problema que o fix acima
+  deveria ter resolvido. Reproduzido com um caso real: ação `parar_anuncio` bem-sucedida em
+  `179.0.110.0/24`, seguida de "Atualizar agora" 3 minutos depois — reverteu, porque o backup em
+  disco (`BDR_20260801_022110.txt`) ainda era o mesmo de antes da ação.
+- `clientes/tasks.py::_atualizar_snapshot_bgp_de_acesso` ganhou um resultado novo, `'sem_novidade'`:
+  se o backup mais recente encontrado é o MESMO já usado pelo `BgpSnapshot` atual (mesmo
+  `backup_log_id`) e o snapshot não está em erro, não reprocessa nada — preserva o `dados` atual
+  (com qualquer atualização otimista já aplicada) em vez de sobrescrever. Vale tanto pro botão
+  "Atualizar agora" quanto pra rotina noturna (mesma função, mesmo risco). `bgp_views.py::
+  bgp_atualizar_snapshot` trata `sem_novidade` como sucesso (não erro); frontend mostra um tooltip
+  discreto no badge em vez de alterar o comportamento.
+
 ---
 
 ## [Não publicado] — 2026-08-01 (Feat: Automação BGP — atualizar sob demanda, communities, anunciar prefixo novo)

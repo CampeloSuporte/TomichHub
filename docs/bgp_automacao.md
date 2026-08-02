@@ -332,12 +332,29 @@ quando não há snapshot pra aquele Acesso).
 `clientes/tasks.py::atualizar_snapshots_bgp` foi refatorada — o trabalho de UM Acesso (ler backup
 mais recente, `parse_backup`, `simular_anuncios`, gravar `BgpSnapshot`) virou uma função reutilizável
 `_atualizar_snapshot_bgp_de_acesso(acesso)`, que devolve `(resultado, detalhe)` (`'ok'`,
-`'sem_backup'`, `'fabricante_nao_suportado'`, `'erro_leitura'`, `'erro_parser'`, `'sem_bgp'`,
-`'erro_simulacao'`). A task noturna passou a chamar essa função em loop (mesmo comportamento de
-antes, só refatorado); e um botão novo **"🔄 Atualizar agora"** no cabeçalho da tela
+`'sem_novidade'`, `'sem_backup'`, `'fabricante_nao_suportado'`, `'erro_leitura'`, `'erro_parser'`,
+`'sem_bgp'`, `'erro_simulacao'`). A task noturna passou a chamar essa função em loop (mesmo
+comportamento de antes, só refatorado); e um botão novo **"🔄 Atualizar agora"** no cabeçalho da tela
 (`POST /clientes/bgp/<acesso_id>/atualizar/`, `bgp_views.bgp_atualizar_snapshot`) chama a mesma
 função **síncrono**, pra um único host, sem esperar a rotina das 02:45 — não precisa de Celery
 porque só lê um arquivo já salvo em disco e roda regex, não conecta em nada.
+
+#### `'sem_novidade'` — proteção contra reverter a atualização otimista (adicionado em 2026-08-01)
+
+Regressão real pega em produção: como "Atualizar agora" relê o backup mais recente já salvo em
+disco, se nenhum backup NOVO foi tirado desde uma ação real (o backup ainda não capturou a mudança
+feita no equipamento), reprocessar esse mesmo backup reescrevia `dados` do zero — apagando a
+atualização otimista de `aplicar_efeito_localmente` (ver seção abaixo) e voltando o painel pro
+estado de ANTES da ação. Reproduzido com um caso real: `parar_anuncio` bem-sucedido, seguido de
+"Atualizar agora" alguns minutos depois — reverteu, porque o backup em disco ainda era o mesmo de
+antes da ação.
+
+Corrigido comparando o `backup_log_id` do `BgpSnapshot` atual com o do backup mais recente
+encontrado: se forem o MESMO (e o snapshot não estiver em erro), a função não reprocessa nada e
+devolve `'sem_novidade'` — preserva `dados` como está, incluindo qualquer patch otimista. Isso vale
+tanto pro botão quanto pra rotina noturna (mesma função, mesmo risco de reverter um patch otimista
+recente se o equipamento não tiver sido rebackupeado ainda). `bgp_atualizar_snapshot` trata isso como
+sucesso (não erro); o frontend só mostra um tooltip discreto no badge, sem alterar o fluxo normal.
 
 ---
 

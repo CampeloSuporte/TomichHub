@@ -2028,8 +2028,8 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
     para um único host, sob demanda).
 
     Retorna (resultado: str, detalhe: str) — `resultado` é um dos:
-    'sem_backup', 'fabricante_nao_suportado', 'erro_leitura', 'erro_parser',
-    'sem_bgp', 'erro_simulacao', 'ok'.
+    'sem_backup', 'sem_novidade', 'fabricante_nao_suportado', 'erro_leitura',
+    'erro_parser', 'sem_bgp', 'erro_simulacao', 'ok'.
     """
     from .backup_parser import parse_backup
     from .bgp_matcher import simular_anuncios
@@ -2047,6 +2047,19 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
     )
     if not backup:
         return 'sem_backup', 'Nenhum backup bem-sucedido encontrado para este host.'
+
+    # Se o backup mais recente é o MESMO já usado pra montar o snapshot
+    # atual (nenhum backup novo do equipamento desde então), não há nada
+    # de novo pra extrair — reprocessar o mesmo arquivo reescreveria por
+    # cima de qualquer atualização otimista já aplicada por uma ação real
+    # (`bgp_actions.py::aplicar_efeito_localmente`), voltando o painel pro
+    # estado de ANTES da ação (bug real observado: operador roda "parar de
+    # anunciar", o painel atualiza corretamente, mas clicar "Atualizar
+    # agora" logo em seguida reverte, porque relê o mesmo backup antigo
+    # que ainda não reflete a mudança feita no equipamento).
+    snap_atual = BgpSnapshot.objects.filter(acesso=acesso).first()
+    if snap_atual and not snap_atual.erro and snap_atual.backup_log_id == backup.id:
+        return 'sem_novidade', 'Nenhum backup novo deste host desde a última atualização.'
 
     caminho = os.path.join(MEDIA_ROOT, backup.arquivo_path)
     if not os.path.exists(caminho):

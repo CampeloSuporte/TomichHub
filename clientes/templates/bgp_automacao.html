@@ -278,6 +278,10 @@ async function atualizarAgora() {
             alert('Não foi possível atualizar: ' + (data.error || data.status || 'erro desconhecido'));
         } else {
             await carregar();
+            if (data.status === 'sem_novidade') {
+                const badge = document.getElementById('badgeGerado');
+                badge.title = data.mensagem || 'Nenhum backup novo — mostrando o último estado conhecido (já inclui ações recentes).';
+            }
         }
     } catch (e) {
         alert('Erro ao atualizar: ' + e);
