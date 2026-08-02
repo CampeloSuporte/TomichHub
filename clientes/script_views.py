@@ -13,7 +13,9 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 
+from .decorators import ferramenta_instancia_required
 from .models import Acesso, ScriptCRM, ScriptExecucaoLog
+from usuario.perms import pode_acessar_cliente
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +245,7 @@ def _fechar_tunel(tunel):
 # ──────────────────────────────────────────────────────────────
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('scripts')
 def listar_scripts(request):
     """GET /clientes/scripts/ — retorna JSON com scripts ativos"""
     fabricante = request.GET.get('fabricante', '')
@@ -268,6 +271,7 @@ def listar_scripts(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('scripts')
 def detalhe_script(request, script_id):
     """GET /clientes/scripts/<id>/ — retorna detalhe completo"""
     script = get_object_or_404(ScriptCRM, id=script_id, ativo=True)
@@ -283,6 +287,7 @@ def detalhe_script(request, script_id):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('scripts')
 def gerenciar_scripts(request):
     """GET /clientes/scripts/gerenciar/ — painel de gestão (staff)"""
     if not (request.user.is_staff or request.user.is_superuser):
@@ -297,6 +302,7 @@ def gerenciar_scripts(request):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('scripts')
 def salvar_script(request, script_id=None):
     """POST /clientes/scripts/salvar/ ou /clientes/scripts/salvar/<id>/"""
     if not (request.user.is_staff or request.user.is_superuser):
@@ -338,6 +344,7 @@ def salvar_script(request, script_id=None):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('scripts')
 def deletar_script(request, script_id):
     """POST /clientes/scripts/deletar/<id>/"""
     if not (request.user.is_staff or request.user.is_superuser):
@@ -348,8 +355,13 @@ def deletar_script(request, script_id):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('scripts')
 def historico_execucoes(request, acesso_id):
     """GET /clientes/scripts/historico/<acesso_id>/ — últimas execuções"""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    if not pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
     logs = ScriptExecucaoLog.objects.filter(
         acesso_id=acesso_id
     ).select_related('script', 'usuario')[:20]
@@ -477,6 +489,7 @@ def _zte_auto_provisionar(conn, params: dict):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('scripts')
 def executar_script(request):
     """
     POST /clientes/scripts/executar/
@@ -499,6 +512,9 @@ def executar_script(request):
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
     except ScriptCRM.DoesNotExist:
         return JsonResponse({'error': 'Script não encontrado'}, status=404)
+
+    if not pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     # Normaliza chaves: remove {} caso usuário tenha digitado "{PON}" em vez de "PON"
     params_norm = {k.strip('{}').upper(): v for k, v in params.items()}

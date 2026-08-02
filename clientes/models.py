@@ -34,6 +34,18 @@ class ClienteManager(models.Manager):
             models.Q(usuario=user) | models.Q(usuarios_adicionais=user)
         ).distinct()
 
+    def visiveis_para(self, user):
+        """Escopo de back-office (telas de admin/consultor/operador) — não
+        usado pelo portal do cliente final, que continua em
+        get_by_usuario_vinculado/filter_by_usuario_vinculado acima."""
+        from usuario.perms import is_admin, get_instancia, is_backoffice
+        if is_admin(user):
+            return self.all()
+        if is_backoffice(user):
+            instancia = get_instancia(user)
+            return self.filter(instancia=instancia) if instancia else self.none()
+        return self.none()
+
 
 # Extensão do User para armazenar dados específicos do cliente
 class Cliente(models.Model):
@@ -45,6 +57,12 @@ class Cliente(models.Model):
         User, related_name='clientes_adicionais', blank=True,
         verbose_name='Usuários adicionais',
         help_text='Outros usuários que também podem logar e acessar o painel deste cliente.'
+    )
+    instancia = models.ForeignKey(
+        'usuario.Instancia', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='clientes',
+        verbose_name='Instância',
+        help_text='Consultor dono deste cliente. Vazio = cliente da plataforma (só o Administrador vê).'
     )
     nome_empresa = models.CharField(max_length=255)
     cnpj = models.CharField(max_length=18, unique=True)

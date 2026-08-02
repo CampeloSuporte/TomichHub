@@ -13,7 +13,7 @@ import subprocess
 import paramiko
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -23,6 +23,8 @@ from .models import (
     IPAMScanResultado, IPAMAuditLog,
 )
 from .consumers import _proxy_pool
+from .decorators import ferramenta_instancia_required
+from usuario.perms import pode_acessar_cliente as _perms_pode_acessar_cliente
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +121,19 @@ def _scan_subrede_hosts(subrede):
 
 
 def _cliente(request, cliente_id):
-    return get_object_or_404(Cliente, id=cliente_id)
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms_pode_acessar_cliente(request.user, cliente):
+        raise Http404('Cliente não encontrado ou sem permissão.')
+    return cliente
+
+
+def _checar_obj_cliente(request, obj):
+    """Levanta Http404 se o usuário não pode acessar o cliente dono de `obj`
+    (VLAN/Prefixo/SubRede/Endereço/VPN) — usado nos endpoints que resolvem o
+    objeto direto pelo próprio id (vlan_id/prefixo_id/subrede_id/ip_id/vpn_id),
+    sem passar por `_cliente(request, cliente_id)`."""
+    if not _perms_pode_acessar_cliente(request.user, obj.cliente):
+        raise Http404('Objeto não encontrado ou sem permissão.')
 
 
 def _json(request):
@@ -216,6 +230,7 @@ def _ipam_log(request, cliente, modelo, obj, acao, antes=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_vlans_listar(request, cliente_id):
     c = _cliente(request, cliente_id)
     qs = IPAMVlan.objects.filter(cliente=c)
@@ -230,6 +245,7 @@ def ipam_vlans_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_vlan_salvar(request, cliente_id):
     c   = _cliente(request, cliente_id)
     body = _json(request)
@@ -257,8 +273,10 @@ def ipam_vlan_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_vlan_deletar(request, vlan_id):
     obj = get_object_or_404(IPAMVlan, id=vlan_id)
+    _checar_obj_cliente(request, obj)
     _ipam_log(request, obj.cliente, 'vlan', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
@@ -269,6 +287,7 @@ def ipam_vlan_deletar(request, vlan_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_prefixos_listar(request, cliente_id):
     c  = _cliente(request, cliente_id)
     qs = IPAMPrefixo.objects.filter(cliente=c)
@@ -298,6 +317,7 @@ def ipam_prefixos_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_prefixo_salvar(request, cliente_id):
     c    = _cliente(request, cliente_id)
     body = _json(request)
@@ -344,8 +364,10 @@ def ipam_prefixo_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_prefixo_deletar(request, prefixo_id):
     obj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, obj)
     _ipam_log(request, obj.cliente, 'prefixo', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
@@ -353,12 +375,14 @@ def ipam_prefixo_deletar(request, prefixo_id):
 
 @login_required
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('ipam')
 def ipam_prefixo_dividir(request, prefixo_id):
     """
     Divide um prefixo em N sub-redes iguais do tamanho prefixlen.
     Cria registros em IPAMSubRede para cada bloco.
     """
     pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, pobj)
     try:
         body = _json(request)
         target_pl   = int(body.get('prefixlen', 0))
@@ -401,9 +425,11 @@ def ipam_prefixo_dividir(request, prefixo_id):
 
 @login_required
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_dividir(request, subrede_id):
     """Divide uma sub-rede em N sub-redes menores (herda prefixo pai)."""
     sobj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, sobj)
     try:
         body      = _json(request)
         target_pl = int(body.get('prefixlen', 0))
@@ -444,9 +470,11 @@ def ipam_subrede_dividir(request, subrede_id):
 
 @login_required
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('ipam')
 def ipam_prefixo_marcar_em_uso(request, prefixo_id):
     """Cria uma sub-rede única que cobre todo o prefixo (100% em uso)."""
     pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, pobj)
     try:
         body = _json(request)
         descricao = body.get('descricao', '').strip() or 'Em uso'
@@ -466,15 +494,18 @@ def ipam_prefixo_marcar_em_uso(request, prefixo_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_prefixo_pool_cheia(request, prefixo_id):
     """Alterna o flag pool_cheia do prefixo."""
     pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, pobj)
     pobj.pool_cheia = not pobj.pool_cheia
     pobj.save(update_fields=['pool_cheia'])
     return JsonResponse({'ok': True, 'pool_cheia': pobj.pool_cheia})
 
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_prefixo_breakdown(request, prefixo_id):
     """
     Retorna o breakdown de um prefixo:
@@ -483,6 +514,7 @@ def ipam_prefixo_breakdown(request, prefixo_id):
     - sugestões de tamanhos para o espaço livre
     """
     pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, pobj)
     try:
         prefixo_net = ipaddress.ip_network(pobj.prefixo, strict=False)
     except ValueError as e:
@@ -650,6 +682,7 @@ def _prefixlen_label(prefixlen, version=4):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_subredes_listar(request, cliente_id):
     c       = _cliente(request, cliente_id)
     filtro  = request.GET.get('prefixo_id')
@@ -706,6 +739,7 @@ def ipam_subredes_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_salvar(request, cliente_id):
     c    = _cliente(request, cliente_id)
     body = _json(request)
@@ -738,8 +772,10 @@ def ipam_subrede_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_deletar(request, subrede_id):
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, obj)
     _ipam_log(request, obj.cliente, 'subrede', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
@@ -747,9 +783,11 @@ def ipam_subrede_deletar(request, subrede_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_pool_cheia(request, subrede_id):
     """Alterna o flag pool_cheia da sub-rede."""
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, obj)
     obj.pool_cheia = not obj.pool_cheia
     obj.save(update_fields=['pool_cheia'])
     return JsonResponse({'ok': True, 'pool_cheia': obj.pool_cheia})
@@ -757,9 +795,11 @@ def ipam_subrede_pool_cheia(request, subrede_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_scan(request, subrede_id):
     """Dispara um scan (ping em lote) imediato da sub-rede."""
     s = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, s)
     try:
         resultado = _scan_subrede_hosts(s)
         return JsonResponse({'ok': True, **resultado})
@@ -770,18 +810,22 @@ def ipam_subrede_scan(request, subrede_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_scan_toggle(request, subrede_id):
     """Liga/desliga o scan automático periódico (Celery) desta sub-rede."""
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, obj)
     obj.scan_automatico = not obj.scan_automatico
     obj.save(update_fields=['scan_automatico'])
     return JsonResponse({'ok': True, 'scan_automatico': obj.scan_automatico})
 
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_ips(request, subrede_id):
     """Lista IPs de uma sub-rede específica."""
     s  = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, s)
     qs = IPAMEndereco.objects.filter(subrede=s).select_related('acesso')
     data = [_ip_dict(e) for e in qs]
     return JsonResponse({'ok': True, 'ips': data, 'subrede': s.rede})
@@ -791,6 +835,7 @@ GRADE_MAX_ENDERECOS = 4096
 
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_subrede_grade(request, subrede_id):
     """
     Grade completa dos endereços de uma sub-rede (estilo phpIPAM): gera todo
@@ -799,6 +844,7 @@ def ipam_subrede_grade(request, subrede_id):
     ping mas nunca foram cadastrados (achado de descoberta).
     """
     s = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, s)
     try:
         net = ipaddress.ip_network(s.rede, strict=False)
     except ValueError as e:
@@ -871,6 +917,7 @@ def _ip_dict(e):
 
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_ips_listar(request, cliente_id):
     c       = _cliente(request, cliente_id)
     filtro_sub = request.GET.get('subrede_id')
@@ -890,6 +937,7 @@ def ipam_ips_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_ip_salvar(request, cliente_id):
     c    = _cliente(request, cliente_id)
     body = _json(request)
@@ -922,8 +970,10 @@ def ipam_ip_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_ip_deletar(request, ip_id):
     obj = get_object_or_404(IPAMEndereco, id=ip_id)
+    _checar_obj_cliente(request, obj)
     _ipam_log(request, obj.cliente, 'ip', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
@@ -934,6 +984,7 @@ def ipam_ip_deletar(request, ip_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_vpns_listar(request, cliente_id):
     c  = _cliente(request, cliente_id)
     qs = IPAMVpnDoc.objects.filter(cliente=c)
@@ -951,6 +1002,7 @@ def ipam_vpns_listar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_vpn_salvar(request, cliente_id):
     c    = _cliente(request, cliente_id)
     body = _json(request)
@@ -981,8 +1033,10 @@ def ipam_vpn_salvar(request, cliente_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_vpn_deletar(request, vpn_id):
     obj = get_object_or_404(IPAMVpnDoc, id=vpn_id)
+    _checar_obj_cliente(request, obj)
     _ipam_log(request, obj.cliente, 'vpn', obj, 'deleted')
     obj.delete()
     return JsonResponse({'ok': True})
@@ -994,6 +1048,7 @@ def ipam_vpn_deletar(request, vpn_id):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_importar(request, cliente_id):
     """
     Importa CSV exportado do phpIPAM.
@@ -2105,6 +2160,7 @@ def _build_contexto_backup(vendor, content):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('ipam')
 def ipam_analisar_backups(request, cliente_id):
     """
     Analisa os backups mais recentes dos acessos do cliente e auto-documenta
@@ -2320,6 +2376,7 @@ HISTORICO_PAGE_SIZE = 50
 
 
 @login_required
+@ferramenta_instancia_required('ipam')
 def ipam_historico_listar(request, cliente_id):
     c = _cliente(request, cliente_id)
     qs = IPAMAuditLog.objects.filter(cliente=c).select_related('usuario')

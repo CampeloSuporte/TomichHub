@@ -20,6 +20,8 @@ from . import services
 
 # Import do ProxyServer do app clientes
 from clientes.models import ProxyServer
+from clientes.decorators import ferramenta_instancia_required
+from usuario.perms import pode_acessar_cliente as _perms_pode_acessar_cliente
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +31,12 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────
 
 def _pode_acessar_cliente(request, cliente_id: str) -> bool:
-    if request.user.is_staff or request.user.is_superuser:
-        return True
     try:
         from clientes.models import Cliente
-        c = Cliente.objects.get_by_usuario_vinculado(request.user)
-        return str(c.id) == str(cliente_id)
+        cliente = Cliente.objects.get(id=cliente_id)
     except Exception:
         return False
+    return _perms_pode_acessar_cliente(request.user, cliente)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -214,6 +214,7 @@ def _get_config_com_tunel(config, cliente_id):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
 def salvar_zabbix_config(request):
     cliente_id = request.POST.get('cliente')
     url        = request.POST.get('url', '').strip().rstrip('/')
@@ -250,6 +251,7 @@ def salvar_zabbix_config(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def buscar_zabbix_config(request):
     cliente_id = request.GET.get('id')
     if not _pode_acessar_cliente(request, cliente_id):
@@ -269,6 +271,7 @@ def buscar_zabbix_config(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def autoconfig_zabbix(request):
     """
     Busca automaticamente a configuração do Zabbix a partir de um Acesso
@@ -308,6 +311,7 @@ def autoconfig_zabbix(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def testar_zabbix_conexao(request):
     cliente_id = request.GET.get('id')
     if not _pode_acessar_cliente(request, cliente_id):
@@ -332,6 +336,7 @@ def testar_zabbix_conexao(request):
 # ──────────────────────────────────────────────────────────────
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def listar_hosts_zabbix(request):
     cliente_id = request.GET.get('id')
     busca      = request.GET.get('q', '')
@@ -355,6 +360,7 @@ def listar_hosts_zabbix(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def listar_interfaces_zabbix(request):
     cliente_id = request.GET.get('cliente_id')
     host_id    = request.GET.get('host_id')
@@ -378,6 +384,7 @@ def listar_interfaces_zabbix(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def historico_item_zabbix(request):
     cliente_id = request.GET.get('cliente_id')
     item_id    = request.GET.get('item_id')
@@ -407,6 +414,7 @@ def historico_item_zabbix(request):
 # ──────────────────────────────────────────────────────────────
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def listar_topologias(request):
     cliente_id = request.GET.get('id')
     if not _pode_acessar_cliente(request, cliente_id):
@@ -430,6 +438,7 @@ def listar_topologias(request):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
 def criar_topologia(request):
     try:
         data       = json.loads(request.body)
@@ -454,6 +463,7 @@ def criar_topologia(request):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
 def salvar_topologia(request):
     try:
         data       = json.loads(request.body)
@@ -504,6 +514,7 @@ def salvar_topologia(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def carregar_topologia(request):
     topo_id    = request.GET.get('topo_id')
     cliente_id = request.GET.get('cliente_id')
@@ -541,6 +552,7 @@ def carregar_topologia(request):
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
 def deletar_topologia(request, topo_id):
     topo       = get_object_or_404(MonitorTopology, id=topo_id)
     cliente_id = topo.cliente_id
@@ -557,6 +569,7 @@ def deletar_topologia(request, topo_id):
 # ──────────────────────────────────────────────────────────────
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def status_topologia(request):
     topo_id    = request.GET.get('topo_id')
     cliente_id = request.GET.get('cliente_id')
@@ -634,6 +647,7 @@ def status_topologia(request):
 
 
 @login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
 def listar_itens_zabbix(request):
     cliente_id = request.GET.get('cliente_id')
     host_id    = request.GET.get('host_id')
@@ -662,6 +676,7 @@ def listar_itens_zabbix(request):
 
 @login_required
 @require_http_methods(['GET'])
+@ferramenta_instancia_required('monitoramento')
 def carregar_dash_config(request):
     cliente_id = request.GET.get('id') or request.GET.get('cliente_id')
     if not _pode_acessar_cliente(request, cliente_id):
@@ -680,6 +695,7 @@ def carregar_dash_config(request):
 
 @login_required
 @require_http_methods(['POST'])
+@ferramenta_instancia_required('monitoramento')
 def salvar_dash_config(request):
     try:
         body = json.loads(request.body)
