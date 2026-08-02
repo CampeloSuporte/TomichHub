@@ -131,8 +131,12 @@
     .modal textarea#modalComandos:focus { outline: none; border-color: #58a6ff; }
     .modal .dica-edicao { color: #7d8590; font-size: 10.5px; margin: 0 0 16px; }
     .modal .aviso { color: #ff8080; font-size: 11px; margin-bottom: 14px; }
-    .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
     .modal-resultado { margin-top: 14px; font-size: 12px; white-space: pre-wrap; font-family: 'Cascadia Code', monospace; max-height: 200px; overflow-y: auto; }
+    .modal-trial-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11px; color: #7d8590; }
+    .modal-trial-row input { width: 80px; }
+    .modal-trial-row #modalTrialAviso { color: #ff8080; font-size: 10.5px; }
+    #btnExecutarTrial:disabled, .modal-trial-row.sem-suporte input { opacity: .4; cursor: not-allowed; }
 
     /* Modal de tráfego em tempo real */
     .modal-trafego { max-width: 920px; }
@@ -165,11 +169,18 @@
         <h3 id="modalTitulo">Confirmar ação</h3>
         <div class="aviso">Estes comandos serão enviados de verdade ao equipamento:</div>
         <textarea id="modalComandos" spellcheck="false"></textarea>
-        <div class="dica-edicao">Pode editar antes de confirmar — ex: trocar o ASN usado no prepend, ajustar um nome. O que estiver aqui é exatamente o que será enviado.</div>
+        <div class="dica-edicao">Pode editar antes de confirmar — ex: trocar o ASN usado no prepend, ajustar um nome. O que estiver aqui é exatamente o que será enviado (o commit final é decidido pelo botão escolhido, não pelo texto acima).</div>
+        <div class="modal-trial-row" id="modalTrialRow">
+            <label for="modalTrialSegundos">Duração do trial (segundos):</label>
+            <input type="number" id="modalTrialSegundos" class="input-modal" value="60" min="5" max="3600">
+            <span id="modalTrialAviso"></span>
+        </div>
         <div class="modal-resultado" id="modalResultado"></div>
         <div class="modal-acoes">
             <button class="btn" onclick="fecharModal()">Cancelar</button>
-            <button class="btn perigo" id="btnConfirmarAcao" onclick="confirmarAcao()">Executar</button>
+            <button class="btn" id="btnExecutarTrial" onclick="confirmarAcao(true)"
+                    title="Aplica agora, mas reverte sozinho depois da duração escolhida se ninguém confirmar — seguro pra testar o efeito.">▶ Executar em modo trial</button>
+            <button class="btn perigo" id="btnConfirmarAcao" onclick="confirmarAcao(false)">▶ Executar sem trial</button>
         </div>
     </div>
 </div>
@@ -438,6 +449,13 @@ function pedirAcaoPrepend(key, prefixo, nomeSessao) {
     pedirAcao('prepend', prefixo, { sessao: nomeSessao, delta }, `Adicionar +${delta} prepend em ${prefixo}`);
 }
 
+// Fabricantes com commit temporário nativo (Huawei "commit trial N",
+// Juniper "commit confirmed N") — ver bgp_actions.py::_TRIAL_SUPORTADO.
+// Cisco/Datacom e Mikrotik não têm um mecanismo compatível (decisão
+// explícita: Cisco/Datacom aplicaria via reload do equipamento inteiro,
+// risco desproporcional; Mikrotik só tem "safe mode" por disconnect).
+const TRIAL_SUPORTADO = ['huawei', 'juniper'];
+
 function pedirAcao(tipo, alvo, params, titulo) {
     acaoPendente = { tipo, alvo, params };
     const textarea = document.getElementById('modalComandos');
@@ -446,7 +464,20 @@ function pedirAcao(tipo, alvo, params, titulo) {
     textarea.readOnly = true;
     document.getElementById('modalResultado').textContent = '';
     document.getElementById('btnConfirmarAcao').disabled = false;
-    document.getElementById('btnConfirmarAcao').textContent = 'Executar';
+    document.getElementById('btnConfirmarAcao').textContent = '▶ Executar sem trial';
+    document.getElementById('btnConfirmarAcao').onclick = () => confirmarAcao(false);
+
+    const suportaTrial = TRIAL_SUPORTADO.includes(SNAPSHOT?.vendor);
+    const btnTrial = document.getElementById('btnExecutarTrial');
+    const linhaTrial = document.getElementById('modalTrialRow');
+    btnTrial.disabled = !suportaTrial;
+    btnTrial.textContent = '▶ Executar em modo trial';
+    btnTrial.onclick = () => confirmarAcao(true);
+    linhaTrial.classList.toggle('sem-suporte', !suportaTrial);
+    document.getElementById('modalTrialSegundos').disabled = !suportaTrial;
+    document.getElementById('modalTrialAviso').textContent = suportaTrial
+        ? '' : `(sem suporte a trial em ${SNAPSHOT?.vendor || ''})`;
+
     document.getElementById('modalOverlay').classList.add('aberto');
 
     fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
@@ -461,6 +492,7 @@ function pedirAcao(tipo, alvo, params, titulo) {
                 textarea.readOnly = true;
                 document.getElementById('modalResultado').textContent = '⚠ ' + data.error;
                 document.getElementById('btnConfirmarAcao').disabled = true;
+                btnTrial.disabled = true;
             } else {
                 textarea.value = data.comandos.join('\n');
                 textarea.readOnly = false;
@@ -471,6 +503,7 @@ function pedirAcao(tipo, alvo, params, titulo) {
             textarea.readOnly = true;
             document.getElementById('modalResultado').textContent = String(e);
             document.getElementById('btnConfirmarAcao').disabled = true;
+            btnTrial.disabled = true;
         });
 }
 
@@ -580,33 +613,42 @@ function pedirAcaoNovoAnuncio(lista) {
     pedirAcao('novo_anuncio', lista, { sessao, lista }, `Anunciar via prefix-list "${lista}"`);
 }
 
-function confirmarAcao() {
+function confirmarAcao(trial) {
     if (!acaoPendente) return;
-    const btn = document.getElementById('btnConfirmarAcao');
+    const btnTrial = document.getElementById('btnExecutarTrial');
+    const btnDireto = document.getElementById('btnConfirmarAcao');
+    const btnAtivo = trial ? btnTrial : btnDireto;
     const comandos = document.getElementById('modalComandos').value
         .split('\n').map(l => l.trim()).filter(Boolean);
     if (!comandos.length) return;
-    btn.disabled = true;
-    btn.textContent = 'Executando…';
+    btnTrial.disabled = true;
+    btnDireto.disabled = true;
+    btnAtivo.textContent = 'Executando…';
     document.getElementById('modalComandos').readOnly = true;
+
+    const body = { ...acaoPendente, comandos, preview: false, trial: !!trial };
+    if (trial) {
+        body.trial_segundos = parseInt(document.getElementById('modalTrialSegundos').value, 10) || 60;
+    }
+
     fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
-        body: JSON.stringify({ ...acaoPendente, comandos, preview: false }),
+        body: JSON.stringify(body),
     })
         .then(r => r.json())
         .then(data => {
             document.getElementById('modalResultado').textContent =
                 (data.status === 'sucesso' ? '✓ ' : '✕ ') + (data.output || data.error || '');
-            btn.textContent = 'Fechar';
-            btn.disabled = false;
-            btn.onclick = () => { fecharModal(); carregar(); };
+            btnAtivo.textContent = 'Fechar';
+            btnAtivo.disabled = false;
+            btnAtivo.onclick = () => { fecharModal(); carregar(); };
         })
         .catch(e => {
             document.getElementById('modalResultado').textContent = '✕ ' + e;
-            btn.textContent = 'Fechar';
-            btn.disabled = false;
-            btn.onclick = fecharModal;
+            btnAtivo.textContent = 'Fechar';
+            btnAtivo.disabled = false;
+            btnAtivo.onclick = () => { fecharModal(); carregar(); };
         });
 }
 

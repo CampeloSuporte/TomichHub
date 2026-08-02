@@ -611,12 +611,67 @@ _PRECISA_COMMIT = {'juniper', 'huawei'}
 # RouterOS não tem esse conceito, cada comando já é completo por si só).
 _COMANDO_UNICO = {'mikrotik'}
 
+# Fabricantes com mecanismo de "commit temporário" (aplica e reverte
+# sozinho depois de N segundos, a menos que seja confirmado antes) —
+# Huawei `commit trial N` e Junos `commit confirmed N` (minutos) operam
+# sobre a MESMA config candidata do commit normal, risco contido à sessão/
+# policy sendo editada.
+#
+# Cisco/Datacom e Mikrotik ficam de fora por decisão explícita (perguntado
+# ao usuário): IOS clássico não tem candidate-config/commit — comandos
+# aplicam na hora — e o equivalente mais próximo de rollback temporizado
+# seria `reload in N` (reagenda um REBOOT do equipamento inteiro se
+# ninguém confirmar), risco muito maior que o rollback restrito do
+# Huawei/Juniper — decidiu não usar. RouterOS só tem "safe mode"
+# (reverte no DISCONNECT da sessão, não por tempo), incompatível com o
+# modelo conecta→executa→desconecta desta automação.
+_TRIAL_SUPORTADO = {'huawei', 'juniper'}
 
-def executar_acao_bgp(acesso, vendor, comandos):
+
+def validar_trial_suportado(vendor):
+    """Levanta `AcaoBgpNaoSuportada` se `vendor` não tem um mecanismo de
+    rollback temporizado compatível com esta automação — ver comentário
+    de `_TRIAL_SUPORTADO`. Chamada pela view ANTES de executar de verdade,
+    pra recusar cedo (mesmo padrão de `comandos_*` recusando ações sem um
+    comando seguro conhecido)."""
+    if vendor not in _TRIAL_SUPORTADO:
+        motivo = (
+            'route-map/comando aplica na hora, sem candidate-config — o único jeito de reverter '
+            'por tempo seria agendar reload do equipamento inteiro, risco desproporcional'
+            if vendor in ('cisco', 'datacom') else
+            'RouterOS só tem "safe mode" (reverte no disconnect da sessão, não por tempo) — '
+            'incompatível com o modelo conecta→executa→desconecta desta automação'
+        )
+        raise AcaoBgpNaoSuportada(f'Execução em modo trial não é suportada em {vendor}: {motivo}.')
+
+
+def _comando_commit_trial(vendor, trial_segundos):
+    """Comando de commit temporário nativo de cada fabricante suportado —
+    ver `_TRIAL_SUPORTADO`. `trial_segundos` já validado pelo chamador
+    (`bgp_views.py`) como inteiro positivo razoável."""
+    if vendor == 'huawei':
+        # VRP aceita de 5 a 65534 segundos.
+        segundos = max(5, min(65534, int(trial_segundos)))
+        return f'commit trial {segundos}'
+    if vendor == 'juniper':
+        # Junos "commit confirmed" é em MINUTOS, não segundos (mín. 1).
+        minutos = max(1, -(-int(trial_segundos) // 60))  # arredonda pra cima
+        return f'commit confirmed {minutos}'
+    raise AcaoBgpNaoSuportada(f'Trial não suportado para {vendor}.')
+
+
+def executar_acao_bgp(acesso, vendor, comandos, trial=False, trial_segundos=60):
     """Conecta de verdade e envia os comandos. Retorna (output, status) —
     status é 'sucesso' ou 'erro', nunca levanta exceção de conexão (só
     `AcaoBgpNaoSuportada`, que é responsabilidade do chamador verificar
-    antes de chegar aqui)."""
+    antes de chegar aqui — inclusive `validar_trial_suportado` quando
+    `trial=True`).
+
+    `trial=True` troca o commit normal por um commit TEMPORÁRIO (`commit
+    trial N`/`commit confirmed N`) — a mudança fica ativa só por
+    `trial_segundos` e reverte sozinha se ninguém confirmar depois (esta
+    automação ainda não tem uma ação de "confirmar" separada; trial serve
+    pra testar o efeito com segurança, sabendo que desfaz sozinho)."""
     fabricante_conexao = 'cisco' if vendor == 'datacom' else vendor
     if fabricante_conexao not in DEVICE_TYPES:
         return f'Fabricante "{vendor}" sem driver de conexão configurado.', 'erro'
@@ -635,7 +690,12 @@ def executar_acao_bgp(acesso, vendor, comandos):
             # da config candidata, diferente de só mandar o texto "commit").
             comandos_config = [c for c in comandos if c != 'commit']
             output = conn.send_config_set(comandos_config, exit_config_mode=False)
-            output += '\n' + conn.commit()
+            if trial:
+                comando_commit = _comando_commit_trial(vendor, trial_segundos)
+                output = f'[MODO TRIAL — reverte sozinho se não for confirmado]\n' + output
+                output += '\n' + conn.send_command(comando_commit, read_timeout=20)
+            else:
+                output += '\n' + conn.commit()
         else:
             output = conn.send_config_set(comandos)
         return output, 'sucesso'

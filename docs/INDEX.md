@@ -2,6 +2,31 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 31 — 02/08/2026: Automação BGP — Execução em modo trial
+
+**O que foi implementado?**
+- ✅ **Modo trial (commit temporário com rollback automático)**: todo modal de confirmação ganhou
+  dois botões — "▶ Executar em modo trial" e "▶ Executar sem trial" — mais um campo de duração
+  (segundos, default 60). Trial usa o commit temporário nativo do fabricante (Huawei `commit trial
+  N`, Juniper `commit confirmed N` em minutos) — a mudança reverte sozinha se ninguém confirmar,
+  útil pra testar algo arriscado (ex: desativar sessão upstream) com rede de segurança.
+- 🚫 **Cisco/Datacom e Mikrotik sem suporte a trial** — decisão tomada com o usuário
+  (`AskUserQuestion`): o único rollback temporizado possível no Cisco/Datacom seria `reload in N`
+  (reboot do equipamento INTEIRO), risco desproporcional; RouterOS só tem "safe mode" (reverte no
+  disconnect, não por tempo), incompatível com o modelo desta automação.
+- ✅ Painel não marca a mudança como permanente quando `trial=True` (pula a atualização otimista,
+  já que a mudança reverte sozinha e a automação não sabe quando isso acontece de verdade).
+- ✅ Validado com 89 combinações reais (sessão × prefixo, 4 fabricantes) comparando trial/sem-trial
+  a partir do mesmo estado — zero discrepâncias.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Modo trial — commit temporário com rollback automático" |
+
+---
+
 ### Sessão 30 — 02/08/2026: Fix + Feat — Ver tráfego: 2 bugs reais e gráfico ao vivo
 
 **O que foi corrigido/implementado?**
@@ -1047,6 +1072,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 02/08/2026 | Automação BGP: execução em modo trial (commit temporário com rollback automático) — Huawei `commit trial N`, Juniper `commit confirmed N`; Cisco/Datacom e Mikrotik sem suporte por decisão explícita | bgp_automacao.md |
 | 02/08/2026 | Ver tráfego (BGP): removido o terminal xterm.js embutido — modal mostra só o gráfico ao vivo, WebSocket alimenta o parser direto sem exibir texto bruto | bgp_automacao.md |
 | 02/08/2026 | Fix Ver tráfego (BGP): terminal ficava em branco (CSS do xterm) e depois travava em "Conectando…" (faltava socket.binaryType) — corrigidos; adicionado gráfico ao vivo (Chart.js) com formato real do comando capturado do equipamento | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: identificação automática da interface de cada sessão (Huawei) + botão "Ver tráfego em tempo real" (terminal embutido, reaproveita o WS do terminal SSH) | bgp_automacao.md |

@@ -23,6 +23,7 @@ from .bgp_actions import (
     comandos_prepend,
     comandos_toggle_sessao,
     executar_acao_bgp,
+    validar_trial_suportado,
 )
 from .bgp_matcher import listar_prefix_lists
 from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
@@ -232,7 +233,8 @@ def bgp_communities_deletar(request, acesso_id, community_id):
 def bgp_executar_acao(request, acesso_id):
     """
     POST /clientes/bgp/<acesso_id>/acao/
-    body: {"tipo", "alvo", "params": {...}, "preview": bool, "comandos": [...]}
+    body: {"tipo", "alvo", "params": {...}, "preview": bool, "comandos": [...],
+           "trial": bool, "trial_segundos": int}
 
     `preview=true` só monta e devolve os comandos gerados automaticamente,
     sem tocar no equipamento — é o que a UI usa pra preencher o textarea
@@ -240,6 +242,12 @@ def bgp_executar_acao(request, acesso_id):
     grava AcaoBgp; se o body trouxer `comandos` (o texto do modal, possivelmente
     editado à mão — ex: trocar o ASN usado no prepend), usa exatamente esses
     comandos em vez de gerar de novo — dá pra revisar/ajustar antes de confirmar.
+
+    `trial=true` (só Huawei/Juniper — `validar_trial_suportado`) troca o
+    commit final por um commit TEMPORÁRIO (`commit trial N`/`commit
+    confirmed N`, `trial_segundos` controla N) — a mudança reverte sozinha
+    se ninguém confirmar depois. Nesse caso o snapshot local NÃO é
+    atualizado otimisticamente (ver comentário abaixo).
     """
     erro = _checar_staff(request)
     if erro:
@@ -256,11 +264,22 @@ def bgp_executar_acao(request, acesso_id):
     params = body.get('params') or {}
     preview = bool(body.get('preview', True))
     comandos_editados = body.get('comandos')
+    trial = bool(body.get('trial', False))
+    try:
+        trial_segundos = int(body.get('trial_segundos') or 60)
+    except (TypeError, ValueError):
+        trial_segundos = 60
 
     try:
         snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
     except BgpSnapshot.DoesNotExist:
         return JsonResponse({'error': 'Sem snapshot BGP para este host — aguarde a próxima atualização noturna.'}, status=404)
+
+    if trial:
+        try:
+            validar_trial_suportado(snap.vendor)
+        except AcaoBgpNaoSuportada as e:
+            return JsonResponse({'error': str(e)}, status=422)
 
     if preview:
         # Preview sempre gera do zero — é o texto inicial que preenche o
@@ -281,13 +300,17 @@ def bgp_executar_acao(request, acesso_id):
         except AcaoBgpNaoSuportada as e:
             return JsonResponse({'error': str(e)}, status=422)
 
-    output, status = executar_acao_bgp(acesso, snap.vendor, comandos)
-    if status == 'sucesso':
+    output, status = executar_acao_bgp(acesso, snap.vendor, comandos, trial=trial, trial_segundos=trial_segundos)
+    if status == 'sucesso' and not trial:
         # Atualiza o snapshot local pro painel já refletir o efeito da
         # ação (ex: prefixo some da lista de anunciados depois de "Parar
         # de anunciar") sem esperar o próximo backup/rotina noturna — ver
         # docstring de aplicar_efeito_localmente. Nunca deve derrubar a
-        # resposta de sucesso já obtida do equipamento.
+        # resposta de sucesso já obtida do equipamento. Pulado em modo
+        # trial: a mudança reverte sozinha se não for confirmada, então
+        # marcar o painel como se fosse permanente seria enganoso — nem
+        # este código nem o resto da automação sabem quando o rollback
+        # automático do equipamento efetivamente acontece.
         try:
             aplicar_efeito_localmente(snap.vendor, snap.dados, tipo, params.get('sessao', ''), alvo, params)
             snap.save(update_fields=['dados'])
