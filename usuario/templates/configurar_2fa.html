@@ -68,6 +68,32 @@
                             </form>
 
                         {% else %}
+                            <div class="modal fade" id="modalObrigatorio2fa" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title"><i class="fas fa-triangle-exclamation me-2" style="color:#ffaa00"></i>Autenticação em duas etapas obrigatória</h5>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="mb-0">Por segurança, toda conta deste sistema precisa ter a
+                                            autenticação em duas etapas ativada. Configure agora escaneando o QR code
+                                            com o app <strong>Google Authenticator</strong> — enquanto não ativar, só
+                                            esta tela fica disponível.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn-register" data-bs-dismiss="modal">
+                                                <i class="fas fa-check me-2"></i>Entendi, vou configurar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    new bootstrap.Modal(document.getElementById('modalObrigatorio2fa')).show();
+                                });
+                            </script>
+
                             <p>Escaneie o QR code abaixo com o app <strong>Google Authenticator</strong>
                                 (ou similar) e digite o código de 6 dígitos gerado pra confirmar.</p>
 
