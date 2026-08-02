@@ -138,6 +138,12 @@
     /* Modal de tráfego em tempo real */
     .modal-trafego { max-width: 920px; }
     #trafegoXterm { height: 60vh; min-height: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px; margin-bottom: 14px; }
+    /* xterm.css base não define largura/altura em .xterm — sem isso o
+       terminal renderiza com 0px e fica invisível mesmo recebendo dados
+       (mesmas regras que terminal.html usa pro terminal SSH normal). */
+    #trafegoXterm .xterm { width: 100%; height: 100%; position: relative; }
+    #trafegoXterm .xterm-screen { width: 100%; height: 100%; }
+    #trafegoXterm .xterm-viewport { background-color: #0d1117; }
 </style>
 </head>
 <body>
@@ -609,6 +615,7 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     term.open(document.getElementById('trafegoXterm'));
     try { term.loadAddon(new CanvasAddon.CanvasAddon()); } catch (e) {}
     setTimeout(() => { try { fitAddon.fit(); } catch (e) {} }, 50);
+    term.writeln('\x1b[36mConectando…\x1b[0m');
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws/ssh/`);
