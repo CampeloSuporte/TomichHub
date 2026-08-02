@@ -2,6 +2,30 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 30 — 02/08/2026: Fix + Feat — Ver tráfego: 2 bugs reais e gráfico ao vivo
+
+**O que foi corrigido/implementado?**
+- 🐛 **Terminal ficava em branco**: `xterm.css` base não define `width`/`height` em `.xterm` — sem
+  essas regras (que `terminal.html` já tinha e faltou copiar) o terminal renderiza com 0px e some,
+  mesmo recebendo dados.
+- 🐛 **Depois do fix acima, travava em "Conectando…" pra sempre**, mesmo com o SSH conectado de
+  verdade no equipamento (confirmado nos logs do daphne): faltava `socket.binaryType =
+  'arraybuffer'` — a saída do terminal chega como frame binário puro, e sem isso o navegador usa
+  `'blob'` por padrão, quebrando o parse silenciosamente pra toda saída.
+- ✅ **Gráfico ao vivo** no modal (Chart.js, já vendorizado, mesma paleta do painel de
+  Monitoramento): capturei o formato real do `display counters rate interface X | refresh 1` direto
+  do equipamento antes de escrever o parser (Huawei não usa ANSI pra redesenhar, cada ciclo vem
+  delimitado em texto puro) — uma regex extrai os bytes/s de entrada/saída de cada ciclo completo e
+  plota Mbps ao longo do tempo, até 60 pontos de histórico.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Ver tráfego em tempo real (Huawei)" — subseções "Dois bugs reais" e "Gráfico ao vivo" |
+
+---
+
 ### Sessão 29 — 01/08/2026: Automação BGP — Ver tráfego em tempo real (Huawei)
 
 **O que foi implementado?**
@@ -1023,6 +1047,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 02/08/2026 | Fix Ver tráfego (BGP): terminal ficava em branco (CSS do xterm) e depois travava em "Conectando…" (faltava socket.binaryType) — corrigidos; adicionado gráfico ao vivo (Chart.js) com formato real do comando capturado do equipamento | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: identificação automática da interface de cada sessão (Huawei) + botão "Ver tráfego em tempo real" (terminal embutido, reaproveita o WS do terminal SSH) | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: modal "Anunciar prefixo novo" não rolava com lista grande de prefix-lists (esticava pra fora da tela) — modal ganhou scroll, campo de busca fica fixo no topo | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "Atualizar agora" revertia a atualização otimista de uma ação real (reprocessava o mesmo backup antigo) — agora detecta quando não há backup novo e preserva o estado atual | bgp_automacao.md |

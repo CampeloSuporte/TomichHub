@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-02 (Fix + Feat: Ver tráfego em tempo real — 2 bugs reais e gráfico ao vivo)
+
+### Corrigido
+
+- **Terminal de tráfego ficava em branco** — `xterm.css` base não define `width`/`height` em
+  `.xterm`; sem essas regras (que `terminal.html` já tinha e eu esqueci de copiar) o terminal
+  renderiza com 0px e some, mesmo recebendo dados.
+- **Depois do fix acima, ficava travado em "Conectando…" pra sempre**, mesmo com o daphne
+  confirmando SSH conectado nos logs — `consumers.py::send_output` manda a saída como frame
+  **binário puro**; sem `socket.binaryType = 'arraybuffer'` (também esquecido), o navegador usa
+  `'blob'` por padrão, `instanceof ArrayBuffer` dava falso pra toda saída, e caía num
+  `JSON.parse(blob)` que estourava silenciosamente dentro do `onmessage`. `{type:'connected'}`
+  (frame de texto) processava normal, mas nenhuma saída real (binária) jamais aparecia.
+
+### Adicionado
+
+- **Gráfico ao vivo no modal "Ver tráfego"**: pedido do usuário depois de confirmar que o texto
+  bruto já funcionava. Reaproveita `chart.umd.min.js` (Chart.js, já vendorizado, mesma paleta/
+  `_fmtBps` de `monitoramento/tab_monitoramento.html`). Capturei o formato real do
+  `display counters rate interface X | refresh 1` direto do equipamento antes de escrever o parser
+  — ao contrário do que a doc anterior presumia, o Huawei **não usa ANSI** pra redesenhar a tela,
+  cada ciclo vem delimitado em texto puro (`---- (Refreshed at ...) ----` ... `---- (Finish) ----`).
+  Uma regex extrai `Octets(bytes/s)` de Inbound/Outbound de cada ciclo completo (só processa depois
+  do `(Finish)`, evitando cortar um frame de WS parcial no meio), multiplica por 8 e plota
+  Entrada/Saída em Mbps, até 60 pontos (~1 min de histórico).
+
+---
+
 ## [Não publicado] — 2026-08-01 (Feat: Automação BGP — ver tráfego em tempo real, Huawei)
 
 ### Adicionado

@@ -137,7 +137,10 @@
 
     /* Modal de tráfego em tempo real */
     .modal-trafego { max-width: 920px; }
-    #trafegoXterm { height: 60vh; min-height: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px; margin-bottom: 14px; }
+    .trafego-stats { display: flex; gap: 20px; font-size: 12px; margin-bottom: 8px; }
+    .trafego-stats strong { color: #e6edf3; font-family: 'Cascadia Code', monospace; }
+    .trafego-grafico { height: 220px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; margin-bottom: 12px; box-sizing: border-box; }
+    #trafegoXterm { height: 220px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px; margin-bottom: 14px; }
     /* xterm.css base não define largura/altura em .xterm — sem isso o
        terminal renderiza com 0px e fica invisível mesmo recebendo dados
        (mesmas regras que terminal.html usa pro terminal SSH normal). */
@@ -195,7 +198,12 @@
 <div class="overlay" id="trafegoOverlay">
     <div class="modal modal-trafego">
         <h3 id="trafegoTitulo">📶 Tráfego em tempo real</h3>
-        <div class="dica-edicao" style="margin-bottom:12px;">Conectando no equipamento e rodando <code>display counters rate interface ... | refresh 1</code> — atualiza sozinho a cada segundo.</div>
+        <div class="dica-edicao" style="margin-bottom:10px;">Conectando no equipamento e rodando <code>display counters rate interface ... | refresh 1</code> — atualiza sozinho a cada segundo.</div>
+        <div class="trafego-stats" id="trafegoStats">
+            <span>↓ Entrada: <strong id="trafegoStatIn">—</strong></span>
+            <span>↑ Saída: <strong id="trafegoStatOut">—</strong></span>
+        </div>
+        <div class="trafego-grafico"><canvas id="trafegoCanvas"></canvas></div>
         <div id="trafegoXterm"></div>
         <div class="modal-acoes">
             <button class="btn perigo" onclick="fecharTrafego()">Fechar</button>
@@ -209,6 +217,23 @@ let SNAPSHOT = null;
 let acaoPendente = null;   // {tipo, alvo, params}
 let deltaState = {};       // "idxSessao_idxPrefixo" -> quantidade de prepends a adicionar (>=1)
 let COMMUNITIES_BY_SESSAO = {};   // "<sessao_nome>" -> [{id,label,valor}, ...]
+
+// Mesma paleta/formatação já usada no gráfico de tráfego do painel de
+// Monitoramento (monitoramento/tab_monitoramento.html) — consistência
+// visual entre as duas telas.
+const TRAFEGO_C = {
+    in: '#3fb950', out: '#00d9ff',
+    inFill: 'rgba(63,185,80,0.08)', outFill: 'rgba(88,166,255,0.08)',
+    grid: 'rgba(255,255,255,0.04)', text: '#475569',
+};
+function _fmtBps(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    v = parseFloat(v);
+    if (v >= 1e9) return `${(v / 1e9).toFixed(2)} Gbps`;
+    if (v >= 1e6) return `${(v / 1e6).toFixed(2)} Mbps`;
+    if (v >= 1e3) return `${(v / 1e3).toFixed(1)} Kbps`;
+    return `${v.toFixed(0)} bps`;
+}
 
 function _getCookie(name) {
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -617,6 +642,30 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     setTimeout(() => { try { fitAddon.fit(); } catch (e) {} }, 50);
     term.writeln('\x1b[36mConectando…\x1b[0m');
 
+    const chart = new Chart(document.getElementById('trafegoCanvas'), {
+        type: 'line',
+        data: { labels: [], datasets: [
+            { label: 'Entrada ↓', data: [], borderColor: TRAFEGO_C.in,  backgroundColor: TRAFEGO_C.inFill,  borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, spanGaps: true },
+            { label: 'Saída ↑',   data: [], borderColor: TRAFEGO_C.out, backgroundColor: TRAFEGO_C.outFill, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, spanGaps: true },
+        ]},
+        options: {
+            animation: false, responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: true, labels: { color: TRAFEGO_C.text, font: { size: 10 }, boxWidth: 10, padding: 12 } },
+                tooltip: {
+                    backgroundColor: '#0f172a', borderColor: '#334155', borderWidth: 1,
+                    titleColor: '#e2e8f0', bodyColor: '#94a3b8', padding: 12, cornerRadius: 8,
+                    callbacks: { label: ctx => `  ${ctx.dataset.label}: ${_fmtBps(ctx.raw)}` },
+                },
+            },
+            scales: {
+                x: { display: true, ticks: { color: TRAFEGO_C.text, font: { size: 9 }, maxRotation: 0, maxTicksLimit: 8 }, grid: { color: TRAFEGO_C.grid }, border: { color: 'transparent' } },
+                y: { min: 0, display: true, ticks: { color: TRAFEGO_C.text, font: { size: 9 }, callback: v => _fmtBps(v) }, grid: { color: TRAFEGO_C.grid }, border: { color: 'transparent' } },
+            },
+        },
+    });
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws/ssh/`);
     // Output do terminal chega como frame BINÁRIO puro (sem JSON overhead —
@@ -624,7 +673,61 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     // 'blob', e o instanceof ArrayBuffer abaixo falha silenciosamente pra
     // cada byte de saída (cai no JSON.parse de um Blob, que estoura).
     socket.binaryType = 'arraybuffer';
-    trafegoState = { terminal: term, fitAddon, socket, comandoEnviado: false };
+    trafegoState = {
+        terminal: term, fitAddon, socket, comandoEnviado: false,
+        chart, bufferParse: '',
+    };
+
+    // Formato real do "display counters rate interface X | refresh 1" no
+    // Huawei (confirmado ao vivo, sem sequências ANSI — cada ciclo já vem
+    // delimitado em texto puro):
+    //   ---- (Refreshed at 2026-08-02 10:58:31) ----
+    //   Inbound
+    //   Interface   Octets(bytes/s) Unicast(pkts/s) Multicast(pkts/s) Broadcast(pkts/s)
+    //   GE0/7/1.3179      649239128          529958                 0                 0
+    //   Outbound
+    //   Interface   Octets(bytes/s) Unicast(pkts/s) Multicast(pkts/s) Broadcast(pkts/s)
+    //   GE0/7/1.3179       55782043          146817                 0                 0
+    //   ---- (Finish) ----
+    // Só considera um ciclo "completo" quando o "(Finish)" já chegou —
+    // evita processar um bloco cortado no meio por um frame WS parcial.
+    const CICLO_REGEX = /Refreshed at ([^)]+)\)[\s\S]*?Inbound\r?\nInterface[^\n]*\r?\n\S+\s+(\d+)\s+\d+\s+\d+\s+\d+\r?\nOutbound\r?\nInterface[^\n]*\r?\n\S+\s+(\d+)\s+\d+\s+\d+\s+\d+[\s\S]*?\(Finish\)/g;
+    const MAX_PONTOS = 60;   // ~1 minuto de histórico a 1 ciclo/s
+
+    function _processarBufferTrafego() {
+        CICLO_REGEX.lastIndex = 0;
+        let m, fimUltimoMatch = 0;
+        while ((m = CICLO_REGEX.exec(trafegoState.bufferParse)) !== null) {
+            const inBps = parseInt(m[2], 10) * 8;
+            const outBps = parseInt(m[3], 10) * 8;
+            const rotulo = m[1].split(' ')[1] || m[1];   // só o HH:MM:SS
+            const { labels, datasets } = chart.data;
+            labels.push(rotulo);
+            datasets[0].data.push(inBps);
+            datasets[1].data.push(outBps);
+            if (labels.length > MAX_PONTOS) {
+                labels.shift(); datasets[0].data.shift(); datasets[1].data.shift();
+            }
+            document.getElementById('trafegoStatIn').textContent = _fmtBps(inBps);
+            document.getElementById('trafegoStatOut').textContent = _fmtBps(outBps);
+            fimUltimoMatch = CICLO_REGEX.lastIndex;
+        }
+        if (fimUltimoMatch > 0) {
+            trafegoState.bufferParse = trafegoState.bufferParse.slice(fimUltimoMatch);
+            chart.update('none');
+        }
+        // Nunca deixa o buffer crescer sem limite (ex: formato de saída
+        // mudou e nenhum ciclo nunca fecha) — mantém só a cauda recente.
+        if (trafegoState.bufferParse.length > 20000) {
+            trafegoState.bufferParse = trafegoState.bufferParse.slice(-5000);
+        }
+    }
+
+    function _trafegoReceberTexto(texto) {
+        term.write(texto);
+        trafegoState.bufferParse += texto;
+        _processarBufferTrafego();
+    }
 
     socket.onopen = () => {
         try { fitAddon.fit(); } catch (e) {}
@@ -635,7 +738,7 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     };
     socket.onmessage = e => {
         if (e.data instanceof ArrayBuffer) {
-            term.write(new TextDecoder().decode(e.data));
+            _trafegoReceberTexto(new TextDecoder().decode(e.data));
             return;
         }
         let data;
@@ -662,7 +765,7 @@ function abrirTrafego(interfaceNome, tituloSessao) {
                 }, 400);
             }
         } else if (data.type === 'output' && data.data) {
-            term.write(data.data);
+            _trafegoReceberTexto(data.data);
         } else if (data.type === 'error') {
             term.writeln('\r\n\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\r\n');
         }
@@ -684,9 +787,12 @@ function fecharTrafego() {
             }
         } catch (e) {}
         try { trafegoState.terminal.dispose(); } catch (e) {}
+        try { trafegoState.chart.destroy(); } catch (e) {}
         trafegoState = null;
     }
     document.getElementById('trafegoXterm').innerHTML = '';
+    document.getElementById('trafegoStatIn').textContent = '—';
+    document.getElementById('trafegoStatOut').textContent = '—';
     document.getElementById('trafegoOverlay').classList.remove('aberto');
 }
 
@@ -695,5 +801,6 @@ carregar();
 <script src="/static/js/xterm.min.js"></script>
 <script src="/static/js/xterm-addon-fit.min.js"></script>
 <script src="/static/js/xterm-addon-canvas.min.js"></script>
+<script src="/static/js/chart.umd.min.js"></script>
 </body>
 </html>
