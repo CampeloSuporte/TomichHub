@@ -60,6 +60,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-02 (Feat: Automação BGP — execução em modo trial)
+
+### Adicionado
+
+- **Modo trial (commit temporário com rollback automático)**: todo modal de confirmação ganhou dois
+  botões — "▶ Executar em modo trial" e "▶ Executar sem trial" — mais um campo numérico pra duração
+  do trial (segundos, default 60). Trial troca o commit final pelo mecanismo nativo de cada
+  fabricante: Huawei `commit trial N`, Juniper `commit confirmed N` (convertido pra minutos,
+  arredondado pra cima) — a mudança reverte sozinha se ninguém confirmar depois, útil pra testar o
+  efeito de uma mudança arriscada (ex: desativar sessão upstream) com rede de segurança.
+- Cisco/Datacom e Mikrotik **não suportam trial** (`clientes/bgp_actions.py::
+  validar_trial_suportado`, recusa antes de conectar no equipamento) — decidido com o usuário via
+  pergunta explícita: IOS clássico não tem candidate-config, o único rollback temporizado possível
+  seria agendar `reload in N` (reboot do equipamento INTEIRO), risco desproporcional; RouterOS só
+  tem "safe mode" (reverte no disconnect da sessão, não por tempo), incompatível com o modelo
+  conecta→executa→desconecta desta automação.
+- Quando `trial=True`, a atualização otimista do painel (`aplicar_efeito_localmente`) é **pulada** —
+  marcar como permanente uma mudança que reverte sozinha seria enganoso, já que a automação não sabe
+  quando o rollback automático do equipamento efetivamente acontece.
+- Validado com 89 combinações reais (sessão × prefixo, todos os 4 fabricantes) comparando
+  `trial=True`/`trial=False` a partir do mesmo estado original — zero discrepâncias.
+
+---
+
 ## [Não publicado] — 2026-08-02 (Simplificação: Ver tráfego mostra só o gráfico)
 
 ### Modificado

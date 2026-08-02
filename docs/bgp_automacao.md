@@ -279,6 +279,51 @@ adicionar `'juniper': 'juniper_junos'` em `DEVICE_TYPES`. Por fabricante:
 Toda `AcaoBgpNaoSuportada` (fabricante/situação sem comando seguro conhecido) é capturada na view e
 devolvida como erro 422 — a UI mostra o motivo em vez de tentar um comando arriscado.
 
+### Modo trial — commit temporário com rollback automático (adicionado em 2026-08-02)
+
+Todo modal de confirmação ganhou **dois botões de execução** em vez de um: "▶ Executar em modo
+trial" e "▶ Executar sem trial". Trial troca o commit final pelo mecanismo de **commit temporário**
+nativo do fabricante — a mudança fica ativa só por um tempo (campo numérico no modal, em segundos,
+default 60) e **reverte sozinha** se ninguém confirmar depois. Pensado pra testar o efeito de uma
+mudança arriscada (ex: desativar uma sessão BGP upstream) com uma rede de segurança: se algo quebrar,
+o próprio equipamento desfaz sem precisar de intervenção manual.
+
+| Fabricante | Comando de trial | Suportado? |
+|---|---|---|
+| Huawei | `commit trial N` (`N` em segundos, 5–65534) no lugar de `commit` | ✅ |
+| Juniper | `commit confirmed N` (`N` em **minutos** — `trial_segundos` é convertido, arredondado pra cima, mínimo 1) no lugar de `commit` | ✅ |
+| Cisco/Datacom | — | ❌ recusado (`AcaoBgpNaoSuportada`) |
+| Mikrotik | — | ❌ recusado (`AcaoBgpNaoSuportada`) |
+
+**Por que só Huawei e Juniper**: os dois têm modelo de config candidata + commit explícito (já
+reaproveitado por `_PRECISA_COMMIT`), e o commit temporário opera sobre a MESMA config candidata —
+risco contido à sessão/policy sendo editada. Cisco/Datacom (IOS clássico) não tem candidate-config:
+comandos aplicam na hora, direto no running-config. O único jeito de conseguir um rollback
+temporizado ali seria agendar `reload in N` (reagenda um **reboot do equipamento inteiro** se
+ninguém confirmar com `reload cancel`) — decidido com o usuário (`AskUserQuestion`) que o risco é
+desproporcional ao benefício e **não implementar** trial pra esses dois. Mikrotik só tem "safe mode"
+(reverte no *disconnect* da sessão, não por tempo) — incompatível com o modelo
+conecta→executa→desconecta desta automação (cada ação abre e fecha uma conexão nova).
+
+`clientes/bgp_actions.py::validar_trial_suportado(vendor)` recusa cedo (antes de conectar no
+equipamento) quando o vendor não suporta; `_comando_commit_trial(vendor, trial_segundos)` monta o
+comando certo. `executar_acao_bgp(acesso, vendor, comandos, trial=False, trial_segundos=60)` ganhou
+os dois parâmetros novos — quando `trial=True`, chama `conn.send_command(comando_trial)` no lugar de
+`conn.commit()`.
+
+**Importante**: esta automação ainda não tem uma ação de "confirmar" separada — trial serve pra
+testar com segurança sabendo que desfaz sozinho, não pra aplicar permanentemente em duas etapas. Por
+isso, quando `trial=True`, `bgp_views.py::bgp_executar_acao` **não chama**
+`aplicar_efeito_localmente` (a atualização otimista do painel) — marcar o painel como se a mudança
+fosse permanente seria enganoso, já que ela reverte sozinha e nem esta automação nem o resto do CRM
+sabem exatamente quando isso acontece no equipamento. O botão "Executar sem trial" continua com o
+comportamento de sempre (commit normal + atualização otimista do painel).
+
+Validado com um teste de regressão comparando `trial=True`/`trial=False` a partir do MESMO estado
+original em 89 combinações reais (sessão × prefixo anunciado, todos os 4 fabricantes) — zero
+discrepâncias entre aceitar/recusar a ação nos dois modos, e confirmado que vendors sem suporte
+recusam antes de tocar no equipamento.
+
 ---
 
 ## Rotina noturna (`clientes/tasks.py::atualizar_snapshots_bgp`)
