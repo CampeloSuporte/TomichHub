@@ -1,4 +1,5 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
 from datetime import datetime, timedelta
@@ -8,7 +9,7 @@ from clientes.models import (
     AgentKnowledgeDoc, AgentSessao, AgentLog,
 )
 from django.contrib.auth.models import User
-from clientes.decorators import admin_required, superuser_required, ferramenta_instancia_required
+from clientes.decorators import admin_required, superuser_required, ferramenta_instancia_required, backoffice_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -93,6 +94,102 @@ def quadro_geral(request):
         'total_blocos_irr_invalidos': total_blocos_irr_invalidos,
         'grafico_backups': json.dumps(grafico_backups),
         'data_hoje': hoje,
+        'mostrar_relatorio_backups': True,
+    }
+
+    return render(request, 'quadro_geral.html', context)
+
+
+@login_required(login_url='login')
+@backoffice_required
+def quadro_instancia(request):
+    """
+    Dashboard do Consultor/Operador — mesma visão do quadro_geral, mas
+    escopada aos clientes da própria instância (Cliente.objects.visiveis_para).
+    Administrador é redirecionado pro dashboard global (não tem instância).
+    """
+    from usuario.perms import is_admin, get_instancia
+
+    if is_admin(request.user):
+        return redirect('quadro_geral')
+
+    instancia = get_instancia(request.user)
+    if not instancia:
+        messages.error(request, 'Sua conta não está vinculada a nenhuma instância. Fale com o administrador.')
+        return redirect('logout')
+
+    hoje = datetime.now().date()
+    inicio_dia = datetime.combine(hoje, datetime.min.time())
+    fim_dia    = datetime.combine(hoje, datetime.max.time())
+
+    clientes_qs = Cliente.objects.visiveis_para(request.user)
+    cliente_ids = list(clientes_qs.values_list('id', flat=True))
+
+    # ── Stats gerais ──────────────────────────────────────────────
+    total_clientes = clientes_qs.count()
+    total_acessos  = Acesso.objects.filter(cliente_id__in=cliente_ids).count()
+    acessos_com_backup = Acesso.objects.filter(cliente_id__in=cliente_ids, backup_habilitado=True).count()
+
+    # ── Backups hoje ──────────────────────────────────────────────
+    backups_hoje_ok    = BackupLog.objects.filter(cliente_id__in=cliente_ids, data_backup__range=(inicio_dia, fim_dia), status='SUCESSO').count()
+    backups_hoje_erro  = BackupLog.objects.filter(cliente_id__in=cliente_ids, data_backup__range=(inicio_dia, fim_dia), status='ERRO').count()
+    backups_sem_mudanca = BackupLog.objects.filter(cliente_id__in=cliente_ids, data_backup__range=(inicio_dia, fim_dia), status='SEM_MUDANCAS').count()
+    backups_total_hoje = BackupLog.objects.filter(cliente_id__in=cliente_ids, data_backup__range=(inicio_dia, fim_dia)).count()
+
+    # ── Últimos 10 backups ────────────────────────────────────────
+    ultimos_backups = BackupLog.objects.filter(cliente_id__in=cliente_ids) \
+        .select_related('acesso', 'cliente', 'template').order_by('-data_backup')[:10]
+
+    # ── Top 5 clientes por nº de hosts ───────────────────────────
+    top_clientes = clientes_qs.annotate(
+        total_hosts=Count('acessos')
+    ).order_by('-total_hosts')[:5]
+
+    # ── RPKI inválidos ────────────────────────────────────────────
+    blocos_rpki_invalidos = BlocoIP.objects.filter(cliente_id__in=cliente_ids).filter(
+        Q(rpki_valido=False) | Q(rpki_status__in=['Invalid', 'Unknown', 'Error', 'NotChecked'])
+    ).select_related('cliente').order_by('-ultima_validacao')[:10]
+    total_blocos_rpki_invalidos = BlocoIP.objects.filter(cliente_id__in=cliente_ids).filter(
+        Q(rpki_valido=False) | Q(rpki_status__in=['Invalid', 'Unknown', 'Error', 'NotChecked'])
+    ).count()
+
+    # ── IRR inválidos ─────────────────────────────────────────────
+    blocos_irr_invalidos = BlocoIP.objects.filter(cliente_id__in=cliente_ids).filter(
+        Q(irr_valido=False) | Q(irr_status__in=['NotFound', 'ASN_Mismatch', 'Error'])
+    ).select_related('cliente').order_by('-ultima_validacao')[:10]
+    total_blocos_irr_invalidos = BlocoIP.objects.filter(cliente_id__in=cliente_ids).filter(
+        Q(irr_valido=False) | Q(irr_status__in=['NotFound', 'ASN_Mismatch', 'Error'])
+    ).count()
+
+    # ── Gráfico: backups últimos 14 dias ─────────────────────────
+    grafico_backups = []
+    for i in range(13, -1, -1):
+        d = datetime.now() - timedelta(days=i)
+        d0 = d.replace(hour=0, minute=0, second=0, microsecond=0)
+        d1 = d.replace(hour=23, minute=59, second=59, microsecond=999999)
+        ok   = BackupLog.objects.filter(cliente_id__in=cliente_ids, data_backup__range=(d0, d1), status='SUCESSO').count()
+        erro = BackupLog.objects.filter(cliente_id__in=cliente_ids, data_backup__range=(d0, d1), status='ERRO').count()
+        grafico_backups.append({'data': d.strftime('%d/%m'), 'ok': ok, 'erro': erro})
+
+    context = {
+        'total_clientes': total_clientes,
+        'total_acessos': total_acessos,
+        'acessos_com_backup': acessos_com_backup,
+        'backups_hoje_ok': backups_hoje_ok,
+        'backups_hoje_erro': backups_hoje_erro,
+        'backups_sem_mudanca': backups_sem_mudanca,
+        'backups_total_hoje': backups_total_hoje,
+        'ultimos_backups': ultimos_backups,
+        'top_clientes': top_clientes,
+        'blocos_rpki_invalidos': blocos_rpki_invalidos,
+        'total_blocos_rpki_invalidos': total_blocos_rpki_invalidos,
+        'blocos_irr_invalidos': blocos_irr_invalidos,
+        'total_blocos_irr_invalidos': total_blocos_irr_invalidos,
+        'grafico_backups': json.dumps(grafico_backups),
+        'data_hoje': hoje,
+        'dash_titulo': instancia.nome,
+        'dash_subtitulo': 'Visão geral da sua instância',
+        'mostrar_relatorio_backups': False,
     }
 
     return render(request, 'quadro_geral.html', context)
