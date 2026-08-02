@@ -31,6 +31,7 @@
    - [Sessão 14](#sessão-14--firmware-url-fix-evolution-api-agent-grupos-e-bug-uiconfirm) — Firmware URL, Evolution API, Agent Grupos, uiConfirm
    - [Sessão 15](#sessão-15--agent-noc-whatsapp-terminal-e-correções-de-infraestrutura) — Agent NOC: WhatsApp funcional, terminal funcional, SSH legado, permissões
    - [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) — Multi-tenant: Consultor e Operador
+   - [Sessão 17](#sessão-17--dashboard-da-instância-pra-consultor-e-operador) — Dashboard da instância
 
 ---
 
@@ -1995,3 +1996,23 @@ Novo context processor `perfil_context` expõe `is_admin_bo`/`is_consultor_bo`/`
 **Fora do escopo desta sessão** (fica pra uma fase 2, caso decidam abrir pra Consultor/Operador): Financeiro, Atendimento, Wiki e os dashboards administrativos globais (`quadro_geral` e relatórios cross-cliente) continuam exclusivos do Administrador. Firmware é biblioteca global compartilhada (sem FK de cliente/instância) — liberar a ferramenta dá acesso ao mesmo acervo que o Administrador vê, não uma cópia isolada por instância.
 
 **Arquivos principais:** `usuario/models.py`, `usuario/perms.py` (novo), `usuario/views.py`, `usuario/context_processors.py` (novo), `usuario/templates/cadastrar_usuario.html`, `clientes/decorators.py`, `clientes/models.py`, `clientes/views.py`, `clientes/api_views.py`, `clientes/ipam_views.py`, `clientes/hotspot_views.py`, `clientes/bgp_views.py`, `clientes/script_views.py`, `clientes/firmware_views.py`, `monitoramento/views.py`, `home/views.py`, `wiki/views.py`, `templates/base.html`, `crm/settings.py`.
+
+---
+
+### Sessão 17 — Dashboard da instância pra Consultor e Operador
+
+**Pedido do usuário:** "cria um dashboard igual o dash da plataforma para a instância do consultor e seus operadores".
+
+**Implementação:** nova view `quadro_instancia` (`home/views.py`, URL `quadro_instancia` → `/homeinstancia`, mesmo padrão de mount sem separador usado por `quadro_geral`/`/homegeral`) — réplica das queries de `quadro_geral` (stats de clientes/hosts, backups de hoje, gráfico dos últimos 14 dias, últimos 10 backups, top 5 clientes por hosts, blocos RPKI/IRR inválidos), mas toda escopada via `Cliente.objects.visiveis_para(request.user)` em vez de `Cliente.objects.all()`/`BackupLog.objects.all()` etc. Consultor e todos os seus Operadores compartilham a mesma instância, então veem exatamente os mesmos números — não há dashboard por login, só por instância.
+
+Em vez de duplicar os ~300 linhas de HTML/CSS/JS do template, `quadro_geral.html` foi parametrizado com três variáveis de contexto (com default pra não quebrar a view do Administrador, que não precisou mudar a lógica, só ganhou `mostrar_relatorio_backups: True` explícito):
+
+- `dash_titulo` — "Dashboard" (admin) vs. nome da instância (consultor/operador)
+- `dash_subtitulo` — "Visão geral do sistema" vs. "Visão geral da sua instância"
+- `mostrar_relatorio_backups` — esconde os 2 links pro relatório de backups (`relatorio_backups`, admin-only) na versão da instância, já que não existe uma versão escopada desse relatório ainda
+
+`quadro_instancia` é gated por `backoffice_required` (admin/consultor/operador) e redireciona Administrador de volta pro `quadro_geral` internamente (não tem instância própria). Também trata o caso extremo de um `PerfilUsuario` consultor/operador sem `instancia` (não deveria acontecer via fluxo normal de criação, mas se acontecer, desloga em vez de tentar redirecionar pra `login`, que bateria de novo em `redirect_user_by_role` e entraria em loop).
+
+**Navegação:** `redirect_user_by_role` (`usuario/views.py`) agora manda Consultor/Operador pra `quadro_instancia` no login, em vez de `cadastrar_cliente` — mesmo padrão do Administrador, que sempre caiu em `quadro_geral`. O botão "Dashboard" do menu (`templates/base.html`) que antes apontava pra `cadastrar_cliente` nesse caso agora aponta pro dashboard; "Clientes" continua acessível pelo dropdown "Sistema".
+
+**Arquivos:** `home/views.py` (`quadro_instancia`, + imports `redirect`/`messages` que faltavam nesse arquivo), `home/urls.py`, `home/templates/quadro_geral.html`, `usuario/views.py` (`redirect_user_by_role`), `templates/base.html`.
