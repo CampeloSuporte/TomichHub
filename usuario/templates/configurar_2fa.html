@@ -88,11 +88,13 @@
                                     </div>
                                 </div>
                             </div>
+                            {% if not messages %}
                             <script>
                                 document.addEventListener('DOMContentLoaded', function () {
                                     new bootstrap.Modal(document.getElementById('modalObrigatorio2fa')).show();
                                 });
                             </script>
+                            {% endif %}
 
                             <p>Escaneie o QR code abaixo com o app <strong>Google Authenticator</strong>
                                 (ou similar) e digite o código de 6 dígitos gerado pra confirmar.</p>
