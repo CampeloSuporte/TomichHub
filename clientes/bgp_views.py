@@ -351,7 +351,13 @@ def bgp_executar_acao(request, acesso_id):
         # automático do equipamento efetivamente acontece.
         try:
             aplicar_efeito_localmente(snap.vendor, snap.dados, tipo, params.get('sessao', ''), alvo, params)
-            snap.save(update_fields=['dados'])
+            # Marca que este snapshot tem uma mutação otimista não
+            # confirmada por um backup novo — protege esse patch de ser
+            # sobrescrito se "Atualizar agora"/rotina noturna rodar antes
+            # do equipamento ser rebackupeado (mesmo backup de sempre; ver
+            # tasks.py::_atualizar_snapshot_bgp_de_acesso).
+            snap.patch_local_pendente = True
+            snap.save(update_fields=['dados', 'patch_local_pendente'])
         except Exception as e:
             logger.warning(f'aplicar_efeito_localmente falhou pra acesso {acesso_id} (não crítico): {e}')
     AcaoBgp.objects.create(

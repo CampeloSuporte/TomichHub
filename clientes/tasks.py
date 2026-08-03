@@ -2049,16 +2049,26 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
         return 'sem_backup', 'Nenhum backup bem-sucedido encontrado para este host.'
 
     # Se o backup mais recente é o MESMO já usado pra montar o snapshot
-    # atual (nenhum backup novo do equipamento desde então), não há nada
-    # de novo pra extrair — reprocessar o mesmo arquivo reescreveria por
-    # cima de qualquer atualização otimista já aplicada por uma ação real
-    # (`bgp_actions.py::aplicar_efeito_localmente`), voltando o painel pro
-    # estado de ANTES da ação (bug real observado: operador roda "parar de
-    # anunciar", o painel atualiza corretamente, mas clicar "Atualizar
-    # agora" logo em seguida reverte, porque relê o mesmo backup antigo
-    # que ainda não reflete a mudança feita no equipamento).
+    # atual E existe uma atualização otimista pendente (`patch_local_
+    # pendente` — ver `bgp_actions.py::aplicar_efeito_localmente`), não
+    # reprocessa: reescrever por cima do patch levaria o painel de volta
+    # pro estado de ANTES da ação (bug real observado: operador roda
+    # "parar de anunciar", o painel atualiza corretamente, mas clicar
+    # "Atualizar agora" logo em seguida reverte, porque relê o mesmo
+    # backup antigo que ainda não reflete a mudança feita no equipamento).
+    #
+    # Sem um patch pendente pra proteger, reprocessar o MESMO backup é
+    # seguro e desejável — é assim que um snapshot antigo (gerado antes de
+    # uma melhoria no parser/matcher, ex: o campo `interface` por sessão)
+    # pega a extração/simulação atualizada sem precisar esperar um backup
+    # novo do equipamento. Bug real observado: sessões BGP de alguns
+    # clientes (ex: G5, Green Telecom) tinham `interface: null` e zero
+    # anúncios simulados porque o snapshot deles nunca foi reprocessado
+    # desde antes dessas features existirem — "Atualizar agora" sempre
+    # devolvia `sem_novidade` porque o backup nunca mudou.
     snap_atual = BgpSnapshot.objects.filter(acesso=acesso).first()
-    if snap_atual and not snap_atual.erro and snap_atual.backup_log_id == backup.id:
+    if (snap_atual and not snap_atual.erro and snap_atual.backup_log_id == backup.id
+            and snap_atual.patch_local_pendente):
         return 'sem_novidade', 'Nenhum backup novo deste host desde a última atualização.'
 
     caminho = os.path.join(MEDIA_ROOT, backup.arquivo_path)
@@ -2117,6 +2127,10 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
                 'backup_log': backup,
                 'dados': dados,
                 'erro': '',
+                # Reparse de verdade aconteceu — qualquer patch otimista
+                # anterior já foi substituído pelos dados frescos do
+                # backup/simulação, não tem mais nada pendente pra proteger.
+                'patch_local_pendente': False,
             },
         )
         return 'ok', ''

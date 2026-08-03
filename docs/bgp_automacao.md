@@ -401,6 +401,38 @@ tanto pro botão quanto pra rotina noturna (mesma função, mesmo risco de rever
 recente se o equipamento não tiver sido rebackupeado ainda). `bgp_atualizar_snapshot` trata isso como
 sucesso (não erro); o frontend só mostra um tooltip discreto no badge, sem alterar o fluxo normal.
 
+#### Regressão do próprio fix acima: bloqueava refresh legítimo, não só o indevido (corrigido em 2026-08-03)
+
+A condição original só olhava `backup_log_id == backup.id` — **sem nenhuma noção de "existe um patch
+pra proteger"**. Isso quebrou o caso comum: um snapshot antigo (gerado ANTES de alguma melhoria no
+parser/matcher, ex: o campo `interface` por sessão, adicionado depois) nunca conseguia se atualizar
+sozinho, porque o backup em disco quase nunca muda de um dia pro outro — `'sem_novidade'` bloqueava
+pra sempre, mesmo sem nenhum patch otimista real em jogo.
+
+**Reportado com caso real**: sessões BGP de alguns clientes (G5, Green Telecom) apareciam com
+`interface: null` (sem botão "Ver tráfego") e poucos/nenhum prefixo simulado como anunciado — não
+por bug no parser ou no matcher, mas porque o snapshot deles foi gerado em `2026-08-01`, ANTES do
+campo `interface` (e de correções no matcher) existirem no código, e nunca mais foi reprocessado
+desde então (backup em disco idêntico há dias). Rodando `identificar_interface`/`simular_anuncios`
+manualmente contra os MESMOS dados armazenados, tudo funcionava corretamente — a única coisa errada
+era o snapshot nunca ter sido atualizado com o código atual.
+
+`BgpSnapshot` ganhou o campo `patch_local_pendente` (bool, migration `0099`): setado `True` só quando
+`aplicar_efeito_localmente` de fato muta `dados` sem um backup novo por trás; voltado `False` sempre
+que um reparse de verdade acontece (bem-sucedido, com ou sem backup novo). A condição de
+`'sem_novidade'` passou a exigir os dois: `backup_log_id == backup.id` **E**
+`patch_local_pendente`. Sem um patch pendente pra proteger, reprocessar o mesmo backup agora é
+sempre permitido — é assim que um snapshot antigo se atualiza com o código atual sem precisar
+esperar um backup novo do equipamento.
+
+Corrigido com um backfill único rodado manualmente contra todos os 55 `BgpSnapshot` reais (nenhum
+com `patch_local_pendente` real pendente) — 53 reprocessados com sucesso (refletindo o parser/
+matcher atual), 2 com erro de simulação pré-existente e já conhecido (não relacionado: um peer
+configurado por hostname em vez de IP, um prefix-list com notação de range `X-Y` em vez de CIDR).
+Também validado que a proteção original continua funcionando: aplicar um patch otimista de teste,
+marcar `patch_local_pendente=True` e rodar "atualizar" de novo devolve `'sem_novidade'` preservando o
+patch, exatamente como antes.
+
 ---
 
 ## Communities por sessão — cadastro + "usar community" (adicionado em 2026-08-01)

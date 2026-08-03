@@ -2,6 +2,30 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 33 — 03/08/2026: Fix — Automação BGP: "sem_novidade" bloqueava refresh legítimo
+
+**O que foi corrigido?**
+- 🐛 **Regressão do próprio fix de "sem_novidade" (02/08)**: só checava se o backup era o mesmo, sem
+  saber se havia um patch otimista de verdade pra proteger — bloqueava refresh legítimo de snapshots
+  antigos pra sempre (o backup em disco quase nunca muda de um dia pro outro). Reportado com caso
+  real: sessões BGP de alguns clientes (G5, Green Telecom) apareciam com `interface: null` (sem
+  botão "Ver tráfego") e poucos/nenhum prefixo simulado como anunciado — não por bug no parser ou
+  matcher, mas porque o snapshot deles foi gerado ANTES do campo `interface` existir no código e
+  nunca mais foi reprocessado (backup idêntico há dias).
+- ✅ `BgpSnapshot` ganhou `patch_local_pendente` (migration `0099`) — só bloqueia refresh quando
+  existe de fato um patch otimista recente pra proteger; sem ele, reprocessar o mesmo backup passa a
+  ser sempre permitido, pegando qualquer melhoria de parser/matcher sem esperar backup novo.
+- ✅ Backfill único rodado contra os 55 `BgpSnapshot` reais — 53 reprocessados com sucesso, 2 com
+  erro de simulação pré-existente já conhecido (não relacionado).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[bgp_automacao.md](bgp_automacao.md)** | Seção "Regressão do próprio fix acima: bloqueava refresh legítimo, não só o indevido" |
+
+---
+
 ### Sessão 32 — 02/08/2026: Autenticação em Duas Etapas (2FA) via Google Authenticator
 
 **O que foi implementado?**
@@ -1110,6 +1134,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 24/07/2026 | Hotspot: Integração Disparo — Opa Suite retornava "Communication channel not found"; diagnóstico via API própria revelou Canal/Template trocados na configuração; corrigido, teste funcionou | HOTSPOT_INTEGRACAO_DISPARO.md |
 | 23/07/2026 | Módulos: de `ClienteModulo` (empresa) para `UsuarioModulo` (login individual) — seleção movida pra Sistema → Usuário | MODULOS_CLIENTE.md |
 | 23/07/2026 | Módulos do Cliente: seleção movida do toggle inline nas abas para checkboxes no cadastro/edição do cliente | MODULOS_CLIENTE.md |
+| 03/08/2026 | Fix Automação BGP: "sem_novidade" bloqueava refresh legítimo de snapshots antigos (G5, Green Telecom sem interface/anúncios) — `patch_local_pendente` só bloqueia quando há patch de verdade pra proteger; backfill rodado em todos os 55 snapshots reais | bgp_automacao.md |
 | 02/08/2026 | Automação BGP: execução em modo trial (commit temporário com rollback automático) — Huawei `commit trial N`, Juniper `commit confirmed N`; Cisco/Datacom e Mikrotik sem suporte por decisão explícita | bgp_automacao.md |
 | 02/08/2026 | Ver tráfego (BGP): removido o terminal xterm.js embutido — modal mostra só o gráfico ao vivo, WebSocket alimenta o parser direto sem exibir texto bruto | bgp_automacao.md |
 | 02/08/2026 | Fix Ver tráfego (BGP): terminal ficava em branco (CSS do xterm) e depois travava em "Conectando…" (faltava socket.binaryType) — corrigidos; adicionado gráfico ao vivo (Chart.js) com formato real do comando capturado do equipamento | bgp_automacao.md |

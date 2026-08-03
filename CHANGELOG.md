@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-03 (Fix: Automação BGP — "sem_novidade" bloqueava refresh legítimo)
+
+### Corrigido
+
+- **Regressão do próprio fix de "sem_novidade" (02/08)**: a condição só olhava se o backup era o
+  mesmo, sem checar se havia de fato um patch otimista pra proteger — bloqueando refresh legítimo de
+  snapshots antigos pra sempre (backup em disco quase nunca muda de um dia pro outro). Reportado com
+  caso real: sessões BGP de alguns clientes (G5, Green Telecom) apareciam com `interface: null` (sem
+  botão "Ver tráfego") e poucos/nenhum prefixo simulado como anunciado — não por bug no parser/
+  matcher, mas porque o snapshot deles foi gerado antes do campo `interface` existir no código e
+  nunca mais foi reprocessado.
+- `BgpSnapshot` ganhou `patch_local_pendente` (bool, migration `0099`) — `aplicar_efeito_localmente`
+  marca `True` ao mutar `dados` sem backup novo; um reparse de verdade sempre volta pra `False`.
+  `'sem_novidade'` agora exige backup igual **e** patch pendente — sem patch pra proteger,
+  reprocessar o mesmo backup passa a ser sempre permitido (é assim que um snapshot antigo pega
+  melhorias de parser/matcher sem esperar um backup novo do equipamento).
+- Backfill único rodado contra os 55 `BgpSnapshot` reais: 53 reprocessados com sucesso, 2 com erro
+  de simulação pré-existente já conhecido (não relacionado a esta mudança).
+
+---
+
 ## [Não publicado] — 2026-08-02 (Feat: Dashboard da instância pra Consultor e Operador)
 
 ### Adicionado

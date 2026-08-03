@@ -1342,6 +1342,14 @@ class BgpSnapshot(models.Model):
     # válido conhecido em vez de ficar vazia.
     erro       = models.TextField(blank=True, default='')
     gerado_em  = models.DateTimeField(auto_now=True)
+    # True logo depois de uma ação real (bgp_actions.py::aplicar_efeito_
+    # localmente) mutar `dados` sem um backup novo por trás — protege esse
+    # patch otimista de ser sobrescrito se "Atualizar agora"/rotina noturna
+    # rodar antes do equipamento ser rebackupeado (mesmo backup de sempre).
+    # Volta a False assim que um reparse de verdade acontece (backup novo
+    # OU nenhum patch pendente pra proteger — ver
+    # tasks.py::_atualizar_snapshot_bgp_de_acesso).
+    patch_local_pendente = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Snapshot BGP'
