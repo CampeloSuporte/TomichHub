@@ -104,7 +104,7 @@ class ComandosCriarSessaoTest(SimpleTestCase):
         }
         comandos = comandos_criar_sessao('cisco', DADOS_SNAPSHOT_BASE, params)
 
-        self.assertEqual(comandos[0], 'router bgp 268080')
+        self.assertIn('router bgp 268080', comandos)
         self.assertIn('neighbor 172.16.8.1 remote-as 262725', comandos)
         self.assertIn('neighbor 172.16.8.1 description UPSTREAM-CONECT-V4', comandos)
         self.assertIn('neighbor 172.16.8.1 shutdown', comandos)
@@ -134,12 +134,14 @@ class ComandosCriarSessaoTest(SimpleTestCase):
         self.assertIn('address-family ipv6', comandos)
         self.assertIn(' neighbor 2804:3360:0:29::3d send-community both', comandos)
 
-        # ordem: peer defs -> prefix-list/route-map novos -> address-family blocks
-        idx_neighbor = comandos.index('neighbor 172.16.8.1 remote-as 262725')
+        # ordem pedida pelo usuário: prefix-list -> route-map -> config da sessão BGP (peer defs -> address-family)
         idx_pl = comandos.index('ip prefix-list PL-ORIGIN-45.169.6.0_24 seq 10 permit 45.169.6.0/24')
+        idx_rm = comandos.index('route-map RM-PEER-CONECT-V4-OUT permit 10')
+        idx_neighbor = comandos.index('neighbor 172.16.8.1 remote-as 262725')
         idx_af = comandos.index('address-family ipv4')
-        self.assertLess(idx_neighbor, idx_pl)
-        self.assertLess(idx_pl, idx_af)
+        self.assertLess(idx_pl, idx_rm)
+        self.assertLess(idx_rm, idx_neighbor)
+        self.assertLess(idx_neighbor, idx_af)
 
     def test_downstream_usa_convencao_pl_cliente_no_in(self):
         params = {

@@ -903,11 +903,13 @@ backup, então nenhum parser novo foi necessário.
 
 ### Geração de comandos (`clientes/bgp_actions.py::comandos_criar_sessao`)
 
-Ordem: 1) `router bgp`+`neighbor`s, 2) prefix-lists/route-maps NOVOS, 3) blocos `address-family`
-(ativação + anexação) — prefix-lists/route-maps são definidos ANTES de serem referenciados na
-ativação, evitando a sessão subir momentaneamente sem filtro. `send-community both` é sempre incluído
-em toda address-family nova. Recusa (`AcaoBgpNaoSuportada`) peer IP/route-map/prefix-list colidente
-com o que já existe (snapshot ou leitura ao vivo, conforme o operador escolheu na busca).
+Ordem (ajustada em 2026-08-04, a pedido do usuário): 1) prefix-list NOVA (só quando o operador
+escolheu "criar nova" em vez de reaproveitar), 2) route-map novo (sempre criado, mesmo reaproveitando
+prefix-list existente), 3) `router bgp`+`neighbor`s+blocos `address-family` (a config da sessão em si,
+que é quem referencia o route-map) — sempre definir o que vai ser referenciado antes de referenciar,
+evitando a sessão subir momentaneamente sem filtro. `send-community both` é sempre incluído em toda
+address-family nova. Recusa (`AcaoBgpNaoSuportada`) peer IP/route-map/prefix-list colidente com o que
+já existe (snapshot ou leitura ao vivo, conforme o operador escolheu na busca).
 
 Um route-map novo (`RM-PEER-*-IN`/`OUT`) é **sempre** criado pra uma sessão nova, mesmo quando a
 prefix-list que ele referencia é reaproveitada — só a prefix-list em si é condicional a "criar nova"

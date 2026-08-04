@@ -560,15 +560,17 @@ def comandos_criar_sessao(vendor, dados, params):
     fora desta sessão); quando `pl_in`/`pl_out` escolhe "nova", cria uma
     prefix-list EXCLUSIVA dessa sessão com 1 entrada, seq 10.
 
-    Ordem dos comandos gerados: 1) `router bgp`+`neighbor`s (definição
-    do(s) peer(s)), 2) prefix-lists/route-maps NOVOS (só os que o
-    operador escolheu criar), 3) blocos `address-family` (ativação +
-    anexação dos route-maps). Prefix-lists/route-maps são definidos
-    ANTES de serem referenciados na ativação — o exemplo original (só
-    ilustrativo da estrutura, não um roteiro literal de comandos) mistura
-    a ordem, mas definir-antes-de-referenciar evita a sessão subir
-    momentaneamente sem filtro (ou bloqueada, dependendo da versão do
-    IOS) enquanto o route-map ainda não existe.
+    Ordem dos comandos gerados (pedida pelo usuário — sempre definir o
+    que vai ser referenciado antes de referenciar): 1) prefix-list NOVA
+    (só quando o operador escolheu "criar nova" em vez de reaproveitar),
+    2) route-map novo (`permit 10` + `match ... prefix-list ...` — esse
+    sempre é criado, mesmo quando a prefix-list é reaproveitada), 3)
+    `router bgp`+`neighbor`s+`address-family` (a configuração da sessão
+    BGP em si, que é quem referencia o route-map). Definir prefix-list/
+    route-map antes evita a sessão subir momentaneamente sem filtro (ou
+    bloqueada, dependendo da versão do IOS) enquanto o route-map ainda
+    não existe — o exemplo original fornecido é só ilustrativo da
+    estrutura, não um roteiro literal de comandos.
 
     Toda sessão nova sobe em `shutdown` (`neighbor X shutdown` logo
     depois do `description`) — nunca ativa direto na criação. Rede de
@@ -663,7 +665,7 @@ def comandos_criar_sessao(vendor, dados, params):
         comandos_af.append(f' neighbor {peer_ip} route-map {rm_out} out')
         comandos_af.append('exit-address-family')
 
-    return comandos_peers + comandos_pl_rm + comandos_af
+    return comandos_pl_rm + comandos_peers + comandos_af
 
 
 def buscar_prefix_lists_ao_vivo(acesso):
