@@ -1,0 +1,45 @@
+<tr class="{% if t.atrasada %}tarefa-row-atrasada{% endif %}">
+    <td>
+        <div style="font-weight:500;color:#c9d1d9;">{{ t.titulo|truncatechars:40 }}</div>
+        <div style="display:flex;gap:6px;margin-top:2px;">
+            {% if t.status == 'pendente' %}<span class="badge-dash badge-warn">Pendente</span>
+            {% elif t.status == 'andamento' %}<span class="badge-dash badge-info">Em Andamento</span>
+            {% elif t.status == 'concluida' %}<span class="badge-dash badge-ok">Concluída</span>
+            {% else %}<span class="badge-dash badge-err">Cancelada</span>{% endif %}
+            {% if t.prioridade == 'alta' %}<span class="badge-dash badge-err">Alta</span>
+            {% elif t.prioridade == 'media' %}<span class="badge-dash badge-info">Média</span>
+            {% else %}<span class="badge-dash badge-ok">Baixa</span>{% endif %}
+        </div>
+    </td>
+    <td>{{ t.cliente.nome_empresa|truncatechars:18|default:"—" }}</td>
+    <td class="{% if t.atrasada %}tarefa-prazo-atrasado{% endif %}" style="white-space:nowrap;">
+        {% if t.prazo %}{{ t.prazo|date:"d/m H:i" }}{% else %}—{% endif %}
+    </td>
+    {% if not ocultar_responsavel %}
+    <td>{{ t.assigned_to.get_full_name|default:t.assigned_to.username|default:"—" }}</td>
+    {% endif %}
+    <td>
+        <div class="tarefa-acoes">
+            {% if not t.assigned_to %}
+            <form method="post" action="{% url 'tarefa_assumir' t.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="btn-tarefa btn-tarefa-primary">Assumir</button>
+            </form>
+            {% endif %}
+            <button type="button" class="btn-tarefa tarefa-editar-btn"
+                    data-editar-url="{% url 'tarefa_editar' t.id %}"
+                    data-usuarios-url="{% url 'tarefa_usuarios_json' t.id %}"
+                    data-titulo="{{ t.titulo }}"
+                    data-descricao="{{ t.descricao }}"
+                    data-cliente-id="{{ t.cliente_id|default:'' }}"
+                    data-cliente-nome="{{ t.cliente.nome_empresa|default:'' }}"
+                    data-prazo="{{ t.prazo|date:'Y-m-d\TH:i'|default:'' }}"
+                    data-prioridade="{{ t.prioridade }}"
+                    data-status="{{ t.status }}"
+                    data-assigned-to-id="{{ t.assigned_to_id|default:'' }}">
+                Editar
+            </button>
+        </div>
+    </td>
+</tr>

@@ -19,4 +19,5 @@ urlpatterns = [
     path('atendimento/', include('atendimento.urls', namespace='atendimento')),
     path('wiki/', include('wiki.urls')),
     path('monitoramento/', include('monitoramento.urls', namespace='monitoramento')),
+    path('tarefas/', include('tarefas.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

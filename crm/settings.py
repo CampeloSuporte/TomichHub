@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'markdown',
     'monitoramento.apps.MonitoramentoConfig',
     'atendimento',
+    'tarefas',
 ]
 
 REST_FRAMEWORK = {

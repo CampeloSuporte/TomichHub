@@ -1,0 +1,308 @@
+{% load static %}
+<style>
+.tarefas-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.tarefa-row-atrasada { border-left: 2px solid #f85149 !important; }
+.tarefa-prazo-atrasado { color: #f85149; font-weight: 600; }
+.tarefa-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.tarefa-acoes form { display: inline; }
+.btn-tarefa {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    border: 1px solid #30363d;
+    background: #21262d;
+    color: #c9d1d9;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-tarefa:hover { border-color: #58a6ff; color: #58a6ff; }
+.btn-tarefa-primary { border-color: #388bfd; color: #58a6ff; }
+.tarefa-cliente-resultados {
+    position: absolute; z-index: 20; background: #161b22;
+    border: 1px solid #30363d; border-radius: 6px; width: 100%;
+    max-height: 180px; overflow-y: auto;
+}
+.tarefa-cliente-item:hover { background: #21262d; }
+</style>
+
+<div class="content-card">
+    <div class="content-card-header">
+        <div class="content-card-title"><i class="fas fa-tasks"></i> Tarefas</div>
+        <button type="button" class="content-card-link" style="border:none;background:none;cursor:pointer;"
+                data-bs-toggle="modal" data-bs-target="#modalNovaTarefa">
+            <i class="fas fa-plus me-1"></i> Nova Tarefa
+        </button>
+    </div>
+
+    <div class="tarefas-stat-grid">
+        <div class="stat-card" style="--accent:#d29922;">
+            <div class="stat-label">Pendentes</div>
+            <div class="stat-value">{{ tarefas_pendentes_count }}</div>
+            <i class="fas fa-hourglass-half stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent:#58a6ff;">
+            <div class="stat-label">Em Andamento</div>
+            <div class="stat-value">{{ tarefas_andamento_count }}</div>
+            <i class="fas fa-spinner stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent:#f85149;">
+            <div class="stat-label">Atrasadas</div>
+            <div class="stat-value">{{ tarefas_atrasadas_count }}</div>
+            <i class="fas fa-exclamation-triangle stat-icon"></i>
+        </div>
+        <div class="stat-card" style="--accent:#3fb950;">
+            <div class="stat-label">Concluídas Hoje</div>
+            <div class="stat-value">{{ tarefas_concluidas_hoje_count }}</div>
+            <i class="fas fa-check-circle stat-icon"></i>
+        </div>
+    </div>
+
+    {% if tarefas_atrasadas %}
+    <div class="content-card" style="border-color:rgba(248,81,73,.35);">
+        <div class="content-card-header">
+            <div class="content-card-title" style="color:#f85149;">
+                <i class="fas fa-exclamation-circle" style="color:#f85149;"></i> Atrasadas
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="dash-table">
+                <thead><tr><th>Tarefa</th><th>Cliente</th><th>Prazo</th><th>Responsável</th><th>Ações</th></tr></thead>
+                <tbody>
+                {% for t in tarefas_atrasadas %}
+                {% include 'tarefas/_linha.html' with t=t linha_atrasada=True %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="two-col">
+        <div class="content-card" style="margin-bottom:0;">
+            <div class="content-card-header">
+                <div class="content-card-title"><i class="fas fa-user-check"></i> Minhas Tarefas</div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="dash-table">
+                    <thead><tr><th>Tarefa</th><th>Cliente</th><th>Prazo</th><th>Ações</th></tr></thead>
+                    <tbody>
+                    {% for t in minhas_tarefas %}
+                    {% include 'tarefas/_linha.html' with t=t ocultar_responsavel=True %}
+                    {% empty %}
+                    <tr><td colspan="4"><div class="empty-state"><i class="fas fa-clipboard-check"></i><p>Nenhuma tarefa atribuída a você.</p></div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="content-card" style="margin-bottom:0;">
+            <div class="content-card-header">
+                <div class="content-card-title"><i class="fas fa-inbox"></i> Não Assumidas</div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="dash-table">
+                    <thead><tr><th>Tarefa</th><th>Cliente</th><th>Prazo</th><th>Ações</th></tr></thead>
+                    <tbody>
+                    {% for t in tarefas_nao_assumidas %}
+                    {% include 'tarefas/_linha.html' with t=t ocultar_responsavel=True %}
+                    {% empty %}
+                    <tr><td colspan="4"><div class="empty-state"><i class="fas fa-check-double"></i><p>Nenhuma tarefa esperando por alguém.</p></div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Tarefa -->
+<div class="modal fade" id="modalNovaTarefa" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="{% url 'tarefa_criar' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Tarefa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Título</label>
+                    <input type="text" name="titulo" class="form-control" required maxlength="255">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descrição</label>
+                    <textarea name="descricao" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="mb-2 position-relative">
+                    <label class="form-label">Cliente (opcional)</label>
+                    <input type="text" class="form-control tarefa-cliente-busca" autocomplete="off" placeholder="Buscar por nome ou CNPJ...">
+                    <input type="hidden" name="cliente_id" class="tarefa-cliente-id">
+                    <div class="tarefa-cliente-resultados" style="display:none;"></div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Prazo</label>
+                        <input type="datetime-local" name="prazo" class="form-control">
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Prioridade</label>
+                        <select name="prioridade" class="form-select">
+                            <option value="baixa">Baixa</option>
+                            <option value="media" selected>Média</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Criar Tarefa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Tarefa (reaproveitado por todas as linhas) -->
+<div class="modal fade" id="modalEditarTarefa" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" id="formEditarTarefa" action="">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Tarefa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Título</label>
+                    <input type="text" name="titulo" class="form-control" id="editTitulo" required maxlength="255">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descrição</label>
+                    <textarea name="descricao" class="form-control" id="editDescricao" rows="3"></textarea>
+                </div>
+                <div class="mb-2 position-relative">
+                    <label class="form-label">Cliente (opcional)</label>
+                    <input type="text" class="form-control tarefa-cliente-busca" id="editClienteBusca" autocomplete="off" placeholder="Buscar por nome ou CNPJ...">
+                    <input type="hidden" name="cliente_id" class="tarefa-cliente-id" id="editClienteId">
+                    <div class="tarefa-cliente-resultados" style="display:none;"></div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Prazo</label>
+                        <input type="datetime-local" name="prazo" class="form-control" id="editPrazo">
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Prioridade</label>
+                        <select name="prioridade" class="form-select" id="editPrioridade">
+                            <option value="baixa">Baixa</option>
+                            <option value="media">Média</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select" id="editStatus">
+                            <option value="pendente">Pendente</option>
+                            <option value="andamento">Em Andamento</option>
+                            <option value="concluida">Concluída</option>
+                            <option value="cancelada">Cancelada</option>
+                        </select>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Responsável</label>
+                        <select name="user_id" class="form-select" id="editResponsavel">
+                            <option value="">— Ninguém —</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    const BUSCAR_CLIENTES_URL = "{% url 'buscar_clientes_chamado' %}";
+
+    function ligarBuscaCliente(root) {
+        const input = root.querySelector('.tarefa-cliente-busca');
+        const hidden = root.querySelector('.tarefa-cliente-id');
+        const resultados = root.querySelector('.tarefa-cliente-resultados');
+        if (!input) return;
+
+        let timer = null;
+        input.addEventListener('input', () => {
+            hidden.value = '';
+            clearTimeout(timer);
+            const q = input.value.trim();
+            if (q.length < 2) { resultados.style.display = 'none'; return; }
+            timer = setTimeout(() => {
+                fetch(`${BUSCAR_CLIENTES_URL}?q=${encodeURIComponent(q)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        resultados.innerHTML = '';
+                        (data.results || []).forEach(c => {
+                            const item = document.createElement('div');
+                            item.className = 'tarefa-cliente-item';
+                            item.style.cssText = 'padding:6px 10px;cursor:pointer;';
+                            item.textContent = `${c.nome} — ${c.cnpj}`;
+                            item.addEventListener('click', () => {
+                                hidden.value = c.id;
+                                input.value = c.nome;
+                                resultados.style.display = 'none';
+                            });
+                            resultados.appendChild(item);
+                        });
+                        resultados.style.display = (data.results || []).length ? 'block' : 'none';
+                    });
+            }, 250);
+        });
+    }
+
+    document.querySelectorAll('#modalNovaTarefa, #modalEditarTarefa').forEach(ligarBuscaCliente);
+
+    document.querySelectorAll('.tarefa-editar-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const form = document.getElementById('formEditarTarefa');
+            form.action = btn.dataset.editarUrl;
+            document.getElementById('editTitulo').value = btn.dataset.titulo || '';
+            document.getElementById('editDescricao').value = btn.dataset.descricao || '';
+            document.getElementById('editClienteId').value = btn.dataset.clienteId || '';
+            document.getElementById('editClienteBusca').value = btn.dataset.clienteNome || '';
+            document.getElementById('editPrazo').value = btn.dataset.prazo || '';
+            document.getElementById('editPrioridade').value = btn.dataset.prioridade || 'media';
+            document.getElementById('editStatus').value = btn.dataset.status || 'pendente';
+
+            const selResp = document.getElementById('editResponsavel');
+            selResp.innerHTML = '<option value="">— Ninguém —</option>';
+            fetch(btn.dataset.usuariosUrl)
+                .then(r => r.json())
+                .then(data => {
+                    (data.results || []).forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.nome;
+                        if (String(u.id) === btn.dataset.assignedToId) opt.selected = true;
+                        selResp.appendChild(opt);
+                    });
+                });
+
+            new bootstrap.Modal(document.getElementById('modalEditarTarefa')).show();
+        });
+    });
+})();
+</script>

@@ -13,6 +13,8 @@ from clientes.decorators import admin_required, superuser_required, ferramenta_i
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+from tarefas.models import Tarefa
 import json
 import logging
 import hashlib
@@ -24,6 +26,27 @@ import io
 import requests as _requests
 
 logger = logging.getLogger(__name__)
+
+
+def _contexto_tarefas(request):
+    """Dados do painel de Tarefas — usado tanto no quadro_geral (Administrador)
+    quanto no quadro_instancia (Consultor/Operador), escopados por
+    Tarefa.objects.visiveis_para (Administrador vê tudo, resto só a própria
+    instância)."""
+    qs = Tarefa.objects.visiveis_para(request.user).select_related('cliente', 'assigned_to')
+    em_aberto = qs.exclude(status__in=[Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA])
+
+    return {
+        'tarefas_pendentes_count': qs.filter(status=Tarefa.STATUS_PENDENTE).count(),
+        'tarefas_andamento_count': qs.filter(status=Tarefa.STATUS_ANDAMENTO).count(),
+        'tarefas_atrasadas_count': em_aberto.filter(prazo__lt=timezone.now()).count(),
+        'tarefas_concluidas_hoje_count': qs.filter(
+            status=Tarefa.STATUS_CONCLUIDA, concluida_em__date=timezone.now().date()
+        ).count(),
+        'tarefas_atrasadas': em_aberto.filter(prazo__lt=timezone.now()).order_by('prazo')[:10],
+        'minhas_tarefas': em_aberto.filter(assigned_to=request.user).order_by('prazo', '-prioridade')[:10],
+        'tarefas_nao_assumidas': em_aberto.filter(assigned_to__isnull=True).order_by('-prioridade', 'criado_em')[:10],
+    }
 
 @login_required(login_url='login')
 @admin_required
@@ -96,6 +119,7 @@ def quadro_geral(request):
         'data_hoje': hoje,
         'mostrar_relatorio_backups': True,
     }
+    context.update(_contexto_tarefas(request))
 
     return render(request, 'quadro_geral.html', context)
 
@@ -191,6 +215,7 @@ def quadro_instancia(request):
         'dash_subtitulo': 'Visão geral da sua instância',
         'mostrar_relatorio_backups': False,
     }
+    context.update(_contexto_tarefas(request))
 
     return render(request, 'quadro_geral.html', context)
 

@@ -2,6 +2,27 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 34 — 03/08/2026: Sistema de Tarefas
+
+**O que foi implementado?**
+- ✅ **App novo `tarefas`**: to-do do back-office opcionalmente vinculado a um Cliente. Status
+  (pendente/andamento/concluída/cancelada), prioridade, prazo, responsável.
+- ✅ **Isolamento multi-tenant**: `Tarefa.objects.visiveis_para(user)` — Administrador vê tudo,
+  Consultor/Operador só a própria instância (derivada do cliente ou de quem criou). Dentro do
+  escopo, qualquer atendente (Administrador/Consultor/Operador) pode assumir uma tarefa sem
+  responsável ou reatribuir uma já assumida — sem hierarquia extra entre papéis.
+- ✅ **Painel embutido no dashboard** (`quadro_geral`/`quadro_instancia`, mesma template):
+  contadores por status, seção de atrasadas em destaque, "Minhas Tarefas", "Não Assumidas" — tudo
+  via modal, sem página dedicada.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[TAREFAS.md](TAREFAS.md)** | Documento completo — modelo, permissões, painel, endpoints |
+
+---
+
 ### Sessão 33 — 03/08/2026: Fix — Automação BGP: "sem_novidade" bloqueava refresh legítimo
 
 **O que foi corrigido?**
