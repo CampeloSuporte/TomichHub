@@ -103,7 +103,12 @@ def notificar_chamados_abertos():
     linhas.append("Acessem o sistema para assumir os chamados.")
     texto = "\n".join(linhas)
 
-    ok = client.send_text(notif_jid, texto, everyone=True)
+    # send_text retorna (bool, msg_id) — checar a tupla inteira com `if not ok`
+    # nunca seria verdadeiro (tupla de 2 nunca é vazia), então uma falha real
+    # de envio marcaria os chamados como notificados sem nunca ter avisado
+    # ninguém — perdendo o alerta silenciosamente em vez de tentar de novo
+    # no próximo ciclo.
+    ok, _msg_id = client.send_text(notif_jid, texto, everyone=True)
     if not ok:
         logger.warning("Falha ao enviar notificação consolidada de chamados abertos")
         return {'notified': 0, 'error': 'send_failed'}

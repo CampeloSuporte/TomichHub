@@ -109,13 +109,27 @@ document.getElementById('convSearch').addEventListener('input', function() {
     filterConvSearch(this.value);
 });
 
-/* WebSocket — atualiza itens na lista ativa em tempo real */
+/* WebSocket — atualiza itens na lista ativa em tempo real.
+   A navegação SPA reexecuta este <script> toda vez que o Inbox é
+   recarregado dentro do conv-panel, então a instância anterior (se houver)
+   precisa ser fechada explicitamente — senão fica vazando conexões que
+   continuam reconectando sozinhas e disputando com a nova. */
 (function() {
     var proto = location.protocol === 'https:' ? 'wss' : 'ws';
     var ws, delay = 2000;
 
+    if (window.__inboxListWS) {
+        try {
+            window.__inboxListWS.onclose = null;
+            window.__inboxListWS.onmessage = null;
+            window.__inboxListWS.close();
+        } catch(err) {}
+        window.__inboxListWS = null;
+    }
+
     function connect() {
         ws = new WebSocket(proto + '://' + location.host + '/ws/atendimento/inbox/');
+        window.__inboxListWS = ws;
 
         ws.onmessage = function(e) {
             try {
@@ -125,8 +139,12 @@ document.getElementById('convSearch').addEventListener('input', function() {
                     (payload.status === 'resolved' || payload.status === 'closed')) {
                     var cid = String(payload.conversation_id);
                     document.querySelectorAll('[href*="' + cid + '"].conv-item, .conv-item[data-conv-id="' + cid + '"]').forEach(function(el) {
-                        el.remove();
+                        if (typeof window.fadeOutRemove === 'function') window.fadeOutRemove(el);
+                        else el.remove();
                     });
+                    /* Descarta HTML pré-carregado que ainda contenha este
+                       chamado, para não "ressuscitá-lo" ao navegar em seguida */
+                    if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
                     return;
                 }
                 if (payload.type !== 'new_message' || !payload.conversation) return;
@@ -148,7 +166,15 @@ document.getElementById('convSearch').addEventListener('input', function() {
         };
 
         ws.onclose = function() {
-            setTimeout(function() { delay = Math.min(delay * 1.5, 30000); connect(); }, delay);
+            /* Se esta instância já foi substituída por uma mais nova
+               (nova navegação até o Inbox), não reconecta — evita duas
+               conexões concorrentes reconectando ao mesmo tempo. */
+            if (window.__inboxListWS !== ws) return;
+            setTimeout(function() {
+                if (window.__inboxListWS !== ws) return;
+                delay = Math.min(delay * 1.5, 30000);
+                connect();
+            }, delay);
         };
         ws.onerror = function() { ws.close(); };
     }

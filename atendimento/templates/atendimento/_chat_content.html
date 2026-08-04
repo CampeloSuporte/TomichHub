@@ -1562,10 +1562,19 @@
     }
     connectWS();
 
-    /* Polling de segurança: 4s sem WS, 20s com WS (safety net contra perda de mensagem) */
-    var _pollRunning = false;
-    var pollTimer = setInterval(function() {
-        if (_pollRunning) return;
+    /* Polling de segurança: 4s sem WS, 8s com WS (safety net contra perda de
+       mensagem). Um único timer recursivo que relê wsOk a cada ciclo, em vez
+       de dois setInterval sobrepostos + um terceiro só para vigiar qual dos
+       dois deveria estar ativo — menos timers rodando em paralelo. */
+    var _pollRunning = false, _pollDestroyed = false;
+    var pollTimer = null;
+    function schedulePoll() {
+        if (_pollDestroyed) return;
+        pollTimer = setTimeout(runPoll, wsOk ? 8000 : 4000);
+    }
+    function runPoll() {
+        if (_pollDestroyed) return;
+        if (_pollRunning) { schedulePoll(); return; }
         _pollRunning = true;
         fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after_ts='+encodeURIComponent(lastMsgTs), {
             headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'
@@ -1577,32 +1586,9 @@
                     lastMsgTs = msg.created_at_iso || lastMsgTs;
                 }
             });
-        }).catch(function(){}).finally(function(){ _pollRunning = false; });
-    }, wsOk ? 8000 : 4000);
-
-    /* Ajusta intervalo dinamicamente conforme status do WS */
-    var _prevWsOk = wsOk;
-    setInterval(function() {
-        if (_prevWsOk !== wsOk) {
-            _prevWsOk = wsOk;
-            clearInterval(pollTimer);
-            pollTimer = setInterval(function() {
-                if (_pollRunning) return;
-                _pollRunning = true;
-                fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after_ts='+encodeURIComponent(lastMsgTs), {
-                    headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'
-                }).then(function(r){return r.ok?r.json():null;}).then(function(d){
-                    if(!d||!d.messages) return;
-                    d.messages.forEach(function(msg){
-                        if(!_renderedIds.has(String(msg.id))) {
-                            renderMessage(msg);
-                            lastMsgTs = new Date().toISOString();
-                        }
-                    });
-                }).catch(function(){}).finally(function(){ _pollRunning = false; });
-            }, wsOk ? 8000 : 4000);
-        }
-    }, 3000);
+        }).catch(function(){}).finally(function(){ _pollRunning = false; schedulePoll(); });
+    }
+    schedulePoll();
 
     /* ── Fecha attach menu ao clicar fora ── */
     document.addEventListener('click', function(e) {
@@ -2069,7 +2055,8 @@
         closeResolucao:closeResolucao, confirmarResolucao:confirmarResolucao,
         destroy: function() {
             if(ws){ws.onclose=null;ws.close();ws=null;}
-            clearTimeout(wsTimer); clearInterval(recTimer); clearInterval(pollTimer);
+            _pollDestroyed = true;
+            clearTimeout(wsTimer); clearInterval(recTimer); clearTimeout(pollTimer);
             document.removeEventListener('click', docClick);
         }
     };

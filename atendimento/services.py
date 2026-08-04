@@ -99,7 +99,10 @@ def _notify_new_open_conversation(conversation, connection) -> None:
             f"📱 Grupo: *{conversation.group.name}*\n\n"
             f"Acesse o sistema para assumir o chamado."
         )
-        ok = EvolutionAPIClient(connection).send_text(notif_jid, texto, everyone=True)
+        # send_text retorna (bool, msg_id) — checar a tupla inteira com
+        # `if ok:` seria sempre verdadeiro (tupla de 2 nunca é vazia),
+        # marcando o alerta como enviado mesmo se o envio falhasse de verdade.
+        ok, _msg_id = EvolutionAPIClient(connection).send_text(notif_jid, texto, everyone=True)
         if ok:
             conversation.notif_aberto_enviada = True
             conversation.save(update_fields=['notif_aberto_enviada'])

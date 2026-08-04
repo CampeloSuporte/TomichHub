@@ -530,6 +530,21 @@ def api_update_conversation(request, conversation_id):
                 new_value=data['status']
             )
 
+            # Notifica a caixa de entrada em tempo real ANTES de qualquer I/O
+            # externo (WhatsApp) — a conversa some das listas (bolhas
+            # "assumidas", sidebar, abas) sem esperar a Evolution API responder.
+            if data['status'] in ['resolved', 'closed']:
+                try:
+                    from .services import _ws_send_inbox
+                    _ws_send_inbox({
+                        'type': 'conversation_status',
+                        'conversation_id': str(conversation.id),
+                        'status': conversation.status,
+                        'assigned_to_id': conversation.assigned_to_id,
+                    })
+                except Exception as _e:
+                    logger.warning(f"Falha ao notificar inbox (status): {_e}")
+
             # Envia mensagem de encerramento ao resolver/fechar
             if data['status'] in ['resolved', 'closed']:
                 closing_msg = SystemSetting.get('msg_encerramento', '').strip()
@@ -539,37 +554,36 @@ def api_update_conversation(request, conversation_id):
                     except Exception as _e:
                         logger.warning(f"Falha ao enviar msg de encerramento: {_e}")
 
-                # Mensagem de conclusão com número do protocolo
-                try:
+                # Mensagem de conclusão com número do protocolo — enviada ao
+                # WhatsApp em background para não bloquear a resposta HTTP
+                # (o card já sumiu da tela pelo WS acima).
+                conv_id = conversation.id
+                conv_number = conversation.conversation_id
+                group_connection = conversation.group.connection
+                group_jid = conversation.group.jid
+
+                def _send_conclusao_bg():
                     import uuid as _uuid
                     texto_conclusao = (
                         f"✅ Chamado concluído!\n"
-                        f"📋 Protocolo: #{conversation.conversation_id}"
+                        f"📋 Protocolo: #{conv_number}"
                     )
-                    ok_conclusao = EvolutionAPIClient(conversation.group.connection).send_text(
-                        conversation.group.jid, texto_conclusao)
-                    if ok_conclusao:
-                        Message.objects.create(
-                            conversation=conversation, sender_type='system',
-                            sender_name='Sistema', message_type='text', content=texto_conclusao,
-                            external_id=f'concluido_{_uuid.uuid4().hex}',
-                        )
-                except Exception as _e:
-                    logger.warning(f"Falha ao enviar mensagem de conclusão: {_e}")
+                    try:
+                        ok_conclusao, _remote_id = EvolutionAPIClient(group_connection).send_text(
+                            group_jid, texto_conclusao)
+                        if ok_conclusao:
+                            Message.objects.create(
+                                conversation_id=conv_id, sender_type='system',
+                                sender_name='Sistema', message_type='text', content=texto_conclusao,
+                                external_id=f'concluido_{_uuid.uuid4().hex}',
+                            )
+                        else:
+                            logger.warning(f"Falha ao enviar mensagem de conclusão (conv {conv_id})")
+                    except Exception as _e:
+                        logger.warning(f"Falha ao enviar mensagem de conclusão (conv {conv_id}): {_e}")
 
-            # Notifica a caixa de entrada em tempo real para que a conversa
-            # encerrada/resolvida some das listas (bolhas "assumidas", sidebar)
-            # sem precisar atualizar a tela.
-            try:
-                from .services import _ws_send_inbox
-                _ws_send_inbox({
-                    'type': 'conversation_status',
-                    'conversation_id': str(conversation.id),
-                    'status': conversation.status,
-                    'assigned_to_id': conversation.assigned_to_id,
-                })
-            except Exception as _e:
-                logger.warning(f"Falha ao notificar inbox (status): {_e}")
+                import threading as _threading
+                _threading.Thread(target=_send_conclusao_bg, daemon=True).start()
 
         # Atualiza atribuição
         if 'assigned_to' in data:

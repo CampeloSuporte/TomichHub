@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-04 (Fix: Atendimento — card "piscando" ao resolver chamado + alerta NOC)
+
+### Corrigido
+
+- **Ao resolver/encerrar um chamado, o card não sumia na hora — aparecia e sumia,
+  intercalando entre as abas Aberto/Em Andamento/Aguardando.** Três causas em cadeia:
+  o broadcast do WebSocket que remove o card só disparava depois de uma chamada
+  síncrona e bloqueante à Evolution API (mensagem de conclusão); o WebSocket do Inbox
+  vazava uma conexão nova a cada navegação SPA sem fechar a anterior, acumulando
+  instâncias órfãs brigando entre si; e o cache de prefetch (hover) reintroduzia HTML
+  obsoleto com o card ainda listado. `atendimento/views.py` (broadcast agora imediato,
+  envio ao WhatsApp em background), `atendimento/templates/atendimento/inbox.html`
+  (fecha WebSocket anterior antes de abrir novo) e `atendimento/templates/atendimento/
+  base.html` (invalida cache de prefetch no evento de status). Detalhes em
+  [ATENDIMENTO.md](docs/ATENDIMENTO.md#correção--flicker-ao-resolverencerrar-chamado-2026-08-04).
+- **Aba ativa do sidebar ficava travada em "Abertos"** independente do chamado exibido
+  — `class="conv-tab active"` fixo no HTML em vez de usar `sidebar_active_tab`, que o
+  backend já calculava corretamente. Corrigido em `atendimento/templates/atendimento/
+  base.html`.
+- **Alerta ao grupo NOC de chamado sem atendimento podia se perder silenciosamente**
+  em caso de falha real de envio ao WhatsApp: `send_text()` retorna uma tupla
+  `(sucesso, msg_id)`, mas o código checava a tupla inteira como `bool` — sempre
+  truthy, então uma falha de envio era tratada como sucesso e o chamado ficava
+  marcado como já notificado sem ninguém ter sido avisado. Corrigido em
+  `atendimento/tasks.py` (`notificar_chamados_abertos`) e `atendimento/services.py`
+  (`_notify_new_open_conversation`). O mecanismo de envio único + mensagem consolidada
+  marcando todos os chamados em lote já estava correto (desde 16/07). Detalhes em
+  [ATENDIMENTO.md](docs/ATENDIMENTO.md#correção--alerta-noc-perdia-aviso-silenciosamente-em-falha-de-envio-2026-08-04).
+
+### Melhorado
+
+- **Fluidez do módulo de Atendimento**: remoção de card ao resolver chamado agora usa
+  transição suave (fade + slide) em vez de sumir abruptamente; polling do chat reduzido
+  de dois `setInterval` sobrepostos + um terceiro de vigia para um único timer
+  recursivo auto-ajustável.
+
+---
+
 ## [Não publicado] — 2026-08-04 (Fix: Proxy Web — loop de login + WinBox Web pra clientes só-VPN)
 
 ### Corrigido

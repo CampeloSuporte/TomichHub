@@ -1214,15 +1214,15 @@ body {
                 <input type="text" id="convSearch" placeholder="Buscar atendimento..." autocomplete="off">
             </div>
             <div class="conv-tabs">
-                <a href="{% url 'atendimento:inbox' %}?tab=mine" class="conv-tab">
+                <a href="{% url 'atendimento:inbox' %}?tab=mine" class="conv-tab {% if sidebar_active_tab == 'mine' %}active{% endif %}">
                     Assumidos
                     {% if mine_count %}<span class="conv-tab-badge">{{ mine_count }}</span>{% endif %}
                 </a>
-                <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab active">
+                <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab {% if sidebar_active_tab == 'open' or not sidebar_active_tab %}active{% endif %}">
                     Abertos
                     {% if open_count %}<span class="conv-tab-badge">{{ open_count }}</span>{% endif %}
                 </a>
-                <a href="{% url 'atendimento:inbox' %}?tab=ongoing" class="conv-tab">
+                <a href="{% url 'atendimento:inbox' %}?tab=ongoing" class="conv-tab {% if sidebar_active_tab == 'ongoing' %}active{% endif %}">
                     Em Andamento
                 </a>
             </div>
@@ -2228,7 +2228,28 @@ document.addEventListener('keydown', function(e) {
 
     /* Expõe loadPage globalmente para uso em outros scripts */
     window.loadPage = loadPage;
+
+    /* Expõe invalidação do cache de prefetch — usado quando um evento em
+       tempo real (ex.: chamado resolvido) torna o HTML pré-carregado
+       obsoleto, evitando que loadPage() "ressuscite" um card já removido. */
+    window.__spaClearPrefetchCache = function() {
+        Object.keys(_prefetchCache).forEach(function(k) { delete _prefetchCache[k]; });
+    };
 })();
+
+/* Remoção suave de um item de lista (fade + slide) — usada pelos handlers de
+   WebSocket ao tirar um card da tela em vez de sumir abruptamente. */
+window.fadeOutRemove = function(el, cb) {
+    if (!el || el._fadingOut) return;
+    el._fadingOut = true;
+    el.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-8px)';
+    setTimeout(function() {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        if (typeof cb === 'function') cb();
+    }, 230);
+};
 </script>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -3643,9 +3664,14 @@ window.pulseBubble = function(convId) {
                         if(bub)bub.remove();
                         if(typeof _gcConvId!=='undefined' && _gcConvId===cid &&
                            typeof closeGlobalChat==='function'){ closeGlobalChat(); }
-                        /* Remove também da lista lateral (outras telas/atendentes) */
+                        /* Remove também da lista lateral (outras telas/atendentes),
+                           com transição suave em vez de sumir abruptamente */
                         var side=document.querySelector('#convList .conv-item[href*="/'+cid+'/"], #convList .conv-item[data-conv-id="'+cid+'"]');
-                        if(side)side.remove();
+                        if(side)fadeOutRemove(side);
+                        /* Descarta HTML pré-carregado (hover-prefetch) que ainda
+                           contenha este chamado — evita que ele "ressuscite" ao
+                           navegar logo em seguida */
+                        if(typeof window.__spaClearPrefetchCache==='function') window.__spaClearPrefetchCache();
                     }
                 }catch(err){}
             };

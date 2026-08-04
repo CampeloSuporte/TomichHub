@@ -386,6 +386,9 @@ systemctl restart gunicorn daphne celery
 | 03/06/2026 | **Correção alerta diário** — bug crontab, guard anti-duplo-envio |
 | 03/06/2026 | **Relatórios** — campos Assunto e Categoria na tabela HTML e PDF |
 | 16/06/2026 | **Sala Virtual** — corrige queda de áudio após alguns minutos (ICE/negociação WebRTC) |
+| 04/08/2026 | **Correção de flicker** ao resolver/encerrar chamado — card sumia e reaparecia intercalando as abas Aberto/Andamento/Aguardando |
+| 04/08/2026 | **Correção de fluidez** — WebSocket duplicado do Inbox, polling redundante do chat, remoção de card sem transição |
+| 04/08/2026 | **Correção alerta NOC** — falha real de envio ao WhatsApp era marcada como sucesso silenciosamente (bug de tupla) |
 
 ---
 
@@ -442,6 +445,114 @@ volta.
 Em redes com NAT simétrico/firewalls muito restritivos, a conexão direta pode não ser
 estabelecida mesmo com a renegociação corrigida — um TURN de apoio resolveria esse
 caso residual, mas está fora do escopo desta correção.
+
+---
+
+## Correção — Flicker ao resolver/encerrar chamado (2026-08-04)
+
+**Sintoma:** ao resolver ou encerrar um chamado, o card não sumia instantaneamente
+da tela — aparecia e sumia, intercalando entre as abas Aberto / Em Andamento /
+Aguardando, de forma inconsistente.
+
+Eram três causas encadeadas, cada uma abrindo ou alimentando a janela de corrida das
+outras duas:
+
+### Bug 1 — broadcast do WebSocket atrasado por I/O bloqueante
+
+**Arquivo:** `atendimento/views.py` (`api_update_conversation`)
+
+**Causa:** o card só sumia quando o evento `conversation_status` era enviado via
+WebSocket (`_ws_send_inbox`), mas esse envio só acontecia **depois** de uma chamada
+HTTP síncrona e bloqueante à Evolution API para mandar a mensagem de conclusão
+("✅ Chamado concluído! 📋 Protocolo #..."). Esse atraso (podendo chegar a vários
+segundos se a Evolution API estivesse lenta) era a janela onde o usuário trocava de
+aba e disparava a corrida dos Bugs 2 e 3.
+
+**Correção:** o broadcast `_ws_send_inbox` agora dispara logo após salvar o novo
+status, antes de qualquer chamada externa. O envio da mensagem de conclusão ao
+WhatsApp foi movido para uma thread em background (mesmo padrão já usado em
+`ConversationService.send_message`), sem bloquear a resposta HTTP. De brinde, corrigiu
+um bug latente ali: o retorno de `send_text()` (tupla `(sucesso, msg_id)`) era tratado
+como `bool` simples — uma tupla de 2 elementos é sempre "verdadeira" em Python, então
+uma falha real de envio nunca era percebida.
+
+### Bug 2 — WebSocket do Inbox vazando a cada navegação SPA
+
+**Arquivo:** `atendimento/templates/atendimento/inbox.html`
+
+**Causa:** a navegação é uma SPA que troca o conteúdo do painel de conversas via AJAX
+e reexecuta os `<script>` do HTML recebido (`execScripts`). O script do Inbox abria um
+`WebSocket` novo a cada execução **sem fechar o anterior** — e como o `onclose` de
+cada instância agendava reconexão própria, instâncias órfãs continuavam vivas
+indefinidamente, reconectando sozinhas. Com uso normal ao longo do dia, um atendente
+acumulava várias conexões redundantes ao mesmo grupo `atendimento_inbox`, cada uma
+manipulando o DOM de forma independente e fora de sincronia — produzindo exatamente o
+efeito de um card sumir e reaparecer.
+
+**Correção:** a conexão anterior (guardada em `window.__inboxListWS`) é fechada
+explicitamente antes de abrir uma nova, e o `onclose` só reagenda reconexão se a
+instância ainda for a atual (evita duas conexões concorrentes reconectando ao mesmo
+tempo).
+
+### Bug 3 — cache de prefetch obsoleto "ressuscitava" o card já removido
+
+**Arquivo:** `atendimento/templates/atendimento/base.html`
+
+**Causa:** ao passar o mouse sobre um link (aba, card), o HTML da página é
+pré-carregado e guardado em `_prefetchCache`. Se o atendente passava o mouse sobre
+outra aba pouco antes ou logo depois de resolver o chamado, esse HTML ficava em cache
+com o card ainda listado — e ao navegar em seguida, `loadPage()` usava o cache e
+sobrescrevia a remoção que o WebSocket já tinha feito.
+
+**Correção:** exposta `window.__spaClearPrefetchCache()`, chamada pelos handlers de
+`conversation_status` (tanto no Inbox quanto no `ws2` de `base.html`) sempre que um
+chamado é resolvido/encerrado, descartando qualquer HTML pré-carregado obsoleto.
+
+### Bugs menores corrigidos de passagem
+
+- **Aba ativa fixa no sidebar** (`base.html`) — o botão "Abertos" tinha
+  `class="conv-tab active"` fixo no HTML, então a tela de conversa sempre mostrava
+  "Abertos" como aba ativa mesmo quando o chamado exibido pertencia a "Assumidos" ou
+  "Em Andamento". O backend já calculava `sidebar_active_tab` corretamente
+  (`views.py:164-169`) — só faltava o template usar essa variável.
+- **Remoção abrupta de card** — os handlers de WebSocket (`inbox.html`, `ws2` em
+  `base.html`) agora usam `window.fadeOutRemove()` (fade + slide, 220ms) em vez de
+  `el.remove()` direto, igual ao padrão já usado no fluxo de resolução do chat.
+- **Polling redundante no chat** (`_chat_content.html`) — dois `setInterval`
+  sobrepostos (4s/8s) mais um terceiro só para vigiar qual deveria estar ativo foram
+  substituídos por um único timer recursivo que relê o estado do WebSocket a cada
+  ciclo — menos timers concorrentes rodando por conversa aberta.
+
+**Serviços a reiniciar após alterações nesses arquivos:** `views.py`/`services.py`/
+`tasks.py` → **Gunicorn** (e **Celery**, se `tasks.py`/`services.py` mudarem); os
+templates recarregam sozinhos (`DEBUG=True`, sem cached loader).
+
+---
+
+## Correção — Alerta NOC perdia aviso silenciosamente em falha de envio (2026-08-04)
+
+**Arquivos:** `atendimento/tasks.py` (`notificar_chamados_abertos`),
+`atendimento/services.py` (`_notify_new_open_conversation`)
+
+**Contexto:** o alerta de "chamado sem atendimento" para o grupo NOC já era enviado
+corretamente **uma única vez por chamado** (guard `Conversation.notif_aberto_enviada`)
+e de forma **consolidada** (uma mensagem só, listando todos os chamados pendentes,
+marcando todos em lote) — esse mecanismo já estava implementado desde 16/07/2026 e
+funcionando em produção.
+
+**Causa do bug encontrado:** `EvolutionAPIClient.send_text()` retorna uma tupla
+`(sucesso: bool, msg_id: str)`, mas os dois pontos acima faziam `ok = ....send_text(...)`
+e depois `if ok:` / `if not ok:` — uma tupla de 2 elementos é sempre truthy em Python,
+então esses checks nunca refletiam o sucesso real do envio. Na prática: se a Evolution
+API falhasse de verdade, o chamado era marcado como `notif_aberto_enviada=True` (ou o
+`return {'notified': 0, 'error': 'send_failed'}` nunca disparava) — o alerta se perdia
+sem ninguém ser avisado e sem tentar de novo no próximo ciclo. O mesmo padrão de bug já
+tinha sido corrigido antes em `_alertar_atendente_pessoal` (mesmo arquivo), que serviu
+de referência para esta correção.
+
+**Correção:** desempacotar a tupla explicitamente (`ok, _msg_id = ....send_text(...)`)
+nos dois pontos, para que o guard de "enviado" só marque `True` quando o envio de fato
+teve sucesso.
 
 ---
 
