@@ -657,6 +657,38 @@ def comandos_criar_sessao(vendor, dados, params):
     return comandos_peers + comandos_pl_rm + comandos_af
 
 
+def buscar_prefix_lists_ao_vivo(acesso):
+    """Conecta AO VIVO (Cisco/Datacom) e roda `show running-config |
+    section prefix-list`/`section route-map` — mesma sintaxe de
+    configuração usada em qualquer backup, então reaproveita a MESMA
+    regex do parser de backup (`backup_parser._extrair_prefix_lists_e_
+    policies_cisco`) em vez de escrever um parser novo pra saída "ao
+    vivo". Usado só pelo botão "🔄 atualizar" do modal de "Configurar
+    nova sessão" — o resto da automação BGP usa o snapshot (backup em
+    disco), que é mais barato. Nunca escreve nada (leitura pura); fecha a
+    conexão antes de devolver — não fica aberta enquanto o operador
+    preenche o resto do formulário. Propaga qualquer exceção de conexão
+    pro chamador (a view decide como reportar o erro)."""
+    from .backup_parser import _extrair_prefix_lists_e_policies_cisco
+
+    conn, tunel = None, None
+    try:
+        conn, tunel = _conectar_script(acesso, 'cisco')
+        saida_pl = conn.send_command('show running-config | section prefix-list', read_timeout=25)
+        saida_rm = conn.send_command('show running-config | section route-map', read_timeout=25)
+    finally:
+        if conn:
+            try:
+                conn.disconnect()
+            except Exception:
+                pass
+        if tunel:
+            _fechar_tunel(tunel)
+
+    prefix_lists, policies = _extrair_prefix_lists_e_policies_cisco(saida_pl + '\n' + saida_rm)
+    return {'prefix_lists': prefix_lists, 'policies': policies}
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Atualização otimista do snapshot local (depois de uma ação real bem-
 # sucedida no equipamento)

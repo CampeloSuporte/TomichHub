@@ -1,3 +1,5 @@
+from unittest import mock
+
 from django.test import SimpleTestCase
 
 from clientes.backup_parser import parse_cisco, _extrair_prefix_lists_e_policies_cisco
@@ -198,3 +200,49 @@ class ComandosCriarSessaoTest(SimpleTestCase):
     def test_recusa_nenhuma_af_marcada(self):
         with self.assertRaises(AcaoBgpNaoSuportada):
             comandos_criar_sessao('cisco', DADOS_SNAPSHOT_BASE, {'tipo_peer': 'upstream', 'sufixo': 'X', 'afs': []})
+
+
+from clientes.bgp_actions import buscar_prefix_lists_ao_vivo
+
+
+SAIDA_SHOW_RUN_PREFIX_LIST = """
+ip prefix-list PL-DEFAULT-ROUTE seq 5 permit 0.0.0.0/0
+ip prefix-list PL-ORIGIN-45.169.6.0_24 seq 5 permit 45.169.6.0/24
+"""
+
+SAIDA_SHOW_RUN_ROUTE_MAP = """
+route-map RM-PEER-CONECT-V4-OUT permit 10
+ match ip address prefix-list PL-ORIGIN-45.169.6.0_24
+route-map RM-PEER-CONECT-V4-IN permit 10
+ match ip address prefix-list PL-DEFAULT-ROUTE
+"""
+
+
+class BuscarPrefixListsAoVivoTest(SimpleTestCase):
+    @mock.patch('clientes.bgp_actions._fechar_tunel')
+    @mock.patch('clientes.bgp_actions._conectar_script')
+    def test_conecta_roda_show_running_e_reaproveita_parser_do_backup(self, mock_conectar, mock_fechar):
+        conn_falsa = mock.Mock()
+        conn_falsa.send_command.side_effect = [SAIDA_SHOW_RUN_PREFIX_LIST, SAIDA_SHOW_RUN_ROUTE_MAP]
+        mock_conectar.return_value = (conn_falsa, None)
+        acesso_falso = mock.Mock()
+
+        resultado = buscar_prefix_lists_ao_vivo(acesso_falso)
+
+        mock_conectar.assert_called_once_with(acesso_falso, 'cisco')
+        self.assertEqual(conn_falsa.send_command.call_count, 2)
+        self.assertIn('PL-DEFAULT-ROUTE', resultado['prefix_lists'])
+        self.assertIn('PL-ORIGIN-45.169.6.0_24', resultado['prefix_lists'])
+        self.assertEqual(resultado['policies']['RM-PEER-CONECT-V4-OUT'][0]['prefix_lists'], ['PL-ORIGIN-45.169.6.0_24'])
+        conn_falsa.disconnect.assert_called_once()
+
+    @mock.patch('clientes.bgp_actions._fechar_tunel')
+    @mock.patch('clientes.bgp_actions._conectar_script')
+    def test_fecha_conexao_mesmo_se_o_comando_falhar(self, mock_conectar, mock_fechar):
+        conn_falsa = mock.Mock()
+        conn_falsa.send_command.side_effect = Exception('timeout')
+        mock_conectar.return_value = (conn_falsa, None)
+
+        with self.assertRaises(Exception):
+            buscar_prefix_lists_ao_vivo(mock.Mock())
+        conn_falsa.disconnect.assert_called_once()
