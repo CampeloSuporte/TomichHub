@@ -915,6 +915,13 @@ prefix-list que ele referencia é reaproveitada — só a prefix-list em si é c
 `route-map .../match ...` dentro do branch de prefix-list nova, deixando a direção "reaproveitar
 existente" sem route-map nenhum).
 
+**Sobe em `shutdown` (adicionado em 2026-08-04):** todo `neighbor` novo recebe `neighbor X shutdown`
+logo depois do `description` — a sessão nunca ativa direto na criação. Rede de segurança pedida pelo
+usuário: dá pro operador conferir a config aplicada no equipamento antes de trazer a sessão pra cima
+de verdade, usando o botão "Ativar" que já existe pra qualquer sessão (`comandos_toggle_sessao`).
+`aplicar_efeito_localmente` grava `habilitada: False` na sessão nova, então o painel já mostra o
+status correto (desativada) assim que a ação é confirmada.
+
 ### Auditoria e atualização otimista
 
 `AcaoBgp.tipo = 'criar_sessao'`. `aplicar_efeito_localmente` insere a(s) sessão(ões) nova(s) +

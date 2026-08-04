@@ -107,8 +107,10 @@ class ComandosCriarSessaoTest(SimpleTestCase):
         self.assertEqual(comandos[0], 'router bgp 268080')
         self.assertIn('neighbor 172.16.8.1 remote-as 262725', comandos)
         self.assertIn('neighbor 172.16.8.1 description UPSTREAM-CONECT-V4', comandos)
+        self.assertIn('neighbor 172.16.8.1 shutdown', comandos)
         self.assertIn('neighbor 2804:3360:0:29::3d remote-as 262725', comandos)
         self.assertIn('neighbor 2804:3360:0:29::3d description UPSTREAM-CONECT-V6', comandos)
+        self.assertIn('neighbor 2804:3360:0:29::3d shutdown', comandos)
 
         # prefix-list/route-map novos (só o OUT de cada AF, já que o IN reaproveita PL-DEFAULT-ROUTE)
         self.assertIn('ip prefix-list PL-ORIGIN-45.169.6.0_24 seq 10 permit 45.169.6.0/24', comandos)
@@ -152,6 +154,7 @@ class ComandosCriarSessaoTest(SimpleTestCase):
         comandos = comandos_criar_sessao('cisco', DADOS_SNAPSHOT_BASE, params)
         self.assertIn('ip prefix-list PL-CLIENTE-CLIENTEX-203.0.113.0_24 seq 10 permit 203.0.113.0/24', comandos)
         self.assertIn('neighbor 192.0.2.10 description DOWNSTREAM-CLIENTEX-V4', comandos)
+        self.assertIn('neighbor 192.0.2.10 shutdown', comandos)
 
     def test_recusa_vendor_nao_cisco(self):
         with self.assertRaises(AcaoBgpNaoSuportada):
@@ -269,7 +272,9 @@ class AplicarEfeitoLocalmenteCriarSessaoTest(SimpleTestCase):
 
         nova_sessao = next(s for s in dados['sessoes'] if s['peer_ip'] == '172.16.8.1')
         self.assertEqual(nova_sessao['descricao'], 'UPSTREAM-CONECT-V4')
-        self.assertTrue(nova_sessao['habilitada'])
+        # criada em shutdown por padrão (ver comandos_criar_sessao) — o
+        # painel não pode mostrar como ativa antes do operador confirmar.
+        self.assertFalse(nova_sessao['habilitada'])
         self.assertEqual(nova_sessao['policy_out'], 'RM-PEER-CONECT-V4-OUT')
         self.assertEqual(nova_sessao['policy_in'], 'RM-PEER-CONECT-V4-IN')
 

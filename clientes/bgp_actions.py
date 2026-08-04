@@ -568,7 +568,15 @@ def comandos_criar_sessao(vendor, dados, params):
     ilustrativo da estrutura, não um roteiro literal de comandos) mistura
     a ordem, mas definir-antes-de-referenciar evita a sessão subir
     momentaneamente sem filtro (ou bloqueada, dependendo da versão do
-    IOS) enquanto o route-map ainda não existe."""
+    IOS) enquanto o route-map ainda não existe.
+
+    Toda sessão nova sobe em `shutdown` (`neighbor X shutdown` logo
+    depois do `description`) — nunca ativa direto na criação. Rede de
+    segurança: dá pro operador conferir a config aplicada (`show run`)
+    antes de trazer a sessão pra cima de fato, com o botão "Ativar" que
+    já existe pra qualquer sessão (`comandos_toggle_sessao`) — mesmo
+    espírito do modo trial usado no resto da automação BGP (aplicar sem
+    comprometer o tráfego de cara, confirmar manualmente depois)."""
     if vendor not in ('cisco', 'datacom'):
         raise AcaoBgpNaoSuportada(f'Configurar nova sessão ainda não é suportado para "{vendor}".')
 
@@ -620,6 +628,7 @@ def comandos_criar_sessao(vendor, dados, params):
 
         comandos_peers.append(f'neighbor {peer_ip} remote-as {remote_as}')
         comandos_peers.append(f'neighbor {peer_ip} description {descricao}')
+        comandos_peers.append(f'neighbor {peer_ip} shutdown')
 
         cmd_pl = 'ipv6 prefix-list' if af == 'ipv6' else 'ip prefix-list'
         cmd_match = 'match ipv6 address prefix-list' if af == 'ipv6' else 'match ip address prefix-list'
@@ -696,7 +705,13 @@ def _aplicar_criar_sessao_localmente(dados, params):
     backup. Reconstrói o MESMO cálculo de nomes de `comandos_criar_
     sessao` (`_nome_prefix_list_nova`) — se os dois divergirem um dia, o
     painel mostraria um nome diferente do que foi realmente configurado
-    no equipamento; mantenha as duas funções em sincronia."""
+    no equipamento; mantenha as duas funções em sincronia.
+
+    `habilitada: False` — reflete o `neighbor X shutdown` que `comandos_
+    criar_sessao` sempre inclui na criação (ver docstring de lá): o
+    painel tem que mostrar a sessão nova como desativada até o operador
+    clicar "Ativar" de propósito, senão a atualização otimista mentiria
+    sobre o estado real do equipamento."""
     from .bgp_matcher import simular_anuncios
 
     tipo_peer = params.get('tipo_peer', 'upstream')
@@ -714,7 +729,7 @@ def _aplicar_criar_sessao_localmente(dados, params):
 
         dados.setdefault('sessoes', []).append({
             'peer_ip': peer_ip, 'peer_as': remote_as, 'as_local': as_local,
-            'nome': peer_ip, 'descricao': descricao, 'habilitada': True,
+            'nome': peer_ip, 'descricao': descricao, 'habilitada': False,
             'policy_in': rm_in, 'policy_out': rm_out,
         })
 
