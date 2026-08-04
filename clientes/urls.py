@@ -228,6 +228,7 @@ urlpatterns = [
     path('bgp/<int:acesso_id>/communities/criar/',   bgpv.bgp_communities_criar,  name='bgp_communities_criar'),
     path('bgp/<int:acesso_id>/communities/<int:community_id>/deletar/', bgpv.bgp_communities_deletar, name='bgp_communities_deletar'),
     path('bgp/<int:acesso_id>/escanear-prefixo/', bgpv.bgp_escanear_prefixo, name='bgp_escanear_prefixo'),
+    path('bgp/<int:acesso_id>/validar-anuncios/', bgpv.bgp_validar_anuncios, name='bgp_validar_anuncios'),
 
     # ── Hotspot ─────────────────────────────────────────────────────────────
     path('<int:cliente_id>/hotspot/listar/',                                      hv.hotspot_listar,         name='hotspot_listar'),

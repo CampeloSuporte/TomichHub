@@ -2113,9 +2113,9 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
                 anuncios[sessao['nome']] = simular_anuncios(
                     dados.get('prefix_lists', {}), dados.get('policies', {}), policy_out
                 )
-            if vendor_parser == 'huawei':
+            if vendor_parser in ('huawei', 'cisco', 'juniper'):
                 # Interface local do peer (pra botão "ver tráfego em tempo
-                # real") — só Huawei por enquanto; peer multihop/via
+                # real") — huawei, cisco e juniper; peer multihop/via
                 # loopback devolve None (sem interface identificável).
                 sessao['interface'] = identificar_interface(dados, sessao.get('peer_ip', ''))
         dados['anuncios'] = anuncios

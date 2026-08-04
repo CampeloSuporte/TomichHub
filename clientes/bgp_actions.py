@@ -710,3 +710,218 @@ def executar_acao_bgp(acesso, vendor, comandos, trial=False, trial_segundos=60):
                 pass
         if tunel:
             _fechar_tunel(tunel)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Validar anúncios — consulta AO VIVO no equipamento (Adj-RIB-Out/RIB local
+# pós-política), diferente da simulação baseada só em config já existente
+# (bgp_matcher.simular_anuncios/dados['anuncios']). Tudo aqui é leitura
+# pura: nenhum comando muda config, nunca gera AcaoBgp.
+# ═══════════════════════════════════════════════════════════════════════
+
+_CIDR_RE = re.compile(r'\b(\d{1,3}(?:\.\d{1,3}){3}/\d{1,2})\b')
+# Cisco (IOS/IOS-XE) imprime a rota padrão como "0.0.0.0" solto, SEM "/0"
+# — confirmado ao vivo (acesso 887, "show ip bgp neighbors X routes": " *
+# 0.0.0.0    172.16.8.1    ..."), diferente de todo outro prefixo da mesma
+# tabela, que sempre vem com máscara. _CIDR_RE sozinha não pega esse caso.
+# Exige "0.0.0.0" como PRIMEIRO campo da linha (só flags de status antes)
+# seguido de outro IP (o next-hop) — evita falso positivo quando "0.0.0.0"
+# aparece como next-hop de rota local (ex: "45.169.6.0/24  0.0.0.0  ...",
+# onde "0.0.0.0" vem DEPOIS do prefixo de verdade, não no início da linha).
+_DEFAULT_ROUTE_RE = re.compile(r'^\s*[*>sdhirSmbfxatcLV]{0,4}\s+0\.0\.0\.0\s+\d', re.MULTILINE)
+
+
+def _extrair_prefixos(texto):
+    """Extrai só os prefixos CIDR (ex: 45.169.6.0/24) do texto bruto do
+    comando — funciona igual pros 4 fabricantes porque em toda saída real
+    testada (Huawei/Cisco/Juniper/Mikrotik) o prefixo é sempre o único
+    token no formato IP/máscara da linha; next-hop/gateway aparecem sem
+    a barra e não batem com a regex. Complementa com _DEFAULT_ROUTE_RE pro
+    caso do Cisco (ver comentário acima)."""
+    vistos = []
+    if _DEFAULT_ROUTE_RE.search(texto or ''):
+        vistos.append('0.0.0.0/0')
+    for m in _CIDR_RE.finditer(texto or ''):
+        p = m.group(1)
+        if p not in vistos:
+            vistos.append(p)
+    return vistos
+
+
+def _int_ou_none(m):
+    return int(m.group(1)) if m else None
+
+
+LIMITE_PREFIXOS_LISTAR = 500
+# Acima disso não busca a lista completa, só mostra a contagem — peers
+# full-table/transit reais desta base chegam a passar de 1 MILHÃO de
+# prefixos recebidos (visto ao vivo: acesso 990, 1084769 rotas recebidas
+# via `display bgp peer X verbose`); listar tudo travaria a conexão SSH
+# (o comando de listagem demorou mais que qualquer read_timeout razoável)
+# e estouraria o tamanho da resposta HTTP.
+
+
+def comando_contar_recebidos(vendor, dados, sessao):
+    """Comando BARATO (contadores já computados pelo próprio equipamento,
+    não uma varredura da RIB inteira) que devolve só a QUANTIDADE de
+    prefixos recebidos dessa sessão — usado ANTES de tentar listar tudo,
+    pra decidir se é seguro (ver LIMITE_PREFIXOS_LISTAR). Não existe
+    equivalente pro lado anunciado porque em todo teste ao vivo (Huawei,
+    Cisco, Juniper, Mikrotik) o número de prefixos ANUNCIADOS por uma
+    sessão de borda ficou sempre pequeno (1 a 14) — o risco de explosão é
+    só do lado recebido (full-table/transit). Retorna (comando, parser),
+    parser(texto) -> int|None."""
+    peer_ip = sessao.get('peer_ip')
+    nome = sessao.get('nome', peer_ip)
+    if not peer_ip:
+        raise AcaoBgpNaoSuportada('IP do peer não identificado nessa sessão — não dá pra consultar.')
+
+    if vendor == 'huawei':
+        return (
+            f'display bgp peer {peer_ip} verbose',
+            lambda t: _int_ou_none(re.search(r'Received total routes:\s*(\d+)', t)),
+        )
+    if vendor in ('cisco', 'datacom'):
+        return (
+            f'show ip bgp neighbors {peer_ip} | include Prefixes Current',
+            lambda t: _int_ou_none(re.search(r'Prefixes Current:\s*\d+\s+(\d+)', t)),
+        )
+    if vendor == 'juniper':
+        return (
+            f'show bgp neighbor {peer_ip} | match "Received prefixes"',
+            lambda t: _int_ou_none(re.search(r'Received prefixes:\s*(\d+)', t)),
+        )
+    if vendor == 'mikrotik':
+        versao = dados.get('versao_routeros', 6)
+        objeto = 'session' if versao == 7 else 'peer'
+        return (
+            f'/routing bgp {objeto} print detail where name="{nome}"',
+            lambda t: _int_ou_none(re.search(r'prefix-count=(\d+)', t)),
+        )
+    raise AcaoBgpNaoSuportada(f'Validar anúncios não suportado para {vendor} ainda.')
+
+
+def comandos_validar_anuncios(vendor, dados, sessao):
+    """Comandos que LISTAM de verdade os prefixos anunciados/recebidos
+    nessa sessão, consultando o equipamento ao vivo (peer_ip da sessão
+    identifica o filtro em todos os fabricantes, exceto o lado anunciado
+    do Mikrotik, que só filtra por nome do peer). Retorna
+    {'anunciados': cmd, 'recebidos': cmd, 'recebidos_fallback': cmd|None}."""
+    peer_ip = sessao.get('peer_ip')
+    nome = sessao.get('nome', peer_ip)
+    if not peer_ip:
+        raise AcaoBgpNaoSuportada('IP do peer não identificado nessa sessão — não dá pra consultar.')
+
+    if vendor == 'huawei':
+        return {
+            'anunciados': f'display bgp routing-table peer {peer_ip} advertised-routes',
+            'recebidos': f'display bgp routing-table peer {peer_ip} received-routes',
+            'recebidos_fallback': None,
+        }
+    if vendor in ('cisco', 'datacom'):
+        return {
+            'anunciados': f'show ip bgp neighbors {peer_ip} advertised-routes',
+            'recebidos': f'show ip bgp neighbors {peer_ip} received-routes',
+            # Sem "soft-reconfiguration inbound" configurado no peer,
+            # "received-routes" erra com "% Inbound soft reconfiguration
+            # not enabled" (confirmado ao vivo) — "routes" mostra o
+            # equivalente pós-política (o que realmente entrou na RIB
+            # local), sem precisar dessa config extra no equipamento.
+            'recebidos_fallback': f'show ip bgp neighbors {peer_ip} routes',
+        }
+    if vendor == 'juniper':
+        return {
+            'anunciados': f'show route advertising-protocol bgp {peer_ip}',
+            'recebidos': f'show route receive-protocol bgp {peer_ip}',
+            'recebidos_fallback': None,
+        }
+    if vendor == 'mikrotik':
+        versao = dados.get('versao_routeros', 6)
+        if versao == 7:
+            return {
+                # v7 não guarda mais "recebido de qual peer" no /ip route
+                # (propriedade removida — confirmado ao vivo, "received-from"
+                # nem aparece entre os campos filtráveis); usa o gateway da
+                # rota (= endereço remoto do peer) como proxy, já que é o
+                # próprio peer_ip da sessão.
+                'anunciados': f'/routing bgp advertisements print where peer="{nome}"',
+                'recebidos': f'/ip route print where gateway={peer_ip} bgp=yes',
+                'recebidos_fallback': None,
+            }
+        return {
+            'anunciados': f'/routing bgp advertisements print peer="{nome}"',
+            'recebidos': f'/ip route print where received-from="{nome}"',
+            'recebidos_fallback': None,
+        }
+    raise AcaoBgpNaoSuportada(f'Validar anúncios não suportado para {vendor} ainda.')
+
+
+def validar_anuncios_ao_vivo(acesso, vendor, dados, sessao):
+    """Conecta de verdade e roda só comandos de LEITURA (nunca escreve
+    nada, nunca gera AcaoBgp) pra ver o que essa sessão está anunciando/
+    recebendo AGORA no equipamento — complementar à simulação baseada em
+    config (bgp_matcher.simular_anuncios), que mostra o que a policy
+    DEVERIA deixar passar, não o que está passando de fato no RIB.
+
+    Sempre conta os recebidos primeiro (comando barato, contadores já
+    computados) antes de tentar listar — acima de LIMITE_PREFIXOS_LISTAR
+    não busca a lista (peer full-table/transit), só devolve a contagem.
+
+    Retorna dict, nunca levanta exceção de conexão:
+    {'status': 'sucesso', 'anunciados': [...], 'recebidos': [...]|None,
+     'total_recebidos': int|None, 'recebidos_truncado': bool}
+    ou {'status': 'erro', 'mensagem': str}."""
+    fabricante_conexao = 'cisco' if vendor == 'datacom' else vendor
+    if fabricante_conexao not in DEVICE_TYPES:
+        return {'status': 'erro', 'mensagem': f'Fabricante "{vendor}" sem driver de conexão configurado.'}
+
+    try:
+        comando_contagem, parser_contagem = comando_contar_recebidos(vendor, dados, sessao)
+        comandos = comandos_validar_anuncios(vendor, dados, sessao)
+    except AcaoBgpNaoSuportada as e:
+        return {'status': 'erro', 'mensagem': str(e)}
+
+    conn, tunel = None, None
+    try:
+        conn, tunel = _conectar_script(acesso, fabricante_conexao)
+
+        total_recebidos = None
+        try:
+            out_contagem = conn.send_command(comando_contagem, read_timeout=20)
+            total_recebidos = parser_contagem(out_contagem)
+        except Exception as e:
+            logger.warning(f'validar_anuncios_ao_vivo: contagem de recebidos falhou em {acesso} (segue sem trava): {e}')
+
+        out_anunciados = conn.send_command(comandos['anunciados'], read_timeout=25)
+        anunciados = _extrair_prefixos(out_anunciados)
+
+        recebidos = None
+        recebidos_truncado = False
+        if total_recebidos is not None and total_recebidos > LIMITE_PREFIXOS_LISTAR:
+            recebidos_truncado = True
+        else:
+            out_recebidos = conn.send_command(comandos['recebidos'], read_timeout=25)
+            if comandos.get('recebidos_fallback') and 'soft reconfiguration not enabled' in out_recebidos.lower():
+                out_recebidos = conn.send_command(comandos['recebidos_fallback'], read_timeout=25)
+            recebidos = _extrair_prefixos(out_recebidos)
+            if total_recebidos is None:
+                total_recebidos = len(recebidos)
+
+        return {
+            'status': 'sucesso',
+            'anunciados': anunciados,
+            'recebidos': recebidos,
+            'total_recebidos': total_recebidos,
+            'recebidos_truncado': recebidos_truncado,
+        }
+    except Exception as e:
+        logger.error(f'❌ Erro validando anúncios ao vivo em {acesso}: {e}')
+        return {'status': 'erro', 'mensagem': str(e)}
+    finally:
+        if conn:
+            try:
+                conn.disconnect()
+            except Exception:
+                pass
+        if tunel:
+            _fechar_tunel(tunel)

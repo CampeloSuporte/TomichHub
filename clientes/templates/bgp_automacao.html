@@ -82,6 +82,18 @@
         background: #161b22; border: 1px solid #30363d; color: #e6edf3; border-radius: 4px;
         padding: 3px 6px; font-size: 10px; max-width: 130px; vertical-align: middle;
     }
+    .validar-painel { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; margin: 12px 16px; }
+    .validar-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .validar-titulo { font-size: 11px; color: #7d8590; text-transform: uppercase; letter-spacing: .03em; }
+    .validar-resultado { margin-top: 10px; }
+    .validar-cols { display: flex; gap: 14px; flex-wrap: wrap; }
+    .validar-col { flex: 1; min-width: 220px; }
+    .validar-col-titulo { font-size: 11px; color: #e6edf3; font-weight: 600; margin-bottom: 6px; }
+    .validar-col-titulo .contagem { color: #7d8590; font-weight: 400; }
+    .validar-lista { max-height: 220px; overflow-y: auto; background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 6px 8px; }
+    .validar-lista code { display: block; font-size: 11px; color: #a5d6ff; font-family: 'Cascadia Code', monospace; padding: 1px 0; }
+    .validar-avisos { color: #d29922; font-size: 11px; margin-top: 6px; }
+    .validar-erro { color: #ff5555; font-size: 11px; margin-top: 6px; }
     .select-community:disabled { opacity: .4; }
     .input-modal {
         background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px;
@@ -397,6 +409,15 @@ function renderizar(dados) {
                         <button class="btn pequeno" onclick="adicionarCommunity(${idx}, '${escapeHtml(s.nome)}')">+ Adicionar</button>
                     </div>
                 </div>
+                <div class="validar-painel">
+                    <div class="validar-head">
+                        <div class="validar-titulo">🔍 Validar anúncios (consulta ao vivo no equipamento)</div>
+                        <button class="btn pequeno" onclick="validarAnuncios(${idx}, '${escapeHtml(s.nome)}')">Consultar agora</button>
+                    </div>
+                    <div class="validar-resultado" id="validar-${idx}">
+                        <span class="communities-vazio">Ainda não consultado — clique em "Consultar agora" pra ver o que essa sessão está anunciando/recebendo de verdade no equipamento agora (diferente da simulação abaixo, que só olha a config).</span>
+                    </div>
+                </div>
                 ${lista.length ? `
                 <table>
                     <thead><tr><th>Prefixo anunciado</th><th>Prepend</th><th style="width:340px"></th></tr></thead>
@@ -447,6 +468,44 @@ function ajustarDelta(key, passo) {
 function pedirAcaoPrepend(key, prefixo, nomeSessao) {
     const delta = deltaState[key] || 1;
     pedirAcao('prepend', prefixo, { sessao: nomeSessao, delta }, `Adicionar +${delta} prepend em ${prefixo}`);
+}
+
+function _validarAnunciosColuna(titulo, prefixos, total, truncado) {
+    if (truncado) {
+        return `
+            <div class="validar-col">
+                <div class="validar-col-titulo">${titulo} <span class="contagem">(${total} no total)</span></div>
+                <div class="validar-avisos">⚠️ Peer full-table/transit — ${total} prefixos é demais pra listar aqui com segurança (limite de 500). Mostrando só a contagem.</div>
+            </div>`;
+    }
+    const linhas = (prefixos || []).map(p => `<code>${escapeHtml(p)}</code>`).join('');
+    return `
+        <div class="validar-col">
+            <div class="validar-col-titulo">${titulo} <span class="contagem">(${(prefixos || []).length})</span></div>
+            <div class="validar-lista">${linhas || '<span class="communities-vazio">Nenhum prefixo.</span>'}</div>
+        </div>`;
+}
+
+async function validarAnuncios(idx, nomeSessao) {
+    const alvo = document.getElementById(`validar-${idx}`);
+    alvo.innerHTML = '<span class="communities-vazio">Consultando o equipamento ao vivo…</span>';
+    try {
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/validar-anuncios/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+            body: JSON.stringify({ sessao: nomeSessao }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            alvo.innerHTML = `<div class="validar-erro">✕ ${escapeHtml(data.error || 'Erro ao consultar.')}</div>`;
+            return;
+        }
+        const colAnunciados = _validarAnunciosColuna('📤 Anunciados', data.anunciados, (data.anunciados || []).length, false);
+        const colRecebidos = _validarAnunciosColuna('📥 Recebidos', data.recebidos, data.total_recebidos, data.recebidos_truncado);
+        alvo.innerHTML = `<div class="validar-cols">${colAnunciados}${colRecebidos}</div>`;
+    } catch (e) {
+        alvo.innerHTML = `<div class="validar-erro">✕ Falha na consulta: ${escapeHtml(String(e))}</div>`;
+    }
 }
 
 // Fabricantes com commit temporário nativo (Huawei "commit trial N",
@@ -658,6 +717,93 @@ function confirmarAcao(trial) {
 // outro operador) ──
 let trafegoState = null;
 
+// Cada fabricante expõe tráfego ao vivo de um jeito diferente na CLI:
+// - Huawei tem um comando que se auto-atualiza no próprio equipamento
+//   (`| refresh 1`) — a gente só fica lendo o que ele manda sozinho.
+// - Cisco (IOS/IOS-XE) e Juniper (Junos) não têm esse auto-refresh; a
+//   gente reenvia o comando "show" a cada ciclo (modo "poll") e lê uma
+//   foto de cada vez.
+function _trafegoConfigVendor(vendor, interfaceNome) {
+    if (vendor === 'cisco' || vendor === 'datacom') {
+        // Sub-interface (ex: Port-channel1.3062) não tem contador de taxa
+        // próprio no IOS/IOS-XE — confirmado ao vivo (show interfaces
+        // <sub-if> não traz nenhuma linha "rate", só a interface física/
+        // port-channel base tem). Por isso usa a interface base (antes do
+        // primeiro ".") pro comando de taxa.
+        const baseIf = interfaceNome.split('.')[0];
+        return {
+            modo: 'poll',
+            intervaloMs: 3000,
+            comando: `show interfaces ${baseIf} | include rate\r`,
+            regex: /input rate\s+(\d+)\s+bits\/sec[\s\S]*?output rate\s+(\d+)\s+bits\/sec/i,
+        };
+    }
+    if (vendor === 'juniper') {
+        // Junos mantém contador de taxa por unidade lógica (ex: ae0.1694,
+        // et-0/0/3.0 têm taxa própria, diferente do Cisco) — usa a
+        // interface exata identificada, sem tirar o sufixo. Mas o FORMATO
+        // da saída depende do tipo de interface (confirmado ao vivo,
+        // INFOLINE, 2026-08-03):
+        //
+        // Bundle agregado (ae*) — não existe uma linha "Input rate:"
+        // separada; a taxa é a última coluna da tabela
+        // "Statistics  Packets  pps  Bytes  bps" que o Junos imprime pra
+        // Bundle/Link. Repara que "Output:" NÃO tem espaço antes dos dois-
+        // pontos (diferente de "Input :", que tem):
+        //   Input :  523164884173     372108 595708859852103   3353064280
+        //   Output:  318391137537     263274 125602267755030    977728704
+        if (/^ae\d/i.test(interfaceNome)) {
+            return {
+                modo: 'poll',
+                intervaloMs: 2000,
+                comando: `show interfaces ${interfaceNome} extensive | match "Input :|Output:"\r`,
+                regex: /Input\s*:\s*\d+\s+\d+\s+\d+\s+(\d+)[\s\S]*?Output\s*:\s*\d+\s+\d+\s+\d+\s+(\d+)/i,
+            };
+        }
+        // Porta física (et-/xe-/ge-/so-…) — o Junos imprime VÁRIAS seções
+        // de estatística por interface: "Traffic statistics:" e "Local
+        // statistics:" só têm contador total (sem bps); só "Transit
+        // statistics:" tem taxa — e logo depois vem "IPv6 transit
+        // statistics:" aninhada, também com taxa mas só do tráfego IPv6
+        // (subconjunto, não o total). A regex casa com a PRIMEIRA
+        // ocorrência de um par Input/Output com "bps" — que é sempre a
+        // "Transit statistics:" (total, IPv4+IPv6), nunca alcança a IPv6
+        // aninhada por vir depois no texto. As seções sem bps não têm
+        // "bps" na linha, então nunca dão match (não precisa filtrar por
+        // nome de seção, só pela presença da taxa):
+        //   Transit statistics:
+        //    Input  bytes  :    59044730447364608           7356444688 bps
+        //    Output bytes  :     9181293135836809           1905685568 bps
+        //    IPv6 transit statistics:
+        //     Input  bytes  :    5372420195111380            951758992 bps   <- NÃO é isso, é IPv6 só
+        return {
+            modo: 'poll',
+            intervaloMs: 2000,
+            comando: `show interfaces ${interfaceNome} extensive | match "Input  bytes|Output bytes"\r`,
+            regex: /Input\s+bytes\s*:\s*\d+\s+(\d+)\s*bps[\s\S]*?Output\s+bytes\s*:\s*\d+\s+(\d+)\s*bps/i,
+        };
+    }
+    // Huawei (padrão) — auto-refresh no próprio equipamento.
+    return {
+        modo: 'refresh_servidor',
+        comando: `display counters rate interface ${interfaceNome} | refresh 1\r`,
+        // Formato real do "display counters rate interface X | refresh 1" no
+        // Huawei (confirmado ao vivo, sem sequências ANSI — cada ciclo já vem
+        // delimitado em texto puro):
+        //   ---- (Refreshed at 2026-08-02 10:58:31) ----
+        //   Inbound
+        //   Interface   Octets(bytes/s) Unicast(pkts/s) Multicast(pkts/s) Broadcast(pkts/s)
+        //   GE0/7/1.3179      649239128          529958                 0                 0
+        //   Outbound
+        //   Interface   Octets(bytes/s) Unicast(pkts/s) Multicast(pkts/s) Broadcast(pkts/s)
+        //   GE0/7/1.3179       55782043          146817                 0                 0
+        //   ---- (Finish) ----
+        // Só considera um ciclo "completo" quando o "(Finish)" já chegou —
+        // evita processar um bloco cortado no meio por um frame WS parcial.
+        regex: /Refreshed at ([^)]+)\)[\s\S]*?Inbound\r?\nInterface[^\n]*\r?\n\S+\s+(\d+)\s+\d+\s+\d+\s+\d+\r?\nOutbound\r?\nInterface[^\n]*\r?\n\S+\s+(\d+)\s+\d+\s+\d+\s+\d+[\s\S]*?\(Finish\)/g,
+    };
+}
+
 function abrirTrafego(interfaceNome, tituloSessao) {
     if (trafegoState) { fecharTrafego(); }
     document.getElementById('trafegoTitulo').textContent = `📶 Tráfego em tempo real — ${tituloSessao} (${interfaceNome})`;
@@ -688,6 +834,8 @@ function abrirTrafego(interfaceNome, tituloSessao) {
         },
     });
 
+    const cfg = _trafegoConfigVendor(SNAPSHOT?.vendor || '', interfaceNome);
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws/ssh/`);
     // Output do terminal chega como frame BINÁRIO puro (sem JSON overhead —
@@ -695,57 +843,89 @@ function abrirTrafego(interfaceNome, tituloSessao) {
     // 'blob', e o instanceof ArrayBuffer abaixo falha silenciosamente pra
     // cada byte de saída (cai no JSON.parse de um Blob, que estoura).
     socket.binaryType = 'arraybuffer';
-    trafegoState = { socket, comandoEnviado: false, chart, bufferParse: '' };
+    trafegoState = { socket, comandoEnviado: false, chart, bufferParse: '', pollTimer: null };
+    // Referência local estável: `fecharTrafego()` zera a variável GLOBAL
+    // `trafegoState` de forma síncrona, mas só fecha o socket 150ms depois
+    // (tempo pro Ctrl+C ser processado no equipamento). Se uma mensagem
+    // chegar nessa janela, o handler abaixo ainda roda com o socket antigo
+    // — sem essa referência própria, ele leria `trafegoState.bufferParse`
+    // de um `null` e estourava (bug real visto em produção: abrir/fechar o
+    // modal rápido demais crashava com "trafegoState is null").
+    const meuEstado = trafegoState;
 
-    // Formato real do "display counters rate interface X | refresh 1" no
-    // Huawei (confirmado ao vivo, sem sequências ANSI — cada ciclo já vem
-    // delimitado em texto puro):
-    //   ---- (Refreshed at 2026-08-02 10:58:31) ----
-    //   Inbound
-    //   Interface   Octets(bytes/s) Unicast(pkts/s) Multicast(pkts/s) Broadcast(pkts/s)
-    //   GE0/7/1.3179      649239128          529958                 0                 0
-    //   Outbound
-    //   Interface   Octets(bytes/s) Unicast(pkts/s) Multicast(pkts/s) Broadcast(pkts/s)
-    //   GE0/7/1.3179       55782043          146817                 0                 0
-    //   ---- (Finish) ----
-    // Só considera um ciclo "completo" quando o "(Finish)" já chegou —
-    // evita processar um bloco cortado no meio por um frame WS parcial.
-    const CICLO_REGEX = /Refreshed at ([^)]+)\)[\s\S]*?Inbound\r?\nInterface[^\n]*\r?\n\S+\s+(\d+)\s+\d+\s+\d+\s+\d+\r?\nOutbound\r?\nInterface[^\n]*\r?\n\S+\s+(\d+)\s+\d+\s+\d+\s+\d+[\s\S]*?\(Finish\)/g;
     const MAX_PONTOS = 60;   // ~1 minuto de histórico a 1 ciclo/s
 
-    function _processarBufferTrafego() {
-        CICLO_REGEX.lastIndex = 0;
+    function _registrarPonto(inBps, outBps, rotulo) {
+        const { labels, datasets } = chart.data;
+        labels.push(rotulo);
+        datasets[0].data.push(inBps);
+        datasets[1].data.push(outBps);
+        if (labels.length > MAX_PONTOS) {
+            labels.shift(); datasets[0].data.shift(); datasets[1].data.shift();
+        }
+        document.getElementById('trafegoStatIn').textContent = _fmtBps(inBps);
+        document.getElementById('trafegoStatOut').textContent = _fmtBps(outBps);
+        document.getElementById('trafegoStatus').textContent = '';
+        chart.update('none');
+    }
+
+    // Huawei: o próprio equipamento reenvia um ciclo completo por segundo
+    // (`| refresh 1`) — a gente só acumula o texto e extrai todo ciclo já
+    // fechado (marcado pelo "(Finish)"), sem precisar reenviar nada.
+    function _processarBufferRefreshServidor() {
+        cfg.regex.lastIndex = 0;
         let m, fimUltimoMatch = 0;
-        while ((m = CICLO_REGEX.exec(trafegoState.bufferParse)) !== null) {
-            const inBps = parseInt(m[2], 10) * 8;
+        while ((m = cfg.regex.exec(meuEstado.bufferParse)) !== null) {
+            const inBps = parseInt(m[2], 10) * 8;    // Octets(bytes/s) → bits/s
             const outBps = parseInt(m[3], 10) * 8;
             const rotulo = m[1].split(' ')[1] || m[1];   // só o HH:MM:SS
-            const { labels, datasets } = chart.data;
-            labels.push(rotulo);
-            datasets[0].data.push(inBps);
-            datasets[1].data.push(outBps);
-            if (labels.length > MAX_PONTOS) {
-                labels.shift(); datasets[0].data.shift(); datasets[1].data.shift();
-            }
-            document.getElementById('trafegoStatIn').textContent = _fmtBps(inBps);
-            document.getElementById('trafegoStatOut').textContent = _fmtBps(outBps);
-            document.getElementById('trafegoStatus').textContent = '';
-            fimUltimoMatch = CICLO_REGEX.lastIndex;
+            _registrarPonto(inBps, outBps, rotulo);
+            fimUltimoMatch = cfg.regex.lastIndex;
         }
         if (fimUltimoMatch > 0) {
-            trafegoState.bufferParse = trafegoState.bufferParse.slice(fimUltimoMatch);
-            chart.update('none');
+            meuEstado.bufferParse = meuEstado.bufferParse.slice(fimUltimoMatch);
         }
         // Nunca deixa o buffer crescer sem limite (ex: formato de saída
         // mudou e nenhum ciclo nunca fecha) — mantém só a cauda recente.
-        if (trafegoState.bufferParse.length > 20000) {
-            trafegoState.bufferParse = trafegoState.bufferParse.slice(-5000);
+        if (meuEstado.bufferParse.length > 20000) {
+            meuEstado.bufferParse = meuEstado.bufferParse.slice(-5000);
+        }
+    }
+
+    // Cisco/Juniper: sem auto-refresh no equipamento — a gente reenvia o
+    // "show" a cada ciclo (setInterval) e lê uma foto de cada vez. Assim
+    // que acha um par entrada+saída no texto acumulado desde o último
+    // reenvio, registra o ponto e limpa o buffer (evita casar de novo com
+    // o eco do comando/prompt sobrando).
+    function _processarBufferPoll() {
+        const m = cfg.regex.exec(meuEstado.bufferParse);
+        if (m) {
+            const inBps = parseInt(m[1], 10);
+            const outBps = parseInt(m[2], 10);
+            const agora = new Date();
+            const rotulo = agora.toTimeString().slice(0, 8);
+            _registrarPonto(inBps, outBps, rotulo);
+            meuEstado.bufferParse = '';
+        } else if (meuEstado.bufferParse.length > 20000) {
+            meuEstado.bufferParse = meuEstado.bufferParse.slice(-5000);
         }
     }
 
     function _trafegoReceberTexto(texto) {
-        trafegoState.bufferParse += texto;
-        _processarBufferTrafego();
+        meuEstado.bufferParse += texto;
+        if (cfg.modo === 'refresh_servidor') {
+            _processarBufferRefreshServidor();
+        } else {
+            _processarBufferPoll();
+        }
+    }
+
+    function _enviarComando() {
+        if (trafegoState !== meuEstado) return;   // sessão já foi fechada/substituída
+        if (socket.readyState === WebSocket.OPEN) {
+            meuEstado.bufferParse = '';
+            socket.send(JSON.stringify({ action: 'command', command: cfg.comando }));
+        }
     }
 
     socket.onopen = () => {
@@ -755,6 +935,10 @@ function abrirTrafego(interfaceNome, tituloSessao) {
         }));
     };
     socket.onmessage = e => {
+        // Sessão já foi encerrada (fecharTrafego zerou a global) mas este
+        // socket antigo ainda não terminou de fechar — ignora silenciosamente
+        // em vez de mexer num estado/gráfico que não existe mais.
+        if (trafegoState !== meuEstado) return;
         if (e.data instanceof ArrayBuffer) {
             _trafegoReceberTexto(new TextDecoder().decode(e.data));
             return;
@@ -768,14 +952,12 @@ function abrirTrafego(interfaceNome, tituloSessao) {
         }
         if (data.type === 'connected') {
             document.getElementById('trafegoStatus').textContent = 'Conectado — aguardando dados…';
-            if (!trafegoState.comandoEnviado) {
-                trafegoState.comandoEnviado = true;
+            if (!meuEstado.comandoEnviado) {
+                meuEstado.comandoEnviado = true;
                 setTimeout(() => {
-                    if (socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            action: 'command',
-                            command: `display counters rate interface ${interfaceNome} | refresh 1\r`,
-                        }));
+                    _enviarComando();
+                    if (cfg.modo === 'poll') {
+                        meuEstado.pollTimer = setInterval(_enviarComando, cfg.intervaloMs);
                     }
                 }, 400);
             }
@@ -791,17 +973,24 @@ function abrirTrafego(interfaceNome, tituloSessao) {
 
 function fecharTrafego() {
     if (trafegoState) {
+        // Referência local — `trafegoState = null` roda de forma síncrona
+        // logo abaixo, bem antes do setTimeout de 150ms disparar. Sem isso
+        // o callback do setTimeout leria `trafegoState.socket` de um `null`
+        // (bug real: estourava toda vez que fechava o modal).
+        const estado = trafegoState;
+        if (estado.pollTimer) { clearInterval(estado.pollTimer); }
         try {
-            if (trafegoState.socket.readyState === WebSocket.OPEN) {
-                // Ctrl+C antes de desconectar — encerra o "| refresh 1" com
-                // elegância em vez de só derrubar a sessão SSH no meio.
-                trafegoState.socket.send(JSON.stringify({ action: 'command', command: '\x03' }));
-                setTimeout(() => trafegoState.socket.close(), 150);
+            if (estado.socket.readyState === WebSocket.OPEN) {
+                // Ctrl+C antes de desconectar — encerra o "| refresh 1" (Huawei)
+                // com elegância em vez de só derrubar a sessão SSH no meio;
+                // inofensivo pros comandos de foto única (Cisco/Juniper).
+                estado.socket.send(JSON.stringify({ action: 'command', command: '\x03' }));
+                setTimeout(() => estado.socket.close(), 150);
             } else {
-                trafegoState.socket.close();
+                estado.socket.close();
             }
         } catch (e) {}
-        try { trafegoState.chart.destroy(); } catch (e) {}
+        try { estado.chart.destroy(); } catch (e) {}
         trafegoState = null;
     }
     document.getElementById('trafegoStatIn').textContent = '—';

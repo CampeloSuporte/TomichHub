@@ -23,6 +23,7 @@ from .bgp_actions import (
     comandos_prepend,
     comandos_toggle_sessao,
     executar_acao_bgp,
+    validar_anuncios_ao_vivo,
     validar_trial_suportado,
 )
 from .bgp_matcher import listar_prefix_lists
@@ -185,6 +186,48 @@ def bgp_escanear_prefixo(request, acesso_id):
         snap.dados.get('prefix_lists', {}), snap.dados.get('policies', {}), policy_out
     )
     resultado['vendor'] = snap.vendor
+    return JsonResponse(resultado)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def bgp_validar_anuncios(request, acesso_id):
+    """
+    POST /clientes/bgp/<acesso_id>/validar-anuncios/ — body {sessao}.
+    Conecta AO VIVO no equipamento (nunca escreve nada, só comandos de
+    leitura) e devolve o que essa sessão está anunciando/recebendo de
+    verdade agora — complementar à simulação baseada em config já exibida
+    no painel (dados['anuncios'], de bgp_matcher.simular_anuncios), que
+    mostra o que a policy deveria deixar passar, não o estado real do RIB.
+    """
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    sessao_nome = (body.get('sessao') or '').strip()
+    if not sessao_nome:
+        return JsonResponse({'error': 'Informe a sessão.'}, status=400)
+
+    try:
+        snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
+    except BgpSnapshot.DoesNotExist:
+        return JsonResponse({'error': 'Sem snapshot BGP para este host.'}, status=404)
+
+    sessao = next((s for s in snap.dados.get('sessoes', []) if s.get('nome') == sessao_nome), None)
+    if not sessao:
+        return JsonResponse({'error': f'Sessão "{sessao_nome}" não encontrada no snapshot.'}, status=404)
+
+    resultado = validar_anuncios_ao_vivo(acesso, snap.vendor, snap.dados, sessao)
+    if resultado['status'] == 'erro':
+        return JsonResponse({'error': resultado['mensagem']}, status=422)
     return JsonResponse(resultado)
 
 

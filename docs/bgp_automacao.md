@@ -589,11 +589,11 @@ prefixo some da tabela de anunciados no mesmo request em que a ação é executa
 
 ---
 
-## Ver tráfego em tempo real (Huawei, adicionado em 2026-08-01)
+## Ver tráfego em tempo real (Huawei 2026-08-01, Cisco/Juniper 2026-08-03)
 
-Cada sessão BGP Huawei tenta identificar automaticamente por qual interface local o peer é
-alcançado, e — quando consegue — ganha um botão **"📶 Ver tráfego"** que abre uma janela mostrando o
-tráfego da interface ao vivo, atualizando sozinho a cada segundo.
+Cada sessão BGP Huawei, Cisco ou Juniper tenta identificar automaticamente por qual interface local
+o peer é alcançado, e — quando consegue — ganha um botão **"📶 Ver tráfego"** que abre uma janela
+mostrando o tráfego da interface ao vivo.
 
 ### `clientes/bgp_matcher.py::identificar_interface(dados, peer_ip)`
 
@@ -606,12 +606,17 @@ inferir a interface sem consultar rota/ARP ao vivo no equipamento. Devolve `None
 interface hoje — ou qualquer IP fora de toda subnet local conhecida no backup): nesses casos não tem
 como inferir com segurança, e o botão simplesmente não aparece.
 
-Chamada em `clientes/tasks.py::_atualizar_snapshot_bgp_de_acesso`, só pra `vendor_parser == 'huawei'`,
-populando `sessao['interface']` no snapshot salvo. Validado contra todos os 53 `BgpSnapshot` reais via
-os backups em disco (229 sessões Huawei): 114 com interface identificada, 115 sem (a maioria peers
-iBGP via loopback ou IPv6) — zero erros inesperados, e as amostras conferidas manualmente batem com a
-config real (inclusive o exemplo usado nesta seção: `177.85.201.249` → `GigabitEthernet0/7/1.3179`,
-que tem `ip address 177.85.201.250 255.255.255.252`).
+Chamada em `clientes/tasks.py::_atualizar_snapshot_bgp_de_acesso`, pra `vendor_parser in ('huawei',
+'cisco', 'juniper')` (ampliado em 2026-08-03 — antes só Huawei), populando `sessao['interface']` no
+snapshot salvo. Validado contra todos os 53 `BgpSnapshot` reais via os backups em disco (229 sessões
+Huawei): 114 com interface identificada, 115 sem (a maioria peers iBGP via loopback ou IPv6) — zero
+erros inesperados, e as amostras conferidas manualmente batem com a config real (inclusive o exemplo
+usado nesta seção: `177.85.201.249` → `GigabitEthernet0/7/1.3179`, que tem `ip address 177.85.201.250
+255.255.255.252`). Ao ampliar pra Cisco/Juniper, rodado o mesmo `identificar_interface` contra os
+snapshots reais desses fabricantes: 8 Cisco (achou interface em 15 de 22 sessões) e 1 Juniper — o
+único acesso Juniper do sistema, `BORDA` (10.20.1.1, cliente INFOLINE) — achou 23 de 52 sessões (não
+testado ao vivo contra o equipamento: esse host está fora do ar desde 2026-07-29, ver
+[[project_infoline_site_wg_down_2026_07]]).
 
 ### Frontend — reaproveita o WebSocket do terminal SSH (`ws/ssh/`), sem endpoint novo
 
@@ -626,15 +631,17 @@ coisa exibida.
    importante: evita entrar numa sessão SSH já compartilhada por outro operador nesse host (abre uma
    conexão isolada só pra esse monitoramento, sem interferir em quem já estiver usando o terminal).
    `cols`/`rows` são fixos (120×24) já que não há mais um terminal visual pra medir o tamanho real.
-2. Ao receber `{type: 'connected'}`, envia `{action: 'command', command: 'display counters rate
-   interface {interface} | refresh 1\r'}` — o mesmo mecanismo que o handler `action == 'command'`
-   do consumer já usa pra `enviar_comando()` (idêntico ao que orquestra digitação normal, só que
-   com o texto pronto em vez de tecla por tecla).
+2. Ao receber `{type: 'connected'}`, envia `{action: 'command', command: ...}` — o mesmo mecanismo
+   que o handler `action == 'command'` do consumer já usa pra `enviar_comando()` (idêntico ao que
+   orquestra digitação normal, só que com o texto pronto em vez de tecla por tecla). O comando
+   depende do fabricante (`_trafegoConfigVendor(vendor, interfaceNome)`, `bgp_automacao.html`) — ver
+   "Multi-fabricante" abaixo.
 3. Saída chega como já era esperado (frames binários = texto puro, hot path; frames de texto =
    mensagens de controle JSON) — só que em vez de escrever num terminal, o texto vai direto pro
    parser do gráfico (ver abaixo).
 4. Ao fechar o modal, manda Ctrl+C (`{action:'command', command:'\x03'}`) antes de fechar o socket —
-   encerra o `| refresh 1` com elegância em vez de só derrubar a conexão SSH no meio do loop.
+   encerra o `| refresh 1` do Huawei com elegância em vez de só derrubar a conexão SSH no meio do
+   loop (inofensivo pros comandos de foto única do Cisco/Juniper, que não deixam nada rodando).
 
 Não gera registro de auditoria `AcaoBgp` (é leitura pura, mesmo padrão do "Atualizar agora").
 
@@ -663,13 +670,105 @@ GE0/7/1.3179       55782043          146817                 0                 0
 ```
 
 `_trafegoReceberTexto(texto)` (dentro de `abrirTrafego`, `bgp_automacao.html`) acumula o texto recebido
-num buffer (`trafegoState.bufferParse`) que é reprocessado a cada chunk por uma regex (`CICLO_REGEX`)
-que só aceita um ciclo como completo quando o marcador `(Finish)` já chegou — evita processar um
-bloco cortado no meio por um frame de WebSocket parcial (testado simulando o chunk quebrado no meio
-do texto). Extrai `Octets(bytes/s)` de Inbound/Outbound, multiplica por 8 (bytes→bits) e empurra um
-ponto novo nos dois datasets do Chart.js (`Entrada ↓`/`Saída ↑`), limitado a 60 pontos (~1 minuto de
-histórico a 1 ciclo/segundo) — depois de cada ciclo processado, o buffer é cortado até onde já foi
-consumido, pra não crescer sem limite numa sessão longa.
+num buffer (`trafegoState.bufferParse`) que é reprocessado a cada chunk por uma regex (`cfg.regex`,
+modo `refresh_servidor` — ver "Multi-fabricante" abaixo) que só aceita um ciclo como completo quando o
+marcador `(Finish)` já chegou — evita processar um bloco cortado no meio por um frame de WebSocket
+parcial (testado simulando o chunk quebrado no meio do texto). Extrai `Octets(bytes/s)` de
+Inbound/Outbound, multiplica por 8 (bytes→bits) e empurra um ponto novo nos dois datasets do Chart.js
+(`Entrada ↓`/`Saída ↑`), limitado a 60 pontos (~1 minuto de histórico a 1 ciclo/segundo) — depois de
+cada ciclo processado, o buffer é cortado até onde já foi consumido, pra não crescer sem limite numa
+sessão longa.
+
+### Multi-fabricante (Cisco e Juniper, adicionado em 2026-08-03)
+
+Cisco (IOS/IOS-XE) e Juniper (Junos) não têm um comando de auto-refresh no próprio equipamento como o
+`| refresh 1` do Huawei — a solução usa `_trafegoConfigVendor(vendor, interfaceNome)`
+(`bgp_automacao.html`) pra decidir, por `SNAPSHOT.vendor`, entre dois modos:
+
+- **`refresh_servidor`** (Huawei, único que tem hoje): comando único enviado uma vez, o próprio
+  equipamento manda os ciclos sozinho — descrito acima.
+- **`poll`** (Cisco e Juniper): sem auto-refresh no equipamento, o frontend reenvia o comando `show`
+  periodicamente (`setInterval`, um timer por sessão de tráfego aberta, limpo em `fecharTrafego()`).
+  A cada envio o buffer de parse é zerado (`_enviarComando()`); assim que a regex do fabricante acha
+  um par entrada+saída completo no texto acumulado desde o último envio, registra um ponto no gráfico
+  e zera o buffer de novo — evita casar de novo com o eco do comando ou o prompt sobrando na tela.
+
+**Cisco** — interface **base**, não a sub-interface. Confirmado ao vivo (acesso 887,
+`Port-channel1.3062`, ASR1000/IOS-XE 16.9.5): `show interfaces Port-channel1.3062` não traz nenhuma
+linha de taxa — sub-interface 802.1Q não tem contador de taxa próprio nessa plataforma. A interface
+física/port-channel **base** (`Port-channel1`, tudo antes do primeiro `.`) tem:
+
+```
+show interfaces Port-channel1 | include rate
+  5 minute input rate 1226501000 bits/sec, 160701 packets/sec
+  5 minute output rate 1235442000 bits/sec, 160187 packets/sec
+```
+
+(o filtro `include rate` também deixa passar outras linhas com a substring "rate", ex:
+`Queueing strategy: fifo` — inofensivo, a regex de parse exige a frase completa `input rate .. bits/sec`
+/ `output rate .. bits/sec`, então não há falso positivo.) Testado direto via canal SSH raw
+(`paramiko.invoke_shell`, mesmo mecanismo que `consumers.py::connect_ssh` usa) simulando exatamente o
+que o WebSocket recebe — eco do comando + linhas de taxa + prompt de volta, tudo num único bloco de
+texto. Reenviado a cada 3s (`intervaloMs: 3000`). Nota: a "5 minute input/output rate" do Cisco é uma
+média móvel de 5 minutos por padrão (o `load-interval` da interface, que o CRM não altera — seria
+mudança de config num recurso que é só leitura) — reenviar mais rápido que isso não traz valor mais
+"instantâneo", só a mesma média recalculada conforme o próprio equipamento atualiza.
+
+**Juniper** — interface **exata identificada** (sem tirar sufixo — diferente do Cisco, o Junos mantém
+contador de taxa por unidade lógica). O formato da saída depende do **tipo** de interface — descoberto
+em duas rodadas de validação ao vivo em 2026-08-03, contra dois tipos reais diferentes no INFOLINE-BGP:
+
+**1) Bundle agregado (`ae*`)** — ex: `ae0.1694`:
+
+```
+show interfaces {interface} extensive | match "Input :|Output:"
+        Input :  523164884173     372108 595708859852103   3353064280
+        Output:  318391137537     263274 125602267755030    977728704
+```
+
+Não existe uma linha "Input rate:" separada (a primeira tentativa, com esse formato clássico, deu
+`match` vazio — corrigida depois de ver a saída real). O formato é uma tabela
+`Statistics  Packets  pps  Bytes  bps` por Bundle/Link, cada linha com 4 números — a taxa é a
+**última coluna**. Detalhe não-óbvio: `"Output:"` **não tem espaço** antes dos dois-pontos, enquanto
+`"Input :"` **tem**. Regex: `/Input\s*:\s*\d+\s+\d+\s+\d+\s+(\d+)[\s\S]*?Output\s*:\s*\d+\s+\d+\s+\d+\s+(\d+)/i`.
+Reenviado a cada 2s.
+
+**2) Porta física (`et-`/`xe-`/`ge-`/`so-`…)** — ex: `et-0/0/3.0`:
+
+```
+show interfaces {interface} extensive | match "Input  bytes|Output bytes"
+    Traffic statistics:                      ← SEM bps (só contador total)
+     Input  bytes  :    59044842383109703
+     Output bytes  :     9181354704904532
+     IPv6 transit statistics:                ← SEM bps, subconjunto IPv6
+     ...
+    Local statistics:                        ← SEM bps (tráfego pro RE)
+     ...
+    Transit statistics:                      ← COM bps — É ESSA que quer
+     Input  bytes  :    59044730447364608           7356444688 bps
+     Output bytes  :     9181293135836809           1905685568 bps
+     IPv6 transit statistics:                ← COM bps, mas só IPv6 (subconjunto)
+      Input  bytes  :    5372420195111380            951758992 bps
+      Output bytes  :                   0                    0 bps
+```
+
+Formato completamente diferente do bundle: o Junos tem várias seções de estatística por interface
+física (`Traffic statistics:`, `Local statistics:`, `Transit statistics:`, e `IPv6 transit
+statistics:` aninhada dentro de cada uma). A primeira tentativa (regex igual à do bundle, esperando
+`Input :`) não bateu nada — o formato real usa `Input  bytes  :` com o total seguido da taxa em bps
+só quando a linha pertence a uma seção que rastreia taxa. Só `Transit statistics:` (tráfego total
+IPv4+IPv6 pela interface) tem bps; `Traffic statistics:` e `Local statistics:` só têm contador
+acumulado, sem bps algum. A regex final
+(`/Input\s+bytes\s*:\s*\d+\s+(\d+)\s*bps[\s\S]*?Output\s+bytes\s*:\s*\d+\s+(\d+)\s*bps/i`) exige a
+presença de "bps" na linha — isso sozinho já pula as seções sem taxa (`Traffic`/`Local statistics`,
+que não têm "bps" na linha). Como o regex é não-guloso e casa a PRIMEIRA ocorrência, para no par de
+`Transit statistics:` (total) sem nunca alcançar o `IPv6 transit statistics:` aninhado logo depois
+(que é só o subconjunto IPv6, um valor menor). Testada em Node contra o texto real colado pelo
+usuário — extrai `7356444688`/`1905685568` bps corretamente (bate com `Transit statistics:`, não com
+o bloco IPv6). Reenviado a cada 2s.
+
+O JS (`_trafegoConfigVendor`, `bgp_automacao.html`) decide qual dos dois formatos usar checando se
+`interfaceNome` começa com `ae` (regex `/^ae\d/i`).
 
 ### Dois bugs reais pegos em produção durante o desenvolvimento (versão com terminal embutido)
 
@@ -699,4 +798,83 @@ executada contra equipamento durante a validação.
 
 ---
 
-**Última atualização:** 01/08/2026
+## Validar anúncios ao vivo (adicionado em 2026-08-03)
+
+Dentro do card de cada sessão (expandindo), botão **"🔍 Validar anúncios"** conecta AO VIVO no equipamento
+(leitura pura, nenhum comando muda config, nunca gera `AcaoBgp`) e mostra o que essa sessão está
+anunciando/recebendo de verdade agora — via `peer_ip` da sessão. É complementar, não substitui, a
+simulação já existente baseada em config (`dados['anuncios']`, de `bgp_matcher.simular_anuncios`): a
+simulação mostra o que a policy DEVERIA deixar passar; este botão mostra o que está passando de fato no
+RIB/Adj-RIB do equipamento nesse instante.
+
+### `clientes/bgp_actions.py` — `validar_anuncios_ao_vivo(acesso, vendor, dados, sessao)`
+
+Conecta via `_conectar_script` (mesma infra de `executar_acao_bgp`), roda os comandos e desconecta.
+Nunca levanta exceção de conexão — devolve `{'status': 'erro', 'mensagem': ...}`.
+
+**Descoberta crítica que mudou o design:** ao testar contra os 53 `BgpSnapshot` reais de produção, um
+peer Huawei real (acesso 990) tinha **1.084.769 prefixos recebidos** (full-table/transit) e um peer
+Juniper real (acesso 495, PTTRJ) tinha **160.204** — listar tudo isso travaria a conexão SSH (o comando
+de listagem sozinho demora mais que qualquer `read_timeout` razoável) e estouraria a resposta HTTP.
+Solução: `comando_contar_recebidos(vendor, dados, sessao)` roda PRIMEIRO um comando barato (contador já
+computado pelo equipamento, não uma varredura da RIB inteira) pra saber a quantidade; só busca a lista
+completa (`comandos_validar_anuncios`) se `total_recebidos <= LIMITE_PREFIXOS_LISTAR` (500) — acima
+disso devolve só a contagem (`recebidos: null, recebidos_truncado: true`). Não existe equivalente pro
+lado ANUNCIADO porque em todo peer testado ao vivo (Huawei, Cisco, Juniper, Mikrotik) esse número ficou
+sempre pequeno (1 a 14) — o risco de explosão é só do lado recebido.
+
+**Comandos por fabricante — todos confirmados ao vivo contra equipamento real** (não só documentação):
+
+| Fabricante | Contagem barata (recebidos) | Lista anunciados | Lista recebidos |
+|---|---|---|---|
+| Huawei | `display bgp peer {ip} verbose` (`Received total routes:`) | `display bgp routing-table peer {ip} advertised-routes` | `display bgp routing-table peer {ip} received-routes` |
+| Cisco/Datacom | `show ip bgp neighbors {ip} \| include Prefixes Current` | `show ip bgp neighbors {ip} advertised-routes` | `show ip bgp neighbors {ip} received-routes` (fallback abaixo) |
+| Juniper | `show bgp neighbor {ip} \| match "Received prefixes"` | `show route advertising-protocol bgp {ip}` | `show route receive-protocol bgp {ip}` |
+| Mikrotik v6 | `/routing bgp peer print detail where name="{nome}"` (`prefix-count=`) | `/routing bgp advertisements print peer="{nome}"` | `/ip route print where received-from="{nome}"` |
+| Mikrotik v7 | `/routing bgp session print detail where name="{nome}"` (`prefix-count=`) | `/routing bgp advertisements print where peer="{nome}"` | `/ip route print where gateway={ip} bgp=yes` |
+
+**Cisco — fallback de `received-routes`:** sem `soft-reconfiguration inbound` configurado no peer, o
+comando erra com `% Inbound soft reconfiguration not enabled` (confirmado ao vivo, acesso 887) — nesse
+caso usa `show ip bgp neighbors {ip} routes` como fallback (mostra o equivalente PÓS-política, o que
+realmente entrou na RIB local, sem precisar dessa config extra no equipamento — não altera config pra
+viabilizar a consulta).
+
+**Mikrotik v6 vs v7 — sintaxes completamente diferentes**, descoberto testando ao vivo contra os dois
+(não presumido):
+- v6: `print peer=NOME` (sem `where`); rota recebida tem a propriedade `received-from=NOME` no `/ip route`.
+- v7: exige `print where peer=NOME` (com `where` — sem, dá erro de sintaxe); a propriedade
+  `received-from` **não existe mais** em `/ip route` (removida no redesenho do BGP do v7, confirmado via
+  tab-completion ao vivo: `.dead .id .nextid active bgp bgp-mpls-vpn ... ` sem `received-from`) — usa
+  `gateway={peer_ip}` como proxy (o gateway da rota aprendida via BGP É o endereço remoto do peer).
+
+**`_extrair_prefixos(texto)`** (`bgp_actions.py`) — extrai só os prefixos CIDR do texto bruto, igual pra
+todos os 4 fabricantes: regex genérica `\d{1,3}(\.\d{1,3}){3}/\d{1,2}` funciona porque em toda saída real
+testada o prefixo é o único token da linha no formato IP/máscara (next-hop/gateway aparecem sem barra).
+**Bug real pego testando:** Cisco imprime a rota padrão como `0.0.0.0` **sem `/0`** (diferente de todo
+outro prefixo da mesma tabela, que sempre tem máscara) — a regex genérica não pegava. Corrigido com
+`_DEFAULT_ROUTE_RE`, que exige `0.0.0.0` como PRIMEIRO campo da linha (só flags de status antes) seguido
+de outro IP (o next-hop) — evita falso positivo quando `0.0.0.0` aparece como next-hop de rota local
+(ex: `45.169.6.0/24  0.0.0.0  ...`, onde `0.0.0.0` vem DEPOIS do prefixo de verdade).
+
+### `clientes/bgp_views.py::bgp_validar_anuncios` — `POST /clientes/bgp/<acesso_id>/validar-anuncios/`
+
+Body `{sessao}`. Mesma checagem de permissão (`_checar_staff`/`_checar_acesso`) das outras ações. Devolve
+`{status, anunciados: [...], recebidos: [...]|null, total_recebidos, recebidos_truncado}` ou
+`{error}` (404/422). Não grava `AcaoBgp` — é leitura pura, mesmo padrão do "Atualizar agora"/"Ver
+tráfego".
+
+### Frontend
+
+Botão dentro do card expandido de cada sessão (não no cabeçalho, pra não competir com "Ver tráfego"/
+"Ativar"/"Desativar" que já lotam a linha). `validarAnuncios(idx, nomeSessao)` (`bgp_automacao.html`)
+faz o POST e renderiza duas colunas (Anunciados/Recebidos) com contagem no título; peer truncado mostra
+só um aviso amarelo com a contagem, sem tentar listar.
+
+**Validado em 2026-08-03** com `Client()` do Django direto contra a rota HTTP real (não só a função
+isolada) em 4 casos: sucesso normal (Cisco, 1 anunciado + rota padrão recebida), peer full-table
+truncado (Huawei, 1M+), sessão inexistente (404) e body sem `sessao` (400) — todos com o resultado
+esperado.
+
+---
+
+**Última atualização:** 03/08/2026
