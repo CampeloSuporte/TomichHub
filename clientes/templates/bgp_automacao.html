@@ -111,6 +111,22 @@
     .candidata-item .amostra { color: #7d8590; font-size: 10px; margin-left: 6px; }
     .candidata-item .linha-add { display: flex; gap: 6px; margin-top: 6px; }
     .candidata-item .linha-add .input-modal { flex: 1; }
+
+    /* Modal "Configurar nova sessão" */
+    .modal-criar-sessao { max-width: 680px; }
+    .cs-toggle-row { display: flex; gap: 18px; margin-bottom: 14px; font-size: 12px; }
+    .cs-toggle-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .cs-label { display: block; font-size: 11px; color: #7d8590; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 4px; }
+    .cs-af-bloco { border: 1px solid #21262d; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+    .cs-af-titulo { font-weight: 600; font-size: 12px; margin-bottom: 10px; color: #58a6ff; }
+    .cs-campo { margin-bottom: 10px; }
+    .cs-pl-picker { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+    .cs-pl-titulo { font-size: 11px; color: #7d8590; margin-bottom: 6px; }
+    .cs-pl-resumo { font-size: 12px; color: #ffd280; margin-bottom: 8px; font-family: 'Cascadia Code', monospace; }
+    .cs-pl-botoes { display: flex; gap: 6px; margin-bottom: 8px; }
+    .cs-pl-painel { margin-bottom: 8px; }
+    .cs-pl-nova { display: flex; gap: 6px; }
+    .cs-pl-nova .input-modal { flex: 1; }
     .anuncios-wrap { display: none; }
     .anuncios-wrap.aberto { display: block; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -208,6 +224,126 @@
         <div id="naResultado"></div>
         <div class="modal-acoes">
             <button class="btn" onclick="fecharNovoAnuncio()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="criarSessaoOverlay">
+    <div class="modal modal-criar-sessao">
+        <h3>＋ Configurar nova sessão (Cisco)</h3>
+
+        <div class="cs-toggle-row">
+            <label><input type="radio" name="csTipo" value="upstream" checked> Upstream</label>
+            <label><input type="radio" name="csTipo" value="downstream"> Downstream</label>
+        </div>
+
+        <div class="cs-campo">
+            <label class="cs-label" for="csSufixo">Sufixo da descrição (ex: CONECT)</label>
+            <input type="text" id="csSufixo" class="input-modal" style="width:100%;" maxlength="40">
+        </div>
+
+        <div class="cs-toggle-row">
+            <label><input type="checkbox" id="csAtivaV4" checked onchange="csAtualizarAFs()"> IPv4</label>
+            <label><input type="checkbox" id="csAtivaV6" onchange="csAtualizarAFs()"> IPv6</label>
+        </div>
+
+        <div id="csBlocoV4" class="cs-af-bloco">
+            <div class="cs-af-titulo">IPv4</div>
+            <div class="cs-campo">
+                <label class="cs-label" for="csV4PeerIp">Peer IP</label>
+                <input type="text" id="csV4PeerIp" class="input-modal" style="width:100%;" placeholder="172.16.8.1">
+            </div>
+            <div class="cs-campo">
+                <label class="cs-label" for="csV4RemoteAs">AS remoto</label>
+                <input type="text" id="csV4RemoteAs" class="input-modal" style="width:100%;" placeholder="262725">
+            </div>
+
+            <div class="cs-pl-picker">
+                <div class="cs-pl-titulo">Prefix-list IN (o que aceitamos deste peer)</div>
+                <div class="cs-pl-resumo" id="cs-v4in-resumo">Nenhuma prefix-list escolhida.</div>
+                <div class="cs-pl-botoes">
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v4in', false)">🔍 Existente</button>
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v4in', true)">🔄 Existente (ao vivo)</button>
+                </div>
+                <div class="cs-pl-painel" id="cs-v4in-painel" style="display:none;">
+                    <input type="text" id="cs-v4in-busca" class="input-modal" style="width:100%;margin-bottom:6px;" placeholder="Buscar…" oninput="csFiltrarCandidatas('v4in')">
+                    <div id="cs-v4in-lista"></div>
+                </div>
+                <div class="cs-pl-nova">
+                    <input type="text" id="cs-v4in-cidr" class="input-modal" placeholder="Ou CIDR novo, ex: 0.0.0.0/0">
+                    <button type="button" class="btn pequeno" onclick="csEscolherNova('v4in')">Criar nova</button>
+                </div>
+            </div>
+
+            <div class="cs-pl-picker">
+                <div class="cs-pl-titulo">Prefix-list OUT (o que anunciamos a este peer)</div>
+                <div class="cs-pl-resumo" id="cs-v4out-resumo">Nenhuma prefix-list escolhida.</div>
+                <div class="cs-pl-botoes">
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v4out', false)">🔍 Existente</button>
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v4out', true)">🔄 Existente (ao vivo)</button>
+                </div>
+                <div class="cs-pl-painel" id="cs-v4out-painel" style="display:none;">
+                    <input type="text" id="cs-v4out-busca" class="input-modal" style="width:100%;margin-bottom:6px;" placeholder="Buscar…" oninput="csFiltrarCandidatas('v4out')">
+                    <div id="cs-v4out-lista"></div>
+                </div>
+                <div class="cs-pl-nova">
+                    <input type="text" id="cs-v4out-cidr" class="input-modal" placeholder="Ou CIDR novo, ex: 45.169.6.0/24">
+                    <button type="button" class="btn pequeno" onclick="csEscolherNova('v4out')">Criar nova</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="csBlocoV6" class="cs-af-bloco" style="display:none;">
+            <div class="cs-af-titulo">IPv6</div>
+            <div class="cs-campo">
+                <label class="cs-label" for="csV6PeerIp">Peer IP</label>
+                <input type="text" id="csV6PeerIp" class="input-modal" style="width:100%;" placeholder="2804:3360:0:29::3d">
+            </div>
+            <div class="cs-campo">
+                <label class="cs-label" for="csV6RemoteAs">AS remoto</label>
+                <input type="text" id="csV6RemoteAs" class="input-modal" style="width:100%;" placeholder="262725">
+            </div>
+
+            <div class="cs-pl-picker">
+                <div class="cs-pl-titulo">Prefix-list IN (o que aceitamos deste peer)</div>
+                <div class="cs-pl-resumo" id="cs-v6in-resumo">Nenhuma prefix-list escolhida.</div>
+                <div class="cs-pl-botoes">
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v6in', false)">🔍 Existente</button>
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v6in', true)">🔄 Existente (ao vivo)</button>
+                </div>
+                <div class="cs-pl-painel" id="cs-v6in-painel" style="display:none;">
+                    <input type="text" id="cs-v6in-busca" class="input-modal" style="width:100%;margin-bottom:6px;" placeholder="Buscar…" oninput="csFiltrarCandidatas('v6in')">
+                    <div id="cs-v6in-lista"></div>
+                </div>
+                <div class="cs-pl-nova">
+                    <input type="text" id="cs-v6in-cidr" class="input-modal" placeholder="Ou CIDR novo, ex: ::/0">
+                    <button type="button" class="btn pequeno" onclick="csEscolherNova('v6in')">Criar nova</button>
+                </div>
+            </div>
+
+            <div class="cs-pl-picker">
+                <div class="cs-pl-titulo">Prefix-list OUT (o que anunciamos a este peer)</div>
+                <div class="cs-pl-resumo" id="cs-v6out-resumo">Nenhuma prefix-list escolhida.</div>
+                <div class="cs-pl-botoes">
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v6out', false)">🔍 Existente</button>
+                    <button type="button" class="btn pequeno" onclick="csAbrirBusca('v6out', true)">🔄 Existente (ao vivo)</button>
+                </div>
+                <div class="cs-pl-painel" id="cs-v6out-painel" style="display:none;">
+                    <input type="text" id="cs-v6out-busca" class="input-modal" style="width:100%;margin-bottom:6px;" placeholder="Buscar…" oninput="csFiltrarCandidatas('v6out')">
+                    <div id="cs-v6out-lista"></div>
+                </div>
+                <div class="cs-pl-nova">
+                    <input type="text" id="cs-v6out-cidr" class="input-modal" placeholder="Ou CIDR novo, ex: 2804:3360:6::/48">
+                    <button type="button" class="btn pequeno" onclick="csEscolherNova('v6out')">Criar nova</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-resultado" id="csErro" style="color:#ff8080;"></div>
+
+        <div class="modal-acoes">
+            <button class="btn" onclick="fecharCriarSessao()">Cancelar</button>
+            <button class="btn perigo" onclick="csVisualizarComandos()">Visualizar comandos</button>
         </div>
     </div>
 </div>
