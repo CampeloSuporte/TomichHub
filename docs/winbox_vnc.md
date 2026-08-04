@@ -213,6 +213,46 @@ de Gravação de Tela), o que absorve esse custo extra sem competir com o Wine/W
 
 ---
 
+### WinBox Web não abre para clientes que só têm VPN (sem ProxyServer SSH) — Corrigido em 04/08/2026
+
+**Sintoma:** `WinboxVNCConsumer` falhava direto com `"Nenhum proxy SSH ativo para <cliente>"` — a
+sessão nunca chegava a subir o Xvfb/WinBox, mesmo com o IP do equipamento perfeitamente alcançável
+pelo servidor.
+
+**Causa:** `get_active_proxy()` (`clientes/consumers.py`) levanta exceção sempre que não existe um
+`ProxyServer` (túnel SSH) ativo pro cliente — sem checar se o IP privado já está coberto por uma
+VPN WireGuard/OpenVPN ativa do próprio cliente, cuja rota já existe no kernel via a interface da
+VPN (mesmo mecanismo que `proxy_web_acesso` — o proxy HTTP, ver `docs/proxy_web_acessos.md` — já
+usava via `vpn_cobre_ip`). Clientes que dependem só de VPN (sem SSH proxy cadastrado) — ex:
+Conecta ISP, com `VPNWireGuard` ativa cobrindo `10.0.0.0/8` e nenhum `ProxyServer` — não
+conseguiam abrir WinBox Web nem WebFig via VNC de jeito nenhum.
+
+**Fix:** `WinboxVNCConsumer.conectar_vnc()` (modo `winbox`/`browser`, WinBox via VNC) e
+`conectar_winbox()` (modo `winbox_nativo`, TCP passthrough direto) agora: buscam `ProxyServer`
+ativo primeiro; se não existir, chamam `vpn_cobre_ip(acesso.cliente, host)` — se a VPN cobre o IP,
+conectam direto (sem túnel); só levantam a exceção original se nem proxy nem VPN cobrirem o host.
+
+```python
+proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+if proxy:
+    local_port = self._criar_tunel_paramiko(proxy, host, porta)
+    target_host, target_port = '127.0.0.1', local_port
+else:
+    from .views import vpn_cobre_ip
+    if not vpn_cobre_ip(acesso.cliente, host):
+        raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
+    target_host, target_port = host, porta
+```
+
+**Pendente:** o mesmo bug (`get_active_proxy()` sem fallback de VPN) ainda existe em três outros
+métodos de `clientes/consumers.py` — Terminal SSH (`connect_ssh_via_proxy`), OLT Parks
+(`connect_ssh_parks_proxy`, via `pexpect`+`ProxyCommand`, não usa `_criar_tunel_paramiko`) e Telnet
+(`connect_telnet_via_proxy`) — todos afetam qualquer cliente só-VPN da mesma forma. Não corrigidos
+ainda porque cada um usa o objeto `proxy` de um jeito diferente (não é o mesmo copy-paste simples),
+precisam de mais cuidado e teste por protocolo.
+
+---
+
 ## Modos Suportados
 
 | Modo | URL | Descrição |
@@ -243,5 +283,5 @@ sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/s
 
 ---
 
-**Última atualização:** 22/07/2026  
+**Última atualização:** 04/08/2026  
 **Autor:** CampeloSuporte

@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-04 (Fix: Proxy Web — loop de login + WinBox Web pra clientes só-VPN)
+
+### Corrigido
+
+- **Proxy web de acessos: login funcionava mas a página recarregava de volta pra tela de login em
+  loop** (reproduzido com AP Mimosa/Airspan C5c) — o firmware do equipamento reporta `"https":false`
+  no JSON de login/status e o próprio JS dele tentava "corrigir" o scheme navegando pra `http://`,
+  gerando reload completo (comprovado nos logs do Daphne) e apagando o login da SPA a cada ciclo.
+  Fix em `clientes/proxy_engine.py`: guard contra `location.href`/`assign`/`replace` que só trocam
+  o scheme, e reescrita do campo `"https":false→true` na resposta JSON quando o proxy fala HTTP com
+  o equipamento — a condição que dispara a troca nunca mais fica verdadeira. Detalhes em
+  [proxy_web_acessos.md](docs/proxy_web_acessos.md).
+- **WinBox Web (VNC e nativo) falhava com "Nenhum proxy SSH ativo"** pra qualquer cliente que só
+  tem VPN WireGuard/OpenVPN própria, sem `ProxyServer` SSH cadastrado (`clientes/consumers.py`
+  não tinha o fallback de VPN que o proxy HTTP já usava). Corrigido em
+  `WinboxVNCConsumer.conectar_vnc()`/`conectar_winbox()`. Mesmo bug pendente em Terminal SSH, OLT
+  Parks e Telnet — sinalizado, não corrigido nesta rodada. Detalhes em
+  [winbox_vnc.md](docs/winbox_vnc.md#winbox-web-não-abre-para-clientes-que-só-têm-vpn-sem-proxyserver-ssh--corrigido-em-04082026).
+- Removido debug hardcoded (`DBG891`, de uma sessão anterior) que logava usuário/senha do
+  equipamento em texto puro no log do Daphne.
+
+---
+
 ## [Não publicado] — 2026-08-03 (Fix: Automação BGP — "sem_novidade" bloqueava refresh legítimo)
 
 ### Corrigido

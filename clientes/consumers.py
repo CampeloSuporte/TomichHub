@@ -2213,11 +2213,22 @@ class WinboxConsumer(SSHConsumer):
             )
 
             if self.is_private_ip(host):
-                proxy = self.get_active_proxy(acesso.cliente)
-                self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox via proxy {proxy.nome}...'})
-                local_port = self._criar_tunel_paramiko(proxy, host, porta)
-                target_host = '127.0.0.1'
-                target_port = local_port
+                proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+                if proxy:
+                    self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox via proxy {proxy.nome}...'})
+                    local_port = self._criar_tunel_paramiko(proxy, host, porta)
+                    target_host = '127.0.0.1'
+                    target_port = local_port
+                else:
+                    # Cliente só-VPN (sem ProxyServer SSH) — rota já existe no
+                    # kernel via WireGuard/OpenVPN. Ver mesmo fallback em
+                    # conectar_vnc() acima.
+                    from .views import vpn_cobre_ip
+                    if not vpn_cobre_ip(acesso.cliente, host):
+                        raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
+                    self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox diretamente a {host}:{porta} (via VPN)...'})
+                    target_host = host
+                    target_port = porta
             else:
                 self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox diretamente a {host}:{porta}...'})
                 target_host = host
@@ -2363,13 +2374,27 @@ class WinboxVNCConsumer(SSHConsumer):
 
             
             if self.is_private_ip(host):
-                proxy = self.get_active_proxy(acesso.cliente)
-                msg_tipo = "Navegador" if mode == 'browser' else "Winbox"
-                self.send_json({'type': 'info', 'message': f'🔌 Conectando {msg_tipo} via proxy {proxy.nome}...'})
-                local_port = self._criar_tunel_paramiko(proxy, host, porta)
-                self.send_json({'type': 'info', 'message': f'✅ Túnel estabelecido na porta {local_port}'})
-                target_host = '127.0.0.1'
-                target_port = local_port
+                proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+                if proxy:
+                    msg_tipo = "Navegador" if mode == 'browser' else "Winbox"
+                    self.send_json({'type': 'info', 'message': f'🔌 Conectando {msg_tipo} via proxy {proxy.nome}...'})
+                    local_port = self._criar_tunel_paramiko(proxy, host, porta)
+                    self.send_json({'type': 'info', 'message': f'✅ Túnel estabelecido na porta {local_port}'})
+                    target_host = '127.0.0.1'
+                    target_port = local_port
+                else:
+                    # Sem ProxyServer SSH ativo — clientes que só têm VPN
+                    # WireGuard/OpenVPN (rota já existe no kernel via interface
+                    # própria) conseguem conexão direta, sem túnel. Mesmo
+                    # fallback usado por proxy_web_acesso (views.py) pro proxy
+                    # HTTP; sem isso o Winbox Web falhava com "Nenhum proxy SSH
+                    # ativo" pra qualquer cliente só-VPN, mesmo com o IP
+                    # perfeitamente alcançável.
+                    from .views import vpn_cobre_ip
+                    if not vpn_cobre_ip(acesso.cliente, host):
+                        raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
+                    target_host = host
+                    target_port = porta
 
             else:
                 target_host = host

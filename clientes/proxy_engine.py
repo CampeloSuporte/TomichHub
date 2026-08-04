@@ -1092,6 +1092,26 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     try{{window.dispatchEvent(new PopStateEvent('popstate',{{state:null}}));}}catch(e){{}}
     try{{window.dispatchEvent(new Event('hashchange'));}}catch(e){{}}
   }}
+  // Alguns devices (ex: firmware Mimosa/Airspan) trocam o próprio scheme via
+  // location.href com base numa flag de config (ex: "https" retornado pelo
+  // login/status da API) comparada com location.protocol — dentro do proxy
+  // o scheme "real" do browser é sempre o do CRM (https) e é independente do
+  // scheme com que estamos falando com o device (embutido no path, ex:
+  // ".../web/80/http/"). Sem esse guard, um device com https:false na sua
+  // própria config (comum quando ele só expõe a porta 80 mesmo) força um
+  // location.href="http://..." assim que o app carrega — o CRM não serve
+  // HTTP puro, então o navegador é bounced de volta pro HTTPS, recarregando
+  // a página do zero e derrubando o estado de login da SPA (parece um loop
+  // infinito de "faço login e volta pra tela de login").
+  function _isSchemeSwapNoop(u){{
+    try{{
+      if(typeof u!=='string')return false;
+      var swapped=u.replace(/^https?/i,function(m){{
+        return m.toLowerCase()==='https'?'http':'https';
+      }});
+      return swapped===location.href;
+    }}catch(e){{return false;}}
+  }}
   try{{
     var d=Object.getOwnPropertyDescriptor(Location.prototype,'href');
     if(d&&d.set){{
@@ -1099,6 +1119,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
       Object.defineProperty(Location.prototype,'href',{{
         get:d.get,
         set:function(u){{
+          if(_isSchemeSwapNoop(u))return;
           if(u&&u.startsWith('/')&&!u.startsWith(B))u=B+u;
           // Se a SPA navega para a raiz do proxy (equivalente a '/' no device),
           // não recarregar — usar pushState para preservar estado pós-login.
@@ -1183,7 +1204,11 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
   }})();
   ['assign','replace'].forEach(function(fn){{
     var o=window.location[fn].bind(window.location);
-    window.location[fn]=function(u){{if(u&&u.startsWith('/')&&!u.startsWith(B))u=B+u;return o(u);}};
+    window.location[fn]=function(u){{
+      if(_isSchemeSwapNoop(u))return;
+      if(u&&u.startsWith('/')&&!u.startsWith(B))u=B+u;
+      return o(u);
+    }};
   }});
   // Intercepta new WebSocket para roteá-lo pelo proxy SSH do CRM.
   // Proxmox constrói URLs como wss://crm.tomich.com.br/api2/... — sem o prefixo do proxy.

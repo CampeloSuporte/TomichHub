@@ -5679,12 +5679,18 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     # ── Normalização de URL ───────────────────────────────────────────
     if porta is None or scheme is None:
         porta_web = int(request.GET.get('porta', 80))
-        scheme    = request.GET.get('scheme', 'http')
         path_qs   = request.GET.get('path', '/')
         if path_qs.startswith('/'): path_qs = path_qs[1:]
 
-        if porta_web in (443, 8443, 4443): scheme = 'https'
-        elif porta_web in (80, 8080, 8888, 3000, 8000): scheme = 'http'
+        # Só infere o scheme pela porta quando o chamador não informou um
+        # explicitamente — caso contrário um acesso HTTPS em porta "não
+        # padrão" (ex: 8006) seria forçado de volta para HTTP aqui.
+        if 'scheme' in request.GET:
+            scheme = request.GET['scheme']
+        elif porta_web in (443, 8443, 4443):
+            scheme = 'https'
+        else:
+            scheme = 'http'
 
         redirect_url = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}/{path_qs}'
         return HttpResponseRedirect(redirect_url)
@@ -5768,16 +5774,6 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
 
     body = request.body if request.method in ('POST', 'PUT', 'PATCH') else None
 
-    _dbg = str(acesso_id) == '891'
-    if _dbg:
-        import datetime
-        ts = datetime.datetime.now().strftime('%H:%M:%S')
-        raw_all = request.META.get('HTTP_COOKIE', '')
-        print(f"[DBG891 {ts}] {request.method} {path}", flush=True)
-        print(f"[DBG891 {ts}] browser_cookies_raw={raw_all[:300]}", flush=True)
-        print(f"[DBG891 {ts}] forwarded_to_device={filtered_cookies}", flush=True)
-        if body: print(f"[DBG891 {ts}] body={body[:200]}", flush=True)
-
     try:
         resp = engine.do_request(
             method=request.method,
@@ -5799,17 +5795,6 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
                 ),
                 content_type='text/html', status=502
             )
-
-        if _dbg:
-            import datetime
-            ts = datetime.datetime.now().strftime('%H:%M:%S')
-            ct = resp.headers.get('Content-Type','?')
-            print(f"[DBG891 {ts}] status={resp.status_code} ct={ct} size={len(resp.content)}", flush=True)
-            print(f"[DBG891 {ts}] resp_headers={dict(resp.headers)}", flush=True)
-            if getattr(resp,'cookies_raw',[]):
-                print(f"[DBG891 {ts}] SET-COOKIE={resp.cookies_raw}", flush=True)
-            if 'login' in path.lower() or path in ('/', ''):
-                print(f"[DBG891 {ts}] BODY[:800]={resp.content[:800]}", flush=True)
 
         # ── Tratar Redirects cross-port (ex: http→https) ─────────────
         if resp.status_code in (301, 302, 303, 307, 308):
@@ -5867,6 +5852,21 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
                                              cookie_prefix=cookie_prefix)
             if 'text/html' in content_type:
                 content_type = 'text/html; charset=utf-8'
+
+        # Alguns devices (ex: firmware Mimosa/Airspan) devolvem um campo
+        # "https":false no JSON de login/status e o próprio JS deles compara
+        # isso com location.protocol pra decidir se navega pra http:// ou
+        # https:// (ver guard _isSchemeSwapNoop no script injetado abaixo,
+        # que trata os casos em que esse JS usa location.href/assign/replace
+        # — mas nem todo device passa por esses três, e um script.write ou
+        # <a>.click() ainda escapariam). Neutralizar na origem: dentro do
+        # proxy, o scheme real do browser é sempre o do CRM (https),
+        # independente do scheme com que falamos com o device (que já está
+        # embutido no path, ex: ".../web/80/http/") — então, quando estamos
+        # falando HTTP com o device, forçar esse campo pra "true" evita que o
+        # JS dele tente "corrigir" um scheme que não é dele decidir.
+        if scheme == 'http' and 'json' in content_type:
+            content = re.sub(rb'"https"\s*:\s*false', b'"https":true', content)
 
         django_resp = HttpResponse(content, content_type=content_type, status=resp.status_code)
 

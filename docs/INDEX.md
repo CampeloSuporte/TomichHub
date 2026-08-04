@@ -2,6 +2,41 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 35 — 04/08/2026: Fix — Proxy Web: loop de login (Mimosa) + WinBox Web para clientes só-VPN
+
+**O que foi diagnosticado e corrigido?**
+- 🐛 **Proxy web de acessos (`proxy_web_acesso`): login funcionava mas a página ficava recarregando
+  de volta pra tela de login em loop**, reproduzido com um AP Mimosa/Airspan C5c. Causa: o firmware
+  do equipamento reporta `"https":false`/`true` no JSON de login/status e o próprio JS dele compara
+  isso com `location.protocol` pra "corrigir" o scheme navegando pra `http://` — dentro do proxy
+  isso não faz sentido, o browser sempre fala HTTPS com o CRM. Cada tentativa de correção gerava um
+  reload completo (confirmado nos logs pelo padrão de recarregar o script do Google Analytics a
+  cada ciclo), apagando o estado de login da SPA guardado só em memória.
+- ✅ Fix em duas camadas (`clientes/proxy_engine.py`): guard `_isSchemeSwapNoop` que cancela
+  `location.href`/`assign`/`replace` quando o destino é só o scheme atual trocado, **e** — mais
+  robusto — reescrita do próprio campo `"https":false` → `true` na resposta JSON do equipamento
+  quando o proxy fala HTTP com ele, neutralizando a condição na origem em vez de depender de
+  interceptar toda API de navegação possível.
+- 🐛 **WinBox Web (VNC e nativo) falhava com "Nenhum proxy SSH ativo"** pra qualquer cliente que só
+  tem VPN WireGuard/OpenVPN própria (sem `ProxyServer` SSH cadastrado) — reproduzido com o cliente
+  Conecta ISP. `get_active_proxy()` (`clientes/consumers.py`) não tinha o mesmo fallback de VPN que
+  o proxy HTTP já usava (`vpn_cobre_ip`).
+- ✅ `WinboxVNCConsumer.conectar_vnc()` e `conectar_winbox()` agora caem pra conexão direta quando
+  não há `ProxyServer` mas a VPN do cliente cobre o IP do host — mesmo padrão do proxy HTTP. Mesmo
+  bug ainda pendente em Terminal SSH, OLT Parks e Telnet (`clientes/consumers.py`) — sinalizado
+  como tarefa separada, fluxos mais específicos que precisam de mais cuidado por protocolo.
+- 🧹 Removido debug hardcoded (`DBG891`) deixado de uma sessão anterior — logava usuário/senha do
+  equipamento em texto puro no log do Daphne, sem relação com o bug real.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | Novo — arquitetura completa do proxy web, fallback de VPN, fix do loop de login |
+| **[winbox_vnc.md](winbox_vnc.md)** | Seção "WinBox Web não abre para clientes que só têm VPN" |
+
+---
+
 ### Sessão 34 — 03/08/2026: Sistema de Tarefas
 
 **O que foi implementado?**
